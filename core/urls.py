@@ -1,19 +1,31 @@
 from django.urls import path
 from .views import (
-    RegisterAPIView, LoginAPIView, 
-    TaskListCreateAPIView, ApplyTaskAPIView,
+    RegisterAPIView, LoginAPIView, UserProfileAPIView,
+    TaskListCreateAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
+    ApproveCandidateAPIView, ReviewCreateAPIView,
+    ApplyTaskAPIView, WorkerJobsAPIView, 
     ChatbotAPIView
 )
 
 urlpatterns = [
-    # Auth
-    path('register/', RegisterAPIView.as_view(), name='api_register'),
-    path('login/', LoginAPIView.as_view(), name='api_login'),
+    # Màn hình Chung (Auth & Profile)
+    path('auth/register/', RegisterAPIView.as_view(), name='register'),
+    path('auth/login/', LoginAPIView.as_view(), name='login'),
+    path('profile/', UserProfileAPIView.as_view(), name='profile'),
     
-    # Task
-    path('tasks/', TaskListCreateAPIView.as_view(), name='api_tasks'),
-    path('tasks/<int:task_id>/apply/', ApplyTaskAPIView.as_view(), name='api_apply_task'),
+    # Bảng tin chung (Cho sinh viên tìm việc / Phụ huynh đăng việc)
+    path('tasks/', TaskListCreateAPIView.as_view(), name='task-list-create'),
     
-    # Chatbot AI
-    path('chatbot/', ChatbotAPIView.as_view(), name='api_chatbot'),
+    # API riêng cho Luồng Phụ huynh (Parent)
+    path('parent/my-tasks/', ParentTasksAPIView.as_view(), name='parent-tasks'),
+    path('parent/tasks/<int:task_id>/candidates/', TaskCandidatesAPIView.as_view(), name='task-candidates'),
+    path('parent/applications/<int:application_id>/approve/', ApproveCandidateAPIView.as_view(), name='approve-candidate'),
+    path('parent/review/', ReviewCreateAPIView.as_view(), name='create-review'),
+    
+    # API riêng cho Luồng Sinh viên (Worker)
+    path('worker/tasks/<int:task_id>/apply/', ApplyTaskAPIView.as_view(), name='apply-task'),
+    path('worker/my-jobs/', WorkerJobsAPIView.as_view(), name='worker-jobs'),
+    
+    # AI Chatbot
+    path('chatbot/', ChatbotAPIView.as_view(), name='chatbot'),
 ]
