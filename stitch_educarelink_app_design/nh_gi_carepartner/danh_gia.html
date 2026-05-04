@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "inverse-primary": "#b4c5ff",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "inverse-on-surface": "#f0f1f2",
+                        "tertiary-container": "#008376",
+                        "on-secondary-fixed-variant": "#643f00",
+                        "secondary-container": "#feb246",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#ffddb6",
+                        "on-secondary-container": "#6f4600",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e7e8e9",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary": "#00685d",
+                        "primary": "#0051d5",
+                        "surface-variant": "#e1e3e4",
+                        "tertiary-fixed": "#71f8e4",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#316bf3",
+                        "on-surface-variant": "#3d4947",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-container": "#f4fffb",
+                        "on-surface": "#191c1d",
+                        "surface-tint": "#0053db",
+                        "surface-dim": "#d9dadb",
+                        "on-background": "#191c1d",
+                        "primary-fixed": "#dbe1ff",
+                        "outline-variant": "#bcc9c6",
+                        "secondary-fixed-dim": "#ffb95a",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-bright": "#f8f9fa",
+                        "error": "#ba1a1a",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary-fixed": "#2a1800",
+                        "outline": "#6d7a77",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "secondary": "#845400",
+                        "tertiary-fixed-dim": "#4fdbc8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-white/70 backdrop-blur-xl transition-colors w-full">
+<div class="flex items-center justify-between px-6 py-4 w-full">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-high transition-colors active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface" data-icon="close">close</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight text-on-surface font-headline">Review Caregiver</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow px-6 pt-8 pb-32 flex flex-col items-center text-center max-w-lg mx-auto w-full">
+<!-- Carepartner Summary Section -->
+<section class="mb-10 w-full flex flex-col items-center">
+<div class="relative mb-6">
+<div class="w-28 h-28 rounded-full overflow-hidden border-4 border-surface-container-lowest shadow-lg">
+<img alt="Nguyễn Văn A" class="w-full h-full object-cover" data-alt="Close-up portrait of a friendly young Vietnamese male tutor with a kind smile, clean professional look, warm natural indoor lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC74Gg-XZbZvwDXrFlYa7-iiAbd3XBEafTrr07Fne_v6_7ZQ_1wZhNyyWTYr2xM_375hbK4BU9ceAiZ5nhvWHCXpgV2OCYXkE1ctFajRBE3DULEw2h8qc_o2Swdbytf3U0D6StMA0-fmkPVHy_tEIJsHT09bNme-j9f4s4uo-q1XPEPBjFw8nOTokn1ZstpMSl0nErzsBTJRXyIG71scdz0OjXEccjPVUeSZLw4cVo3VMJS5QdASHwJo_qdZ38acDHDacAKFkqWqw"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-tertiary-container p-1.5 rounded-full border-2 border-white">
+<span class="material-symbols-outlined text-white text-sm" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<h2 class="text-2xl font-extrabold text-on-surface mb-2">Nguyễn Văn A</h2>
+<div class="inline-flex items-center px-4 py-1.5 bg-primary-container/10 rounded-full">
+<span class="text-xs font-bold text-primary mr-2 uppercase tracking-wider">Đã hoàn thành</span>
+<span class="text-sm font-medium text-on-surface-variant">Gia sư Tiếng Anh lớp 5</span>
+</div>
+</section>
+<!-- Rating Section -->
+<section class="mb-10 w-full bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/10">
+<p class="text-lg font-bold text-on-surface mb-6">Bạn thấy trải nghiệm này thế nào?</p>
+<div class="flex justify-center gap-3">
+<!-- Stars Logic: 4 Active, 1 Inactive -->
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl text-outline-variant/40" data-icon="star">star</span>
+</button>
+</div>
+</section>
+<!-- Review Input Section -->
+<section class="w-full text-left">
+<label class="block text-sm font-bold text-on-surface mb-3 px-1" for="review">Để lại nhận xét của bạn</label>
+<div class="relative group">
+<textarea class="w-full bg-surface-container-low border-0 rounded-xl p-5 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 transition-all resize-none" id="review" placeholder="Chia sẻ trải nghiệm của bạn (thái độ, kỹ năng, sự nhiệt tình...)" rows="6"></textarea>
+<div class="absolute bottom-4 right-4 text-[10px] font-bold text-outline uppercase tracking-widest">Optional</div>
+</div>
+<div class="mt-6 p-4 bg-tertiary/5 rounded-xl flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary text-lg mt-0.5" data-icon="verified_user">verified_user</span>
+<p class="text-xs leading-relaxed text-on-surface-variant font-medium">Đánh giá của bạn sẽ giúp cộng đồng Educarelink chọn được Carepartner tốt hơn và cải thiện chất lượng dịch vụ.</p>
+</div>
+</section>
+</main>
+<!-- Bottom Action Shell -->
+<footer class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md flex flex-col items-center">
+<button class="w-full max-w-lg bg-primary text-on-primary font-bold py-4 rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all duration-200 text-base tracking-wide flex items-center justify-center gap-2">
+            Gửi đánh giá
+            <span class="material-symbols-outlined text-xl" data-icon="send">send</span>
+</button>
+<div class="mt-4 h-1 w-32 bg-on-surface/10 rounded-full md:hidden"></div> <!-- iOS Home Indicator Mimic -->
+</footer>
+</body></html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Đăng ký - Educarelink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-high": "#e7e8e9",
+                "on-tertiary-fixed": "#00201c",
+                "inverse-surface": "#2e3132",
+                "secondary-fixed-dim": "#ffb95a",
+                "secondary-fixed": "#ffddb6",
+                "outline-variant": "#bcc9c6",
+                "on-tertiary": "#ffffff",
+                "background": "#f8f9fa",
+                "inverse-on-surface": "#f0f1f2",
+                "on-background": "#191c1d",
+                "surface-container": "#edeeef",
+                "surface": "#f8f9fa",
+                "on-tertiary-container": "#f4fffb",
+                "surface-container-low": "#f3f4f5",
+                "on-surface": "#191c1d",
+                "on-primary-container": "#fefcff",
+                "on-primary-fixed": "#00174b",
+                "tertiary-fixed-dim": "#4fdbc8",
+                "surface-dim": "#d9dadb",
+                "surface-tint": "#0053db",
+                "surface-container-highest": "#e1e3e4",
+                "primary-container": "#316bf3",
+                "on-error-container": "#93000a",
+                "primary-fixed": "#dbe1ff",
+                "tertiary-fixed": "#71f8e4",
+                "surface-bright": "#f8f9fa",
+                "inverse-primary": "#b4c5ff",
+                "error": "#ba1a1a",
+                "secondary-container": "#feb246",
+                "tertiary": "#00685d",
+                "surface-variant": "#e1e3e4",
+                "on-surface-variant": "#3d4947",
+                "secondary": "#845400",
+                "on-primary-fixed-variant": "#003ea8",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary-fixed-variant": "#643f00",
+                "primary": "#0051d5",
+                "on-error": "#ffffff",
+                "outline": "#6d7a77",
+                "on-secondary-fixed": "#2a1800",
+                "on-secondary-container": "#6f4600",
+                "on-secondary": "#ffffff",
+                "primary-fixed-dim": "#b4c5ff",
+                "on-tertiary-fixed-variant": "#005048",
+                "tertiary-container": "#008376",
+                "error-container": "#ffdad6",
+                "on-primary": "#ffffff"
+            },
+            "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Manrope"],
+                "body": ["Plus Jakarta Sans"],
+                "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- Auth Shell Wrapper -->
+<div class="min-h-screen flex flex-col justify-center items-center p-6 bg-surface-container-low">
+<div class="w-full max-w-md space-y-8">
+<!-- Branding/Top Info -->
+<div class="text-center space-y-2">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-on-primary shadow-[0_12px_24px_rgba(0,83,219,0.15)] mb-4">
+<span class="material-symbols-outlined text-4xl">spa</span>
+</div>
+<h1 class="text-3xl font-extrabold tracking-tight text-on-surface">Tạo tài khoản mới</h1>
+<p class="text-on-surface-variant font-medium">Tham gia Educarelink để kết nối ngay!</p>
+</div>
+<!-- Tab Switcher -->
+<div class="bg-surface-container-high p-1.5 rounded-full flex items-center shadow-inner">
+<button class="flex-1 py-2.5 text-sm font-bold text-on-surface-variant hover:text-on-surface transition-all rounded-full">
+                    Đăng nhập
+                </button>
+<button class="flex-1 py-2.5 text-sm font-bold bg-surface-container-lowest text-primary shadow-sm rounded-full transition-all">
+                    Đăng ký
+                </button>
+</div>
+<!-- Role Selector -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-primary bg-primary/5 text-primary transition-all scale-95 ring-2 ring-primary/10">
+<span class="material-symbols-outlined text-3xl mb-2" data-weight="fill" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="text-sm font-bold">Phụ Huynh</span>
+</button>
+<button class="flex flex-col items-center justify-center p-5 rounded-2xl bg-surface-container-lowest text-on-surface-variant border-2 border-transparent hover:border-outline-variant transition-all">
+<span class="material-symbols-outlined text-3xl mb-2">work</span>
+<span class="text-sm font-bold">Carepartner</span>
+</button>
+</div>
+<!-- Form -->
+<form class="space-y-5" onsubmit="return false;">
+<div class="space-y-4">
+<!-- Email/Phone Field -->
+<div class="relative group">
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1 mb-1.5">Email hoặc Số điện thoại</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">mail</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl focus:ring-0 focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/50" placeholder="name@example.com" type="text"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="relative group">
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1 mb-1.5">Mật khẩu</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">lock</span>
+<input class="w-full pl-12 pr-12 py-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl focus:ring-0 focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/50" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Terms -->
+<div class="flex items-start gap-3 px-1">
+<input class="mt-1 rounded-md border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                        Bằng việc đăng ký, bạn đồng ý với <a class="text-primary font-semibold underline underline-offset-2" href="#">Điều khoản dịch vụ</a> và <a class="text-primary font-semibold underline underline-offset-2" href="#">Chính sách bảo mật</a> của chúng tôi.
+                    </p>
+</div>
+<!-- Submit Button -->
+<button class="w-full py-4 bg-primary hover:bg-primary-container text-on-primary font-bold rounded-2xl shadow-[0_8px_20px_rgba(0,81,213,0.25)] transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    Đăng ký ngay
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</form>
+<!-- Social Divider -->
+<div class="relative flex items-center py-2">
+<div class="flex-grow border-t border-outline-variant/20"></div>
+<span class="flex-shrink mx-4 text-xs font-bold text-on-surface-variant uppercase tracking-widest">hoặc đăng ký với</span>
+<div class="flex-grow border-t border-outline-variant/20"></div>
+</div>
+<!-- Social Buttons -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-3 py-3.5 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl hover:bg-surface-container-high transition-all font-semibold text-on-surface">
+<img alt="Google" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbAbCTJn8ySIazaxlZbpYbQo_sEvr5UfFdkiSRu3r6E2UHtC5u7g4bgKakuCpuGdtusziHc_ljcTVzU0E3UHP2Ap9rwiZkKe-Eh-wkD7mjBt2K0LvigH_alXRGUvkb1m_1txLI0v-EAoTFr47HEsV2EKF1oJVi4V9LqYUHuUjkdjDLa-mHROx7T0HVEreSo8DZoJeDQvNnKiTfOlphbRh4TBUeQGmxXGWj5OsIN-8ZA4a4nW_RGx8Q9homwmhSuVh6xgayu1GH2A"/>
+                    Google
+                </button>
+<button class="flex items-center justify-center gap-3 py-3.5 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl hover:bg-surface-container-high transition-all font-semibold text-on-surface">
+<svg class="w-5 h-5 text-[#1877F2] fill-current" viewbox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
+                    Facebook
+                </button>
+</div>
+<!-- Footer Link -->
+<p class="text-center text-sm font-medium text-on-surface-variant">
+                Đã có tài khoản? 
+                <a class="text-primary font-bold hover:underline" href="#">Đăng nhập tại đây</a>
+</p>
+</div>
+<!-- Decorative Elements (Glassmorphism blobs) -->
+<div class="fixed top-[-10%] left-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-96 h-96 bg-secondary-container/5 rounded-full blur-3xl -z-10"></div>
+</div>
+<!-- Footer from Shared Components -->
+<footer class="bg-slate-50 dark:bg-slate-900 full-width py-12 px-8">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 max-w-7xl mx-auto w-full">
+<p class="font-['Plus_Jakarta_Sans'] text-sm text-slate-600 dark:text-slate-400">© 2024 Educarelink. Nurturing connections with empathy.</p>
+<div class="flex gap-6">
+<a class="font-['Plus_Jakarta_Sans'] text-sm text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors" href="#">Privacy</a>
+<a class="font-['Plus_Jakarta_Sans'] text-sm text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors" href="#">Terms</a>
+<a class="font-['Plus_Jakarta_Sans'] text-sm text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>
