@@ -1,0 +1,58 @@
+# ===================================================
+# EDUCARELINK BACKEND - REQUIREMENTS
+# ===================================================
+# Để cài đặt trên máy mới, chạy lệnh:
+#   pip install -r requirements.txt
+# ===================================================
+
+# --- CORE ---
+Django==6.0.4
+asgiref==3.11.1
+sqlparse==0.5.5
+tzdata==2026.1
+
+# --- REST API & AUTHENTICATION ---
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+PyJWT==2.12.1
+django-cors-headers==4.9.0
+
+# --- AI INTEGRATION (Google Gemini) ---
+google-generativeai==0.8.6
+google-ai-generativelanguage==0.6.15
+google-api-core==2.25.2
+google-api-python-client==2.194.0
+google-auth==2.49.2
+google-auth-httplib2==0.3.1
+googleapis-common-protos==1.74.0
+grpcio==1.80.0
+grpcio-status==1.71.2
+proto-plus==1.27.2
+protobuf==5.29.6
+
+# --- UTILITIES ---
+python-dotenv==1.2.2
+requests==2.33.1
+cryptography==46.0.7
+cffi==2.0.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+annotated-types==0.7.0
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+
+# --- NETWORKING ---
+certifi==2026.2.25
+charset-normalizer==3.4.7
+idna==3.11
+urllib3==2.6.3
+httplib2==0.31.2
+uritemplate==4.2.0
+pyparsing==3.3.2
+
+# --- OTHER ---
+colorama==0.4.6
+tqdm==4.67.3
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
+pycparser==3.0
