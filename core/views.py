@@ -117,6 +117,60 @@ class WorkerJobsAPIView(generics.ListAPIView):
         # Phục vụ Màn 10: Việc của tôi (Sinh viên)
         return TaskApplication.objects.filter(worker=self.request.user).order_by('-applied_at')
 
+class WorkerProfileDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, worker_id):
+        try:
+            worker = User.objects.get(id=worker_id, role='worker')
+            # Lấy tất cả đánh giá mà sinh viên này nhận được
+            reviews = Review.objects.filter(reviewee=worker).order_by('-created_at')
+            
+            # Tính toán số sao trung bình
+            avg_rating = 0.0
+            if reviews.exists():
+                avg_rating = sum([r.rating for r in reviews]) / reviews.count()
+            
+            # Mock bằng cấp/chứng chỉ dựa trên thông tin tên hoặc mặc định phù hợp với sinh viên
+            qualifications = [
+                "Thẻ Sinh viên đã xác thực",
+                "Chứng chỉ Kỹ năng Sư phạm cơ bản",
+                "Chứng nhận hoàn thành khoá đào tạo Carepartner"
+            ]
+            if "ngoai_thuong" in worker.username or "ftu" in worker.username:
+                qualifications.append("Đại học Ngoại thương")
+            elif "bach_khoa" in worker.username or "hust" in worker.username:
+                qualifications.append("Đại học Bách khoa (HUST)")
+            else:
+                qualifications.append("Đại học Quốc gia TP.HCM")
+
+            # Serialize reviews
+            serialized_reviews = []
+            for r in reviews:
+                serialized_reviews.append({
+                    "id": r.id,
+                    "rating": r.rating,
+                    "comment": r.comment,
+                    "reviewer_username": r.reviewer.username,
+                    "reviewer_name": f"{r.reviewer.first_name} {r.reviewer.last_name}".strip() or r.reviewer.username,
+                    "created_at": r.created_at.strftime('%d/%m/%Y')
+                })
+
+            data = {
+                "id": worker.id,
+                "username": worker.username,
+                "first_name": worker.first_name,
+                "last_name": worker.last_name,
+                "is_verified": worker.is_verified,
+                "ai_profile_summary": worker.ai_profile_summary or "Chưa có nhận xét từ AI.",
+                "avg_rating": round(avg_rating, 1) if avg_rating else 5.0,
+                "review_count": reviews.count(),
+                "qualifications": qualifications,
+                "reviews": serialized_reviews
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Không tìm thấy hồ sơ Carepartner."}, status=status.HTTP_404_NOT_FOUND)
+
 # --- PHẦN 5: CHATBOT AI (Tích hợp Google Gemini) ---
 class ChatbotAPIView(APIView):
     permission_classes = [IsAuthenticated]

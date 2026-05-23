@@ -54,7 +54,15 @@ export default function CandidatesScreen() {
 
 
   const renderCandidate = ({ item: c }) => (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('CandidateProfile', { 
+        workerId: c.worker, 
+        applicationId: c.id, 
+        isPending: c.status === 'pending' 
+      })}
+    >
       <View style={styles.cardTop}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{c.worker_name?.[0]?.toUpperCase() || '?'}</Text>
@@ -80,7 +88,7 @@ export default function CandidatesScreen() {
           <Text style={styles.approveBtnText}>Chấp nhận bạn này</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (

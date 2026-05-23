@@ -31,6 +31,9 @@ export const applyTask = (taskId) =>
 // Lấy danh sách việc sinh viên đã ứng tuyển
 export const getMyJobsAsWorker = () => apiClient.get('/worker/my-jobs/');
 
+// Lấy chi tiết hồ sơ carepartner (phục vụ phụ huynh xem hồ sơ ứng viên)
+export const getWorkerProfile = (workerId) => apiClient.get(`/worker/${workerId}/profile/`);
+
 // === CHATBOT ===
 // Gửi tin nhắn cho AI chatbot
 export const sendChatMessage = (message) =>

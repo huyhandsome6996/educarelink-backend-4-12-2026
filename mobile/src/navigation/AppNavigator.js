@@ -18,6 +18,7 @@ import CreateTaskScreen from '../screens/Parent/CreateTaskScreen';
 import MyTasksScreen from '../screens/Parent/MyTasksScreen';
 import CandidatesScreen from '../screens/Parent/CandidatesScreen';
 import ReviewScreen from '../screens/Parent/ReviewScreen';
+import CandidateProfileScreen from '../screens/Parent/CandidateProfileScreen';
 
 // Worker Screens
 import WorkerFeedScreen from '../screens/Worker/WorkerFeedScreen';
@@ -111,6 +112,7 @@ export default function AppNavigator() {
             <Stack.Screen name="CreateTask" component={CreateTaskScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="Candidates" component={CandidatesScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
+            <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)

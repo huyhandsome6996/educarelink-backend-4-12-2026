@@ -3,7 +3,7 @@ from .views import (
     RegisterAPIView, LoginAPIView, UserProfileAPIView,
     TaskListCreateAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
     ApproveCandidateAPIView, ReviewCreateAPIView,
-    ApplyTaskAPIView, WorkerJobsAPIView, 
+    ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
     ChatbotAPIView
 )
 
@@ -25,6 +25,7 @@ urlpatterns = [
     # API riêng cho Luồng Sinh viên (Worker)
     path('worker/tasks/<int:task_id>/apply/', ApplyTaskAPIView.as_view(), name='apply-task'),
     path('worker/my-jobs/', WorkerJobsAPIView.as_view(), name='worker-jobs'),
+    path('worker/<int:worker_id>/profile/', WorkerProfileDetailAPIView.as_view(), name='worker-profile-detail'),
     
     # AI Chatbot
     path('chatbot/', ChatbotAPIView.as_view(), name='chatbot'),
