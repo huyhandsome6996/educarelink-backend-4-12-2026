@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { getAllTasks, applyTask } from '../../api/tasks';
-import { Alert } from 'react-native';
+import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 
 const TAG_COLORS = {
   open:        { label: 'MỚI', color: '#7c3aed', bg: '#f5f3ff' },
@@ -17,31 +16,56 @@ export default function WorkerFeedScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [appliedTaskIds, setAppliedTaskIds] = useState([]);
 
   const fetchTasks = async () => {
     try {
       const res = await getAllTasks();
       // Chỉ hiện các việc đang 'open'
       setTasks(res.data.filter(t => t.status === 'open'));
+
+      // Lấy danh sách việc sinh viên đã ứng tuyển
+      const jobsRes = await getMyJobsAsWorker();
+      const ids = jobsRes.data.map(job => job.task);
+      setAppliedTaskIds(ids);
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); setRefreshing(false); }
   };
 
   useEffect(() => { fetchTasks(); }, []);
 
-  const handleApply = async (taskId) => {
-    Alert.alert('Ứng tuyển', 'Bạn muốn ứng tuyển việc này?', [
-      { text: 'Huỷ', style: 'cancel' },
-      { text: 'Ứng tuyển', onPress: async () => {
-        try {
-          const res = await applyTask(taskId);
+  const handleApply = (taskId) => {
+    const startApply = async () => {
+      try {
+        const res = await applyTask(taskId);
+        setAppliedTaskIds(prev => [...prev, taskId]);
+        if (Platform.OS === 'web') {
+          alert('✅ Thành công! Đã ứng tuyển!');
+        } else {
           Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
-        } catch (e) {
-          Alert.alert('Thông báo', e.response?.data?.error || e.response?.data?.message || 'Thao tác thất bại.');
         }
-      }},
-    ]);
+      } catch (e) {
+        const msg = e.response?.data?.error || e.response?.data?.message || 'Thao tác thất bại.';
+        if (Platform.OS === 'web') {
+          alert(`Thông báo: ${msg}`);
+        } else {
+          Alert.alert('Thông báo', msg);
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Bạn muốn ứng tuyển việc này?')) {
+        startApply();
+      }
+    } else {
+      Alert.alert('Ứng tuyển', 'Bạn muốn ứng tuyển việc này?', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Ứng tuyển', onPress: startApply },
+      ]);
+    }
   };
+
 
   const filtered = tasks.filter(t =>
     t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -50,33 +74,41 @@ export default function WorkerFeedScreen() {
 
   const displayName = user?.first_name || user?.username || 'Bạn';
 
-  const renderItem = ({ item: task }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.9}
-      onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
-      <View style={styles.cardTop}>
-        <View style={styles.newTag}>
-          <Ionicons name="flash" size={11} color="#7c3aed" />
-          <Text style={styles.newTagText}>MỚI</Text>
+  const renderItem = ({ item: task }) => {
+    const hasApplied = appliedTaskIds.includes(task.id);
+    return (
+      <TouchableOpacity style={styles.card} activeOpacity={0.9}
+        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
+        <View style={styles.cardTop}>
+          <View style={styles.newTag}>
+            <Ionicons name="flash" size={11} color="#7c3aed" />
+            <Text style={styles.newTagText}>MỚI</Text>
+          </View>
+          <Text style={styles.cardPrice}>{parseInt(task.price).toLocaleString('vi-VN')}đ</Text>
         </View>
-        <Text style={styles.cardPrice}>{parseInt(task.price).toLocaleString('vi-VN')}đ</Text>
-      </View>
-      <Text style={styles.cardTitle} numberOfLines={2}>{task.title}</Text>
-      <View style={styles.cardMeta}>
-        <Ionicons name="time-outline" size={13} color="#6b7280" />
-        <Text style={styles.cardMetaText}>{new Date(task.scheduled_time).toLocaleString('vi-VN')}</Text>
-      </View>
-      <View style={styles.cardMeta}>
-        <Ionicons name="location-outline" size={13} color="#6b7280" />
-        <Text style={styles.cardMetaText}>{task.location}</Text>
-      </View>
-      <View style={styles.cardBottom}>
-        <Text style={styles.parentLabel}>Phụ huynh: {task.parent_name}</Text>
-        <TouchableOpacity style={styles.applyBtn} onPress={() => handleApply(task.id)}>
-          <Text style={styles.applyBtnText}>Ứng tuyển</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+        <Text style={styles.cardTitle} numberOfLines={2}>{task.title}</Text>
+        <View style={styles.cardMeta}>
+          <Ionicons name="time-outline" size={13} color="#6b7280" />
+          <Text style={styles.cardMetaText}>{new Date(task.scheduled_time).toLocaleString('vi-VN')}</Text>
+        </View>
+        <View style={styles.cardMeta}>
+          <Ionicons name="location-outline" size={13} color="#6b7280" />
+          <Text style={styles.cardMetaText}>{task.location}</Text>
+        </View>
+        <View style={styles.cardBottom}>
+          <Text style={styles.parentLabel}>Phụ huynh: {task.parent_name}</Text>
+          <TouchableOpacity 
+            style={[styles.applyBtn, hasApplied && { backgroundColor: '#9ca3af', opacity: 0.8 }]} 
+            onPress={() => handleApply(task.id)}
+            disabled={hasApplied}
+          >
+            <Text style={styles.applyBtnText}>{hasApplied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
 
   return (
     <View style={styles.container}>

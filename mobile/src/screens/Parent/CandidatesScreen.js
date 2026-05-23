@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidates, approveCandidate } from '../../api/tasks';
@@ -19,23 +19,39 @@ export default function CandidatesScreen() {
   }, [taskId]);
 
   const handleApprove = async (appId, workerName) => {
-    Alert.alert('Xác nhận', `Chấp nhận ${workerName} làm việc này?\nCác ứng viên khác sẽ tự động bị từ chối.`, [
-      { text: 'Huỷ', style: 'cancel' },
-      {
-        text: 'Chấp nhận', style: 'default',
-        onPress: async () => {
-          try {
-            const res = await approveCandidate(appId);
-            Alert.alert('✅ Đã nhận!', res.data.message, [
-              { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
-          } catch (e) {
-            Alert.alert('Lỗi', e.response?.data?.error || 'Thao tác thất bại.');
-          }
-        },
-      },
-    ]);
+    const startApprove = async () => {
+      try {
+        const res = await approveCandidate(appId);
+        if (Platform.OS === 'web') {
+          alert(`✅ Đã nhận! ${res.data.message}`);
+          navigation.goBack();
+        } else {
+          Alert.alert('✅ Đã nhận!', res.data.message, [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
+        }
+      } catch (e) {
+        const msg = e.response?.data?.error || 'Thao tác thất bại.';
+        if (Platform.OS === 'web') {
+          alert(`Lỗi: ${msg}`);
+        } else {
+          Alert.alert('Lỗi', msg);
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Xác nhận: Chấp nhận ${workerName} làm việc này?\nCác ứng viên khác sẽ tự động bị từ chối.`)) {
+        startApprove();
+      }
+    } else {
+      Alert.alert('Xác nhận', `Chấp nhận ${workerName} làm việc này?\nCác ứng viên khác sẽ tự động bị từ chối.`, [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Chấp nhận', style: 'default', onPress: startApprove },
+      ]);
+    }
   };
+
 
   const renderCandidate = ({ item: c }) => (
     <View style={styles.card}>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getAllTasks, applyTask } from '../../api/tasks';
+import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 
 export default function TaskDetailScreen() {
   const navigation = useNavigation();
@@ -11,30 +11,66 @@ export default function TaskDetailScreen() {
   const [task, setTask] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
 
   useEffect(() => {
-    getAllTasks()
-      .then(res => setTask(res.data.find(t => t.id === taskId)))
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+    const fetchData = async () => {
+      try {
+        const tasksRes = await getAllTasks();
+        const foundTask = tasksRes.data.find(t => t.id === taskId);
+        setTask(foundTask);
+
+        // Kiểm tra xem carepartner đã ứng tuyển việc này chưa
+        const jobsRes = await getMyJobsAsWorker();
+        const alreadyApplied = jobsRes.data.some(job => job.task === taskId);
+        setHasApplied(alreadyApplied);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, [taskId]);
 
   const handleApply = () => {
-    Alert.alert('Ứng tuyển ngay', 'Bạn chắc chắn muốn ứng tuyển công việc này?', [
-      { text: 'Huỷ', style: 'cancel' },
-      { text: 'Ứng tuyển', onPress: async () => {
-        setApplying(true);
-        try {
-          const res = await applyTask(taskId);
+    const startApply = async () => {
+      setApplying(true);
+      try {
+        const res = await applyTask(taskId);
+        setHasApplied(true);
+        if (Platform.OS === 'web') {
+          alert('✅ Thành công! Đã ứng tuyển!');
+          navigation.navigate('MyJobs');
+        } else {
           Alert.alert('✅ Thành công!', res.data.message || 'Đã ứng tuyển!', [
             { text: 'Xem việc của tôi', onPress: () => navigation.navigate('MyJobs') }
           ]);
-        } catch (e) {
-          Alert.alert('Thông báo', e.response?.data?.error || e.response?.data?.message || 'Thao tác thất bại.');
-        } finally { setApplying(false); }
-      }},
-    ]);
+        }
+      } catch (e) {
+        const msg = e.response?.data?.error || e.response?.data?.message || 'Thao tác thất bại.';
+        if (Platform.OS === 'web') {
+          alert(`Thông báo: ${msg}`);
+        } else {
+          Alert.alert('Thông báo', msg);
+        }
+      } finally {
+        setApplying(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Bạn chắc chắn muốn ứng tuyển công việc này?')) {
+        startApply();
+      }
+    } else {
+      Alert.alert('Ứng tuyển ngay', 'Bạn chắc chắn muốn ứng tuyển công việc này?', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Ứng tuyển', onPress: startApply },
+      ]);
+    }
   };
+
 
   if (isLoading) return <ActivityIndicator color="#0d9488" style={{ flex: 1, marginTop: 100 }} />;
   if (!task) return (
@@ -100,12 +136,20 @@ export default function TaskDetailScreen() {
 
       {/* Bottom CTA */}
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.applyBtn, applying && { opacity: 0.7 }]}
-          onPress={handleApply} disabled={applying}>
+        <TouchableOpacity 
+          style={[
+            styles.applyBtn, 
+            (applying || hasApplied) && { opacity: 0.7, backgroundColor: '#9ca3af', shadowColor: 'transparent', elevation: 0 }
+          ]}
+          onPress={handleApply} 
+          disabled={applying || hasApplied}
+        >
           {applying ? <ActivityIndicator color="#fff" /> : (
             <>
-              <Ionicons name="paper-plane" size={20} color="#fff" />
-              <Text style={styles.applyBtnText}>ỨNG TUYỂN NGAY</Text>
+              <Ionicons name={hasApplied ? "checkmark-circle" : "paper-plane"} size={20} color="#fff" />
+              <Text style={styles.applyBtnText}>
+                {hasApplied ? 'ĐÃ ỨNG TUYỂN' : 'ỨNG TUYỂN NGAY'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
