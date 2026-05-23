@@ -5,7 +5,7 @@ import { storage } from '../utils/storage';
 // Tự động cấu hình IP dựa trên nền tảng (Web dùng localhost, Mobile dùng IP máy chủ)
 const BASE_URL = Platform.OS === 'web'
   ? 'http://localhost:8000/api'
-  : 'http://10.0.2.2:8000/api'; // Thay thành IP LAN thực tế (VD: 192.168.1.31) khi quét Expo Go
+  : 'http://192.168.1.31:8000/api';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
