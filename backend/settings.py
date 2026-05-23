@@ -4,7 +4,11 @@ Django settings for backend project.
 
 from pathlib import Path
 import os
-from datetime import timedelta # Thêm để cấu hình thời gian sống của Token
+from datetime import timedelta
+from dotenv import load_dotenv
+
+# Tải biến môi trường từ file .env (chứa API keys)
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -112,3 +116,8 @@ SIMPLE_JWT = {
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',), # Phía Mobile sẽ gửi Header: "Authorization: Bearer <token>"
 }
+
+# --- CẤU HÌNH GEMINI AI ---
+# Đặt API key trong file .env: GEMINI_API_KEY=your_key_here
+# Lấy key miễn phí tại: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')

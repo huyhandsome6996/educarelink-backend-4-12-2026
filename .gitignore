@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+env/
+.env
+
+# Django
+db.sqlite3
+*.log
+staticfiles/
+media/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Node / Expo (trong thư mục mobile/)
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/

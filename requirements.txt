@@ -18,6 +18,9 @@ PyJWT==2.12.1
 django-cors-headers==4.9.0
 
 # --- AI INTEGRATION (Google Gemini) ---
+# Thư viện mới (khuyến nghị dùng):
+google-genai>=1.0.0
+# Thư viện cũ (giữ lại để tương thích, sẽ deprecated):
 google-generativeai==0.8.6
 google-ai-generativelanguage==0.6.15
 google-api-core==2.25.2
