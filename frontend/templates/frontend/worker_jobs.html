@@ -141,7 +141,7 @@
 
     async function init() {
         try {
-            const resp = await fetch(API_BASE + "/worker/my-applications/", { headers: { 'Authorization': 'Bearer ' + token } });
+            const resp = await fetch(API_BASE + "/worker/my-jobs/", { headers: { 'Authorization': 'Bearer ' + token } });
             allApps = await resp.json();
             render();
         } catch (e) { console.error(e); }
