@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
 
 const AuthContext = createContext(null);
@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkToken = async () => {
       try {
-        const token = await SecureStore.getItemAsync('access_token');
+        const token = await storage.getItem('access_token');
         if (token) {
           // Lấy profile từ server để đảm bảo token còn hợp lệ
           const response = await getProfile();
@@ -20,8 +20,8 @@ export function AuthProvider({ children }) {
         }
       } catch (error) {
         // Token hết hạn hoặc lỗi — xoá hết
-        await SecureStore.deleteItemAsync('access_token');
-        await SecureStore.deleteItemAsync('user_role');
+        await storage.deleteItem('access_token');
+        await storage.deleteItem('user_role');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -34,10 +34,10 @@ export function AuthProvider({ children }) {
     const response = await loginApi(username, password);
     const { tokens, role, user_id, username: uname } = response.data;
 
-    // Lưu token và role vào SecureStore (an toàn hơn localStorage)
-    await SecureStore.setItemAsync('access_token', tokens.access);
-    await SecureStore.setItemAsync('refresh_token', tokens.refresh);
-    await SecureStore.setItemAsync('user_role', role);
+    // Lưu token và role vào SecureStore hoặc localStorage
+    await storage.setItem('access_token', tokens.access);
+    await storage.setItem('refresh_token', tokens.refresh);
+    await storage.setItem('user_role', role);
 
     // Lấy full profile
     const profileResp = await getProfile();
@@ -52,9 +52,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('refresh_token');
-    await SecureStore.deleteItemAsync('user_role');
+    await storage.deleteItem('access_token');
+    await storage.deleteItem('refresh_token');
+    await storage.deleteItem('user_role');
     setUser(null);
   };
 
@@ -64,6 +64,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 
 // Hook tiện lợi để dùng trong mọi màn hình
 export const useAuth = () => useContext(AuthContext);

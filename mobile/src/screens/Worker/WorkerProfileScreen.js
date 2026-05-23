@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 
@@ -80,10 +80,18 @@ export default function WorkerProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionRow, styles.logoutRow]}
-            onPress={() => Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-              { text: 'Huỷ', style: 'cancel' },
-              { text: 'Đăng xuất', style: 'destructive', onPress: logout }
-            ])}>
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                  logout();
+                }
+              } else {
+                Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+                  { text: 'Huỷ', style: 'cancel' },
+                  { text: 'Đăng xuất', style: 'destructive', onPress: logout }
+                ]);
+              }
+            }}>
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
             <Text style={[styles.actionText, { color: '#ef4444' }]}>Đăng xuất</Text>
           </TouchableOpacity>
@@ -92,6 +100,7 @@ export default function WorkerProfileScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },

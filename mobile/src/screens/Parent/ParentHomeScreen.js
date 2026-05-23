@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, ActivityIndicator, RefreshControl,
+  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,12 +53,21 @@ export default function ParentHomeScreen() {
             <Text style={styles.greetSmall}>Chào mừng 👋</Text>
             <Text style={styles.greetName}>{displayName}</Text>
           </View>
-          <TouchableOpacity onPress={() => Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-            { text: 'Huỷ', style: 'cancel' },
-            { text: 'Đăng xuất', style: 'destructive', onPress: logout },
-          ])} style={styles.avatarBtn}>
+          <TouchableOpacity onPress={() => {
+            if (Platform.OS === 'web') {
+              if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                logout();
+              }
+            } else {
+              Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+                { text: 'Huỷ', style: 'cancel' },
+                { text: 'Đăng xuất', style: 'destructive', onPress: logout },
+              ]);
+            }
+          }} style={styles.avatarBtn}>
             <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>
+
         </View>
 
         {/* Nút đăng việc lớn */}
