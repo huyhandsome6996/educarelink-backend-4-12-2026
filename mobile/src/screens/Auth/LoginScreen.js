@@ -16,9 +16,17 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const showAlert = (title, message) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên tài khoản và mật khẩu.');
+      showAlert('Lỗi', 'Vui lòng nhập tên tài khoản và mật khẩu.');
       return;
     }
     setIsLoading(true);
@@ -27,11 +35,12 @@ export default function LoginScreen() {
       // Navigator tự phân luồng theo role trong AuthContext
     } catch (error) {
       const msg = error.response?.data?.error || 'Sai tài khoản hoặc mật khẩu.';
-      Alert.alert('Đăng nhập thất bại', msg);
+      showAlert('Đăng nhập thất bại', msg);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView

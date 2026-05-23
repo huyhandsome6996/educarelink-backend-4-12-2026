@@ -39,17 +39,25 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const showAlert = (title, message) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleRegister = async () => {
     if (!firstName || !username || !password || !confirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin.');
+      showAlert('Lỗi', 'Vui lòng điền đầy đủ thông tin.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp.');
+      showAlert('Lỗi', 'Mật khẩu xác nhận không khớp.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự.');
+      showAlert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự.');
       return;
     }
     setIsLoading(true);
@@ -60,11 +68,12 @@ export default function RegisterScreen() {
       const msg = typeof data === 'object'
         ? Object.values(data).flat().join('\n')
         : 'Đăng ký thất bại. Tên tài khoản có thể đã tồn tại.';
-      Alert.alert('Đăng ký thất bại', msg);
+      showAlert('Đăng ký thất bại', msg);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView
