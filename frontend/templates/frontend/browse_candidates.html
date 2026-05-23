@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Educarelink - Candidate Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#0051d5",
+                        "surface-container": "#edeeef",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container-high": "#e7e8e9",
+                        "primary-container": "#316bf3",
+                        "on-tertiary-container": "#f4fffb",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#fefcff",
+                        "tertiary-container": "#008376",
+                        "tertiary-fixed": "#71f8e4",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "inverse-surface": "#2e3132",
+                        "surface-container-highest": "#e1e3e4",
+                        "secondary": "#845400",
+                        "on-surface-variant": "#3d4947",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f8f9fa",
+                        "background": "#f8f9fa",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#00685d",
+                        "on-secondary-fixed": "#2a1800",
+                        "secondary-fixed": "#ffddb6",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-secondary-container": "#6f4600",
+                        "secondary-fixed-dim": "#ffb95a",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-dim": "#d9dadb",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191c1d",
+                        "tertiary-fixed-dim": "#4fdbc8",
+                        "surface-container-low": "#f3f4f5",
+                        "on-secondary-fixed-variant": "#643f00",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1d",
+                        "secondary-container": "#feb246",
+                        "surface-tint": "#0053db",
+                        "outline": "#6d7a77",
+                        "on-primary-fixed": "#00174b",
+                        "outline-variant": "#bcc9c6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-xl shadow-[0_20px_40px_rgba(13,148,136,0.06)]">
+<div class="flex items-center gap-4">
+<button onclick="location.href='{% url 'frontend:parent_tasks' %}'" class="p-2 -ml-2 rounded-full hover:bg-teal-50/50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-teal-600">arrow_back</span>
+</button>
+<h1 class="font-manrope font-bold text-lg tracking-tight text-teal-600">Chi tiết &amp; Ứng viên</h1>
+</div>
+</header>
+<main class="pt-20 pb-10 px-4 max-w-md mx-auto">
+<!-- Task Summary Section -->
+<section class="mb-8" id="task-summary">
+    <!-- Will be filled by JS -->
+</section>
+<!-- Candidate List Header -->
+<section class="mb-6 px-1">
+<h3 class="text-lg font-extrabold flex items-center gap-2" id="candidates-count">
+    Đang tải ứng viên...
+</h3>
+<p class="text-on-surface-variant text-sm mt-1">Chọn người phù hợp nhất cho bé của bạn</p>
+</section>
+<!-- Candidate Cards -->
+<div class="space-y-6" id="candidates-list">
+</div>
+</main>
+<script>
+    const API_BASE = "/api";
+    const token = localStorage.getItem('token');
+    const taskId = localStorage.getItem('current_task_id');
+    if (!token) window.location.href = "{% url 'frontend:login' %}";
+    if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
+
+    async function init() {
+        try {
+            // Lấy thông tin công việc (từ danh sách chung hoặc API riêng nếu có)
+            // Ở đây tôi lấy từ API chung
+            const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
+            const tasks = await tasksResp.json();
+            const task = tasks.find(t => t.id == taskId);
+            if (task) {
+                document.getElementById('task-summary').innerHTML = `
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border-l-4 border-primary shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                        <h2 class="text-xl font-bold text-on-surface mb-2">${task.title}</h2>
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center gap-2 text-on-surface-variant text-sm">
+                                <span class="material-symbols-outlined text-sm">schedule</span>
+                                <span>${new Date(task.scheduled_time).toLocaleString('vi-VN')}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-on-surface-variant text-sm">
+                                <span class="material-symbols-outlined text-sm">payments</span>
+                                <span class="font-semibold text-primary">${new Intl.NumberFormat('vi-VN').format(task.price)}đ</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const candResp = await fetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const candidates = await candResp.json();
+            document.getElementById('candidates-count').innerText = `${candidates.length} Carepartner đã ứng tuyển`;
+            
+            const container = document.getElementById('candidates-list');
+            if (candidates.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 italic text-slate-400">Chưa có ai ứng tuyển.</div>`;
+            } else {
+                container.innerHTML = candidates.map(c => `
+                    <div class="bg-surface-container-lowest rounded-2xl p-6 shadow-[0_12px_40px_rgba(0,81,213,0.05)] border border-outline-variant/10">
+                        <div class="flex items-center gap-5 mb-5">
+                            <div class="relative">
+                                <img alt="Avatar" class="w-16 h-16 rounded-full object-cover ring-2 ring-primary/10" src="https://ui-avatars.com/api/?name=${c.worker_username}&background=random">
+                                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-tertiary rounded-full border-2 border-white flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[14px] text-white" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="text-lg font-bold text-on-surface">${c.worker_username}</h4>
+                                <p class="text-on-surface-variant text-sm leading-tight">Carepartner tiềm năng</p>
+                                <div class="flex items-center gap-1 mt-1">
+                                    <span class="material-symbols-outlined text-secondary text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+                                    <span class="text-sm font-bold">5.0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button class="flex-1 py-3 px-4 rounded-xl text-on-surface-variant font-semibold border border-outline-variant hover:bg-surface-container transition-all active:scale-95 text-sm">
+                                Xem hồ sơ
+                            </button>
+                            <button onclick="approve(${c.id})" class="flex-[1.5] py-3 px-4 bg-primary text-on-primary rounded-xl font-bold shadow-md shadow-primary/20 hover:bg-primary-container transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+                                Chấp nhận
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function approve(appId) {
+        if (!confirm("Bạn có chắc chắn muốn nhận người này làm việc?")) return;
+        try {
+            const resp = await fetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert(data.message);
+                window.location.href = "{% url 'frontend:parent_tasks' %}";
+            } else {
+                alert("Lỗi: " + (data.error || "Không xác định"));
+            }
+        } catch (e) { alert("Lỗi kết nối."); }
+    }
+
+    init();
+</script>
+</body></html>

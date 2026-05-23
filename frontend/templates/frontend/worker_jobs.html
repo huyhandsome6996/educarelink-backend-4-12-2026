@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Việc của tôi - Educarelink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-surface": "#191c1d",
+                        "secondary-container": "#feb246",
+                        "background": "#f8f9fa",
+                        "inverse-surface": "#2e3132",
+                        "outline-variant": "#bcc9c6",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#6d7a77",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#00201c",
+                        "tertiary-fixed": "#71f8e4",
+                        "secondary-fixed": "#ffddb6",
+                        "inverse-on-surface": "#f0f1f2",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e7e8e9",
+                        "on-secondary-fixed-variant": "#643f00",
+                        "surface-variant": "#e1e3e4",
+                        "surface-tint": "#0053db",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "tertiary": "#00685d",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container": "#edeeef",
+                        "surface-dim": "#d9dadb",
+                        "surface-bright": "#f8f9fa",
+                        "surface": "#f8f9fa",
+                        "primary": "#0051d5",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface-variant": "#3d4947",
+                        "on-secondary-container": "#6f4600",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#191c1d",
+                        "on-secondary-fixed": "#2a1800",
+                        "inverse-primary": "#b4c5ff",
+                        "secondary": "#845400",
+                        "on-primary-container": "#fefcff",
+                        "on-tertiary-container": "#f4fffb",
+                        "tertiary-container": "#008376",
+                        "tertiary-fixed-dim": "#4fdbc8",
+                        "secondary-fixed-dim": "#ffb95a",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e3e4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-error": "#ffffff",
+                        "primary-container": "#316bf3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen relative pb-24">
+<!-- Top Navigation Shell -->
+<!-- Top Navigation Shell -->
+<header class="sticky top-0 z-40 bg-[#f8f9fa] dark:bg-[#191c1d] flex items-center justify-between px-6 py-4 w-full">
+<div class="flex items-center gap-3">
+<h1 class="font-['Manrope'] font-bold text-2xl tracking-tight text-[#191c1d] dark:text-[#f8f9fa]">Việc của tôi</h1>
+</div>
+</header>
+<!-- Tabs Container -->
+<nav class="sticky top-[68px] z-30 bg-surface-container-lowest px-4 flex justify-around items-end h-14 shadow-sm" id="tabs">
+<button onclick="setTab('pending')" id="tab-pending" class="pb-3 px-2 text-[#191c1d] opacity-70 font-medium text-sm transition-all">
+            Chờ duyệt
+</button>
+<button onclick="setTab('accepted')" id="tab-accepted" class="pb-3 px-2 text-[#0051d5] border-b-2 border-[#0051d5] font-bold text-sm transition-all">
+            Sắp làm
+</button>
+<button onclick="setTab('completed')" id="tab-completed" class="pb-3 px-2 text-[#191c1d] opacity-70 font-medium text-sm transition-all">
+            Lịch sử
+</button>
+</nav>
+<!-- Job List Content -->
+<main class="px-4 py-6 space-y-6" id="jobs-list">
+    <div class="text-center py-10 italic text-slate-400">Đang tải...</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-3 bg-[#ffffff]/70 dark:bg-[#191c1d]/70 backdrop-blur-xl border-t border-[#0051d5]/15 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] rounded-t-2xl">
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 hover:text-primary transition-transform active:scale-90" href="{% url 'frontend:worker_feed' %}">
+<span class="material-symbols-outlined">search</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] font-semibold">Tìm việc</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#0051d5] text-white rounded-full p-2 scale-110 active:scale-90 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="work_history" style="font-variation-settings: 'FILL' 1;">work_history</span>
+</a>
+<a onclick="localStorage.clear(); location.href='{% url 'frontend:login' %}'" class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 cursor-pointer" href="#">
+<span class="material-symbols-outlined text-2xl">logout</span>
+<span class="text-[10px] font-semibold mt-1">Thoát</span>
+</a>
+</nav>
+<script>
+    const API_BASE = "/api";
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = "{% url 'frontend:login' %}";
+
+    let currentTab = 'accepted';
+    let allApps = [];
+
+    async function init() {
+        try {
+            const resp = await fetch(API_BASE + "/worker/my-applications/", { headers: { 'Authorization': 'Bearer ' + token } });
+            allApps = await resp.json();
+            render();
+        } catch (e) { console.error(e); }
+    }
+
+    function setTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('#tabs button').forEach(btn => {
+            btn.classList.remove('text-[#0051d5]', 'border-b-2', 'border-[#0051d5]', 'font-bold');
+            btn.classList.add('opacity-70', 'font-medium');
+        });
+        const active = document.getElementById('tab-' + tab);
+        active.classList.add('text-[#0051d5]', 'border-b-2', 'border-[#0051d5]', 'font-bold');
+        active.classList.remove('opacity-70', 'font-medium');
+        render();
+    }
+
+    function render() {
+        const container = document.getElementById('jobs-list');
+        const filtered = allApps.filter(a => {
+            if (currentTab === 'pending') return a.status === 'pending';
+            if (currentTab === 'accepted') return a.status === 'accepted';
+            if (currentTab === 'completed') return a.status === 'completed';
+            return false;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center py-20 italic text-slate-400">Không có công việc nào trong mục này.</div>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map(a => `
+            <div class="bg-surface-container-lowest rounded-2xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/15 flex flex-col gap-4">
+                <div class="flex justify-between items-start">
+                    <span class="bg-primary/10 text-primary text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 uppercase">
+                        ${a.status}
+                    </span>
+                    <span class="font-headline font-extrabold text-primary text-lg">${new Intl.NumberFormat('vi-VN').format(a.task_price)}đ</span>
+                </div>
+                <h2 class="font-headline font-bold text-lg leading-tight">${a.task_title}</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2 text-on-surface-variant font-medium text-sm">
+                        <span class="material-symbols-outlined text-sm">schedule</span>
+                        ${new Date(a.task_scheduled_time).toLocaleString('vi-VN')}
+                    </div>
+                    <div class="flex items-start gap-2 text-on-surface-variant text-sm">
+                        <span class="material-symbols-outlined text-sm mt-0.5">location_on</span>
+                        <span class="flex-1">${a.task_location}</span>
+                    </div>
+                </div>
+                <div class="bg-primary/5 rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <img class="w-10 h-10 rounded-full object-cover" src="https://ui-avatars.com/api/?name=${a.parent_username}&background=random">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant opacity-60">Phụ huynh</p>
+                            <p class="font-bold text-on-surface">${a.parent_username}</p>
+                        </div>
+                    </div>
+                    <button class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    init();
+</script>
+</body></html>
+</body></html>

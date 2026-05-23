@@ -5,4 +5,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Đưa tất cả các API của app core vào nhánh /api/
     path('api/', include('core.urls')), 
+    # Giao diện Prototype
+    path('', include('frontend.urls')),
 ]

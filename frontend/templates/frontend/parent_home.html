@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Educarelink - Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#0051d5", "on-primary": "#ffffff", "surface": "#f8f9fa",
+                    "on-surface": "#191c1d", "on-surface-variant": "#3d4947",
+                    "surface-container-low": "#f3f4f5", "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#bcc9c6", "secondary-fixed": "#ffddb6", "on-secondary-fixed": "#2a1800"
+            },
+          },
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<header class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-sm h-16 flex justify-between items-center px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-slate-200 ring-2 ring-primary/10">
+<img id="user-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User"/>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Chào buổi sáng,</p>
+<p id="user-name" class="font-headline font-bold text-teal-700 leading-tight">Đang tải...</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-600">notifications</span>
+</button>
+</header>
+<main class="mt-20 px-6 space-y-8">
+<section>
+<button onclick="location.href='{% url 'frontend:task_create_1' %}'" class="w-full bg-primary p-6 rounded-lg text-left relative overflow-hidden group active:scale-[0.98] transition-transform shadow-lg">
+<div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-on-primary bg-white/20 p-1.5 rounded-full" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="text-on-primary font-headline font-extrabold text-xl tracking-tight">ĐĂNG VIỆC NGAY</span>
+</div>
+<p class="text-on-primary/80 text-sm font-medium">Tìm Carepartner nhanh chóng &amp; tin cậy cho bé yêu của bạn.</p>
+</div>
+</button>
+</section>
+<section>
+<div class="flex justify-between items-end mb-5">
+<h2 class="font-headline font-bold text-xl text-on-surface tracking-tight">Công việc của bạn</h2>
+<a class="text-primary text-sm font-semibold hover:underline" href="#">Xem tất cả</a>
+</div>
+<div id="task-list" class="space-y-4">
+    <div class="text-center py-10 italic text-slate-400">Đang tải dữ liệu...</div>
+</div>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-3 pb-8 bg-white/80 backdrop-blur-2xl shadow-lg z-50">
+<a class="flex flex-col items-center justify-center bg-teal-50 text-teal-700 rounded-2xl px-5 py-2 scale-105" href="{% url 'frontend:parent_home' %}">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-medium text-[11px] mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2" href="{% url 'frontend:parent_tasks' %}">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-medium text-[11px] mt-1">Việc của tôi</span>
+</a>
+<a onclick="localStorage.clear(); location.href='{% url 'frontend:login' %}'" class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 cursor-pointer" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-medium text-[11px] mt-1">Đăng xuất</span>
+</a>
+</nav>
+<script>
+    const API_BASE = "/api";
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = "{% url 'frontend:login' %}";
+
+    async function init() {
+        try {
+            const profResp = await fetch(API_BASE + "/profile/", { headers: { 'Authorization': 'Bearer ' + token } });
+            const prof = await profResp.json();
+            document.getElementById('user-name').innerText = prof.first_name + " " + prof.last_name;
+            document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${prof.username}&background=random`;
+
+            const taskResp = await fetch(API_BASE + "/parent/my-tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
+            const tasks = await taskResp.json();
+            const container = document.getElementById('task-list');
+            if (tasks.length === 0) {
+                container.innerHTML = `<div class="bg-surface-container-low p-5 rounded-lg border border-dashed border-outline text-center py-10 italic">Chưa có công việc nào.</div>`;
+            } else {
+                container.innerHTML = tasks.map(t => `
+                    <div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm border border-outline-variant/10">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold rounded-full uppercase">${t.status}</span>
+                            <div class="text-primary font-bold text-lg">${new Intl.NumberFormat('vi-VN').format(t.price)}đ</div>
+                        </div>
+                        <h3 class="text-lg font-bold text-on-surface mb-3">${t.title}</h3>
+                        <div class="text-on-surface-variant text-sm flex flex-col gap-1">
+                            <p>📍 ${t.location}</p>
+                            <p>⏰ ${new Date(t.scheduled_time).toLocaleString('vi-VN')}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (e) { console.error(e); }
+    }
+    init();
+</script>
+</body></html>

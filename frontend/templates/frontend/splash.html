@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Educarelink - Splash</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#e7e8e9",
+                    "inverse-on-surface": "#f0f1f2",
+                    "secondary-fixed-dim": "#ffb95a",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#fefcff",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "on-primary-fixed": "#00174b",
+                    "on-secondary-fixed": "#2a1800",
+                    "secondary-container": "#feb246",
+                    "surface-bright": "#f8f9fa",
+                    "surface-dim": "#d9dadb",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-variant": "#e1e3e4",
+                    "surface": "#f8f9fa",
+                    "tertiary": "#00685d",
+                    "surface-container-low": "#f3f4f5",
+                    "on-background": "#191c1d",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "tertiary-fixed-dim": "#4fdbc8",
+                    "secondary-fixed": "#ffddb6",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#008376",
+                    "on-error": "#ffffff",
+                    "on-secondary-fixed-variant": "#643f00",
+                    "primary-fixed": "#dbe1ff",
+                    "secondary": "#845400",
+                    "surface-tint": "#0053db",
+                    "outline": "#6d7a77",
+                    "on-tertiary-fixed": "#00201c",
+                    "on-tertiary-fixed-variant": "#005048",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#f4fffb",
+                    "outline-variant": "#bcc9c6",
+                    "inverse-surface": "#2e3132",
+                    "tertiary-fixed": "#71f8e4",
+                    "on-secondary-container": "#6f4600",
+                    "on-surface": "#191c1d",
+                    "on-surface-variant": "#3d4947",
+                    "on-primary": "#ffffff",
+                    "surface-container-highest": "#e1e3e4",
+                    "background": "#f8f9fa",
+                    "primary-container": "#316bf3",
+                    "primary": "#0051d5",
+                    "surface-container": "#edeeef"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        .animate-pulse-soft {
+            animation: pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body overflow-hidden">
+<!-- Splash Screen Container -->
+<!-- Suppression Rule: No TopAppBar or BottomNavBar as this is a focused linear splash screen -->
+<main class="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100">
+<!-- Abstract Background Textures (Editorial Empathy Aesthetic) -->
+<div class="absolute inset-0 pointer-events-none">
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary-fixed/20 blur-[120px]"></div>
+</div>
+<!-- Identity Cluster -->
+<div class="z-10 flex flex-col items-center text-center px-6">
+<!-- Logo Module -->
+<div class="mb-8 relative">
+<!-- Diffusion Shadow effect from Design System -->
+<div class="w-24 h-24 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-[0_20px_40px_rgba(0,81,213,0.12)] animate-pulse-soft">
+<span class="material-symbols-outlined text-primary text-6xl" data-icon="shield_with_heart" style="font-variation-settings: 'FILL' 1;">
+                        shield_with_heart
+                    </span>
+</div>
+<!-- Decorative Orbit -->
+<div class="absolute -inset-4 border border-primary/10 rounded-xl animate-pulse-soft" style="animation-delay: 0.5s;"></div>
+</div>
+<!-- Branding -->
+<div class="space-y-4">
+<h1 class="font-headline font-extrabold text-5xl tracking-tight text-primary">
+                    Educarelink
+                </h1>
+<p class="font-body text-on-surface-variant text-lg font-medium tracking-wide">
+                    Trợ lý gia đình, Việc làm linh hoạt
+                </p>
+</div>
+<!-- Loading Indicator (Subtle) -->
+<div class="mt-24 flex space-x-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" style="animation-delay: 0.1s;"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style="animation-delay: 0.2s;"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" style="animation-delay: 0.3s;"></div>
+</div>
+</div>
+<!-- Decorative Footer Image (Editorial Layering) -->
+<div class="absolute bottom-0 left-0 w-full h-[265px] overflow-hidden opacity-40">
+<img alt="Community and family connection" class="w-full h-full object-cover" data-alt="Soft focus image of two people holding hands warmly, representing care and support, with natural sunlight and airy atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSpE_kKbSBYvYbXi24zgl0b272BVrLleG2kMrjz-1iDgXPkafB_1MqiOpFeEUC67P93lNuAlliNC8sv-GvE2PXyxkJ1_EOMG4nFzyEV94OQkN0c7mUXOWXZAsE8u-Bx5AWzYNQndlE-oWg-oRmZumLLEpn44fS_a7QWoYLxUF830lMi7_QNwSloOH-a28Ph4NmCybUINgY0ZBd4-s4DT0sqMneNljtSp8309s-Oq2fjZeJxhQE0iXL4a6iRZIbfd6mZUJSCLCTKg"/>
+<!-- Tonal Layering Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-blue-100 via-transparent to-transparent"></div>
+</div>
+<!-- Semantic Identity Anchor (Hidden) -->
+<div class="hidden" data-identity="nurturing-curator"></div>
+    <script>
+        setTimeout(() => {
+            window.location.href = "{% url 'frontend:login' %}";
+        }, 2000);
+    </script>
+</body></html>

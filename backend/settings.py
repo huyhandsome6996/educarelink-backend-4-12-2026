@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     
     # --- APP CỦA CHÚNG TA ---
     'core',
+    'frontend',
 ]
 
 MIDDLEWARE = [
