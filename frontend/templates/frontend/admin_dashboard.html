@@ -358,7 +358,7 @@
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
                 html += `<tr>
                     <td>
-                        <div class="user-cell">
+                        <div class="user-cell" style="cursor:pointer;" onclick="updateQualifications(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}')">
                             <div class="user-avatar">
                                 ${w.selfie_photo 
                                     ? `<img src="${w.selfie_photo}" alt="${name}" />` 
@@ -422,7 +422,7 @@
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
                 html += `<tr>
                     <td>
-                        <div class="user-cell">
+                        <div class="user-cell" style="cursor:pointer;" onclick="updateQualifications(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}')">
                             <div class="user-avatar">
                                 ${w.selfie_photo 
                                     ? `<img src="${w.selfie_photo}" alt="${name}" />` 

@@ -33,7 +33,7 @@ export default function WorkerProfileScreen() {
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.8,
       });
@@ -49,6 +49,7 @@ export default function WorkerProfileScreen() {
           await updateCertificate(photo);
           Alert.alert('Thành công', 'Đã tải lên minh chứng thành công. Admin sẽ xem xét sớm nhất!');
         } catch (error) {
+          console.error("Upload error:", error?.response?.data || error);
           Alert.alert('Lỗi', 'Không thể tải lên. Vui lòng thử lại.');
         } finally {
           setIsUploading(false);
