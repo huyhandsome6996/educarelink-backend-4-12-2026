@@ -12,22 +12,22 @@ import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4; // 4 columns with gaps
 
-const STATUS_MAP = {
-  open:        { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
-  in_progress: { label: 'Đang làm', color: COLORS.info, bg: COLORS.infoBg, icon: 'construct' },
-  completed:   { label: 'Hoàn thành', color: COLORS.success, bg: COLORS.successBg, icon: 'checkmark-circle' },
+const STATUS_MAPPING = {
+  open: { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
+  in_progress: { label: 'Đang làm', color: COLORS.primary, bg: COLORS.primaryLight, icon: 'construct' },
+  completed: { label: 'Hoàn thành', color: COLORS.success, bg: COLORS.successBg, icon: 'checkmark-circle' },
   cancelled:   { label: 'Đã huỷ',   color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
 const CATEGORIES = [
-  { icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: '#FF6B35' },
-  { icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: '#3B82F6' },
-  { icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: '#10B981' },
-  { icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: '#F59E0B' },
-  { icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', color: '#8B5CF6' },
-  { icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: '#EF4444' },
-  { icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: '#06B6D4' },
-  { icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: '#6B7280' },
+  { icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: COLORS.primary },
+  { icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: COLORS.primary },
 ];
 
 export default function ParentHomeScreen() {

@@ -12,7 +12,7 @@ const TABS = [
 
 const STATUS_STYLE = {
   pending:  { color: COLORS.warning, bg: COLORS.warningBg, label: 'Chờ duyệt', icon: 'time' },
-  accepted: { color: COLORS.info, bg: COLORS.infoBg, label: 'Đã nhận', icon: 'checkmark-circle' },
+  accepted: { color: COLORS.primary, bg: COLORS.primaryLight, label: 'Đã nhận', icon: 'checkmark-circle' },
   rejected: { color: COLORS.textMuted, bg: '#f3f4f6', label: 'Bị từ chối', icon: 'close-circle' },
 };
 

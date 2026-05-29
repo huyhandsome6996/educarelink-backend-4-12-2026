@@ -12,7 +12,7 @@ const TABS = [
 
 const STATUS_COLOR = {
   open:        { text: '#f59e0b', bg: '#fffbeb' },
-  in_progress: { text: '#0051d5', bg: '#eff6ff' },
+  in_progress: { text: '#F26522', bg: '#FFF4ED' },
   completed:   { text: '#059669', bg: '#f0fdf4' },
   cancelled:   { text: '#6b7280', bg: '#f3f4f6' },
 };
@@ -84,7 +84,7 @@ export default function MyTasksScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Việc của tôi</Text>
         <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.addBtn}>
-          <Ionicons name="add" size={22} color="#0051d5" />
+          <Ionicons name="add" size={22} color="#F26522" />
         </TouchableOpacity>
       </View>
 
@@ -99,7 +99,7 @@ export default function MyTasksScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#0051d5" style={{ marginTop: 60 }} />
+        <ActivityIndicator color="#F26522" style={{ marginTop: 60 }} />
       ) : (
         <FlatList data={filtered} keyExtractor={i => i.id.toString()} renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -120,22 +120,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: '#fff' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF4ED', justifyContent: 'center', alignItems: 'center' },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#0051d5' },
+  tabActive: { borderBottomColor: '#F26522' },
   tabText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
-  tabTextActive: { color: '#0051d5', fontWeight: '700' },
+  tabTextActive: { color: '#F26522', fontWeight: '700' },
   list: { padding: 16, gap: 12 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2, gap: 8 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  price: { fontSize: 16, fontWeight: '800', color: '#0051d5' },
+  price: { fontSize: 16, fontWeight: '800', color: '#F26522' },
   title: { fontSize: 16, fontWeight: '700', color: '#111827' },
   meta: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   metaText: { fontSize: 12, color: '#6b7280', flex: 1 },
-  actionBtn: { backgroundColor: '#0051d5', borderRadius: 12, height: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
+  actionBtn: { backgroundColor: '#F26522', borderRadius: 12, height: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
   actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { color: '#9ca3af', fontSize: 15 },

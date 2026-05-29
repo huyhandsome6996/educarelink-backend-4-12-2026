@@ -6,15 +6,15 @@ import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
-const CATEGORIES = [
-  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: '#FF6B35' },
-  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: '#3B82F6' },
-  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: '#10B981' },
-  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: '#F59E0B' },
-  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', color: '#8B5CF6' },
-  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: '#EF4444' },
-  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: '#06B6D4' },
-  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: '#6B7280' },
+const CATEGORY_MAP = [
+  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
+  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: COLORS.primary },
+  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: COLORS.primary },
+  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: COLORS.primary },
+  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm', color: COLORS.primary },
+  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: COLORS.primary },
+  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: COLORS.primary },
+  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: COLORS.primary },
 ];
 
 export default function WorkerFeedScreen() {
@@ -84,7 +84,7 @@ export default function WorkerFeedScreen() {
 
   const renderItem = ({ item: task }) => {
     const hasApplied = appliedTaskIds.includes(task.id);
-    const cat = CATEGORIES.find(c => c.id === task.category) || CATEGORIES[7];
+    const cat = CATEGORY_MAP.find(c => c.id === task.category) || CATEGORY_MAP[7];
     return (
       <TouchableOpacity style={styles.card} activeOpacity={0.9}
         onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
@@ -110,7 +110,7 @@ export default function WorkerFeedScreen() {
           </View>
           <View style={styles.metaRow}>
             <View style={styles.metaIconBox}>
-              <Ionicons name="location-outline" size={14} color={COLORS.secondary} />
+              <Ionicons name="location-outline" size={14} color={COLORS.primary} />
             </View>
             <Text style={styles.metaText}>{task.location}</Text>
           </View>

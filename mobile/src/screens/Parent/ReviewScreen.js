@@ -104,6 +104,6 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   ratingLabel: { textAlign: 'center', fontSize: 16, fontWeight: '700', color: '#f59e0b' },
   textarea: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb', padding: 16, fontSize: 15, color: '#111827', minHeight: 120 },
-  submitBtn: { backgroundColor: '#0051d5', borderRadius: 14, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#0051d5', shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, marginTop: 8 },
+  submitBtn: { backgroundColor: '#F26522', borderRadius: 14, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#F26522', shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

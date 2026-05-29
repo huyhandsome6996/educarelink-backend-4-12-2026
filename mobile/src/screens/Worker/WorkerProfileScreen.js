@@ -12,9 +12,9 @@ export default function WorkerProfileScreen() {
     : user?.username || 'Sinh viên';
 
   const MENU_ITEMS = [
-    { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.warning },
-    { icon: 'card-outline', label: 'Xác thực thẻ sinh viên', color: COLORS.info },
-    { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.secondary },
+    { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary },
+    { icon: 'card-outline', label: 'Xác thực thẻ sinh viên', color: COLORS.primary },
+    { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.primary },
     { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.textSecondary },
   ];
 
@@ -64,8 +64,8 @@ export default function WorkerProfileScreen() {
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
           <View style={styles.infoList}>
             {[
-              { icon: 'mail-outline', label: 'Email', value: user?.email || 'Chưa cập nhật', color: COLORS.info },
-              { icon: 'call-outline', label: 'Số điện thoại', value: user?.phone_number || 'Chưa cập nhật', color: COLORS.secondary },
+              { icon: 'mail-outline', label: 'Email', value: user?.email || 'Chưa cập nhật', color: COLORS.primary },
+              { icon: 'call-outline', label: 'Số điện thoại', value: user?.phone_number || 'Chưa cập nhật', color: COLORS.primary },
               { icon: 'location-outline', label: 'Địa chỉ', value: user?.address || 'Chưa cập nhật', color: COLORS.primary },
             ].map(item => (
               <View key={item.label} style={styles.infoItem}>

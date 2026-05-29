@@ -59,7 +59,7 @@ export default function CandidateProfileScreen() {
     }
   };
 
-  if (isLoading) return <ActivityIndicator color="#0051d5" style={{ flex: 1, marginTop: 100 }} />;
+  if (isLoading) return <ActivityIndicator color="#F26522" style={{ flex: 1, marginTop: 100 }} />;
   if (!profile) return null;
 
   const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username;
@@ -110,7 +110,7 @@ export default function CandidateProfileScreen() {
           <View style={styles.list}>
             {profile.qualifications?.map((q, idx) => (
               <View key={idx} style={styles.certRow}>
-                <Ionicons name="ribbon-outline" size={18} color="#0051d5" />
+                <Ionicons name="ribbon-outline" size={18} color="#F26522" />
                 <Text style={styles.certText}>{q}</Text>
               </View>
             ))}
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
   body: { flex: 1 },
   profileCard: { backgroundColor: '#fff', padding: 24, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#0051d5', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F26522', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   avatarText: { color: '#fff', fontSize: 32, fontWeight: '800' },
   name: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 4 },
   roleLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500', marginBottom: 20 },
@@ -210,6 +210,6 @@ const styles = StyleSheet.create({
   stars: { flexDirection: 'row', gap: 2 },
   reviewComment: { fontSize: 13, color: '#4b5563', lineHeight: 18 },
   footer: { padding: 20, paddingBottom: 36, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  approveBtn: { backgroundColor: '#0051d5', borderRadius: 16, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#0051d5', shadowOpacity: 0.4, shadowRadius: 16, elevation: 6 },
+  approveBtn: { backgroundColor: '#F26522', borderRadius: 16, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#F26522', shadowOpacity: 0.4, shadowRadius: 16, elevation: 6 },
   approveBtnText: { color: '#fff', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
 });

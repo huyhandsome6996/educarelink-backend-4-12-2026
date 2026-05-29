@@ -23,8 +23,8 @@ const ROLES = [
     label: 'Sinh Viên',
     icon: 'school',
     description: 'Tìm việc, kiếm thêm thu nhập',
-    color: COLORS.secondary,
-    bg: COLORS.secondaryLight,
+    color: COLORS.primary,
+    bg: COLORS.primaryLight,
   },
 ];
 
@@ -178,7 +178,7 @@ export default function RegisterScreen() {
             <Text style={styles.imageBtnText}>Thư viện</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.imageBtn} onPress={() => takePhoto(setter)}>
-            <Ionicons name="camera-outline" size={20} color={COLORS.secondary} />
+            <Ionicons name="camera-outline" size={20} color={COLORS.primary} />
             <Text style={styles.imageBtnText}>Camera</Text>
           </TouchableOpacity>
         </View>
@@ -321,7 +321,7 @@ export default function RegisterScreen() {
           {selectedRole === 'worker' && (
             <View style={styles.photoSection}>
               <View style={styles.photoSectionHeader}>
-                <Ionicons name="shield-checkmark" size={20} color={COLORS.warning} />
+                <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
                 <Text style={styles.photoSectionTitle}>Xác minh danh tính</Text>
               </View>
               <Text style={styles.photoSectionDesc}>
@@ -336,7 +336,7 @@ export default function RegisterScreen() {
           {/* Thông báo cho carepartner */}
           {selectedRole === 'worker' && (
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={18} color={COLORS.info} />
+              <Ionicons name="information-circle" size={18} color={COLORS.primary} />
               <Text style={styles.infoText}>
                 Tài khoản Carepartner cần được Admin xét duyệt trước khi đăng nhập. Quá trình duyệt thường mất 1-2 ngày làm việc.
               </Text>
@@ -434,10 +434,10 @@ const styles = StyleSheet.create({
   // Info box
   infoBox: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: COLORS.infoBg, borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: COLORS.info + '30',
+    backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: COLORS.primary + '30',
   },
-  infoText: { flex: 1, fontSize: 12, color: COLORS.info, lineHeight: 18 },
+  infoText: { flex: 1, fontSize: 12, color: COLORS.primary, lineHeight: 18 },
   // Buttons
   registerBtn: {
     backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 56,

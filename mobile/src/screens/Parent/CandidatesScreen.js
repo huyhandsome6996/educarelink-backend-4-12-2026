@@ -105,7 +105,7 @@ export default function CandidatesScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#0051d5" style={{ marginTop: 60 }} />
+        <ActivityIndicator color="#F26522" style={{ marginTop: 60 }} />
       ) : (
         <FlatList data={candidates} keyExtractor={i => i.id.toString()} renderItem={renderCandidate}
           contentContainerStyle={styles.list}
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 4 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#0051d5', justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F26522', justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   info: { flex: 1, gap: 4 },
   name: { fontSize: 16, fontWeight: '700', color: '#111827' },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   accepted: { backgroundColor: '#f0fdf4' },
   pending: { backgroundColor: '#fffbeb' },
   statusPillText: { fontSize: 11, fontWeight: '700', color: '#374151' },
-  approveBtn: { backgroundColor: '#0051d5', borderRadius: 12, height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  approveBtn: { backgroundColor: '#F26522', borderRadius: 12, height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   approveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { color: '#9ca3af', fontSize: 15 },
