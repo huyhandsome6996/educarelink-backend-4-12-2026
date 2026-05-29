@@ -39,3 +39,6 @@ class WorkerJobsView(TemplateView):
 
 class WorkerProfileView(TemplateView):
     template_name = "frontend/worker_profile.html"
+
+class AdminDashboardView(TemplateView):
+    template_name = "frontend/admin_dashboard.html"

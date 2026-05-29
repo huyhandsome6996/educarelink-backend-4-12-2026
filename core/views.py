@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import User, Task, TaskApplication, ServiceCategory, Review
@@ -19,12 +20,55 @@ class RegisterAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def create(self, request, *args, **kwargs):
+        role = request.data.get('role', 'parent')
+        
+        # Validate phụ huynh: bắt buộc email + phone
+        if role == 'parent':
+            email = request.data.get('email', '').strip()
+            phone = request.data.get('phone_number', '').strip()
+            if not email:
+                return Response({'email': ['Phụ huynh phải cung cấp email.']}, status=status.HTTP_400_BAD_REQUEST)
+            if not phone:
+                return Response({'phone_number': ['Phụ huynh phải cung cấp số điện thoại.']}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate carepartner: bắt buộc ảnh CCCD + selfie
+        if role == 'worker':
+            if not request.FILES.get('id_card_front'):
+                return Response({'id_card_front': ['Ảnh mặt trước CCCD là bắt buộc.']}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.FILES.get('id_card_back'):
+                return Response({'id_card_back': ['Ảnh mặt sau CCCD là bắt buộc.']}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.FILES.get('selfie_photo'):
+                return Response({'selfie_photo': ['Ảnh chân dung là bắt buộc.']}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        if role == 'worker':
+            return Response({
+                'message': 'Đăng ký thành công! Tài khoản của bạn đang chờ Admin xét duyệt. Vui lòng đợi thông báo.',
+                'status': 'pending_approval'
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'message': 'Đăng ký thành công!',
+                'status': 'approved'
+            }, status=status.HTTP_201_CREATED)
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         user = authenticate(username=request.data.get('username'), password=request.data.get('password'))
         if user:
+            # Carepartner phải được admin duyệt mới đăng nhập được
+            if user.role == 'worker' and not user.is_approved:
+                return Response({
+                    "error": "Tài khoản của bạn đang chờ Admin xét duyệt. Vui lòng đợi.",
+                    "status": "pending_approval"
+                }, status=status.HTTP_403_FORBIDDEN)
             return Response({
                 "message": "Đăng nhập thành công!",
                 "tokens": get_tokens_for_user(user),
@@ -317,4 +361,74 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
             return Response({
                 "response": f"❌ {detail}",
                 "type": "error"
-            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# --- PHẦN 6: ADMIN QUẢN LÝ DUYỆT TÀI KHOẢN CAREPARTNER ---
+class AdminPendingWorkersAPIView(APIView):
+    """API lấy danh sách Carepartner chờ duyệt (dành cho trang Admin)"""
+    permission_classes = [AllowAny]  # Trang admin HTML sẽ dùng token riêng
+
+    def get(self, request):
+        pending = User.objects.filter(role='worker', is_approved=False).order_by('-date_joined')
+        data = []
+        for u in pending:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'phone_number': u.phone_number,
+                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
+                'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
+                'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
+            })
+        return Response(data)
+
+
+class AdminApproveWorkerAPIView(APIView):
+    """API duyệt hoặc từ chối tài khoản Carepartner"""
+    permission_classes = [AllowAny]
+
+    def post(self, request, user_id):
+        action = request.data.get('action')  # 'approve' hoặc 'reject'
+        try:
+            worker = User.objects.get(id=user_id, role='worker')
+            if action == 'approve':
+                worker.is_approved = True
+                worker.is_verified = True
+                worker.save()
+                return Response({'message': f'Đã duyệt tài khoản {worker.username}.'})
+            elif action == 'reject':
+                worker.delete()
+                return Response({'message': f'Đã từ chối và xoá tài khoản.'})
+            else:
+                return Response({'error': 'Action phải là "approve" hoặc "reject".'}, status=400)
+        except User.DoesNotExist:
+            return Response({'error': 'Không tìm thấy tài khoản.'}, status=404)
+
+
+class AdminAllWorkersAPIView(APIView):
+    """API lấy tất cả Carepartner (đã duyệt + chờ duyệt)"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        workers = User.objects.filter(role='worker').order_by('-date_joined')
+        data = []
+        for u in workers:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'phone_number': u.phone_number,
+                'is_approved': u.is_approved,
+                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
+                'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
+                'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
+            })
+        return Response(data)

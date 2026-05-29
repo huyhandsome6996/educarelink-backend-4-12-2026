@@ -4,15 +4,57 @@ import apiClient from './client';
 export const login = (username, password) =>
   apiClient.post('/auth/login/', { username, password });
 
-// Đăng ký tài khoản mới
-export const register = (username, password, role, firstName = '', lastName = '') =>
-  apiClient.post('/auth/register/', {
+// Đăng ký tài khoản mới (hỗ trợ upload ảnh cho Carepartner)
+export const register = (username, password, role, firstName = '', lastName = '', email = '', phone = '', idCardFront = null, idCardBack = null, selfiePhoto = null) => {
+  // Nếu có file ảnh → dùng FormData (multipart)
+  if (idCardFront || idCardBack || selfiePhoto) {
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+    formData.append('role', role);
+    formData.append('first_name', firstName);
+    formData.append('last_name', lastName);
+    if (email) formData.append('email', email);
+    if (phone) formData.append('phone_number', phone);
+
+    if (idCardFront) {
+      formData.append('id_card_front', {
+        uri: idCardFront.uri,
+        type: idCardFront.mimeType || 'image/jpeg',
+        name: 'id_card_front.jpg',
+      });
+    }
+    if (idCardBack) {
+      formData.append('id_card_back', {
+        uri: idCardBack.uri,
+        type: idCardBack.mimeType || 'image/jpeg',
+        name: 'id_card_back.jpg',
+      });
+    }
+    if (selfiePhoto) {
+      formData.append('selfie_photo', {
+        uri: selfiePhoto.uri,
+        type: selfiePhoto.mimeType || 'image/jpeg',
+        name: 'selfie_photo.jpg',
+      });
+    }
+
+    return apiClient.post('/auth/register/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
+  // Phụ huynh — JSON đơn giản
+  return apiClient.post('/auth/register/', {
     username,
     password,
     role,
     first_name: firstName,
     last_name: lastName,
+    email,
+    phone_number: phone,
   });
+};
 
 // Lấy thông tin hồ sơ người dùng hiện tại
 export const getProfile = () => apiClient.get('/profile/');

@@ -45,9 +45,15 @@ export function AuthProvider({ children }) {
     return profileResp.data;
   };
 
-  const register = async (username, password, role, firstName, lastName) => {
-    await registerApi(username, password, role, firstName, lastName);
-    // Sau khi đăng ký thành công thì tự đăng nhập luôn
+  const register = async (username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto) => {
+    const response = await registerApi(username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto);
+    
+    // Carepartner không auto-login (chờ admin duyệt)
+    if (role === 'worker') {
+      return { status: 'pending_approval' };
+    }
+    
+    // Phụ huynh: đăng ký xong auto đăng nhập luôn
     return await login(username, password);
   };
 

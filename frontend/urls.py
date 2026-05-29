@@ -17,4 +17,5 @@ urlpatterns = [
     path('worker/task-detail/', TaskDetailView.as_view(), name='task_detail'),
     path('worker/my-jobs/', WorkerJobsView.as_view(), name='worker_jobs'),
     path('worker/profile/', WorkerProfileView.as_view(), name='worker_profile'),
+    path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]

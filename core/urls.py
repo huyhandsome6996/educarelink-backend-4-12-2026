@@ -4,7 +4,8 @@ from .views import (
     TaskListCreateAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
     ApproveCandidateAPIView, ReviewCreateAPIView,
     ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
-    ChatbotAPIView
+    ChatbotAPIView,
+    AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
 )
 
 urlpatterns = [
@@ -29,4 +30,9 @@ urlpatterns = [
     
     # AI Chatbot
     path('chatbot/', ChatbotAPIView.as_view(), name='chatbot'),
+    
+    # Admin quản lý duyệt tài khoản Carepartner
+    path('admin/pending-workers/', AdminPendingWorkersAPIView.as_view(), name='admin-pending-workers'),
+    path('admin/workers/<int:user_id>/action/', AdminApproveWorkerAPIView.as_view(), name='admin-approve-worker'),
+    path('admin/all-workers/', AdminAllWorkersAPIView.as_view(), name='admin-all-workers'),
 ]

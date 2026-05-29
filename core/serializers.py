@@ -10,15 +10,20 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'first_name', 'last_name',
             'email', 'password', 'role', 'phone_number',
-            'address', 'is_verified', 'ai_profile_summary'
+            'address', 'is_verified', 'is_approved', 'ai_profile_summary',
+            'id_card_front', 'id_card_back', 'selfie_photo',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': False, 'allow_blank': True},
-            'phone_number': {'required': False, 'allow_null': True},
+            'phone_number': {'required': False, 'allow_null': True, 'allow_blank': True},
             'address': {'required': False, 'allow_null': True},
             'is_verified': {'read_only': True},
+            'is_approved': {'read_only': True},
             'ai_profile_summary': {'read_only': True},
+            'id_card_front': {'required': False},
+            'id_card_back': {'required': False},
+            'selfie_photo': {'required': False},
         }
 
     def create(self, validated_data):
@@ -26,6 +31,11 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)
+        # Phụ huynh auto-approve, Carepartner phải đợi admin duyệt
+        if user.role == 'parent':
+            user.is_approved = True
+        else:
+            user.is_approved = False
         user.save()
         return user
 
@@ -84,4 +94,4 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
-        read_only_fields = ['reviewer']
+        read_only_fields = ['reviewer']

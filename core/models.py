@@ -14,7 +14,15 @@ class User(AbstractUser):
     # Đã xác thực CCCD/Thẻ sinh viên chưa
     is_verified = models.BooleanField(default=False) 
     
-    # ---> KHUNG CHỜ AI: Lưu tóm tắt hồ sơ do AI sinh ra
+    # Trạng thái duyệt tài khoản (Admin duyệt cho Carepartner)
+    is_approved = models.BooleanField(default=False, help_text="Admin duyệt tài khoản Carepartner")
+    
+    # Ảnh xác minh danh tính (dành cho Carepartner)
+    id_card_front = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt trước CCCD")
+    id_card_back = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt sau CCCD")
+    selfie_photo = models.ImageField(upload_to='selfies/', blank=True, null=True, help_text="Ảnh chân dung")
+    
+    # ----> KHUNG CHỜ AI: Lưu tóm tắt hồ sơ do AI sinh ra
     ai_profile_summary = models.TextField(
         blank=True, 
         null=True, 

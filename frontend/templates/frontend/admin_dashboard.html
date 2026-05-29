@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educarelink Admin - Quản lý duyệt tài khoản</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex; flex-direction: column;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid #334155;
+        }
+        .sidebar-logo {
+            font-size: 20px; font-weight: 900; color: #F26522;
+        }
+        .sidebar-logo span { color: #94a3b8; font-weight: 500; font-size: 12px; display: block; margin-top: 2px; }
+        .sidebar-nav { padding: 16px 12px; flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-radius: 10px;
+            cursor: pointer; margin-bottom: 4px;
+            font-size: 14px; font-weight: 600; color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .nav-item:hover { background: #334155; color: #e2e8f0; }
+        .nav-item.active { background: #F26522; color: #fff; }
+        .nav-item .icon { width: 20px; text-align: center; }
+        .nav-badge {
+            margin-left: auto; background: #ef4444; color: #fff;
+            font-size: 10px; font-weight: 800; border-radius: 10px;
+            padding: 2px 8px; min-width: 20px; text-align: center;
+        }
+
+        /* === MAIN === */
+        .main { margin-left: 260px; padding: 32px; min-height: 100vh; }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 28px;
+        }
+        .page-title { font-size: 26px; font-weight: 900; color: #f1f5f9; }
+        .page-subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .refresh-btn {
+            background: #334155; border: 1px solid #475569; color: #e2e8f0;
+            padding: 10px 20px; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: #475569; }
+
+        /* === STATS === */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+            padding: 20px; display: flex; align-items: center; gap: 16px;
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .stat-icon.pending { background: #F26522 + '20'; background: rgba(242,101,34,0.15); color: #F26522; }
+        .stat-icon.approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .stat-icon.total { background: rgba(99,102,241,0.15); color: #6366f1; }
+        .stat-value { font-size: 28px; font-weight: 900; color: #f1f5f9; }
+        .stat-label { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
+
+        /* === TABLE === */
+        .table-container {
+            background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 16px 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .table-title { font-size: 15px; font-weight: 800; color: #f1f5f9; }
+        .tab-row { display: flex; gap: 8px; }
+        .tab {
+            padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
+            cursor: pointer; border: 1px solid #334155; color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .tab.active { background: #F26522; border-color: #F26522; color: #fff; }
+        .tab:hover:not(.active) { background: #334155; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left; padding: 12px 20px; font-size: 11px; font-weight: 800;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1px solid #334155;
+        }
+        td {
+            padding: 14px 20px; font-size: 14px; border-bottom: 1px solid #1e293b;
+            vertical-align: middle;
+        }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .user-cell {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .user-avatar {
+            width: 40px; height: 40px; border-radius: 12px;
+            overflow: hidden; border: 2px solid #334155; flex-shrink: 0;
+        }
+        .user-avatar img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .user-avatar-placeholder {
+            width: 100%; height: 100%; background: #334155;
+            display: flex; align-items: center; justify-content: center;
+            color: #64748b; font-size: 14px; font-weight: 800;
+        }
+        .user-name { font-weight: 700; color: #f1f5f9; }
+        .user-username { font-size: 12px; color: #64748b; }
+        .badge {
+            padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+            display: inline-block;
+        }
+        .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .badge-approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .photo-thumbs { display: flex; gap: 6px; }
+        .photo-thumb {
+            width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+            border: 2px solid #334155; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .photo-thumb:hover { border-color: #F26522; transform: scale(1.1); }
+        .action-btns { display: flex; gap: 8px; }
+        .btn {
+            padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
+            cursor: pointer; border: none; transition: all 0.2s;
+        }
+        .btn-approve { background: #22c55e; color: #fff; }
+        .btn-approve:hover { background: #16a34a; }
+        .btn-reject { background: #334155; color: #ef4444; border: 1px solid #475569; }
+        .btn-reject:hover { background: #ef4444; color: #fff; }
+
+        .empty-state {
+            padding: 60px 20px; text-align: center;
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 16px; font-weight: 800; color: #64748b; margin-bottom: 4px; }
+        .empty-text { font-size: 13px; color: #475569; }
+
+        /* Modal for viewing photos */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); z-index: 100;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            max-width: 90vw; max-height: 90vh; border-radius: 16px;
+            overflow: hidden; position: relative;
+        }
+        .modal-content img { max-width: 100%; max-height: 85vh; object-fit: contain; }
+        .modal-close {
+            position: absolute; top: 12px; right: 12px;
+            width: 36px; height: 36px; border-radius: 18px;
+            background: rgba(0,0,0,0.6); color: #fff; border: none;
+            font-size: 18px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .modal-label {
+            text-align: center; padding: 12px; color: #94a3b8;
+            font-size: 13px; font-weight: 600;
+        }
+
+        /* Loading */
+        .loading-spinner {
+            display: flex; justify-content: center; padding: 60px;
+        }
+        .spinner {
+            width: 36px; height: 36px; border: 3px solid #334155;
+            border-top-color: #F26522; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            padding: 14px 24px; border-radius: 12px;
+            font-size: 14px; font-weight: 700; z-index: 200;
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-success { background: #22c55e; color: #fff; }
+        .toast-error { background: #ef4444; color: #fff; }
+    </style>
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                Educarelink
+                <span>Admin Dashboard</span>
+            </div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="switchTab('pending')">
+                <span class="icon">⏳</span>
+                Chờ duyệt
+                <span class="nav-badge" id="pendingBadge">0</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('all')">
+                <span class="icon">👥</span>
+                Tất cả Carepartner
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Quản lý Carepartner</h1>
+                <p class="page-subtitle">Duyệt đăng ký và quản lý tài khoản sinh viên</p>
+            </div>
+            <button class="refresh-btn" onclick="loadData()">🔄 Làm mới</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon pending">⏳</div>
+                <div>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-label">Chờ duyệt</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon approved">✅</div>
+                <div>
+                    <div class="stat-value" id="statApproved">0</div>
+                    <div class="stat-label">Đã duyệt</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon total">👥</div>
+                <div>
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">Tổng cộng</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <span class="table-title" id="tableTitle">Danh sách chờ duyệt</span>
+            </div>
+            <div id="tableBody">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div class="modal-overlay" id="photoModal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImg" src="" alt="Preview" />
+            <div class="modal-label" id="modalLabel"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===== CẤU HÌNH =====
+        const API_BASE = window.location.origin + '/api';
+        let currentTab = 'pending';
+
+        // ===== LOAD DATA =====
+        async function loadData() {
+            try {
+                if (currentTab === 'pending') {
+                    const res = await fetch(`${API_BASE}/admin/pending-workers/`);
+                    const pending = await res.json();
+                    renderPendingTable(pending);
+
+                    // Stats
+                    const allRes = await fetch(`${API_BASE}/admin/all-workers/`);
+                    const allWorkers = await allRes.json();
+                    const approved = allWorkers.filter(w => w.is_approved).length;
+                    document.getElementById('statPending').textContent = pending.length;
+                    document.getElementById('statApproved').textContent = approved;
+                    document.getElementById('statTotal').textContent = allWorkers.length;
+                    document.getElementById('pendingBadge').textContent = pending.length;
+                } else {
+                    const res = await fetch(`${API_BASE}/admin/all-workers/`);
+                    const allWorkers = await res.json();
+                    renderAllTable(allWorkers);
+
+                    const pending = allWorkers.filter(w => !w.is_approved).length;
+                    const approved = allWorkers.filter(w => w.is_approved).length;
+                    document.getElementById('statPending').textContent = pending;
+                    document.getElementById('statApproved').textContent = approved;
+                    document.getElementById('statTotal').textContent = allWorkers.length;
+                    document.getElementById('pendingBadge').textContent = pending;
+                }
+            } catch (e) {
+                console.error('Error loading data:', e);
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <div class="empty-title">Không thể kết nối đến server</div>
+                        <div class="empty-text">Kiểm tra backend Django có đang chạy không</div>
+                    </div>`;
+            }
+        }
+
+        // ===== RENDER TABLES =====
+        function renderPendingTable(workers) {
+            if (workers.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🎉</div>
+                        <div class="empty-title">Không có yêu cầu chờ duyệt</div>
+                        <div class="empty-text">Tất cả Carepartner đã được xét duyệt</div>
+                    </div>`;
+                return;
+            }
+
+            let html = `<table>
+                <thead><tr>
+                    <th>Carepartner</th>
+                    <th>Liên hệ</th>
+                    <th>Ảnh xác minh</th>
+                    <th>Ngày đăng ký</th>
+                    <th>Thao tác</th>
+                </tr></thead><tbody>`;
+
+            workers.forEach(w => {
+                const name = `${w.last_name || ''} ${w.first_name || ''}`.trim() || w.username;
+                const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                html += `<tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">
+                                ${w.selfie_photo 
+                                    ? `<img src="${w.selfie_photo}" alt="${name}" />` 
+                                    : `<div class="user-avatar-placeholder">${initial}</div>`}
+                            </div>
+                            <div>
+                                <div class="user-name">${name}</div>
+                                <div class="user-username">@${w.username}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size:13px">${w.email || '—'}</div>
+                        <div style="font-size:12px;color:#64748b">${w.phone_number || '—'}</div>
+                    </td>
+                    <td>
+                        <div class="photo-thumbs">
+                            ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'Mặt trước CCCD')" title="CCCD trước" />` : ''}
+                            ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'Mặt sau CCCD')" title="CCCD sau" />` : ''}
+                            ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Ảnh chân dung')" title="Chân dung" />` : ''}
+                        </div>
+                    </td>
+                    <td style="font-size:13px;color:#94a3b8">${w.date_joined}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn btn-approve" onclick="approveWorker(${w.id}, '${w.username}')">✅ Duyệt</button>
+                            <button class="btn btn-reject" onclick="rejectWorker(${w.id}, '${w.username}')">✕ Từ chối</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+        }
+
+        function renderAllTable(workers) {
+            if (workers.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-title">Chưa có Carepartner nào</div>
+                        <div class="empty-text">Chờ sinh viên đăng ký nhé</div>
+                    </div>`;
+                return;
+            }
+
+            let html = `<table>
+                <thead><tr>
+                    <th>Carepartner</th>
+                    <th>Liên hệ</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày đăng ký</th>
+                    <th>Ảnh xác minh</th>
+                </tr></thead><tbody>`;
+
+            workers.forEach(w => {
+                const name = `${w.last_name || ''} ${w.first_name || ''}`.trim() || w.username;
+                const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                html += `<tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">
+                                ${w.selfie_photo 
+                                    ? `<img src="${w.selfie_photo}" alt="${name}" />` 
+                                    : `<div class="user-avatar-placeholder">${initial}</div>`}
+                            </div>
+                            <div>
+                                <div class="user-name">${name}</div>
+                                <div class="user-username">@${w.username}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size:13px">${w.email || '—'}</div>
+                        <div style="font-size:12px;color:#64748b">${w.phone_number || '—'}</div>
+                    </td>
+                    <td>
+                        <span class="badge ${w.is_approved ? 'badge-approved' : 'badge-pending'}">
+                            ${w.is_approved ? '✅ Đã duyệt' : '⏳ Chờ duyệt'}
+                        </span>
+                    </td>
+                    <td style="font-size:13px;color:#94a3b8">${w.date_joined}</td>
+                    <td>
+                        <div class="photo-thumbs">
+                            ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'CCCD trước')" />` : ''}
+                            ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'CCCD sau')" />` : ''}
+                            ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Chân dung')" />` : ''}
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+        }
+
+        // ===== ACTIONS =====
+        async function approveWorker(userId, username) {
+            if (!confirm(`Duyệt tài khoản @${username}?`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'approve' }),
+                });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) {
+                showToast('Lỗi khi duyệt tài khoản', 'error');
+            }
+        }
+
+        async function rejectWorker(userId, username) {
+            if (!confirm(`Từ chối và xoá tài khoản @${username}? Hành động này không thể hoàn tác!`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reject' }),
+                });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) {
+                showToast('Lỗi khi từ chối tài khoản', 'error');
+            }
+        }
+
+        // ===== TAB SWITCHING =====
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (tab === 'pending') {
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Danh sách chờ duyệt';
+            } else {
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Tất cả Carepartner';
+            }
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            loadData();
+        }
+
+        // ===== MODAL =====
+        function openModal(src, label) {
+            document.getElementById('modalImg').src = src;
+            document.getElementById('modalLabel').textContent = label;
+            document.getElementById('photoModal').classList.add('show');
+        }
+        function closeModal() {
+            document.getElementById('photoModal').classList.remove('show');
+        }
+
+        // ===== TOAST =====
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ===== INIT =====
+        loadData();
+        // Auto-refresh mỗi 30 giây
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
