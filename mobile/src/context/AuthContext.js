@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
+import apiClient from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -32,7 +34,7 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const response = await loginApi(username, password);
-    const { tokens, role, user_id, username: uname } = response.data;
+    const { tokens, role } = response.data;
 
     // Lưu token và role vào SecureStore hoặc localStorage
     await storage.setItem('access_token', tokens.access);
@@ -42,6 +44,18 @@ export function AuthProvider({ children }) {
     // Lấy full profile
     const profileResp = await getProfile();
     setUser(profileResp.data);
+
+    // Register push token
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await apiClient.patch('/profile/', { expo_push_token: pushToken });
+        console.log('Push token sent to backend successfully');
+      }
+    } catch (e) {
+      console.log('Failed to send push token to backend', e);
+    }
+
     return profileResp.data;
   };
 

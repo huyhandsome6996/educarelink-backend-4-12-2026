@@ -26,6 +26,9 @@ class User(AbstractUser):
     certificate_photo = models.ImageField(upload_to='certificates/', blank=True, null=True, help_text="Ảnh bằng cấp/chứng chỉ")
     qualifications = models.JSONField(default=list, blank=True, help_text="Danh sách bằng cấp do admin nhập sau khi duyệt")
     
+    # Notifications
+    expo_push_token = models.CharField(max_length=255, blank=True, null=True, help_text="Expo Push Token cho thông báo")
+    
     # ----> KHUNG CHỜ AI: Lưu tóm tắt hồ sơ do AI sinh ra
     ai_profile_summary = models.TextField(
         blank=True, 

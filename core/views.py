@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+import requests
 from .models import User, Task, TaskApplication, ServiceCategory, Review
 from .serializers import (
     UserSerializer, TaskSerializer, TaskApplicationSerializer, 
@@ -14,6 +15,26 @@ from .serializers import (
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {'refresh': str(refresh), 'access': str(refresh.access_token)}
+
+def send_expo_push_notification(token, title, body, data=None):
+    if not token:
+        return
+    headers = {
+        'Accept': 'application/json',
+        'Accept-encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+    }
+    payload = {
+        'to': token,
+        'sound': 'default',
+        'title': title,
+        'body': body,
+        'data': data or {},
+    }
+    try:
+        requests.post('https://exp.host/--/api/v2/push/send', headers=headers, json=payload, timeout=5)
+    except Exception as e:
+        print(f"Lỗi gửi thông báo push: {e}")
 
 # --- PHẦN 1: TÀI KHOẢN (ONBOARDING) ---
 class RegisterAPIView(generics.CreateAPIView):
@@ -133,6 +154,16 @@ class ApproveCandidateAPIView(APIView):
             
             # Tự động từ chối các bạn khác
             TaskApplication.objects.filter(task=task, status='pending').update(status='rejected')
+            
+            # Gửi push notification cho ứng viên được nhận
+            if hasattr(application.worker, 'expo_push_token') and application.worker.expo_push_token:
+                send_expo_push_notification(
+                    token=application.worker.expo_push_token,
+                    title="🎉 Chúc mừng bạn!",
+                    body=f"Phụ huynh đã chấp nhận bạn cho công việc '{task.title}'. Hãy mở ứng dụng để xem chi tiết!",
+                    data={"task_id": task.id}
+                )
+
             return Response({"message": f"Đã nhận {application.worker.username} làm việc!"})
         except TaskApplication.DoesNotExist:
             return Response({"error": "Không tìm thấy yêu cầu."}, status=status.HTTP_404_NOT_FOUND)

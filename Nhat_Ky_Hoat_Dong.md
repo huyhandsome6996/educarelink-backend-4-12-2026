@@ -53,3 +53,14 @@ Dưới đây là tài liệu ghi chú lại toàn bộ các công việc, các 
      - *Tác dụng:* Đóng gói các file đó thành một điểm khôi phục (phiên bản) và dán nhãn ghi chú rõ ràng (ví dụ: "fix image picker").
   3. `git push origin main`
      - *Tác dụng:* Tải toàn bộ mã nguồn vừa cập nhật lên kho lưu trữ đám mây (GitHub) để lưu trữ an toàn và đồng bộ với các thành viên khác.
+
+---
+
+## Chủ đề 5: Tích hợp hệ thống Push Notification (Thông báo thời gian thực)
+- **Công việc đã làm:** Thêm tính năng thông báo rung chuông như Messenger/Zalo khi một Phụ huynh "Chấp nhận" một sinh viên vào làm việc.
+- **Ý nghĩa:** Giúp sinh viên (Carepartner) nhận được tin nhắn báo hỷ ngay lập tức trên điện thoại mà không cần phải mở app ra check liên tục, tăng tính chuyên nghiệp của hệ thống.
+- **File / Folder thao tác:**
+  - `core/models.py` & `core/serializers.py`: Thêm cột `expo_push_token` để lưu mã định danh điện thoại của người dùng.
+  - `core/views.py`: Viết code trong hàm `ApproveCandidateAPIView` để gọi API đẩy thông báo của máy chủ Expo thẳng xuống thiết bị.
+  - `mobile/App.js` & `mobile/src/utils/notifications.js`: Cài đặt thư viện `expo-notifications`, xin quyền cấp thông báo từ người dùng.
+  - `mobile/src/context/AuthContext.js`: Cập nhật tự động lấy mã Token khi sinh viên đăng nhập và gửi lên Backend.
