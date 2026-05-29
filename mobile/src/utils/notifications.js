@@ -23,29 +23,34 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.log('Không được cấp quyền thông báo!');
+        return null;
+      }
+    } catch (e) {
+      console.log('Lỗi khi xin quyền thông báo (Có thể do Expo Go SDK 53+):', e);
       return null;
     }
     
     try {
       token = (await Notifications.getExpoPushTokenAsync({
-        projectId: 'educarelink', // We don't strictly need EAS project ID if we just use Expo Go, but it's good practice. Actually leaving it out is fine for Expo Go, or passing projectId from Constants.expoConfig.extra.eas.projectId
+        projectId: 'educarelink', 
       })).data;
       console.log('Push token:', token);
     } catch (e) {
-      console.log('Error getting push token:', e);
+      console.log('🔔 LƯU Ý CHO DEMO: Tính năng Push Notification từ xa không được hỗ trợ trực tiếp trên app Expo Go (từ SDK 53). Để test thực tế, cần build file APK/AAB hoặc dùng Development Build.');
     }
   } else {
-    console.log('Must use physical device for Push Notifications');
+    console.log('Phải dùng thiết bị thật (điện thoại) để nhận Push Notifications');
   }
 
   return token;
