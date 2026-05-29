@@ -65,3 +65,18 @@ export const register = (username, password, role, firstName = '', lastName = ''
 
 // Lấy thông tin hồ sơ người dùng hiện tại
 export const getProfile = () => apiClient.get('/profile/');
+
+// Cập nhật chứng chỉ sau khi đã đăng nhập
+export const updateCertificate = (certificatePhoto) => {
+  const formData = new FormData();
+  if (certificatePhoto) {
+    formData.append('certificate_photo', {
+      uri: certificatePhoto.uri,
+      type: certificatePhoto.mimeType || 'image/jpeg',
+      name: 'certificate_photo.jpg',
+    });
+  }
+  return apiClient.patch('/profile/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};

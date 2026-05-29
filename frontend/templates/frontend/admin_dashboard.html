@@ -414,6 +414,7 @@
                     <th>Trạng thái</th>
                     <th>Ngày đăng ký</th>
                     <th>Ảnh xác minh</th>
+                    <th>Thao tác</th>
                 </tr></thead><tbody>`;
 
             workers.forEach(w => {
@@ -449,6 +450,11 @@
                             ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'CCCD sau')" />` : ''}
                             ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Chân dung')" />` : ''}
                             ${w.certificate_photo ? `<img class="photo-thumb" src="${w.certificate_photo}" onclick="openModal('${w.certificate_photo}', 'Bằng cấp')" />` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn btn-approve" style="background:#0284c7" onclick="updateQualifications(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}')">✏️ Sửa bằng cấp</button>
                         </div>
                     </td>
                 </tr>`;
@@ -498,6 +504,32 @@
                 loadData();
             } catch (e) {
                 showToast('Lỗi khi từ chối tài khoản', 'error');
+            }
+        }
+
+        async function updateQualifications(userId, username, currentQuals) {
+            let qualificationsStr = prompt(`Sửa bằng cấp/chứng chỉ cho @${username} (cách nhau bởi dấu phẩy):`, currentQuals);
+            if (qualificationsStr === null) return;
+            
+            let qualifications = [];
+            if (qualificationsStr.trim() !== '') {
+                qualifications = qualificationsStr.split(',').map(s => s.trim()).filter(s => s !== '');
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'update_qualifications',
+                        qualifications: qualifications 
+                    }),
+                });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) {
+                showToast('Lỗi khi cập nhật bằng cấp', 'error');
             }
         }
 

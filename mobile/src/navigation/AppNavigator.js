@@ -134,6 +134,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="WorkerTabs" component={WorkerTabs} />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+            <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
           </>
         )}
       </Stack.Navigator>

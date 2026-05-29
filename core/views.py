@@ -409,8 +409,14 @@ class AdminApproveWorkerAPIView(APIView):
             elif action == 'reject':
                 worker.delete()
                 return Response({'message': f'Đã từ chối và xoá tài khoản.'})
+            elif action == 'update_qualifications':
+                if isinstance(qualifications, list):
+                    worker.qualifications = qualifications
+                    worker.save()
+                    return Response({'message': f'Đã cập nhật bằng cấp cho {worker.username}.'})
+                return Response({'error': 'Danh sách bằng cấp không hợp lệ.'}, status=400)
             else:
-                return Response({'error': 'Action phải là "approve" hoặc "reject".'}, status=400)
+                return Response({'error': 'Action không hợp lệ.'}, status=400)
         except User.DoesNotExist:
             return Response({'error': 'Không tìm thấy tài khoản.'}, status=404)
 

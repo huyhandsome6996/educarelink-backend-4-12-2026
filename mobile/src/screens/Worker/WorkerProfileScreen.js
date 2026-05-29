@@ -1,22 +1,61 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { updateCertificate } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
 export default function WorkerProfileScreen() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Sinh viên';
 
   const MENU_ITEMS = [
-    { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary },
-    { icon: 'card-outline', label: 'Xác thực thẻ sinh viên', color: COLORS.primary },
+    { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary, action: 'view_reviews' },
+    { icon: 'card-outline', label: 'Xác thực thẻ sinh viên / bằng cấp', color: COLORS.primary, action: 'upload_cert' },
     { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.primary },
     { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.textSecondary },
   ];
+
+  const handleMenuPress = async (action) => {
+    if (action === 'view_reviews') {
+      navigation.navigate('CandidateProfile', { workerId: user.id, isPending: false });
+    } else if (action === 'upload_cert') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Quyền truy cập bị từ chối', 'Ứng dụng cần quyền truy cập thư viện ảnh để tải lên.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setIsUploading(true);
+        try {
+          const photo = {
+            uri: result.assets[0].uri,
+            type: result.assets[0].mimeType || 'image/jpeg',
+            name: 'certificate.jpg',
+          };
+          await updateCertificate(photo);
+          Alert.alert('Thành công', 'Đã tải lên minh chứng thành công. Admin sẽ xem xét sớm nhất!');
+        } catch (error) {
+          Alert.alert('Lỗi', 'Không thể tải lên. Vui lòng thử lại.');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -99,9 +138,17 @@ export default function WorkerProfileScreen() {
         {/* Menu Actions */}
         <View style={styles.section}>
           {MENU_ITEMS.map((item, index) => (
-            <TouchableOpacity key={item.label} style={[styles.actionRow, index === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}>
+            <TouchableOpacity 
+              key={item.label} 
+              style={[styles.actionRow, index === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => item.action && handleMenuPress(item.action)}
+            >
               <View style={[styles.actionIconCircle, { backgroundColor: item.color + '15' }]}>
-                <Ionicons name={item.icon} size={20} color={item.color} />
+                {isUploading && item.action === 'upload_cert' ? (
+                  <ActivityIndicator size="small" color={item.color} />
+                ) : (
+                  <Ionicons name={item.icon} size={20} color={item.color} />
+                )}
               </View>
               <Text style={styles.actionText}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
