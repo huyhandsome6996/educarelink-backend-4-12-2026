@@ -5,9 +5,9 @@ export const login = (username, password) =>
   apiClient.post('/auth/login/', { username, password });
 
 // Đăng ký tài khoản mới (hỗ trợ upload ảnh cho Carepartner)
-export const register = (username, password, role, firstName = '', lastName = '', email = '', phone = '', idCardFront = null, idCardBack = null, selfiePhoto = null) => {
+export const register = (username, password, role, firstName = '', lastName = '', email = '', phone = '', idCardFront = null, idCardBack = null, selfiePhoto = null, certificatePhoto = null) => {
   // Nếu có file ảnh → dùng FormData (multipart)
-  if (idCardFront || idCardBack || selfiePhoto) {
+  if (idCardFront || idCardBack || selfiePhoto || certificatePhoto) {
     const formData = new FormData();
     formData.append('username', username);
     formData.append('password', password);
@@ -36,6 +36,13 @@ export const register = (username, password, role, firstName = '', lastName = ''
         uri: selfiePhoto.uri,
         type: selfiePhoto.mimeType || 'image/jpeg',
         name: 'selfie_photo.jpg',
+      });
+    }
+    if (certificatePhoto) {
+      formData.append('certificate_photo', {
+        uri: certificatePhoto.uri,
+        type: certificatePhoto.mimeType || 'image/jpeg',
+        name: 'certificate_photo.jpg',
       });
     }
 

@@ -47,6 +47,7 @@ export default function RegisterScreen() {
   const [idCardFront, setIdCardFront] = useState(null);
   const [idCardBack, setIdCardBack] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);
+  const [certificatePhoto, setCertificatePhoto] = useState(null);
 
   const showAlert = (title, message) => {
     if (Platform.OS === 'web') {
@@ -136,7 +137,7 @@ export default function RegisterScreen() {
       const result = await register(
         username.trim(), password, selectedRole, firstName, lastName,
         email.trim(), phone.trim(),
-        idCardFront, idCardBack, selfiePhoto
+        idCardFront, idCardBack, selfiePhoto, certificatePhoto
       );
       
       if (result?.status === 'pending_approval') {
@@ -330,6 +331,7 @@ export default function RegisterScreen() {
               {renderImagePicker('📋 Mặt trước CCCD *', idCardFront, setIdCardFront, 'card-outline')}
               {renderImagePicker('📋 Mặt sau CCCD *', idCardBack, setIdCardBack, 'card-outline')}
               {renderImagePicker('📸 Ảnh chân dung *', selfiePhoto, setSelfiePhoto, 'person-circle-outline')}
+              {renderImagePicker('🎓 Bằng cấp/Chứng chỉ (tuỳ chọn)', certificatePhoto, setCertificatePhoto, 'ribbon-outline')}
             </View>
           )}
 

@@ -78,9 +78,18 @@ class LoginAPIView(APIView):
 
 class UserProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data) # Phục vụ Màn hình 11: Hồ sơ
+
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # --- PHẦN 2: CHUNG CHO CẢ PHỤ HUYNH & SINH VIÊN ---
 class TaskListCreateAPIView(generics.ListCreateAPIView):
@@ -174,18 +183,8 @@ class WorkerProfileDetailAPIView(APIView):
             if reviews.exists():
                 avg_rating = sum([r.rating for r in reviews]) / reviews.count()
             
-            # Mock bằng cấp/chứng chỉ dựa trên thông tin tên hoặc mặc định phù hợp với sinh viên
-            qualifications = [
-                "Thẻ Sinh viên đã xác thực",
-                "Chứng chỉ Kỹ năng Sư phạm cơ bản",
-                "Chứng nhận hoàn thành khoá đào tạo Carepartner"
-            ]
-            if "ngoai_thuong" in worker.username or "ftu" in worker.username:
-                qualifications.append("Đại học Ngoại thương")
-            elif "bach_khoa" in worker.username or "hust" in worker.username:
-                qualifications.append("Đại học Bách khoa (HUST)")
-            else:
-                qualifications.append("Đại học Quốc gia TP.HCM")
+            # Bằng cấp/chứng chỉ lấy từ database (admin đã duyệt/nhập)
+            qualifications = worker.qualifications if isinstance(worker.qualifications, list) else []
 
             # Serialize reviews
             serialized_reviews = []
@@ -384,6 +383,8 @@ class AdminPendingWorkersAPIView(APIView):
                 'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
                 'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
                 'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
+                'certificate_photo': request.build_absolute_uri(u.certificate_photo.url) if u.certificate_photo else None,
+                'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)
 
@@ -394,11 +395,15 @@ class AdminApproveWorkerAPIView(APIView):
 
     def post(self, request, user_id):
         action = request.data.get('action')  # 'approve' hoặc 'reject'
+        qualifications = request.data.get('qualifications', []) # Array of strings
+
         try:
             worker = User.objects.get(id=user_id, role='worker')
             if action == 'approve':
                 worker.is_approved = True
                 worker.is_verified = True
+                if isinstance(qualifications, list) and len(qualifications) > 0:
+                    worker.qualifications = qualifications
                 worker.save()
                 return Response({'message': f'Đã duyệt tài khoản {worker.username}.'})
             elif action == 'reject':
@@ -430,5 +435,7 @@ class AdminAllWorkersAPIView(APIView):
                 'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
                 'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
                 'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
+                'certificate_photo': request.build_absolute_uri(u.certificate_photo.url) if u.certificate_photo else None,
+                'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)

@@ -81,6 +81,21 @@ export default function WorkerProfileScreen() {
           </View>
         </View>
 
+        {/* Bằng cấp & Chứng chỉ */}
+        {user?.qualifications && user.qualifications.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bằng cấp & Chứng chỉ</Text>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}>
+              {user.qualifications.map((q, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="ribbon-outline" size={18} color={COLORS.primary} />
+                  <Text style={{ fontSize: 14, color: COLORS.textPrimary, fontWeight: '500' }}>{q}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Menu Actions */}
         <View style={styles.section}>
           {MENU_ITEMS.map((item, index) => (

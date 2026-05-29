@@ -379,6 +379,7 @@
                             ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'Mặt trước CCCD')" title="CCCD trước" />` : ''}
                             ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'Mặt sau CCCD')" title="CCCD sau" />` : ''}
                             ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Ảnh chân dung')" title="Chân dung" />` : ''}
+                            ${w.certificate_photo ? `<img class="photo-thumb" src="${w.certificate_photo}" onclick="openModal('${w.certificate_photo}', 'Bằng cấp/Chứng chỉ')" title="Bằng cấp" />` : ''}
                         </div>
                     </td>
                     <td style="font-size:13px;color:#94a3b8">${w.date_joined}</td>
@@ -447,6 +448,7 @@
                             ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'CCCD trước')" />` : ''}
                             ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'CCCD sau')" />` : ''}
                             ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Chân dung')" />` : ''}
+                            ${w.certificate_photo ? `<img class="photo-thumb" src="${w.certificate_photo}" onclick="openModal('${w.certificate_photo}', 'Bằng cấp')" />` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -459,11 +461,21 @@
         // ===== ACTIONS =====
         async function approveWorker(userId, username) {
             if (!confirm(`Duyệt tài khoản @${username}?`)) return;
+            
+            let qualificationsStr = prompt(`Nhập các bằng cấp/chứng chỉ cho @${username} (cách nhau bởi dấu phẩy):`, "Thẻ Sinh viên đã xác thực");
+            let qualifications = [];
+            if (qualificationsStr !== null && qualificationsStr.trim() !== '') {
+                qualifications = qualificationsStr.split(',').map(s => s.trim()).filter(s => s !== '');
+            }
+
             try {
                 const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'approve' }),
+                    body: JSON.stringify({ 
+                        action: 'approve',
+                        qualifications: qualifications 
+                    }),
                 });
                 const data = await res.json();
                 showToast(data.message, 'success');

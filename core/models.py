@@ -22,6 +22,10 @@ class User(AbstractUser):
     id_card_back = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt sau CCCD")
     selfie_photo = models.ImageField(upload_to='selfies/', blank=True, null=True, help_text="Ảnh chân dung")
     
+    # Bằng cấp & Chứng chỉ do Carepartner upload, Admin điền text
+    certificate_photo = models.ImageField(upload_to='certificates/', blank=True, null=True, help_text="Ảnh bằng cấp/chứng chỉ")
+    qualifications = models.JSONField(default=list, blank=True, help_text="Danh sách bằng cấp do admin nhập sau khi duyệt")
+    
     # ----> KHUNG CHỜ AI: Lưu tóm tắt hồ sơ do AI sinh ra
     ai_profile_summary = models.TextField(
         blank=True, 
