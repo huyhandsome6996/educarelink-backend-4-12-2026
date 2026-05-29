@@ -155,7 +155,7 @@ export default function ParentHomeScreen() {
             </View>
           ) : (
             tasks.map((task) => {
-              const st = STATUS_MAP[task.status] || STATUS_MAP.open;
+              const st = STATUS_MAPPING[task.status] || STATUS_MAPPING.open;
               return (
                 <TouchableOpacity key={task.id} style={styles.taskCard}
                   onPress={() => navigation.navigate('MyTasks')}
