@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
 const ROLES = [
   {
@@ -13,16 +14,16 @@ const ROLES = [
     label: 'Phụ Huynh',
     icon: 'people',
     description: 'Đăng việc, tìm người chăm sóc cho bé',
-    color: '#0051d5',
-    bg: '#eff6ff',
+    color: COLORS.primary,
+    bg: COLORS.primaryLight,
   },
   {
     id: 'worker',
     label: 'Sinh Viên',
     icon: 'school',
     description: 'Tìm việc, kiếm thêm thu nhập',
-    color: '#0d9488',
-    bg: '#f0fdfa',
+    color: COLORS.secondary,
+    bg: COLORS.secondaryLight,
   },
 ];
 
@@ -80,12 +81,12 @@ export default function RegisterScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Back button */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#374151" />
+          <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
 
         <Text style={styles.title}>Tạo tài khoản mới</Text>
@@ -100,8 +101,11 @@ export default function RegisterScreen() {
                 key={role.id}
                 style={[styles.roleCard, isSelected && { borderColor: role.color, backgroundColor: role.bg }]}
                 onPress={() => setSelectedRole(role.id)}
+                activeOpacity={0.8}
               >
-                <Ionicons name={role.icon} size={28} color={isSelected ? role.color : '#9ca3af'} />
+                <View style={[styles.roleIconCircle, { backgroundColor: isSelected ? role.color : '#E5E7EB' }]}>
+                  <Ionicons name={role.icon} size={22} color={isSelected ? '#fff' : '#9ca3af'} />
+                </View>
                 <Text style={[styles.roleLabel, isSelected && { color: role.color }]}>{role.label}</Text>
                 <Text style={styles.roleDesc}>{role.description}</Text>
                 {isSelected && (
@@ -121,7 +125,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Họ"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textMuted}
                 value={lastName}
                 onChangeText={setLastName}
               />
@@ -130,7 +134,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Tên *"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textMuted}
                 value={firstName}
                 onChangeText={setFirstName}
               />
@@ -138,11 +142,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Tên tài khoản *"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -151,26 +155,26 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="Mật khẩu * (tối thiểu 6 ký tự)"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
             />
             <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Xác nhận mật khẩu *"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showPass}
@@ -181,6 +185,7 @@ export default function RegisterScreen() {
             style={[styles.registerBtn, isLoading && styles.btnDisabled]}
             onPress={handleRegister}
             disabled={isLoading}
+            activeOpacity={0.85}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -202,41 +207,50 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  title: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 6 },
-  subtitle: { fontSize: 15, color: '#6b7280', marginBottom: 24 },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surface,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 24,
+    ...SHADOWS.small,
+  },
+  title: { fontSize: 28, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 24 },
   rolesRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   roleCard: {
-    flex: 1, borderRadius: 16, borderWidth: 2, borderColor: '#e5e7eb',
-    backgroundColor: '#fff', padding: 16, alignItems: 'center', gap: 6, position: 'relative',
+    flex: 1, borderRadius: SIZES.radiusMd, borderWidth: 2, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface, padding: 16, alignItems: 'center', gap: 8, position: 'relative',
+    ...SHADOWS.small,
   },
-  roleLabel: { fontSize: 14, fontWeight: '700', color: '#6b7280' },
-  roleDesc: { fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 16 },
+  roleIconCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  roleLabel: { fontSize: 14, fontWeight: '800', color: COLORS.textSecondary },
+  roleDesc: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16 },
   checkMark: {
-    position: 'absolute', top: 8, right: 8, width: 20, height: 20,
-    borderRadius: 10, justifyContent: 'center', alignItems: 'center',
+    position: 'absolute', top: 8, right: 8, width: 22, height: 22,
+    borderRadius: 11, justifyContent: 'center', alignItems: 'center',
   },
   form: { gap: 14 },
   nameRow: { flexDirection: 'row', gap: 12 },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#e5e7eb',
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    borderWidth: 1.5, borderColor: COLORS.border,
     paddingHorizontal: 16, height: 54,
-    elevation: 1,
+    ...SHADOWS.small,
   },
   inputIcon: { marginRight: 12 },
-  input: { flex: 1, fontSize: 15, color: '#111827' },
+  input: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
   registerBtn: {
-    backgroundColor: '#0051d5', borderRadius: 14, height: 54,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 56,
     justifyContent: 'center', alignItems: 'center', marginTop: 4,
-    shadowColor: '#0051d5', shadowOpacity: 0.3, shadowRadius: 12, elevation: 4,
+    ...SHADOWS.large,
   },
   btnDisabled: { opacity: 0.7 },
-  registerBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  registerBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
   loginRow: { flexDirection: 'row', justifyContent: 'center' },
-  loginText: { color: '#6b7280', fontSize: 14 },
-  loginLink: { color: '#0051d5', fontWeight: '700', fontSize: 14 },
+  loginText: { color: COLORS.textSecondary, fontSize: 14 },
+  loginLink: { color: COLORS.primary, fontWeight: '800', fontSize: 14 },
 });

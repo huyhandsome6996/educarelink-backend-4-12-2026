@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
-const TAG_COLORS = {
-  open:        { label: 'MỚI', color: '#7c3aed', bg: '#f5f3ff' },
-};
+const CATEGORIES = [
+  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: '#FF6B35' },
+  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: '#3B82F6' },
+  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: '#10B981' },
+  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: '#F59E0B' },
+  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', color: '#8B5CF6' },
+  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: '#EF4444' },
+  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: '#06B6D4' },
+  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: '#6B7280' },
+];
 
 export default function WorkerFeedScreen() {
   const navigation = useNavigation();
@@ -76,32 +84,53 @@ export default function WorkerFeedScreen() {
 
   const renderItem = ({ item: task }) => {
     const hasApplied = appliedTaskIds.includes(task.id);
+    const cat = CATEGORIES.find(c => c.id === task.category) || CATEGORIES[7];
     return (
       <TouchableOpacity style={styles.card} activeOpacity={0.9}
         onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
-        <View style={styles.cardTop}>
-          <View style={styles.newTag}>
-            <Ionicons name="flash" size={11} color="#7c3aed" />
-            <Text style={styles.newTagText}>MỚI</Text>
+        {/* Card header */}
+        <View style={styles.cardHeader}>
+          <View style={[styles.categoryPill, { backgroundColor: cat.color + '15' }]}>
+            <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
+            <Text style={[styles.categoryPillText, { color: cat.color }]}>{cat.name}</Text>
           </View>
           <Text style={styles.cardPrice}>{parseInt(task.price).toLocaleString('vi-VN')}đ</Text>
         </View>
+
+        {/* Title */}
         <Text style={styles.cardTitle} numberOfLines={2}>{task.title}</Text>
-        <View style={styles.cardMeta}>
-          <Ionicons name="time-outline" size={13} color="#6b7280" />
-          <Text style={styles.cardMetaText}>{new Date(task.scheduled_time).toLocaleString('vi-VN')}</Text>
+
+        {/* Meta info */}
+        <View style={styles.metaSection}>
+          <View style={styles.metaRow}>
+            <View style={styles.metaIconBox}>
+              <Ionicons name="time-outline" size={14} color={COLORS.primary} />
+            </View>
+            <Text style={styles.metaText}>{new Date(task.scheduled_time).toLocaleString('vi-VN')}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <View style={styles.metaIconBox}>
+              <Ionicons name="location-outline" size={14} color={COLORS.secondary} />
+            </View>
+            <Text style={styles.metaText}>{task.location}</Text>
+          </View>
         </View>
-        <View style={styles.cardMeta}>
-          <Ionicons name="location-outline" size={13} color="#6b7280" />
-          <Text style={styles.cardMetaText}>{task.location}</Text>
-        </View>
-        <View style={styles.cardBottom}>
-          <Text style={styles.parentLabel}>Phụ huynh: {task.parent_name}</Text>
-          <TouchableOpacity 
-            style={[styles.applyBtn, hasApplied && { backgroundColor: '#9ca3af', opacity: 0.8 }]} 
+
+        {/* Footer */}
+        <View style={styles.cardFooter}>
+          <View style={styles.parentInfo}>
+            <View style={styles.parentAvatar}>
+              <Text style={styles.parentAvatarText}>{task.parent_name?.[0]?.toUpperCase() || 'P'}</Text>
+            </View>
+            <Text style={styles.parentLabel}>{task.parent_name}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.applyBtn, hasApplied && styles.applyBtnDisabled]}
             onPress={() => handleApply(task.id)}
             disabled={hasApplied}
+            activeOpacity={0.85}
           >
+            <Ionicons name={hasApplied ? "checkmark" : "paper-plane"} size={14} color="#fff" />
             <Text style={styles.applyBtnText}>{hasApplied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</Text>
           </TouchableOpacity>
         </View>
@@ -112,8 +141,8 @@ export default function WorkerFeedScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d9488" />
-      {/* Header xanh */}
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
@@ -126,23 +155,33 @@ export default function WorkerFeedScreen() {
         </View>
         {/* Search bar */}
         <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={18} color="#6b7280" />
+          <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
           <TextInput style={styles.searchInput} placeholder="Tìm kiếm công việc..."
-            placeholderTextColor="#9ca3af" value={search} onChangeText={setSearch} />
+            placeholderTextColor={COLORS.textMuted} value={search} onChangeText={setSearch} />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#0d9488" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 60 }} />
       ) : (
         <FlatList data={filtered} keyExtractor={i => i.id.toString()} renderItem={renderItem}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); }} />}
-          ListHeaderComponent={<Text style={styles.listHeader}>{filtered.length} việc làm mới nhất</Text>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); }} tintColor={COLORS.primary} />}
+          ListHeaderComponent={
+            <Text style={styles.listHeader}>{filtered.length} việc làm mới nhất</Text>
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="search-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>Không tìm thấy công việc nào</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="search-outline" size={36} color={COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>Không tìm thấy công việc</Text>
+              <Text style={styles.emptyText}>Kéo xuống để làm mới danh sách</Text>
             </View>
           }
         />
@@ -152,28 +191,81 @@ export default function WorkerFeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { backgroundColor: '#0d9488', paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // === HEADER ===
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+  },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   headerGreet: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  headerName: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  notifBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 46, gap: 10 },
-  searchInput: { flex: 1, fontSize: 15, color: '#111827' },
-  list: { padding: 16, gap: 12 },
-  listHeader: { fontSize: 13, fontWeight: '700', color: '#6b7280', marginBottom: 4, textTransform: 'uppercase' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3, gap: 8 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  newTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  newTagText: { fontSize: 10, fontWeight: '800', color: '#7c3aed', letterSpacing: 1 },
-  cardPrice: { fontSize: 18, fontWeight: '800', color: '#0d9488' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  cardMeta: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  cardMetaText: { fontSize: 12, color: '#6b7280', flex: 1 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  parentLabel: { fontSize: 12, color: '#9ca3af', fontWeight: '600' },
-  applyBtn: { backgroundColor: '#0051d5', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  applyBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  headerName: { color: '#fff', fontSize: 22, fontWeight: '900' },
+  notifBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: SIZES.radiusMd,
+    paddingHorizontal: 14, height: 48, gap: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
+  // === LIST ===
+  list: { padding: 16, paddingBottom: 30 },
+  listHeader: {
+    fontSize: 12, fontWeight: '800', color: COLORS.textMuted,
+    marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  // === CARD ===
+  card: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: 16,
+    marginBottom: 12,
+    ...SHADOWS.small,
+    borderLeftWidth: 4, borderLeftColor: COLORS.primary,
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  categoryPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  catImage: { width: 16, height: 16 },
+  categoryPillText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase' },
+  cardPrice: { fontSize: 18, fontWeight: '900', color: COLORS.primary },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10, lineHeight: 22 },
+  // === META ===
+  metaSection: { gap: 6, marginBottom: 12 },
+  metaRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  metaIconBox: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center',
+  },
+  metaText: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
+  // === FOOTER ===
+  cardFooter: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  parentInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  parentAvatar: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: COLORS.primarySoft, justifyContent: 'center', alignItems: 'center',
+  },
+  parentAvatarText: { color: COLORS.primary, fontWeight: '800', fontSize: 12 },
+  parentLabel: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600' },
+  applyBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 9,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  applyBtnDisabled: { backgroundColor: COLORS.textMuted, opacity: 0.8 },
+  applyBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  // === EMPTY ===
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { color: '#9ca3af', fontSize: 15 },
+  emptyIconCircle: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
+  },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+  emptyText: { color: COLORS.textMuted, fontSize: 13 },
 });

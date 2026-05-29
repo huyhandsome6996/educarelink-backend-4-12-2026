@@ -12,10 +12,21 @@ class UserSerializer(serializers.ModelSerializer):
             'email', 'password', 'role', 'phone_number',
             'address', 'is_verified', 'ai_profile_summary'
         ]
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'email': {'required': False, 'allow_blank': True},
+            'phone_number': {'required': False, 'allow_null': True},
+            'address': {'required': False, 'allow_null': True},
+            'is_verified': {'read_only': True},
+            'ai_profile_summary': {'read_only': True},
+        }
 
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
+        # Tách password ra, dùng create_user để hash đúng cách
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
         return user
 
 

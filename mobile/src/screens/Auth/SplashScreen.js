@@ -1,11 +1,29 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, StatusBar, Animated, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { COLORS } from '../../theme/colors';
 
 export default function SplashScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const dotAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   useEffect(() => {
     // Tự động chuyển sang Login sau 2 giây nếu chưa đăng nhập
@@ -17,21 +35,37 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0051d5" />
-      {/* Logo & Tên ứng dụng */}
-      <View style={styles.logoContainer}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <Animated.View style={[styles.logoContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>🤝</Text>
+          <Image source={require('../../../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
         <Text style={styles.appName}>Educarelink</Text>
         <Text style={styles.tagline}>Trợ lý gia đình · Việc làm linh hoạt</Text>
-      </View>
+      </Animated.View>
 
-      {/* Dấu chấm loading */}
+      {/* Loading dots */}
       <View style={styles.dotsContainer}>
-        <View style={[styles.dot, { opacity: 1 }]} />
-        <View style={[styles.dot, { opacity: 0.6 }]} />
-        <View style={[styles.dot, { opacity: 0.3 }]} />
+        {[0, 1, 2].map((i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.dot,
+              {
+                opacity: dotAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 1],
+                }),
+                transform: [{
+                  scale: dotAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1.2],
+                  }),
+                }],
+              },
+            ]}
+          />
+        ))}
       </View>
     </View>
   );
@@ -40,7 +74,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0051d5',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -49,42 +83,44 @@ const styles = StyleSheet.create({
     marginBottom: 60,
   },
   logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 28,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.35)',
+    overflow: 'hidden',
   },
-  logoEmoji: {
-    fontSize: 48,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   appName: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#ffffff',
+    fontSize: 38,
+    fontWeight: '900',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   tagline: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
     letterSpacing: 0.3,
   },
   dotsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     position: 'absolute',
-    bottom: 60,
+    bottom: 70,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ffffff',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
   },
 });

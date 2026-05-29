@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform,
+  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { sendChatMessage } from '../api/tasks';
@@ -60,7 +60,7 @@ export default function ChatbotScreen() {
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Text style={styles.botAvatarText}>🤖</Text>
+            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
           </View>
         )}
         <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
@@ -78,7 +78,7 @@ export default function ChatbotScreen() {
       <View style={styles.header}>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>🤖</Text>
+            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
           </View>
           <View>
             <Text style={styles.headerName}>AI Trợ lý Educarelink</Text>
@@ -93,7 +93,7 @@ export default function ChatbotScreen() {
         ListFooterComponent={isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
-              <Text style={styles.botAvatarText}>🤖</Text>
+              <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
             </View>
             <View style={styles.typingBubble}>
               <ActivityIndicator size="small" color="#6b7280" />
@@ -121,16 +121,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   header: { backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   botInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
-  headerAvatarText: { fontSize: 22 },
+  headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  headerImage: { width: '100%', height: '100%' },
   headerName: { fontSize: 15, fontWeight: '700', color: '#111827' },
   headerStatus: { fontSize: 12, color: '#059669', fontWeight: '600' },
   list: { padding: 16, gap: 12, flexGrow: 1 },
   msgRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowBot: { justifyContent: 'flex-start' },
-  botAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  botAvatarText: { fontSize: 16 },
+  botAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', flexShrink: 0, overflow: 'hidden' },
+  botImage: { width: '100%', height: '100%' },
   bubble: { maxWidth: '78%', borderRadius: 18, padding: 12 },
   bubbleUser: { backgroundColor: '#0051d5', borderBottomRightRadius: 4 },
   bubbleBot: { backgroundColor: '#fff', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },

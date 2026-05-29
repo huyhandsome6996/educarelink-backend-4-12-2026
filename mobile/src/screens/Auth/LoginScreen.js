@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -47,27 +48,29 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoMini}>
-            <Text style={styles.logoMiniText}>🤝</Text>
+            <Image source={require('../../../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
           </View>
           <Text style={styles.title}>Chào mừng trở lại!</Text>
-          <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
+          <Text style={styles.subtitle}>Đăng nhập để tiếp tục sử dụng Educarelink</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Username */}
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <View style={styles.inputIconBox}>
+              <Ionicons name="person-outline" size={18} color={COLORS.primary} />
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Tên tài khoản"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -77,17 +80,19 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <View style={styles.inputIconBox}>
+              <Ionicons name="lock-closed-outline" size={18} color={COLORS.primary} />
+            </View>
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="Mật khẩu"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
             />
             <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon}>
-              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -96,6 +101,7 @@ export default function LoginScreen() {
             style={[styles.loginBtn, isLoading && styles.btnDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
+            activeOpacity={0.85}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -129,41 +135,46 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40 },
   header: { alignItems: 'center', marginBottom: 40 },
   logoMini: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 20,
+    borderWidth: 3, borderColor: COLORS.primarySoft,
+    overflow: 'hidden',
   },
-  logoMiniText: { fontSize: 36 },
-  title: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 6 },
-  subtitle: { fontSize: 15, color: '#6b7280', fontWeight: '500' },
+  logoImage: { width: '100%', height: '100%' },
+  title: { fontSize: 28, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 8 },
+  subtitle: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '500', textAlign: 'center' },
   form: { gap: 16, marginBottom: 32 },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#ffffff', borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#e5e7eb',
-    paddingHorizontal: 16, height: 54,
-    shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    paddingRight: 16, height: 56,
+    ...SHADOWS.small,
   },
-  inputIcon: { marginRight: 12 },
-  input: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500' },
+  inputIconBox: {
+    width: 48, height: 56, justifyContent: 'center', alignItems: 'center',
+    borderRightWidth: 1, borderRightColor: COLORS.border,
+    marginRight: 12,
+  },
+  input: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: '500' },
   eyeIcon: { padding: 4 },
   loginBtn: {
-    backgroundColor: '#0051d5', borderRadius: 14, height: 54,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
-    shadowColor: '#0051d5', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 56,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
+    ...SHADOWS.large,
+    marginTop: 4,
   },
   btnDisabled: { opacity: 0.7 },
-  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  loginBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
-  registerText: { color: '#6b7280', fontSize: 14 },
-  registerLink: { color: '#0051d5', fontWeight: '700', fontSize: 14 },
+  registerText: { color: COLORS.textSecondary, fontSize: 14 },
+  registerLink: { color: COLORS.primary, fontWeight: '800', fontSize: 14 },
   testAccountBox: {
-    backgroundColor: '#fffbeb', borderRadius: 12, padding: 16,
+    backgroundColor: COLORS.warningBg, borderRadius: SIZES.radiusMd, padding: 16,
     borderWidth: 1, borderColor: '#fde68a',
   },
   testAccountTitle: { fontWeight: '700', color: '#92400e', marginBottom: 6, fontSize: 13 },

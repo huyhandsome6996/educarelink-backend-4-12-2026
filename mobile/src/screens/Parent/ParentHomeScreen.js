@@ -1,19 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform,
+  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions, Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
+import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4; // 4 columns with gaps
 
 const STATUS_MAP = {
-  open:        { label: 'Đang tìm', color: '#f59e0b', bg: '#fffbeb' },
-  in_progress: { label: 'Đang làm', color: '#0051d5', bg: '#eff6ff' },
-  completed:   { label: 'Hoàn thành', color: '#059669', bg: '#f0fdf4' },
-  cancelled:   { label: 'Đã huỷ',   color: '#6b7280', bg: '#f3f4f6' },
+  open:        { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
+  in_progress: { label: 'Đang làm', color: COLORS.info, bg: COLORS.infoBg, icon: 'construct' },
+  completed:   { label: 'Hoàn thành', color: COLORS.success, bg: COLORS.successBg, icon: 'checkmark-circle' },
+  cancelled:   { label: 'Đã huỷ',   color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
+
+const CATEGORIES = [
+  { icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: '#FF6B35' },
+  { icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: '#3B82F6' },
+  { icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: '#10B981' },
+  { icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: '#F59E0B' },
+  { icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', color: '#8B5CF6' },
+  { icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: '#EF4444' },
+  { icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: '#06B6D4' },
+  { icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: '#6B7280' },
+];
 
 export default function ParentHomeScreen() {
   const navigation = useNavigation();
@@ -44,67 +59,98 @@ export default function ParentHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0051d5" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      {/* Header */}
+      {/* Header gradient cam */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greetSmall}>Chào mừng 👋</Text>
+            <Text style={styles.greetSmall}>Xin chào 👋</Text>
             <Text style={styles.greetName}>{displayName}</Text>
           </View>
-          <TouchableOpacity onPress={() => {
-            if (Platform.OS === 'web') {
-              if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                logout();
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIconBtn}>
+              <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              if (Platform.OS === 'web') {
+                if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                  logout();
+                }
+              } else {
+                Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+                  { text: 'Huỷ', style: 'cancel' },
+                  { text: 'Đăng xuất', style: 'destructive', onPress: logout },
+                ]);
               }
-            } else {
-              Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-                { text: 'Huỷ', style: 'cancel' },
-                { text: 'Đăng xuất', style: 'destructive', onPress: logout },
-              ]);
-            }
-          }} style={styles.avatarBtn}>
-            <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
-
+            }} style={styles.headerIconBtn}>
+              <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Nút đăng việc lớn */}
-        <TouchableOpacity style={styles.postJobBtn} onPress={() => navigation.navigate('CreateTask')}>
-          <View style={styles.postJobIcon}>
-            <Ionicons name="add" size={28} color="#0051d5" />
+        {/* Thanh tìm kiếm / Nút đăng việc */}
+        <TouchableOpacity style={styles.searchBar} onPress={() => navigation.navigate('CreateTask')} activeOpacity={0.9}>
+          <View style={styles.searchIconCircle}>
+            <Ionicons name="add" size={24} color={COLORS.primary} />
           </View>
-          <View style={styles.postJobTextGroup}>
-            <Text style={styles.postJobTitle}>ĐĂNG VIỆC NGAY</Text>
-            <Text style={styles.postJobSub}>Tìm Carepartner nhanh chóng & tin cậy</Text>
+          <View style={styles.searchTextGroup}>
+            <Text style={styles.searchTitle}>Bạn cần tìm dịch vụ gì?</Text>
+            <Text style={styles.searchSub}>Đăng việc ngay để tìm Carepartner</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.body}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
+        {/* Section: Danh mục dịch vụ */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Dịch vụ</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
+              <Text style={styles.seeAll}>Xem tất cả</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.categoriesGrid}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity key={cat.name} style={styles.catItem}
+                onPress={() => navigation.navigate('CreateTask')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.catIconBg, { backgroundColor: cat.color + '15' }]}>
+                  <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
+                </View>
+                <Text style={styles.catName}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Section: Việc gần đây */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Việc của bạn</Text>
+            <Text style={styles.sectionTitle}>Việc gần đây</Text>
             <TouchableOpacity onPress={() => navigation.navigate('MyTasks')}>
               <Text style={styles.seeAll}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
 
           {isLoading ? (
-            <ActivityIndicator color="#0051d5" style={{ marginTop: 32 }} />
+            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
           ) : tasks.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Ionicons name="briefcase-outline" size={40} color="#d1d5db" />
-              <Text style={styles.emptyText}>Bạn chưa đăng việc nào.</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.emptyBtn}>
-                <Text style={styles.emptyBtnText}>Đăng việc đầu tiên</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="document-text-outline" size={36} color={COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>Chưa có hoạt động nào</Text>
+              <Text style={styles.emptyText}>Hãy đăng việc đầu tiên để tìm Carepartner phù hợp!</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.emptyBtn} activeOpacity={0.85}>
+                <Ionicons name="add-circle" size={20} color="#fff" />
+                <Text style={styles.emptyBtnText}>Đăng việc ngay</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -112,88 +158,122 @@ export default function ParentHomeScreen() {
               const st = STATUS_MAP[task.status] || STATUS_MAP.open;
               return (
                 <TouchableOpacity key={task.id} style={styles.taskCard}
-                  onPress={() => navigation.navigate('MyTasks')}>
-                  <View style={styles.taskCardLeft}>
-                    <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                      <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+                  onPress={() => navigation.navigate('MyTasks')}
+                  activeOpacity={0.9}>
+                  <View style={styles.taskCardRow}>
+                    <View style={[styles.taskIconCircle, { backgroundColor: st.bg }]}>
+                      <Ionicons name={st.icon} size={20} color={st.color} />
                     </View>
-                    <Text style={styles.taskTitle} numberOfLines={2}>{task.title}</Text>
-                    <Text style={styles.taskMeta}>📍 {task.location}</Text>
+                    <View style={styles.taskCardContent}>
+                      <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+                        <View style={[styles.statusDot, { backgroundColor: st.color }]} />
+                        <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+                      </View>
+                      <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
+                      <View style={styles.taskMetaRow}>
+                        <Ionicons name="location-outline" size={12} color={COLORS.textMuted} />
+                        <Text style={styles.taskMeta} numberOfLines={1}>{task.location}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.taskPrice}>
+                      {parseInt(task.price).toLocaleString('vi-VN')}đ
+                    </Text>
                   </View>
-                  <Text style={styles.taskPrice}>
-                    {parseInt(task.price).toLocaleString('vi-VN')}đ
-                  </Text>
                 </TouchableOpacity>
               );
             })
           )}
         </View>
 
-        {/* Gợi ý danh mục */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Danh mục phổ biến</Text>
-          <View style={styles.categoriesGrid}>
-            {[
-              { icon: '📚', name: 'Gia sư' },
-              { icon: '🚗', name: 'Đón trẻ' },
-              { icon: '🧹', name: 'Dọn dẹp' },
-              { icon: '👶', name: 'Trông trẻ' },
-              { icon: '🛒', name: 'Mua sắm hộ' },
-            ].map((cat) => (
-              <TouchableOpacity key={cat.name} style={styles.catItem}
-                onPress={() => navigation.navigate('CreateTask')}>
-                <Text style={styles.catIcon}>{cat.icon}</Text>
-                <Text style={styles.catName}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <View style={{ height: 30 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { backgroundColor: '#0051d5', paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // === HEADER ===
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+  },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  greetSmall: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
-  greetName: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  avatarBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  postJobBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  greetSmall: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
+  greetName: { color: '#fff', fontSize: 22, fontWeight: '900' },
+  headerRight: { flexDirection: 'row', gap: 8 },
+  headerIconBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
   },
-  postJobIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  postJobTextGroup: { flex: 1 },
-  postJobTitle: { color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: 0.5 },
-  postJobSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
-  body: { flex: 1, paddingTop: 20 },
-  section: { paddingHorizontal: 20, marginBottom: 24 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
-  seeAll: { color: '#0051d5', fontWeight: '600', fontSize: 14 },
-  taskCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+  searchBar: {
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: SIZES.radiusMd, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
-  taskCardLeft: { flex: 1, marginRight: 12 },
-  statusBadge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
-  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  taskTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  taskMeta: { fontSize: 12, color: '#6b7280' },
-  taskPrice: { fontSize: 16, fontWeight: '800', color: '#0051d5' },
-  emptyBox: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  emptyText: { color: '#9ca3af', fontSize: 15 },
-  emptyBtn: { backgroundColor: '#0051d5', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
-  emptyBtnText: { color: '#fff', fontWeight: '700' },
-  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  searchIconCircle: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  searchTextGroup: { flex: 1 },
+  searchTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  searchSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
+  // === BODY ===
+  body: { flex: 1, marginTop: -4 },
+  section: { paddingHorizontal: 20, marginTop: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary },
+  seeAll: { color: COLORS.primary, fontWeight: '700', fontSize: 14 },
+  // === CATEGORIES ===
+  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   catItem: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center',
-    width: '18%', minWidth: 60, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+    width: CATEGORY_SIZE, alignItems: 'center', gap: 8,
   },
-  catIcon: { fontSize: 24, marginBottom: 4 },
-  catName: { fontSize: 10, fontWeight: '600', color: '#374151', textAlign: 'center' },
+  catIconBg: {
+    width: CATEGORY_SIZE - 8, height: CATEGORY_SIZE - 8,
+    borderRadius: SIZES.radiusMd, justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
+    backgroundColor: COLORS.surface,
+  },
+  catImage: { width: 34, height: 34 },
+  catName: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center' },
+  // === TASK CARDS ===
+  taskCard: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: 14,
+    marginBottom: 10,
+    ...SHADOWS.small,
+  },
+  taskCardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  taskIconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  taskCardContent: { flex: 1, gap: 4 },
+  statusBadge: {
+    alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  taskTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+  taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  taskMeta: { fontSize: 12, color: COLORS.textMuted, flex: 1 },
+  taskPrice: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  // === EMPTY STATE ===
+  emptyBox: { alignItems: 'center', paddingVertical: 36, gap: 12 },
+  emptyIconCircle: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+  emptyText: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
+  emptyBtn: {
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd,
+    paddingHorizontal: 24, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    ...SHADOWS.large,
+    marginTop: 4,
+  },
+  emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
+import { COLORS } from '../../theme/colors';
+
+let DateTimePicker;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 const CATEGORIES = [
-  { id: 1, icon: '📚', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
-  { id: 2, icon: '🚗', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
-  { id: 3, icon: '🧹', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
-  { id: 4, icon: '👶', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
-  { id: 5, icon: '🛒', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
+  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
+  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
+  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
+  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
+  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
+  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
+  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
+  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', hint: 'Thoả thuận' },
 ];
 
 export default function CreateTaskScreen() {
@@ -25,6 +34,50 @@ export default function CreateTaskScreen() {
   const [time, setTime] = useState('');
   const [price, setPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [dateValue, setDateValue] = useState(new Date());
+  const [timeValue, setTimeValue] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDateValue(selectedDate);
+      const yyyy = selectedDate.getFullYear();
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      setDate(`${yyyy}-${mm}-${dd}`);
+    }
+  };
+
+  const onTimeChange = (event, selectedTime) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setTimeValue(selectedTime);
+      const hh = String(selectedTime.getHours()).padStart(2, '0');
+      const min = String(selectedTime.getMinutes()).padStart(2, '0');
+      setTime(`${hh}:${min}`);
+    }
+  };
+
+  const handleOpenDatePicker = () => {
+    if (Platform.OS === 'web') {
+      const val = prompt('Nhập ngày (YYYY-MM-DD):', date || '2026-05-29');
+      if (val) setDate(val);
+    } else {
+      setShowDatePicker(true);
+    }
+  };
+
+  const handleOpenTimePicker = () => {
+    if (Platform.OS === 'web') {
+      const val = prompt('Nhập giờ (HH:MM):', time || '12:00');
+      if (val) setTime(val);
+    } else {
+      setShowTimePicker(true);
+    }
+  };
 
   const cat = CATEGORIES.find(c => c.id === selectedCat);
 
@@ -82,7 +135,7 @@ export default function CreateTaskScreen() {
           {CATEGORIES.map((c) => (
             <TouchableOpacity key={c.id} style={[styles.catBtn, selectedCat === c.id && styles.catBtnActive]}
               onPress={() => setSelectedCat(c.id)}>
-              <Text style={styles.catIcon}>{c.icon}</Text>
+              <Image source={c.icon} style={styles.catImage} resizeMode="contain" />
               <Text style={[styles.catName, selectedCat === c.id && styles.catNameActive]}>{c.name}</Text>
             </TouchableOpacity>
           ))}
@@ -90,7 +143,7 @@ export default function CreateTaskScreen() {
 
         {/* Gợi ý giá */}
         <View style={styles.priceHint}>
-          <Ionicons name="bulb-outline" size={14} color="#0051d5" />
+          <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
           <Text style={styles.priceHintText}>Gợi ý mức giá cho {cat?.name}: {cat?.hint}</Text>
         </View>
 
@@ -108,13 +161,39 @@ export default function CreateTaskScreen() {
               value={location} onChangeText={setLocation} />
           </View>
           <View style={styles.twoCol}>
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Ngày (YYYY-MM-DD) *"
-              placeholderTextColor="#9ca3af" value={date} onChangeText={setDate} />
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Giờ (HH:MM) *"
-              placeholderTextColor="#9ca3af" value={time} onChangeText={setTime} />
+            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenDatePicker}>
+              <Text style={{ fontSize: 14, color: date ? '#111827' : '#9ca3af' }}>
+                {date ? date : 'Chọn ngày'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenTimePicker}>
+              <Text style={{ fontSize: 14, color: time ? '#111827' : '#9ca3af' }}>
+                {time ? time : 'Chọn giờ'}
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {showDatePicker && DateTimePicker && (
+            <DateTimePicker
+              value={dateValue}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              minimumDate={new Date()}
+            />
+          )}
+
+          {showTimePicker && DateTimePicker && (
+            <DateTimePicker
+              value={timeValue}
+              mode="time"
+              is24Hour={true}
+              display="default"
+              onChange={onTimeChange}
+            />
+          )}
           <View style={styles.inputRow}>
-            <TextInput style={[styles.input, { flex: 1, marginBottom: 0, fontSize: 18, fontWeight: '700', color: '#0051d5' }]}
+            <TextInput style={[styles.input, { flex: 1, marginBottom: 0, fontSize: 18, fontWeight: '700', color: COLORS.primary }]}
               placeholder="0" placeholderTextColor="#d1d5db" value={price} onChangeText={setPrice}
               keyboardType="numeric" />
             <Text style={styles.currency}>VNĐ/buổi</Text>
@@ -147,20 +226,20 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   catsScroll: { marginBottom: 12 },
   catBtn: { alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff', marginRight: 10, minWidth: 76 },
-  catBtnActive: { borderColor: '#0051d5', backgroundColor: '#eff6ff' },
-  catIcon: { fontSize: 24, marginBottom: 4 },
+  catBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' },
+  catImage: { width: 32, height: 32, marginBottom: 6 },
   catName: { fontSize: 11, fontWeight: '600', color: '#6b7280' },
-  catNameActive: { color: '#0051d5' },
-  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: 10, padding: 10, marginBottom: 20 },
-  priceHintText: { flex: 1, fontSize: 12, color: '#0051d5', fontWeight: '500' },
+  catNameActive: { color: COLORS.primary },
+  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: COLORS.primary + '15', borderRadius: 10, padding: 10, marginBottom: 20 },
+  priceHintText: { flex: 1, fontSize: 12, color: COLORS.primary, fontWeight: '500' },
   form: { gap: 12 },
-  input: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: '#111827', marginBottom: 0 },
+  input: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#111827', marginBottom: 0 },
   textarea: { minHeight: 100, paddingTop: 14 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, height: 54 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, minHeight: 54 },
   inputIcon: { marginRight: 8 },
   twoCol: { flexDirection: 'row', gap: 12 },
   currency: { fontSize: 14, fontWeight: '700', color: '#6b7280', marginLeft: 8 },
   footer: { padding: 20, paddingBottom: 36, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  submitBtn: { backgroundColor: '#0051d5', borderRadius: 14, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#0051d5', shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
+  submitBtn: { backgroundColor: COLORS.primary, borderRadius: 14, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
