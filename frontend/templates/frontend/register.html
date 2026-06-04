@@ -323,6 +323,28 @@
                             </div>
                         </div>
 
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Email <span class="text-errorMain">*</span></label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">mail</span>
+                                <input type="email" id="email" name="email" required autocomplete="email"
+                                    class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
+                                    placeholder="nguyenvana@gmail.com"/>
+                            </div>
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Số điện thoại <span class="text-errorMain">*</span></label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">call</span>
+                                <input type="tel" id="phone_number" name="phone_number" required
+                                    class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
+                                    placeholder="0901 234 567"/>
+                            </div>
+                        </div>
+
                         <!-- Password -->
                         <div>
                             <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Mật khẩu <span class="text-errorMain">*</span></label>
@@ -364,18 +386,7 @@
                             </div>
                         </div>
 
-                        <!-- Phone Number -->
                         <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Số điện thoại <span class="text-errorMain">*</span></label>
-                                <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">call</span>
-                                    <input type="tel" id="phone_number" name="phone_number"
-                                        class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
-                                        placeholder="0901 234 567"/>
-                                </div>
-                            </div>
-
                             <!-- Address -->
                             <div>
                                 <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Địa chỉ <span class="text-errorMain">*</span></label>
@@ -710,6 +721,8 @@
         const firstName    = document.getElementById('first_name').value.trim();
         const lastName     = document.getElementById('last_name').value.trim();
         const username     = document.getElementById('username').value.trim();
+        const email        = document.getElementById('email').value.trim();
+        const phoneNumber  = document.getElementById('phone_number').value.trim();
         const password     = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         const agreeTerms   = document.getElementById('agree_terms').checked;
@@ -717,6 +730,14 @@
         // Validation
         if (!username) {
             showToast('Vui lòng nhập tên tài khoản.', 'error');
+            return;
+        }
+        if (!email) {
+            showToast('Vui lòng nhập email.', 'error');
+            return;
+        }
+        if (!phoneNumber) {
+            showToast('Vui lòng nhập số điện thoại.', 'error');
             return;
         }
         if (!firstName) {
@@ -742,13 +763,8 @@
 
         // Worker-specific validation
         if (selectedRole === 'worker') {
-            const phoneNumber = document.getElementById('phone_number').value.trim();
-            const address     = document.getElementById('address').value.trim();
+            const address = document.getElementById('address').value.trim();
 
-            if (!phoneNumber) {
-                showToast('Carepartner cần cung cấp số điện thoại.', 'error');
-                return;
-            }
             if (!address) {
                 showToast('Carepartner cần cung cấp địa chỉ.', 'error');
                 return;
@@ -785,11 +801,12 @@
                 // Use FormData for worker (file uploads)
                 const formData = new FormData();
                 formData.append('username', username);
+                formData.append('email', email);
                 formData.append('password', password);
                 formData.append('role', selectedRole);
                 formData.append('first_name', firstName);
                 formData.append('last_name', lastName);
-                formData.append('phone_number', document.getElementById('phone_number').value.trim());
+                formData.append('phone_number', phoneNumber);
                 formData.append('address', document.getElementById('address').value.trim());
                 formData.append('id_card_front', uploadedFiles.id_card_front);
                 formData.append('id_card_back', uploadedFiles.id_card_back);
@@ -806,10 +823,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: username,
+                        email: email,
                         password: password,
                         role: selectedRole,
                         first_name: firstName,
                         last_name: lastName,
+                        phone_number: phoneNumber,
                     }),
                 });
             }
