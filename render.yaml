@@ -7,6 +7,7 @@ databases:
 services:
   - type: web
     name: educarelink-backend
+    plan: free
     env: python
     buildCommand: "./build.sh"
     startCommand: "gunicorn backend.wsgi:application"
