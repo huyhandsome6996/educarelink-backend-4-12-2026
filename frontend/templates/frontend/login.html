@@ -435,14 +435,7 @@
         };
 
         tabRegister.onclick = () => {
-            isLogin = false;
-            tabRegister.classList.add('tab-active');
-            tabLogin.classList.remove('tab-active');
-            roleSelector.style.display = '';
-            authTitle.innerText = 'Tạo tài khoản mới';
-            authSubtitle.innerText = 'Tham gia EduCareLink và bắt đầu hành trình của bạn.';
-            submitText.innerText = 'Đăng ký';
-            forgotLink.style.display = 'none';
+            window.location.href = '/register/';
         };
 
         // Mobile shortcut
