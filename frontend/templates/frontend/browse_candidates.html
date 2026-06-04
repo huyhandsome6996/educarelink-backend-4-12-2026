@@ -1,210 +1,858 @@
 <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Ứng viên - EduCareLink</title>
 
-<html class="light" lang="vi"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Educarelink - Candidate Details</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
-                    "colors": {
-                        "primary": "#0051d5",
-                        "surface-container": "#edeeef",
-                        "surface-variant": "#e1e3e4",
-                        "surface-container-high": "#e7e8e9",
-                        "primary-container": "#316bf3",
-                        "on-tertiary-container": "#f4fffb",
-                        "on-error": "#ffffff",
-                        "on-tertiary-fixed": "#00201c",
-                        "on-secondary": "#ffffff",
-                        "on-primary-container": "#fefcff",
-                        "tertiary-container": "#008376",
-                        "tertiary-fixed": "#71f8e4",
-                        "inverse-primary": "#b4c5ff",
-                        "inverse-on-surface": "#f0f1f2",
-                        "inverse-surface": "#2e3132",
-                        "surface-container-highest": "#e1e3e4",
-                        "secondary": "#845400",
-                        "on-surface-variant": "#3d4947",
-                        "surface-container-lowest": "#ffffff",
-                        "surface": "#f8f9fa",
-                        "background": "#f8f9fa",
-                        "on-tertiary-fixed-variant": "#005048",
-                        "on-primary": "#ffffff",
-                        "tertiary": "#00685d",
-                        "on-secondary-fixed": "#2a1800",
-                        "secondary-fixed": "#ffddb6",
-                        "on-primary-fixed-variant": "#003ea8",
-                        "on-secondary-container": "#6f4600",
-                        "secondary-fixed-dim": "#ffb95a",
-                        "primary-fixed-dim": "#b4c5ff",
-                        "surface-dim": "#d9dadb",
-                        "primary-fixed": "#dbe1ff",
-                        "on-tertiary": "#ffffff",
-                        "surface-bright": "#f8f9fa",
-                        "on-error-container": "#93000a",
-                        "on-surface": "#191c1d",
-                        "tertiary-fixed-dim": "#4fdbc8",
-                        "surface-container-low": "#f3f4f5",
-                        "on-secondary-fixed-variant": "#643f00",
-                        "error-container": "#ffdad6",
-                        "error": "#ba1a1a",
-                        "on-background": "#191c1d",
-                        "secondary-container": "#feb246",
-                        "surface-tint": "#0053db",
-                        "outline": "#6d7a77",
-                        "on-primary-fixed": "#00174b",
-                        "outline-variant": "#bcc9c6"
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        successBg: '#ECFDF5',
+                        error: '#EF4444',
+                        errorBg: '#FEF2F2',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
                     },
-                    "borderRadius": {
-                        "DEFAULT": "1rem",
-                        "lg": "2rem",
-                        "xl": "3rem",
-                        "full": "9999px"
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
                     },
-                    "fontFamily": {
-                        "headline": ["Manrope"],
-                        "body": ["Plus Jakarta Sans"],
-                        "label": ["Plus Jakarta Sans"]
-                    }
                 },
             },
         }
     </script>
-<style>
+
+    <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
         }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Sidebar scroll */
+        .sidebar-scroll::-webkit-scrollbar { width: 0; }
+        .sidebar-scroll { scrollbar-width: none; }
+
+        /* Custom scrollbar for main content */
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* Nav item */
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { background: rgba(242,101,34,0.08); }
+        .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
+        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+
+        /* Toast animation */
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .toast-in { animation: slideInRight 0.35s ease forwards; }
+        .toast-out { animation: slideOutRight 0.3s ease forwards; }
+
+        /* Modal animation */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-overlay { animation: fadeIn 0.2s ease; }
+        .modal-content { animation: scaleIn 0.25s ease; }
+
+        /* Candidate card hover */
+        .candidate-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .candidate-card:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(242,101,34,0.1); }
+
+        /* Skeleton loading */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        /* Mobile bottom nav safe area */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .mobile-nav { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+        }
+        @media (max-width: 1023px) {
+            .main-content { padding-bottom: 5.5rem; }
+        }
+
+        /* Status badge pulse */
+        @keyframes softPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pending-pulse { animation: softPulse 2s ease-in-out infinite; }
     </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-surface text-on-surface antialiased">
-<!-- TopAppBar Shell -->
-<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-xl shadow-[0_20px_40px_rgba(13,148,136,0.06)]">
-<div class="flex items-center gap-4">
-<button onclick="location.href='{% url 'frontend:parent_tasks' %}'" class="p-2 -ml-2 rounded-full hover:bg-teal-50/50 transition-colors active:scale-95 duration-200">
-<span class="material-symbols-outlined text-teal-600">arrow_back</span>
-</button>
-<h1 class="font-manrope font-bold text-lg tracking-tight text-teal-600">Chi tiết &amp; Ứng viên</h1>
-</div>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- ============================================ -->
+<!-- SIDEBAR (Desktop ≥1024px)                    -->
+<!-- ============================================ -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
+        <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+            <span class="material-symbols-outlined filled text-white text-xl">school</span>
+        </div>
+        <div>
+            <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
+        <div class="space-y-1">
+            <!-- Trang chủ -->
+            <a href="{% url 'frontend:parent_home' %}"
+               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span>Trang chủ</span>
+            </a>
+
+            <!-- Việc của tôi - ACTIVE (this is a sub-page of Việc của tôi) -->
+            <a href="{% url 'frontend:parent_tasks' %}"
+               class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span>Việc của tôi</span>
+            </a>
+
+            <!-- Đăng việc mới -->
+            <a href="{% url 'frontend:task_create_1' %}"
+               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span>Đăng việc mới</span>
+            </a>
+
+            <!-- AI Trợ lý -->
+            <a href="{% url 'frontend:chatbot' %}"
+               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span>AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- User Section (Bottom) -->
+    <div class="border-t border-border px-4 py-4">
+        <div class="flex items-center gap-3 mb-3 px-2">
+            <div class="w-10 h-10 rounded-full bg-primaryLight ring-2 ring-primarySoft flex-shrink-0 overflow-hidden">
+                <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+                     src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                <p class="text-[11px] text-textMuted">Phụ huynh</p>
+            </div>
+        </div>
+        <button onclick="handleLogout()"
+                class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-colors text-sm font-medium">
+            <span class="material-symbols-outlined text-lg">logout</span>
+            Đăng xuất
+        </button>
+    </div>
+</aside>
+
+<!-- ============================================ -->
+<!-- MOBILE HEADER (<1024px)                      -->
+<!-- ============================================ -->
+<header class="lg:hidden sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-border">
+    <div class="flex items-center justify-between px-4 h-14">
+        <div class="flex items-center gap-2.5">
+            <button onclick="goBackToTasks()"
+                    class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors active:scale-95">
+                <span class="material-symbols-outlined text-textSecondary text-xl">arrow_back</span>
+            </button>
+            <h1 class="font-headline font-bold text-base text-textPrimary">Ứng viên</h1>
+        </div>
+        <div class="w-9 h-9 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden">
+            <img id="mobile-header-avatar" alt="Avatar" class="w-full h-full object-cover"
+                 src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+        </div>
+    </div>
 </header>
-<main class="pt-20 pb-10 px-4 max-w-md mx-auto">
-<!-- Task Summary Section -->
-<section class="mb-8" id="task-summary">
-    <!-- Will be filled by JS -->
-</section>
-<!-- Candidate List Header -->
-<section class="mb-6 px-1">
-<h3 class="text-lg font-extrabold flex items-center gap-2" id="candidates-count">
-    Đang tải ứng viên...
-</h3>
-<p class="text-on-surface-variant text-sm mt-1">Chọn người phù hợp nhất cho bé của bạn</p>
-</section>
-<!-- Candidate Cards -->
-<div class="space-y-6" id="candidates-list">
-</div>
+
+<!-- ============================================ -->
+<!-- MAIN CONTENT AREA                            -->
+<!-- ============================================ -->
+<main class="lg:ml-[260px] min-h-screen main-content">
+
+    <!-- TOP HEADER BAR (Desktop) -->
+    <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <button onclick="goBackToTasks()"
+                    class="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <span class="material-symbols-outlined text-textSecondary">arrow_back</span>
+            </button>
+            <div>
+                <h1 class="font-headline font-bold text-2xl text-textPrimary">Danh sách ứng viên</h1>
+                <p id="breadcrumb-task" class="text-textSecondary text-sm mt-0.5">Đang tải thông tin việc...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT BODY -->
+    <div class="px-4 lg:px-8 py-6 space-y-6 lg:space-y-8 max-w-5xl">
+
+        <!-- =============================== -->
+        <!-- 1. TASK SUMMARY CARD             -->
+        <!-- =============================== -->
+        <section id="task-summary-section">
+            <!-- Loading skeleton -->
+            <div id="task-skeleton" class="bg-surface rounded-2xl p-6 border border-border">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="skeleton h-5 w-24 rounded-full"></div>
+                    <div class="skeleton h-5 w-16 rounded-full ml-auto"></div>
+                </div>
+                <div class="skeleton h-6 w-3/4 rounded-lg mb-4"></div>
+                <div class="space-y-2">
+                    <div class="skeleton h-4 w-1/2 rounded-lg"></div>
+                    <div class="skeleton h-4 w-1/3 rounded-lg"></div>
+                    <div class="skeleton h-4 w-2/5 rounded-lg"></div>
+                </div>
+            </div>
+            <!-- Actual task card (hidden until loaded) -->
+            <div id="task-card" class="hidden"></div>
+        </section>
+
+        <!-- =============================== -->
+        <!-- 2. CANDIDATES HEADER             -->
+        <!-- =============================== -->
+        <section id="candidates-header-section" class="hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-headline font-bold text-xl text-textPrimary">Danh sách ứng viên</h2>
+                    <span id="candidates-count-badge"
+                          class="inline-flex items-center justify-center bg-primary/10 text-primary text-sm font-bold px-3 py-1 rounded-full min-w-[28px]">
+                        0
+                    </span>
+                </div>
+            </div>
+            <p class="text-textSecondary text-sm mt-1">Chọn người phù hợp nhất cho bé của bạn</p>
+        </section>
+
+        <!-- =============================== -->
+        <!-- 3. CANDIDATE CARDS               -->
+        <!-- =============================== -->
+        <section id="candidates-list-section">
+            <!-- Loading skeleton -->
+            <div id="candidates-skeleton" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                <div class="bg-surface rounded-xl border border-gray-100 p-5">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="skeleton w-14 h-14 rounded-full flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <div class="skeleton h-5 w-28 rounded-lg mb-2"></div>
+                            <div class="skeleton h-4 w-20 rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton h-4 w-2/3 rounded-lg mb-4"></div>
+                    <div class="flex gap-3">
+                        <div class="skeleton h-10 flex-1 rounded-xl"></div>
+                        <div class="skeleton h-10 flex-1 rounded-xl"></div>
+                    </div>
+                </div>
+                <div class="bg-surface rounded-xl border border-gray-100 p-5 hidden md:block">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="skeleton w-14 h-14 rounded-full flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <div class="skeleton h-5 w-28 rounded-lg mb-2"></div>
+                            <div class="skeleton h-4 w-20 rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton h-4 w-2/3 rounded-lg mb-4"></div>
+                    <div class="flex gap-3">
+                        <div class="skeleton h-10 flex-1 rounded-xl"></div>
+                        <div class="skeleton h-10 flex-1 rounded-xl"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actual candidates container -->
+            <div id="candidates-list" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5"></div>
+
+            <!-- Empty state -->
+            <div id="empty-state" class="hidden">
+                <div class="bg-surface rounded-2xl p-10 border border-dashed border-border text-center">
+                    <div class="w-20 h-20 bg-primaryLight rounded-full flex items-center justify-center mx-auto mb-5">
+                        <span class="material-symbols-outlined filled text-primary text-4xl">group_off</span>
+                    </div>
+                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Chưa có ai ứng tuyển</h3>
+                    <p class="text-textSecondary text-sm mb-6 max-w-sm mx-auto">
+                        Hãy kiên nhẫn chờ đợi! Các Carepartner phù hợp sẽ sớm nộp hồ sơ ứng tuyển cho công việc của bạn.
+                    </p>
+                    <button onclick="goBackToTasks()"
+                            class="inline-flex items-center gap-2 bg-gray-100 text-textSecondary font-semibold text-sm px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors">
+                        <span class="material-symbols-outlined text-lg">arrow_back</span>
+                        Quay lại Việc của tôi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error state -->
+            <div id="error-state" class="hidden">
+                <div class="bg-errorBg rounded-2xl p-10 text-center">
+                    <span class="material-symbols-outlined filled text-error text-4xl mb-3 block">cloud_off</span>
+                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Không thể tải dữ liệu</h3>
+                    <p class="text-textSecondary text-sm mb-5">Vui lòng kiểm tra kết nối mạng và thử lại</p>
+                    <button onclick="init()"
+                            class="inline-flex items-center gap-2 bg-error text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-red-600 transition-colors">
+                        <span class="material-symbols-outlined text-lg">refresh</span>
+                        Thử lại
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =============================== -->
+        <!-- TRUST BADGE                      -->
+        <!-- =============================== -->
+        <section id="trust-section" class="hidden">
+            <div class="bg-secondaryLight/50 p-5 lg:p-6 rounded-2xl border border-secondary/10">
+                <div class="flex gap-4 items-start">
+                    <div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined filled text-secondary text-2xl">verified_user</span>
+                    </div>
+                    <div>
+                        <h5 class="font-headline font-bold text-textPrimary text-base">Cam kết an tâm</h5>
+                        <p class="text-sm text-textSecondary mt-1 leading-relaxed">
+                            Mọi Carepartner đều được EduCareLink xác thực danh tính và bằng cấp trước khi nhận việc. Bạn hoàn toàn yên tâm!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
 </main>
+
+<!-- ============================================ -->
+<!-- MOBILE BOTTOM NAV (<1024px)                  -->
+<!-- ============================================ -->
+<nav class="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-border">
+    <div class="flex justify-around items-center px-2 pt-2 pb-3">
+        <a href="{% url 'frontend:parent_home' %}"
+           class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-2xl">home</span>
+            <span class="text-[10px] font-medium mt-0.5">Trang chủ</span>
+        </a>
+        <a href="{% url 'frontend:parent_tasks' %}"
+           class="flex flex-col items-center justify-center text-primary bg-primaryLight px-3 py-1.5 rounded-xl">
+            <span class="material-symbols-outlined text-2xl filled">assignment</span>
+            <span class="text-[10px] font-semibold mt-0.5">Việc của tôi</span>
+        </a>
+        <a href="{% url 'frontend:task_create_1' %}"
+           class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-2xl">add_circle</span>
+            <span class="text-[10px] font-medium mt-0.5">Đăng việc</span>
+        </a>
+        <a href="{% url 'frontend:chatbot' %}"
+           class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-2xl">smart_toy</span>
+            <span class="text-[10px] font-medium mt-0.5">AI Trợ lý</span>
+        </a>
+    </div>
+</nav>
+
+<!-- ============================================ -->
+<!-- TOAST CONTAINER                               -->
+<!-- ============================================ -->
+<div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3 pointer-events-none" style="max-width: 380px;"></div>
+
+<!-- ============================================ -->
+<!-- CONFIRM MODAL (replaces window.confirm)      -->
+<!-- ============================================ -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeConfirmModal()"></div>
+    <div class="modal-content relative bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div id="confirm-icon-wrap" class="w-11 h-11 bg-primaryLight rounded-full flex items-center justify-center flex-shrink-0">
+                <span id="confirm-icon" class="material-symbols-outlined text-primary text-xl filled">help</span>
+            </div>
+            <div>
+                <h3 id="confirm-title" class="font-headline font-bold text-base text-textPrimary">Xác nhận</h3>
+                <p id="confirm-message" class="text-sm text-textSecondary mt-0.5">Bạn có chắc chắn?</p>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+            <button onclick="closeConfirmModal()"
+                    class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                Hủy
+            </button>
+            <button id="confirm-action-btn"
+                    class="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors shadow-md shadow-primary/20">
+                Xác nhận
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT                                    -->
+<!-- ============================================ -->
 <script>
-    const API_BASE = "/api";
-    const token = localStorage.getItem('token');
-    const taskId = localStorage.getItem('current_task_id');
-    if (!token) window.location.href = "{% url 'frontend:login' %}";
-    if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
+// ==================== CONFIG ====================
+const API_BASE = "/api";
+const token = localStorage.getItem('token');
+const taskId = localStorage.getItem('current_task_id');
 
-    async function init() {
-        try {
-            // Lấy thông tin công việc (từ danh sách chung hoặc API riêng nếu có)
-            // Ở đây tôi lấy từ API chung
-            const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
-            const tasks = await tasksResp.json();
-            const task = tasks.find(t => t.id == taskId);
-            if (task) {
-                document.getElementById('task-summary').innerHTML = `
-                    <div class="bg-surface-container-lowest rounded-2xl p-5 border-l-4 border-primary shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                        <h2 class="text-xl font-bold text-on-surface mb-2">${task.title}</h2>
-                        <div class="flex flex-col gap-1.5">
-                            <div class="flex items-center gap-2 text-on-surface-variant text-sm">
-                                <span class="material-symbols-outlined text-sm">schedule</span>
-                                <span>${new Date(task.scheduled_time).toLocaleString('vi-VN')}</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-on-surface-variant text-sm">
-                                <span class="material-symbols-outlined text-sm">payments</span>
-                                <span class="font-semibold text-primary">${new Intl.NumberFormat('vi-VN').format(task.price)}đ</span>
+if (!token) window.location.href = "{% url 'frontend:login' %}";
+if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
+
+// ==================== STATE ====================
+let confirmCallback = null;
+let currentTask = null;
+let candidatesList = [];
+
+// ==================== TOAST SYSTEM ====================
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+
+    const iconMap = {
+        success: { icon: 'check_circle', color: 'text-success', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+        error:   { icon: 'error',        color: 'text-error',   bg: 'bg-red-50',     border: 'border-red-200' },
+        warning: { icon: 'warning',       color: 'text-warning', bg: 'bg-amber-50',   border: 'border-amber-200' },
+        info:    { icon: 'info',          color: 'text-primary', bg: 'bg-primaryLight', border: 'border-orange-200' },
+    };
+    const cfg = iconMap[type] || iconMap.info;
+
+    toast.className = `toast-in pointer-events-auto flex items-start gap-3 ${cfg.bg} border ${cfg.border} rounded-xl px-4 py-3 shadow-lg`;
+    toast.innerHTML = `
+        <span class="material-symbols-outlined ${cfg.color} text-xl flex-shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${cfg.icon}</span>
+        <p class="text-sm font-medium text-textPrimary flex-1">${message}</p>
+        <button onclick="this.closest('.toast-in, .toast-out').classList.add('toast-out'); setTimeout(() => this.closest('.toast-in, .toast-out').remove(), 300);"
+                class="text-textSecondary hover:text-textPrimary flex-shrink-0">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.classList.remove('toast-in');
+            toast.classList.add('toast-out');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
+// ==================== CONFIRM MODAL ====================
+function showConfirmModal(title, message, onConfirm, icon = 'help', iconColor = 'primary') {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    document.getElementById('confirm-icon').textContent = icon;
+
+    const iconWrap = document.getElementById('confirm-icon-wrap');
+    const iconEl = document.getElementById('confirm-icon');
+    if (iconColor === 'error') {
+        iconWrap.className = 'w-11 h-11 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0';
+        iconEl.className = 'material-symbols-outlined text-error text-xl filled';
+    } else if (iconColor === 'success') {
+        iconWrap.className = 'w-11 h-11 bg-successBg rounded-full flex items-center justify-center flex-shrink-0';
+        iconEl.className = 'material-symbols-outlined text-success text-xl filled';
+    } else {
+        iconWrap.className = 'w-11 h-11 bg-primaryLight rounded-full flex items-center justify-center flex-shrink-0';
+        iconEl.className = 'material-symbols-outlined text-primary text-xl filled';
+    }
+
+    confirmCallback = onConfirm;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    confirmCallback = null;
+}
+
+document.getElementById('confirm-action-btn').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback();
+    closeConfirmModal();
+});
+
+// ==================== NAVIGATION ====================
+function goBackToTasks() {
+    window.location.href = "{% url 'frontend:parent_tasks' %}";
+}
+
+function handleLogout() {
+    showConfirmModal(
+        'Đăng xuất',
+        'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
+        () => {
+            localStorage.clear();
+            showToast('Đã đăng xuất thành công', 'success');
+            setTimeout(() => { window.location.href = "{% url 'frontend:login' %}"; }, 600);
+        },
+        'logout',
+        'error'
+    );
+}
+
+// ==================== HELPERS ====================
+function formatPrice(price) {
+    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = d - now;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const dateStrShort = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+
+    if (diffDays === 0 && d.toDateString() === now.toDateString()) return 'Hôm nay, ' + timeStr;
+    if (diffDays === 1) return 'Ngày mai, ' + timeStr;
+    if (diffDays === -1) return 'Hôm qua, ' + timeStr;
+    if (diffDays > 0 && diffDays <= 7) return `${diffDays} ngày nữa, ` + timeStr;
+    return dateStrShort + ', ' + timeStr;
+}
+
+function formatAppliedDate(dateStr) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getStatusConfig(status) {
+    const map = {
+        pending:  { label: 'Chờ duyệt',   color: 'bg-amber-50 text-amber-600 border-amber-200', icon: 'schedule' },
+        accepted: { label: 'Đã chấp nhận', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'check_circle' },
+        rejected: { label: 'Đã từ chối',   color: 'bg-red-50 text-red-500 border-red-200', icon: 'cancel' },
+    };
+    return map[status] || map.pending;
+}
+
+function getTaskStatusBadge(status) {
+    const map = {
+        open:        { label: 'Đang tìm người',  color: 'bg-secondaryLight text-secondaryDark' },
+        in_progress: { label: 'Đang thực hiện',   color: 'bg-blue-50 text-blue-600' },
+        completed:   { label: 'Đã hoàn thành',    color: 'bg-successBg text-success' },
+        cancelled:   { label: 'Đã hủy',           color: 'bg-gray-100 text-gray-500' },
+    };
+    return map[status] || map.open;
+}
+
+// ==================== RENDER TASK SUMMARY ====================
+function renderTaskSummary(task) {
+    const stBadge = getTaskStatusBadge(task.status);
+    document.getElementById('task-skeleton').classList.add('hidden');
+
+    const card = document.getElementById('task-card');
+    card.classList.remove('hidden');
+    card.innerHTML = `
+        <div class="bg-surface rounded-2xl p-5 lg:p-6 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-3">
+                <span class="px-3 py-1 ${stBadge.color} text-[11px] font-bold rounded-full uppercase tracking-wide">
+                    ${stBadge.label}
+                </span>
+                <span class="font-headline font-extrabold text-lg text-primary">${formatPrice(task.price)}</span>
+            </div>
+            <h2 class="font-headline font-bold text-xl text-textPrimary mb-3 leading-tight">${task.title}</h2>
+            <div class="space-y-2">
+                ${task.location ? `
+                <div class="flex items-center gap-2.5 text-textSecondary text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px]">location_on</span>
+                    </div>
+                    <span class="truncate">${task.location}</span>
+                </div>` : ''}
+                <div class="flex items-center gap-2.5 text-textSecondary text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px]">schedule</span>
+                    </div>
+                    <span>${formatDate(task.scheduled_time)}</span>
+                </div>
+                <div class="flex items-center gap-2.5 text-textSecondary text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primaryLight flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px] text-primary">payments</span>
+                    </div>
+                    <span class="font-semibold text-primary">${formatPrice(task.price)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Update desktop breadcrumb
+    const breadcrumb = document.getElementById('breadcrumb-task');
+    if (breadcrumb) {
+        breadcrumb.textContent = task.title;
+    }
+}
+
+// ==================== RENDER CANDIDATES ====================
+function renderCandidates(candidates) {
+    document.getElementById('candidates-skeleton').classList.add('hidden');
+
+    if (candidates.length === 0) {
+        document.getElementById('candidates-list').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+        document.getElementById('candidates-header-section').classList.add('hidden');
+        document.getElementById('trust-section').classList.add('hidden');
+        return;
+    }
+
+    document.getElementById('empty-state').classList.add('hidden');
+    document.getElementById('error-state').classList.add('hidden');
+    document.getElementById('candidates-header-section').classList.remove('hidden');
+    document.getElementById('trust-section').classList.remove('hidden');
+
+    // Update count badge
+    document.getElementById('candidates-count-badge').textContent = candidates.length;
+
+    const container = document.getElementById('candidates-list');
+    container.classList.remove('hidden');
+    container.innerHTML = candidates.map(c => {
+        const st = getStatusConfig(c.status);
+        const isPending = c.status === 'pending';
+        const isAccepted = c.status === 'accepted';
+        const isRejected = c.status === 'rejected';
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.worker_name)}&background=F26522&color=fff&size=128`;
+
+        let actionButtons = '';
+        if (isAccepted) {
+            actionButtons = `
+                <div class="flex items-center justify-center gap-2 py-3 px-4 bg-successBg text-success font-semibold text-sm rounded-xl border border-success/20">
+                    <span class="material-symbols-outlined text-lg filled">check_circle</span>
+                    Đã chấp nhận
+                </div>
+            `;
+        } else if (isPending) {
+            actionButtons = `
+                <div class="flex gap-3">
+                    <a href="{% url 'frontend:worker_profile' %}?worker_id=${c.worker_id || c.worker}"
+                       class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">person</span>
+                        Xem hồ sơ
+                    </a>
+                    <button onclick="approve(${c.id}, '${c.worker_name.replace(/'/g, "\\'")}')"
+                            class="flex-[1.3] py-2.5 px-4 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">check</span>
+                        Chấp nhận
+                    </button>
+                </div>
+            `;
+        } else if (isRejected) {
+            actionButtons = `
+                <div class="flex items-center justify-center gap-2 py-3 px-4 bg-gray-50 text-textMuted font-medium text-sm rounded-xl">
+                    <span class="material-symbols-outlined text-lg">block</span>
+                    Đã từ chối
+                </div>
+            `;
+        }
+
+        return `
+            <article class="candidate-card bg-surface rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
+                <!-- Left accent bar based on status -->
+                <div class="absolute top-0 left-0 w-1.5 h-full ${isAccepted ? 'bg-success' : isPending ? 'bg-primary' : 'bg-gray-300'} rounded-l-xl"></div>
+                <div class="p-5 pl-6">
+                    <!-- Header: Avatar + Info -->
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="relative flex-shrink-0">
+                            <img alt="${c.worker_name}"
+                                 class="w-14 h-14 rounded-full object-cover ring-2 ring-primary/10"
+                                 src="${avatarUrl}"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=U&background=F26522&color=fff'"/>
+                            ${isAccepted ? `
+                            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-success rounded-full border-2 border-white flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[14px] text-white filled">verified</span>
+                            </div>` : ''}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-headline font-bold text-base text-textPrimary leading-tight truncate">${c.worker_name}</h4>
+                            <p class="text-textSecondary text-xs mt-0.5">Carepartner tiềm năng</p>
+                            <!-- Status badge -->
+                            <div class="inline-flex items-center gap-1 ${st.color} px-2 py-0.5 rounded-full text-[10px] font-bold mt-2 border ${isPending ? 'pending-pulse' : ''}">
+                                <span class="material-symbols-outlined text-[12px] filled">${st.icon}</span>
+                                ${st.label}
                             </div>
                         </div>
                     </div>
-                `;
-            }
 
-            const candResp = await fetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`, { headers: { 'Authorization': 'Bearer ' + token } });
-            const candidates = await candResp.json();
-            document.getElementById('candidates-count').innerText = `${candidates.length} Carepartner đã ứng tuyển`;
-            
-            const container = document.getElementById('candidates-list');
-            if (candidates.length === 0) {
-                container.innerHTML = `<div class="text-center py-10 italic text-slate-400">Chưa có ai ứng tuyển.</div>`;
-            } else {
-                container.innerHTML = candidates.map(c => `
-                    <div class="bg-surface-container-lowest rounded-2xl p-6 shadow-[0_12px_40px_rgba(0,81,213,0.05)] border border-outline-variant/10">
-                        <div class="flex items-center gap-5 mb-5">
-                            <div class="relative">
-                                <img alt="Avatar" class="w-16 h-16 rounded-full object-cover ring-2 ring-primary/10" src="https://ui-avatars.com/api/?name=${c.worker_name}&background=random">
-                                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-tertiary rounded-full border-2 border-white flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-[14px] text-white" style="font-variation-settings: 'FILL' 1;">verified</span>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <h4 class="text-lg font-bold text-on-surface">${c.worker_name}</h4>
-                                <p class="text-on-surface-variant text-sm leading-tight">Carepartner tiềm năng</p>
-                                <div class="flex items-center gap-1 mt-1">
-                                    <span class="material-symbols-outlined text-secondary text-base" style="font-variation-settings: 'FILL' 1;">star</span>
-                                    <span class="text-sm font-bold">5.0</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-3">
-                            <button class="flex-1 py-3 px-4 rounded-xl text-on-surface-variant font-semibold border border-outline-variant hover:bg-surface-container transition-all active:scale-95 text-sm">
-                                Xem hồ sơ
-                            </button>
-                            <button onclick="approve(${c.id})" class="flex-[1.5] py-3 px-4 bg-primary text-on-primary rounded-xl font-bold shadow-md shadow-primary/20 hover:bg-primary-container transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
-                                Chấp nhận
-                            </button>
-                        </div>
+                    <!-- Applied date -->
+                    <div class="flex items-center gap-2 text-textMuted text-xs mb-4">
+                        <span class="material-symbols-outlined text-sm">schedule</span>
+                        <span>Ứng tuyển ${c.applied_at || c.created_at ? formatAppliedDate(c.applied_at || c.created_at) : 'gần đây'}</span>
                     </div>
-                `).join('');
-            }
-        } catch (e) { console.error(e); }
-    }
 
-    async function approve(appId) {
-        if (!confirm("Bạn có chắc chắn muốn nhận người này làm việc?")) return;
-        try {
-            const resp = await fetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await resp.json();
-            if (resp.ok) {
-                alert(data.message);
-                window.location.href = "{% url 'frontend:parent_tasks' %}";
-            } else {
-                alert("Lỗi: " + (data.error || "Không xác định"));
-            }
-        } catch (e) { alert("Lỗi kết nối."); }
-    }
+                    <!-- Action buttons -->
+                    ${actionButtons}
+                </div>
+            </article>
+        `;
+    }).join('');
+}
 
-    init();
+// ==================== APPROVE LOGIC ====================
+function approve(appId, workerName) {
+    showConfirmModal(
+        'Chấp nhận ứng viên',
+        `Bạn có chắc chắn muốn chấp nhận ${workerName}? Hành động này không thể hoàn tác.`,
+        async () => {
+            try {
+                const resp = await fetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast('Đã chấp nhận ứng viên!', 'success');
+                    // Refresh the list
+                    await fetchCandidates();
+                } else {
+                    showToast(data.error || data.message || 'Có lỗi xảy ra khi chấp nhận ứng viên', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            }
+        },
+        'how_to_reg',
+        'primary'
+    );
+}
+
+// ==================== FETCH CANDIDATES ====================
+async function fetchCandidates() {
+    try {
+        const candResp = await fetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!candResp.ok) {
+            throw new Error('Không thể tải danh sách ứng viên');
+        }
+
+        candidatesList = await candResp.json();
+        renderCandidates(candidatesList);
+
+    } catch (e) {
+        console.error('Candidates fetch error:', e);
+        document.getElementById('candidates-skeleton').classList.add('hidden');
+        document.getElementById('candidates-list').classList.add('hidden');
+        document.getElementById('empty-state').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        showToast('Không thể tải danh sách ứng viên', 'error');
+    }
+}
+
+// ==================== INIT ====================
+async function init() {
+    try {
+        // Fetch user profile
+        const profResp = await fetch(API_BASE + "/profile/", {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (profResp.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = "{% url 'frontend:login' %}";
+            return;
+        }
+
+        if (profResp.ok) {
+            const prof = await profResp.json();
+            const fullName = (prof.first_name && prof.last_name)
+                ? `${prof.first_name} ${prof.last_name}`
+                : prof.username || 'Người dùng';
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
+
+            // Update sidebar
+            const sidebarName = document.getElementById('sidebar-user-name');
+            if (sidebarName) sidebarName.textContent = fullName;
+            const sidebarAvatar = document.getElementById('sidebar-avatar');
+            if (sidebarAvatar) sidebarAvatar.src = avatarUrl;
+
+            // Update mobile header avatar
+            const mobileAvatar = document.getElementById('mobile-header-avatar');
+            if (mobileAvatar) mobileAvatar.src = avatarUrl;
+        }
+
+        // Fetch task details
+        const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!tasksResp.ok) {
+            throw new Error('Không thể tải thông tin công việc');
+        }
+
+        const tasks = await tasksResp.json();
+        const task = tasks.find(t => t.id == taskId);
+
+        if (!task) {
+            showToast('Không tìm thấy thông tin công việc', 'error');
+            setTimeout(() => { window.location.href = "{% url 'frontend:parent_tasks' %}"; }, 1500);
+            return;
+        }
+
+        currentTask = task;
+        renderTaskSummary(task);
+
+        // Fetch candidates
+        await fetchCandidates();
+
+    } catch (e) {
+        console.error('Init error:', e);
+        showToast('Không thể tải dữ liệu. Vui lòng thử lại.', 'error');
+        document.getElementById('task-skeleton').classList.add('hidden');
+        document.getElementById('candidates-skeleton').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+    }
+}
+
+// Start
+init();
 </script>
-</body></html>
+
+</body>
+</html>

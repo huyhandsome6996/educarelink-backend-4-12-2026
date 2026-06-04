@@ -1,263 +1,769 @@
 <!DOCTYPE html>
+<html class="light" lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Đăng việc mới | EduCareLink</title>
 
-<html class="light" lang="vi"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Create Task | Educarelink</title>
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<!-- Material Symbols -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
         tailwind.config = {
-          darkMode: "class",
-          theme: {
-            extend: {
-              "colors": {
-                      "surface-container-lowest": "#ffffff",
-                      "on-primary-fixed-variant": "#003ea8",
-                      "on-background": "#191c1d",
-                      "on-tertiary-container": "#f4fffb",
-                      "secondary-fixed": "#ffddb6",
-                      "surface-container-low": "#f3f4f5",
-                      "on-tertiary": "#ffffff",
-                      "secondary-fixed-dim": "#ffb95a",
-                      "tertiary-fixed-dim": "#4fdbc8",
-                      "background": "#f8f9fa",
-                      "secondary": "#845400",
-                      "on-error": "#ffffff",
-                      "on-primary-container": "#fefcff",
-                      "on-secondary-container": "#6f4600",
-                      "inverse-primary": "#b4c5ff",
-                      "surface-container-high": "#e7e8e9",
-                      "on-secondary": "#ffffff",
-                      "tertiary-container": "#008376",
-                      "on-primary-fixed": "#00174b",
-                      "error-container": "#ffdad6",
-                      "surface-dim": "#d9dadb",
-                      "primary-fixed-dim": "#b4c5ff",
-                      "on-surface-variant": "#3d4947",
-                      "on-error-container": "#93000a",
-                      "surface": "#f8f9fa",
-                      "surface-tint": "#0053db",
-                      "surface-container-highest": "#e1e3e4",
-                      "on-secondary-fixed-variant": "#643f00",
-                      "on-secondary-fixed": "#2a1800",
-                      "outline-variant": "#bcc9c6",
-                      "error": "#ba1a1a",
-                      "tertiary-fixed": "#71f8e4",
-                      "on-surface": "#191c1d",
-                      "primary": "#0051d5",
-                      "inverse-on-surface": "#f0f1f2",
-                      "inverse-surface": "#2e3132",
-                      "secondary-container": "#feb246",
-                      "on-tertiary-fixed": "#00201c",
-                      "tertiary": "#00685d",
-                      "on-primary": "#ffffff",
-                      "on-tertiary-fixed-variant": "#005048",
-                      "primary-container": "#316bf3",
-                      "primary-fixed": "#dbe1ff",
-                      "outline": "#6d7a77",
-                      "surface-bright": "#f8f9fa",
-                      "surface-variant": "#e1e3e4",
-                      "surface-container": "#edeeef"
-              },
-              "borderRadius": {
-                      "DEFAULT": "1rem",
-                      "lg": "2rem",
-                      "xl": "3rem",
-                      "full": "9999px"
-              },
-              "fontFamily": {
-                      "headline": ["Manrope"],
-                      "body": ["Plus Jakarta Sans"],
-                      "label": ["Plus Jakarta Sans"]
-              }
-            },
-          },
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        secondary: '#2DB84B',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        success: '#10B981',
+                        error: '#EF4444',
+                    },
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
+                        label: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        DEFAULT: '0.75rem',
+                        lg: '1rem',
+                        xl: '1.5rem',
+                        '2xl': '2rem',
+                    }
+                }
+            }
         }
     </script>
-<style>
+
+    <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
             vertical-align: middle;
         }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
-    </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col">
-<!-- TopAppBar -->
-<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_20px_40px_rgba(13,148,136,0.06)] rounded-b-[2rem]">
-<button onclick="location.href='{% url 'frontend:parent_home' %}'" class="p-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors scale-95 active:scale-90 transition-transform duration-200">
-<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
-</button>
-<h1 class="font-manrope font-bold text-lg tracking-tight text-teal-900 dark:text-teal-50">Đăng việc mới</h1>
-<button class="p-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors scale-95 active:scale-90 transition-transform duration-200">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</header>
-<!-- Main Content Canvas -->
-<main class="flex-grow pt-24 pb-32 px-6 max-w-2xl mx-auto w-full">
-<!-- Category Selector Section -->
-<section class="mb-10">
-<h2 class="text-label-md font-bold text-on-surface-variant mb-4 uppercase tracking-wider text-xs">Chọn danh mục</h2>
-<div class="grid grid-cols-3 gap-4" id="category-selector">
-<!-- Categories -->
-<button data-cat="1" class="cat-btn flex flex-col items-center justify-center p-4 rounded-xl border-2 border-primary bg-primary/5 text-primary transition-all duration-300">
-<span class="material-symbols-outlined mb-2 text-3xl" data-icon="book_open">file_open</span>
-<span class="text-sm font-semibold">Gia sư</span>
-</button>
-<button data-cat="2" class="cat-btn flex flex-col items-center justify-center p-4 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low transition-all duration-300">
-<span class="material-symbols-outlined mb-2 text-3xl" data-icon="child_care">child_care</span>
-<span class="text-sm font-medium">Đón trẻ</span>
-</button>
-<button data-cat="3" class="cat-btn flex flex-col items-center justify-center p-4 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low transition-all duration-300">
-<span class="material-symbols-outlined mb-2 text-3xl" data-icon="cleaning_services">cleaning_services</span>
-<span class="text-sm font-medium">Dọn dẹp</span>
-</button>
-</div>
-</section>
-<!-- Form Section -->
-<div class="space-y-8">
-<!-- Title & Description Block -->
-<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm space-y-6">
-<div>
-<label class="block text-sm font-bold text-on-surface-variant mb-2 ml-1">Tiêu đề công việc</label>
-<input id="task-title" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="VD: Đón bé lớp 3 &amp; kèm Toán" type="text"/>
-</div>
-<div>
-<label class="block text-sm font-bold text-on-surface-variant mb-2 ml-1">Mô tả chi tiết</label>
-<textarea id="task-desc" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 transition-all resize-none" placeholder="Nhập độ tuổi của bé, thời gian học, môn học hoặc yêu cầu đặc biệt khác..." rows="4"></textarea>
-</div>
-</div>
-<!-- Location & Schedule Block -->
-<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm space-y-6">
-<div>
-<label class="block text-sm font-bold text-on-surface-variant mb-2 ml-1">Địa điểm</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-3.5 text-primary" data-icon="location_on">location_on</span>
-<input id="task-loc" class="w-full bg-surface-container-low border-none rounded-xl pl-12 pr-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Thêm địa chỉ thực hiện công việc..." type="text"/>
-</div>
-</div>
-<div class="grid grid-cols-2 gap-4">
-<div>
-<label class="block text-sm font-bold text-on-surface-variant mb-2 ml-1">Ngày làm</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-3.5 text-on-surface-variant/70" data-icon="calendar_today">calendar_today</span>
-<input id="task-date" class="w-full bg-surface-container-low border-none rounded-xl pl-12 pr-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 transition-all text-sm" type="date"/>
-</div>
-</div>
-<div>
-<label class="block text-sm font-bold text-on-surface-variant mb-2 ml-1">Giờ bắt đầu</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-3.5 text-on-surface-variant/70" data-icon="schedule">schedule</span>
-<input id="task-time" class="w-full bg-surface-container-low border-none rounded-xl pl-12 pr-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 transition-all text-sm" type="time"/>
-</div>
-</div>
-</div>
-</div>
-<!-- Pricing Block -->
-<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
-<div class="flex items-center justify-between mb-4">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Mức giá đề xuất</label>
-<div class="flex items-center gap-1 bg-tertiary/10 px-3 py-1 rounded-full">
-<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
-<span class="text-[11px] font-bold text-tertiary uppercase tracking-tight">Giá thị trường</span>
-</div>
-</div>
-<div class="relative">
-<span class="absolute right-4 top-3.5 text-on-surface-variant font-bold">VNĐ / buổi</span>
-<input id="task-price" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-4 text-2xl font-bold text-primary placeholder:text-on-surface-variant/30 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="0" type="number"/>
-</div>
-<p class="mt-3 text-xs text-on-surface-variant/70 ml-1 flex items-center gap-1">
-<span class="material-symbols-outlined text-sm" data-icon="lightbulb">lightbulb</span>
-                    Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn
-                </p>
-</div>
-<!-- Map Preview (Aesthetic Placeholder) -->
-<div class="relative h-40 rounded-2xl overflow-hidden group">
-<img class="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 transition-all duration-700" data-alt="abstract minimalist map UI with clean roads and soft pastel colors representing an urban location" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbX9ph3O7Hzi16h5RtLSFp6mKzxZA5YcfMSyG6DXys3kJtI-3dV7ygtSd5bAHUr9uLpyB3qTsZfGEQHPc_KSl6AkKIWNYO6FM6BF0YAJagUdNU4ipJABh1C9EXNdIyg0Jzv7vYCUH3gjxSIiBi2CUvBtw3MP_HwNmSurjo50eH4jWCqp2Sl35dlYKm_muYzGLcsmUpnTfAkm2XKQyvttSJY6mnXOmI9yPgAMpLeAfQj23_TacUuYzn8uEdLebl6xbRBMjaJPMubQ"/>
-<div class="absolute inset-0 bg-gradient-to-t from-surface/80 to-transparent"></div>
-<div class="absolute bottom-4 left-4 flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm">
-<span class="material-symbols-outlined text-primary text-sm" data-icon="explore" style="font-variation-settings: 'FILL' 1;">explore</span>
-<span class="text-[10px] font-bold text-on-surface uppercase tracking-wider">Xem trên bản đồ</span>
-</div>
-</div>
-</div>
-</main>
-<!-- Sticky Footer CTA -->
-<footer class="fixed bottom-0 left-0 w-full z-50 px-6 pb-8 pt-4 bg-white/90 backdrop-blur-xl border-t border-outline-variant/10">
-<button id="submit-btn" class="w-full bg-primary hover:bg-primary-container text-white font-manrope font-extrabold text-base py-4 rounded-xl shadow-[0_20px_40px_rgba(0,83,219,0.15)] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-            Đăng lên cộng đồng
-            <span class="material-symbols-outlined" data-icon="send">send</span>
-</button>
-</footer>
-<script>
-    const API_BASE = "/api";
-    const token = localStorage.getItem('token');
-    if (!token) window.location.href = "{% url 'frontend:login' %}";
-
-    let selectedCat = 1;
-    const catBtns = document.querySelectorAll('.cat-btn');
-    catBtns.forEach(btn => {
-        btn.onclick = () => {
-            selectedCat = btn.dataset.cat;
-            catBtns.forEach(b => {
-                b.classList.remove('border-primary', 'bg-primary/5', 'text-primary');
-                b.classList.add('border-outline-variant/30', 'bg-surface-container-lowest', 'text-on-surface-variant');
-            });
-            btn.classList.add('border-primary', 'bg-primary/5', 'text-primary');
-            btn.classList.remove('border-outline-variant/30', 'bg-surface-container-lowest', 'text-on-surface-variant');
-        };
-    });
-
-    document.getElementById('submit-btn').onclick = async () => {
-        const title = document.getElementById('task-title').value;
-        const description = document.getElementById('task-desc').value;
-        const locationStr = document.getElementById('task-loc').value;
-        const date = document.getElementById('task-date').value;
-        const time = document.getElementById('task-time').value;
-        const price = document.getElementById('task-price').value;
-
-        if (!title || !description || !locationStr || !date || !time || !price) {
-            alert("Vui lòng điền đầy đủ thông tin!");
-            return;
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Manrope', sans-serif;
         }
 
-        const scheduled_time = `${date}T${time}:00Z`;
+        /* Custom scrollbar for form area */
+        .form-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .form-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .form-scroll::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 999px;
+        }
+        .form-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
 
-        try {
-            const resp = await fetch(API_BASE + "/tasks/", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    category: selectedCat,
-                    title, description, location: locationStr,
-                    scheduled_time, price
-                })
+        /* Sidebar nav link styles */
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            color: #6B7280;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover {
+            background: #FFF4ED;
+            color: #F26522;
+        }
+        .sidebar-link.active {
+            background: #FFF4ED;
+            color: #F26522;
+            font-weight: 700;
+        }
+        .sidebar-link.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Category card styles */
+        .cat-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem 0.75rem;
+            border-radius: 1rem;
+            border: 2px solid #E5E7EB;
+            background: #FFFFFF;
+            color: #6B7280;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            gap: 0.5rem;
+        }
+        .cat-card:hover {
+            border-color: #F26522;
+            background: #FFF4ED;
+            color: #F26522;
+        }
+        .cat-card.selected {
+            border-color: #F26522;
+            background: #FFF4ED;
+            color: #F26522;
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.12);
+        }
+        .cat-card.selected .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Form card */
+        .form-card {
+            background: #FFFFFF;
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid #F3F4F6;
+        }
+
+        /* Input focus ring */
+        .form-input {
+            width: 100%;
+            background: #F9FAFB;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.9375rem;
+            color: #1A1A2E;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+        .form-input:focus {
+            border-color: #F26522;
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.1);
+            background: #FFFFFF;
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-radius: 0.875rem;
+            background: #FFFFFF;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            border: 1px solid #E5E7EB;
+            min-width: 320px;
+            max-width: 420px;
+            animation: toastSlideIn 0.35s ease-out;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #1A1A2E;
+        }
+        .toast.toast-success {
+            border-left: 4px solid #10B981;
+        }
+        .toast.toast-success .toast-icon {
+            color: #10B981;
+        }
+        .toast.toast-error {
+            border-left: 4px solid #EF4444;
+        }
+        .toast.toast-error .toast-icon {
+            color: #EF4444;
+        }
+        .toast.toast-warning {
+            border-left: 4px solid #F59E0B;
+        }
+        .toast.toast-warning .toast-icon {
+            color: #F59E0B;
+        }
+        .toast-exit {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastSlideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100px); }
+        }
+
+        /* Mobile bottom nav */
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            color: #9CA3AF;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border-radius: 0.75rem;
+        }
+        .mobile-nav-item.active {
+            color: #F26522;
+            background: #FFF4ED;
+        }
+        .mobile-nav-item.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Submit button pulse */
+        @keyframes subtlePulse {
+            0%, 100% { box-shadow: 0 4px 14px rgba(242, 101, 34, 0.25); }
+            50% { box-shadow: 0 4px 20px rgba(242, 101, 34, 0.4); }
+        }
+        .submit-btn:hover {
+            animation: subtlePulse 2s ease-in-out infinite;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textPrimary antialiased min-h-screen">
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ===== DESKTOP SIDEBAR (hidden on mobile) ===== -->
+    <aside id="sidebar" class="hidden lg:flex fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex-col z-40 shadow-sm">
+        <!-- Logo -->
+        <div class="px-6 py-6 border-b border-gray-50">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+                    <span class="material-symbols-outlined filled text-white text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 600;">volunteer_activism</span>
+                </div>
+                <div>
+                    <h1 class="font-headline font-extrabold text-lg text-textPrimary leading-none tracking-tight">EduCareLink</h1>
+                    <p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase mt-0.5">Phụ huynh</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 space-y-1.5">
+            <a href="{% url 'frontend:parent_home' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span>Trang chủ</span>
+            </a>
+            <a href="{% url 'frontend:parent_tasks' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span>Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:task_create_1' %}" class="sidebar-link active">
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span>Đăng việc mới</span>
+            </a>
+            <a href="{% url 'frontend:chatbot' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span>AI Trợ lý</span>
+            </a>
+        </nav>
+
+        <!-- User Info + Logout -->
+        <div class="px-4 pb-6 border-t border-gray-50 pt-4">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden ring-2 ring-primary/10">
+                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                    <p class="text-[11px] text-textSecondary">Phụ huynh</p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-textSecondary hover:bg-red-50 hover:text-red-500 transition-all text-sm font-medium">
+                <span class="material-symbols-outlined text-lg">logout</span>
+                <span>Đăng xuất</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="lg:ml-[260px] min-h-screen flex flex-col pb-20 lg:pb-0">
+
+        <!-- Mobile Header (hidden on desktop) -->
+        <header class="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined filled text-white text-base" style="font-variation-settings: 'FILL' 1, 'wght' 600;">volunteer_activism</span>
+                    </div>
+                    <h1 class="font-headline font-bold text-base text-textPrimary">EduCareLink</h1>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden ring-2 ring-primary/10">
+                    <img id="mobile-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 lg:py-8 form-scroll overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+
+                <!-- Page Title -->
+                <div class="mb-8">
+                    <h2 class="font-headline font-extrabold text-2xl lg:text-3xl text-textPrimary tracking-tight">Đăng việc mới</h2>
+                    <p class="text-textSecondary text-sm mt-1.5">Chọn danh mục và điền thông tin để tìm Carepartner phù hợp</p>
+                </div>
+
+                <!-- ===== CATEGORY SELECTOR ===== -->
+                <section class="mb-8">
+                    <h3 class="font-headline font-bold text-sm text-textSecondary uppercase tracking-wider mb-4">Chọn danh mục</h3>
+                    <div id="category-selector" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <!-- Gia sư -->
+                        <button data-cat="1" class="cat-card selected">
+                            <span class="material-symbols-outlined filled text-3xl" style="font-variation-settings: 'FILL' 1, 'wght' 400;">menu_book</span>
+                            <span class="text-sm font-semibold">Gia sư</span>
+                        </button>
+                        <!-- Đón trẻ -->
+                        <button data-cat="2" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">child_care</span>
+                            <span class="text-sm font-medium">Đón trẻ</span>
+                        </button>
+                        <!-- Dọn dẹp -->
+                        <button data-cat="3" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">cleaning_services</span>
+                            <span class="text-sm font-medium">Dọn dẹp</span>
+                        </button>
+                        <!-- Trông trẻ -->
+                        <button data-cat="4" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">stroller</span>
+                            <span class="text-sm font-medium">Trông trẻ</span>
+                        </button>
+                        <!-- Mua sắm hộ -->
+                        <button data-cat="5" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">shopping_bag</span>
+                            <span class="text-sm font-medium">Mua sắm hộ</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ===== FORM SECTIONS ===== -->
+                <div class="space-y-6">
+
+                    <!-- Thông tin công việc -->
+                    <div class="form-card">
+                        <div class="flex items-center gap-2.5 mb-5">
+                            <div class="w-8 h-8 rounded-lg bg-primaryLight flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">description</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-base text-textPrimary">Thông tin công việc</h3>
+                        </div>
+                        <div class="space-y-5">
+                            <div>
+                                <label for="task-title" class="block text-sm font-semibold text-textPrimary mb-2">
+                                    Tiêu đề công việc <span class="text-error">*</span>
+                                </label>
+                                <input
+                                    id="task-title"
+                                    type="text"
+                                    class="form-input"
+                                    placeholder="VD: Gia sư Toán lớp 5, Đón bé đi học..."
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label for="task-desc" class="block text-sm font-semibold text-textPrimary mb-2">
+                                    Mô tả chi tiết <span class="text-error">*</span>
+                                </label>
+                                <textarea
+                                    id="task-desc"
+                                    class="form-input resize-none"
+                                    rows="4"
+                                    placeholder="Nhập độ tuổi của bé, thời gian học, môn học hoặc yêu cầu đặc biệt khác..."
+                                    required
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thời gian & Địa điểm -->
+                    <div class="form-card">
+                        <div class="flex items-center gap-2.5 mb-5">
+                            <div class="w-8 h-8 rounded-lg bg-primaryLight flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">event_note</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-base text-textPrimary">Thời gian & Địa điểm</h3>
+                        </div>
+                        <div class="space-y-5">
+                            <div>
+                                <label for="task-loc" class="block text-sm font-semibold text-textPrimary mb-2">
+                                    Địa điểm <span class="text-error">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-primary text-xl">location_on</span>
+                                    <input
+                                        id="task-loc"
+                                        type="text"
+                                        class="form-input pl-11"
+                                        placeholder="VD: Quận Cầu Giấy, Hà Nội"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="task-date" class="block text-sm font-semibold text-textPrimary mb-2">
+                                        Ngày làm <span class="text-error">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textSecondary text-xl">calendar_today</span>
+                                        <input
+                                            id="task-date"
+                                            type="date"
+                                            class="form-input pl-11"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="task-time" class="block text-sm font-semibold text-textPrimary mb-2">
+                                        Giờ bắt đầu <span class="text-error">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textSecondary text-xl">schedule</span>
+                                        <input
+                                            id="task-time"
+                                            type="time"
+                                            class="form-input pl-11"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mức thù lao -->
+                    <div class="form-card">
+                        <div class="flex items-center gap-2.5 mb-5">
+                            <div class="w-8 h-8 rounded-lg bg-primaryLight flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">payments</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-base text-textPrimary">Mức thù lao</h3>
+                        </div>
+                        <div>
+                            <label for="task-price" class="block text-sm font-semibold text-textPrimary mb-2">
+                                Giá đề xuất
+                            </label>
+                            <div class="relative">
+                                <input
+                                    id="task-price"
+                                    type="number"
+                                    class="form-input text-xl font-bold text-primary pr-28"
+                                    placeholder="0"
+                                    min="0"
+                                    step="10000"
+                                />
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary font-semibold text-sm">VNĐ / buổi</span>
+                            </div>
+                            <p class="mt-3 text-xs text-textSecondary flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-amber-500" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+                                Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-2 pb-6">
+                        <button
+                            id="submit-btn"
+                            class="submit-btn w-full bg-primary hover:bg-primaryDark text-white font-headline font-extrabold text-base py-4 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5"
+                        >
+                            <span id="submit-text">Đăng lên cộng đồng</span>
+                            <span class="material-symbols-outlined text-xl" id="submit-icon">send</span>
+                        </button>
+                    </div>
+
+                </div>
+                <!-- end form sections -->
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM NAV (hidden on desktop) ===== -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-2 pt-2 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div class="flex justify-around items-center">
+            <a href="{% url 'frontend:parent_home' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span>Trang chủ</span>
+            </a>
+            <a href="{% url 'frontend:parent_tasks' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span>Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:task_create_1' %}" class="mobile-nav-item active">
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">add_circle</span>
+                <span>Đăng việc</span>
+            </a>
+            <a href="{% url 'frontend:chatbot' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span>AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ===== JAVASCRIPT ===== -->
+    <script>
+        const API_BASE = "/api";
+        const token = localStorage.getItem('token');
+
+        // ===== AUTH CHECK =====
+        if (!token) {
+            window.location.href = "{% url 'frontend:login' %}";
+        }
+
+        // ===== TOAST NOTIFICATION SYSTEM =====
+        function showToast(message, type = 'success', duration = 4000) {
+            const container = document.getElementById('toast-container');
+
+            const iconMap = {
+                success: 'check_circle',
+                error: 'error',
+                warning: 'warning'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined toast-icon text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">${iconMap[type] || 'info'}</span>
+                <span class="flex-1">${message}</span>
+                <button onclick="dismissToast(this)" class="ml-2 text-textSecondary hover:text-textPrimary transition-colors p-0.5">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto dismiss
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        function dismissToast(btn) {
+            const toast = btn.closest('.toast');
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        // ===== LOGOUT =====
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = "{% url 'frontend:login' %}";
+        }
+
+        // ===== CATEGORY SELECTOR =====
+        let selectedCat = 1;
+        const catCards = document.querySelectorAll('.cat-card');
+
+        catCards.forEach(card => {
+            card.addEventListener('click', () => {
+                selectedCat = parseInt(card.dataset.cat);
+
+                catCards.forEach(c => {
+                    c.classList.remove('selected');
+                    c.querySelector('.material-symbols-outlined').classList.remove('filled');
+                    c.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+                    const nameSpan = c.querySelector('span:last-child');
+                    nameSpan.classList.remove('font-semibold');
+                    nameSpan.classList.add('font-medium');
+                });
+
+                card.classList.add('selected');
+                card.querySelector('.material-symbols-outlined').classList.add('filled');
+                card.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24";
+                const nameSpan = card.querySelector('span:last-child');
+                nameSpan.classList.remove('font-medium');
+                nameSpan.classList.add('font-semibold');
             });
-            if (resp.ok) {
-                alert("Đăng việc thành công!");
-                window.location.href = "{% url 'frontend:parent_tasks' %}";
-            } else {
-                const err = await resp.json();
-                alert("Lỗi: " + JSON.stringify(err));
+        });
+
+        // ===== FORM SUBMISSION =====
+        const submitBtn = document.getElementById('submit-btn');
+        const submitText = document.getElementById('submit-text');
+        const submitIcon = document.getElementById('submit-icon');
+
+        submitBtn.addEventListener('click', async () => {
+            const title = document.getElementById('task-title').value.trim();
+            const description = document.getElementById('task-desc').value.trim();
+            const locationStr = document.getElementById('task-loc').value.trim();
+            const date = document.getElementById('task-date').value;
+            const time = document.getElementById('task-time').value;
+            const price = document.getElementById('task-price').value;
+
+            // Validation
+            if (!title) {
+                showToast('Vui lòng nhập tiêu đề công việc', 'error');
+                document.getElementById('task-title').focus();
+                return;
             }
-        } catch (e) { alert("Lỗi kết nối."); }
-    };
-</script>
-</body></html>
+            if (!description) {
+                showToast('Vui lòng nhập mô tả chi tiết', 'error');
+                document.getElementById('task-desc').focus();
+                return;
+            }
+            if (!locationStr) {
+                showToast('Vui lòng nhập địa điểm', 'error');
+                document.getElementById('task-loc').focus();
+                return;
+            }
+            if (!date) {
+                showToast('Vui lòng chọn ngày làm', 'error');
+                document.getElementById('task-date').focus();
+                return;
+            }
+            if (!time) {
+                showToast('Vui lòng chọn giờ bắt đầu', 'error');
+                document.getElementById('task-time').focus();
+                return;
+            }
+            if (!price || parseFloat(price) <= 0) {
+                showToast('Vui lòng nhập mức thù lao hợp lệ', 'error');
+                document.getElementById('task-price').focus();
+                return;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitText.textContent = 'Đang đăng...';
+            submitIcon.innerHTML = '<span class="spinner"></span>';
+
+            const scheduled_time = `${date}T${time}:00Z`;
+
+            try {
+                const resp = await fetch(API_BASE + "/tasks/", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        category: selectedCat,
+                        title,
+                        description,
+                        location: locationStr,
+                        scheduled_time,
+                        price
+                    })
+                });
+
+                if (resp.ok) {
+                    showToast('Đăng việc thành công! Đang chuyển hướng...', 'success');
+                    setTimeout(() => {
+                        window.location.href = "{% url 'frontend:parent_tasks' %}";
+                    }, 1500);
+                } else {
+                    let errMsg = 'Đã xảy ra lỗi';
+                    try {
+                        const err = await resp.json();
+                        if (typeof err === 'object') {
+                            errMsg = Object.values(err).flat().join('. ') || errMsg;
+                        } else {
+                            errMsg = err.detail || err.message || errMsg;
+                        }
+                    } catch (e) { /* ignore parse error */ }
+                    showToast('Lỗi: ' + errMsg, 'error');
+                    resetSubmitBtn();
+                }
+            } catch (e) {
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                resetSubmitBtn();
+            }
+        });
+
+        function resetSubmitBtn() {
+            submitBtn.disabled = false;
+            submitText.textContent = 'Đăng lên cộng đồng';
+            submitIcon.innerHTML = '';
+            submitIcon.textContent = 'send';
+        }
+
+        // ===== LOAD USER PROFILE =====
+        async function loadUserProfile() {
+            try {
+                const resp = await fetch(API_BASE + "/profile/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resp.ok) {
+                    const prof = await resp.json();
+                    const fullName = (prof.first_name || '') + ' ' + (prof.last_name || '');
+                    const displayName = fullName.trim() || prof.username || 'Phụ huynh';
+
+                    // Update sidebar
+                    const sidebarName = document.getElementById('sidebar-name');
+                    const sidebarAvatar = document.getElementById('sidebar-avatar');
+                    if (sidebarName) sidebarName.textContent = displayName;
+                    if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F26522&color=fff`;
+
+                    // Update mobile avatar
+                    const mobileAvatar = document.getElementById('mobile-avatar');
+                    if (mobileAvatar) mobileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F26522&color=fff`;
+                }
+            } catch (e) {
+                console.error('Failed to load profile:', e);
+            }
+        }
+
+        loadUserProfile();
+
+        // ===== SET MINIMUM DATE TO TODAY =====
+        const dateInput = document.getElementById('task-date');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+    </script>
+
+</body>
+</html>

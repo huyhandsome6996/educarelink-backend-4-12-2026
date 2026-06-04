@@ -1,5 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
+from django.views import View
 
 class SplashView(TemplateView):
     template_name = "frontend/splash.html"
@@ -16,8 +17,12 @@ class ParentHomeView(TemplateView):
 class TaskCreate1View(TemplateView):
     template_name = "frontend/task_create_1.html"
 
-class TaskCreate2View(TemplateView):
-    template_name = "frontend/task_create_2.html"
+class TaskCreate2View(View):
+    def get(self, request, *args, **kwargs):
+        return redirect('frontend:task_create_1')
+
+    def post(self, request, *args, **kwargs):
+        return redirect('frontend:task_create_1')
 
 class ParentTasksView(TemplateView):
     template_name = "frontend/parent_tasks.html"
@@ -39,6 +44,9 @@ class WorkerJobsView(TemplateView):
 
 class WorkerProfileView(TemplateView):
     template_name = "frontend/worker_profile.html"
+
+class ChatbotView(TemplateView):
+    template_name = "frontend/chatbot.html"
 
 class AdminDashboardView(TemplateView):
     template_name = "frontend/admin_dashboard.html"

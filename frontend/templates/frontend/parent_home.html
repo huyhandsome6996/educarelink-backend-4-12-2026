@@ -1,117 +1,705 @@
 <!DOCTYPE html>
-<html class="light" lang="vi"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Educarelink - Home</title>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
-      tailwind.config = {
-        theme: {
-          extend: {
-            "colors": {
-                    "primary": "#0051d5", "on-primary": "#ffffff", "surface": "#f8f9fa",
-                    "on-surface": "#191c1d", "on-surface-variant": "#3d4947",
-                    "surface-container-low": "#f3f4f5", "surface-container-lowest": "#ffffff",
-                    "outline-variant": "#bcc9c6", "secondary-fixed": "#ffddb6", "on-secondary-fixed": "#2a1800"
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>EduCareLink - Trang chủ Phụ huynh</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        successBg: '#ECFDF5',
+                        error: '#EF4444',
+                        errorBg: '#FEF2F2',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
+                    },
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                },
             },
-          },
         }
-      }
     </script>
-<style>
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Sidebar scroll */
+        .sidebar-scroll::-webkit-scrollbar { width: 0; }
+        .sidebar-scroll { scrollbar-width: none; }
+
+        /* Toast animation */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+        }
+
+        /* Task card hover */
+        .task-card {
+            transition: box-shadow 0.2s ease, transform 0.15s ease;
+        }
+        .task-card:hover {
+            box-shadow: 0 8px 30px rgba(242, 101, 34, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Stat card pulse animation */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-value {
+            animation: countUp 0.5s ease-out forwards;
+        }
+
+        /* CTA card shimmer */
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .cta-shimmer {
+            background: linear-gradient(
+                110deg,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.12) 40%,
+                rgba(255,255,255,0.12) 60%,
+                rgba(255,255,255,0) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        /* Mobile bottom nav safe area */
+        @media (max-width: 1023px) {
+            .main-content {
+                padding-bottom: 5.5rem;
+            }
+        }
+
+        /* Loading skeleton */
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        .skeleton {
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen pb-32">
-<header class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-sm h-16 flex justify-between items-center px-6">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full overflow-hidden bg-slate-200 ring-2 ring-primary/10">
-<img id="user-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User"/>
-</div>
-<div>
-<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Chào buổi sáng,</p>
-<p id="user-name" class="font-headline font-bold text-teal-700 leading-tight">Đang tải...</p>
-</div>
-</div>
-<button class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-<span class="material-symbols-outlined text-slate-600">notifications</span>
-</button>
-</header>
-<main class="mt-20 px-6 space-y-8">
-<section>
-<button onclick="location.href='{% url 'frontend:task_create_1' %}'" class="w-full bg-primary p-6 rounded-lg text-left relative overflow-hidden group active:scale-[0.98] transition-transform shadow-lg">
-<div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
-<div class="relative z-10">
-<div class="flex items-center gap-2 mb-2">
-<span class="material-symbols-outlined text-on-primary bg-white/20 p-1.5 rounded-full" style="font-variation-settings: 'FILL' 1;">add_circle</span>
-<span class="text-on-primary font-headline font-extrabold text-xl tracking-tight">ĐĂNG VIỆC NGAY</span>
-</div>
-<p class="text-on-primary/80 text-sm font-medium">Tìm Carepartner nhanh chóng &amp; tin cậy cho bé yêu của bạn.</p>
-</div>
-</button>
-</section>
-<section>
-<div class="flex justify-between items-end mb-5">
-<h2 class="font-headline font-bold text-xl text-on-surface tracking-tight">Công việc của bạn</h2>
-<a class="text-primary text-sm font-semibold hover:underline" href="#">Xem tất cả</a>
-</div>
-<div id="task-list" class="space-y-4">
-    <div class="text-center py-10 italic text-slate-400">Đang tải dữ liệu...</div>
-</div>
-</section>
-</main>
-<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-3 pb-8 bg-white/80 backdrop-blur-2xl shadow-lg z-50">
-<a class="flex flex-col items-center justify-center bg-teal-50 text-teal-700 rounded-2xl px-5 py-2 scale-105" href="{% url 'frontend:parent_home' %}">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
-<span class="font-medium text-[11px] mt-1">Trang chủ</span>
-</a>
-<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2" href="{% url 'frontend:parent_tasks' %}">
-<span class="material-symbols-outlined">assignment</span>
-<span class="font-medium text-[11px] mt-1">Việc của tôi</span>
-</a>
-<a onclick="localStorage.clear(); location.href='{% url 'frontend:login' %}'" class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 cursor-pointer" href="#">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-medium text-[11px] mt-1">Đăng xuất</span>
-</a>
-</nav>
-<script>
-    const API_BASE = "/api";
-    const token = localStorage.getItem('token');
-    if (!token) window.location.href = "{% url 'frontend:login' %}";
 
-    async function init() {
-        try {
-            const profResp = await fetch(API_BASE + "/profile/", { headers: { 'Authorization': 'Bearer ' + token } });
-            const prof = await profResp.json();
-            document.getElementById('user-name').innerText = prof.first_name + " " + prof.last_name;
-            document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${prof.username}&background=random`;
+<body class="bg-background text-textPrimary min-h-screen">
 
-            const taskResp = await fetch(API_BASE + "/parent/my-tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
-            const tasks = await taskResp.json();
-            const container = document.getElementById('task-list');
-            if (tasks.length === 0) {
-                container.innerHTML = `<div class="bg-surface-container-low p-5 rounded-lg border border-dashed border-outline text-center py-10 italic">Chưa có công việc nào.</div>`;
-            } else {
-                container.innerHTML = tasks.map(t => `
-                    <div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm border border-outline-variant/10">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold rounded-full uppercase">${t.status}</span>
-                            <div class="text-primary font-bold text-lg">${new Intl.NumberFormat('vi-VN').format(t.price)}đ</div>
+    <!-- ============================================ -->
+    <!-- SIDEBAR (Desktop ≥1024px)                    -->
+    <!-- ============================================ -->
+    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
+            <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md">
+                <span class="material-symbols-outlined filled text-white text-xl">school</span>
+            </div>
+            <div>
+                <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
+            <div class="space-y-1">
+                <!-- Trang chủ - ACTIVE -->
+                <a href="{% url 'frontend:parent_home' %}"
+                   class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primaryLight text-primary font-semibold transition-all group">
+                    <span class="material-symbols-outlined filled text-primary">home</span>
+                    <span>Trang chủ</span>
+                </a>
+
+                <!-- Việc của tôi -->
+                <a href="{% url 'frontend:parent_tasks' %}"
+                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">assignment</span>
+                    <span>Việc của tôi</span>
+                </a>
+
+                <!-- Đăng việc mới -->
+                <a href="{% url 'frontend:task_create_1' %}"
+                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">add_circle</span>
+                    <span>Đăng việc mới</span>
+                </a>
+
+                <!-- AI Trợ lý -->
+                <a href="{% url 'frontend:chatbot' %}"
+                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">smart_toy</span>
+                    <span>AI Trợ lý</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User Section (Bottom) -->
+        <div class="border-t border-border px-4 py-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft flex-shrink-0">
+                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                    <p class="text-xs text-textMuted">Phụ huynh</p>
+                </div>
+                <button onclick="handleLogout()"
+                        class="w-9 h-9 rounded-lg flex items-center justify-center text-textMuted hover:bg-errorBg hover:text-error transition-all"
+                        title="Đăng xuất">
+                    <span class="material-symbols-outlined text-xl">logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ============================================ -->
+    <!-- MOBILE HEADER (<1024px)                      -->
+    <!-- ============================================ -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
+        <div class="flex items-center justify-between px-4 h-14">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined filled text-white text-base">school</span>
+                </div>
+                <span class="font-headline font-bold text-base text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
+            </div>
+            <button class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative">
+                <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-surface"></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- MAIN CONTENT AREA                            -->
+    <!-- ============================================ -->
+    <main class="lg:ml-[260px] min-h-screen main-content">
+
+        <!-- TOP HEADER BAR (Desktop) -->
+        <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+            <div>
+                <h1 class="font-headline font-bold text-2xl text-textPrimary">Trang chủ</h1>
+                <p id="greeting-desktop" class="text-textSecondary text-sm mt-0.5">Chào buổi sáng, Đang tải...</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors relative">
+                    <span class="material-symbols-outlined text-textSecondary">notifications</span>
+                    <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+                </button>
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft">
+                    <img id="header-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Greeting -->
+        <div class="lg:hidden pt-16 px-4 py-4">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft flex-shrink-0">
+                    <img id="mobile-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div>
+                    <p class="text-xs text-textMuted font-medium">Chào buổi sáng,</p>
+                    <p id="greeting-mobile" class="font-headline font-bold text-textPrimary">Đang tải...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT BODY -->
+        <div class="px-4 lg:px-8 pb-8 space-y-6 lg:space-y-8">
+
+            <!-- =============================== -->
+            <!-- 1. QUICK STATS ROW              -->
+            <!-- =============================== -->
+            <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Tổng việc đã đăng -->
+                <div class="bg-surface rounded-2xl p-5 border border-border hover:border-primarySoft transition-colors">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-primary text-xl">task_alt</span>
                         </div>
-                        <h3 class="text-lg font-bold text-on-surface mb-3">${t.title}</h3>
-                        <div class="text-on-surface-variant text-sm flex flex-col gap-1">
-                            <p>📍 ${t.location}</p>
-                            <p>⏰ ${new Date(t.scheduled_time).toLocaleString('vi-VN')}</p>
+                        <span class="text-sm font-medium text-textSecondary">Tổng việc đã đăng</span>
+                    </div>
+                    <p id="stat-total" class="stat-value font-headline font-extrabold text-3xl text-textPrimary">0</p>
+                </div>
+
+                <!-- Đang tìm Carepartner -->
+                <div class="bg-surface rounded-2xl p-5 border border-border hover:border-primarySoft transition-colors">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-secondaryLight flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-secondary text-xl">search</span>
+                        </div>
+                        <span class="text-sm font-medium text-textSecondary">Đang tìm Carepartner</span>
+                    </div>
+                    <p id="stat-open" class="stat-value font-headline font-extrabold text-3xl text-textPrimary">0</p>
+                </div>
+
+                <!-- Đang thực hiện -->
+                <div class="bg-surface rounded-2xl p-5 border border-border hover:border-primarySoft transition-colors">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-info text-xl">pending</span>
+                        </div>
+                        <span class="text-sm font-medium text-textSecondary">Đang thực hiện</span>
+                    </div>
+                    <p id="stat-inprogress" class="stat-value font-headline font-extrabold text-3xl text-textPrimary">0</p>
+                </div>
+            </section>
+
+            <!-- =============================== -->
+            <!-- 2. ĐĂNG VIỆC NGAY CTA CARD      -->
+            <!-- =============================== -->
+            <section>
+                <button onclick="location.href='{% url 'frontend:task_create_1' %}'"
+                        class="w-full relative overflow-hidden rounded-2xl p-6 lg:p-8 text-left group active:scale-[0.98] transition-transform cursor-pointer"
+                        style="background: linear-gradient(135deg, #F26522 0%, #D4541E 60%, #B8431A 100%);">
+
+                    <!-- Decorative circles -->
+                    <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/10 rounded-full"></div>
+                    <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-white/5 rounded-full"></div>
+                    <div class="absolute top-1/2 right-1/4 w-20 h-20 bg-white/5 rounded-full"></div>
+
+                    <!-- Shimmer overlay -->
+                    <div class="absolute inset-0 cta-shimmer pointer-events-none"></div>
+
+                    <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                                <span class="material-symbols-outlined filled text-white text-3xl">add_circle</span>
+                            </div>
+                            <div>
+                                <h2 class="font-headline font-extrabold text-xl lg:text-2xl text-white tracking-tight">
+                                    ĐĂNG VIỆC NGAY
+                                </h2>
+                                <p class="text-white/80 text-sm mt-1 font-medium">
+                                    Tìm Carepartner nhanh chóng & tin cậy cho bé yêu của bạn
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl px-5 py-3 transition-colors self-start sm:self-center">
+                            <span class="text-white font-bold text-sm">Bắt đầu</span>
+                            <span class="material-symbols-outlined text-white text-lg">arrow_forward</span>
                         </div>
                     </div>
-                `).join('');
+                </button>
+            </section>
+
+            <!-- =============================== -->
+            <!-- 3. CÔNG VIỆC GẦN ĐÂY            -->
+            <!-- =============================== -->
+            <section>
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="font-headline font-bold text-xl text-textPrimary">Công việc gần đây</h2>
+                    <a href="{% url 'frontend:parent_tasks' %}"
+                       class="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+                        Xem tất cả
+                        <span class="material-symbols-outlined text-base">chevron_right</span>
+                    </a>
+                </div>
+
+                <!-- Task Grid -->
+                <div id="task-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Loading Skeletons -->
+                    <div class="bg-surface rounded-2xl p-5 border border-border">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="skeleton h-5 w-20 rounded-full"></div>
+                            <div class="skeleton h-6 w-24 rounded-lg"></div>
+                        </div>
+                        <div class="skeleton h-5 w-3/4 rounded-lg mb-3"></div>
+                        <div class="skeleton h-4 w-1/2 rounded-lg mb-2"></div>
+                        <div class="skeleton h-4 w-2/3 rounded-lg"></div>
+                    </div>
+                    <div class="bg-surface rounded-2xl p-5 border border-border hidden md:block">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="skeleton h-5 w-20 rounded-full"></div>
+                            <div class="skeleton h-6 w-24 rounded-lg"></div>
+                        </div>
+                        <div class="skeleton h-5 w-3/4 rounded-lg mb-3"></div>
+                        <div class="skeleton h-4 w-1/2 rounded-lg mb-2"></div>
+                        <div class="skeleton h-4 w-2/3 rounded-lg"></div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ============================================ -->
+    <!-- MOBILE BOTTOM NAV (<1024px)                  -->
+    <!-- ============================================ -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-border">
+        <div class="flex justify-around items-center px-2 pt-2 pb-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+            <!-- Home (Active) -->
+            <a href="{% url 'frontend:parent_home' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-4 py-2 bg-primaryLight text-primary transition-all">
+                <span class="material-symbols-outlined filled text-xl">home</span>
+                <span class="font-medium text-[11px] mt-0.5">Trang chủ</span>
+            </a>
+            <!-- Việc của tôi -->
+            <a href="{% url 'frontend:parent_tasks' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-4 py-2 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span class="font-medium text-[11px] mt-0.5">Việc của tôi</span>
+            </a>
+            <!-- Đăng việc -->
+            <a href="{% url 'frontend:task_create_1' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-4 py-2 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span class="font-medium text-[11px] mt-0.5">Đăng việc</span>
+            </a>
+            <!-- AI Trợ lý -->
+            <a href="{% url 'frontend:chatbot' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-4 py-2 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span class="font-medium text-[11px] mt-0.5">AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT                                    -->
+    <!-- ============================================ -->
+    <script>
+        const API_BASE = "/api";
+
+        // ---- Toast Notification System ----
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-amber-500',
+                info: 'bg-orange-500'
+            };
+            const icons = {
+                success: 'check_circle',
+                error: 'error',
+                warning: 'warning',
+                info: 'info'
+            };
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-[9999] ${colors[type] || colors.info} text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-in max-w-sm`;
+            toast.innerHTML = `<span class="material-symbols-outlined text-xl filled">${icons[type] || icons.info}</span><span class="text-sm font-medium">${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ---- Auth Check ----
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = "{% url 'frontend:login' %}";
+        }
+
+        // ---- Greeting based on time of day ----
+        function getGreeting() {
+            const hour = new Date().getHours();
+            if (hour < 12) return 'Chào buổi sáng';
+            if (hour < 18) return 'Chào buổi chiều';
+            return 'Chào buổi tối';
+        }
+
+        // ---- Status display helpers ----
+        function getStatusLabel(status) {
+            const map = {
+                'open': 'Đang tìm người',
+                'in_progress': 'Đang thực hiện',
+                'completed': 'Đã hoàn thành',
+                'cancelled': 'Đã hủy'
+            };
+            return map[status] || status;
+        }
+
+        function getStatusStyle(status) {
+            const map = {
+                'open': 'bg-secondaryLight text-secondaryDark',
+                'in_progress': 'bg-blue-50 text-blue-700',
+                'completed': 'bg-successBg text-success',
+                'cancelled': 'bg-gray-100 text-gray-500'
+            };
+            return map[status] || 'bg-gray-100 text-gray-500';
+        }
+
+        // ---- Format date/time in Vietnamese ----
+        function formatDateTime(dateStr) {
+            try {
+                const d = new Date(dateStr);
+                const now = new Date();
+                const diffMs = d - now;
+                const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+
+                const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const dateStrShort = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+
+                if (diffDays === 0 && d.toDateString() === now.toDateString()) {
+                    return `Hôm nay, ${timeStr}`;
+                } else if (diffDays === 1 || (diffDays === 0 && d > now)) {
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    if (d.toDateString() === tomorrow.toDateString()) {
+                        return `Ngày mai, ${timeStr}`;
+                    }
+                }
+                return `${dateStrShort}, ${timeStr}`;
+            } catch {
+                return dateStr;
             }
-        } catch (e) { console.error(e); }
-    }
-    init();
-</script>
-</body></html>
+        }
+
+        // ---- Format price ----
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+        }
+
+        // ---- Render task card ----
+        function renderTaskCard(task) {
+            const statusLabel = getStatusLabel(task.status);
+            const statusStyle = getStatusStyle(task.status);
+            const formattedTime = formatDateTime(task.scheduled_time);
+            const formattedPrice = formatPrice(task.price);
+
+            // Action button based on status
+            let actionBtn = '';
+            if (task.status === 'open') {
+                actionBtn = `
+                    <a href="{% url 'frontend:browse_candidates' %}?task_id=${task.id}"
+                       class="flex-1 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm text-center hover:bg-primaryDark transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">group</span>
+                        Xem ứng viên
+                    </a>`;
+            } else if (task.status === 'completed') {
+                actionBtn = `
+                    <a href="{% url 'frontend:review' %}?task_id=${task.id}"
+                       class="flex-1 py-2.5 rounded-xl bg-secondaryLight text-secondaryDark font-semibold text-sm text-center hover:bg-secondary/10 transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">star_rate</span>
+                        Đánh giá
+                    </a>`;
+            } else if (task.status === 'in_progress') {
+                actionBtn = `
+                    <a href="{% url 'frontend:parent_tasks' %}"
+                       class="flex-1 py-2.5 rounded-xl bg-gray-50 text-textSecondary font-semibold text-sm text-center hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">visibility</span>
+                        Theo dõi
+                    </a>`;
+            }
+
+            return `
+                <div class="task-card bg-surface rounded-2xl p-5 border border-border hover:border-primarySoft/50">
+                    <!-- Header: status + price -->
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="px-3 py-1 ${statusStyle} text-[11px] font-bold rounded-full uppercase tracking-wide">
+                            ${statusLabel}
+                        </span>
+                        <span class="font-headline font-extrabold text-lg text-primary">${formattedPrice}</span>
+                    </div>
+
+                    <!-- Title -->
+                    <h3 class="font-bold text-textPrimary text-base leading-snug mb-3 line-clamp-2">${task.title}</h3>
+
+                    <!-- Details -->
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center gap-2 text-textSecondary text-sm">
+                            <span class="material-symbols-outlined text-lg text-textMuted">location_on</span>
+                            <span class="truncate">${task.location || 'Chưa cập nhật'}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-textSecondary text-sm">
+                            <span class="material-symbols-outlined text-lg text-textMuted">schedule</span>
+                            <span>${formattedTime}</span>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="border-t border-divider mb-4"></div>
+
+                    <!-- Action button -->
+                    <div class="flex gap-3">
+                        <a href="{% url 'frontend:task_detail' %}?task_id=${task.id}"
+                           class="flex-1 py-2.5 rounded-xl bg-gray-50 text-textSecondary font-semibold text-sm text-center hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined text-lg">info</span>
+                            Chi tiết
+                        </a>
+                        ${actionBtn}
+                    </div>
+                </div>`;
+        }
+
+        // ---- Handle Logout ----
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.clear();
+                showToast('Đã đăng xuất thành công', 'success');
+                setTimeout(() => {
+                    window.location.href = "{% url 'frontend:login' %}";
+                }, 500);
+            }
+        }
+
+        // ---- Main Init ----
+        async function init() {
+            try {
+                // Fetch profile
+                const profResp = await fetch(API_BASE + "/profile/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!profResp.ok) {
+                    if (profResp.status === 401) {
+                        localStorage.removeItem('token');
+                        window.location.href = "{% url 'frontend:login' %}";
+                        return;
+                    }
+                    throw new Error('Không thể tải thông tin người dùng');
+                }
+
+                const prof = await profResp.json();
+                const fullName = (prof.first_name && prof.last_name)
+                    ? `${prof.first_name} ${prof.last_name}`
+                    : prof.username || 'Người dùng';
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
+                const greeting = `${getGreeting()}, ${fullName}`;
+
+                // Update all name displays
+                document.getElementById('sidebar-user-name').textContent = fullName;
+                document.getElementById('greeting-desktop').textContent = greeting;
+                document.getElementById('greeting-mobile').textContent = fullName;
+
+                // Update all avatar images
+                ['sidebar-avatar', 'header-avatar', 'mobile-avatar'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.src = avatarUrl;
+                });
+
+            } catch (e) {
+                console.error('Profile fetch error:', e);
+                showToast('Không thể tải thông tin cá nhân', 'error');
+            }
+
+            try {
+                // Fetch tasks
+                const taskResp = await fetch(API_BASE + "/parent/my-tasks/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!taskResp.ok) {
+                    throw new Error('Không thể tải danh sách việc');
+                }
+
+                const tasks = await taskResp.json();
+                const container = document.getElementById('task-list');
+
+                // Update stats
+                const totalCount = tasks.length;
+                const openCount = tasks.filter(t => t.status === 'open').length;
+                const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
+
+                document.getElementById('stat-total').textContent = totalCount;
+                document.getElementById('stat-open').textContent = openCount;
+                document.getElementById('stat-inprogress').textContent = inProgressCount;
+
+                if (tasks.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-full bg-surface rounded-2xl p-10 border border-dashed border-border text-center">
+                            <div class="w-16 h-16 rounded-full bg-primaryLight flex items-center justify-center mx-auto mb-4">
+                                <span class="material-symbols-outlined filled text-primary text-3xl">inbox</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-textPrimary text-lg mb-2">Chưa có công việc nào</h3>
+                            <p class="text-textSecondary text-sm mb-5">Hãy đăng việc mới để tìm Carepartner phù hợp cho bé yêu!</p>
+                            <a href="{% url 'frontend:task_create_1' %}"
+                               class="inline-flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-xl hover:bg-primaryDark transition-colors">
+                                <span class="material-symbols-outlined text-lg">add_circle</span>
+                                Đăng việc ngay
+                            </a>
+                        </div>`;
+                } else {
+                    // Show most recent tasks (max 6)
+                    const recentTasks = tasks.slice(0, 6);
+                    container.innerHTML = recentTasks.map(t => renderTaskCard(t)).join('');
+
+                    if (tasks.length > 6) {
+                        container.innerHTML += `
+                            <div class="col-span-full text-center pt-2">
+                                <a href="{% url 'frontend:parent_tasks' %}"
+                                   class="inline-flex items-center gap-1.5 text-primary font-semibold text-sm hover:underline">
+                                    Xem tất cả ${totalCount} công việc
+                                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                </a>
+                            </div>`;
+                    }
+                }
+
+            } catch (e) {
+                console.error('Tasks fetch error:', e);
+                showToast('Không thể tải danh sách công việc', 'error');
+                const container = document.getElementById('task-list');
+                container.innerHTML = `
+                    <div class="col-span-full bg-errorBg rounded-2xl p-8 text-center">
+                        <span class="material-symbols-outlined filled text-error text-4xl mb-3 block">cloud_off</span>
+                        <h3 class="font-headline font-bold text-textPrimary text-lg mb-2">Không thể tải dữ liệu</h3>
+                        <p class="text-textSecondary text-sm mb-4">Vui lòng kiểm tra kết nối mạng và thử lại</p>
+                        <button onclick="init()"
+                                class="inline-flex items-center gap-2 bg-error text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-red-600 transition-colors">
+                            <span class="material-symbols-outlined text-lg">refresh</span>
+                            Thử lại
+                        </button>
+                    </div>`;
+            }
+        }
+
+        // Start
+        init();
+    </script>
+
+</body>
+</html>

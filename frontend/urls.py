@@ -12,6 +12,7 @@ urlpatterns = [
     path('parent/create-2/', TaskCreate2View.as_view(), name='task_create_2'),
     path('parent/tasks/', ParentTasksView.as_view(), name='parent_tasks'),
     path('parent/browse-candidates/', BrowseCandidatesView.as_view(), name='browse_candidates'),
+    path('parent/chatbot/', ChatbotView.as_view(), name='chatbot'),
     path('parent/review/', ReviewView.as_view(), name='review'),
     path('worker/', WorkerFeedView.as_view(), name='worker_feed'),
     path('worker/task-detail/', TaskDetailView.as_view(), name='task_detail'),

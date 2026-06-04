@@ -1,223 +1,755 @@
+{% load static %}
 <!DOCTYPE html>
-
-<html class="light" lang="vi">
-
+<html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>Educarelink - Chi tiết công việc</title>
-  <!-- Fonts -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Plus_Jakarta_Sans:wght@400;500;600;700&amp;display=swap"
-    rel="stylesheet" />
-  <!-- Material Symbols -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-    rel="stylesheet" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script id="tailwind-config">
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          "colors": {
-            "outline": "#6d7a77",
-            "inverse-primary": "#b4c5ff",
-            "secondary-fixed-dim": "#ffb95a",
-            "tertiary-container": "#008376",
-            "on-tertiary": "#ffffff",
-            "surface-tint": "#0053db",
-            "on-secondary-container": "#6f4600",
-            "secondary": "#845400",
-            "on-surface-variant": "#3d4947",
-            "tertiary": "#00685d",
-            "surface-bright": "#f8f9fa",
-            "on-tertiary-container": "#f4fffb",
-            "on-surface": "#191c1d",
-            "tertiary-fixed": "#71f8e4",
-            "surface-container-highest": "#e1e3e4",
-            "surface-container": "#edeeef",
-            "on-background": "#191c1d",
-            "inverse-surface": "#2e3132",
-            "surface-container-low": "#f3f4f5",
-            "background": "#f8f9fa",
-            "on-primary-fixed": "#00174b",
-            "surface-dim": "#d9dadb",
-            "on-tertiary-fixed": "#00201c",
-            "surface-container-high": "#e7e8e9",
-            "secondary-container": "#feb246",
-            "on-primary-container": "#fefcff",
-            "on-error-container": "#93000a",
-            "error": "#ba1a1a",
-            "primary-container": "#316bf3",
-            "on-secondary-fixed-variant": "#643f00",
-            "surface-variant": "#e1e3e4",
-            "on-tertiary-fixed-variant": "#005048",
-            "primary-fixed": "#dbe1ff",
-            "tertiary-fixed-dim": "#4fdbc8",
-            "on-primary": "#ffffff",
-            "surface-container-lowest": "#ffffff",
-            "on-primary-fixed-variant": "#003ea8",
-            "on-error": "#ffffff",
-            "surface": "#f8f9fa",
-            "on-secondary-fixed": "#2a1800",
-            "primary-fixed-dim": "#b4c5ff",
-            "on-secondary": "#ffffff",
-            "outline-variant": "#bcc9c6",
-            "primary": "#0051d5",
-            "inverse-on-surface": "#f0f1f2",
-            "secondary-fixed": "#ffddb6",
-            "error-container": "#ffdad6"
-          },
-          "borderRadius": {
-            "DEFAULT": "1rem",
-            "lg": "2rem",
-            "xl": "3rem",
-            "full": "9999px"
-          },
-          "fontFamily": {
-            "headline": ["Manrope"],
-            "body": ["Plus Jakarta Sans"],
-            "label": ["Plus Jakarta Sans"]
-          }
-        },
-      }
-    }
-  </script>
-  <style>
-    .material-symbols-outlined {
-      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    }
-
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    .font-headline {
-      font-family: 'Manrope', sans-serif;
-    }
-  </style>
-  <style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-</head>
-
-<body class="bg-surface text-on-surface min-h-screen flex justify-center">
-  <!-- Mobile Wrapper -->
-  <div class="w-full max-w-md bg-background min-h-screen flex flex-col relative pb-32">
-<!-- TopAppBar -->
-<header class="w-full top-0 sticky z-50 bg-[#f8f9fa] dark:bg-[#191c1d]">
-  <div class="flex items-center px-4 h-16 w-full max-w-7xl mx-auto justify-between">
-    <div class="flex items-center gap-4">
-      <button onclick="history.back()"
-        class="p-2 rounded-full hover:bg-[#e7e8e9] dark:hover:bg-[#3f4142] transition-colors active:scale-95 duration-150">
-        <span class="material-symbols-outlined text-[#0d9488]">arrow_back</span>
-      </button>
-      <h1 class="font-['Manrope'] text-lg font-bold tracking-tight text-[#191c1d] dark:text-[#e1e3e3]">Chi tiết công việc
-      </h1>
-    </div>
-  </div>
-</header>
-<!-- Hero Section -->
-<section class="px-6 py-8 bg-surface-container-low rounded-b-lg" id="task-hero">
-    <div class="animate-pulse">Đang tải...</div>
-</section>
-<!-- Main Content -->
-<main class="flex-grow space-y-8 mt-6">
-  <!-- Key Info Section -->
-  <section class="px-6 grid grid-cols-2 gap-4" id="task-info">
-  </section>
-  <!-- Description -->
-  <section class="px-6 space-y-4">
-    <h3 class="font-headline font-bold text-xl">Yêu cầu chi tiết</h3>
-    <div class="bg-surface-container-low/50 p-6 rounded-2xl">
-      <div class="prose prose-sm text-on-surface-variant leading-relaxed" id="task-desc">
-      </div>
-    </div>
-  </section>
-</main>
-<!-- Bottom Navigation Bar -->
-<nav class="fixed bottom-0 left-0 w-full px-6 py-4 flex justify-between items-center bg-gradient-to-t from-[#f8f9fa] dark:from-[#191c1d] z-50">
-  <div class="flex gap-4">
-    <button class="text-[#191c1d] dark:text-[#e1e3e3] p-3 rounded-full bg-[#f3f4f5] dark:bg-[#2a2d2e] hover:opacity-90 transition-opacity active:scale-98">
-      <span class="material-symbols-outlined">share</span>
-    </button>
-  </div>
-  <button id="apply-btn"
-    class="bg-[#0d9488] text-white rounded-full px-12 py-4 font-bold text-lg shadow-[0_-20px_40px_rgba(13,148,136,0.15)] hover:opacity-90 transition-opacity active:scale-98">
-    ỨNG TUYỂN NGAY
-  </button>
-</nav>
-
-<script>
-    const API_BASE = "/api";
-    const token = localStorage.getItem('token');
-    const urlParams = new URLSearchParams(window.location.search);
-    const taskId = urlParams.get('task_id');
-
-    if (!token) window.location.href = "{% url 'frontend:login' %}";
-    if (!taskId) window.location.href = "{% url 'frontend:worker_feed' %}";
-
-    async function init() {
-        try {
-            const resp = await fetch(API_BASE + "/tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
-            const tasks = await resp.json();
-            const task = tasks.find(t => t.id == taskId);
-            if (task) {
-                document.getElementById('task-hero').innerHTML = `
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">Danh mục ${task.category}</span>
-                    </div>
-                    <h2 class="text-3xl font-headline font-extrabold text-on-surface mb-2 leading-tight">${task.title}</h2>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-2xl font-extrabold text-primary">${new Intl.NumberFormat('vi-VN').format(task.price)}đ</span>
-                    </div>
-                `;
-                document.getElementById('task-info').innerHTML = `
-                    <div class="p-4 bg-surface-container-lowest rounded-2xl flex flex-col gap-2">
-                      <div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-secondary">calendar_today</span>
-                      </div>
-                      <div>
-                        <p class="text-xs text-on-surface-variant">Thời gian</p>
-                        <p class="font-bold text-sm">${new Date(task.scheduled_time).toLocaleString('vi-VN')}</p>
-                      </div>
-                    </div>
-                    <div class="p-4 bg-surface-container-lowest rounded-2xl flex flex-col gap-2">
-                      <div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-tertiary">location_on</span>
-                      </div>
-                      <div>
-                        <p class="text-xs text-on-surface-variant">Địa điểm</p>
-                        <p class="font-bold text-sm">${task.location}</p>
-                      </div>
-                    </div>
-                `;
-                document.getElementById('task-desc').innerHTML = `<p>${task.description}</p>`;
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Chi tiết công việc - EduCareLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        secondary: '#2DB84B',
+                        bg: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        success: '#10B981',
+                        error: '#EF4444',
+                    },
+                    fontFamily: {
+                        manrope: ['Manrope', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
             }
-        } catch (e) { console.error(e); }
-    }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
 
-    document.getElementById('apply-btn').onclick = async () => {
-        if (!confirm("Ứng tuyển việc này?")) return;
-        try {
-            const r = await fetch(`${API_BASE}/worker/tasks/${taskId}/apply/`, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
+        /* Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+
+        /* Custom scrollbar for main content */
+        .main-scroll::-webkit-scrollbar { width: 6px; }
+        .main-scroll::-webkit-scrollbar-track { background: transparent; }
+        .main-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 6px; }
+
+        /* Toast animation */
+        @keyframes toast-in {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes toast-out {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-20px); opacity: 0; }
+        }
+        .toast-enter { animation: toast-in 0.3s ease-out forwards; }
+        .toast-exit { animation: toast-out 0.3s ease-in forwards; }
+
+        /* Modal animation */
+        @keyframes modal-bg-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes modal-content-in {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .modal-bg-enter { animation: modal-bg-in 0.2s ease-out forwards; }
+        .modal-content-enter { animation: modal-content-in 0.3s ease-out forwards; }
+
+        /* Sidebar nav item hover */
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { background: rgba(242, 101, 34, 0.08); }
+        .nav-item.active { background: rgba(242, 101, 34, 0.12); color: #F26522; }
+        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+
+        /* Bottom nav for mobile */
+        @media (max-width: 767px) {
+            .sidebar { display: none !important; }
+            .main-area { margin-left: 0 !important; }
+            .mobile-bottom-nav { display: flex !important; }
+        }
+        @media (min-width: 768px) {
+            .mobile-bottom-nav { display: none !important; }
+        }
+
+        /* Skeleton loading */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        /* Apply button pulse */
+        @keyframes pulse-orange {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(242, 101, 34, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(242, 101, 34, 0); }
+        }
+        .apply-pulse { animation: pulse-orange 2s infinite; }
+
+        /* Smooth content fade-in */
+        @keyframes fade-up {
+            from { transform: translateY(16px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .fade-up { animation: fade-up 0.4s ease-out forwards; }
+        .fade-up-delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .fade-up-delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .fade-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .fade-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
+        /* Info card hover */
+        .info-card { transition: all 0.2s ease; }
+        .info-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+
+        /* Sticky apply bar */
+        @media (max-width: 767px) {
+            .sticky-apply-bar { 
+                position: fixed; bottom: 72px; left: 0; right: 0; z-index: 40;
+            }
+        }
+    </style>
+</head>
+<body class="bg-bg text-textPrimary antialiased">
+
+    <!-- ========== TOAST CONTAINER ========== -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="max-width: 400px;"></div>
+
+    <!-- ========== APPLY CONFIRM MODAL ========== -->
+    <div id="apply-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeApplyModal(false)"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-content-enter">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-14 h-14 rounded-2xl bg-primaryLight flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-primary text-3xl filled" style="font-variation-settings: 'FILL' 1;">work</span>
+                </div>
+            </div>
+            <h3 class="font-manrope font-bold text-xl text-textPrimary mb-2">Ứng tuyển công việc này?</h3>
+            <p class="text-textSecondary text-sm leading-relaxed mb-6">Bạn chắc chắn muốn ứng tuyển? Phụ huynh sẽ xem hồ sơ của bạn và quyết định duyệt.</p>
+            <div class="flex gap-3">
+                <button onclick="closeApplyModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95">
+                    Xem lại
+                </button>
+                <button onclick="closeApplyModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors active:scale-95 shadow-sm shadow-primary/20">
+                    Ứng tuyển
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== LOGOUT CONFIRM MODAL ========== -->
+    <div id="logout-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeLogoutModal(false)"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-content-enter">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-error text-2xl filled" style="font-variation-settings: 'FILL' 1;">logout</span>
+                </div>
+            </div>
+            <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Đăng xuất</h3>
+            <p class="text-textSecondary text-sm leading-relaxed mb-6">Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?</p>
+            <div class="flex gap-3">
+                <button onclick="closeLogoutModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95">
+                    Hủy bỏ
+                </button>
+                <button onclick="closeLogoutModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors active:scale-95">
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SIDEBAR (Desktop) ========== -->
+    <aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
+        <!-- Logo -->
+        <div class="px-6 py-6 border-b border-gray-50">
+            <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-xl filled" style="font-variation-settings: 'FILL' 1, 'wght' 500;">school</span>
+                </div>
+                <div>
+                    <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 sidebar-scroll overflow-y-auto">
+            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{% url 'frontend:worker_feed' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">search</span>
+                        Tìm việc
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:worker_jobs' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">assignment</span>
+                        Việc của tôi
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:worker_profile' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">person</span>
+                        Hồ sơ
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- User section at bottom -->
+        <div class="px-4 py-4 border-t border-gray-100">
+            <div class="flex items-center gap-3 px-2">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
+                    <img id="sidebar-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
+                    <p class="text-xs text-textSecondary">Carepartner</p>
+                </div>
+                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-colors" title="Đăng xuất">
+                    <span class="material-symbols-outlined text-xl">logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="main-area md:ml-[260px] min-h-screen pb-28 md:pb-8">
+        <!-- Top header bar -->
+        <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
+            <div class="px-4 md:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <!-- Back button -->
+                        <button onclick="history.back()" class="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-textSecondary hover:text-primary hover:bg-primaryLight transition-colors active:scale-95">
+                            <span class="material-symbols-outlined text-xl">arrow_back</span>
+                        </button>
+                        <!-- Mobile logo -->
+                        <div class="md:hidden w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white text-lg filled" style="font-variation-settings: 'FILL' 1;">school</span>
+                        </div>
+                        <div>
+                            <h1 class="font-manrope font-extrabold text-xl md:text-2xl text-textPrimary">Chi tiết công việc</h1>
+                        </div>
+                    </div>
+                    <!-- Desktop: back to feed link -->
+                    <a href="{% url 'frontend:worker_feed' %}" class="hidden md:flex items-center gap-2 text-sm text-textSecondary hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-lg">search</span>
+                        Tìm thêm việc
+                    </a>
+                    <!-- Mobile: avatar -->
+                    <div class="md:hidden w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
+                        <img id="mobile-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading skeleton -->
+        <div id="loading-skeleton" class="px-4 md:px-8 py-6 space-y-6">
+            <!-- Hero skeleton -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div class="flex gap-2 mb-4">
+                    <div class="skeleton w-24 h-7"></div>
+                    <div class="skeleton w-16 h-7"></div>
+                </div>
+                <div class="skeleton w-3/4 h-8 mb-3"></div>
+                <div class="skeleton w-1/3 h-8"></div>
+            </div>
+            <!-- Info grid skeleton -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white rounded-xl p-4 border border-gray-100">
+                    <div class="skeleton w-10 h-10 rounded-full mb-3"></div>
+                    <div class="skeleton w-16 h-3 mb-2"></div>
+                    <div class="skeleton w-28 h-5"></div>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-gray-100">
+                    <div class="skeleton w-10 h-10 rounded-full mb-3"></div>
+                    <div class="skeleton w-16 h-3 mb-2"></div>
+                    <div class="skeleton w-28 h-5"></div>
+                </div>
+            </div>
+            <!-- Description skeleton -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-100">
+                <div class="skeleton w-36 h-6 mb-4"></div>
+                <div class="skeleton w-full h-4 mb-2"></div>
+                <div class="skeleton w-full h-4 mb-2"></div>
+                <div class="skeleton w-3/4 h-4"></div>
+            </div>
+        </div>
+
+        <!-- Task content (hidden until loaded) -->
+        <div id="task-content" class="hidden">
+            <!-- ===== HERO SECTION ===== -->
+            <section class="px-4 md:px-8 pt-6 fade-up">
+                <div class="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm relative overflow-hidden">
+                    <!-- Decorative gradient accent -->
+                    <div class="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primaryLight to-transparent rounded-bl-full pointer-events-none"></div>
+                    
+                    <!-- Category badge + urgency -->
+                    <div class="flex flex-wrap gap-2 mb-4 relative z-10" id="task-badges">
+                    </div>
+
+                    <!-- Title -->
+                    <h2 id="task-title" class="font-manrope font-extrabold text-2xl md:text-3xl text-textPrimary mb-3 leading-tight relative z-10"></h2>
+
+                    <!-- Price -->
+                    <div class="flex items-baseline gap-2 relative z-10">
+                        <span id="task-price" class="font-manrope text-3xl font-extrabold text-primary"></span>
+                        <span class="text-textSecondary text-sm font-medium">/lần</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== KEY INFO GRID ===== -->
+            <section class="px-4 md:px-8 mt-6 grid grid-cols-2 gap-4 fade-up fade-up-delay-1">
+                <!-- Time -->
+                <div class="info-card bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div class="w-11 h-11 rounded-xl bg-primaryLight flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+                    </div>
+                    <p class="text-xs text-textSecondary font-medium mb-1">Thời gian</p>
+                    <p id="task-time" class="font-bold text-sm text-textPrimary leading-snug"></p>
+                </div>
+                <!-- Location -->
+                <div class="info-card bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-secondary text-xl filled" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                    </div>
+                    <p class="text-xs text-textSecondary font-medium mb-1">Địa điểm</p>
+                    <p id="task-location" class="font-bold text-sm text-textPrimary leading-snug"></p>
+                </div>
+            </section>
+
+            <!-- ===== DESCRIPTION SECTION ===== -->
+            <section class="px-4 md:px-8 mt-6 fade-up fade-up-delay-2">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-primaryLight flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary text-lg">description</span>
+                    </div>
+                    <h3 class="font-manrope font-bold text-lg text-textPrimary">Yêu cầu chi tiết</h3>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    <div id="task-description" class="text-textSecondary text-sm leading-relaxed whitespace-pre-line"></div>
+                </div>
+            </section>
+
+            <!-- ===== PARENT INFO CARD ===== -->
+            <section class="px-4 md:px-8 mt-6 fade-up fade-up-delay-3">
+                <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-14 h-14 rounded-2xl overflow-hidden bg-primaryLight">
+                                <img id="parent-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=P&background=F26522&color=fff"/>
+                            </div>
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary" style="font-size: 10px; font-variation-settings: 'FILL' 1;">person</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p id="parent-name" class="font-manrope font-bold text-base text-textPrimary truncate"></p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="material-symbols-outlined text-primary" style="font-size: 14px; font-variation-settings: 'FILL' 1;">verified</span>
+                                <span class="text-xs font-semibold text-primary">Phụ huynh đăng việc</span>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary text-lg">chat_bubble_outline</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TRUST BADGE ===== -->
+            <section class="px-4 md:px-8 mt-6 fade-up fade-up-delay-4">
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-secondary text-xl filled" style="font-variation-settings: 'FILL' 1;">shield</span>
+                    <p class="text-sm font-medium text-emerald-800">Giao dịch được bảo vệ bởi EduCareLink Safety Fund.</p>
+                </div>
+            </section>
+
+            <!-- ===== DESKTOP APPLY BUTTON ===== -->
+            <section class="hidden md:block px-4 md:px-8 mt-8 mb-8">
+                <button id="apply-btn-desktop" class="w-full max-w-md mx-auto flex items-center justify-center gap-3 bg-primary hover:bg-primaryDark text-white rounded-2xl py-4 px-8 font-manrope font-bold text-lg shadow-lg shadow-primary/20 transition-all active:scale-[0.98] apply-pulse">
+                    <span class="material-symbols-outlined text-xl filled" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+                    ỨNG TUYỂN NGAY
+                </button>
+            </section>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-state" class="hidden px-4 md:px-8 py-16">
+            <div class="flex flex-col items-center justify-center text-center">
+                <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-4xl text-error">error_outline</span>
+                </div>
+                <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Không tìm thấy công việc</h3>
+                <p class="text-textSecondary text-sm max-w-xs mb-6">Công việc này không tồn tại hoặc đã bị xóa. Vui lòng quay lại trang tìm việc.</p>
+                <a href="{% url 'frontend:worker_feed' %}" class="px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-colors">
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">search</span>
+                        Tìm việc khác
+                    </span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== MOBILE STICKY APPLY BAR ========== -->
+    <div class="sticky-apply-bar md:hidden bg-white/80 backdrop-blur-xl border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-4 py-3" style="display: none;" id="mobile-apply-bar">
+        <button id="apply-btn-mobile" class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-white rounded-xl py-3.5 px-6 font-manrope font-bold text-base shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+            <span class="material-symbols-outlined text-lg filled" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+            ỨNG TUYỂN NGAY
+        </button>
+    </div>
+
+    <!-- ========== MOBILE BOTTOM NAV ========== -->
+    <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 shadow-lg" style="display: none;">
+        <div class="flex justify-around items-center px-2 pt-2 pb-6">
+            <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">search</span>
+                <span class="text-[11px] font-semibold mt-1">Tìm việc</span>
+            </a>
+            <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">assignment</span>
+                <span class="text-[11px] font-semibold mt-1">Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">person</span>
+                <span class="text-[11px] font-semibold mt-1">Hồ sơ</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        const API_BASE = "/api";
+        const token = localStorage.getItem('token');
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskId = urlParams.get('task_id');
+
+        // Auth & param check
+        if (!token) window.location.href = "{% url 'frontend:login' %}";
+        if (!taskId) window.location.href = "{% url 'frontend:worker_feed' %}";
+
+        // ===== GLOBAL STATE =====
+        let currentTask = null;
+        let applyResolve = null;
+        let isApplying = false;
+
+        // ===== CATEGORY CONFIG =====
+        const categoryConfig = {
+            'babysitting': { label: 'Trông trẻ', bg: 'bg-pink-50', text: 'text-pink-600', icon: 'child_care' },
+            'tutoring': { label: 'Gia sư', bg: 'bg-blue-50', text: 'text-blue-600', icon: 'school' },
+            'cooking': { label: 'Nấu ăn', bg: 'bg-amber-50', text: 'text-amber-600', icon: 'restaurant' },
+            'cleaning': { label: 'Dọn dẹp', bg: 'bg-cyan-50', text: 'text-cyan-600', icon: 'cleaning_services' },
+            'elderly_care': { label: 'Chăm sóc người già', bg: 'bg-purple-50', text: 'text-purple-600', icon: 'elderly' },
+            'driving': { label: 'Lái xe', bg: 'bg-indigo-50', text: 'text-indigo-600', icon: 'directions_car' },
+            'pickup': { label: 'Đón trẻ', bg: 'bg-teal-50', text: 'text-teal-600', icon: 'directions_walk' },
+            'shopping': { label: 'Đi chợ', bg: 'bg-lime-50', text: 'text-lime-600', icon: 'shopping_cart' },
+            'moving': { label: 'Chuyển nhà', bg: 'bg-orange-50', text: 'text-orange-600', icon: 'home_repair_service' },
+        };
+        const defaultCategory = { label: 'Khác', bg: 'bg-primaryLight', text: 'text-primary', icon: 'work' };
+
+        function getCategoryConfig(category) {
+            return categoryConfig[category] || defaultCategory;
+        }
+
+        // ===== TOAST SYSTEM =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const icons = {
+                success: 'check_circle',
+                error: 'error',
+                info: 'info',
+                warning: 'warning'
+            };
+            const colors = {
+                success: 'bg-emerald-500',
+                error: 'bg-red-500',
+                info: 'bg-primary',
+                warning: 'bg-amber-500'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-white text-sm font-medium toast-enter ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-xl filled" style="font-variation-settings: 'FILL' 1;">${icons[type] || icons.info}</span>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ===== APPLY CONFIRM MODAL =====
+        function showApplyModal() {
+            return new Promise((resolve) => {
+                applyResolve = resolve;
+                const modal = document.getElementById('apply-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
             });
-            const d = await r.json();
-            alert(d.message || d.error);
-            if (r.ok) window.location.href = "{% url 'frontend:worker_jobs' %}";
-        } catch (e) { alert("Lỗi kết nối."); }
-    };
+        }
 
-    init();
-</script>
-</body></html>
+        function closeApplyModal(result) {
+            const modal = document.getElementById('apply-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (applyResolve) {
+                applyResolve(result);
+                applyResolve = null;
+            }
+        }
 
+        // ===== LOGOUT MODAL =====
+        let logoutResolve = null;
+
+        function showLogoutModal() {
+            return new Promise((resolve) => {
+                logoutResolve = resolve;
+                const modal = document.getElementById('logout-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+        }
+
+        function closeLogoutModal(result) {
+            const modal = document.getElementById('logout-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (logoutResolve) {
+                logoutResolve(result);
+                logoutResolve = null;
+            }
+        }
+
+        function handleLogout() {
+            showLogoutModal().then(confirmed => {
+                if (confirmed) {
+                    localStorage.clear();
+                    window.location.href = "{% url 'frontend:login' %}";
+                }
+            });
+        }
+
+        // ===== FORMAT DATE =====
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            
+            const timeStr = date.toLocaleString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            if (isToday) {
+                return `Hôm nay, ${timeStr}`;
+            }
+            
+            return date.toLocaleString('vi-VN', {
+                weekday: 'short',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ===== RENDER TASK =====
+        function renderTask(task) {
+            currentTask = task;
+
+            // Hide skeleton, show content
+            document.getElementById('loading-skeleton').classList.add('hidden');
+            document.getElementById('task-content').classList.remove('hidden');
+
+            // Category badge
+            const cat = getCategoryConfig(task.category);
+            const badgesHtml = `
+                <span class="${cat.bg} ${cat.text} px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">${cat.icon}</span>
+                    ${cat.label}
+                </span>
+            `;
+            document.getElementById('task-badges').innerHTML = badgesHtml;
+
+            // Title
+            document.getElementById('task-title').textContent = task.title;
+
+            // Price
+            document.getElementById('task-price').textContent = new Intl.NumberFormat('vi-VN').format(task.price) + 'đ';
+
+            // Time
+            document.getElementById('task-time').textContent = formatDateTime(task.scheduled_time);
+
+            // Location
+            document.getElementById('task-location').textContent = task.location || 'Chưa xác định';
+
+            // Description
+            document.getElementById('task-description').textContent = task.description || 'Không có mô tả chi tiết.';
+
+            // Parent info
+            const parentName = task.parent_name || task.parent_username || 'Phụ huynh';
+            document.getElementById('parent-name').textContent = parentName;
+            document.getElementById('parent-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(parentName)}&background=F26522&color=fff`;
+
+            // Show mobile apply bar
+            document.getElementById('mobile-apply-bar').style.display = '';
+        }
+
+        // ===== SHOW ERROR =====
+        function showError() {
+            document.getElementById('loading-skeleton').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+        }
+
+        // ===== APPLY HANDLER =====
+        async function handleApply() {
+            if (isApplying) return;
+            if (!taskId) {
+                showToast('Không tìm thấy ID công việc.', 'error');
+                return;
+            }
+
+            const confirmed = await showApplyModal();
+            if (!confirmed) return;
+
+            isApplying = true;
+            
+            // Disable buttons
+            const btnDesktop = document.getElementById('apply-btn-desktop');
+            const btnMobile = document.getElementById('apply-btn-mobile');
+            const originalDesktopHtml = btnDesktop.innerHTML;
+            const originalMobileHtml = btnMobile.innerHTML;
+
+            const loadingHtml = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Đang xử lý...
+            `;
+            btnDesktop.innerHTML = loadingHtml;
+            btnMobile.innerHTML = loadingHtml;
+            btnDesktop.disabled = true;
+            btnMobile.disabled = true;
+
+            try {
+                const r = await fetch(`${API_BASE}/worker/tasks/${taskId}/apply/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const d = await r.json();
+
+                if (r.ok) {
+                    showToast(d.message || 'Ứng tuyển thành công! Chờ phụ huynh duyệt.', 'success');
+                    // Redirect after short delay
+                    setTimeout(() => {
+                        window.location.href = "{% url 'frontend:worker_jobs' %}";
+                    }, 1500);
+                } else {
+                    showToast(d.error || 'Không thể ứng tuyển. Vui lòng thử lại.', 'error');
+                    // Re-enable buttons
+                    btnDesktop.innerHTML = originalDesktopHtml;
+                    btnMobile.innerHTML = originalMobileHtml;
+                    btnDesktop.disabled = false;
+                    btnMobile.disabled = false;
+                    isApplying = false;
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                // Re-enable buttons
+                btnDesktop.innerHTML = originalDesktopHtml;
+                btnMobile.innerHTML = originalMobileHtml;
+                btnDesktop.disabled = false;
+                btnMobile.disabled = false;
+                isApplying = false;
+            }
+        }
+
+        // ===== INIT =====
+        async function init() {
+            try {
+                // Fetch user profile for sidebar
+                const profResp = await fetch(API_BASE + "/profile/", { headers: { 'Authorization': 'Bearer ' + token } });
+                if (profResp.ok) {
+                    const prof = await profResp.json();
+                    const displayName = prof.first_name || prof.username || 'Carepartner';
+
+                    // Update sidebar
+                    document.getElementById('sidebar-name').textContent = displayName;
+                    document.getElementById('sidebar-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
+
+                    // Update mobile avatar
+                    document.getElementById('mobile-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
+                }
+
+                // Fetch task
+                const resp = await fetch(API_BASE + "/tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!resp.ok) throw new Error('Failed to fetch tasks');
+                
+                const tasks = await resp.json();
+                const task = tasks.find(t => String(t.id) === String(taskId));
+
+                if (task) {
+                    renderTask(task);
+                } else {
+                    showError();
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Không thể tải thông tin công việc.', 'error');
+                showError();
+            }
+        }
+
+        // Bind apply buttons
+        document.getElementById('apply-btn-desktop').addEventListener('click', handleApply);
+        document.getElementById('apply-btn-mobile').addEventListener('click', handleApply);
+
+        // Start
+        init();
+    </script>
+</body>
 </html>

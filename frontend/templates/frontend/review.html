@@ -1,230 +1,743 @@
 <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Đánh giá Carepartner - EduCareLink</title>
 
-<html lang="vi"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
-                    "colors": {
-                        "inverse-surface": "#2e3132",
-                        "inverse-primary": "#b4c5ff",
-                        "background": "#f8f9fa",
-                        "surface-container-low": "#f3f4f5",
-                        "surface": "#f8f9fa",
-                        "inverse-on-surface": "#f0f1f2",
-                        "tertiary-container": "#008376",
-                        "on-secondary-fixed-variant": "#643f00",
-                        "secondary-container": "#feb246",
-                        "on-secondary": "#ffffff",
-                        "secondary-fixed": "#ffddb6",
-                        "on-secondary-container": "#6f4600",
-                        "on-primary": "#ffffff",
-                        "surface-container-high": "#e7e8e9",
-                        "on-primary-container": "#fefcff",
-                        "surface-container-highest": "#e1e3e4",
-                        "tertiary": "#00685d",
-                        "primary": "#0051d5",
-                        "surface-variant": "#e1e3e4",
-                        "tertiary-fixed": "#71f8e4",
-                        "on-tertiary-fixed-variant": "#005048",
-                        "on-tertiary": "#ffffff",
-                        "primary-container": "#316bf3",
-                        "on-surface-variant": "#3d4947",
-                        "primary-fixed-dim": "#b4c5ff",
-                        "on-tertiary-container": "#f4fffb",
-                        "on-surface": "#191c1d",
-                        "surface-tint": "#0053db",
-                        "surface-dim": "#d9dadb",
-                        "on-background": "#191c1d",
-                        "primary-fixed": "#dbe1ff",
-                        "outline-variant": "#bcc9c6",
-                        "secondary-fixed-dim": "#ffb95a",
-                        "on-primary-fixed-variant": "#003ea8",
-                        "surface-bright": "#f8f9fa",
-                        "error": "#ba1a1a",
-                        "surface-container": "#edeeef",
-                        "on-primary-fixed": "#00174b",
-                        "surface-container-lowest": "#ffffff",
-                        "on-tertiary-fixed": "#00201c",
-                        "on-secondary-fixed": "#2a1800",
-                        "outline": "#6d7a77",
-                        "on-error-container": "#93000a",
-                        "on-error": "#ffffff",
-                        "error-container": "#ffdad6",
-                        "secondary": "#845400",
-                        "tertiary-fixed-dim": "#4fdbc8"
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        successBg: '#ECFDF5',
+                        error: '#EF4444',
+                        errorBg: '#FEF2F2',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
                     },
-                    "borderRadius": {
-                        "DEFAULT": "1rem",
-                        "lg": "2rem",
-                        "xl": "3rem",
-                        "full": "9999px"
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
                     },
-                    "fontFamily": {
-                        "headline": ["Manrope"],
-                        "body": ["Plus Jakarta Sans"],
-                        "label": ["Plus Jakarta Sans"]
-                    }
                 },
             },
         }
     </script>
-<style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-    </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col">
-<!-- TopAppBar -->
-<header class="sticky top-0 z-50 bg-white/70 backdrop-blur-xl transition-colors w-full">
-<div class="flex items-center justify-between px-6 py-4 w-full">
-<button onclick="location.href='{% url 'frontend:parent_tasks' %}'" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-high transition-colors active:scale-90 transition-transform duration-200">
-<span class="material-symbols-outlined text-on-surface" data-icon="close">close</span>
-</button>
-<h1 class="text-lg font-bold tracking-tight text-on-surface font-headline">Đánh giá Carepartner</h1>
-<div class="w-10"></div> <!-- Spacer for centering -->
-</div>
-</header>
-<!-- Main Content Canvas -->
-<main class="flex-grow px-6 pt-8 pb-32 flex flex-col items-center text-center max-w-lg mx-auto w-full">
-<!-- Carepartner Summary Section -->
-<section class="mb-10 w-full flex flex-col items-center" id="worker-summary">
-    <!-- Will be filled by JS -->
-    <div class="animate-pulse">Đang tải thông tin...</div>
-</section>
-<!-- Rating Section -->
-<section class="mb-10 w-full bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/10">
-<p class="text-lg font-bold text-on-surface mb-6">Bạn thấy trải nghiệm này thế nào?</p>
-<div class="flex justify-center gap-3" id="star-rating">
-<button data-val="1" class="star-btn active:scale-90 transition-transform">
-<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</button>
-<button data-val="2" class="star-btn active:scale-90 transition-transform">
-<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</button>
-<button data-val="3" class="star-btn active:scale-90 transition-transform">
-<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</button>
-<button data-val="4" class="star-btn active:scale-90 transition-transform">
-<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</button>
-<button data-val="5" class="star-btn active:scale-90 transition-transform">
-<span class="material-symbols-outlined text-4xl text-secondary-container" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</button>
-</div>
-</section>
-<!-- Review Input Section -->
-<section class="w-full text-left">
-<label class="block text-sm font-bold text-on-surface mb-3 px-1" for="review">Để lại nhận xét của bạn</label>
-<div class="relative group">
-<textarea class="w-full bg-surface-container-low border-0 rounded-xl p-5 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 transition-all resize-none" id="comment" placeholder="Chia sẻ trải nghiệm của bạn (thái độ, kỹ năng, sự nhiệt tình...)" rows="6"></textarea>
-</div>
-</section>
-</main>
-<!-- Bottom Action Shell -->
-<footer class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md flex flex-col items-center">
-<button id="submit-review" class="w-full max-w-lg bg-primary text-on-primary font-bold py-4 rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all duration-200 text-base tracking-wide flex items-center justify-center gap-2">
-            Gửi đánh giá
-            <span class="material-symbols-outlined text-xl" data-icon="send">send</span>
-</button>
-</footer>
-<script>
-    const API_BASE = "/api";
-    const token = localStorage.getItem('token');
-    const urlParams = new URLSearchParams(window.location.search);
-    const taskId = urlParams.get('task_id');
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
 
-    if (!token) window.location.href = "{% url 'frontend:login' %}";
-    if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
+        /* Sidebar scroll */
+        .sidebar-scroll::-webkit-scrollbar { width: 0; }
+        .sidebar-scroll { scrollbar-width: none; }
 
-    let rating = 5;
-    const starBtns = document.querySelectorAll('.star-btn');
-    starBtns.forEach(btn => {
-        btn.onclick = () => {
-            rating = parseInt(btn.dataset.val);
-            updateStars();
-        };
-    });
+        /* Sidebar nav item */
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { background: rgba(242,101,34,0.08); }
+        .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
+        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
 
-    function updateStars() {
-        starBtns.forEach(btn => {
-            const val = parseInt(btn.dataset.val);
-            const icon = btn.querySelector('.material-symbols-outlined');
-            if (val <= rating) {
-                icon.classList.add('text-secondary-container');
-                icon.classList.remove('text-outline-variant/40');
-                icon.style.fontVariationSettings = "'FILL' 1";
-            } else {
-                icon.classList.remove('text-secondary-container');
-                icon.classList.add('text-outline-variant/40');
-                icon.style.fontVariationSettings = "'FILL' 0";
+        /* Toast animation */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        .toast-in { animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+        .toast-out { animation: slideOutRight 0.3s ease forwards; }
+
+        /* Star button interactions */
+        .star-btn {
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .star-btn:hover {
+            transform: scale(1.15);
+            filter: brightness(1.1);
+        }
+        .star-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Star filled state */
+        .star-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            color: #F26522;
+        }
+        .star-empty {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            color: #D1D5DB;
+        }
+
+        /* Rating label fade */
+        .rating-label {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        /* Mobile bottom nav safe area */
+        @media (max-width: 1023px) {
+            .main-content {
+                padding-bottom: 6rem;
             }
-        });
-    }
+        }
 
-    async function init() {
-        try {
-            const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
-            const tasks = await tasksResp.json();
-            const task = tasks.find(t => t.id == taskId);
-            if (task) {
-                document.getElementById('worker-summary').innerHTML = `
-                    <div class="relative mb-6">
-                        <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-surface-container-lowest shadow-lg">
-                            <img alt="Worker" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=${task.worker_username || 'Worker'}&background=random">
+        /* Loading skeleton */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        /* Submit button pulse on hover */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 8px 25px rgba(242, 101, 34, 0.3); }
+            50% { box-shadow: 0 8px 35px rgba(242, 101, 34, 0.5); }
+        }
+        .submit-btn:hover {
+            animation: pulseGlow 1.5s ease-in-out infinite;
+        }
+
+        /* Smooth content entrance */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+    <!-- ============================================ -->
+    <!-- SIDEBAR (Desktop ≥1024px)                    -->
+    <!-- ============================================ -->
+    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-6 py-5 border-b border-border">
+            <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+                <span class="material-symbols-outlined filled text-white text-xl">school</span>
+            </div>
+            <div>
+                <span class="font-headline font-extrabold text-lg text-textPrimary leading-tight">Edu<span class="text-primary">Care</span>Link</span>
+                <p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase">Phụ huynh</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
+            <div class="space-y-1">
+                <!-- Trang chủ -->
+                <a href="{% url 'frontend:parent_home' %}"
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                    <span class="material-symbols-outlined text-xl">home</span>
+                    <span>Trang chủ</span>
+                </a>
+
+                <!-- Việc của tôi - ACTIVE (review is sub-page of tasks) -->
+                <a href="{% url 'frontend:parent_tasks' %}"
+                   class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm">
+                    <span class="material-symbols-outlined text-xl">assignment</span>
+                    <span>Việc của tôi</span>
+                </a>
+
+                <!-- Đăng việc mới -->
+                <a href="{% url 'frontend:task_create_1' %}"
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                    <span class="material-symbols-outlined text-xl">add_circle</span>
+                    <span>Đăng việc mới</span>
+                </a>
+
+                <!-- AI Trợ lý -->
+                <a href="{% url 'frontend:chatbot' %}"
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+                    <span class="material-symbols-outlined text-xl">smart_toy</span>
+                    <span>AI Trợ lý</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User Section (Bottom) -->
+        <div class="border-t border-border px-4 py-4">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft flex-shrink-0">
+                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                    <p class="text-[11px] text-textMuted">Phụ huynh</p>
+                </div>
+            </div>
+            <button onclick="handleLogout()"
+                    class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-errorBg hover:text-error transition-colors text-sm font-medium">
+                <span class="material-symbols-outlined text-lg">logout</span>
+                Đăng xuất
+            </button>
+        </div>
+    </aside>
+
+    <!-- ============================================ -->
+    <!-- MOBILE HEADER (<1024px)                      -->
+    <!-- ============================================ -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
+        <div class="flex items-center justify-between px-4 h-14">
+            <button onclick="location.href='{% url 'frontend:parent_tasks' %}'"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-all">
+                <span class="material-symbols-outlined text-textPrimary text-xl">arrow_back</span>
+            </button>
+            <h1 class="font-headline font-bold text-base text-textPrimary">Đánh giá Carepartner</h1>
+            <div class="w-9"></div>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- MAIN CONTENT AREA                            -->
+    <!-- ============================================ -->
+    <main class="lg:ml-[260px] min-h-screen main-content">
+
+        <!-- TOP HEADER BAR (Desktop) -->
+        <div class="hidden lg:flex items-center gap-4 px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+            <button onclick="location.href='{% url 'frontend:parent_tasks' %}'"
+                    class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-all">
+                <span class="material-symbols-outlined text-textSecondary">arrow_back</span>
+            </button>
+            <div>
+                <h1 class="font-headline font-bold text-2xl text-textPrimary">Đánh giá Carepartner</h1>
+                <p class="text-textSecondary text-sm mt-0.5">Chia sẻ trải nghiệm của bạn về Carepartner</p>
+            </div>
+        </div>
+
+        <!-- CONTENT BODY -->
+        <div class="px-4 lg:px-8 py-6 lg:py-8">
+            <div class="max-w-2xl mx-auto space-y-6 lg:space-y-8">
+
+                <!-- =============================== -->
+                <!-- 1. TASK & WORKER SUMMARY CARD   -->
+                <!-- =============================== -->
+                <section id="worker-summary" class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <!-- Loading state -->
+                    <div id="summary-loading" class="p-8 flex flex-col items-center text-center">
+                        <div class="skeleton w-24 h-24 rounded-full mb-4"></div>
+                        <div class="skeleton h-6 w-40 mb-3"></div>
+                        <div class="skeleton h-4 w-56"></div>
+                    </div>
+                    <!-- Loaded state (hidden initially) -->
+                    <div id="summary-loaded" class="hidden">
+                        <!-- Decorative top gradient -->
+                        <div class="h-20 relative" style="background: linear-gradient(135deg, #F26522 0%, #D4541E 100%);">
+                            <div class="absolute top-0 right-0 -mr-6 -mt-6 w-24 h-24 bg-white/10 rounded-full"></div>
+                            <div class="absolute bottom-0 left-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
+                        </div>
+                        <div class="px-6 pb-6 -mt-12 text-center">
+                            <!-- Worker Avatar -->
+                            <div class="relative inline-block mb-3">
+                                <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-surface shadow-lg">
+                                    <img id="worker-avatar" alt="Carepartner" class="w-full h-full object-cover"
+                                         src="https://ui-avatars.com/api/?name=Worker&background=F26522&color=fff"/>
+                                </div>
+                                <!-- Verified badge -->
+                                <div class="absolute -bottom-1 -right-1 bg-success p-1.5 rounded-full border-2 border-surface">
+                                    <span class="material-symbols-outlined filled text-white text-xs">verified</span>
+                                </div>
+                            </div>
+                            <!-- Worker Name -->
+                            <h2 id="worker-name" class="font-headline font-bold text-xl text-textPrimary mb-2">Đang tải...</h2>
+                            <!-- Task info + badge -->
+                            <div class="inline-flex items-center gap-2 px-4 py-2 bg-successBg rounded-full border border-success/20">
+                                <span class="material-symbols-outlined filled text-success text-sm">check_circle</span>
+                                <span class="text-xs font-bold text-success uppercase tracking-wide">Đã hoàn thành</span>
+                            </div>
+                            <!-- Task details -->
+                            <div id="task-details" class="mt-4 space-y-2">
+                                <!-- Filled by JS -->
+                            </div>
                         </div>
                     </div>
-                    <h2 class="text-2xl font-extrabold text-on-surface mb-2">${task.worker_username || 'Carepartner'}</h2>
-                    <div class="inline-flex items-center px-4 py-1.5 bg-primary-container/10 rounded-full">
-                        <span class="text-xs font-bold text-primary mr-2 uppercase tracking-wider">Đã hoàn thành</span>
-                        <span class="text-sm font-medium text-on-surface-variant">${task.title}</span>
+                </section>
+
+                <!-- =============================== -->
+                <!-- 2. STAR RATING SECTION           -->
+                <!-- =============================== -->
+                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.1s;">
+                    <!-- Headline -->
+                    <div class="text-center mb-6">
+                        <div class="w-14 h-14 bg-primaryLight rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <span class="material-symbols-outlined filled text-primary text-2xl">star_rate</span>
+                        </div>
+                        <h3 class="font-headline font-bold text-lg text-textPrimary mb-1">Bạn thấy trải nghiệm này thế nào?</h3>
+                        <p class="text-sm text-textSecondary">Nhấn vào sao để đánh giá</p>
                     </div>
+
+                    <!-- Stars -->
+                    <div class="flex justify-center gap-3 sm:gap-4 mb-4" id="star-rating">
+                        <button data-val="1" class="star-btn flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none" aria-label="Đánh giá 1 sao">
+                            <span class="material-symbols-outlined text-4xl sm:text-5xl star-filled" data-star="1">star</span>
+                        </button>
+                        <button data-val="2" class="star-btn flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none" aria-label="Đánh giá 2 sao">
+                            <span class="material-symbols-outlined text-4xl sm:text-5xl star-filled" data-star="2">star</span>
+                        </button>
+                        <button data-val="3" class="star-btn flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none" aria-label="Đánh giá 3 sao">
+                            <span class="material-symbols-outlined text-4xl sm:text-5xl star-filled" data-star="3">star</span>
+                        </button>
+                        <button data-val="4" class="star-btn flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none" aria-label="Đánh giá 4 sao">
+                            <span class="material-symbols-outlined text-4xl sm:text-5xl star-filled" data-star="4">star</span>
+                        </button>
+                        <button data-val="5" class="star-btn flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none" aria-label="Đánh giá 5 sao">
+                            <span class="material-symbols-outlined text-4xl sm:text-5xl star-filled" data-star="5">star</span>
+                        </button>
+                    </div>
+
+                    <!-- Rating label -->
+                    <div class="text-center">
+                        <span id="rating-label" class="rating-label inline-flex items-center gap-1.5 px-4 py-1.5 bg-primaryLight rounded-full text-sm font-semibold text-primary">
+                            <span class="material-symbols-outlined text-sm filled">sentiment_very_satisfied</span>
+                            Tuyệt vời
+                        </span>
+                    </div>
+                </section>
+
+                <!-- =============================== -->
+                <!-- 3. COMMENT SECTION               -->
+                <!-- =============================== -->
+                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.2s;">
+                    <label class="flex items-center gap-2 text-sm font-bold text-textPrimary mb-3" for="comment">
+                        <span class="material-symbols-outlined text-primary text-lg filled">edit_note</span>
+                        Để lại nhận xét của bạn
+                    </label>
+                    <div class="relative">
+                        <textarea
+                            class="w-full bg-background border border-border rounded-xl p-4 text-textPrimary placeholder:text-textMuted focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all resize-none text-sm leading-relaxed"
+                            id="comment"
+                            placeholder="Chia sẻ trải nghiệm của bạn (thái độ, kỹ năng, sự nhiệt tình...)"
+                            rows="5"
+                            maxlength="500"
+                            oninput="updateCharCount()"
+                        ></textarea>
+                        <div class="absolute bottom-3 right-3 flex items-center gap-1">
+                            <span id="char-count" class="text-[11px] font-semibold text-textMuted">0</span>
+                            <span class="text-[11px] text-textMuted">/500</span>
+                        </div>
+                    </div>
+
+                    <!-- Helper text -->
+                    <div class="mt-4 p-3.5 bg-primaryLight/50 rounded-xl flex items-start gap-3 border border-primarySoft/30">
+                        <span class="material-symbols-outlined filled text-primary text-lg mt-0.5 flex-shrink-0">verified_user</span>
+                        <p class="text-xs leading-relaxed text-textSecondary font-medium">
+                            Đánh giá của bạn sẽ giúp cộng đồng EduCareLink chọn được Carepartner tốt hơn và cải thiện chất lượng dịch vụ.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- =============================== -->
+                <!-- 4. SUBMIT BUTTON                 -->
+                <!-- =============================== -->
+                <section class="animate-fade-in-up" style="animation-delay: 0.3s;">
+                    <button id="submit-review"
+                            class="submit-btn w-full bg-primary text-white font-headline font-bold py-4 rounded-2xl shadow-lg shadow-primary/30 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 text-base tracking-wide flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                            disabled>
+                        <span class="material-symbols-outlined text-xl">send</span>
+                        Gửi đánh giá
+                    </button>
+                    <p class="text-center text-xs text-textMuted mt-3">Bạn chỉ có thể đánh giá một lần cho mỗi công việc</p>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================================ -->
+    <!-- MOBILE BOTTOM NAV (<1024px)                  -->
+    <!-- ============================================ -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-border">
+        <div class="flex justify-around items-center px-2 pt-2 pb-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+            <!-- Home -->
+            <a href="{% url 'frontend:parent_home' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-2xl">home</span>
+                <span class="font-medium text-[10px] mt-0.5">Trang chủ</span>
+            </a>
+            <!-- Việc của tôi (Active) -->
+            <a href="{% url 'frontend:parent_tasks' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 bg-primaryLight text-primary transition-all">
+                <span class="material-symbols-outlined filled text-2xl">assignment</span>
+                <span class="font-semibold text-[10px] mt-0.5">Việc của tôi</span>
+            </a>
+            <!-- Đăng việc -->
+            <a href="{% url 'frontend:task_create_1' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-2xl">add_circle</span>
+                <span class="font-medium text-[10px] mt-0.5">Đăng việc</span>
+            </a>
+            <!-- AI Trợ lý -->
+            <a href="{% url 'frontend:chatbot' %}"
+               class="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
+                <span class="material-symbols-outlined text-2xl">smart_toy</span>
+                <span class="font-medium text-[10px] mt-0.5">AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- TOAST CONTAINER                               -->
+    <!-- ============================================ -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3 pointer-events-none" style="max-width: 380px;"></div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT                                    -->
+    <!-- ============================================ -->
+    <script>
+        // ==================== CONFIG ====================
+        const API_BASE = "/api";
+        const token = localStorage.getItem('token');
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskId = urlParams.get('task_id');
+
+        // Auth guard
+        if (!token) window.location.href = "{% url 'frontend:login' %}";
+        if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
+
+        // ==================== STATE ====================
+        let rating = 5;
+        let isSubmitting = false;
+
+        // ==================== TOAST SYSTEM ====================
+        function showToast(message, type = 'info', duration = 3500) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const iconMap = {
+                success: { icon: 'check_circle', color: 'text-success', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                error:   { icon: 'error',        color: 'text-error',   bg: 'bg-red-50',    border: 'border-red-200' },
+                warning: { icon: 'warning',      color: 'text-warning', bg: 'bg-amber-50',  border: 'border-amber-200' },
+                info:    { icon: 'info',          color: 'text-primary', bg: 'bg-primaryLight', border: 'border-orange-200' },
+            };
+            const cfg = iconMap[type] || iconMap.info;
+
+            toast.className = `toast-in pointer-events-auto flex items-start gap-3 ${cfg.bg} border ${cfg.border} rounded-xl px-4 py-3 shadow-lg`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined filled ${cfg.color} text-xl flex-shrink-0 mt-0.5">${cfg.icon}</span>
+                <p class="text-sm font-medium text-textPrimary flex-1">${message}</p>
+                <button onclick="this.closest('.toast-in, .toast-out').classList.add('toast-out'); setTimeout(() => this.closest('.toast-in, .toast-out').remove(), 300);" class="text-textSecondary hover:text-textPrimary flex-shrink-0">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.classList.remove('toast-in');
+                    toast.classList.add('toast-out');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        // ==================== LOGOUT ====================
+        function handleLogout() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                localStorage.clear();
+                showToast('Đã đăng xuất thành công', 'success');
+                setTimeout(() => {
+                    window.location.href = "{% url 'frontend:login' %}";
+                }, 500);
+            }
+        }
+
+        // ==================== STAR RATING ====================
+        const starBtns = document.querySelectorAll('.star-btn');
+        const ratingLabel = document.getElementById('rating-label');
+        const submitBtn = document.getElementById('submit-review');
+
+        const ratingLabels = {
+            1: { text: 'Tệ', icon: 'sentiment_very_dissatisfied' },
+            2: { text: 'Kém', icon: 'sentiment_dissatisfied' },
+            3: { text: 'Bình thường', icon: 'sentiment_neutral' },
+            4: { text: 'Tốt', icon: 'sentiment_satisfied' },
+            5: { text: 'Tuyệt vời', icon: 'sentiment_very_satisfied' },
+        };
+
+        function updateStars() {
+            starBtns.forEach(btn => {
+                const val = parseInt(btn.dataset.val);
+                const icon = btn.querySelector('.material-symbols-outlined');
+                if (val <= rating) {
+                    icon.classList.remove('star-empty');
+                    icon.classList.add('star-filled');
+                } else {
+                    icon.classList.remove('star-filled');
+                    icon.classList.add('star-empty');
+                }
+            });
+
+            // Update label
+            const label = ratingLabels[rating];
+            ratingLabel.innerHTML = `<span class="material-symbols-outlined text-sm filled">${label.icon}</span> ${label.text}`;
+        }
+
+        // Hover preview
+        starBtns.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                const hoverVal = parseInt(btn.dataset.val);
+                starBtns.forEach(b => {
+                    const v = parseInt(b.dataset.val);
+                    const icon = b.querySelector('.material-symbols-outlined');
+                    if (v <= hoverVal) {
+                        icon.classList.remove('star-empty');
+                        icon.classList.add('star-filled');
+                    } else {
+                        icon.classList.remove('star-filled');
+                        icon.classList.add('star-empty');
+                    }
+                });
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                updateStars();
+            });
+
+            btn.addEventListener('click', () => {
+                rating = parseInt(btn.dataset.val);
+                updateStars();
+            });
+        });
+
+        // ==================== CHARACTER COUNT ====================
+        function updateCharCount() {
+            const textarea = document.getElementById('comment');
+            const counter = document.getElementById('char-count');
+            const count = textarea.value.length;
+            counter.textContent = count;
+            if (count > 450) {
+                counter.classList.add('text-warning');
+                counter.classList.remove('text-textMuted');
+            } else {
+                counter.classList.remove('text-warning');
+                counter.classList.add('text-textMuted');
+            }
+        }
+
+        // ==================== FORMAT HELPERS ====================
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+        }
+
+        function formatDate(dateStr) {
+            try {
+                const d = new Date(dateStr);
+                const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const dateStrShort = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                return dateStrShort + ', ' + timeStr;
+            } catch {
+                return dateStr || '';
+            }
+        }
+
+        function getCategoryIcon(category) {
+            const map = {
+                'babysitting': 'child_care',
+                'tutoring': 'school',
+                'cooking': 'restaurant',
+                'cleaning': 'cleaning_services',
+                'shopping': 'shopping_cart',
+                'pickup': 'directions_car',
+                'moving': 'local_shipping',
+                'other': 'more_horiz',
+            };
+            return map[category] || 'work';
+        }
+
+        // ==================== FETCH TASK & WORKER INFO ====================
+        async function init() {
+            try {
+                // Fetch user profile (for sidebar)
+                const profResp = await fetch(API_BASE + "/profile/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (profResp.ok) {
+                    const prof = await profResp.json();
+                    const fullName = (prof.first_name && prof.last_name)
+                        ? `${prof.first_name} ${prof.last_name}`
+                        : prof.username || 'Người dùng';
+                    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
+
+                    const sidebarName = document.getElementById('sidebar-user-name');
+                    if (sidebarName) sidebarName.textContent = fullName;
+                    const sidebarAvatar = document.getElementById('sidebar-avatar');
+                    if (sidebarAvatar) sidebarAvatar.src = avatarUrl;
+                }
+
+                // Fetch tasks to find the current one
+                const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!tasksResp.ok) {
+                    showToast('Không thể tải thông tin công việc', 'error');
+                    return;
+                }
+
+                const tasks = await tasksResp.json();
+                const task = tasks.find(t => t.id == taskId);
+
+                if (!task) {
+                    showToast('Không tìm thấy công việc này', 'error');
+                    setTimeout(() => {
+                        window.location.href = "{% url 'frontend:parent_tasks' %}";
+                    }, 1500);
+                    return;
+                }
+
+                // Hide loading, show loaded
+                document.getElementById('summary-loading').classList.add('hidden');
+                document.getElementById('summary-loaded').classList.remove('hidden');
+
+                // Update worker info
+                const workerName = task.assigned_worker_name || task.worker_username || 'Carepartner';
+                document.getElementById('worker-name').textContent = workerName;
+                document.getElementById('worker-avatar').src =
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=F26522&color=fff`;
+
+                // Update task details
+                const detailsHtml = `
+                    <div class="inline-flex items-center gap-2 text-sm text-textSecondary bg-background rounded-lg px-3 py-2">
+                        <span class="material-symbols-outlined filled text-primary text-lg">${getCategoryIcon(task.category)}</span>
+                        <span class="font-medium text-textPrimary">${task.title || 'Công việc'}</span>
+                    </div>
+                    ${task.location ? `
+                    <div class="flex items-center justify-center gap-1.5 text-xs text-textMuted">
+                        <span class="material-symbols-outlined text-sm">location_on</span>
+                        <span>${task.location}</span>
+                    </div>` : ''}
+                    ${task.scheduled_time ? `
+                    <div class="flex items-center justify-center gap-1.5 text-xs text-textMuted">
+                        <span class="material-symbols-outlined text-sm">schedule</span>
+                        <span>${formatDate(task.scheduled_time)}</span>
+                    </div>` : ''}
+                    ${task.price ? `
+                    <div class="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary">
+                        <span class="material-symbols-outlined text-sm filled">payments</span>
+                        <span>${formatPrice(task.price)}</span>
+                    </div>` : ''}
+                `;
+                document.getElementById('task-details').innerHTML = detailsHtml;
+
+                // Enable submit button
+                submitBtn.disabled = false;
+
+            } catch (e) {
+                console.error('Init error:', e);
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        // ==================== SUBMIT REVIEW ====================
+        submitBtn.addEventListener('click', async () => {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const comment = document.getElementById('comment').value.trim();
+
+            // Update button state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Đang gửi...
+            `;
+
+            try {
+                const resp = await fetch(API_BASE + "/parent/review/", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        task: taskId,
+                        rating: rating,
+                        comment: comment
+                    })
+                });
+
+                if (resp.ok) {
+                    showToast('Cảm ơn bạn đã đánh giá! 🎉', 'success');
+                    setTimeout(() => {
+                        window.location.href = "{% url 'frontend:parent_tasks' %}";
+                    }, 1200);
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    const errMsg = err.detail || err.message || err.error || JSON.stringify(err);
+                    showToast('Lỗi: ' + errMsg, 'error');
+                    // Restore button
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <span class="material-symbols-outlined text-xl">send</span>
+                        Gửi đánh giá
+                    `;
+                }
+            } catch (e) {
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                // Restore button
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `
+                    <span class="material-symbols-outlined text-xl">send</span>
+                    Gửi đánh giá
                 `;
             }
-        } catch (e) { console.error(e); }
-    }
+        });
 
-    document.getElementById('submit-review').onclick = async () => {
-        const comment = document.getElementById('comment').value;
-        try {
-            const resp = await fetch(API_BASE + "/parent/review/", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    task: taskId,
-                    rating: rating,
-                    comment: comment
-                })
-            });
-            if (resp.ok) {
-                alert("Cảm ơn bạn đã đánh giá!");
-                window.location.href = "{% url 'frontend:parent_tasks' %}";
-            } else {
-                const err = await resp.json();
-                alert("Lỗi: " + JSON.stringify(err));
-            }
-        } catch (e) { alert("Lỗi kết nối."); }
-    };
+        // ==================== INITIALIZE ====================
+        // Set default 5-star rating
+        updateStars();
+        init();
+    </script>
 
-    updateStars();
-    init();
-</script>
-</body></html>
+</body>
+</html>

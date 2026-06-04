@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html class="light" lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI Trợ lý | EduCareLink</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        successBg: '#ECFDF5',
+                        error: '#EF4444',
+                        errorBg: '#FEF2F2',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
+                    },
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
+                        label: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        DEFAULT: '0.75rem',
+                        lg: '1rem',
+                        xl: '1.5rem',
+                        '2xl': '2rem',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Manrope', sans-serif;
+        }
+
+        /* Sidebar nav link styles */
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            color: #6B7280;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover {
+            background: #FFF4ED;
+            color: #F26522;
+        }
+        .sidebar-link.active {
+            background: #FFF4ED;
+            color: #F26522;
+            font-weight: 700;
+        }
+        .sidebar-link.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Chat area scrollbar */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 999px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+
+        /* Sidebar scroll */
+        .sidebar-scroll::-webkit-scrollbar { width: 0; }
+        .sidebar-scroll { scrollbar-width: none; }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-radius: 0.875rem;
+            background: #FFFFFF;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            border: 1px solid #E5E7EB;
+            min-width: 320px;
+            max-width: 420px;
+            animation: toastSlideIn 0.35s ease-out;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #1A1A2E;
+        }
+        .toast.toast-success { border-left: 4px solid #10B981; }
+        .toast.toast-success .toast-icon { color: #10B981; }
+        .toast.toast-error { border-left: 4px solid #EF4444; }
+        .toast.toast-error .toast-icon { color: #EF4444; }
+        .toast.toast-warning { border-left: 4px solid #F59E0B; }
+        .toast.toast-warning .toast-icon { color: #F59E0B; }
+        .toast.toast-info { border-left: 4px solid #F26522; }
+        .toast.toast-info .toast-icon { color: #F26522; }
+        .toast-exit {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastSlideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100px); }
+        }
+
+        /* Mobile bottom nav */
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            color: #9CA3AF;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border-radius: 0.75rem;
+        }
+        .mobile-nav-item.active {
+            color: #F26522;
+            background: #FFF4ED;
+        }
+        .mobile-nav-item.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Chat message animations */
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-animate {
+            animation: messageIn 0.3s ease-out forwards;
+        }
+
+        /* Typing indicator */
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #F26522;
+            display: inline-block;
+            animation: typingBounce 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Quick chip hover */
+        .chip-suggestion {
+            transition: all 0.2s ease;
+        }
+        .chip-suggestion:hover {
+            background: #F26522;
+            color: #FFFFFF;
+            border-color: #F26522;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(242, 101, 34, 0.2);
+        }
+
+        /* Task card in chat */
+        .task-card-chat {
+            transition: all 0.2s ease;
+        }
+        .task-card-chat:hover {
+            box-shadow: 0 4px 16px rgba(242, 101, 34, 0.12);
+            border-color: #FFCFB3;
+        }
+
+        /* Chat input focus */
+        .chat-input:focus {
+            border-color: #F26522;
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.1);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile bottom safe area */
+        @media (max-width: 1023px) {
+            .chat-main-area {
+                padding-bottom: 5.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textPrimary antialiased min-h-screen">
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ===== DESKTOP SIDEBAR (hidden on mobile) ===== -->
+    <aside id="sidebar" class="hidden lg:flex fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex-col z-40 shadow-sm">
+        <!-- Logo -->
+        <div class="px-6 py-6 border-b border-gray-50">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+                    <span class="material-symbols-outlined filled text-white text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 600;">school</span>
+                </div>
+                <div>
+                    <h1 class="font-headline font-extrabold text-lg text-textPrimary leading-none tracking-tight">EduCareLink</h1>
+                    <p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase mt-0.5">Phụ huynh</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 space-y-1.5 sidebar-scroll overflow-y-auto">
+            <a href="{% url 'frontend:parent_home' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span>Trang chủ</span>
+            </a>
+            <a href="{% url 'frontend:parent_tasks' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span>Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:task_create_1' %}" class="sidebar-link">
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span>Đăng việc mới</span>
+            </a>
+            <a href="{% url 'frontend:chatbot' %}" class="sidebar-link active">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span>AI Trợ lý</span>
+            </a>
+        </nav>
+
+        <!-- User Info + Logout -->
+        <div class="px-4 pb-6 border-t border-gray-50 pt-4">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden ring-2 ring-primary/10">
+                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                    <p class="text-[11px] text-textSecondary">Phụ huynh</p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-textSecondary hover:bg-red-50 hover:text-red-500 transition-all text-sm font-medium">
+                <span class="material-symbols-outlined text-lg">logout</span>
+                <span>Đăng xuất</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="lg:ml-[260px] min-h-screen flex flex-col chat-main-area">
+
+        <!-- Mobile Header (hidden on desktop) -->
+        <header class="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined filled text-white text-base" style="font-variation-settings: 'FILL' 1, 'wght' 600;">school</span>
+                    </div>
+                    <h1 class="font-headline font-bold text-base text-textPrimary">EduCareLink</h1>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden ring-2 ring-primary/10">
+                    <img id="mobile-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== CHAT HEADER ===== -->
+        <div class="bg-surface border-b border-border px-4 lg:px-8 py-4 flex items-center gap-3 flex-shrink-0">
+            <div class="w-11 h-11 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined filled text-primary text-2xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+            </div>
+            <div>
+                <h2 class="font-headline font-bold text-lg text-textPrimary leading-tight">AI Trợ lý</h2>
+                <p class="text-textSecondary text-sm">Trợ lý gia đình thông minh</p>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-success rounded-full animate-pulse"></span>
+                <span class="text-xs font-medium text-success">Trực tuyến</span>
+            </div>
+        </div>
+
+        <!-- ===== CHAT MESSAGES AREA ===== -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto chat-scroll px-4 lg:px-8 py-6 space-y-5">
+            <!-- Welcome Message from AI -->
+            <div class="flex items-start gap-3 msg-animate">
+                <!-- Bot Avatar -->
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <!-- Message Bubble -->
+                <div class="max-w-[80%] lg:max-w-[65%]">
+                    <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5">
+                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">
+                            Xin chào! Tôi là trợ lý AI của EduCareLink. Bạn có thể mô tả công việc cần tìm Carepartner, tôi sẽ giúp bạn tạo việc ngay!
+                        </p>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block ml-1">Vừa xong</span>
+                </div>
+            </div>
+
+            <!-- Quick Suggestion Chips -->
+            <div id="suggestion-chips" class="flex flex-wrap gap-2.5 pl-12 msg-animate">
+                <button onclick="sendSuggestion('Tôi cần gia sư Toán cho bé lớp 5')"
+                        class="chip-suggestion px-4 py-2.5 rounded-xl border-2 border-primary/20 bg-white text-primary text-sm font-semibold cursor-pointer flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">menu_book</span>
+                    Tôi cần gia sư Toán cho bé lớp 5
+                </button>
+                <button onclick="sendSuggestion('Tìm người đón trẻ đi học')"
+                        class="chip-suggestion px-4 py-2.5 rounded-xl border-2 border-primary/20 bg-white text-primary text-sm font-semibold cursor-pointer flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">child_care</span>
+                    Tìm người đón trẻ đi học
+                </button>
+                <button onclick="sendSuggestion('Cần người dọn dẹp nhà cuối tuần')"
+                        class="chip-suggestion px-4 py-2.5 rounded-xl border-2 border-primary/20 bg-white text-primary text-sm font-semibold cursor-pointer flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">cleaning_services</span>
+                    Cần người dọn dẹp nhà cuối tuần
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== CHAT INPUT AREA ===== -->
+        <div class="bg-surface border-t border-border px-4 lg:px-8 py-4 flex-shrink-0">
+            <div class="flex items-end gap-3 max-w-4xl mx-auto">
+                <div class="flex-1 relative">
+                    <input
+                        id="chat-input"
+                        type="text"
+                        class="chat-input w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-5 py-3.5 pr-12 text-[0.9375rem] text-textPrimary placeholder-textMuted outline-none transition-all"
+                        placeholder="Nhập tin nhắn..."
+                        autocomplete="off"
+                    />
+                </div>
+                <button
+                    id="send-btn"
+                    onclick="sendMessage()"
+                    class="w-12 h-12 rounded-2xl bg-primary hover:bg-primaryDark text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/25 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">send</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM NAV (hidden on desktop) ===== -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-2 pt-2 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div class="flex justify-around items-center">
+            <a href="{% url 'frontend:parent_home' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span>Trang chủ</span>
+            </a>
+            <a href="{% url 'frontend:parent_tasks' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span>Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:task_create_1' %}" class="mobile-nav-item">
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span>Đăng việc</span>
+            </a>
+            <a href="{% url 'frontend:chatbot' %}" class="mobile-nav-item active">
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                <span>AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ===== JAVASCRIPT ===== -->
+    <script>
+        const API_BASE = "/api";
+        const token = localStorage.getItem('token');
+
+        // ===== AUTH CHECK =====
+        if (!token) {
+            window.location.href = "{% url 'frontend:login' %}";
+        }
+
+        // ===== TOAST NOTIFICATION SYSTEM =====
+        function showToast(message, type = 'success', duration = 4000) {
+            const container = document.getElementById('toast-container');
+
+            const iconMap = {
+                success: 'check_circle',
+                error: 'error',
+                warning: 'warning',
+                info: 'info'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined toast-icon text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">${iconMap[type] || 'info'}</span>
+                <span class="flex-1">${message}</span>
+                <button onclick="dismissToast(this)" class="ml-2 text-textSecondary hover:text-textPrimary transition-colors p-0.5">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto dismiss
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        function dismissToast(btn) {
+            const toast = btn.closest('.toast');
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        // ===== LOGOUT =====
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.clear();
+                showToast('Đã đăng xuất thành công', 'success');
+                setTimeout(() => {
+                    window.location.href = "{% url 'frontend:login' %}";
+                }, 500);
+            }
+        }
+
+        // ===== CHAT LOGIC =====
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        let isSending = false;
+
+        // Format current time for message timestamps
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Format price
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+        }
+
+        // Scroll to bottom of chat
+        function scrollToBottom() {
+            chatMessages.scrollTo({
+                top: chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add user message bubble
+        function addUserMessage(text) {
+            // Hide suggestion chips after first user message
+            const chips = document.getElementById('suggestion-chips');
+            if (chips) chips.style.display = 'none';
+
+            const time = getCurrentTime();
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-3 justify-end msg-animate';
+            msgDiv.innerHTML = `
+                <div class="max-w-[80%] lg:max-w-[65%]">
+                    <div class="bg-primary rounded-2xl rounded-tr-md px-5 py-3.5">
+                        <p class="text-white text-[0.9375rem] leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block text-right mr-1">${time}</span>
+                </div>
+                <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-white text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">person</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        // Add AI message bubble
+        function addBotMessage(text) {
+            const time = getCurrentTime();
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-3 msg-animate';
+            msgDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <div class="max-w-[80%] lg:max-w-[65%]">
+                    <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5">
+                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">${text}</p>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        // Add task card in chat
+        function addTaskCard(task) {
+            const time = getCurrentTime();
+            const formattedPrice = formatPrice(task.price || 0);
+            const categoryMap = {
+                1: { name: 'Gia sư', icon: 'menu_book', color: '#F26522' },
+                2: { name: 'Đón trẻ', icon: 'child_care', color: '#2DB84B' },
+                3: { name: 'Dọn dẹp', icon: 'cleaning_services', color: '#3B82F6' },
+                4: { name: 'Trông trẻ', icon: 'stroller', color: '#8B5CF6' },
+                5: { name: 'Mua sắm hộ', icon: 'shopping_bag', color: '#EC4899' },
+            };
+            const cat = categoryMap[task.category] || categoryMap[1];
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-3 msg-animate';
+            msgDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <div class="max-w-[85%] lg:max-w-[70%]">
+                    <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5 mb-2">
+                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">Tôi đã tạo việc thành công cho bạn! Xem chi tiết bên dưới 👇</p>
+                    </div>
+                    <!-- Task Card -->
+                    <div class="task-card-chat bg-surface rounded-2xl border border-border overflow-hidden">
+                        <!-- Card Header -->
+                        <div class="px-5 pt-4 pb-3 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: ${cat.color}15;">
+                                    <span class="material-symbols-outlined filled text-lg" style="font-variation-settings: 'FILL' 1; color: ${cat.color};">${cat.icon}</span>
+                                </div>
+                                <span class="text-xs font-bold text-textSecondary uppercase tracking-wide">${cat.name}</span>
+                            </div>
+                            <span class="font-headline font-extrabold text-lg text-primary">${formattedPrice}</span>
+                        </div>
+                        <!-- Card Body -->
+                        <div class="px-5 pb-4">
+                            <h4 class="font-bold text-textPrimary text-base leading-snug mb-2">${escapeHtml(task.title || '')}</h4>
+                            <p class="text-textSecondary text-sm line-clamp-2 mb-3">${escapeHtml(task.description || '')}</p>
+                            <div class="flex items-center gap-4 text-xs text-textMuted">
+                                ${task.location ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${escapeHtml(task.location)}</span>` : ''}
+                                ${task.scheduled_time ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>${escapeHtml(task.scheduled_time)}</span>` : ''}
+                            </div>
+                        </div>
+                        <!-- Card Footer -->
+                        <div class="px-5 py-3 bg-gray-50/80 border-t border-border">
+                            <a href="{% url 'frontend:parent_tasks' %}"
+                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors">
+                                <span class="material-symbols-outlined text-lg">visibility</span>
+                                Xem chi tiết
+                            </a>
+                        </div>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'flex items-start gap-3 msg-animate';
+            typingDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-4 flex items-center gap-1.5">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            scrollToBottom();
+        }
+
+        // Remove typing indicator
+        function hideTyping() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        // Send message to API
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text || isSending) return;
+
+            isSending = true;
+            sendBtn.disabled = true;
+            chatInput.value = '';
+
+            // Add user message
+            addUserMessage(text);
+
+            // Show typing indicator
+            showTyping();
+
+            try {
+                const resp = await fetch(API_BASE + "/chatbot/", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ message: text })
+                });
+
+                hideTyping();
+
+                if (!resp.ok) {
+                    if (resp.status === 401) {
+                        localStorage.removeItem('token');
+                        showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error');
+                        setTimeout(() => {
+                            window.location.href = "{% url 'frontend:login' %}";
+                        }, 1500);
+                        return;
+                    }
+                    let errMsg = 'Có lỗi xảy ra, vui lòng thử lại';
+                    try {
+                        const errData = await resp.json();
+                        if (typeof errData === 'object') {
+                            errMsg = Object.values(errData).flat().join('. ') || errMsg;
+                        } else {
+                            errMsg = errData.detail || errData.message || errMsg;
+                        }
+                    } catch (e) { /* ignore parse error */ }
+                    addBotMessage(escapeHtml(errMsg));
+                    showToast(errMsg, 'error');
+                    return;
+                }
+
+                const data = await resp.json();
+
+                // Check if response contains a task (AI created a task)
+                if (data.task) {
+                    addTaskCard(data.task);
+                }
+
+                // Add the AI text reply
+                if (data.reply || data.message || data.response) {
+                    const replyText = data.reply || data.message || data.response;
+                    addBotMessage(escapeHtml(replyText));
+                }
+
+            } catch (e) {
+                hideTyping();
+                addBotMessage('Xin lỗi, đã có lỗi kết nối. Vui lòng thử lại sau!');
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                console.error('Chat API error:', e);
+            } finally {
+                isSending = false;
+                sendBtn.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        // Send quick suggestion
+        function sendSuggestion(text) {
+            chatInput.value = text;
+            sendMessage();
+        }
+
+        // Enter key to send
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // ===== LOAD USER PROFILE =====
+        async function loadUserProfile() {
+            try {
+                const resp = await fetch(API_BASE + "/profile/", {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resp.ok) {
+                    const prof = await resp.json();
+                    const fullName = (prof.first_name || '') + ' ' + (prof.last_name || '');
+                    const displayName = fullName.trim() || prof.username || 'Phụ huynh';
+
+                    // Update sidebar
+                    const sidebarName = document.getElementById('sidebar-name');
+                    const sidebarAvatar = document.getElementById('sidebar-avatar');
+                    if (sidebarName) sidebarName.textContent = displayName;
+                    if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F26522&color=fff`;
+
+                    // Update mobile avatar
+                    const mobileAvatar = document.getElementById('mobile-avatar');
+                    if (mobileAvatar) mobileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F26522&color=fff`;
+                }
+            } catch (e) {
+                console.error('Failed to load profile:', e);
+            }
+        }
+
+        loadUserProfile();
+
+        // Focus input on load
+        chatInput.focus();
+    </script>
+
+</body>
+</html>
