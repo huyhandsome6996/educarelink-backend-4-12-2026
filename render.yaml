@@ -1,0 +1,25 @@
+databases:
+  - name: educarelink-db
+    databaseName: educarelink
+    user: educarelink_user
+    plan: free
+
+services:
+  - type: web
+    name: educarelink-backend
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn backend.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: educarelink-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
+      - key: DEBUG
+        value: "False"
+      - key: GEMINI_API_KEY
+        value: "" # Please fill this in Render Dashboard
