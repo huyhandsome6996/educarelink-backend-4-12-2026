@@ -329,10 +329,55 @@
     <!-- ========== JAVASCRIPT ========== -->
     <script>
         const API_BASE = "/api";
-        const token = localStorage.getItem('token');
+        const LOGIN_URL = "{% url 'frontend:login' %}";
+
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = LOGIN_URL;
+                return;
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return;
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = LOGIN_URL;
+                    return;
+                }
+            }
+            return response;
+        }
 
         // Auth check
-        if (!token) window.location.href = "{% url 'frontend:login' %}";
+        if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 
         // ===== GLOBAL STATE =====
         let allTasks = [];
@@ -524,9 +569,8 @@
             if (!confirmed) return;
 
             try {
-                const r = await fetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
+                const r = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
+                    method: 'POST'
                 });
                 const d = await r.json();
 
@@ -546,7 +590,8 @@
         function handleLogout() {
             showConfirmModal('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?').then(confirmed => {
                 if (confirmed) {
-                    localStorage.clear();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
                     window.location.href = "{% url 'frontend:login' %}";
                 }
             });
@@ -555,7 +600,7 @@
         // ===== FETCH TASKS =====
         async function fetchTasks() {
             try {
-                const resp = await fetch(API_BASE + "/tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
+                const resp = await apiFetch(API_BASE + "/tasks/");
                 allTasks = await resp.json();
                 // Re-apply search filter
                 handleSearch(document.getElementById('search-input').value);
@@ -579,7 +624,7 @@
         async function init() {
             try {
                 // Fetch profile
-                const profResp = await fetch(API_BASE + "/profile/", { headers: { 'Authorization': 'Bearer ' + token } });
+                const profResp = await apiFetch(API_BASE + "/profile/");
                 const prof = await profResp.json();
                 const displayName = prof.first_name || prof.username || 'Carepartner';
 

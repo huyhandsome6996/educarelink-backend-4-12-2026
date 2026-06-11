@@ -441,12 +441,62 @@
     <!-- ===== JAVASCRIPT ===== -->
     <script>
         const API_BASE = "/api";
-        const token = localStorage.getItem('token');
+
+        // ===== TOKEN REFRESH UTILITY =====
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "{% url 'frontend:login' %}";
+                return;
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            // Nếu 401 → thử refresh token
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = "{% url 'frontend:login' %}";
+                            return;
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = "{% url 'frontend:login' %}";
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = "{% url 'frontend:login' %}";
+                    return;
+                }
+            }
+            return response;
+        }
 
         // ===== AUTH CHECK =====
-        if (!token) {
+        if (!localStorage.getItem('token')) {
             window.location.href = "{% url 'frontend:login' %}";
         }
+
+        // ===== CHAT HISTORY (for conversation context) =====
+        // Lưu lịch sử chat để gửi kèm cho AI hiểu ngữ cảnh
+        let chatHistory = [];
 
         // ===== TOAST NOTIFICATION SYSTEM =====
         function showToast(message, type = 'success', duration = 4000) {
@@ -534,6 +584,9 @@
             // Hide suggestion chips after first user message
             const chips = document.getElementById('suggestion-chips');
             if (chips) chips.style.display = 'none';
+
+            // Lưu tin nhắn người dùng vào lịch sử
+            chatHistory.push({ role: 'user', text: text });
 
             const time = getCurrentTime();
             const msgDiv = document.createElement('div');
@@ -674,20 +727,31 @@
             showTyping();
 
             try {
-                const resp = await fetch(API_BASE + "/chatbot/", {
+                // Xây dựng lịch sử hội thoại cho AI hiểu ngữ cảnh
+                const historyForAPI = chatHistory.map(m => ({
+                    role: m.role === 'user' ? 'user' : 'model',
+                    text: m.text
+                }));
+
+                const resp = await apiFetch(API_BASE + "/chatbot/", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({
+                        message: text,
+                        history: historyForAPI
+                    })
                 });
+
+                if (!resp) return;
 
                 hideTyping();
 
                 if (!resp.ok) {
                     if (resp.status === 401) {
                         localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
                         showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error');
                         setTimeout(() => {
                             window.location.href = "{% url 'frontend:login' %}";
@@ -703,6 +767,8 @@
                             errMsg = errData.detail || errData.message || errMsg;
                         }
                     } catch (e) { /* ignore parse error */ }
+                    // Lưu vào lịch sử dù lỗi
+                    chatHistory.push({ role: 'assistant', text: errMsg });
                     addBotMessage(escapeHtml(errMsg));
                     showToast(errMsg, 'error');
                     return;
@@ -710,13 +776,16 @@
 
                 const data = await resp.json();
 
+                // Lưu phản hồi AI vào lịch sử
+                const botResponseText = data.response || '';
+                chatHistory.push({ role: 'assistant', text: botResponseText });
+
                 // Check if response contains a task (AI created a task)
                 if (data.task) {
                     addTaskCard(data.task);
                 }
 
                 // Add the AI text reply
-                // Backend always returns { response: "...", type: "message"|"task_created"|"clarification"|"error" }
                 if (data.response) {
                     addBotMessage(escapeHtml(data.response));
                 }
@@ -750,10 +819,8 @@
         // ===== LOAD USER PROFILE =====
         async function loadUserProfile() {
             try {
-                const resp = await fetch(API_BASE + "/profile/", {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (resp.ok) {
+                const resp = await apiFetch(API_BASE + "/profile/");
+                if (resp && resp.ok) {
                     const prof = await resp.json();
                     const fullName = (prof.first_name || '') + ' ' + (prof.last_name || '');
                     const displayName = fullName.trim() || prof.username || 'Phụ huynh';

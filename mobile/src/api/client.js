@@ -33,18 +33,97 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor: Xử lý lỗi response tập trung
+// Interceptor: Tự động refresh token khi 401
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Token hết hạn — xoá token, điều hướng về login sẽ xử lý ở AuthContext
-      await storage.deleteItem('access_token');
-      await storage.deleteItem('user_role');
+    const originalRequest = error.config;
+
+    // Nếu không phải 401 hoặc đã thử refresh rồi → từ chối
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      // Xoá token nếu 401 và đã retry
+      if (error.response?.status === 401) {
+        await storage.deleteItem('access_token');
+        await storage.deleteItem('refresh_token');
+        await storage.deleteItem('user_role');
+      }
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    // Đánh dấu đã thử refresh
+    originalRequest._retry = true;
+
+    // Nếu đang refresh → xếp hàng đợi
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then(token => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return apiClient(originalRequest);
+      }).catch(err => {
+        return Promise.reject(err);
+      });
+    }
+
+    isRefreshing = true;
+
+    try {
+      const refreshToken = await storage.getItem('refresh_token');
+
+      if (!refreshToken) {
+        // Không có refresh token → đăng xuất
+        await storage.deleteItem('access_token');
+        await storage.deleteItem('user_role');
+        processQueue(error, null);
+        return Promise.reject(error);
+      }
+
+      // Gọi API refresh token
+      const response = await axios.post(`${BASE_URL}/auth/token/refresh/`, {
+        refresh: refreshToken
+      });
+
+      const { access, refresh } = response.data;
+
+      // Lưu token mới
+      await storage.setItem('access_token', access);
+      if (refresh) {
+        await storage.setItem('refresh_token', refresh);
+      }
+
+      // Cập nhật header cho request gốc
+      originalRequest.headers.Authorization = `Bearer ${access}`;
+
+      // Xử lý hàng đợi
+      processQueue(null, access);
+
+      // Retry request gốc
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      // Refresh thất bại → đăng xuất
+      await storage.deleteItem('access_token');
+      await storage.deleteItem('refresh_token');
+      await storage.deleteItem('user_role');
+      processQueue(refreshError, null);
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
 export default apiClient;
-

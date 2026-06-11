@@ -452,12 +452,60 @@
     <!-- ========== JAVASCRIPT ========== -->
     <script>
         const API_BASE = "/api";
-        const token = localStorage.getItem('token');
         const urlParams = new URLSearchParams(window.location.search);
         const taskId = urlParams.get('task_id');
 
+        // ===== TOKEN REFRESH UTILITY =====
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "{% url 'frontend:login' %}";
+                return;
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            // Nếu 401 → thử refresh token
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            // Retry request với token mới
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            // Refresh thất bại → đăng xuất
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = "{% url 'frontend:login' %}";
+                            return;
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = "{% url 'frontend:login' %}";
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = "{% url 'frontend:login' %}";
+                    return;
+                }
+            }
+            return response;
+        }
+
         // Auth & param check
-        if (!token) window.location.href = "{% url 'frontend:login' %}";
+        if (!localStorage.getItem('token')) window.location.href = "{% url 'frontend:login' %}";
         if (!taskId) window.location.href = "{% url 'frontend:worker_feed' %}";
 
         // ===== GLOBAL STATE =====
@@ -675,10 +723,10 @@
             btnMobile.disabled = true;
 
             try {
-                const r = await fetch(`${API_BASE}/worker/tasks/${taskId}/apply/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
+                const r = await apiFetch(`${API_BASE}/worker/tasks/${taskId}/apply/`, {
+                    method: 'POST'
                 });
+                if (!r) return;
                 const d = await r.json();
 
                 if (r.ok) {
@@ -712,7 +760,8 @@
         async function init() {
             try {
                 // Fetch user profile for sidebar
-                const profResp = await fetch(API_BASE + "/profile/", { headers: { 'Authorization': 'Bearer ' + token } });
+                const profResp = await apiFetch(API_BASE + "/profile/");
+                if (!profResp) return;
                 if (profResp.ok) {
                     const prof = await profResp.json();
                     const displayName = prof.first_name || prof.username || 'Carepartner';
@@ -725,18 +774,16 @@
                     document.getElementById('mobile-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
                 }
 
-                // Fetch task
-                const resp = await fetch(API_BASE + "/tasks/", { headers: { 'Authorization': 'Bearer ' + token } });
-                if (!resp.ok) throw new Error('Failed to fetch tasks');
-                
-                const tasks = await resp.json();
-                const task = tasks.find(t => String(t.id) === String(taskId));
-
-                if (task) {
-                    renderTask(task);
-                } else {
-                    showError();
+                // Fetch task detail using new endpoint
+                const resp = await apiFetch(API_BASE + "/tasks/" + taskId + "/");
+                if (!resp) return;
+                if (!resp.ok) {
+                    if (resp.status === 404) showError();
+                    else throw new Error('Failed to fetch task');
+                    return;
                 }
+                const task = await resp.json();
+                renderTask(task);
             } catch (e) {
                 console.error(e);
                 showToast('Không thể tải thông tin công việc.', 'error');
