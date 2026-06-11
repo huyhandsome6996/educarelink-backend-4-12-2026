@@ -716,9 +716,9 @@
                 }
 
                 // Add the AI text reply
-                if (data.reply || data.message || data.response) {
-                    const replyText = data.reply || data.message || data.response;
-                    addBotMessage(escapeHtml(replyText));
+                // Backend always returns { response: "...", type: "message"|"task_created"|"clarification"|"error" }
+                if (data.response) {
+                    addBotMessage(escapeHtml(data.response));
                 }
 
             } catch (e) {

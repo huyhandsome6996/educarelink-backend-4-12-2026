@@ -558,9 +558,10 @@
                 let actionButtons = '';
                 if (a.status === 'pending') {
                     actionButtons = `
-                        <button onclick="cancelApplication(${a.id})" class="px-4 py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors active:scale-95">
-                            Hủy ứng tuyển
-                        </button>
+                        <span class="px-4 py-2 rounded-xl bg-amber-50 text-amber-600 font-semibold text-xs flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm">schedule</span>
+                            Chờ phụ huynh duyệt
+                        </span>
                     `;
                 } else if (a.status === 'accepted') {
                     actionButtons = `
@@ -636,31 +637,7 @@
             }).join('');
         }
 
-        // ===== CANCEL APPLICATION =====
-        async function cancelApplication(appId) {
-            const confirmed = await showConfirmModal(
-                'Hủy ứng tuyển',
-                'Bạn có chắc chắn muốn hủy ứng tuyển này không?'
-            );
-            if (!confirmed) return;
 
-            try {
-                const r = await fetch(`${API_BASE}/worker/applications/${appId}/cancel/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                const d = await r.json();
-
-                if (r.ok) {
-                    showToast(d.message || 'Đã hủy ứng tuyển thành công!', 'success');
-                    setTimeout(() => fetchJobs(), 1000);
-                } else {
-                    showToast(d.error || 'Không thể hủy ứng tuyển.', 'error');
-                }
-            } catch (e) {
-                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-            }
-        }
 
         // ===== CONTACT PARENT =====
         function contactParent(username) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyTasksAsParent } from '../../api/tasks';
+import { getMyTasksAsParent, getCandidates } from '../../api/tasks';
 
 const TABS = [
   { key: 'open',        label: 'Đang tìm' },
@@ -69,7 +69,36 @@ export default function MyTasksScreen() {
         )}
         {task.status === 'in_progress' && (
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#059669' }]}
-            onPress={() => navigation.navigate('Review', { taskId: task.id })}>
+            onPress={async () => {
+              try {
+                const candRes = await getCandidates(task.id);
+                const accepted = candRes.data.find(c => c.status === 'accepted');
+                navigation.navigate('Review', {
+                  taskId: task.id,
+                  revieweeId: accepted ? accepted.worker : null
+                });
+              } catch (e) {
+                navigation.navigate('Review', { taskId: task.id });
+              }
+            }}>
+            <Ionicons name="star-outline" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>Đánh giá Carepartner</Text>
+          </TouchableOpacity>
+        )}
+        {task.status === 'completed' && (
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#059669' }]}
+            onPress={async () => {
+              try {
+                const candRes = await getCandidates(task.id);
+                const accepted = candRes.data.find(c => c.status === 'accepted');
+                navigation.navigate('Review', {
+                  taskId: task.id,
+                  revieweeId: accepted ? accepted.worker : null
+                });
+              } catch (e) {
+                navigation.navigate('Review', { taskId: task.id });
+              }
+            }}>
             <Ionicons name="star-outline" size={16} color="#fff" />
             <Text style={styles.actionBtnText}>Đánh giá Carepartner</Text>
           </TouchableOpacity>

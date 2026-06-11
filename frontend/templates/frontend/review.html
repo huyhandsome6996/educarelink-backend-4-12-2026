@@ -691,6 +691,32 @@
             `;
 
             try {
+                // Lấy reviewee (worker id) từ candidates API
+                let revieweeId = null;
+                try {
+                    const candResp = await fetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (candResp.ok) {
+                        const candidates = await candResp.json();
+                        const acceptedCandidate = candidates.find(c => c.status === 'accepted');
+                        if (acceptedCandidate) {
+                            revieweeId = acceptedCandidate.worker;
+                        }
+                    }
+                } catch (e) { console.error('Error fetching candidates for reviewee:', e); }
+
+                if (!revieweeId) {
+                    showToast('Không tìm thấy thông tin Carepartner để đánh giá.', 'error');
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <span class="material-symbols-outlined text-xl">send</span>
+                        Gửi đánh giá
+                    `;
+                    return;
+                }
+
                 const resp = await fetch(API_BASE + "/parent/review/", {
                     method: 'POST',
                     headers: {
@@ -699,6 +725,7 @@
                     },
                     body: JSON.stringify({
                         task: taskId,
+                        reviewee: revieweeId,
                         rating: rating,
                         comment: comment
                     })
