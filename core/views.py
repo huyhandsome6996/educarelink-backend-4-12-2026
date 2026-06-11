@@ -347,7 +347,7 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
             contents = self._build_contents(user_message, chat_history)
 
             gemini_response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-2.5-flash',
                 contents=contents,
                 config=genai.types.GenerateContentConfig(
                     system_instruction=self.SYSTEM_PROMPT,
@@ -426,6 +426,8 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 detail = "API key Gemini không hợp lệ. Vui lòng kiểm tra lại trong file .env."
             elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
                 detail = "Đã hết hạn mức sử dụng Gemini miễn phí trong hôm nay. Thử lại vào ngày mai!"
+            elif 'HIGH DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper() or '503' in error_msg.upper():
+                detail = "Hệ thống AI đang quá tải (High Demand). Vui lòng thử lại sau vài giây!"
             elif 'MODEL' in error_msg.upper() or 'NOT_FOUND' in error_msg.upper():
                 detail = f"Model AI không khả dụng. Vui lòng liên hệ admin để cập nhật model."
             else:
