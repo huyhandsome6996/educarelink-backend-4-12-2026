@@ -31,11 +31,18 @@ export default function ChatbotScreen() {
 
     try {
       const res = await sendChatMessage(text);
+      // Backend returns: { response: "...", type: "message"|"task_created"|"clarification"|"error", task?: {...} }
+      const botText = res.data.response || 'AI đang được tích hợp. Vui lòng thử lại sau!';
       const botMsg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        text: res.data.response || 'AI đang được tích hợp. Vui lòng thử lại sau!',
+        text: botText,
       };
+      // If AI created a task, append task info to the message
+      if (res.data.task) {
+        const t = res.data.task;
+        botMsg.text += `\n\n📋 Công việc đã tạo:\n• ${t.title}\n• 💰 ${parseInt(t.price).toLocaleString('vi-VN')}đ\n• 📍 ${t.location || 'Chưa xác định'}\n• 📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleString('vi-VN') : 'Chưa xác định'}`;
+      }
       setMessages(prev => [...prev, botMsg]);
     } catch (e) {
       setMessages(prev => [...prev, {
