@@ -4,6 +4,9 @@ import apiClient from './client';
 // Lấy toàn bộ danh sách việc (dùng cho bảng tin sinh viên)
 export const getAllTasks = () => apiClient.get('/tasks/');
 
+// Lấy chi tiết 1 công việc theo ID (tránh fetch ALL rồi filter client-side)
+export const getTaskDetail = (taskId) => apiClient.get(`/tasks/${taskId}/`);
+
 // Tạo việc mới (phụ huynh)
 export const createTask = (taskData) => apiClient.post('/tasks/', taskData);
 
@@ -35,6 +38,6 @@ export const getMyJobsAsWorker = () => apiClient.get('/worker/my-jobs/');
 export const getWorkerProfile = (workerId) => apiClient.get(`/worker/${workerId}/profile/`);
 
 // === CHATBOT ===
-// Gửi tin nhắn cho AI chatbot
-export const sendChatMessage = (message) =>
-  apiClient.post('/chatbot/', { message });
+// Gửi tin nhắn cho AI chatbot (kèm lịch sử hội thoại để AI hiểu ngữ cảnh)
+export const sendChatMessage = (message, history = []) =>
+  apiClient.post('/chatbot/', { message, history });

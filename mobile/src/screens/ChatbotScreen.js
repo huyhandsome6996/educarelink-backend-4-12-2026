@@ -20,6 +20,10 @@ export default function ChatbotScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef(null);
 
+  // Lịch sử hội thoại để gửi kèm cho AI hiểu ngữ cảnh
+  // Chỉ lưu tối đa 20 tin nhắn gần nhất để tránh request quá lớn
+  const chatHistoryRef = useRef([]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
@@ -29,8 +33,17 @@ export default function ChatbotScreen() {
     setInput('');
     setIsTyping(true);
 
+    // Lưu tin nhắn người dùng vào lịch sử
+    chatHistoryRef.current.push({ role: 'user', text });
+
     try {
-      const res = await sendChatMessage(text);
+      // Gửi lịch sử hội thoại cho backend (đổi 'assistant' → 'model' cho Gemini API)
+      const historyForAPI = chatHistoryRef.current.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        text: m.text
+      }));
+
+      const res = await sendChatMessage(text, historyForAPI);
       // Backend returns: { response: "...", type: "message"|"task_created"|"clarification"|"error", task?: {...} }
       const botText = res.data.response || 'AI đang được tích hợp. Vui lòng thử lại sau!';
       const botMsg = {
@@ -43,6 +56,15 @@ export default function ChatbotScreen() {
         const t = res.data.task;
         botMsg.text += `\n\n📋 Công việc đã tạo:\n• ${t.title}\n• 💰 ${parseInt(t.price).toLocaleString('vi-VN')}đ\n• 📍 ${t.location || 'Chưa xác định'}\n• 📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleString('vi-VN') : 'Chưa xác định'}`;
       }
+
+      // Lưu phản hồi AI vào lịch sử
+      chatHistoryRef.current.push({ role: 'assistant', text: botText });
+
+      // Giới hạn lịch sử tối đa 20 tin nhắn
+      if (chatHistoryRef.current.length > 20) {
+        chatHistoryRef.current = chatHistoryRef.current.slice(-20);
+      }
+
       setMessages(prev => [...prev, botMsg]);
     } catch (e) {
       setMessages(prev => [...prev, {

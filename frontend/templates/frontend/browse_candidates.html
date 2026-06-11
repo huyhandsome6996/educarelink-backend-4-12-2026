@@ -430,10 +430,57 @@
 <script>
 // ==================== CONFIG ====================
 const API_BASE = "/api";
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+async function apiFetch(url, options = {}) {
+    let token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = LOGIN_URL;
+        return;
+    }
+    options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+            try {
+                const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                });
+                if (refreshResp.ok) {
+                    const refreshData = await refreshResp.json();
+                    localStorage.setItem('token', refreshData.access);
+                    if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                    options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                    response = await fetch(url, options);
+                } else {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
+                    window.location.href = LOGIN_URL;
+                    return;
+                }
+            } catch (e) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = LOGIN_URL;
+                return;
+            }
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = LOGIN_URL;
+            return;
+        }
+    }
+    return response;
+}
+
 const token = localStorage.getItem('token');
 const taskId = localStorage.getItem('current_task_id');
 
-if (!token) window.location.href = "{% url 'frontend:login' %}";
+if (!token) window.location.href = LOGIN_URL;
 if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
 
 // ==================== STATE ====================
@@ -517,7 +564,8 @@ function handleLogout() {
         'Đăng xuất',
         'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
         () => {
-            localStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
             showToast('Đã đăng xuất thành công', 'success');
             setTimeout(() => { window.location.href = "{% url 'frontend:login' %}"; }, 600);
         },
@@ -738,9 +786,8 @@ function approve(appId, workerName) {
         `Bạn có chắc chắn muốn chấp nhận ${workerName}? Hành động này không thể hoàn tác.`,
         async () => {
             try {
-                const resp = await fetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
+                const resp = await apiFetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
+                    method: 'POST'
                 });
                 const data = await resp.json();
 
@@ -764,9 +811,7 @@ function approve(appId, workerName) {
 // ==================== FETCH CANDIDATES ====================
 async function fetchCandidates() {
     try {
-        const candResp = await fetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const candResp = await apiFetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`);
 
         if (!candResp.ok) {
             throw new Error('Không thể tải danh sách ứng viên');
@@ -789,13 +834,12 @@ async function fetchCandidates() {
 async function init() {
     try {
         // Fetch user profile
-        const profResp = await fetch(API_BASE + "/profile/", {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const profResp = await apiFetch(API_BASE + "/profile/");
 
-        if (profResp.status === 401) {
+        if (profResp && profResp.status === 401) {
             localStorage.removeItem('token');
-            window.location.href = "{% url 'frontend:login' %}";
+            localStorage.removeItem('refresh_token');
+            window.location.href = LOGIN_URL;
             return;
         }
 
@@ -818,9 +862,7 @@ async function init() {
         }
 
         // Fetch task details
-        const tasksResp = await fetch(API_BASE + "/parent/my-tasks/", {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const tasksResp = await apiFetch(API_BASE + "/parent/my-tasks/");
 
         if (!tasksResp.ok) {
             throw new Error('Không thể tải thông tin công việc');

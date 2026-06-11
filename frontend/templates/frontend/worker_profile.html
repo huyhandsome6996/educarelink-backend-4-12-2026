@@ -475,10 +475,55 @@
     <!-- ========== JAVASCRIPT ========== -->
     <script>
         const API_BASE = "/api";
-        const token = localStorage.getItem('token');
+        const LOGIN_URL = "{% url 'frontend:login' %}";
+
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = LOGIN_URL;
+                return;
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return;
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = LOGIN_URL;
+                    return;
+                }
+            }
+            return response;
+        }
 
         // Auth check — redirect to login if no token
-        if (!token) window.location.href = "{% url 'frontend:login' %}";
+        if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 
         // ===== GLOBAL STATE =====
         let profileData = null;
@@ -546,7 +591,8 @@
         function handleLogout() {
             showConfirmModal('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?').then(confirmed => {
                 if (confirmed) {
-                    localStorage.clear();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
                     showToast('Đăng xuất thành công!', 'success');
                     setTimeout(() => {
                         window.location.href = "{% url 'frontend:login' %}";
@@ -587,27 +633,25 @@
         async function fetchProfileData() {
             try {
                 // 1) Fetch current user profile from /api/profile/
-                const profileResp = await fetch(API_BASE + "/profile/", {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                const profileResp = await apiFetch(API_BASE + "/profile/");
 
-                if (!profileResp.ok) {
+                if (profileResp && !profileResp.ok) {
                     if (profileResp.status === 401) {
-                        localStorage.clear();
-                        window.location.href = "{% url 'frontend:login' %}";
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
                         return;
                     }
                     throw new Error('Không thể tải hồ sơ');
                 }
+                if (!profileResp) return;
 
                 profileData = await profileResp.json();
 
                 // 2) Fetch worker's jobs from /api/worker/my-jobs/ for stats
                 let jobsData = [];
                 try {
-                    const jobsResp = await fetch(API_BASE + "/worker/my-jobs/", {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
+                    const jobsResp = await apiFetch(API_BASE + "/worker/my-jobs/");
                     if (jobsResp.ok) {
                         jobsData = await jobsResp.json();
                     }
@@ -618,9 +662,7 @@
                 // 3) Fetch worker profile detail for rating from /api/worker/<id>/profile/
                 let ratingData = null;
                 try {
-                    const ratingResp = await fetch(API_BASE + "/worker/" + profileData.id + "/profile/", {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
+                    const ratingResp = await apiFetch(API_BASE + "/worker/" + profileData.id + "/profile/");
                     if (ratingResp.ok) {
                         ratingData = await ratingResp.json();
                     }

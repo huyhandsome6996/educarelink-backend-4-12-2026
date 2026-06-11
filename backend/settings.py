@@ -118,15 +118,16 @@ REST_FRAMEWORK = {
 
 # Cấu hình thời gian của Token
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7), # Token sống 7 ngày (Dev để dài cho dễ test)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Access token sống 60 phút
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,       # Mỗi lần refresh → tạo refresh token mới
+    'BLACKLIST_AFTER_ROTATION': True,    # Refresh token cũ bị blacklist sau khi dùng
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',), # Phía Mobile sẽ gửi Header: "Authorization: Bearer <token>"
+    'AUTH_HEADER_TYPES': ('Bearer',), # Phía Mobile/Web sẽ gửi Header: "Authorization: Bearer <token>"
 }
 
 # --- CẤU HÌNH GEMINI AI ---
 # Đặt API key trong file .env: GEMINI_API_KEY=your_key_here
 # Lấy key miễn phí tại: https://aistudio.google.com/app/apikey
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')

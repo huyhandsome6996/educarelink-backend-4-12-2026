@@ -555,10 +555,55 @@
     <!-- ===== JAVASCRIPT ===== -->
     <script>
         const API_BASE = "/api";
-        const token = localStorage.getItem('token');
+
+        // ===== TOKEN REFRESH UTILITY =====
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "{% url 'frontend:login' %}";
+                return;
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = "{% url 'frontend:login' %}";
+                            return;
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = "{% url 'frontend:login' %}";
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = "{% url 'frontend:login' %}";
+                    return;
+                }
+            }
+            return response;
+        }
 
         // ===== AUTH CHECK =====
-        if (!token) {
+        if (!localStorage.getItem('token')) {
             window.location.href = "{% url 'frontend:login' %}";
         }
 
@@ -684,11 +729,10 @@
             const scheduled_time = `${date}T${time}:00Z`;
 
             try {
-                const resp = await fetch(API_BASE + "/tasks/", {
+                const resp = await apiFetch(API_BASE + "/tasks/", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
                         category: selectedCat,
@@ -699,6 +743,8 @@
                         price
                     })
                 });
+
+                if (!resp) return;
 
                 if (resp.ok) {
                     showToast('Đăng việc thành công! Đang chuyển hướng...', 'success');
@@ -734,10 +780,8 @@
         // ===== LOAD USER PROFILE =====
         async function loadUserProfile() {
             try {
-                const resp = await fetch(API_BASE + "/profile/", {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (resp.ok) {
+                const resp = await apiFetch(API_BASE + "/profile/");
+                if (resp && resp.ok) {
                     const prof = await resp.json();
                     const fullName = (prof.first_name || '') + ' ' + (prof.last_name || '');
                     const displayName = fullName.trim() || prof.username || 'Phụ huynh';

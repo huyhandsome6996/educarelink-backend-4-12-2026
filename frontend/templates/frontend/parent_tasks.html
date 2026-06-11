@@ -312,8 +312,54 @@ tailwind.config = {
 <script>
 // ==================== CONFIG ====================
 const API_BASE = "/api";
-const token = localStorage.getItem('token');
-if (!token) window.location.href = "{% url 'frontend:login' %}";
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+async function apiFetch(url, options = {}) {
+    let token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = LOGIN_URL;
+        return;
+    }
+    options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+            try {
+                const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                });
+                if (refreshResp.ok) {
+                    const refreshData = await refreshResp.json();
+                    localStorage.setItem('token', refreshData.access);
+                    if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                    options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                    response = await fetch(url, options);
+                } else {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
+                    window.location.href = LOGIN_URL;
+                    return;
+                }
+            } catch (e) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = LOGIN_URL;
+                return;
+            }
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = LOGIN_URL;
+            return;
+        }
+    }
+    return response;
+}
+
+if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 
 // ==================== STATE ====================
 let allTasks = [];
@@ -389,7 +435,8 @@ function handleLogout() {
     'Đăng xuất',
     'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
     () => {
-      localStorage.clear();
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
       showToast('Đã đăng xuất thành công', 'success');
       setTimeout(() => { window.location.href = "{% url 'frontend:login' %}"; }, 600);
     },
@@ -617,9 +664,7 @@ async function fetchAssignedWorkers() {
   const inProgressTasks = allTasks.filter(t => t.status === 'in_progress');
   for (const task of inProgressTasks) {
     try {
-      const resp = await fetch(`${API_BASE}/parent/tasks/${task.id}/candidates/`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      const resp = await apiFetch(`${API_BASE}/parent/tasks/${task.id}/candidates/`);
       const candidates = await resp.json();
       const accepted = candidates.find(c => c.status === 'accepted');
       if (accepted) {
@@ -635,12 +680,10 @@ async function fetchAssignedWorkers() {
 async function init() {
   try {
     // Fetch user profile
-    const profResp = await fetch(API_BASE + "/profile/", {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (profResp.status === 401) {
-      localStorage.clear();
-      window.location.href = "{% url 'frontend:login' %}";
+    const profResp = await apiFetch(API_BASE + "/profile/");
+    if (!profResp || profResp.status === 401) {
+      if (profResp) { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); }
+      window.location.href = LOGIN_URL;
       return;
     }
     const prof = await profResp.json();
@@ -653,9 +696,7 @@ async function init() {
     if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username)}&background=F26522&color=fff`;
 
     // Fetch tasks
-    const taskResp = await fetch(API_BASE + "/parent/my-tasks/", {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const taskResp = await apiFetch(API_BASE + "/parent/my-tasks/");
     if (!taskResp.ok) {
       showToast('Không thể tải danh sách việc', 'error');
       return;

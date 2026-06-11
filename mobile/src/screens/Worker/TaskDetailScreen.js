@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import { getTaskDetail, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 
 const CATEGORIES = [
@@ -28,9 +28,9 @@ export default function TaskDetailScreen() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const tasksRes = await getAllTasks();
-        const foundTask = tasksRes.data.find(t => t.id === taskId);
-        setTask(foundTask);
+        // Sử dụng endpoint chi tiết task thay vì fetch ALL tasks
+        const taskRes = await getTaskDetail(taskId);
+        setTask(taskRes.data);
 
         // Kiểm tra xem carepartner đã ứng tuyển việc này chưa
         const jobsRes = await getMyJobsAsWorker();

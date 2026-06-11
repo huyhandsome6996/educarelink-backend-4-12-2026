@@ -534,6 +534,7 @@
                     if (isLogin) {
                         // Save JWT tokens and role
                         localStorage.setItem('token', data.tokens.access);
+                        localStorage.setItem('refresh_token', data.tokens.refresh);
                         localStorage.setItem('role', data.role);
 
                         showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');

@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -120,6 +120,13 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
     
     def perform_create(self, serializer):
         serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
+
+
+class TaskDetailAPIView(generics.RetrieveAPIView):
+    """API lấy chi tiết 1 công việc theo ID — tránh fetch ALL tasks rồi filter client-side"""
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
 
 # --- PHẦN 3: LUỒNG DÀNH CHO PHỤ HUYNH ---
 class ParentTasksAPIView(generics.ListAPIView):
@@ -266,6 +273,7 @@ QUY TẮC XỬ LÝ:
 - Nếu thiếu thông tin bắt buộc (địa điểm, thời gian, giá): hỏi lại một cách thân thiện
 - Nếu chỉ hỏi thông tin thông thường: trả lời bình thường, KHÔNG tạo JSON
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện và ngắn gọn
+- Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng, tránh hỏi lại thông tin đã cung cấp
 
 FORMAT JSON khi tạo task (bắt buộc đủ các field):
 <TASK_JSON>
@@ -283,12 +291,37 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
 → Trả lời xác nhận lại thông tin + JSON hợp lệ bên trong thẻ <TASK_JSON>.
 """
 
+    def _build_contents(self, user_message, chat_history=None):
+        """Xây dựng danh sách messages cho Gemini API với lịch sử hội thoại"""
+        contents = []
+
+        # Thêm lịch sử hội thoại nếu có
+        if chat_history and isinstance(chat_history, list):
+            for msg in chat_history:
+                role = msg.get('role', '')
+                text = msg.get('text', '')
+                if role in ('user', 'model') and text:
+                    contents.append({
+                        'role': role,
+                        'parts': [{'text': text}]
+                    })
+
+        # Thêm tin nhắn hiện tại
+        contents.append({
+            'role': 'user',
+            'parts': [{'text': user_message}]
+        })
+
+        return contents
+
     def post(self, request):
         from django.conf import settings
         import json
         import re
 
         user_message = request.data.get('message', '').strip()
+        chat_history = request.data.get('history', [])  # Nhận lịch sử hội thoại từ frontend
+
         if not user_message:
             return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -310,11 +343,17 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
 
             client = genai.Client(api_key=gemini_key)
 
-            # Gọi Gemini với system prompt + tin nhắn người dùng
-            full_prompt = f"{self.SYSTEM_PROMPT}\n\nNgười dùng: {user_message}"
+            # Xây dựng nội dung với lịch sử hội thoại
+            contents = self._build_contents(user_message, chat_history)
+
             gemini_response = client.models.generate_content(
                 model='gemini-2.0-flash',
-                contents=full_prompt
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=self.SYSTEM_PROMPT,
+                    temperature=0.7,
+                    max_output_tokens=2048,
+                )
             )
             ai_text = gemini_response.text
 
@@ -364,6 +403,8 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                     "task": {
                         "id": new_task.id,
                         "title": new_task.title,
+                        "category": new_task.category.id if new_task.category else None,
+                        "description": new_task.description,
                         "price": str(new_task.price),
                         "location": new_task.location,
                         "scheduled_time": new_task.scheduled_time.isoformat(),
@@ -383,8 +424,10 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
             error_msg = str(e)
             if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper():
                 detail = "API key Gemini không hợp lệ. Vui lòng kiểm tra lại trong file .env."
-            elif 'QUOTA' in error_msg.upper():
+            elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
                 detail = "Đã hết hạn mức sử dụng Gemini miễn phí trong hôm nay. Thử lại vào ngày mai!"
+            elif 'MODEL' in error_msg.upper() or 'NOT_FOUND' in error_msg.upper():
+                detail = f"Model AI không khả dụng. Vui lòng liên hệ admin để cập nhật model."
             else:
                 detail = f"Lỗi kết nối AI: {error_msg}"
 
@@ -397,7 +440,7 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
 # --- PHẦN 6: ADMIN QUẢN LÝ DUYỆT TÀI KHOẢN CAREPARTNER ---
 class AdminPendingWorkersAPIView(APIView):
     """API lấy danh sách Carepartner chờ duyệt (dành cho trang Admin)"""
-    permission_classes = [AllowAny]  # Trang admin HTML sẽ dùng token riêng
+    permission_classes = [IsAdminUser]  # Yêu cầu quyền admin (is_staff=True)
 
     def get(self, request):
         pending = User.objects.filter(role='worker', is_approved=False).order_by('-date_joined')
@@ -422,7 +465,7 @@ class AdminPendingWorkersAPIView(APIView):
 
 class AdminApproveWorkerAPIView(APIView):
     """API duyệt hoặc từ chối tài khoản Carepartner"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUser]  # Yêu cầu quyền admin (is_staff=True)
 
     def post(self, request, user_id):
         action = request.data.get('action')  # 'approve' hoặc 'reject'
@@ -454,7 +497,7 @@ class AdminApproveWorkerAPIView(APIView):
 
 class AdminAllWorkersAPIView(APIView):
     """API lấy tất cả Carepartner (đã duyệt + chờ duyệt)"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUser]  # Yêu cầu quyền admin (is_staff=True)
 
     def get(self, request):
         workers = User.objects.filter(role='worker').order_by('-date_joined')
