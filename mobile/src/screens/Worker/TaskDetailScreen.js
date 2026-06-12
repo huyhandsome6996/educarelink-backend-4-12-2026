@@ -19,7 +19,7 @@ const CATEGORIES = [
 export default function TaskDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { taskId } = route.params;
+  const { taskId } = route.params || {};
   const [task, setTask] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [applying, setApplying] = useState(false);

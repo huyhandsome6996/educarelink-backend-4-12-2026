@@ -8,7 +8,7 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 export default function CandidateProfileScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { workerId, applicationId, isPending } = route.params;
+  const { workerId, applicationId, isPending } = route.params || {};
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [approving, setApproving] = useState(false);

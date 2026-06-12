@@ -113,7 +113,7 @@ export default function ChatbotScreen() {
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
           </View>
         )}
         <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
@@ -131,7 +131,7 @@ export default function ChatbotScreen() {
       <View style={styles.header}>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
-            <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
+            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
           </View>
           <View>
             <Text style={styles.headerName}>AI Trợ lý Educarelink</Text>
@@ -149,7 +149,7 @@ export default function ChatbotScreen() {
         ListFooterComponent={isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
-              <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+              <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
             </View>
             <View style={styles.typingBubble}>
               <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
