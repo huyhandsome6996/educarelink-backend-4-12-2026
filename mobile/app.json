@@ -13,7 +13,6 @@
     },
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/logo.png",
       "bundleIdentifier": "com.educarelink.app"
     },
     "android": {
@@ -35,12 +34,7 @@
           "cameraPermission": "EduCareLink cần camera để chụp ảnh CCCD và chân dung."
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/logo.png"
-        }
-      ]
+      "expo-notifications"
     ]
   }
 }
