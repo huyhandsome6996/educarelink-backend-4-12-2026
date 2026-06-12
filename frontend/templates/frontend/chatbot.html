@@ -60,6 +60,7 @@
     </script>
 
     <style>
+        html { scroll-behavior: smooth; }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
             vertical-align: middle;
@@ -190,7 +191,7 @@
 
         /* Chat message animations */
         @keyframes messageIn {
-            from { opacity: 0; transform: translateY(12px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .msg-animate {
@@ -227,17 +228,17 @@
 
         /* Task card in chat */
         .task-card-chat {
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
         }
         .task-card-chat:hover {
-            box-shadow: 0 4px 16px rgba(242, 101, 34, 0.12);
+            box-shadow: 0 8px 24px rgba(242, 101, 34, 0.15);
             border-color: #FFCFB3;
         }
 
         /* Chat input focus */
         .chat-input:focus {
             border-color: #F26522;
-            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.1);
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.15);
         }
 
         /* Loading spinner */
@@ -395,12 +396,12 @@
 
         <!-- ===== CHAT INPUT AREA ===== -->
         <div class="bg-surface border-t border-border px-4 lg:px-8 py-4 flex-shrink-0">
-            <div class="flex items-end gap-3 max-w-4xl mx-auto">
+            <div class="flex items-end gap-3 max-w-6xl mx-auto">
                 <div class="flex-1 relative">
                     <input
                         id="chat-input"
                         type="text"
-                        class="chat-input w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-5 py-3.5 pr-12 text-[0.9375rem] text-textPrimary placeholder-textMuted outline-none transition-all"
+                        class="chat-input w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-5 py-3.5 pr-12 text-[0.9375rem] text-textPrimary placeholder-textMuted outline-none transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         placeholder="Nhập tin nhắn..."
                         autocomplete="off"
                     />
@@ -408,7 +409,7 @@
                 <button
                     id="send-btn"
                     onclick="sendMessage()"
-                    class="w-12 h-12 rounded-2xl bg-primary hover:bg-primaryDark text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/25 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-12 h-12 rounded-2xl bg-primary hover:bg-primaryDark text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/25 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">send</span>
                 </button>
@@ -673,7 +674,7 @@
                         <!-- Card Footer -->
                         <div class="px-5 py-3 bg-gray-50/80 border-t border-border">
                             <a href="{% url 'frontend:parent_tasks' %}"
-                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors">
+                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200">
                                 <span class="material-symbols-outlined text-lg">visibility</span>
                                 Xem chi tiết
                             </a>

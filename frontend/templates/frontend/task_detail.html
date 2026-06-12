@@ -33,6 +33,7 @@
         }
     </script>
     <style>
+        html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
         .material-symbols-outlined {
@@ -123,8 +124,8 @@
         .fade-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
 
         /* Info card hover */
-        .info-card { transition: all 0.2s ease; }
-        .info-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .info-card { transition: all 0.25s ease; }
+        .info-card:hover { box-shadow: 0 8px 25px rgba(242, 101, 34, 0.1); transform: translateY(-2px); }
 
         /* Sticky apply bar */
         @media (max-width: 767px) {
@@ -151,10 +152,10 @@
             <h3 class="font-manrope font-bold text-xl text-textPrimary mb-2">Ứng tuyển công việc này?</h3>
             <p class="text-textSecondary text-sm leading-relaxed mb-6">Bạn chắc chắn muốn ứng tuyển? Phụ huynh sẽ xem hồ sơ của bạn và quyết định duyệt.</p>
             <div class="flex gap-3">
-                <button onclick="closeApplyModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95">
+                <button onclick="closeApplyModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200 active:scale-95">
                     Xem lại
                 </button>
-                <button onclick="closeApplyModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors active:scale-95 shadow-sm shadow-primary/20">
+                <button onclick="closeApplyModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
                     Ứng tuyển
                 </button>
             </div>
@@ -173,10 +174,10 @@
             <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Đăng xuất</h3>
             <p class="text-textSecondary text-sm leading-relaxed mb-6">Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?</p>
             <div class="flex gap-3">
-                <button onclick="closeLogoutModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95">
+                <button onclick="closeLogoutModal(false)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200 active:scale-95">
                     Hủy bỏ
                 </button>
-                <button onclick="closeLogoutModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors active:scale-95">
+                <button onclick="closeLogoutModal(true)" class="flex-1 px-4 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-all duration-200 active:scale-95">
                     Đăng xuất
                 </button>
             </div>
@@ -232,7 +233,7 @@
                     <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
                     <p class="text-xs text-textSecondary">Carepartner</p>
                 </div>
-                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-colors" title="Đăng xuất">
+                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
                     <span class="material-symbols-outlined text-xl">logout</span>
                 </button>
             </div>
@@ -247,7 +248,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <!-- Back button -->
-                        <button onclick="history.back()" class="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-textSecondary hover:text-primary hover:bg-primaryLight transition-colors active:scale-95">
+                        <button onclick="history.back()" class="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-textSecondary hover:text-primary hover:bg-primaryLight transition-all duration-200 active:scale-95">
                             <span class="material-symbols-outlined text-xl">arrow_back</span>
                         </button>
                         <!-- Mobile logo -->
@@ -272,7 +273,7 @@
         </header>
 
         <!-- Loading skeleton -->
-        <div id="loading-skeleton" class="px-4 md:px-8 py-6 space-y-6">
+        <div id="loading-skeleton" class="px-4 md:px-8 py-6 space-y-6 max-w-6xl mx-auto">
             <!-- Hero skeleton -->
             <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                 <div class="flex gap-2 mb-4">
@@ -305,7 +306,7 @@
         </div>
 
         <!-- Task content (hidden until loaded) -->
-        <div id="task-content" class="hidden">
+        <div id="task-content" class="hidden max-w-6xl mx-auto">
             <!-- ===== HERO SECTION ===== -->
             <section class="px-4 md:px-8 pt-6 fade-up">
                 <div class="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm relative overflow-hidden">
@@ -406,14 +407,14 @@
         </div>
 
         <!-- Error state -->
-        <div id="error-state" class="hidden px-4 md:px-8 py-16">
+        <div id="error-state" class="hidden px-4 md:px-8 py-16 max-w-6xl mx-auto">
             <div class="flex flex-col items-center justify-center text-center">
                 <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
                     <span class="material-symbols-outlined text-4xl text-error">error_outline</span>
                 </div>
                 <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Không tìm thấy công việc</h3>
                 <p class="text-textSecondary text-sm max-w-xs mb-6">Công việc này không tồn tại hoặc đã bị xóa. Vui lòng quay lại trang tìm việc.</p>
-                <a href="{% url 'frontend:worker_feed' %}" class="px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-colors">
+                <a href="{% url 'frontend:worker_feed' %}" class="px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">
                     <span class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">search</span>
                         Tìm việc khác

@@ -36,6 +36,7 @@ tailwind.config = {
 }
 </script>
 <style>
+  html { scroll-behavior: smooth; }
   * { box-sizing: border-box; }
   body { font-family: 'Plus Jakarta Sans', sans-serif; }
   h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
@@ -80,7 +81,7 @@ tailwind.config = {
 
   /* Card hover */
   .task-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-  .task-card:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+  .task-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(242, 101, 34, 0.12); }
 
   /* Skeleton loading */
   @keyframes shimmer {
@@ -147,7 +148,7 @@ tailwind.config = {
         <p class="text-[11px] text-textSecondary">Phụ huynh</p>
       </div>
     </div>
-    <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-colors text-sm font-medium">
+    <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-all duration-200 text-sm font-medium">
       <span class="material-symbols-outlined text-lg">logout</span>
       Đăng xuất
     </button>
@@ -163,7 +164,7 @@ tailwind.config = {
       </div>
       <h1 class="font-headline font-bold text-base text-textPrimary">Việc của tôi</h1>
     </div>
-    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all duration-200 hover:bg-gray-200">
       <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
     </button>
   </div>
@@ -171,7 +172,7 @@ tailwind.config = {
 
 <!-- ==================== MAIN CONTENT ==================== -->
 <main class="lg:ml-[260px] min-h-screen pb-24 lg:pb-8">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
     <!-- Header Section -->
     <div class="mb-6">
@@ -207,17 +208,17 @@ tailwind.config = {
     <!-- Tab Filter Bar -->
     <div class="bg-surface rounded-xl border border-gray-100 shadow-sm mb-6">
       <div class="flex">
-        <button onclick="setTab('open')" id="tab-open" class="tab-btn active flex-1 py-3.5 text-center font-headline font-semibold text-sm flex items-center justify-center gap-1.5 text-primary">
+        <button onclick="setTab('open')" id="tab-open" class="tab-btn active flex-1 py-3.5 text-center font-headline font-semibold text-sm flex items-center justify-center gap-1.5 text-primary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
           <span class="material-symbols-outlined text-base">search</span>
           Đang tìm
           <span id="badge-open" class="inline-flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
         </button>
-        <button onclick="setTab('in_progress')" id="tab-in_progress" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary">
+        <button onclick="setTab('in_progress')" id="tab-in_progress" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
           <span class="material-symbols-outlined text-base">autorenew</span>
           Đang thực hiện
           <span id="badge-in_progress" class="inline-flex items-center justify-center bg-gray-100 text-textSecondary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
         </button>
-        <button onclick="setTab('history')" id="tab-history" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary">
+        <button onclick="setTab('history')" id="tab-history" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
           <span class="material-symbols-outlined text-base">history</span>
           Lịch sử
           <span id="badge-history" class="inline-flex items-center justify-center bg-gray-100 text-textSecondary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
@@ -251,7 +252,7 @@ tailwind.config = {
       </div>
       <h3 id="empty-title" class="font-headline font-bold text-lg text-textPrimary mb-2">Chưa có việc nào</h3>
       <p id="empty-desc" class="text-sm text-textSecondary mb-6">Các công việc bạn đăng sẽ xuất hiện ở đây</p>
-      <a href="{% url 'frontend:task_create_1' %}" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark transition-colors">
+      <a href="{% url 'frontend:task_create_1' %}" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark transition-all duration-200">
         <span class="material-symbols-outlined text-lg">add_circle</span>
         Đăng việc ngay
       </a>
@@ -263,7 +264,7 @@ tailwind.config = {
 <!-- ==================== MOBILE BOTTOM NAV ==================== -->
 <nav class="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-gray-100">
   <div class="flex justify-around items-center px-2 pt-2 pb-3">
-    <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+    <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
       <span class="material-symbols-outlined text-2xl">home</span>
       <span class="text-[10px] font-medium mt-0.5">Trang chủ</span>
     </a>
@@ -271,11 +272,11 @@ tailwind.config = {
       <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">assignment</span>
       <span class="text-[10px] font-semibold mt-0.5">Việc của tôi</span>
     </a>
-    <a href="{% url 'frontend:task_create_1' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+    <a href="{% url 'frontend:task_create_1' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
       <span class="material-symbols-outlined text-2xl">add_circle</span>
       <span class="text-[10px] font-medium mt-0.5">Đăng việc</span>
     </a>
-    <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-colors">
+    <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
       <span class="material-symbols-outlined text-2xl">smart_toy</span>
       <span class="text-[10px] font-medium mt-0.5">AI Trợ lý</span>
     </a>
@@ -299,10 +300,10 @@ tailwind.config = {
       </div>
     </div>
     <div class="flex gap-3 mt-5">
-      <button onclick="closeConfirmModal()" class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors">
+      <button onclick="closeConfirmModal()" class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
         Hủy
       </button>
-      <button id="confirm-action-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors shadow-md shadow-primary/20">
+      <button id="confirm-action-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 shadow-md shadow-primary/20">
         Xác nhận
       </button>
     </div>
@@ -383,7 +384,7 @@ function showToast(message, type = 'info', duration = 3500) {
   toast.innerHTML = `
     <span class="material-symbols-outlined ${cfg.color} text-xl flex-shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${cfg.icon}</span>
     <p class="text-sm font-medium text-textPrimary flex-1">${message}</p>
-    <button onclick="this.closest('.toast-in, .toast-out').classList.add('toast-out'); setTimeout(() => this.closest('.toast-in, .toast-out').remove(), 300);" class="text-textSecondary hover:text-textPrimary flex-shrink-0">
+    <button onclick="this.closest('.toast-in, .toast-out').classList.add('toast-out'); setTimeout(() => this.closest('.toast-in, .toast-out').remove(), 300);" class="text-textSecondary hover:text-textPrimary flex-shrink-0 transition-all duration-200">
       <span class="material-symbols-outlined text-lg">close</span>
     </button>
   `;
@@ -556,7 +557,7 @@ function renderTasks() {
     let actionHTML = '';
     if (t.status === 'open') {
       actionHTML = `
-        <button onclick="viewCandidates(${t.id})" class="w-full py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+        <button onclick="viewCandidates(${t.id})" class="w-full py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
           Xem ứng viên
           <span class="material-symbols-outlined text-lg">chevron_right</span>
         </button>
@@ -576,7 +577,7 @@ function renderTasks() {
       `;
     } else if (t.status === 'completed') {
       actionHTML = `
-        <button onclick="goToReview(${t.id})" class="w-full py-3 bg-success/10 text-success font-headline font-bold text-sm rounded-xl hover:bg-success/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border border-success/20">
+        <button onclick="goToReview(${t.id})" class="w-full py-3 bg-success/10 text-success font-headline font-bold text-sm rounded-xl hover:bg-success/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 border border-success/20">
           <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
           Đánh giá
         </button>

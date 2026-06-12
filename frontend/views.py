@@ -17,12 +17,8 @@ class ParentHomeView(TemplateView):
 class TaskCreate1View(TemplateView):
     template_name = "frontend/task_create_1.html"
 
-class TaskCreate2View(View):
-    def get(self, request, *args, **kwargs):
-        return redirect('frontend:task_create_1')
-
-    def post(self, request, *args, **kwargs):
-        return redirect('frontend:task_create_1')
+class TaskCreate2View(TemplateView):
+    template_name = "frontend/task_create_2.html"
 
 class ParentTasksView(TemplateView):
     template_name = "frontend/parent_tasks.html"

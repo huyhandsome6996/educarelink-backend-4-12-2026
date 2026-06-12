@@ -35,6 +35,7 @@
         }
     </script>
     <style>
+        html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
         .material-symbols-outlined {
@@ -86,8 +87,8 @@
         .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
 
         /* Card hover */
-        .profile-card { transition: all 0.2s ease; }
-        .profile-card:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.06); }
+        .profile-card { transition: all 0.25s ease; }
+        .profile-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(242, 101, 34, 0.08); }
 
         /* Menu item hover */
         .menu-item { transition: all 0.2s ease; }
@@ -150,10 +151,10 @@
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button onclick="closeConfirmModal(false)" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                <button onclick="closeConfirmModal(false)" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
                     Hủy bỏ
                 </button>
-                <button onclick="closeConfirmModal(true)" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors">
+                <button onclick="closeConfirmModal(true)" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200">
                     Xác nhận
                 </button>
             </div>
@@ -209,7 +210,7 @@
                     <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
                     <p id="sidebar-role" class="text-xs text-textSecondary">Carepartner</p>
                 </div>
-                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-colors" title="Đăng xuất">
+                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
                     <span class="material-symbols-outlined text-xl">logout</span>
                 </button>
             </div>
@@ -241,7 +242,7 @@
         </header>
 
         <!-- Profile Content -->
-        <div class="px-4 md:px-8 py-6 space-y-6">
+        <div class="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6">
 
             <!-- ====== SKELETON LOADING STATE ====== -->
             <div id="loading-state" class="space-y-6">
@@ -446,7 +447,7 @@
                             </div>
                             <span class="font-semibold text-sm text-error">Đăng xuất</span>
                         </div>
-                        <span class="material-symbols-outlined text-error/40 group-hover:text-error text-lg transition-colors">chevron_right</span>
+                        <span class="material-symbols-outlined text-error/40 group-hover:text-error text-lg transition-all duration-200">chevron_right</span>
                     </button>
                 </section>
             </div>
@@ -685,7 +686,7 @@
                         </div>
                         <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Lỗi kết nối</h3>
                         <p class="text-textSecondary text-sm max-w-xs">Không thể tải thông tin hồ sơ. Vui lòng thử lại.</p>
-                        <button onclick="init()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-colors">Thử lại</button>
+                        <button onclick="init()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">Thử lại</button>
                     </div>
                 `;
             }
