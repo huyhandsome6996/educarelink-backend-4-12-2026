@@ -8,7 +8,7 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 export default function CandidatesScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { taskId, taskTitle } = route.params;
+  const { taskId, taskTitle } = route.params || {};
   const [candidates, setCandidates] = useState([]);
   const [workerRatings, setWorkerRatings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
