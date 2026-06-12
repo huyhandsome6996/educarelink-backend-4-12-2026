@@ -105,7 +105,7 @@ if created:
 else:
     print(f"   [DA TON TAI] phuhuynh_test")
 
-# Tai khoan Sinh vien (Worker)
+# Tai khoan Sinh vien (Worker) - DA DUOC ADMIN DUYET
 worker_user, created = User.objects.get_or_create(
     username="sinhvien_test",
     defaults={
@@ -116,6 +116,7 @@ worker_user, created = User.objects.get_or_create(
         "phone_number": "0912345678",
         "address": "Ky tuc xa Dai hoc Quoc Gia, Thu Duc, TP.HCM",
         "is_verified": True,
+        "is_approved": True,  # Tai khoan test da duoc admin duyet
         "ai_profile_summary": "Sinh vien nam 3 nganh Su pham Toan, co 2 nam kinh nghiem day kem. Danh gia 4.8/5 sao tu 15 phu huynh.",
     }
 )
@@ -124,7 +125,34 @@ if created:
     worker_user.save()
     print(f"   [TAO MOI] Tai khoan Sinh vien: username=sinhvien_test / pass={TEST_PASSWORD}")
 else:
+    # Fix: Đảm bảo sinhvien_test đã được approve
+    if not worker_user.is_approved:
+        worker_user.is_approved = True
+        worker_user.save()
+        print(f"   [CAP NHAT] sinhvien_test: da cap nhat is_approved=True")
     print(f"   [DA TON TAI] sinhvien_test")
+
+# Tai khoan Admin (dung de dang nhap trang Admin Dashboard)
+admin_user, created = User.objects.get_or_create(
+    username="admin",
+    defaults={
+        "role": "parent",  # Role cha, nhung co quyen admin
+        "first_name": "Admin",
+        "last_name": "EduCareLink",
+        "email": "admin@educarelink.com",
+        "phone_number": "0900000000",
+        "is_staff": True,
+        "is_superuser": True,
+        "is_verified": True,
+        "is_approved": True,
+    }
+)
+if created:
+    admin_user.set_password(TEST_PASSWORD)
+    admin_user.save()
+    print(f"   [TAO MOI] Tai khoan Admin: username=admin / pass={TEST_PASSWORD}")
+else:
+    print(f"   [DA TON TAI] admin")
 
 print()
 
@@ -215,8 +243,10 @@ print(f"  - Danh muc dich vu : {ServiceCategory.objects.count()} muc")
 print(f"  - Tong nguoi dung  : {User.objects.count()} tai khoan")
 print(f"  - Tong cong viec   : {Task.objects.count()} viec")
 print(f"\nTai khoan test:")
-print(f"  Phu huynh : username=phuhuynh_test  | pass={TEST_PASSWORD}")
-print(f"  Sinh vien : username=sinhvien_test   | pass={TEST_PASSWORD}")
+print(f"  Admin     : username=admin           | pass={TEST_PASSWORD} (truy cap /admin-dashboard/)")
+print(f"  Phu huynh : username=phuhuynh_test   | pass={TEST_PASSWORD}")
+print(f"  Sinh vien : username=sinhvien_test    | pass={TEST_PASSWORD}")
 print(f"\nKhoi dong backend  : python manage.py runserver 0.0.0.0:8000")
-print(f"Admin panel        : http://127.0.0.1:8000/admin/")
+print(f"Admin dashboard    : http://127.0.0.1:8000/admin-dashboard/")
+print(f"Admin panel (Django): http://127.0.0.1:8000/admin/")
 print("=" * 55)

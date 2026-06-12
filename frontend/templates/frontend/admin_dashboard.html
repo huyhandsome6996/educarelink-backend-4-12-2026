@@ -326,6 +326,13 @@
                 Tất cả Carepartner
             </div>
         </div>
+        <div style="padding: 16px 12px; border-top: 1px solid #334155;">
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="adminName">Admin</div>
+            <div class="nav-item" onclick="logoutAdmin()" style="color: #ef4444;">
+                <span class="icon">🚪</span>
+                Đăng xuất
+            </div>
+        </div>
     </div>
 
     <!-- MAIN CONTENT -->
@@ -411,16 +418,48 @@
         const API_BASE = window.location.origin + '/api';
         let currentTab = 'pending';
 
+        // ===== AUTH: Lấy JWT token từ localStorage =====
+        function getAuthToken() {
+            return localStorage.getItem('token');
+        }
+
+        function authHeaders() {
+            const token = getAuthToken();
+            if (!token) return {};
+            return { 'Authorization': 'Bearer ' + token };
+        }
+
+        // Kiểm tra đăng nhập admin
+        function checkAdminAuth() {
+            const token = getAuthToken();
+            const role = localStorage.getItem('role');
+            if (!token) {
+                window.location.href = '/login/?next=/admin-dashboard/';
+                return false;
+            }
+            // Nếu có token nhưng không phải admin, vẫn cho thử (backend sẽ check IsAdminUser)
+            return true;
+        }
+
         // ===== LOAD DATA =====
         async function loadData() {
+            if (!checkAdminAuth()) return;
             try {
                 if (currentTab === 'pending') {
-                    const res = await fetch(`${API_BASE}/admin/pending-workers/`);
+                    const res = await fetch(`${API_BASE}/admin/pending-workers/`, { headers: authHeaders() });
+                    if (res.status === 401 || res.status === 403) {
+                        handleAuthError(res);
+                        return;
+                    }
                     const pending = await res.json();
                     renderPendingTable(pending);
 
                     // Stats
-                    const allRes = await fetch(`${API_BASE}/admin/all-workers/`);
+                    const allRes = await fetch(`${API_BASE}/admin/all-workers/`, { headers: authHeaders() });
+                    if (allRes.status === 401 || allRes.status === 403) {
+                        handleAuthError(allRes);
+                        return;
+                    }
                     const allWorkers = await allRes.json();
                     const approved = allWorkers.filter(w => w.is_approved).length;
                     document.getElementById('statPending').textContent = pending.length;
@@ -428,7 +467,11 @@
                     document.getElementById('statTotal').textContent = allWorkers.length;
                     document.getElementById('pendingBadge').textContent = pending.length;
                 } else {
-                    const res = await fetch(`${API_BASE}/admin/all-workers/`);
+                    const res = await fetch(`${API_BASE}/admin/all-workers/`, { headers: authHeaders() });
+                    if (res.status === 401 || res.status === 403) {
+                        handleAuthError(res);
+                        return;
+                    }
                     const allWorkers = await res.json();
                     renderAllTable(allWorkers);
 
@@ -446,6 +489,26 @@
                         <div class="empty-icon">❌</div>
                         <div class="empty-title">Không thể kết nối đến server</div>
                         <div class="empty-text">Kiểm tra backend Django có đang chạy không</div>
+                    </div>`;
+            }
+        }
+
+        // ===== XỬ LÝ LỖI AUTH =====
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔒</div>
+                        <div class="empty-title">Phiên đăng nhập hết hạn</div>
+                        <div class="empty-text"><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập lại</a></div>
+                    </div>`;
+                localStorage.removeItem('token');
+            } else if (response.status === 403) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🚫</div>
+                        <div class="empty-title">Không có quyền truy cập</div>
+                        <div class="empty-text">Bạn cần đăng nhập bằng tài khoản Admin để truy cập trang này.<br><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập bằng tài khoản Admin</a></div>
                     </div>`;
             }
         }
@@ -612,7 +675,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/admin/workers/${editingUserId}/action/`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders() },
                         body: JSON.stringify({ 
                             action: isApprovingMode ? 'approve' : 'update_qualifications',
                             qualifications: arr 
@@ -637,7 +700,7 @@
             try {
                 const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
                     body: JSON.stringify({ action: 'reject' }),
                 });
                 const data = await res.json();
@@ -689,6 +752,21 @@
             document.getElementById('photoModal').classList.remove('show');
         }
 
+        // ===== LOGOUT =====
+        function logoutAdmin() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('role');
+            window.location.href = '/login/';
+        }
+
+        // ===== HIỂN THỊ TÊN ADMIN =====
+        function displayAdminName() {
+            const username = localStorage.getItem('admin_username') || 'Admin';
+            const el = document.getElementById('adminName');
+            if (el) el.textContent = '👋 ' + username;
+        }
+
         // ===== TOAST =====
         function showToast(message, type) {
             const toast = document.getElementById('toast');
@@ -698,6 +776,7 @@
         }
 
         // ===== INIT =====
+        displayAdminName();
         loadData();
         // Auto-refresh mỗi 30 giây
         setInterval(loadData, 30000);

@@ -34,12 +34,13 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const response = await loginApi(username, password);
-    const { tokens, role } = response.data;
+    const { tokens, role, is_staff } = response.data;
 
     // Lưu token và role vào SecureStore hoặc localStorage
     await storage.setItem('access_token', tokens.access);
     await storage.setItem('refresh_token', tokens.refresh);
     await storage.setItem('user_role', role);
+    if (is_staff) await storage.setItem('is_staff', 'true');
 
     // Lấy full profile
     const profileResp = await getProfile();
