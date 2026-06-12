@@ -159,6 +159,14 @@ export default function RegisterScreen() {
 
     // Validate carepartner
     if (selectedRole === 'worker') {
+      if (!email.trim()) {
+        showAlert('Lỗi', 'Carepartner phải cung cấp email để liên hệ.');
+        return;
+      }
+      if (!phone.trim()) {
+        showAlert('Lỗi', 'Carepartner phải cung cấp số điện thoại để liên hệ.');
+        return;
+      }
       if (!idCardFront) {
         showAlert('Lỗi', 'Vui lòng chụp/chọn ảnh mặt trước CCCD.');
         return;
@@ -336,7 +344,7 @@ export default function RegisterScreen() {
             <Ionicons name="mail-outline" size={20} color={emailFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder={selectedRole === 'parent' ? 'Email *' : 'Email (tuỳ chọn)'}
+              placeholder={selectedRole === 'parent' ? 'Email *' : 'Email *'}
               placeholderTextColor={COLORS.textMuted}
               value={email}
               onChangeText={setEmail}
@@ -351,7 +359,7 @@ export default function RegisterScreen() {
             <Ionicons name="call-outline" size={20} color={phoneFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder={selectedRole === 'parent' ? 'Số điện thoại *' : 'Số điện thoại (tuỳ chọn)'}
+              placeholder={selectedRole === 'parent' ? 'Số điện thoại *' : 'Số điện thoại *'}
               placeholderTextColor={COLORS.textMuted}
               value={phone}
               onChangeText={setPhone}
