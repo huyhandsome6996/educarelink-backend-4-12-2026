@@ -199,7 +199,6 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radiusSm,
     justifyContent: 'center',
     alignItems: 'center',
-    transition: 'background-color 0.2s',
   },
   activeIndicator: {
     width: 16,

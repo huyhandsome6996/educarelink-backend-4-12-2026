@@ -60,8 +60,8 @@ export function AuthProvider({ children }) {
     return profileResp.data;
   };
 
-  const register = async (username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto) => {
-    const response = await registerApi(username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto);
+  const register = async (username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto) => {
+    const response = await registerApi(username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto);
     
     // Carepartner không auto-login (chờ admin duyệt)
     if (role === 'worker') {
@@ -76,6 +76,7 @@ export function AuthProvider({ children }) {
     await storage.deleteItem('access_token');
     await storage.deleteItem('refresh_token');
     await storage.deleteItem('user_role');
+    await storage.deleteItem('is_staff');
     setUser(null);
   };
 

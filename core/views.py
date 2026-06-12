@@ -116,10 +116,22 @@ class UserProfileAPIView(APIView):
         return Response(serializer.data) # Phục vụ Màn hình 11: Hồ sơ
 
     def patch(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        # Ngăn chặn role escalation — loại role, is_staff, is_superuser khỏi data
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified']:
+            data.pop(forbidden_field, None)
+        
+        # Nếu có password mới → hash đúng cách
+        password = data.pop('password', None)
+        
+        serializer = UserSerializer(request.user, data=data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            user = serializer.save()
+            # Hash mật khẩu mới nếu có
+            if password:
+                user.set_password(password)
+                user.save()
+            return Response(UserSerializer(user).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # --- PHẦN 2: CHUNG CHO CẢ PHỤ HUYNH & SINH VIÊN ---
@@ -191,7 +203,28 @@ class ReviewCreateAPIView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     def perform_create(self, serializer):
         # Phục vụ Màn 7: Đánh giá
-        serializer.save(reviewer=self.request.user)
+        task_id = self.request.data.get('task')
+        # Validate: chỉ review task đã hoàn thành
+        if task_id:
+            try:
+                task = Task.objects.get(id=task_id)
+                if task.status != 'completed':
+                    raise serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
+                if task.parent != self.request.user:
+                    raise serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
+                # Kiểm tra đã review chưa
+                if hasattr(task, 'review'):
+                    raise serializers.ValidationError({'task': 'Công việc này đã được đánh giá.'})
+                # Tự động xác định reviewee là worker được accept
+                accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
+                if accepted_app:
+                    serializer.save(reviewer=self.request.user, reviewee=accepted_app.worker)
+                else:
+                    serializer.save(reviewer=self.request.user)
+            except Task.DoesNotExist:
+                raise serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
+        else:
+            serializer.save(reviewer=self.request.user)
 
 # --- PHẦN 4: LUỒNG DÀNH CHO SINH VIÊN ---
 class ApplyTaskAPIView(APIView):
@@ -200,6 +233,8 @@ class ApplyTaskAPIView(APIView):
         # Phục vụ Màn 9: Nút bấm [Ứng tuyển ngay]
         if request.user.role != 'worker':
             return Response({"error": "Chỉ Carepartner mới được nhận việc!"}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_approved:
+            return Response({"error": "Tài khoản của bạn chưa được Admin duyệt. Vui lòng đợi."}, status=status.HTTP_403_FORBIDDEN)
         try:
             task = Task.objects.get(id=task_id)
             if task.parent == request.user:
@@ -253,7 +288,7 @@ class WorkerProfileDetailAPIView(APIView):
                 "last_name": worker.last_name,
                 "is_verified": worker.is_verified,
                 "ai_profile_summary": worker.ai_profile_summary or "Chưa có nhận xét từ AI.",
-                "avg_rating": round(avg_rating, 1) if avg_rating else 5.0,
+                "avg_rating": round(avg_rating, 1) if reviews.exists() else 0.0,
                 "review_count": reviews.count(),
                 "qualifications": qualifications,
                 "reviews": serialized_reviews
@@ -277,6 +312,9 @@ CÁC DANH MỤC DỊCH VỤ (dùng ID tương ứng):
 3 = Dọn dẹp nhà cửa (lau dọn, vệ sinh)
 4 = Trông trẻ (giữ trẻ, babysitter)
 5 = Mua sắm hộ (đi chợ, mua đồ)
+6 = Nấu ăn (nấu bữa cho gia đình)
+7 = Hỗ trợ AI (công nghệ AI hỗ trợ học tập)
+8 = Khác (chuyển đồ, thú cưng, kỹ năng sống, v.v.)
 
 QUY TẮC XỬ LÝ:
 - Nếu người dùng muốn ĐĂNG VIỆC hoặc TÌM NGƯỜI: phân tích và trả về JSON trong thẻ <TASK_JSON>...</TASK_JSON>
@@ -288,7 +326,7 @@ QUY TẮC XỬ LÝ:
 FORMAT JSON khi tạo task (bắt buộc đủ các field):
 <TASK_JSON>
 {
-  "category": <số 1-5>,
+  "category": <số 1-8>,
   "title": "<tiêu đề ngắn gọn>",
   "description": "<mô tả chi tiết yêu cầu>",
   "location": "<địa điểm cụ thể>",
@@ -493,8 +531,11 @@ class AdminApproveWorkerAPIView(APIView):
                 worker.save()
                 return Response({'message': f'Đã duyệt tài khoản {worker.username}.'})
             elif action == 'reject':
-                worker.delete()
-                return Response({'message': f'Đã từ chối và xoá tài khoản.'})
+                # Soft-delete: Đánh dấu là rejected thay vì xoá hẳn
+                worker.is_approved = False
+                worker.is_active = False  # Vô hiệu hoá đăng nhập
+                worker.save()
+                return Response({'message': f'Đã từ chối tài khoản {worker.username}.'})
             elif action == 'update_qualifications':
                 if isinstance(qualifications, list):
                     worker.qualifications = qualifications

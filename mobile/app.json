@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Educarelink",
+    "slug": "educarelink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -12,19 +12,23 @@
     },
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/logo.png"
+      "icon": "./assets/logo.png",
+      "bundleIdentifier": "com.educarelink.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.educarelink.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-image-picker",
+      "expo-notifications"
     ]
   }
 }

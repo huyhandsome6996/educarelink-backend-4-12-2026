@@ -31,13 +31,9 @@ export default function ReviewScreen() {
       Alert.alert('Thiếu thông tin', 'Vui lòng để lại nhận xét của bạn.');
       return;
     }
-    if (!revieweeId) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin người được đánh giá.');
-      return;
-    }
     setIsLoading(true);
     try {
-      await createReview({ task: taskId, reviewee: revieweeId, rating, comment });
+      await createReview({ task: taskId, rating, comment });
       Alert.alert('✅ Cảm ơn!', 'Đánh giá của bạn đã được ghi nhận.', [
         { text: 'OK', onPress: () => navigation.popToTop() }
       ]);
