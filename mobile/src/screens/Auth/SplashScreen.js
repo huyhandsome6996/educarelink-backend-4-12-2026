@@ -52,7 +52,7 @@ export default function SplashScreen() {
 
       <Animated.View style={[styles.logoContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.logoCircle}>
-          <Image source={require('../../../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('../../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
         <Text style={styles.appName}>Educarelink</Text>
         <Text style={styles.tagline}>Trợ lý gia đình · Việc làm linh hoạt</Text>
