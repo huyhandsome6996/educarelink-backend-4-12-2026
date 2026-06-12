@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Activi
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getWorkerProfile, approveCandidate } from '../../api/tasks';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 export default function CandidateProfileScreen() {
   const navigation = useNavigation();
@@ -59,7 +60,7 @@ export default function CandidateProfileScreen() {
     }
   };
 
-  if (isLoading) return <ActivityIndicator color="#F26522" style={{ flex: 1, marginTop: 100 }} />;
+  if (isLoading) return <ActivityIndicator color={COLORS.primary} style={{ flex: 1, marginTop: 100 }} />;
   if (!profile) return null;
 
   const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username;
@@ -70,7 +71,7 @@ export default function CandidateProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#374151" />
+          <Ionicons name="arrow-back" size={22} color={COLORS.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hồ sơ ứng viên</Text>
         <View style={{ width: 40 }} />
@@ -79,8 +80,14 @@ export default function CandidateProfileScreen() {
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{profile.username?.[0]?.toUpperCase() || '?'}</Text>
+          {/* Gradient-like header bar */}
+          <View style={styles.profileHeaderBar} />
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarRing}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{profile.username?.[0]?.toUpperCase() || '?'}</Text>
+              </View>
+            </View>
           </View>
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.roleLabel}>Carepartner (Sinh viên)</Text>
@@ -88,7 +95,7 @@ export default function CandidateProfileScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={styles.starRow}>
-                <Ionicons name="star" size={16} color="#f59e0b" />
+                <Ionicons name="star" size={16} color={COLORS.warning} />
                 <Text style={styles.statValue}>{profile.avg_rating}</Text>
               </View>
               <Text style={styles.statLabel}>{profile.review_count} đánh giá</Text>
@@ -96,8 +103,8 @@ export default function CandidateProfileScreen() {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <View style={styles.verifiedBadge}>
-                <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                <Text style={[styles.statValue, { color: '#059669', fontSize: 13 }]}>Đã xác thực</Text>
+                <Ionicons name="shield-checkmark" size={16} color={COLORS.success} />
+                <Text style={[styles.statValue, { color: COLORS.success, fontSize: 13 }]}>Đã xác thực</Text>
               </View>
               <Text style={styles.statLabel}>CCCD & Thẻ sinh viên</Text>
             </View>
@@ -110,7 +117,7 @@ export default function CandidateProfileScreen() {
           <View style={styles.list}>
             {profile.qualifications?.map((q, idx) => (
               <View key={idx} style={styles.certRow}>
-                <Ionicons name="ribbon-outline" size={18} color="#F26522" />
+                <Ionicons name="ribbon-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.certText}>{q}</Text>
               </View>
             ))}
@@ -139,11 +146,11 @@ export default function CandidateProfileScreen() {
                 <View key={idx} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <Text style={styles.reviewerName}>{r.reviewer_name}</Text>
-                    <Text style={styles.reviewDate}>{r.created_at}</Text>
+                    <Text style={styles.reviewDate}>{new Date(r.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</Text>
                   </View>
                   <View style={styles.stars}>
                     {[1, 2, 3, 4, 5].map(i => (
-                      <Ionicons key={i} name="star" size={12} color={i <= r.rating ? "#f59e0b" : "#d1d5db"} />
+                      <Ionicons key={i} name="star" size={12} color={i <= r.rating ? COLORS.warning : COLORS.border} />
                     ))}
                   </View>
                   <Text style={styles.reviewComment}>{r.comment}</Text>
@@ -161,6 +168,7 @@ export default function CandidateProfileScreen() {
             style={[styles.approveBtn, approving && { opacity: 0.7 }]}
             onPress={handleApprove} 
             disabled={approving}
+            activeOpacity={0.85}
           >
             {approving ? <ActivityIndicator color="#fff" /> : (
               <>
@@ -176,40 +184,43 @@ export default function CandidateProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, ...SHADOWS.small },
+  backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
   body: { flex: 1 },
-  profileCard: { backgroundColor: '#fff', padding: 24, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F26522', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText: { color: '#fff', fontSize: 32, fontWeight: '800' },
-  name: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 4 },
-  roleLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500', marginBottom: 20 },
-  statsRow: { flexDirection: 'row', width: '100%', borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16, justifyContent: 'space-around' },
+  profileCard: { backgroundColor: COLORS.surface, padding: SIZES.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border, overflow: 'hidden', position: 'relative' },
+  profileHeaderBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 80, backgroundColor: COLORS.primaryLight },
+  avatarWrap: { marginTop: 8, marginBottom: 4 },
+  avatarRing: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primarySoft, justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
+  avatar: { width: 74, height: 74, borderRadius: 37, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#fff', fontSize: 30, fontWeight: '800' },
+  name: { ...TYPO.h2, color: COLORS.textPrimary, marginTop: 8, marginBottom: 4 },
+  roleLabel: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 20 },
+  statsRow: { flexDirection: 'row', width: '100%', borderTopWidth: 1, borderTopColor: COLORS.divider, paddingTop: SIZES.md, justifyContent: 'space-around' },
   statItem: { alignItems: 'center' },
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  statLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600', marginTop: 4 },
-  statDivider: { width: 1, backgroundColor: '#f3f4f6' },
+  statValue: { ...TYPO.h4, color: COLORS.textPrimary },
+  statLabel: { ...TYPO.caption, color: COLORS.textMuted, fontWeight: '600', marginTop: 4 },
+  statDivider: { width: 1, backgroundColor: COLORS.divider },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  section: { backgroundColor: '#fff', marginVertical: 8, padding: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#f3f4f6' },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 12 },
+  section: { backgroundColor: COLORS.surface, marginVertical: SIZES.sm, padding: SIZES.md, borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border },
+  sectionTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '800', marginBottom: 12 },
   list: { gap: 10 },
   certRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  certText: { fontSize: 14, color: '#374151', fontWeight: '500' },
+  certText: { ...TYPO.body, color: COLORS.textPrimary },
   aiTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  aiBox: { backgroundColor: '#f5f3ff', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#7c3aed' },
-  aiText: { fontSize: 14, color: '#5b21b6', lineHeight: 22, fontStyle: 'italic' },
-  emptyText: { fontSize: 13, color: '#9ca3af', fontStyle: 'italic' },
+  aiBox: { backgroundColor: '#f5f3ff', borderRadius: SIZES.radiusSm, padding: 14, borderLeftWidth: 4, borderLeftColor: '#7c3aed', ...SHADOWS.small },
+  aiText: { ...TYPO.body, color: '#5b21b6', lineHeight: 22, fontStyle: 'italic' },
+  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted, fontStyle: 'italic' },
   reviewList: { gap: 12 },
-  reviewCard: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 12, gap: 6 },
+  reviewCard: { borderLeftWidth: 3, borderLeftColor: COLORS.primarySoft, paddingLeft: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: 12, gap: 6 },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  reviewerName: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  reviewDate: { fontSize: 11, color: '#9ca3af' },
+  reviewerName: { ...TYPO.h5, color: COLORS.textPrimary },
+  reviewDate: { ...TYPO.caption, color: COLORS.textMuted },
   stars: { flexDirection: 'row', gap: 2 },
-  reviewComment: { fontSize: 13, color: '#4b5563', lineHeight: 18 },
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  approveBtn: { backgroundColor: '#F26522', borderRadius: 16, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#F26522', shadowOpacity: 0.4, shadowRadius: 16, elevation: 6 },
-  approveBtnText: { color: '#fff', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
+  reviewComment: { ...TYPO.bodySmall, color: COLORS.textSecondary, lineHeight: 18 },
+  footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  approveBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large },
+  approveBtnText: { color: '#fff', ...TYPO.button, letterSpacing: 0.5 },
 });

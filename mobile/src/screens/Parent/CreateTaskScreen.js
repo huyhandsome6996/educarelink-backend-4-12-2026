@@ -6,7 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
-import { COLORS } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -39,6 +39,12 @@ export default function CreateTaskScreen() {
   const [timeValue, setTimeValue] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Focus state tracking for inputs (taste-skill: visible focus rings)
+  const [titleFocused, setTitleFocused] = useState(false);
+  const [descFocused, setDescFocused] = useState(false);
+  const [locationFocused, setLocationFocused] = useState(false);
+  const [priceFocused, setPriceFocused] = useState(false);
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -122,7 +128,7 @@ export default function CreateTaskScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="close" size={22} color="#374151" />
+          <Ionicons name="close" size={22} color={COLORS.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đăng việc mới</Text>
         <View style={{ width: 40 }} />
@@ -134,7 +140,7 @@ export default function CreateTaskScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catsScroll}>
           {CATEGORIES.map((c) => (
             <TouchableOpacity key={c.id} style={[styles.catBtn, selectedCat === c.id && styles.catBtnActive]}
-              onPress={() => setSelectedCat(c.id)}>
+              onPress={() => setSelectedCat(c.id)} activeOpacity={0.8}>
               <Image source={c.icon} style={styles.catImage} resizeMode="contain" />
               <Text style={[styles.catName, selectedCat === c.id && styles.catNameActive]}>{c.name}</Text>
             </TouchableOpacity>
@@ -149,25 +155,30 @@ export default function CreateTaskScreen() {
 
         {/* Form */}
         <View style={styles.form}>
-          <TextInput style={styles.input} placeholder="Tiêu đề công việc *" placeholderTextColor="#9ca3af"
-            value={title} onChangeText={setTitle} />
-          <TextInput style={[styles.input, styles.textarea]} placeholder="Mô tả chi tiết yêu cầu *"
-            placeholderTextColor="#9ca3af" value={description} onChangeText={setDescription}
-            multiline numberOfLines={4} textAlignVertical="top" />
-          <View style={styles.inputRow}>
-            <Ionicons name="location-outline" size={18} color="#6b7280" style={styles.inputIcon} />
-            <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]}
-              placeholder="Địa điểm thực hiện *" placeholderTextColor="#9ca3af"
-              value={location} onChangeText={setLocation} />
+          <TextInput style={[styles.input, titleFocused && styles.inputFocused]}
+            placeholder="Tiêu đề công việc *" placeholderTextColor={COLORS.textMuted}
+            value={title} onChangeText={setTitle}
+            onFocus={() => setTitleFocused(true)} onBlur={() => setTitleFocused(false)} />
+          <TextInput style={[styles.input, styles.textarea, descFocused && styles.inputFocused]}
+            placeholder="Mô tả chi tiết yêu cầu *"
+            placeholderTextColor={COLORS.textMuted} value={description} onChangeText={setDescription}
+            multiline numberOfLines={4} textAlignVertical="top"
+            onFocus={() => setDescFocused(true)} onBlur={() => setDescFocused(false)} />
+          <View style={[styles.inputRow, locationFocused && styles.inputRowFocused]}>
+            <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
+            <TextInput style={[styles.inputInline]}
+              placeholder="Địa điểm thực hiện *" placeholderTextColor={COLORS.textMuted}
+              value={location} onChangeText={setLocation}
+              onFocus={() => setLocationFocused(true)} onBlur={() => setLocationFocused(false)} />
           </View>
           <View style={styles.twoCol}>
             <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenDatePicker}>
-              <Text style={{ fontSize: 14, color: date ? '#111827' : '#9ca3af' }}>
+              <Text style={{ ...TYPO.body, color: date ? COLORS.textPrimary : COLORS.textMuted }}>
                 {date ? date : 'Chọn ngày'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenTimePicker}>
-              <Text style={{ fontSize: 14, color: time ? '#111827' : '#9ca3af' }}>
+              <Text style={{ ...TYPO.body, color: time ? COLORS.textPrimary : COLORS.textMuted }}>
                 {time ? time : 'Chọn giờ'}
               </Text>
             </TouchableOpacity>
@@ -192,10 +203,11 @@ export default function CreateTaskScreen() {
               onChange={onTimeChange}
             />
           )}
-          <View style={styles.inputRow}>
-            <TextInput style={[styles.input, { flex: 1, marginBottom: 0, fontSize: 18, fontWeight: '700', color: COLORS.primary }]}
-              placeholder="0" placeholderTextColor="#d1d5db" value={price} onChangeText={setPrice}
-              keyboardType="numeric" />
+          <View style={[styles.inputRow, priceFocused && styles.inputRowFocused]}>
+            <TextInput style={[styles.priceInput]}
+              placeholder="0" placeholderTextColor={COLORS.textMuted} value={price} onChangeText={setPrice}
+              keyboardType="numeric"
+              onFocus={() => setPriceFocused(true)} onBlur={() => setPriceFocused(false)} />
             <Text style={styles.currency}>VNĐ/buổi</Text>
           </View>
         </View>
@@ -204,7 +216,7 @@ export default function CreateTaskScreen() {
       {/* Submit button */}
       <View style={styles.footer}>
         <TouchableOpacity style={[styles.submitBtn, isLoading && { opacity: 0.7 }]}
-          onPress={handleSubmit} disabled={isLoading}>
+          onPress={handleSubmit} disabled={isLoading} activeOpacity={0.85}>
           {isLoading ? <ActivityIndicator color="#fff" /> : (
             <>
               <Ionicons name="send" size={18} color="#fff" />
@@ -218,28 +230,32 @@ export default function CreateTaskScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
   body: { flex: 1, padding: 20 },
-  label: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { ...TYPO.overline, color: COLORS.textSecondary, marginBottom: 10 },
   catsScroll: { marginBottom: 12 },
-  catBtn: { alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff', marginRight: 10, minWidth: 76 },
-  catBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' },
+  catBtn: { alignItems: 'center', padding: 12, borderRadius: SIZES.radiusMd, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, marginRight: 10, minWidth: 76 },
+  catBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15', ...SHADOWS.cardHover, transform: [{ scale: 1.03 }] },
   catImage: { width: 32, height: 32, marginBottom: 6 },
-  catName: { fontSize: 11, fontWeight: '600', color: '#6b7280' },
-  catNameActive: { color: COLORS.primary },
-  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: COLORS.primary + '15', borderRadius: 10, padding: 10, marginBottom: 20 },
-  priceHintText: { flex: 1, fontSize: 12, color: COLORS.primary, fontWeight: '500' },
+  catName: { ...TYPO.bodySmall, color: COLORS.textSecondary },
+  catNameActive: { color: COLORS.primary, fontWeight: '700' },
+  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm, padding: 10, marginBottom: 20, borderWidth: 1, borderColor: COLORS.primarySoft },
+  priceHintText: { flex: 1, ...TYPO.bodySmall, color: COLORS.primaryDark, fontWeight: '500' },
   form: { gap: 12 },
-  input: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#111827', marginBottom: 0 },
+  input: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, ...TYPO.body, color: COLORS.textPrimary, marginBottom: 0 },
+  inputFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
   textarea: { minHeight: 100, paddingTop: 14 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb', paddingHorizontal: 16, minHeight: 54 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, minHeight: 54 },
+  inputRowFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
+  inputInline: { flex: 1, ...TYPO.body, color: COLORS.textPrimary, paddingVertical: 0 },
+  priceInput: { flex: 1, ...TYPO.h3, color: COLORS.primary, fontWeight: '700', paddingVertical: 0 },
   inputIcon: { marginRight: 8 },
   twoCol: { flexDirection: 'row', gap: 12 },
-  currency: { fontSize: 14, fontWeight: '700', color: '#6b7280', marginLeft: 8 },
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  submitBtn: { backgroundColor: COLORS.primary, borderRadius: 14, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  currency: { ...TYPO.h5, color: COLORS.textSecondary, marginLeft: 8 },
+  footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  submitBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large },
+  submitText: { color: '#fff', ...TYPO.button },
 });

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
   StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions, Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4; // 4 columns with gaps
@@ -37,6 +37,19 @@ export default function ParentHomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Pulse animation for empty state icon
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!isLoading && tasks.length === 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: ANIM.timingSlow, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: ANIM.timingSlow, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [isLoading, tasks.length]);
+
   const fetchTasks = async () => {
     try {
       const res = await getMyTasksAsParent();
@@ -63,6 +76,8 @@ export default function ParentHomeScreen() {
 
       {/* Header gradient cam */}
       <View style={styles.header}>
+        {/* Subtle gradient overlay for depth */}
+        <View style={styles.headerGradientOverlay} />
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greetSmall}>Xin chào 👋</Text>
@@ -143,9 +158,9 @@ export default function ParentHomeScreen() {
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
           ) : tasks.length === 0 ? (
             <View style={styles.emptyBox}>
-              <View style={styles.emptyIconCircle}>
+              <Animated.View style={[styles.emptyIconCircle, { transform: [{ scale: pulseAnim }] }]}>
                 <Ionicons name="document-text-outline" size={36} color={COLORS.primary} />
-              </View>
+              </Animated.View>
               <Text style={styles.emptyTitle}>Chưa có hoạt động nào</Text>
               <Text style={styles.emptyText}>Hãy đăng việc đầu tiên để tìm Carepartner phù hợp!</Text>
               <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.emptyBtn} activeOpacity={0.85}>
@@ -157,7 +172,7 @@ export default function ParentHomeScreen() {
             tasks.map((task) => {
               const st = STATUS_MAPPING[task.status] || STATUS_MAPPING.open;
               return (
-                <TouchableOpacity key={task.id} style={styles.taskCard}
+                <TouchableOpacity key={task.id} style={[styles.taskCard, { borderLeftColor: st.color }]}
                   onPress={() => navigation.navigate('MyTasks')}
                   activeOpacity={0.9}>
                   <View style={styles.taskCardRow}>
@@ -197,12 +212,20 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
-    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+    borderBottomLeftRadius: SIZES.radiusLg, borderBottomRightRadius: SIZES.radiusLg,
+    overflow: 'hidden',
+    ...SHADOWS.large,
+  },
+  headerGradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderBottomLeftRadius: SIZES.radiusLg,
+    borderBottomRightRadius: SIZES.radiusLg,
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  greetSmall: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
-  greetName: { color: '#fff', fontSize: 22, fontWeight: '900' },
-  headerRight: { flexDirection: 'row', gap: 8 },
+  greetSmall: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
+  greetName: { color: '#fff', ...TYPO.h2, color: '#fff' },
+  headerRight: { flexDirection: 'row', gap: SIZES.sm },
   headerIconBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
@@ -210,70 +233,72 @@ const styles = StyleSheet.create({
   searchBar: {
     backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: SIZES.radiusMd, padding: 14,
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1.5, borderColor: COLORS.primarySoft,
   },
   searchIconCircle: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
   },
   searchTextGroup: { flex: 1 },
-  searchTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  searchSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
+  searchTitle: { color: '#fff', ...TYPO.bodyLarge, color: '#fff' },
+  searchSub: { color: 'rgba(255,255,255,0.7)', ...TYPO.bodySmall, marginTop: 2 },
   // === BODY ===
   body: { flex: 1, marginTop: -4 },
-  section: { paddingHorizontal: 20, marginTop: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary },
-  seeAll: { color: COLORS.primary, fontWeight: '700', fontSize: 14 },
+  section: { paddingHorizontal: 20, marginTop: SIZES.lg },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.md },
+  sectionTitle: { ...TYPO.h3, color: COLORS.textPrimary },
+  seeAll: { color: COLORS.primary, ...TYPO.buttonSmall, color: COLORS.primary },
   // === CATEGORIES ===
   categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   catItem: {
-    width: CATEGORY_SIZE, alignItems: 'center', gap: 8,
+    width: CATEGORY_SIZE, alignItems: 'center', gap: SIZES.sm,
   },
   catIconBg: {
     width: CATEGORY_SIZE - 8, height: CATEGORY_SIZE - 8,
     borderRadius: SIZES.radiusMd, justifyContent: 'center', alignItems: 'center',
-    ...SHADOWS.small,
+    ...SHADOWS.cardHover,
     backgroundColor: COLORS.surface,
   },
   catImage: { width: 34, height: 34 },
-  catName: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center' },
+  catName: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
   // === TASK CARDS ===
   taskCard: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: 14,
-    marginBottom: 10,
-    ...SHADOWS.small,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: SIZES.md,
+    marginBottom: 10, borderLeftWidth: 4, borderLeftColor: COLORS.primary,
+    ...SHADOWS.cardHover,
   },
   taskCardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   taskIconCircle: {
     width: 44, height: 44, borderRadius: 22,
     justifyContent: 'center', alignItems: 'center',
   },
-  taskCardContent: { flex: 1, gap: 4 },
+  taskCardContent: { flex: 1, gap: SIZES.xs },
   statusBadge: {
-    alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', borderRadius: SIZES.radiusXs, paddingHorizontal: 10, paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', gap: SIZES.xs,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  taskTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-  taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  taskMeta: { fontSize: 12, color: COLORS.textMuted, flex: 1 },
-  taskPrice: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  statusText: { ...TYPO.caption },
+  taskTitle: { ...TYPO.h5, color: COLORS.textPrimary },
+  taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: SIZES.xs },
+  taskMeta: { ...TYPO.bodySmall, color: COLORS.textMuted, flex: 1 },
+  taskPrice: { ...TYPO.bodyLarge, fontWeight: '900', color: COLORS.primary },
   // === EMPTY STATE ===
   emptyBox: { alignItems: 'center', paddingVertical: 36, gap: 12 },
   emptyIconCircle: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
+    justifyContent: 'center', alignItems: 'center', marginBottom: SIZES.sm,
+    ...SHADOWS.small,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
-  emptyText: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
+  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
+  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
   emptyBtn: {
     backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd,
-    paddingHorizontal: 24, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: SIZES.lg, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: SIZES.sm,
     ...SHADOWS.large,
-    marginTop: 4,
+    marginTop: SIZES.xs,
   },
-  emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  emptyBtnText: { color: '#fff', ...TYPO.button },
 });

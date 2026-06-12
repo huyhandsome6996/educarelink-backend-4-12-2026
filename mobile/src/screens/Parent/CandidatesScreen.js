@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidates, approveCandidate } from '../../api/tasks';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 export default function CandidatesScreen() {
   const navigation = useNavigation();
@@ -55,7 +56,7 @@ export default function CandidatesScreen() {
 
   const renderCandidate = ({ item: c }) => (
     <TouchableOpacity 
-      style={styles.card}
+      style={[styles.card, { borderLeftColor: c.status === 'accepted' ? COLORS.success : COLORS.warning }]}
       activeOpacity={0.8}
       onPress={() => navigation.navigate('CandidateProfile', { 
         workerId: c.worker, 
@@ -64,17 +65,19 @@ export default function CandidatesScreen() {
       })}
     >
       <View style={styles.cardTop}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{c.worker_name?.[0]?.toUpperCase() || '?'}</Text>
+        <View style={styles.avatarWrap}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{c.worker_name?.[0]?.toUpperCase() || '?'}</Text>
+          </View>
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{c.worker_name}</Text>
           <View style={styles.stars}>
-            {[1,2,3,4,5].map(i => <Ionicons key={i} name="star" size={12} color="#f59e0b" />)}
+            {[1,2,3,4,5].map(i => <Ionicons key={i} name="star" size={12} color={COLORS.warning} />)}
             <Text style={styles.starsText}> 5.0</Text>
           </View>
           <View style={styles.badge}>
-            <Ionicons name="shield-checkmark" size={12} color="#059669" />
+            <Ionicons name="shield-checkmark" size={12} color={COLORS.success} />
             <Text style={styles.badgeText}>Đã xác thực</Text>
           </View>
         </View>
@@ -83,7 +86,7 @@ export default function CandidatesScreen() {
         </View>
       </View>
       {c.status === 'pending' && (
-        <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(c.id, c.worker_name)}>
+        <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(c.id, c.worker_name)} activeOpacity={0.85}>
           <Ionicons name="checkmark-circle" size={18} color="#fff" />
           <Text style={styles.approveBtnText}>Chấp nhận bạn này</Text>
         </TouchableOpacity>
@@ -96,7 +99,7 @@ export default function CandidatesScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#374151" />
+          <Ionicons name="arrow-back" size={22} color={COLORS.textSecondary} />
         </TouchableOpacity>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Danh sách ứng viên</Text>
@@ -105,7 +108,7 @@ export default function CandidatesScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#F26522" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 60 }} />
       ) : (
         <FlatList data={candidates} keyExtractor={i => i.id.toString()} renderItem={renderCandidate}
           contentContainerStyle={styles.list}
@@ -114,8 +117,11 @@ export default function CandidatesScreen() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="people-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>Chưa có ứng viên nào</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="people-outline" size={40} color={COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>Chưa có ứng viên</Text>
+              <Text style={styles.emptyText}>Các Carepartner sẽ sớm ứng tuyển</Text>
             </View>
           }
         />
@@ -125,30 +131,33 @@ export default function CandidatesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', gap: 12 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 12, ...SHADOWS.small },
+  backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  headerSub: { fontSize: 12, color: '#6b7280' },
-  list: { padding: 16, gap: 12 },
-  countText: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 4 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2, gap: 12 },
+  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
+  headerSub: { ...TYPO.bodySmall, color: COLORS.textSecondary },
+  list: { padding: SIZES.md, gap: 12 },
+  countText: { ...TYPO.h5, color: COLORS.textPrimary, marginBottom: 4 },
+  card: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: SIZES.md, borderLeftWidth: 4, borderLeftColor: COLORS.primary, ...SHADOWS.cardHover, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F26522', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
+  avatarText: { color: '#fff', ...TYPO.h3, color: '#fff' },
   info: { flex: 1, gap: 4 },
-  name: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  name: { ...TYPO.h4, color: COLORS.textPrimary },
   stars: { flexDirection: 'row', alignItems: 'center' },
-  starsText: { fontSize: 12, fontWeight: '700', color: '#374151' },
+  starsText: { ...TYPO.bodySmall, fontWeight: '700', color: COLORS.textPrimary },
   badge: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  badgeText: { fontSize: 11, color: '#059669', fontWeight: '600' },
-  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  accepted: { backgroundColor: '#f0fdf4' },
-  pending: { backgroundColor: '#fffbeb' },
-  statusPillText: { fontSize: 11, fontWeight: '700', color: '#374151' },
-  approveBtn: { backgroundColor: '#F26522', borderRadius: 12, height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  approveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  badgeText: { ...TYPO.caption, color: COLORS.success, fontWeight: '600' },
+  statusPill: { borderRadius: SIZES.radiusFull, paddingHorizontal: 12, paddingVertical: 5 },
+  accepted: { backgroundColor: COLORS.successBg },
+  pending: { backgroundColor: COLORS.warningBg },
+  statusPillText: { ...TYPO.caption, color: COLORS.textPrimary },
+  approveBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusSm, height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SIZES.sm, ...SHADOWS.large },
+  approveBtnText: { color: '#fff', ...TYPO.buttonSmall },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { color: '#9ca3af', fontSize: 15 },
+  emptyIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 4, ...SHADOWS.small },
+  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
+  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
 });
