@@ -1,253 +1,640 @@
 <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Đăng việc mới (Bước 2) | EduCareLink</title>
 
-<html lang="vi"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Đăng việc mới - Educarelink</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "error-container": "#ffdad6",
-                    "outline": "#6d7a77",
-                    "inverse-surface": "#2e3132",
-                    "primary": "#0051d5",
-                    "surface-container-lowest": "#ffffff",
-                    "surface-container-highest": "#e1e3e4",
-                    "on-secondary-fixed": "#2a1800",
-                    "surface-container-high": "#e7e8e9",
-                    "on-error": "#ffffff",
-                    "secondary-fixed": "#ffddb6",
-                    "on-primary-fixed-variant": "#003ea8",
-                    "surface-container-low": "#f3f4f5",
-                    "tertiary-fixed": "#71f8e4",
-                    "on-tertiary": "#ffffff",
-                    "outline-variant": "#bcc9c6",
-                    "tertiary": "#00685d",
-                    "primary-fixed-dim": "#b4c5ff",
-                    "on-tertiary-container": "#f4fffb",
-                    "surface-tint": "#0053db",
-                    "error": "#ba1a1a",
-                    "on-error-container": "#93000a",
-                    "surface-bright": "#f8f9fa",
-                    "secondary-container": "#feb246",
-                    "on-primary-fixed": "#00174b",
-                    "surface-variant": "#e1e3e4",
-                    "primary-fixed": "#dbe1ff",
-                    "inverse-on-surface": "#f0f1f2",
-                    "inverse-primary": "#b4c5ff",
-                    "secondary-fixed-dim": "#ffb95a",
-                    "tertiary-fixed-dim": "#4fdbc8",
-                    "on-tertiary-fixed-variant": "#005048",
-                    "on-secondary-fixed-variant": "#643f00",
-                    "secondary": "#845400",
-                    "surface": "#f8f9fa",
-                    "on-surface-variant": "#3d4947",
-                    "on-secondary": "#ffffff",
-                    "background": "#f8f9fa",
-                    "on-surface": "#191c1d",
-                    "on-primary-container": "#fefcff",
-                    "tertiary-container": "#008376",
-                    "on-background": "#191c1d",
-                    "surface-dim": "#d9dadb",
-                    "surface-container": "#edeeef",
-                    "on-tertiary-fixed": "#00201c",
-                    "primary-container": "#316bf3",
-                    "on-secondary-container": "#6f4600",
-                    "on-primary": "#ffffff"
-            },
-            "borderRadius": {
-                    "DEFAULT": "1rem",
-                    "lg": "2rem",
-                    "xl": "3rem",
-                    "full": "9999px"
-            },
-            "fontFamily": {
-                    "headline": ["Manrope"],
-                    "body": ["Plus Jakarta Sans"],
-                    "label": ["Plus Jakarta Sans"]
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        successBg: '#ECFDF5',
+                        error: '#EF4444',
+                        errorBg: '#FEF2F2',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
+                    },
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
+                        label: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        DEFAULT: '0.75rem',
+                        lg: '1rem',
+                        xl: '1.5rem',
+                        '2xl': '2rem',
+                    }
+                }
             }
-          },
-        },
-      }
+        }
     </script>
-<style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f9fa; }
-        .font-headline { font-family: 'Manrope', sans-serif; }
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
         }
-    </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-surface text-on-surface min-h-screen pb-32">
-<!-- TopAppBar -->
-<header class="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl flex items-center justify-between px-6 py-4 w-full">
-<div class="flex items-center gap-4">
-<button class="scale-95 transition-transform duration-200 text-teal-600 dark:text-teal-400">
-<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
-</button>
-<h1 class="font-['Manrope'] font-bold text-lg tracking-tight text-teal-600 dark:text-teal-400">Đăng việc mới</h1>
-</div>
-<div class="w-6"></div> <!-- Spacer for centering -->
-</header>
-<main class="pt-24 px-6 space-y-10 max-w-md mx-auto">
-<!-- Service Selection -->
-<section class="space-y-4">
-<h2 class="font-headline font-bold text-xl text-on-surface">Bạn cần dịch vụ gì?</h2>
-<div class="grid grid-cols-3 gap-3">
-<!-- Active Service -->
-<button class="flex flex-col items-center justify-center p-4 rounded-xl bg-teal-600 text-white shadow-lg transition-all scale-[0.98]">
-<div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
-<span class="material-symbols-outlined" data-icon="school" style="font-variation-settings: 'FILL' 1;">school</span>
-</div>
-<span class="text-sm font-semibold">Gia sư</span>
-</button>
-<button class="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/15 hover:bg-surface-container-high transition-colors">
-<div class="w-12 h-12 bg-secondary-container/20 rounded-full flex items-center justify-center mb-2">
-<span class="material-symbols-outlined text-secondary" data-icon="directions_car">directions_car</span>
-</div>
-<span class="text-sm font-medium">Đón trẻ</span>
-</button>
-<button class="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/15 hover:bg-surface-container-high transition-colors">
-<div class="w-12 h-12 bg-tertiary-container/10 rounded-full flex items-center justify-center mb-2">
-<span class="material-symbols-outlined text-tertiary" data-icon="cleaning_services">cleaning_services</span>
-</div>
-<span class="text-sm font-medium">Dọn dẹp</span>
-</button>
-</div>
-</section>
-<!-- Task Details Form -->
-<section class="space-y-6">
-<div class="flex items-center justify-between">
-<h2 class="font-headline font-bold text-xl text-on-surface">Thông tin chi tiết</h2>
-<span class="text-xs font-bold px-2 py-1 bg-tertiary-container/10 text-tertiary rounded-full uppercase tracking-wider">Cần thiết</span>
-</div>
-<div class="space-y-5">
-<!-- Title Input -->
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Tiêu đề công việc</label>
-<input class="w-full px-5 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50" placeholder="Ví dụ: Cần gia sư Toán lớp 5" type="text"/>
-</div>
-<!-- Description Textarea -->
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Mô tả chi tiết</label>
-<textarea class="w-full px-5 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50 resize-none" placeholder="Mô tả các yêu cầu cụ thể đối với người làm..." rows="4"></textarea>
-</div>
-<!-- Address Input -->
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Địa chỉ</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline" data-icon="location_on">location_on</span>
-<input class="w-full pl-12 pr-5 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50" placeholder="Nhập địa chỉ làm việc" type="text"/>
-</div>
-</div>
-<!-- Date & Time Grid -->
-<div class="grid grid-cols-2 gap-4">
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Ngày làm</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline" data-icon="calendar_today">calendar_today</span>
-<input class="w-full pl-12 pr-4 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50" placeholder="Chọn ngày" type="text"/>
-</div>
-</div>
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Giờ bắt đầu</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline" data-icon="schedule">schedule</span>
-<input class="w-full pl-12 pr-4 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50" placeholder="08:00 AM" type="text"/>
-</div>
-</div>
-</div>
-<!-- Salary Input -->
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Mức lương đề xuất</label>
-<div class="relative">
-<input class="w-full px-5 py-4 bg-surface-container-lowest border-none rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-on-surface placeholder:text-outline/50 font-bold text-lg" placeholder="200.000" type="number"/>
-<span class="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-on-surface-variant">VNĐ</span>
-</div>
-<p class="text-xs text-on-surface-variant/70 italic ml-1">Gợi ý: Mức lương trung bình cho Gia sư là 150k - 300k/giờ</p>
-</div>
-</div>
-</section>
-<!-- Illustration / Contextual Image -->
-<div class="rounded-xl overflow-hidden h-40 shadow-inner bg-slate-200">
-<img class="w-full h-full object-cover mix-blend-multiply opacity-80" data-alt="Modern minimalist home office with books and stationery in soft natural sunlight, peaceful educational environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3s3DQUHAWrNRWNqfqd5YBA_0RYXEFTAtusneozV3-h4KaP8bZanHZC4sm0BToZ62tPQV_WE37WUmVGIuGFrI349FTb7x4WGXJQgXNAd7B4vXCdHGkbsRVgG0W_B00icMEjmhwp9V3pr_oSKQSjuVKph14eUI21s-M3cwOfcc-qLa6fpjrt6rPdLvi9BSCGsUzDq6ZgXey0M-STcE8907TEo_84MHKa828pTrK_5PfcbupakyEiwI6GQUHfEnrIBmxf5vBUUf8EA"/>
-</div>
-</main>
-<!-- Bottom Action Button -->
-<nav class="fixed bottom-0 left-0 w-full px-6 py-4 bg-white dark:bg-slate-900 flex justify-center shadow-[0_-20px_40px_rgba(13,148,136,0.06)] rounded-t-3xl z-50">
-<button class="w-full py-4 bg-teal-600 dark:bg-teal-500 text-white rounded-2xl flex justify-center items-center font-bold text-base hover:bg-teal-700 dark:hover:bg-teal-400 transition-all active:scale-[0.98]">
-<span class="material-symbols-outlined mr-2" data-icon="send">send</span>
-            Đăng lên cộng đồng
-        </button>
-</nav>
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
 
-    <!-- Mobile App-like Transition -->
-    <style>
-        @media (max-width: 767px) {
+        /* Sidebar scroll */
+        .sidebar-scroll::-webkit-scrollbar { width: 0; }
+        .sidebar-scroll { scrollbar-width: none; }
+
+        /* Custom scrollbar for form area */
+        .form-scroll::-webkit-scrollbar { width: 6px; }
+        .form-scroll::-webkit-scrollbar-track { background: transparent; }
+        .form-scroll::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 999px; }
+        .form-scroll::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+        /* Sidebar nav link styles */
+        .sidebar-link {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 1rem; border-radius: 0.75rem;
+            font-weight: 600; font-size: 0.9375rem; color: #6B7280;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover { background: #FFF4ED; color: #F26522; }
+        .sidebar-link.active { background: #FFF4ED; color: #F26522; font-weight: 700; }
+
+        /* Toast animation */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in { animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+
+        /* Mobile bottom nav safe area */
+        @media (max-width: 1023px) {
+            .main-content { padding-bottom: 5.5rem; }
+        }
+
+        /* Step indicator */
+        .step-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .step-dot.active { background: #F26522; transform: scale(1.2); }
+        .step-dot.completed { background: #2DB84B; }
+        .step-dot.pending { background: #E5E7EB; }
+        .step-line {
+            height: 2px; flex: 1;
+            transition: background 0.3s ease;
+        }
+        .step-line.completed { background: #2DB84B; }
+        .step-line.pending { background: #E5E7EB; }
+
+        /* Form inputs enhanced */
+        .form-input {
+            transition: all 0.2s ease;
+            border: 1.5px solid #E5E7EB;
+        }
+        .form-input:focus {
+            border-color: #F26522;
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.12);
+        }
+        .form-input:hover:not(:focus) {
+            border-color: #D1D5DB;
+        }
+
+        /* Button hover effect */
+        .btn-primary {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(242, 101, 34, 0.25);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(242, 101, 34, 0.35);
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(242, 101, 34, 0.2);
+        }
+
+        /* Mobile page transition */
+        @media (max-width: 1023px) {
             body {
                 opacity: 0;
-                transform: translateY(15px) scale(0.98);
-                transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(12px);
+                transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             }
-            body.page-loaded {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            body.page-exit {
-                opacity: 0;
-                transform: translateY(-10px) scale(0.98);
-            }
+            body.page-loaded { opacity: 1; transform: translateY(0); }
         }
     </style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+    <!-- ============================================ -->
+    <!-- SIDEBAR (Desktop ≥1024px)                    -->
+    <!-- ============================================ -->
+    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
+            <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md">
+                <span class="material-symbols-outlined filled text-white text-xl">school</span>
+            </div>
+            <div>
+                <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
+            </div>
+        </div>
+        <!-- Navigation -->
+        <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
+            <div class="space-y-1">
+                <a href="{% url 'frontend:parent_home' %}" class="sidebar-link">
+                    <span class="material-symbols-outlined">home</span><span>Trang chủ</span>
+                </a>
+                <a href="{% url 'frontend:parent_tasks' %}" class="sidebar-link">
+                    <span class="material-symbols-outlined">assignment</span><span>Việc của tôi</span>
+                </a>
+                <a href="{% url 'frontend:task_create_1' %}" class="sidebar-link active">
+                    <span class="material-symbols-outlined filled">add_circle</span><span>Đăng việc mới</span>
+                </a>
+                <a href="{% url 'frontend:chatbot' %}" class="sidebar-link">
+                    <span class="material-symbols-outlined">smart_toy</span><span>AI Trợ lý</span>
+                </a>
+            </div>
+        </nav>
+        <!-- User Section -->
+        <div class="border-t border-border px-4 py-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft flex-shrink-0">
+                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
+                    <p class="text-xs text-textMuted">Phụ huynh</p>
+                </div>
+                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg flex items-center justify-center text-textMuted hover:bg-errorBg hover:text-error transition-all" title="Đăng xuất">
+                    <span class="material-symbols-outlined text-xl">logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ============================================ -->
+    <!-- MOBILE HEADER (<1024px)                      -->
+    <!-- ============================================ -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
+        <div class="flex items-center justify-between px-4 h-14">
+            <div class="flex items-center gap-2.5">
+                <button onclick="history.back()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+                    <span class="material-symbols-outlined text-textSecondary">arrow_back</span>
+                </button>
+                <span class="font-headline font-bold text-base text-textPrimary">Đăng việc (Bước 2)</span>
+            </div>
+            <div class="w-9"></div>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- MAIN CONTENT AREA                            -->
+    <!-- ============================================ -->
+    <main class="lg:ml-[260px] min-h-screen main-content">
+        <!-- TOP HEADER BAR (Desktop) -->
+        <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+            <div>
+                <h1 class="font-headline font-bold text-2xl text-textPrimary">Đăng việc mới</h1>
+                <p class="text-textSecondary text-sm mt-0.5">Bước 2: Lịch trình & Ngân sách</p>
+            </div>
+            <a href="{% url 'frontend:task_create_1' %}" class="text-primary hover:text-primaryDark font-semibold text-sm flex items-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-lg">arrow_back</span> Quay lại bước 1
+            </a>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="px-4 lg:px-8 pt-6 lg:pt-8">
+            <div class="flex items-center gap-2 max-w-2xl">
+                <div class="flex items-center gap-2">
+                    <div class="step-dot completed"></div>
+                    <span class="text-xs font-semibold text-secondary hidden sm:inline">Thông tin</span>
+                </div>
+                <div class="step-line completed"></div>
+                <div class="flex items-center gap-2">
+                    <div class="step-dot active"></div>
+                    <span class="text-xs font-semibold text-primary hidden sm:inline">Lịch trình</span>
+                </div>
+                <div class="step-line pending"></div>
+                <div class="flex items-center gap-2">
+                    <div class="step-dot pending"></div>
+                    <span class="text-xs font-medium text-textMuted hidden sm:inline">Hoàn tất</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT BODY -->
+        <div class="px-4 lg:px-8 pb-8 pt-6 lg:pt-6">
+            <div class="max-w-2xl space-y-6">
+
+                <!-- Summary from Step 1 -->
+                <div id="step1-summary" class="bg-primaryLight rounded-2xl p-5 border border-primarySoft/50">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined filled text-primary text-lg">info</span>
+                        <span class="font-semibold text-primary text-sm">Thông tin từ bước 1</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span class="text-textMuted">Dịch vụ:</span>
+                            <p id="summary-category" class="font-semibold text-textPrimary">—</p>
+                        </div>
+                        <div>
+                            <span class="text-textMuted">Tiêu đề:</span>
+                            <p id="summary-title" class="font-semibold text-textPrimary">—</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Section -->
+                <section class="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+                    <h2 class="font-headline font-bold text-lg text-textPrimary mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">schedule</span>
+                        Lịch trình làm việc
+                    </h2>
+                    <div class="space-y-5">
+                        <!-- Date -->
+                        <div>
+                            <label class="block text-sm font-semibold text-textPrimary mb-2">Ngày làm việc <span class="text-error">*</span></label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-textMuted text-xl">calendar_today</span>
+                                <input type="date" id="task-date" class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl bg-background text-textPrimary outline-none" required/>
+                            </div>
+                        </div>
+                        <!-- Time Range -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-textPrimary mb-2">Giờ bắt đầu <span class="text-error">*</span></label>
+                                <div class="relative">
+                                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-textMuted text-xl">play_circle</span>
+                                    <input type="time" id="task-start" class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl bg-background text-textPrimary outline-none" required/>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-textPrimary mb-2">Giờ kết thúc <span class="text-error">*</span></label>
+                                <div class="relative">
+                                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-textMuted text-xl">stop_circle</span>
+                                    <input type="time" id="task-end" class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl bg-background text-textPrimary outline-none" required/>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Duration display -->
+                        <div id="duration-display" class="hidden bg-secondaryLight rounded-xl p-4 flex items-center gap-3">
+                            <span class="material-symbols-outlined filled text-secondary">timer</span>
+                            <div>
+                                <span class="text-sm text-textSecondary">Thời lượng ước tính:</span>
+                                <p id="duration-text" class="font-bold text-secondary text-lg">—</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Budget Section -->
+                <section class="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+                    <h2 class="font-headline font-bold text-lg text-textPrimary mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">payments</span>
+                        Ngân sách
+                    </h2>
+                    <div class="space-y-5">
+                        <!-- Budget Type -->
+                        <div>
+                            <label class="block text-sm font-semibold text-textPrimary mb-3">Hình thức trả lương</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button type="button" id="btn-hourly" onclick="setBudgetType('hourly')" class="py-3 px-4 rounded-xl border-2 border-primary bg-primaryLight text-primary font-semibold text-sm transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-lg">schedule</span> Theo giờ
+                                </button>
+                                <button type="button" id="btn-fixed" onclick="setBudgetType('fixed')" class="py-3 px-4 rounded-xl border-2 border-border bg-surface text-textSecondary font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:border-primarySoft hover:text-primary">
+                                    <span class="material-symbols-outlined text-lg">label</span> Trọn gói
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Amount -->
+                        <div>
+                            <label class="block text-sm font-semibold text-textPrimary mb-2" id="budget-label">Mức lương theo giờ <span class="text-error">*</span></label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-textMuted font-bold">₫</span>
+                                <input type="number" id="task-budget" class="form-input w-full pl-10 pr-16 py-3.5 rounded-xl bg-background text-textPrimary outline-none font-semibold text-lg" placeholder="150.000" min="10000" required/>
+                                <span id="budget-unit" class="absolute right-4 top-1/2 -translate-y-1/2 text-textMuted font-semibold text-sm">VNĐ/giờ</span>
+                            </div>
+                            <p id="budget-hint" class="text-xs text-textMuted mt-2 ml-1">Gợi ý: 150.000 - 300.000 VNĐ/giờ cho gia sư</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Additional Notes -->
+                <section class="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+                    <h2 class="font-headline font-bold text-lg text-textPrimary mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">edit_note</span>
+                        Ghi chú thêm
+                    </h2>
+                    <textarea id="task-notes" class="form-input w-full px-4 py-3.5 rounded-xl bg-background text-textPrimary outline-none resize-none" rows="3" placeholder="Yêu cầu đặc biệt, lưu ý cho người làm..."></textarea>
+                </section>
+
+                <!-- Address (from step 1, editable) -->
+                <section class="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+                    <h2 class="font-headline font-bold text-lg text-textPrimary mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">location_on</span>
+                        Địa chỉ làm việc
+                    </h2>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-textMuted text-xl">place</span>
+                        <input type="text" id="task-address" class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl bg-background text-textPrimary outline-none" placeholder="Nhập địa chỉ làm việc" required/>
+                    </div>
+                </section>
+
+                <!-- Submit Buttons -->
+                <div class="flex gap-3 pt-2">
+                    <a href="{% url 'frontend:task_create_1' %}" class="flex-1 py-4 rounded-xl border-2 border-border text-textSecondary font-semibold text-center hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">arrow_back</span> Bước 1
+                    </a>
+                    <button onclick="submitTask()" id="submit-btn" class="flex-[2] py-4 bg-primary hover:bg-primaryDark text-white rounded-xl font-bold text-base btn-primary flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">send</span> Đăng việc
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================================ -->
+    <!-- MOBILE BOTTOM NAV (<1024px)                  -->
+    <!-- ============================================ -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-border">
+        <div class="flex items-center justify-around py-2 px-4">
+            <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center gap-0.5 py-1.5 px-3 text-textMuted hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-xl">home</span>
+                <span class="text-[10px] font-semibold">Trang chủ</span>
+            </a>
+            <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center gap-0.5 py-1.5 px-3 text-textMuted hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-xl">assignment</span>
+                <span class="text-[10px] font-semibold">Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:task_create_1' %}" class="flex flex-col items-center gap-0.5 py-1.5 px-3 text-primary">
+                <span class="material-symbols-outlined filled text-xl">add_circle</span>
+                <span class="text-[10px] font-bold">Đăng việc</span>
+            </a>
+            <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center gap-0.5 py-1.5 px-3 text-textMuted hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-xl">smart_toy</span>
+                <span class="text-[10px] font-semibold">AI Trợ lý</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div class="bg-surface rounded-2xl p-6 mx-4 max-w-sm w-full shadow-2xl">
+            <h3 id="confirm-title" class="font-headline font-bold text-lg text-textPrimary mb-2"></h3>
+            <p id="confirm-message" class="text-textSecondary text-sm mb-6"></p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirm()" class="flex-1 py-3 rounded-xl border border-border text-textSecondary font-semibold hover:bg-gray-50 transition-colors">Hủy</button>
+                <button id="confirm-ok" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primaryDark transition-colors">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.innerWidth <= 767) {
-                // Initial load animation
-                requestAnimationFrame(() => {
-                    document.body.classList.add('page-loaded');
+        // ============ UTILITIES ============
+        function getAccessToken() {
+            return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                success: 'bg-secondary text-white',
+                error: 'bg-error text-white',
+                info: 'bg-primary text-white',
+                warning: 'bg-warning text-white'
+            };
+            const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
+            const toast = document.createElement('div');
+            toast.className = `animate-slide-in ${colors[type]} px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium min-w-[280px]`;
+            toast.innerHTML = `<span class="material-symbols-outlined filled text-lg">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; toast.style.transition = 'all 0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function showConfirm(title, message, onOk) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            document.getElementById('confirm-ok').onclick = () => { closeConfirm(); onOk(); };
+        }
+        function closeConfirm() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        function handleLogout() {
+            showConfirm('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', () => {
+                localStorage.clear(); sessionStorage.clear();
+                window.location.href = '{% url "frontend:login" %}';
+            });
+        }
+
+        // ============ BUDGET TYPE ============
+        let budgetType = 'hourly';
+        function setBudgetType(type) {
+            budgetType = type;
+            const btnHourly = document.getElementById('btn-hourly');
+            const btnFixed = document.getElementById('btn-fixed');
+            const budgetLabel = document.getElementById('budget-label');
+            const budgetUnit = document.getElementById('budget-unit');
+            const budgetHint = document.getElementById('budget-hint');
+
+            if (type === 'hourly') {
+                btnHourly.className = 'py-3 px-4 rounded-xl border-2 border-primary bg-primaryLight text-primary font-semibold text-sm transition-all flex items-center justify-center gap-2';
+                btnFixed.className = 'py-3 px-4 rounded-xl border-2 border-border bg-surface text-textSecondary font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:border-primarySoft hover:text-primary';
+                budgetLabel.textContent = 'Mức lương theo giờ *';
+                budgetUnit.textContent = 'VNĐ/giờ';
+                budgetHint.textContent = 'Gợi ý: 150.000 - 300.000 VNĐ/giờ cho gia sư';
+            } else {
+                btnFixed.className = 'py-3 px-4 rounded-xl border-2 border-primary bg-primaryLight text-primary font-semibold text-sm transition-all flex items-center justify-center gap-2';
+                btnHourly.className = 'py-3 px-4 rounded-xl border-2 border-border bg-surface text-textSecondary font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:border-primarySoft hover:text-primary';
+                budgetLabel.textContent = 'Mức lương trọn gói *';
+                budgetUnit.textContent = 'VNĐ';
+                budgetHint.textContent = 'Nhập tổng ngân sách cho toàn bộ công việc';
+            }
+        }
+
+        // ============ DURATION CALCULATOR ============
+        function calculateDuration() {
+            const start = document.getElementById('task-start').value;
+            const end = document.getElementById('task-end').value;
+            const display = document.getElementById('duration-display');
+            const text = document.getElementById('duration-text');
+
+            if (start && end) {
+                const [sh, sm] = start.split(':').map(Number);
+                const [eh, em] = end.split(':').map(Number);
+                let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+                if (diffMin <= 0) diffMin += 24 * 60;
+                const hours = Math.floor(diffMin / 60);
+                const mins = diffMin % 60;
+                text.textContent = mins > 0 ? `${hours} giờ ${mins} phút` : `${hours} giờ`;
+                display.classList.remove('hidden');
+                display.classList.add('flex');
+            } else {
+                display.classList.add('hidden');
+                display.classList.remove('flex');
+            }
+        }
+
+        document.getElementById('task-start').addEventListener('change', calculateDuration);
+        document.getElementById('task-end').addEventListener('change', calculateDuration);
+
+        // ============ LOAD STEP 1 DATA ============
+        function loadStep1Data() {
+            const data = JSON.parse(sessionStorage.getItem('task_create_step1') || '{}');
+            if (data.category) {
+                document.getElementById('summary-category').textContent = data.category_label || data.category;
+            }
+            if (data.title) {
+                document.getElementById('summary-title').textContent = data.title;
+            }
+            if (data.address) {
+                document.getElementById('task-address').value = data.address;
+            }
+            // Pre-fill date/time
+            if (data.date) document.getElementById('task-date').value = data.date;
+            if (data.start_time) document.getElementById('task-start').value = data.start_time;
+            if (data.end_time) document.getElementById('task-end').value = data.end_time;
+            if (data.budget) document.getElementById('task-budget').value = data.budget;
+            if (data.budget_type) setBudgetType(data.budget_type);
+
+            calculateDuration();
+        }
+
+        // ============ SUBMIT TASK ============
+        async function submitTask() {
+            const token = getAccessToken();
+            if (!token) {
+                showToast('Vui lòng đăng nhập lại', 'error');
+                window.location.href = '{% url "frontend:login" %}';
+                return;
+            }
+
+            const date = document.getElementById('task-date').value;
+            const startTime = document.getElementById('task-start').value;
+            const endTime = document.getElementById('task-end').value;
+            const budget = document.getElementById('task-budget').value;
+            const address = document.getElementById('task-address').value;
+            const notes = document.getElementById('task-notes').value;
+
+            if (!date || !startTime || !endTime || !budget || !address) {
+                showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'warning');
+                return;
+            }
+
+            const step1Data = JSON.parse(sessionStorage.getItem('task_create_step1') || '{}');
+
+            const taskData = {
+                ...step1Data,
+                date: date,
+                start_time: startTime,
+                end_time: endTime,
+                budget: parseInt(budget),
+                budget_type: budgetType,
+                address: address,
+                notes: notes,
+            };
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Đang đăng...';
+
+            try {
+                const response = await fetch('/api/tasks/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(taskData)
                 });
 
-                // Link click transitions
-                document.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        const href = link.getAttribute('href');
-                        const target = link.getAttribute('target');
-                        if (href && href.startsWith('/') && !href.startsWith('#') && target !== '_blank' && !e.ctrlKey && !e.metaKey) {
-                            e.preventDefault();
-                            document.body.classList.remove('page-loaded');
-                            document.body.classList.add('page-exit');
-                            setTimeout(() => {
-                                window.location.href = href;
-                            }, 300); // match transition duration
-                        }
-                    });
-                });
+                if (response.ok) {
+                    sessionStorage.removeItem('task_create_step1');
+                    showToast('Đăng việc thành công!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '{% url "frontend:parent_tasks" %}';
+                    }, 1200);
+                } else {
+                    const data = await response.json();
+                    showToast(data.detail || 'Có lỗi xảy ra, vui lòng thử lại', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối, vui lòng thử lại', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined">send</span> Đăng việc';
+            }
+        }
+
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStep1Data();
+
+            // Load user info
+            const token = getAccessToken();
+            if (token) {
+                fetch('/api/auth/me/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(r => r.json()).then(user => {
+                    const name = user.full_name || user.email || 'Người dùng';
+                    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26522&color=fff`;
+                    document.querySelectorAll('#sidebar-user-name').forEach(el => el.textContent = name);
+                    document.querySelectorAll('#sidebar-avatar, #header-avatar').forEach(el => el.src = avatarUrl);
+                }).catch(() => {});
+            }
+
+            // Mobile page transition
+            if (window.innerWidth < 1024) {
+                requestAnimationFrame(() => document.body.classList.add('page-loaded'));
             } else {
-                // Ensure visibility on desktop if resized
                 document.body.style.opacity = '1';
                 document.body.style.transform = 'none';
             }
         });
-        
-        // Handle back/forward navigation cache
-        window.addEventListener('pageshow', (event) => {
-            if (event.persisted && window.innerWidth <= 767) {
-                document.body.classList.remove('page-exit');
-                document.body.classList.add('page-loaded');
-            }
+
+        // Handle back/forward cache
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted) document.body.classList.add('page-loaded');
         });
     </script>
-
-</body></html>
+</body>
+</html>

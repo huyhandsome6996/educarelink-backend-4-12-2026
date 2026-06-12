@@ -48,6 +48,7 @@
     </script>
 
     <style>
+        html { scroll-behavior: smooth; }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
@@ -83,9 +84,17 @@
         .toast-in { animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
         .toast-out { animation: slideOutRight 0.3s ease forwards; }
 
+        /* Card hover with primary-tinted shadow */
+        .card-hover {
+            transition: all 0.25s ease;
+        }
+        .card-hover:hover {
+            box-shadow: 0 8px 24px rgba(242, 101, 34, 0.10);
+        }
+
         /* Star button interactions */
         .star-btn {
-            transition: transform 0.15s ease, filter 0.15s ease;
+            transition: all 0.15s ease;
         }
         .star-btn:hover {
             transform: scale(1.15);
@@ -213,7 +222,7 @@
                 </div>
             </div>
             <button onclick="handleLogout()"
-                    class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-errorBg hover:text-error transition-colors text-sm font-medium">
+                    class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-errorBg hover:text-error transition-all duration-200 text-sm font-medium">
                 <span class="material-symbols-outlined text-lg">logout</span>
                 Đăng xuất
             </button>
@@ -252,13 +261,13 @@
         </div>
 
         <!-- CONTENT BODY -->
-        <div class="px-4 lg:px-8 py-6 lg:py-8">
+        <div class="px-4 lg:px-8 py-6 lg:py-8 max-w-6xl mx-auto">
             <div class="max-w-2xl mx-auto space-y-6 lg:space-y-8">
 
                 <!-- =============================== -->
                 <!-- 1. TASK & WORKER SUMMARY CARD   -->
                 <!-- =============================== -->
-                <section id="worker-summary" class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                <section id="worker-summary" class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden card-hover">
                     <!-- Loading state -->
                     <div id="summary-loading" class="p-8 flex flex-col items-center text-center">
                         <div class="skeleton w-24 h-24 rounded-full mb-4"></div>
@@ -302,7 +311,7 @@
                 <!-- =============================== -->
                 <!-- 2. STAR RATING SECTION           -->
                 <!-- =============================== -->
-                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.1s;">
+                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up card-hover" style="animation-delay: 0.1s;">
                     <!-- Headline -->
                     <div class="text-center mb-6">
                         <div class="w-14 h-14 bg-primaryLight rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -343,14 +352,14 @@
                 <!-- =============================== -->
                 <!-- 3. COMMENT SECTION               -->
                 <!-- =============================== -->
-                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up" style="animation-delay: 0.2s;">
+                <section class="bg-surface rounded-2xl border border-border shadow-sm p-6 lg:p-8 animate-fade-in-up card-hover" style="animation-delay: 0.2s;">
                     <label class="flex items-center gap-2 text-sm font-bold text-textPrimary mb-3" for="comment">
                         <span class="material-symbols-outlined text-primary text-lg filled">edit_note</span>
                         Để lại nhận xét của bạn
                     </label>
                     <div class="relative">
                         <textarea
-                            class="w-full bg-background border border-border rounded-xl p-4 text-textPrimary placeholder:text-textMuted focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all resize-none text-sm leading-relaxed"
+                            class="w-full bg-background border border-border rounded-xl p-4 text-textPrimary placeholder:text-textMuted focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none text-sm leading-relaxed"
                             id="comment"
                             placeholder="Chia sẻ trải nghiệm của bạn (thái độ, kỹ năng, sự nhiệt tình...)"
                             rows="5"

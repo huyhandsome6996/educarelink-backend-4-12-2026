@@ -175,7 +175,7 @@
     </style>
 </head>
 
-<body class="bg-background text-textPrimary font-body antialiased">
+<body class="bg-background text-textPrimary font-body antialiased min-h-dvh">
 
     <!-- ============================================ -->
     <!-- NAVIGATION BAR                               -->
@@ -276,12 +276,12 @@
                 <!-- CTA Buttons -->
                 <div class="fade-in-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <a href="{% url 'frontend:register' %}"
-                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white font-label font-bold text-base rounded-full shadow-lg hover:bg-primaryDark hover:shadow-xl transition-all duration-200">
+                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white font-label font-bold text-base rounded-full shadow-lg hover:bg-primaryDark hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
                         Bắt đầu ngay
                         <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
                     </a>
                     <a href="{% url 'frontend:login' %}"
-                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-surface text-primary font-label font-bold text-base rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primaryLight shadow-sm hover:shadow-md transition-all duration-200">
+                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-surface text-primary font-label font-bold text-base rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primaryLight shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
                         <span class="material-symbols-outlined text-xl">login</span>
                         Đăng nhập
                     </a>
@@ -493,7 +493,7 @@
                     <!-- CTA -->
                     <div class="mt-8 pt-6 border-t border-gray-100">
                         <a href="{% url 'frontend:register' %}"
-                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-primary text-white font-label font-bold text-sm rounded-full hover:bg-primaryDark transition-all duration-200 shadow-md hover:shadow-lg">
+                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-primary text-white font-label font-bold text-sm rounded-full hover:bg-primaryDark hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md hover:shadow-lg">
                             Đăng ký làm Phụ huynh
                             <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </a>
@@ -572,7 +572,7 @@
                     <!-- CTA -->
                     <div class="mt-8 pt-6 border-t border-gray-100">
                         <a href="{% url 'frontend:register' %}"
-                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-secondary text-white font-label font-bold text-sm rounded-full hover:bg-secondaryDark transition-all duration-200 shadow-md hover:shadow-lg">
+                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-secondary text-white font-label font-bold text-sm rounded-full hover:bg-secondaryDark hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md hover:shadow-lg">
                             Đăng ký làm Carepartner
                             <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </a>
@@ -602,12 +602,12 @@
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a href="{% url 'frontend:register' %}"
-                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary font-label font-bold text-base rounded-full hover:bg-gray-50 shadow-xl hover:shadow-2xl transition-all duration-200">
+                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary font-label font-bold text-base rounded-full hover:bg-gray-50 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
                     Đăng ký miễn phí
                     <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </a>
                 <a href="{% url 'frontend:login' %}"
-                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent text-white font-label font-bold text-base rounded-full border-2 border-white/30 hover:border-white/70 hover:bg-white/10 transition-all duration-200">
+                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent text-white font-label font-bold text-base rounded-full border-2 border-white/30 hover:border-white/70 hover:bg-white/10 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
                     <span class="material-symbols-outlined text-lg">login</span>
                     Tôi đã có tài khoản
                 </a>

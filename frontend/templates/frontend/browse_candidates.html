@@ -50,6 +50,7 @@
     </script>
 
     <style>
+        html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
         .material-symbols-outlined {
@@ -89,8 +90,8 @@
         .modal-content { animation: scaleIn 0.25s ease; }
 
         /* Candidate card hover */
-        .candidate-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .candidate-card:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(242,101,34,0.1); }
+        .candidate-card { transition: all 0.25s ease; }
+        .candidate-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(242, 101, 34, 0.1); }
 
         /* Skeleton loading */
         @keyframes shimmer {
@@ -184,7 +185,7 @@
             </div>
         </div>
         <button onclick="handleLogout()"
-                class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-colors text-sm font-medium">
+                class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-all duration-200 text-sm font-medium">
             <span class="material-symbols-outlined text-lg">logout</span>
             Đăng xuất
         </button>
@@ -198,7 +199,7 @@
     <div class="flex items-center justify-between px-4 h-14">
         <div class="flex items-center gap-2.5">
             <button onclick="goBackToTasks()"
-                    class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors active:scale-95">
+                    class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-all duration-200 active:scale-95">
                 <span class="material-symbols-outlined text-textSecondary text-xl">arrow_back</span>
             </button>
             <h1 class="font-headline font-bold text-base text-textPrimary">Ứng viên</h1>
@@ -219,7 +220,7 @@
     <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
         <div class="flex items-center gap-3">
             <button onclick="goBackToTasks()"
-                    class="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                    class="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-all duration-200">
                 <span class="material-symbols-outlined text-textSecondary">arrow_back</span>
             </button>
             <div>
@@ -230,7 +231,7 @@
     </div>
 
     <!-- CONTENT BODY -->
-    <div class="px-4 lg:px-8 py-6 space-y-6 lg:space-y-8 max-w-5xl">
+    <div class="px-4 lg:px-8 py-6 space-y-6 lg:space-y-8 max-w-6xl">
 
         <!-- =============================== -->
         <!-- 1. TASK SUMMARY CARD             -->
@@ -319,7 +320,7 @@
                         Hãy kiên nhẫn chờ đợi! Các Carepartner phù hợp sẽ sớm nộp hồ sơ ứng tuyển cho công việc của bạn.
                     </p>
                     <button onclick="goBackToTasks()"
-                            class="inline-flex items-center gap-2 bg-gray-100 text-textSecondary font-semibold text-sm px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors">
+                            class="inline-flex items-center gap-2 bg-gray-100 text-textSecondary font-semibold text-sm px-6 py-3 rounded-xl hover:bg-gray-200 transition-all duration-200">
                         <span class="material-symbols-outlined text-lg">arrow_back</span>
                         Quay lại Việc của tôi
                     </button>
@@ -333,7 +334,7 @@
                     <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Không thể tải dữ liệu</h3>
                     <p class="text-textSecondary text-sm mb-5">Vui lòng kiểm tra kết nối mạng và thử lại</p>
                     <button onclick="init()"
-                            class="inline-flex items-center gap-2 bg-error text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-red-600 transition-colors">
+                            class="inline-flex items-center gap-2 bg-error text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-red-600 transition-all duration-200">
                         <span class="material-symbols-outlined text-lg">refresh</span>
                         Thử lại
                     </button>
@@ -413,11 +414,11 @@
         </div>
         <div class="flex gap-3 mt-5">
             <button onclick="closeConfirmModal()"
-                    class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                    class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
                 Hủy
             </button>
             <button id="confirm-action-btn"
-                    class="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-colors shadow-md shadow-primary/20">
+                    class="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 shadow-md shadow-primary/20">
                 Xác nhận
             </button>
         </div>
@@ -717,7 +718,7 @@ function renderCandidates(candidates) {
             actionButtons = `
                 <div class="flex gap-3">
                     <a href="{% url 'frontend:worker_profile' %}?worker_id=${c.worker_id || c.worker}"
-                       class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+                       class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-lg">person</span>
                         Xem hồ sơ
                     </a>
@@ -738,7 +739,7 @@ function renderCandidates(candidates) {
         }
 
         return `
-            <article class="candidate-card bg-surface rounded-xl border border-gray-100 shadow-sm overflow-hidden relative">
+            <article class="candidate-card bg-surface rounded-xl border border-gray-100 shadow-sm overflow-hidden relative hover:shadow-[0_8px_25px_rgba(242,101,34,0.1)] hover:-translate-y-0.5 transition-all duration-200">
                 <!-- Left accent bar based on status -->
                 <div class="absolute top-0 left-0 w-1.5 h-full ${isAccepted ? 'bg-success' : isPending ? 'bg-primary' : 'bg-gray-300'} rounded-l-xl"></div>
                 <div class="p-5 pl-6">

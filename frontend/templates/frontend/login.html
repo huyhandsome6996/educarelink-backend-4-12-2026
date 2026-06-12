@@ -35,6 +35,7 @@
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
             vertical-align: middle;
         }
+        html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3 { font-family: 'Manrope', sans-serif; }
 
@@ -101,12 +102,7 @@
         ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
 
-        /* Input focus ring */
-        input:focus {
-            outline: none;
-            border-color: #F26522 !important;
-            box-shadow: 0 0 0 3px rgba(242,101,34,0.12) !important;
-        }
+        /* Input focus handled by Tailwind classes */
 
         /* Floating label animation */
         .input-wrapper { position: relative; }
@@ -140,13 +136,13 @@
         }
     </style>
 </head>
-<body class="bg-background text-textPrimary min-h-screen">
+<body class="bg-background text-textPrimary min-h-dvh">
 
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none" style="max-width: 380px;"></div>
 
     <!-- Main Layout: Split Screen -->
-    <div class="min-h-screen flex flex-col lg:flex-row">
+    <div class="min-h-dvh flex flex-col lg:flex-row">
 
         <!-- LEFT PANEL: Branding (hidden on mobile) -->
         <div class="hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col justify-between p-12 xl:p-16"
@@ -216,7 +212,7 @@
         </div>
 
         <!-- RIGHT PANEL: Auth Form -->
-        <div class="flex-1 flex flex-col min-h-screen bg-surface">
+        <div class="flex-1 flex flex-col min-h-dvh bg-surface">
             <!-- Mobile Header (visible only on mobile) -->
             <div class="lg:hidden flex items-center justify-center py-8 px-6">
                 <div class="flex items-center gap-2.5">
@@ -277,7 +273,7 @@
                             <div class="relative">
                                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-textSecondary text-xl">person</span>
                                 <input id="username"
-                                    class="w-full pl-11 pr-4 py-3 bg-surface border border-gray-200 rounded-xl text-sm text-textPrimary placeholder:text-gray-400 transition-all duration-200"
+                                    class="w-full pl-11 pr-4 py-3 bg-surface border border-gray-200 rounded-xl text-sm text-textPrimary placeholder:text-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 outline-none transition-all duration-200"
                                     placeholder="Nhập tên tài khoản"
                                     type="text"
                                     required/>
@@ -293,7 +289,7 @@
                             <div class="relative">
                                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-textSecondary text-xl">lock</span>
                                 <input id="password"
-                                    class="w-full pl-11 pr-11 py-3 bg-surface border border-gray-200 rounded-xl text-sm text-textPrimary placeholder:text-gray-400 transition-all duration-200"
+                                    class="w-full pl-11 pr-11 py-3 bg-surface border border-gray-200 rounded-xl text-sm text-textPrimary placeholder:text-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 outline-none transition-all duration-200"
                                     placeholder="Nhập mật khẩu"
                                     type="password"
                                     required/>
@@ -304,7 +300,7 @@
                         </div>
 
                         <!-- Submit Button -->
-                        <button id="submit-btn" class="w-full py-3.5 bg-primary text-textOnPrimary font-bold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary-dark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-sm" type="submit">
+                        <button id="submit-btn" class="w-full py-3.5 bg-primary text-textOnPrimary font-bold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary-dark hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 text-sm" type="submit">
                             <span id="submit-text">Đăng nhập</span>
                             <span class="material-symbols-outlined text-lg">arrow_forward</span>
                             <!-- Spinner (hidden by default) -->
