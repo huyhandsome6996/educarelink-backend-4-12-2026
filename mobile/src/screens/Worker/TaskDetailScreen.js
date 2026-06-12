@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Activi
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getTaskDetail, applyTask, getMyJobsAsWorker } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
 const CATEGORIES = [
   { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
@@ -115,9 +115,9 @@ export default function TaskDetailScreen() {
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <View style={[styles.categoryTag, { backgroundColor: cat.color + '15' }]}>
+          <View style={styles.categoryTag}>
             <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
-            <Text style={[styles.categoryTagText, { color: cat.color }]}>{cat.name}</Text>
+            <Text style={styles.categoryTagText}>{cat.name}</Text>
           </View>
           <Text style={styles.title}>{task.title}</Text>
           <Text style={styles.price}>{parseInt(task.price).toLocaleString('vi-VN')}đ</Text>
@@ -127,7 +127,7 @@ export default function TaskDetailScreen() {
         <View style={styles.infoGrid}>
           {INFO_ITEMS.map((item) => (
             <View key={item.label} style={styles.infoCard}>
-              <View style={[styles.infoIconCircle, { backgroundColor: item.color + '15' }]}>
+              <View style={styles.infoIconCircle}>
                 <Ionicons name={item.icon} size={20} color={item.color} />
               </View>
               <Text style={styles.infoLabel}>{item.label}</Text>
@@ -179,45 +179,50 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt, justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
   },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
   body: { flex: 1 },
   // === HERO ===
   hero: {
-    backgroundColor: COLORS.surface, padding: 24,
+    backgroundColor: COLORS.surfaceAlt, padding: 24,
     borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 10,
   },
   categoryTag: {
     alignSelf: 'flex-start',
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: SIZES.radiusSm, paddingHorizontal: 12, paddingVertical: 6,
     flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: COLORS.primaryLight,
+    ...SHADOWS.small,
   },
   catImage: { width: 16, height: 16 },
-  categoryTagText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-  title: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, lineHeight: 30 },
-  price: { fontSize: 28, fontWeight: '900', color: COLORS.primary },
+  categoryTagText: { ...TYPO.caption, color: COLORS.primary },
+  title: { ...TYPO.h2, color: COLORS.textPrimary },
+  price: { ...TYPO.h1, fontSize: 28, color: COLORS.primary },
   // === INFO GRID ===
-  infoGrid: { padding: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  infoGrid: { padding: SIZES.md, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   infoCard: {
     width: '47%', backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
     padding: 14, gap: 8,
-    ...SHADOWS.small,
+    ...SHADOWS.cardHover,
   },
   infoIconCircle: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt,
   },
-  infoLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700', textTransform: 'uppercase' },
-  infoValue: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
+  infoLabel: { ...TYPO.overline, color: COLORS.textMuted },
+  infoValue: { ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700' },
   // === DESCRIPTION ===
   descSection: {
-    margin: 16, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    margin: SIZES.md, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
     padding: 18, gap: 10,
     ...SHADOWS.small,
+    borderLeftWidth: 3, borderLeftColor: COLORS.primary,
   },
-  descTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
-  descText: { fontSize: 15, color: COLORS.textSecondary, lineHeight: 24 },
+  descTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '900' },
+  descText: { ...TYPO.body, color: COLORS.textSecondary },
   // === FOOTER ===
   footer: {
     padding: 20, paddingBottom: 36,
@@ -229,8 +234,9 @@ const styles = StyleSheet.create({
     ...SHADOWS.large,
   },
   applyBtnDisabled: {
-    backgroundColor: COLORS.textMuted, opacity: 0.7,
+    backgroundColor: COLORS.textMuted, opacity: 0.6,
     shadowColor: 'transparent', elevation: 0,
+    shadowOpacity: 0,
   },
-  applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+  applyBtnText: { color: '#fff', ...TYPO.button, letterSpacing: 0.5 },
 });

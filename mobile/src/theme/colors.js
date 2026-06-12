@@ -1,6 +1,7 @@
 // ============================================================
-// Educarelink — Bảng màu chung cho toàn bộ ứng dụng
+// Educarelink — Bảng màu & Design System chung cho toàn bộ ứng dụng
 // Lấy cảm hứng từ bTaskee: tông cam ấm, trắng sạch, dễ nhìn
+// Cải thiện theo taste-skill: colored shadows, refined spacing, typography
 // ============================================================
 
 export const COLORS = {
@@ -39,38 +40,58 @@ export const COLORS = {
   // Border & Divider
   border:        '#F0F0F0',
   divider:       '#E5E7EB',
+  borderHover:   '#D1D5DB',
 
   // Shadows
   shadow:        '#000000',
 };
 
+// === COLORED SHADOWS (taste-skill principle) ===
+// Thay vì dùng shadow đen đơn điệu, dùng shadow pha màu primary
 export const SHADOWS = {
   small: {
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   medium: {
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
     elevation: 4,
   },
   large: {
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 8,
+  },
+  // Colored shadow cho card khi press/hover
+  cardHover: {
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  // Subtle shadow cho input focus
+  inputFocus: {
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
 };
 
 export const SIZES = {
-  // Border radius
-  radiusSm: 8,
+  // Border radius — slightly softer per taste-skill
+  radiusXs: 6,
+  radiusSm: 10,
   radiusMd: 14,
   radiusLg: 20,
   radiusXl: 28,
@@ -83,4 +104,52 @@ export const SIZES = {
   lg: 24,
   xl: 32,
   xxl: 48,
+};
+
+// === TYPOGRAPHY (taste-skill: Manrope headlines, Plus Jakarta Sans body) ===
+export const TYPO = {
+  // Headlines — Manrope style (bold, tight tracking)
+  h1: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5, lineHeight: 34 },
+  h2: { fontSize: 22, fontWeight: '800', letterSpacing: -0.3, lineHeight: 28 },
+  h3: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2, lineHeight: 24 },
+  h4: { fontSize: 16, fontWeight: '700', letterSpacing: 0, lineHeight: 22 },
+  h5: { fontSize: 14, fontWeight: '700', letterSpacing: 0.1, lineHeight: 20 },
+
+  // Body — Plus Jakarta Sans style (comfortable, readable)
+  body: { fontSize: 15, fontWeight: '500', letterSpacing: 0.1, lineHeight: 22 },
+  bodyLarge: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 24 },
+  bodySmall: { fontSize: 13, fontWeight: '500', letterSpacing: 0.1, lineHeight: 18 },
+
+  // Utility
+  caption: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, lineHeight: 16 },
+  overline: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, lineHeight: 14 },
+  button: { fontSize: 16, fontWeight: '800', letterSpacing: 0.2, lineHeight: 20 },
+  buttonSmall: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3, lineHeight: 18 },
+};
+
+// === ANIMATION PRESETS (taste-skill: smooth transitions) ===
+export const ANIM = {
+  spring: { tension: 60, friction: 8 },
+  springGentle: { tension: 40, friction: 10 },
+  timingFast: 150,
+  timingNormal: 250,
+  timingSlow: 400,
+};
+
+// === COMMON STYLE FRAGMENTS ===
+export const FRAGMENTS = {
+  // Input focus state (taste-skill: visible focus rings)
+  inputFocus: {
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+  },
+  // Card press effect (taste-skill: lift on press)
+  cardPress: {
+    transform: [{ scale: 0.98 }],
+  },
+  // Button active state
+  buttonActive: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
 };

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const TABS = [
   { key: 'pending',  label: 'Chờ duyệt', icon: 'time-outline' },
@@ -21,6 +21,7 @@ export default function MyJobsScreen() {
   const [activeTab, setActiveTab] = useState('accepted');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const bounceAnim = useRef(new Animated.Value(0)).current;
 
   const fetchJobs = async () => {
     try {
@@ -31,6 +32,23 @@ export default function MyJobsScreen() {
   };
 
   useEffect(() => { fetchJobs(); }, []);
+
+  // Empty state bounce animation
+  useEffect(() => {
+    if (!isLoading && applications.length === 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [isLoading, applications.length]);
+
+  const bounceTransform = bounceAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
 
   const filtered = applications.filter(a => {
     if (activeTab === 'rejected') return ['rejected', 'completed'].includes(a.status);
@@ -126,9 +144,9 @@ export default function MyJobsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchJobs(); }} tintColor={COLORS.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <View style={styles.emptyIconCircle}>
+              <Animated.View style={[styles.emptyIconCircle, { transform: [{ translateY: bounceTransform }] }]}>
                 <Ionicons name="document-outline" size={36} color={COLORS.primary} />
-              </View>
+              </Animated.View>
               <Text style={styles.emptyTitle}>Không có việc nào</Text>
               <Text style={styles.emptyText}>Hãy ứng tuyển công việc từ bảng tin!</Text>
             </View>
@@ -145,67 +163,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface,
   },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary },
+  headerTitle: { ...TYPO.h1, fontSize: 24, color: COLORS.textPrimary },
   earningsBadge: {
     flexDirection: 'row', gap: 6, alignItems: 'center',
-    backgroundColor: COLORS.successBg, borderRadius: 20,
+    backgroundColor: COLORS.successBg, borderRadius: SIZES.radiusXl,
     paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#bbf7d0',
+    ...SHADOWS.small,
   },
-  earningsText: { fontSize: 13, fontWeight: '800', color: COLORS.success },
+  earningsText: { ...TYPO.buttonSmall, color: COLORS.success },
   tabs: {
     flexDirection: 'row', backgroundColor: COLORS.surface,
-    paddingHorizontal: 16, paddingBottom: 4,
+    paddingHorizontal: 16, paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
-    gap: 4,
+    gap: SIZES.xs,
   },
   tab: {
-    flex: 1, paddingVertical: 12, alignItems: 'center',
-    borderBottomWidth: 3, borderBottomColor: 'transparent',
+    flex: 1, paddingVertical: 10, alignItems: 'center',
+    borderRadius: SIZES.radiusSm,
     flexDirection: 'row', justifyContent: 'center', gap: 6,
+    backgroundColor: COLORS.background,
   },
-  tabActive: { borderBottomColor: COLORS.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  tabActive: {
+    backgroundColor: COLORS.primaryLight,
+    ...SHADOWS.small,
+  },
+  tabText: { ...TYPO.buttonSmall, color: COLORS.textMuted, fontWeight: '600' },
   tabTextActive: { color: COLORS.primary, fontWeight: '800' },
-  list: { padding: 16, gap: 12 },
+  list: { padding: SIZES.md, gap: 12 },
   card: {
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
     padding: 14, gap: 10,
-    ...SHADOWS.small,
+    ...SHADOWS.cardHover,
+    borderLeftWidth: 4, borderLeftColor: COLORS.primary,
   },
   cardRow: { flexDirection: 'row', gap: 12 },
   statusIcon: {
     width: 44, height: 44, borderRadius: 22,
     justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
   },
   cardContent: { flex: 1, gap: 5 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badge: {
-    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: SIZES.radiusXs, paddingHorizontal: 8, paddingVertical: 3,
     flexDirection: 'row', alignItems: 'center', gap: 4,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  price: { fontSize: 16, fontWeight: '900', color: COLORS.primary },
-  title: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
+  badgeText: { ...TYPO.overline },
+  price: { ...TYPO.h4, fontWeight: '900', color: COLORS.primary },
+  title: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   meta: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  metaText: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
+  metaText: { ...TYPO.bodySmall, color: COLORS.textSecondary, flex: 1 },
   parentCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm,
     padding: 10,
+    ...SHADOWS.small,
+    borderWidth: 1, borderColor: COLORS.primarySoft,
   },
   parentAvatar: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
   },
-  parentAvatarText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  parentLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase' },
-  parentName: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+  parentAvatarText: { color: '#fff', ...TYPO.buttonSmall },
+  parentLabel: { ...TYPO.overline, color: COLORS.textMuted, fontWeight: '600' },
+  parentName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyIconCircle: {
-    width: 72, height: 72, borderRadius: 36,
+    width: 80, height: 80, borderRadius: 40,
     backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
-  emptyText: { color: COLORS.textMuted, fontSize: 13 },
+  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
+  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
 });

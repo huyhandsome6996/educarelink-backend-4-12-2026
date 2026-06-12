@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Image
+  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { sendChatMessage } from '../api/tasks';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
 const INITIAL_MESSAGES = [
   {
@@ -18,11 +19,34 @@ export default function ChatbotScreen() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const flatListRef = useRef(null);
+  const dot1Anim = useRef(new Animated.Value(0)).current;
+  const dot2Anim = useRef(new Animated.Value(0)).current;
+  const dot3Anim = useRef(new Animated.Value(0)).current;
 
   // Lịch sử hội thoại để gửi kèm cho AI hiểu ngữ cảnh
   // Chỉ lưu tối đa 20 tin nhắn gần nhất để tránh request quá lớn
   const chatHistoryRef = useRef([]);
+
+  // Typing dots animation
+  useEffect(() => {
+    if (isTyping) {
+      const createAnim = (anim, delay) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0, duration: 300, useNativeDriver: true }),
+          ])
+        );
+      const a1 = createAnim(dot1Anim, 0);
+      const a2 = createAnim(dot2Anim, 150);
+      const a3 = createAnim(dot3Anim, 300);
+      a1.start(); a2.start(); a3.start();
+      return () => { a1.stop(); a2.stop(); a3.stop(); };
+    }
+  }, [isTyping]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -89,7 +113,7 @@ export default function ChatbotScreen() {
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+            <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
           </View>
         )}
         <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
@@ -103,15 +127,18 @@ export default function ChatbotScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={88}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       <View style={styles.header}>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
-            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
+            <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
           </View>
           <View>
             <Text style={styles.headerName}>AI Trợ lý Educarelink</Text>
-            <Text style={styles.headerStatus}>● Đang hoạt động</Text>
+            <View style={styles.statusRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.headerStatus}>Đang hoạt động</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -122,10 +149,12 @@ export default function ChatbotScreen() {
         ListFooterComponent={isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
-              <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+              <Image source={require('../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
             </View>
             <View style={styles.typingBubble}>
-              <ActivityIndicator size="small" color="#6b7280" />
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
               <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
             </View>
           </View>
@@ -134,12 +163,16 @@ export default function ChatbotScreen() {
 
       {/* Input bar */}
       <View style={styles.inputBar}>
-        <TextInput style={styles.input} placeholder="Nhắn tin cho AI..." placeholderTextColor="#9ca3af"
-          value={input} onChangeText={setInput} multiline maxLength={500}
-          onSubmitEditing={sendMessage} />
+        <View style={[styles.inputWrap, inputFocused && styles.inputWrapFocused]}>
+          <TextInput style={styles.input} placeholder="Nhắn tin cho AI..." placeholderTextColor={COLORS.textMuted}
+            value={input} onChangeText={setInput} multiline maxLength={500}
+            onSubmitEditing={sendMessage}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)} />
+        </View>
         <TouchableOpacity style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
           onPress={sendMessage} disabled={!input.trim() || isTyping}>
-          <Ionicons name="send" size={18} color={input.trim() ? '#fff' : '#9ca3af'} />
+          <Ionicons name="send" size={18} color={input.trim() ? '#fff' : COLORS.textMuted} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -147,30 +180,96 @@ export default function ChatbotScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    backgroundColor: COLORS.surface, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
   botInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF4ED', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  headerAvatar: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+    ...SHADOWS.small,
+  },
   headerImage: { width: '100%', height: '100%' },
-  headerName: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  headerStatus: { fontSize: 12, color: '#059669', fontWeight: '600' },
-  list: { padding: 16, gap: 12, flexGrow: 1 },
+  headerName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statusDot: {
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: COLORS.success,
+  },
+  headerStatus: { ...TYPO.caption, color: COLORS.success, fontWeight: '600' },
+  list: { padding: SIZES.md, gap: 12, flexGrow: 1 },
   msgRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowBot: { justifyContent: 'flex-start' },
-  botAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF4ED', justifyContent: 'center', alignItems: 'center', flexShrink: 0, overflow: 'hidden' },
+  botAvatar: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0, overflow: 'hidden',
+  },
   botImage: { width: '100%', height: '100%' },
   bubble: { maxWidth: '78%', borderRadius: 18, padding: 12 },
-  bubbleUser: { backgroundColor: '#F26522', borderBottomRightRadius: 4 },
-  bubbleBot: { backgroundColor: '#fff', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
-  bubbleTextUser: { color: '#fff' },
-  bubbleTextBot: { color: '#111827' },
+  bubbleUser: {
+    backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
+    ...SHADOWS.small,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  bubbleBot: {
+    backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
+    ...SHADOWS.cardHover,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  bubbleText: { ...TYPO.body },
+  bubbleTextUser: { color: COLORS.textOnPrimary },
+  bubbleTextBot: { color: COLORS.textPrimary },
   typingRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 4 },
-  typingBubble: { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#fff', borderRadius: 18, padding: 12, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  typingText: { fontSize: 13, color: '#6b7280', fontStyle: 'italic' },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  input: { flex: 1, backgroundColor: '#f3f4f6', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: '#111827', maxHeight: 100 },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F26522', justifyContent: 'center', alignItems: 'center', shadowColor: '#F26522', shadowOpacity: 0.3, shadowRadius: 8, elevation: 3 },
-  sendBtnDisabled: { backgroundColor: '#e5e7eb', shadowOpacity: 0 },
+  typingBubble: {
+    flexDirection: 'row', gap: 5, alignItems: 'center',
+    backgroundColor: COLORS.surface, borderRadius: 18, padding: 12,
+    ...SHADOWS.small,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  typingDot: {
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: COLORS.primarySoft,
+  },
+  typingText: { ...TYPO.bodySmall, color: COLORS.textSecondary, fontStyle: 'italic', marginLeft: 4 },
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 28,
+    backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  inputWrap: {
+    flex: 1, backgroundColor: COLORS.background, borderRadius: SIZES.radiusXl,
+    borderWidth: 1.5, borderColor: 'transparent',
+  },
+  inputWrapFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    ...SHADOWS.inputFocus,
+  },
+  input: {
+    ...TYPO.body, color: COLORS.textPrimary,
+    paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sendBtnDisabled: {
+    backgroundColor: COLORS.divider,
+    shadowColor: '#000',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
 });

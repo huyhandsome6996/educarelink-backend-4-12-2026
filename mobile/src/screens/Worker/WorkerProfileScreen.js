@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { updateCertificate } from '../../api/auth';
-import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
 export default function WorkerProfileScreen() {
   const { user, logout } = useAuth();
@@ -65,7 +65,12 @@ export default function WorkerProfileScreen() {
 
         {/* Header cam */}
         <View style={styles.header}>
+          {/* Decorative circles */}
+          <View style={styles.headerDeco1} />
+          <View style={styles.headerDeco2} />
+          <View style={styles.headerDeco3} />
           <View style={styles.avatarRing}>
+            <View style={styles.avatarGlow} />
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{displayName?.[0]?.toUpperCase()}</Text>
             </View>
@@ -80,8 +85,8 @@ export default function WorkerProfileScreen() {
             </View>
           ) : (
             <View style={[styles.verifiedBadge, styles.unverifiedBadge]}>
-              <Ionicons name="shield-outline" size={14} color={COLORS.warningBg} />
-              <Text style={[styles.verifiedText, { color: COLORS.warningBg }]}>Chưa xác thực</Text>
+              <Ionicons name="shield-outline" size={14} color={COLORS.warning} />
+              <Text style={[styles.verifiedText, { color: COLORS.warning }]}>Chưa xác thực</Text>
             </View>
           )}
         </View>
@@ -129,7 +134,7 @@ export default function WorkerProfileScreen() {
               {user.qualifications.map((q, idx) => (
                 <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="ribbon-outline" size={18} color={COLORS.primary} />
-                  <Text style={{ fontSize: 14, color: COLORS.textPrimary, fontWeight: '500' }}>{q}</Text>
+                  <Text style={{ ...TYPO.body, color: COLORS.textPrimary }}>{q}</Text>
                 </View>
               ))}
             </View>
@@ -143,6 +148,7 @@ export default function WorkerProfileScreen() {
               key={item.label} 
               style={[styles.actionRow, index === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
               onPress={() => item.action && handleMenuPress(item.action)}
+              activeOpacity={0.7}
             >
               <View style={[styles.actionIconCircle, { backgroundColor: item.color + '15' }]}>
                 {isUploading && item.action === 'upload_cert' ? (
@@ -192,52 +198,81 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center', paddingTop: 56, paddingBottom: 32,
     backgroundColor: COLORS.primary, gap: 6,
-    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+    borderBottomLeftRadius: SIZES.radiusXl, borderBottomRightRadius: SIZES.radiusXl,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  headerDeco1: {
+    position: 'absolute', top: -40, right: -30,
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  headerDeco2: {
+    position: 'absolute', bottom: -20, left: -30,
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  headerDeco3: {
+    position: 'absolute', top: 30, right: 90,
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   avatarRing: {
-    width: 92, height: 92, borderRadius: 46,
+    width: 96, height: 96, borderRadius: 48,
     borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)',
     justifyContent: 'center', alignItems: 'center', marginBottom: 8,
+    position: 'relative',
+  },
+  avatarGlow: {
+    position: 'absolute', top: -6, left: -6, right: -6, bottom: -6,
+    borderRadius: 54,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   avatar: {
-    width: 80, height: 80, borderRadius: 40,
+    width: 82, height: 82, borderRadius: 41,
     backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { color: '#fff', fontSize: 34, fontWeight: '900' },
-  name: { fontSize: 22, fontWeight: '900', color: '#fff' },
-  username: { fontSize: 14, color: 'rgba(255,255,255,0.7)' },
+  avatarText: { color: '#fff', ...TYPO.h1, fontSize: 34 },
+  name: { ...TYPO.h2, color: '#fff' },
+  username: { ...TYPO.bodySmall, color: 'rgba(255,255,255,0.7)' },
   verifiedBadge: {
     flexDirection: 'row', gap: 6, alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: SIZES.radiusXl,
     paddingHorizontal: 14, paddingVertical: 6, marginTop: 4,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
-  unverifiedBadge: { backgroundColor: 'rgba(245,158,11,0.3)' },
-  verifiedText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  unverifiedBadge: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderColor: 'rgba(245,158,11,0.3)',
+  },
+  verifiedText: { ...TYPO.caption, color: '#fff' },
   // === AI ===
   aiCard: {
-    margin: 16, backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd,
+    margin: SIZES.md, backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd,
     padding: 16, gap: 10, borderWidth: 1, borderColor: COLORS.primarySoft,
+    ...SHADOWS.small,
+    borderLeftWidth: 3, borderLeftColor: COLORS.primary,
   },
   aiHeader: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   aiIconCircle: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center',
     overflow: 'hidden',
-  },
-  aiImage: { width: '100%', height: '100%' },
-  aiTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary },
-  aiText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 22 },
-  // === SECTIONS ===
-  section: {
-    margin: 16, marginTop: 0, marginBottom: 12,
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
-    overflow: 'hidden',
     ...SHADOWS.small,
   },
+  aiImage: { width: '100%', height: '100%' },
+  aiTitle: { ...TYPO.h5, color: COLORS.primary },
+  aiText: { ...TYPO.body, color: COLORS.textSecondary },
+  // === SECTIONS ===
+  section: {
+    margin: SIZES.md, marginTop: 0, marginBottom: 12,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    overflow: 'hidden',
+    ...SHADOWS.cardHover,
+  },
   sectionTitle: {
-    fontSize: 12, fontWeight: '800', color: COLORS.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
+    ...TYPO.overline, color: COLORS.textMuted,
     padding: 16, paddingBottom: 8,
   },
   infoList: { paddingHorizontal: 16, paddingBottom: 8 },
@@ -250,18 +285,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   infoText: { flex: 1 },
-  infoLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 },
-  infoValue: { fontSize: 14, color: COLORS.textPrimary, fontWeight: '600' },
+  infoLabel: { ...TYPO.overline, color: COLORS.textMuted, marginBottom: 2 },
+  infoValue: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '600' },
   actionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   actionIconCircle: {
     width: 38, height: 38, borderRadius: 19,
     justifyContent: 'center', alignItems: 'center',
   },
-  actionText: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
+  actionText: { flex: 1, ...TYPO.bodyLarge, color: COLORS.textPrimary },
   logoutRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
+    backgroundColor: COLORS.errorBg + '40',
+    borderRadius: SIZES.radiusMd,
+    margin: SIZES.xs,
+    ...SHADOWS.small,
   },
 });

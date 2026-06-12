@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS, SHADOWS } from '../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
 // Auth Screens
 import SplashScreen from '../screens/Auth/SplashScreen';
@@ -33,11 +33,13 @@ import ChatbotScreen from '../screens/ChatbotScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// === Custom Tab Bar Icon with indicator dot ===
+// === Custom Tab Bar Icon with refined indicator (taste-skill) ===
 function TabIcon({ name, focused, color }) {
   return (
     <View style={styles.tabIconContainer}>
-      <Ionicons name={name} size={24} color={color} />
+      <View style={[styles.iconBg, focused && { backgroundColor: COLORS.primaryLight }]}>
+        <Ionicons name={name} size={22} color={color} />
+      </View>
       {focused && <View style={[styles.activeIndicator, { backgroundColor: color }]} />}
     </View>
   );
@@ -104,7 +106,8 @@ export default function AppNavigator() {
   // Hiển thị loading khi app đang khởi động kiểm tra token
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingDot} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
@@ -143,30 +146,58 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingDot: {
+    position: 'absolute',
+    top: '38%',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.primaryLight,
+    opacity: 0.4,
+  },
   tabBar: {
     backgroundColor: COLORS.surface,
     borderTopWidth: 0,
-    height: Platform.OS === 'ios' ? 88 : 86,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 26,
-    paddingTop: 8,
-    ...SHADOWS.medium,
+    height: Platform.OS === 'ios' ? 88 : 84,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 24,
+    paddingTop: 6,
+    // taste-skill: primary-tinted shadow on tab bar
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 6,
   },
   tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...TYPO.caption,
     marginTop: 2,
   },
   tabBarItem: {
-    paddingTop: 4,
+    paddingTop: 2,
   },
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
+  },
+  iconBg: {
+    width: 40,
+    height: 28,
+    borderRadius: SIZES.radiusSm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transition: 'background-color 0.2s',
   },
   activeIndicator: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 4,
+    width: 16,
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 2,
   },
 });

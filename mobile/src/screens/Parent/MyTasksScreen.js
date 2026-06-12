@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyTasksAsParent, getCandidates } from '../../api/tasks';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const TABS = [
   { key: 'open',        label: 'Đang tìm' },
@@ -11,10 +12,10 @@ const TABS = [
 ];
 
 const STATUS_COLOR = {
-  open:        { text: '#f59e0b', bg: '#fffbeb' },
-  in_progress: { text: '#F26522', bg: '#FFF4ED' },
-  completed:   { text: '#059669', bg: '#f0fdf4' },
-  cancelled:   { text: '#6b7280', bg: '#f3f4f6' },
+  open:        { text: COLORS.warning, bg: COLORS.warningBg },
+  in_progress: { text: COLORS.primary, bg: COLORS.primaryLight },
+  completed:   { text: COLORS.success, bg: COLORS.successBg },
+  cancelled:   { text: COLORS.textMuted, bg: '#f3f4f6' },
 };
 
 export default function MyTasksScreen() {
@@ -42,7 +43,7 @@ export default function MyTasksScreen() {
   const renderItem = ({ item: task }) => {
     const st = STATUS_COLOR[task.status] || STATUS_COLOR.open;
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { borderLeftColor: st.text }]}>
         <View style={styles.cardTop}>
           <View style={[styles.badge, { backgroundColor: st.bg }]}>
             <Text style={[styles.badgeText, { color: st.text }]}>{task.status.replace('_',' ')}</Text>
@@ -51,11 +52,11 @@ export default function MyTasksScreen() {
         </View>
         <Text style={styles.title}>{task.title}</Text>
         <View style={styles.meta}>
-          <Ionicons name="location-outline" size={13} color="#6b7280" />
+          <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
           <Text style={styles.metaText}>{task.location}</Text>
         </View>
         <View style={styles.meta}>
-          <Ionicons name="time-outline" size={13} color="#6b7280" />
+          <Ionicons name="time-outline" size={13} color={COLORS.textSecondary} />
           <Text style={styles.metaText}>
             {new Date(task.scheduled_time).toLocaleString('vi-VN')}
           </Text>
@@ -68,7 +69,7 @@ export default function MyTasksScreen() {
           </TouchableOpacity>
         )}
         {task.status === 'in_progress' && (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#059669' }]}
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.success }]}
             onPress={async () => {
               try {
                 const candRes = await getCandidates(task.id);
@@ -86,7 +87,7 @@ export default function MyTasksScreen() {
           </TouchableOpacity>
         )}
         {task.status === 'completed' && (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#059669' }]}
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.success }]}
             onPress={async () => {
               try {
                 const candRes = await getCandidates(task.id);
@@ -109,11 +110,11 @@ export default function MyTasksScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Việc của tôi</Text>
         <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.addBtn}>
-          <Ionicons name="add" size={22} color="#F26522" />
+          <Ionicons name="add" size={22} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -128,15 +129,18 @@ export default function MyTasksScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#F26522" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 60 }} />
       ) : (
         <FlatList data={filtered} keyExtractor={i => i.id.toString()} renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); }} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="document-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>Không có việc nào trong mục này</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="document-outline" size={40} color={COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>Không có việc nào</Text>
+              <Text style={styles.emptyText}>Trong mục này chưa có việc nào</Text>
             </View>
           }
         />
@@ -146,26 +150,28 @@ export default function MyTasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: '#fff' },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF4ED', justifyContent: 'center', alignItems: 'center' },
-  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#F26522' },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
-  tabTextActive: { color: '#F26522', fontWeight: '700' },
-  list: { padding: 16, gap: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2, gap: 8 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, ...SHADOWS.small },
+  headerTitle: { ...TYPO.h2, color: COLORS.textPrimary },
+  addBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
+  tabs: { flexDirection: 'row', backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingHorizontal: SIZES.sm },
+  tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2.5, borderBottomColor: 'transparent', borderRadius: SIZES.radiusXs },
+  tabActive: { borderBottomColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
+  tabText: { ...TYPO.bodySmall, color: COLORS.textSecondary, fontWeight: '600' },
+  tabTextActive: { ...TYPO.buttonSmall, color: COLORS.primary },
+  list: { padding: SIZES.md, gap: 12 },
+  card: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: SIZES.md, borderLeftWidth: 4, borderLeftColor: COLORS.primary, ...SHADOWS.cardHover, gap: SIZES.sm },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  price: { fontSize: 16, fontWeight: '800', color: '#F26522' },
-  title: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  badge: { borderRadius: SIZES.radiusXs, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { ...TYPO.caption },
+  price: { ...TYPO.h4, fontWeight: '900', color: COLORS.primary },
+  title: { ...TYPO.h4, color: COLORS.textPrimary },
   meta: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  metaText: { fontSize: 12, color: '#6b7280', flex: 1 },
-  actionBtn: { backgroundColor: '#F26522', borderRadius: 12, height: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
-  actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  metaText: { ...TYPO.bodySmall, color: COLORS.textSecondary, flex: 1 },
+  actionBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusSm, height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SIZES.sm, marginTop: SIZES.xs, ...SHADOWS.large },
+  actionBtnText: { color: '#fff', ...TYPO.buttonSmall },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { color: '#9ca3af', fontSize: 15 },
+  emptyIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 4, ...SHADOWS.small },
+  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
+  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
 });

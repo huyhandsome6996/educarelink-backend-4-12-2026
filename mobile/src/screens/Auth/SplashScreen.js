@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Animated, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { COLORS } from '../../theme/colors';
+import { COLORS, SIZES, TYPO } from '../../theme/colors';
 
 export default function SplashScreen() {
   const navigation = useNavigation();
@@ -10,11 +10,15 @@ export default function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const dotAnim = useRef(new Animated.Value(0)).current;
+  const decorAnim1 = useRef(new Animated.Value(0)).current;
+  const decorAnim2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
+      Animated.timing(decorAnim1, { toValue: 1, duration: 1200, delay: 200, useNativeDriver: true }),
+      Animated.timing(decorAnim2, { toValue: 1, duration: 1200, delay: 400, useNativeDriver: true }),
     ]).start();
 
     Animated.loop(
@@ -36,6 +40,16 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+
+      {/* Subtle radial gradient overlay */}
+      <View style={styles.gradientOverlay} />
+      <View style={styles.gradientInner} />
+
+      {/* Decorative circles */}
+      <Animated.View style={[styles.decorCircle1, { opacity: decorAnim1 }]} />
+      <Animated.View style={[styles.decorCircle2, { opacity: decorAnim2 }]} />
+      <Animated.View style={[styles.decorCircle3, { opacity: decorAnim1 }]} />
+
       <Animated.View style={[styles.logoContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.logoCircle}>
           <Image source={require('../../../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
@@ -56,12 +70,20 @@ export default function SplashScreen() {
                   inputRange: [0, 1],
                   outputRange: [0.3, 1],
                 }),
-                transform: [{
-                  scale: dotAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.8, 1.2],
-                  }),
-                }],
+                transform: [
+                  {
+                    scale: dotAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1.2],
+                    }),
+                  },
+                  {
+                    translateY: dotAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -6],
+                    }),
+                  },
+                ],
               },
             ]}
           />
@@ -77,33 +99,87 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: '-30%',
+    left: '-20%',
+    width: '140%',
+    height: '80%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  gradientInner: {
+    position: 'absolute',
+    top: '-15%',
+    left: '-10%',
+    width: '120%',
+    height: '60%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: 60,
+    right: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    bottom: 140,
+    left: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    bottom: 60,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 60,
   },
   logoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.35)',
     overflow: 'hidden',
+    // Soft glow shadow
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   logoImage: {
     width: '100%',
     height: '100%',
   },
   appName: {
+    ...TYPO.h1,
     fontSize: 38,
-    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: -0.5,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   tagline: {
     fontSize: 15,
