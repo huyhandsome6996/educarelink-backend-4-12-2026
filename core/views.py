@@ -99,7 +99,11 @@ class LoginAPIView(APIView):
             return Response({
                 "message": "Đăng nhập thành công!",
                 "tokens": get_tokens_for_user(user),
-                "user_id": user.id, "username": user.username, "role": user.role
+                "user_id": user.id, "username": user.username, "role": user.role,
+                "is_staff": user.is_staff,
+                "is_approved": user.is_approved,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
             }, status=status.HTTP_200_OK)
         return Response({"error": "Sai tài khoản hoặc mật khẩu"}, status=status.HTTP_401_UNAUTHORIZED)
 

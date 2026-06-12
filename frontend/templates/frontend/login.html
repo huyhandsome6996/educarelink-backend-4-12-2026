@@ -532,13 +532,23 @@
                         localStorage.setItem('token', data.tokens.access);
                         localStorage.setItem('refresh_token', data.tokens.refresh);
                         localStorage.setItem('role', data.role);
+                        if (data.is_staff) localStorage.setItem('is_staff', 'true');
+                        if (data.username) localStorage.setItem('admin_username', data.username);
 
                         showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
 
                         setTimeout(() => {
-                            window.location.href = data.role === 'parent'
-                                ? "{% url 'frontend:parent_home' %}"
-                                : "{% url 'frontend:worker_feed' %}";
+                            // Kiểm tra nếu là admin → chuyển đến admin dashboard
+                            if (data.is_staff) {
+                                // Kiểm tra nếu có ?next= parameter
+                                const urlParams = new URLSearchParams(window.location.search);
+                                const nextUrl = urlParams.get('next') || '/admin-dashboard/';
+                                window.location.href = nextUrl;
+                            } else {
+                                window.location.href = data.role === 'parent'
+                                    ? "{% url 'frontend:parent_home' %}"
+                                    : "{% url 'frontend:worker_feed' %}";
+                            }
                         }, 1200);
                     } else {
                         showToast('Đăng ký thành công! Vui lòng đăng nhập.', 'success');
@@ -579,9 +589,15 @@
         // Check if already logged in
         const existingToken = localStorage.getItem('token');
         const existingRole = localStorage.getItem('role');
+        const isStaff = localStorage.getItem('is_staff');
         if (existingToken && existingRole) {
-            // Optionally redirect if already logged in
-            // window.location.href = existingRole === 'parent' ? "{% url 'frontend:parent_home' %}" : "{% url 'frontend:worker_feed' %}";
+            const urlParams = new URLSearchParams(window.location.search);
+            const nextUrl = urlParams.get('next');
+            if (isStaff === 'true') {
+                window.location.href = nextUrl || '/admin-dashboard/';
+            } else if (nextUrl) {
+                window.location.href = nextUrl;
+            }
         }
 
         // Initialize role UI
