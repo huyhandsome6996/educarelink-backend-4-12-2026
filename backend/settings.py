@@ -73,12 +73,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600
-    )
-}
+# --- CẤU HÌNH DATABASE ---
+# Ưu tiên DATABASE_URL từ biến môi trường (PostgreSQL trên Neon/Render/Supabase)
+# Nếu không có → fallback về SQLite cho development local
+# Neon:   postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require
+# Supabase: postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+if DATABASE_URL and DATABASE_URL.startswith('postgres'):
+    # Production: PostgreSQL (Neon / Supabase / Render)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+else:
+    # Development local: SQLite (không cần cài gì thêm)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
