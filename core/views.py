@@ -55,8 +55,14 @@ class RegisterAPIView(generics.CreateAPIView):
             if not phone:
                 return Response({'phone_number': ['Phụ huynh phải cung cấp số điện thoại.']}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Validate carepartner: bắt buộc ảnh CCCD + selfie
+        # Validate carepartner: bắt buộc ảnh CCCD + selfie + email + phone
         if role == 'worker':
+            email = request.data.get('email', '').strip()
+            phone = request.data.get('phone_number', '').strip()
+            if not email:
+                return Response({'email': ['Carepartner phải cung cấp email.']}, status=status.HTTP_400_BAD_REQUEST)
+            if not phone:
+                return Response({'phone_number': ['Carepartner phải cung cấp số điện thoại.']}, status=status.HTTP_400_BAD_REQUEST)
             if not request.FILES.get('id_card_front'):
                 return Response({'id_card_front': ['Ảnh mặt trước CCCD là bắt buộc.']}, status=status.HTTP_400_BAD_REQUEST)
             if not request.FILES.get('id_card_back'):

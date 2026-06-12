@@ -58,8 +58,18 @@ export default function LoginScreen() {
       await login(username.trim(), password);
       // Navigator tự phân luồng theo role trong AuthContext
     } catch (error) {
-      const msg = error.response?.data?.error || 'Sai tài khoản hoặc mật khẩu.';
-      showAlert('Đăng nhập thất bại', msg);
+      // Xử lý đặc biệt: Carepartner chưa được admin duyệt (403 Forbidden)
+      const status = error.response?.status;
+      const data = error.response?.data;
+      if (status === 403 && data?.status === 'pending_approval') {
+        showAlert(
+          'Tài khoản đang chờ duyệt',
+          'Tài khoản Carepartner của bạn đang chờ Admin xét duyệt. Vui lòng đợi thông báo qua email hoặc thử lại sau.'
+        );
+      } else {
+        const msg = data?.error || 'Sai tài khoản hoặc mật khẩu.';
+        showAlert('Đăng nhập thất bại', msg);
+      }
     } finally {
       setIsLoading(false);
     }

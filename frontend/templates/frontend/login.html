@@ -551,8 +551,13 @@
                         }, 800);
                     }
                 } else {
-                    const errorMessage = data.error || data.detail || data.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
-                    showToast(errorMessage, 'error');
+                    // Xử lý đặc biệt: Carepartner chưa được admin duyệt
+                    if (response.status === 403 && data.status === 'pending_approval') {
+                        showToast('Tài khoản của bạn đang chờ Admin xét duyệt. Vui lòng đợi thông báo qua email.', 'warning');
+                    } else {
+                        const errorMessage = data.error || data.detail || data.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+                        showToast(errorMessage, 'error');
+                    }
                 }
             } catch (err) {
                 console.error('Auth error:', err);
