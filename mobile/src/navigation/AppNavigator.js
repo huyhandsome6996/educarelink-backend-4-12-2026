@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
@@ -107,6 +107,7 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <Image source={require('../../assets/logo.png')} style={styles.loadingLogo} resizeMode="contain" />
         <View style={styles.loadingDot} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
@@ -151,6 +152,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  loadingLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginBottom: 20,
   },
   loadingDot: {
     position: 'absolute',

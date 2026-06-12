@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>Đăng việc mới (Bước 2) | EduCareLink</title>
 
     <!-- Fonts -->
@@ -163,8 +165,8 @@
     <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
         <!-- Logo -->
         <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
-            <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md">
-                <span class="material-symbols-outlined filled text-white text-xl">school</span>
+            <div class="w-10 h-10 flex items-center justify-center">
+                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
             </div>
             <div>
                 <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
@@ -612,10 +614,10 @@
             // Load user info
             const token = getAccessToken();
             if (token) {
-                fetch('/api/auth/me/', {
+                fetch('/api/profile/', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }).then(r => r.json()).then(user => {
-                    const name = user.full_name || user.email || 'Người dùng';
+                    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Người dùng';
                     const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26522&color=fff`;
                     document.querySelectorAll('#sidebar-user-name').forEach(el => el.textContent = name);
                     document.querySelectorAll('#sidebar-avatar, #header-avatar').forEach(el => el.src = avatarUrl);

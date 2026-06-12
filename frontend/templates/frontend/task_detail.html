@@ -4,6 +4,8 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>Chi tiết công việc - EduCareLink</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -189,9 +191,7 @@
         <!-- Logo -->
         <div class="px-6 py-6 border-b border-gray-50">
             <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
-                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white text-xl filled" style="font-variation-settings: 'FILL' 1, 'wght' 500;">school</span>
-                </div>
+                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
                 <div>
                     <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
                 </div>

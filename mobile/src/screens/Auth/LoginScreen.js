@@ -86,9 +86,7 @@ export default function LoginScreen() {
 
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.logoMini}>
-            <Image source={require('../../../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
-          </View>
+          <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.title}>Chào mừng trở lại!</Text>
           <Text style={styles.subtitle}>Đăng nhập để tiếp tục sử dụng Educarelink</Text>
         </Animated.View>
@@ -190,14 +188,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 44 },
   header: { alignItems: 'center', marginBottom: 44 },
-  logoMini: {
-    width: 84, height: 84, borderRadius: 42,
-    backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 24,
-    borderWidth: 3, borderColor: COLORS.primarySoft,
-    overflow: 'hidden',
-    ...SHADOWS.medium,
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    marginBottom: 12,
   },
-  logoImage: { width: '100%', height: '100%' },
   title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
   subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
   form: { gap: 18, marginBottom: 36 },
