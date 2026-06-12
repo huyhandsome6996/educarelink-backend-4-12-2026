@@ -69,21 +69,10 @@ export default function MyTasksScreen() {
           </TouchableOpacity>
         )}
         {task.status === 'in_progress' && (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.success }]}
-            onPress={async () => {
-              try {
-                const candRes = await getCandidates(task.id);
-                const accepted = candRes.data.find(c => c.status === 'accepted');
-                navigation.navigate('Review', {
-                  taskId: task.id,
-                  revieweeId: accepted ? accepted.worker : null
-                });
-              } catch (e) {
-                navigation.navigate('Review', { taskId: task.id });
-              }
-            }}>
-            <Ionicons name="star-outline" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Đánh giá Carepartner</Text>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primaryLight }]}
+            onPress={() => navigation.navigate('Candidates', { taskId: task.id, taskTitle: task.title })}>
+            <Ionicons name="people-outline" size={16} color={COLORS.primary} />
+            <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>Xem người làm</Text>
           </TouchableOpacity>
         )}
         {task.status === 'completed' && (

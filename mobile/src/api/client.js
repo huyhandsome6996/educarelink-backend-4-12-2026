@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ====================================================================
 // ⚠️  CẬP NHẬT IP NÀY MỖI KHI ĐỔI MẠNG WI-FI!
@@ -9,9 +10,14 @@ import { storage } from '../utils/storage';
 // ====================================================================
 const DEV_IP = '192.168.1.31'; // <-- ĐỔI IP CỦA MÁY TÍNH BẠN VÀO ĐÂY
 
+// Production URL cho Render deployment
+const PROD_URL = 'https://educarelink-backend.onrender.com/api';
+
 const BASE_URL = Platform.OS === 'web'
   ? 'http://localhost:8000/api'
-  : `http://${DEV_IP}:8000/api`;
+  : __DEV__
+    ? `http://${DEV_IP}:8000/api`
+    : PROD_URL;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -60,6 +66,7 @@ apiClient.interceptors.response.use(
         await storage.deleteItem('access_token');
         await storage.deleteItem('refresh_token');
         await storage.deleteItem('user_role');
+        await storage.deleteItem('is_staff');
       }
       return Promise.reject(error);
     }
@@ -87,7 +94,9 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         // Không có refresh token → đăng xuất
         await storage.deleteItem('access_token');
+        await storage.deleteItem('refresh_token');
         await storage.deleteItem('user_role');
+        await storage.deleteItem('is_staff');
         processQueue(error, null);
         return Promise.reject(error);
       }
@@ -118,6 +127,7 @@ apiClient.interceptors.response.use(
       await storage.deleteItem('access_token');
       await storage.deleteItem('refresh_token');
       await storage.deleteItem('user_role');
+      await storage.deleteItem('is_staff');
       processQueue(refreshError, null);
       return Promise.reject(refreshError);
     } finally {

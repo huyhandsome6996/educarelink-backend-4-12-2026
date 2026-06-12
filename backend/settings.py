@@ -15,12 +15,12 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-YOUR_SECRET_KEY_HERE_REPLACE_LATER'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-for-dev-only-CHANGE-IN-PRODUCTION')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -125,7 +125,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
+# Trong production, nên đặt CORS_ALLOWED_ORIGINS thay vì allow all:
+# CORS_ALLOWED_ORIGINS = ['https://your-frontend.com']
 
 # --- CẤU HÌNH REST FRAMEWORK & JWT ---
 REST_FRAMEWORK = {
@@ -134,7 +136,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated', # Mặc định KHÓA tất cả API, ai gọi phải có Token
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
 }
 
 # Cấu hình thời gian của Token

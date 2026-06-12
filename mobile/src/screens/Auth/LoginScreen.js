@@ -167,17 +167,19 @@ export default function LoginScreen() {
           </View>
         </Animated.View>
 
-        {/* Tài khoản test */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <View style={styles.testAccountBox}>
-            <View style={styles.testAccountIconRow}>
-              <Ionicons name="flask-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.testAccountTitle}>Tài khoản thử nghiệm</Text>
+        {/* Tài khoản test — chỉ hiện trong môi trường development */}
+        {__DEV__ && (
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <View style={styles.testAccountBox}>
+              <View style={styles.testAccountIconRow}>
+                <Ionicons name="flask-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.testAccountTitle}>Tài khoản thử nghiệm (DEV)</Text>
+              </View>
+              <Text style={styles.testAccountText}>Phụ huynh: phuhuynh_test / password123</Text>
+              <Text style={styles.testAccountText}>Sinh viên: sinhvien_test / password123</Text>
             </View>
-            <Text style={styles.testAccountText}>Phụ huynh: phuhuynh_test / password123</Text>
-            <Text style={styles.testAccountText}>Sinh viên: sinhvien_test / password123</Text>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        )}
 
       </ScrollView>
     </KeyboardAvoidingView>

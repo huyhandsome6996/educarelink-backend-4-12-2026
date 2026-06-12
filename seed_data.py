@@ -59,6 +59,21 @@ categories_data = [
         "icon_name": "ShoppingCart",
         "description": "Di cho, mua do theo danh sach va giao hang tan noi cho gia dinh."
     },
+    {
+        "name": "Nau an",
+        "icon_name": "Restaurant",
+        "description": "Nau an cho gia dinh, chuan bi bua sang, trua, toi theo yeu cau."
+    },
+    {
+        "name": "Ho tro AI",
+        "icon_name": "SmartToy",
+        "description": "Su dung cong nghe AI ho tro hoc tap va phat trien cho be."
+    },
+    {
+        "name": "Khac",
+        "icon_name": "MoreHoriz",
+        "description": "Cac dich vu khac nhu chuyen nha, cham soc thu cung, ho tro ky nang song."
+    },
 ]
 
 created_cats = 0
@@ -96,6 +111,7 @@ parent_user, created = User.objects.get_or_create(
         "phone_number": "0901234567",
         "address": "123 Duong Le Loi, Quan 1, TP.HCM",
         "is_verified": True,
+        "is_approved": True,  # Phụ huynh tự động approved
     }
 )
 if created:
@@ -103,6 +119,11 @@ if created:
     parent_user.save()
     print(f"   [TAO MOI] Tai khoan Phu huynh: username=phuhuynh_test / pass={TEST_PASSWORD}")
 else:
+    # Fix: Đảm bảo phuhuynh_test đã được approve
+    if not parent_user.is_approved:
+        parent_user.is_approved = True
+        parent_user.save()
+        print(f"   [CAP NHAT] phuhuynh_test: da cap nhat is_approved=True")
     print(f"   [DA TON TAI] phuhuynh_test")
 
 # Tai khoan Sinh vien (Worker) - DA DUOC ADMIN DUYET

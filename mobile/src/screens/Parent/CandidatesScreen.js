@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCandidates, approveCandidate } from '../../api/tasks';
+import { getCandidates, approveCandidate, getWorkerProfile } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 export default function CandidatesScreen() {
@@ -10,11 +10,28 @@ export default function CandidatesScreen() {
   const route = useRoute();
   const { taskId, taskTitle } = route.params;
   const [candidates, setCandidates] = useState([]);
+  const [workerRatings, setWorkerRatings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     getCandidates(taskId)
-      .then(res => setCandidates(res.data))
+      .then(res => {
+        setCandidates(res.data);
+        // Fetch ratings cho từng worker
+        res.data.forEach(c => {
+          getWorkerProfile(c.worker)
+            .then(profileRes => {
+              setWorkerRatings(prev => ({
+                ...prev,
+                [c.worker]: {
+                  avg: profileRes.data.avg_rating || 0,
+                  count: profileRes.data.review_count || 0
+                }
+              }));
+            })
+            .catch(() => {}); // Bỏ qua lỗi rating
+        });
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [taskId]);
@@ -73,8 +90,8 @@ export default function CandidatesScreen() {
         <View style={styles.info}>
           <Text style={styles.name}>{c.worker_name}</Text>
           <View style={styles.stars}>
-            {[1,2,3,4,5].map(i => <Ionicons key={i} name="star" size={12} color={COLORS.warning} />)}
-            <Text style={styles.starsText}> 5.0</Text>
+            {[1,2,3,4,5].map(i => <Ionicons key={i} name={workerRatings[c.worker]?.avg >= i ? 'star' : 'star-outline'} size={12} color={COLORS.warning} />)}
+            <Text style={styles.starsText}> {workerRatings[c.worker]?.avg?.toFixed(1) || 'N/A'}</Text>
           </View>
           <View style={styles.badge}>
             <Ionicons name="shield-checkmark" size={12} color={COLORS.success} />

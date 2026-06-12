@@ -22,6 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_verified': {'read_only': True},
             'is_approved': {'read_only': True},
             'ai_profile_summary': {'read_only': True},
+            'role': {'read_only': True},  # Ngăn chặn role escalation qua API
             'id_card_front': {'required': False},
             'id_card_back': {'required': False},
             'selfie_photo': {'required': False},
@@ -66,7 +67,6 @@ class TaskSerializer(serializers.ModelSerializer):
 class TaskApplicationSerializer(serializers.ModelSerializer):
     # Thông tin worker (sinh viên)
     worker_name = serializers.CharField(source='worker.username', read_only=True)
-    worker_username = serializers.CharField(source='worker.username', read_only=True)
 
     # Thông tin task liên kết — fix lỗi frontend bị undefined
     task_title = serializers.CharField(source='task.title', read_only=True)
@@ -97,4 +97,4 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
-        read_only_fields = ['reviewer']
+        read_only_fields = ['reviewer', 'reviewee']

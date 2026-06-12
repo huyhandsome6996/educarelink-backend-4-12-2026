@@ -418,7 +418,7 @@
 
     <script>
         // ===== CẤU HÌNH =====
-        const API_BASE = window.location.origin + '/api';
+        const API_BASE = '/api';
         let currentTab = 'pending';
 
         // ===== AUTH: Lấy JWT token từ localStorage =====
@@ -432,15 +432,61 @@
             return { 'Authorization': 'Bearer ' + token };
         }
 
+        // ===== apiFetch: Tự động refresh token khi 401 =====
+        async function apiFetch(url, options = {}) {
+            // Gắn auth headers
+            if (!options.headers) options.headers = {};
+            const token = getAuthToken();
+            if (token) options.headers['Authorization'] = `Bearer ${token}`;
+            if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+
+            let response = await fetch(url, options);
+
+            // Nếu 401 → thử refresh token
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (!refreshToken) {
+                    handleAuthError(response);
+                    return response;
+                }
+                try {
+                    const refreshRes = await fetch(`${API_BASE}/auth/token/refresh/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refresh: refreshToken })
+                    });
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        localStorage.setItem('token', data.access);
+                        if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+                        // Retry request gốc
+                        options.headers['Authorization'] = `Bearer ${data.access}`;
+                        response = await fetch(url, options);
+                    } else {
+                        handleAuthError(response);
+                    }
+                } catch (e) {
+                    handleAuthError(response);
+                }
+            }
+            return response;
+        }
+
+        // ===== XSS Prevention: Escape HTML =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
         // Kiểm tra đăng nhập admin
         function checkAdminAuth() {
             const token = getAuthToken();
-            const role = localStorage.getItem('role');
             if (!token) {
                 window.location.href = '/login/?next=/admin-dashboard/';
                 return false;
             }
-            // Nếu có token nhưng không phải admin, vẫn cho thử (backend sẽ check IsAdminUser)
             return true;
         }
 
@@ -449,7 +495,7 @@
             if (!checkAdminAuth()) return;
             try {
                 if (currentTab === 'pending') {
-                    const res = await fetch(`${API_BASE}/admin/pending-workers/`, { headers: authHeaders() });
+                    const res = await apiFetch(`${API_BASE}/admin/pending-workers/`);
                     if (res.status === 401 || res.status === 403) {
                         handleAuthError(res);
                         return;
@@ -458,7 +504,7 @@
                     renderPendingTable(pending);
 
                     // Stats
-                    const allRes = await fetch(`${API_BASE}/admin/all-workers/`, { headers: authHeaders() });
+                    const allRes = await apiFetch(`${API_BASE}/admin/all-workers/`);
                     if (allRes.status === 401 || allRes.status === 403) {
                         handleAuthError(allRes);
                         return;
@@ -470,7 +516,7 @@
                     document.getElementById('statTotal').textContent = allWorkers.length;
                     document.getElementById('pendingBadge').textContent = pending.length;
                 } else {
-                    const res = await fetch(`${API_BASE}/admin/all-workers/`, { headers: authHeaders() });
+                    const res = await apiFetch(`${API_BASE}/admin/all-workers/`);
                     if (res.status === 401 || res.status === 403) {
                         handleAuthError(res);
                         return;
@@ -538,39 +584,40 @@
                 </tr></thead><tbody>`;
 
             workers.forEach(w => {
-                const name = `${w.last_name || ''} ${w.first_name || ''}`.trim() || w.username;
+                const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                const qualsStr = escapeHtml((w.qualifications || []).join(', '));
                 html += `<tr>
                     <td>
-                        <div class="user-cell" style="cursor:pointer;" onclick="openEditModal(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}', '${w.id_card_front||''}', '${w.id_card_back||''}', '${w.selfie_photo||''}', '${w.certificate_photo||''}')">
+                        <div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
                             <div class="user-avatar">
                                 ${w.selfie_photo 
-                                    ? `<img src="${w.selfie_photo}" alt="${name}" />` 
+                                    ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` 
                                     : `<div class="user-avatar-placeholder">${initial}</div>`}
                             </div>
                             <div>
                                 <div class="user-name">${name}</div>
-                                <div class="user-username">@${w.username}</div>
+                                <div class="user-username">@${escapeHtml(w.username)}</div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-size:13px">${w.email || '—'}</div>
-                        <div style="font-size:12px;color:#64748b">${w.phone_number || '—'}</div>
+                        <div style="font-size:13px">${escapeHtml(w.email || '—')}</div>
+                        <div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div>
                     </td>
                     <td>
                         <div class="photo-thumbs">
-                            ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'Mặt trước CCCD')" title="CCCD trước" />` : ''}
-                            ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'Mặt sau CCCD')" title="CCCD sau" />` : ''}
-                            ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Ảnh chân dung')" title="Chân dung" />` : ''}
-                            ${w.certificate_photo ? `<img class="photo-thumb" src="${w.certificate_photo}" onclick="openModal('${w.certificate_photo}', 'Bằng cấp/Chứng chỉ')" title="Bằng cấp" />` : ''}
+                            ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="Mặt trước CCCD" title="CCCD trước" />` : ''}
+                            ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="Mặt sau CCCD" title="CCCD sau" />` : ''}
+                            ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Ảnh chân dung" title="Chân dung" />` : ''}
+                            ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp/Chứng chỉ" title="Bằng cấp" />` : ''}
                         </div>
                     </td>
-                    <td style="font-size:13px;color:#94a3b8">${w.date_joined}</td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
                     <td>
                         <div class="action-btns">
-                            <button class="btn btn-approve" onclick="openEditModal(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}', '${w.id_card_front||''}', '${w.id_card_back||''}', '${w.selfie_photo||''}', '${w.certificate_photo||''}', true)">✅ Duyệt</button>
-                            <button class="btn btn-reject" onclick="rejectWorker(${w.id}, '${w.username}')">✕ Từ chối</button>
+                            <button class="btn btn-approve" data-action="approve" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">✅ Duyệt</button>
+                            <button class="btn btn-reject" data-action="reject" data-id="${w.id}" data-username="${escapeHtml(w.username)}">✕ Từ chối</button>
                         </div>
                     </td>
                 </tr>`;
@@ -578,6 +625,8 @@
 
             html += '</tbody></table>';
             document.getElementById('tableBody').innerHTML = html;
+            // Attach event listeners using data attributes (XSS-safe)
+            attachTableEventListeners();
         }
 
         function renderAllTable(workers) {
@@ -602,43 +651,44 @@
                 </tr></thead><tbody>`;
 
             workers.forEach(w => {
-                const name = `${w.last_name || ''} ${w.first_name || ''}`.trim() || w.username;
+                const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                const qualsStr = escapeHtml((w.qualifications || []).join(', '));
                 html += `<tr>
                     <td>
-                        <div class="user-cell" style="cursor:pointer;" onclick="openEditModal(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}', '${w.id_card_front||''}', '${w.id_card_back||''}', '${w.selfie_photo||''}', '${w.certificate_photo||''}')">
+                        <div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
                             <div class="user-avatar">
                                 ${w.selfie_photo 
-                                    ? `<img src="${w.selfie_photo}" alt="${name}" />` 
+                                    ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` 
                                     : `<div class="user-avatar-placeholder">${initial}</div>`}
                             </div>
                             <div>
                                 <div class="user-name">${name}</div>
-                                <div class="user-username">@${w.username}</div>
+                                <div class="user-username">@${escapeHtml(w.username)}</div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-size:13px">${w.email || '—'}</div>
-                        <div style="font-size:12px;color:#64748b">${w.phone_number || '—'}</div>
+                        <div style="font-size:13px">${escapeHtml(w.email || '—')}</div>
+                        <div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div>
                     </td>
                     <td>
                         <span class="badge ${w.is_approved ? 'badge-approved' : 'badge-pending'}">
                             ${w.is_approved ? '✅ Đã duyệt' : '⏳ Chờ duyệt'}
                         </span>
                     </td>
-                    <td style="font-size:13px;color:#94a3b8">${w.date_joined}</td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
                     <td>
                         <div class="photo-thumbs">
-                            ${w.id_card_front ? `<img class="photo-thumb" src="${w.id_card_front}" onclick="openModal('${w.id_card_front}', 'CCCD trước')" />` : ''}
-                            ${w.id_card_back ? `<img class="photo-thumb" src="${w.id_card_back}" onclick="openModal('${w.id_card_back}', 'CCCD sau')" />` : ''}
-                            ${w.selfie_photo ? `<img class="photo-thumb" src="${w.selfie_photo}" onclick="openModal('${w.selfie_photo}', 'Chân dung')" />` : ''}
-                            ${w.certificate_photo ? `<img class="photo-thumb" src="${w.certificate_photo}" onclick="openModal('${w.certificate_photo}', 'Bằng cấp')" />` : ''}
+                            ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="CCCD trước" />` : ''}
+                            ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="CCCD sau" />` : ''}
+                            ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Chân dung" />` : ''}
+                            ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp" />` : ''}
                         </div>
                     </td>
                     <td>
                         <div class="action-btns">
-                            <button class="btn btn-approve" style="background:#0284c7" onclick="openEditModal(${w.id}, '${w.username}', '${(w.qualifications || []).join(', ')}', '${w.id_card_front||''}', '${w.id_card_back||''}', '${w.selfie_photo||''}', '${w.certificate_photo||''}')">✏️ Sửa bằng cấp</button>
+                            <button class="btn btn-approve" style="background:#0284c7" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">✏️ Sửa bằng cấp</button>
                         </div>
                     </td>
                 </tr>`;
@@ -646,9 +696,51 @@
 
             html += '</tbody></table>';
             document.getElementById('tableBody').innerHTML = html;
+            // Attach event listeners using data attributes (XSS-safe)
+            attachTableEventListeners();
         }
 
-        // ===== MODAL QUẢN LÝ BẰNG CẤP =====
+        // ===== EVENT DELEGATION (XSS-safe) =====
+        function attachTableEventListeners() {
+            document.querySelectorAll('[data-action="edit"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openEditModal(
+                        parseInt(this.dataset.id),
+                        this.dataset.username,
+                        this.dataset.quals,
+                        this.dataset.idfront,
+                        this.dataset.idback,
+                        this.dataset.selfie,
+                        this.dataset.cert,
+                        this.dataset.action === 'edit' && this.textContent.includes('Duyệt')
+                    );
+                });
+            });
+            document.querySelectorAll('[data-action="approve"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openEditModal(
+                        parseInt(this.dataset.id),
+                        this.dataset.username,
+                        this.dataset.quals,
+                        this.dataset.idfront,
+                        this.dataset.idback,
+                        this.dataset.selfie,
+                        this.dataset.cert,
+                        true
+                    );
+                });
+            });
+            document.querySelectorAll('[data-action="reject"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    rejectWorker(parseInt(this.dataset.id), this.dataset.username);
+                });
+            });
+            document.querySelectorAll('[data-action="photo"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openModal(this.dataset.src, this.dataset.label);
+                });
+            });
+        }
         let editingUserId = null;
         let isApprovingMode = false;
 
@@ -656,18 +748,25 @@
             editingUserId = userId;
             isApprovingMode = isApprove;
             
-            document.getElementById('editModalTitle').textContent = isApprove ? `Duyệt tài khoản @${username}` : `Cập nhật bằng cấp @${username}`;
+            document.getElementById('editModalTitle').textContent = isApprove ? `Duyệt tài khoản @${escapeHtml(username)}` : `Cập nhật bằng cấp @${escapeHtml(username)}`;
             document.getElementById('editModalInput').value = currentQuals;
             document.getElementById('editModalSaveBtn').textContent = isApprove ? '✅ Lưu & Duyệt' : 'Lưu thay đổi';
             
             let photosHtml = '';
-            if (idFront) photosHtml += `<img class="edit-modal-photo" src="${idFront}" onclick="openModal('${idFront}', 'CCCD trước')" />`;
-            if (idBack) photosHtml += `<img class="edit-modal-photo" src="${idBack}" onclick="openModal('${idBack}', 'CCCD sau')" />`;
-            if (selfie) photosHtml += `<img class="edit-modal-photo" src="${selfie}" onclick="openModal('${selfie}', 'Chân dung')" />`;
-            if (cert) photosHtml += `<img class="edit-modal-photo" src="${cert}" onclick="openModal('${cert}', 'Bằng cấp')" />`;
+            if (idFront) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idFront)}" data-action="modal-photo" data-src="${escapeHtml(idFront)}" data-label="CCCD trước" />`;
+            if (idBack) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idBack)}" data-action="modal-photo" data-src="${escapeHtml(idBack)}" data-label="CCCD sau" />`;
+            if (selfie) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(selfie)}" data-action="modal-photo" data-src="${escapeHtml(selfie)}" data-label="Chân dung" />`;
+            if (cert) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(cert)}" data-action="modal-photo" data-src="${escapeHtml(cert)}" data-label="Bằng cấp" />`;
             
             if (!photosHtml) photosHtml = '<div style="font-size:12px;color:#64748b">Không có ảnh xác minh</div>';
             document.getElementById('editModalPhotos').innerHTML = photosHtml;
+            
+            // Attach click listeners cho modal photos
+            document.querySelectorAll('[data-action="modal-photo"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openModal(this.dataset.src, this.dataset.label);
+                });
+            });
             
             document.getElementById('editModal').classList.add('show');
             
@@ -676,9 +775,8 @@
                 const arr = val.split(',').map(s => s.trim()).filter(s => s !== '');
                 
                 try {
-                    const res = await fetch(`${API_BASE}/admin/workers/${editingUserId}/action/`, {
+                    const res = await apiFetch(`${API_BASE}/admin/workers/${editingUserId}/action/`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...authHeaders() },
                         body: JSON.stringify({ 
                             action: isApprovingMode ? 'approve' : 'update_qualifications',
                             qualifications: arr 
@@ -699,11 +797,10 @@
         }
 
         async function rejectWorker(userId, username) {
-            if (!confirm(`Từ chối và xoá tài khoản @${username}? Hành động này không thể hoàn tác!`)) return;
+            if (!confirm(`Từ chối tài khoản @${username}? Tài khoản sẽ bị vô hiệu hoá.`)) return;
             try {
-                const res = await fetch(`${API_BASE}/admin/workers/${userId}/action/`, {
+                const res = await apiFetch(`${API_BASE}/admin/workers/${userId}/action/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
                     body: JSON.stringify({ action: 'reject' }),
                 });
                 const data = await res.json();
