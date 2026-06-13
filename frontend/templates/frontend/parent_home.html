@@ -458,7 +458,7 @@
             let token = localStorage.getItem('token');
             if (!token) {
                 window.location.href = LOGIN_URL;
-                return;
+                return new Response(null, { status: 401 });
             }
             options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
             let response = await fetch(url, options);
@@ -482,18 +482,18 @@
                             localStorage.removeItem('token');
                             localStorage.removeItem('refresh_token');
                             window.location.href = LOGIN_URL;
-                            return;
+                            return new Response(null, { status: 401 });
                         }
                     } catch (e) {
                         localStorage.removeItem('token');
                         localStorage.removeItem('refresh_token');
                         window.location.href = LOGIN_URL;
-                        return;
+                        return new Response(null, { status: 401 });
                     }
                 } else {
                     localStorage.removeItem('token');
                     window.location.href = LOGIN_URL;
-                    return;
+                    return new Response(null, { status: 401 });
                 }
             }
             return response;

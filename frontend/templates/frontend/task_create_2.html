@@ -428,9 +428,58 @@
     </div>
 
     <script>
+        // ============ CONSTANTS ============
+        const API_BASE = '/api';
+        const LOGIN_URL = '{% url "frontend:login" %}';
+
         // ============ UTILITIES ============
         function getAccessToken() {
-            return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            return localStorage.getItem('token') || sessionStorage.getItem('token');
+        }
+
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = LOGIN_URL;
+                return new Response(null, { status: 401 });
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return new Response(null, { status: 401 });
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
+                        return new Response(null, { status: 401 });
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = LOGIN_URL;
+                    return new Response(null, { status: 401 });
+                }
+            }
+            return response;
         }
 
         function showToast(message, type = 'info') {
@@ -543,13 +592,6 @@
 
         // ============ SUBMIT TASK ============
         async function submitTask() {
-            const token = getAccessToken();
-            if (!token) {
-                showToast('Vui lòng đăng nhập lại', 'error');
-                window.location.href = '{% url "frontend:login" %}';
-                return;
-            }
-
             const date = document.getElementById('task-date').value;
             const startTime = document.getElementById('task-start').value;
             const endTime = document.getElementById('task-end').value;
@@ -563,16 +605,15 @@
             }
 
             const step1Data = JSON.parse(sessionStorage.getItem('task_create_step1') || '{}');
+            const scheduled_time = `${date}T${startTime}:00`;
 
             const taskData = {
-                ...step1Data,
-                date: date,
-                start_time: startTime,
-                end_time: endTime,
-                budget: parseInt(budget),
-                budget_type: budgetType,
-                address: address,
-                notes: notes,
+                category: step1Data.category,
+                title: step1Data.title,
+                description: notes,
+                location: address,
+                scheduled_time: scheduled_time,
+                price: parseInt(budget),
             };
 
             const btn = document.getElementById('submit-btn');
@@ -580,11 +621,10 @@
             btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Đang đăng...';
 
             try {
-                const response = await fetch('/api/tasks/', {
+                const response = await apiFetch(API_BASE + '/tasks/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(taskData)
                 });
@@ -612,17 +652,16 @@
             loadStep1Data();
 
             // Load user info
-            const token = getAccessToken();
-            if (token) {
-                fetch('/api/profile/', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }).then(r => r.json()).then(user => {
-                    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Người dùng';
-                    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26522&color=fff`;
-                    document.querySelectorAll('#sidebar-user-name').forEach(el => el.textContent = name);
-                    document.querySelectorAll('#sidebar-avatar, #header-avatar').forEach(el => el.src = avatarUrl);
-                }).catch(() => {});
-            }
+            apiFetch(API_BASE + '/profile/').then(r => {
+                if (!r.ok) return null;
+                return r.json();
+            }).then(user => {
+                if (!user) return;
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Người dùng';
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26522&color=fff`;
+                document.querySelectorAll('#sidebar-user-name').forEach(el => el.textContent = name);
+                document.querySelectorAll('#sidebar-avatar, #header-avatar').forEach(el => el.src = avatarUrl);
+            }).catch(() => {});
 
             // Mobile page transition
             if (window.innerWidth < 1024) {
