@@ -34,7 +34,13 @@
           "cameraPermission": "EduCareLink cần camera để chụp ảnh CCCD và chân dung."
         }
       ],
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification_icon_xhdpi.png",
+          "color": "#F26522"
+        }
+      ]
     ]
   }
 }

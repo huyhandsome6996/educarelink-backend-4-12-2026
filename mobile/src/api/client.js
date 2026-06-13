@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ====================================================================
 // ⚠️  CẬP NHẬT IP NÀY MỖI KHI ĐỔI MẠNG WI-FI!
