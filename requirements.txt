@@ -33,6 +33,7 @@ httpx==0.28.1
 idna==3.13
 numpy==2.4.4
 packaging==26.2
+Pillow==11.2.1
 proto-plus==1.27.2
 protobuf==5.29.6
 psycopg2-binary==2.9.12
