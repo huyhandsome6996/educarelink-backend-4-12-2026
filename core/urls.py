@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterAPIView, LoginAPIView, UserProfileAPIView,
-    TaskListCreateAPIView, TaskDetailAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
+    TaskListCreateAPIView, TaskDetailAPIView, TaskUpdateStatusAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
     ApproveCandidateAPIView, ReviewCreateAPIView,
     ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
     ChatbotAPIView,
@@ -18,6 +18,7 @@ urlpatterns = [
     # Bảng tin chung (Cho sinh viên tìm việc / Phụ huynh đăng việc)
     path('tasks/', TaskListCreateAPIView.as_view(), name='task-list-create'),
     path('tasks/<int:pk>/', TaskDetailAPIView.as_view(), name='task-detail'),
+    path('tasks/<int:pk>/status/', TaskUpdateStatusAPIView.as_view(), name='task-update-status'),
     
     # Token refresh — cho phép cả web và mobile refresh access token
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

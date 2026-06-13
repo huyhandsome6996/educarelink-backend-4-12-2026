@@ -170,6 +170,39 @@ class TaskDetailAPIView(generics.RetrieveAPIView):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
+
+class TaskUpdateStatusAPIView(APIView):
+    """API cho phụ huynh cập nhật trạng thái công việc (hoàn thành / hủy)"""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            task = Task.objects.get(pk=pk)
+        except Task.DoesNotExist:
+            return Response({"error": "Không tìm thấy công việc."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Chỉ phụ huynh sở hữu công việc mới được thay đổi trạng thái
+        if task.parent != request.user:
+            return Response({"error": "Bạn không có quyền thay đổi công việc này."}, status=status.HTTP_403_FORBIDDEN)
+
+        new_status = request.data.get('status')
+        valid_transitions = {
+            'open': ['cancelled'],           # Việc đang tìm → chỉ có thể hủy
+            'in_progress': ['completed', 'cancelled'],  # Việc đang làm → hoàn thành hoặc hủy
+        }
+
+        if new_status not in ['completed', 'cancelled']:
+            return Response({"error": "Trạng thái không hợp lệ. Chỉ chấp nhận 'completed' hoặc 'cancelled'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed = valid_transitions.get(task.status, [])
+        if new_status not in allowed:
+            return Response({"error": f"Không thể chuyển từ '{task.status}' sang '{new_status}'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        task.status = new_status
+        task.save()
+        serializer = TaskSerializer(task)
+        return Response(serializer.data)
+
 # --- PHẦN 3: LUỒNG DÀNH CHO PHỤ HUYNH ---
 class ParentTasksAPIView(generics.ListAPIView):
     serializer_class = TaskSerializer

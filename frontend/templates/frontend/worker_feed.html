@@ -506,23 +506,27 @@
 
             container.innerHTML = filteredTasks.map(t => {
                 const categoryColors = {
-                    'babysitting': { bg: 'bg-pink-50', text: 'text-pink-600' },
-                    'tutoring': { bg: 'bg-blue-50', text: 'text-blue-600' },
-                    'cooking': { bg: 'bg-amber-50', text: 'text-amber-600' },
-                    'cleaning': { bg: 'bg-cyan-50', text: 'text-cyan-600' },
-                    'elderly_care': { bg: 'bg-purple-50', text: 'text-purple-600' },
-                    'driving': { bg: 'bg-indigo-50', text: 'text-indigo-600' },
+                    'Gia su': { bg: 'bg-blue-50', text: 'text-blue-600' },
+                    'Don tre': { bg: 'bg-teal-50', text: 'text-teal-600' },
+                    'Don dep nha cua': { bg: 'bg-cyan-50', text: 'text-cyan-600' },
+                    'Trong tre': { bg: 'bg-pink-50', text: 'text-pink-600' },
+                    'Mua sam ho': { bg: 'bg-lime-50', text: 'text-lime-600' },
+                    'Nau an': { bg: 'bg-amber-50', text: 'text-amber-600' },
+                    'Ho tro AI': { bg: 'bg-purple-50', text: 'text-purple-600' },
+                    'Khac': { bg: 'bg-primaryLight', text: 'text-primary' },
                 };
-                const cat = categoryColors[t.category] || { bg: 'bg-primaryLight', text: 'text-primary' };
+                const cat = categoryColors[t.category_name] || { bg: 'bg-primaryLight', text: 'text-primary' };
                 const categoryLabels = {
-                    'babysitting': 'Trông trẻ',
-                    'tutoring': 'Gia sư',
-                    'cooking': 'Nấu ăn',
-                    'cleaning': 'Dọn dẹp',
-                    'elderly_care': 'Chăm sóc người già',
-                    'driving': 'Lái xe',
+                    'Gia su': 'Gia sư',
+                    'Don tre': 'Đón trẻ',
+                    'Don dep nha cua': 'Dọn dẹp',
+                    'Trong tre': 'Trông trẻ',
+                    'Mua sam ho': 'Đi chợ',
+                    'Nau an': 'Nấu ăn',
+                    'Ho tro AI': 'Hỗ trợ AI',
+                    'Khac': 'Khác',
                 };
-                const catLabel = categoryLabels[t.category] || t.category || 'Khác';
+                const catLabel = categoryLabels[t.category_name] || t.category_name || 'Khác';
 
                 return `
                 <article class="task-card bg-white rounded-xl p-5 border border-gray-100 shadow-sm cursor-pointer relative group" onclick="if(event.target.tagName !== 'BUTTON') location.href='{% url 'frontend:task_detail' %}?task_id=${t.id}'">

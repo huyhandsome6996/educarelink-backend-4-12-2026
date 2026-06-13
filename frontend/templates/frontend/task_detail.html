@@ -516,15 +516,14 @@
 
         // ===== CATEGORY CONFIG =====
         const categoryConfig = {
-            'babysitting': { label: 'Trông trẻ', bg: 'bg-pink-50', text: 'text-pink-600', icon: 'child_care' },
-            'tutoring': { label: 'Gia sư', bg: 'bg-blue-50', text: 'text-blue-600', icon: 'school' },
-            'cooking': { label: 'Nấu ăn', bg: 'bg-amber-50', text: 'text-amber-600', icon: 'restaurant' },
-            'cleaning': { label: 'Dọn dẹp', bg: 'bg-cyan-50', text: 'text-cyan-600', icon: 'cleaning_services' },
-            'elderly_care': { label: 'Chăm sóc người già', bg: 'bg-purple-50', text: 'text-purple-600', icon: 'elderly' },
-            'driving': { label: 'Lái xe', bg: 'bg-indigo-50', text: 'text-indigo-600', icon: 'directions_car' },
-            'pickup': { label: 'Đón trẻ', bg: 'bg-teal-50', text: 'text-teal-600', icon: 'directions_walk' },
-            'shopping': { label: 'Đi chợ', bg: 'bg-lime-50', text: 'text-lime-600', icon: 'shopping_cart' },
-            'moving': { label: 'Chuyển nhà', bg: 'bg-orange-50', text: 'text-orange-600', icon: 'home_repair_service' },
+            'Gia su': { label: 'Gia sư', bg: 'bg-blue-50', text: 'text-blue-600', icon: 'school' },
+            'Don tre': { label: 'Đón trẻ', bg: 'bg-teal-50', text: 'text-teal-600', icon: 'directions_walk' },
+            'Don dep nha cua': { label: 'Dọn dẹp', bg: 'bg-cyan-50', text: 'text-cyan-600', icon: 'cleaning_services' },
+            'Trong tre': { label: 'Trông trẻ', bg: 'bg-pink-50', text: 'text-pink-600', icon: 'child_care' },
+            'Mua sam ho': { label: 'Đi chợ', bg: 'bg-lime-50', text: 'text-lime-600', icon: 'shopping_cart' },
+            'Nau an': { label: 'Nấu ăn', bg: 'bg-amber-50', text: 'text-amber-600', icon: 'restaurant' },
+            'Ho tro AI': { label: 'Hỗ trợ AI', bg: 'bg-purple-50', text: 'text-purple-600', icon: 'smart_toy' },
+            'Khac': { label: 'Khác', bg: 'bg-primaryLight', text: 'text-primary', icon: 'work' },
         };
         const defaultCategory = { label: 'Khác', bg: 'bg-primaryLight', text: 'text-primary', icon: 'work' };
 
@@ -653,7 +652,7 @@
             document.getElementById('task-content').classList.remove('hidden');
 
             // Category badge
-            const cat = getCategoryConfig(task.category);
+            const cat = getCategoryConfig(task.category_name);
             const badgesHtml = `
                 <span class="${cat.bg} ${cat.text} px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">${cat.icon}</span>

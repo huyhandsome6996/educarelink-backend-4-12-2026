@@ -559,22 +559,38 @@ function renderTasks() {
     let actionHTML = '';
     if (t.status === 'open') {
       actionHTML = `
-        <button onclick="viewCandidates(${t.id})" class="w-full py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-          Xem ứng viên
-          <span class="material-symbols-outlined text-lg">chevron_right</span>
-        </button>
+        <div class="flex gap-2">
+          <button onclick="viewCandidates(${t.id})" class="flex-1 py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+            Xem ứng viên
+            <span class="material-symbols-outlined text-lg">chevron_right</span>
+          </button>
+          <button onclick="cancelTask(${t.id})" class="py-3 px-3 bg-gray-100 text-gray-500 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center" title="Hủy việc">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
       `;
     } else if (t.status === 'in_progress') {
       actionHTML = `
-        <div class="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100">
-          <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-blue-500 text-lg" style="font-variation-settings: 'FILL' 1;">person</span>
+        <div class="space-y-2">
+          <div class="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+            <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-blue-500 text-lg" style="font-variation-settings: 'FILL' 1;">person</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-blue-600 font-medium">Đang thực hiện bởi</p>
+              <p class="text-sm font-bold text-blue-700 truncate">${t.assigned_worker_name || 'Carepartner'}</p>
+            </div>
+            <span class="material-symbols-outlined text-blue-400 text-lg">autorenew</span>
           </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-xs text-blue-600 font-medium">Đang thực hiện bởi</p>
-            <p class="text-sm font-bold text-blue-700 truncate">${t.assigned_worker_name || 'Carepartner'}</p>
+          <div class="flex gap-2">
+            <button onclick="completeTask(${t.id})" class="flex-1 py-3 bg-emerald-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+              Hoàn thành
+            </button>
+            <button onclick="cancelTask(${t.id})" class="py-3 px-3 bg-gray-100 text-gray-500 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center" title="Hủy việc">
+              <span class="material-symbols-outlined text-lg">close</span>
+            </button>
           </div>
-          <span class="material-symbols-outlined text-blue-400 text-lg">autorenew</span>
         </div>
       `;
     } else if (t.status === 'completed') {
@@ -659,6 +675,47 @@ function viewCandidates(id) {
 
 function goToReview(taskId) {
   window.location.href = "{% url 'frontend:review' %}?task_id=" + taskId;
+}
+
+// ==================== COMPLETE & CANCEL TASK ====================
+async function completeTask(taskId) {
+  if (!confirm('Bạn có chắc muốn đánh dấu công việc này là đã hoàn thành?')) return;
+  try {
+    const resp = await apiFetch(`${API_BASE}/tasks/${taskId}/status/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' })
+    });
+    if (resp.ok) {
+      showToast('Đã đánh dấu hoàn thành!', 'success');
+      init();
+    } else {
+      const data = await resp.json();
+      showToast(data.error || 'Có lỗi xảy ra', 'error');
+    }
+  } catch (e) {
+    showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+  }
+}
+
+async function cancelTask(taskId) {
+  if (!confirm('Bạn có chắc muốn hủy công việc này?')) return;
+  try {
+    const resp = await apiFetch(`${API_BASE}/tasks/${taskId}/status/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' })
+    });
+    if (resp.ok) {
+      showToast('Đã hủy công việc.', 'success');
+      init();
+    } else {
+      const data = await resp.json();
+      showToast(data.error || 'Có lỗi xảy ra', 'error');
+    }
+  } catch (e) {
+    showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+  }
 }
 
 // ==================== FETCH ASSIGNED WORKER INFO ====================

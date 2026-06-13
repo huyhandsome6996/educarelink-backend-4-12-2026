@@ -637,14 +637,14 @@
 
         function getCategoryIcon(category) {
             const map = {
-                'babysitting': 'child_care',
-                'tutoring': 'school',
-                'cooking': 'restaurant',
-                'cleaning': 'cleaning_services',
-                'shopping': 'shopping_cart',
-                'pickup': 'directions_car',
-                'moving': 'local_shipping',
-                'other': 'more_horiz',
+                'Gia su': 'school',
+                'Don tre': 'directions_walk',
+                'Don dep nha cua': 'cleaning_services',
+                'Trong tre': 'child_care',
+                'Mua sam ho': 'shopping_cart',
+                'Nau an': 'restaurant',
+                'Ho tro AI': 'smart_toy',
+                'Khac': 'more_horiz',
             };
             return map[category] || 'work';
         }
@@ -698,7 +698,7 @@
                 // Update task details
                 const detailsHtml = `
                     <div class="inline-flex items-center gap-2 text-sm text-textSecondary bg-background rounded-lg px-3 py-2">
-                        <span class="material-symbols-outlined filled text-primary text-lg">${getCategoryIcon(task.category)}</span>
+                        <span class="material-symbols-outlined filled text-primary text-lg">${getCategoryIcon(task.category_name)}</span>
                         <span class="font-medium text-textPrimary">${task.title || 'Công việc'}</span>
                     </div>
                     ${task.location ? `
