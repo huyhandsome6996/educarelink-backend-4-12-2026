@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     # --- CÁC THƯ VIỆN CÀI THÊM ---
     'rest_framework',
     'rest_framework_simplejwt', # Thêm thư viện JWT cho Mobile App
+    'rest_framework_simplejwt.token_blacklist', # Hỗ trợ blacklist refresh token cũ
     'corsheaders',
     
     # --- APP CỦA CHÚNG TA ---
@@ -139,8 +140,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated', # Mặc định KHÓA tất cả API, ai gọi phải có Token
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 50,
+    # KHÔNG dùng phân trang toàn cục — các template JS xử lý response như mảng thẳng
+    # Nếu cần phân trang, thêm PaginationClass riêng từng View thay vì toàn cục
 }
 
 # Cấu hình thời gian của Token
