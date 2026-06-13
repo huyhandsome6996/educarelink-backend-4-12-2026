@@ -772,7 +772,7 @@
                     } catch (e) { /* ignore parse error */ }
                     // Lưu vào lịch sử dù lỗi
                     chatHistory.push({ role: 'assistant', text: errMsg });
-                    addBotMessage(escapeHtml(errMsg));
+                    addBotMessage(errMsg);
                     showToast(errMsg, 'error');
                     return;
                 }
@@ -790,7 +790,7 @@
 
                 // Add the AI text reply
                 if (data.response) {
-                    addBotMessage(escapeHtml(data.response));
+                    addBotMessage(data.response);
                 }
 
             } catch (e) {
