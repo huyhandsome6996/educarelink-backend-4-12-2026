@@ -20,7 +20,10 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#F26522"
       },
-      "package": "com.educarelink.app"
+      "package": "com.educarelink.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +43,13 @@
           "icon": "./assets/notification_icon_xhdpi.png",
           "color": "#F26522"
         }
-      ]
-    ]
+      ],
+      "expo-build-properties"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3e841ddf-23c3-42ce-a2e1-8827c06311a2"
+      }
+    }
   }
 }
