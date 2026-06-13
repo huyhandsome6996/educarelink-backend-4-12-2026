@@ -5,8 +5,21 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+import os
 import requests
 from .models import User, Task, TaskApplication, ServiceCategory, Review
+
+
+def build_absolute_uri(request, url):
+    """Tạo URL tuyệt đối, đảm bảo dùng HTTPS trên Render."""
+    if not url:
+        return None
+    abs_url = request.build_absolute_uri(url)
+    # Fix: trên Render, request.build_absolute_uri() sinh ra http:// thay vì https://
+    if os.environ.get('RENDER', '') == 'true':
+        abs_url = abs_url.replace('http://', 'https://', 1)
+    return abs_url
+
 from .serializers import (
     UserSerializer, TaskSerializer, TaskApplicationSerializer, 
     ServiceCategorySerializer, ReviewSerializer
@@ -72,7 +85,14 @@ class RegisterAPIView(generics.CreateAPIView):
         
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user = serializer.save(role=role)
+        
+        # Đặt is_approved theo role (role='read_only' trong serializer nên phải set qua save())
+        if role == 'parent':
+            user.is_approved = True
+        else:
+            user.is_approved = False
+        user.save()
         
         if role == 'worker':
             return Response({
@@ -504,10 +524,10 @@ class AdminPendingWorkersAPIView(APIView):
                 'email': u.email,
                 'phone_number': u.phone_number,
                 'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
-                'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
-                'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
-                'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
-                'certificate_photo': request.build_absolute_uri(u.certificate_photo.url) if u.certificate_photo else None,
+                'id_card_front': build_absolute_uri(request,u.id_card_front.url) if u.id_card_front else None,
+                'id_card_back': build_absolute_uri(request,u.id_card_back.url) if u.id_card_back else None,
+                'selfie_photo': build_absolute_uri(request,u.selfie_photo.url) if u.selfie_photo else None,
+                'certificate_photo': build_absolute_uri(request,u.certificate_photo.url) if u.certificate_photo else None,
                 'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)
@@ -565,10 +585,10 @@ class AdminAllWorkersAPIView(APIView):
                 'phone_number': u.phone_number,
                 'is_approved': u.is_approved,
                 'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
-                'id_card_front': request.build_absolute_uri(u.id_card_front.url) if u.id_card_front else None,
-                'id_card_back': request.build_absolute_uri(u.id_card_back.url) if u.id_card_back else None,
-                'selfie_photo': request.build_absolute_uri(u.selfie_photo.url) if u.selfie_photo else None,
-                'certificate_photo': request.build_absolute_uri(u.certificate_photo.url) if u.certificate_photo else None,
+                'id_card_front': build_absolute_uri(request,u.id_card_front.url) if u.id_card_front else None,
+                'id_card_back': build_absolute_uri(request,u.id_card_back.url) if u.id_card_back else None,
+                'selfie_photo': build_absolute_uri(request,u.selfie_photo.url) if u.selfie_photo else None,
+                'certificate_photo': build_absolute_uri(request,u.certificate_photo.url) if u.certificate_photo else None,
                 'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)

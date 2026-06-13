@@ -20,7 +20,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-for-dev-only
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'educarelink-backend.onrender.com,localhost,127.0.0.1').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -117,7 +117,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'frontend' / 'static',
 ]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -126,8 +126,10 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
-# Trong production, nên đặt CORS_ALLOWED_ORIGINS thay vì allow all:
-# CORS_ALLOWED_ORIGINS = ['https://your-frontend.com']
+CORS_ALLOWED_ORIGINS = [
+    'https://educarelink-backend.onrender.com',
+    'http://localhost:8000',
+]
 
 # --- CẤU HÌNH REST FRAMEWORK & JWT ---
 REST_FRAMEWORK = {
@@ -155,4 +157,34 @@ SIMPLE_JWT = {
 # --- CẤU HÌNH GEMINI AI ---
 # Đặt API key trong file .env: GEMINI_API_KEY=your_key_here
 # Lấy key miễn phí tại: https://aistudio.google.com/app/apikey
+# --- CẤU HÌNH CHO RENDER DEPLOYMENT ---
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://educarelink-backend.onrender.com',
+    'http://localhost:8000',
+]
+
+# --- LOGGING ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
