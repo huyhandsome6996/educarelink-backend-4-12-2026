@@ -481,7 +481,9 @@ async function apiFetch(url, options = {}) {
 }
 
 const token = localStorage.getItem('token');
-const taskId = localStorage.getItem('current_task_id');
+// Lấy task_id từ URL parameter hoặc localStorage
+const urlParams = new URLSearchParams(window.location.search);
+const taskId = urlParams.get('task_id') || localStorage.getItem('current_task_id');
 
 if (!token) window.location.href = LOGIN_URL;
 if (!taskId) window.location.href = "{% url 'frontend:parent_tasks' %}";
