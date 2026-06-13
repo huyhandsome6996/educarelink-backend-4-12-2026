@@ -733,7 +733,7 @@
             submitText.textContent = 'Đang đăng...';
             submitIcon.innerHTML = '<span class="spinner"></span>';
 
-            const scheduled_time = `${date}T${time}:00Z`;
+            const scheduled_time = `${date}T${time}:00`;
 
             try {
                 const resp = await apiFetch(API_BASE + "/tasks/", {
