@@ -537,8 +537,7 @@
         // ==================== LOGOUT ====================
         function handleLogout() {
             if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('refresh_token');
+                localStorage.clear();
                 showToast('Đã đăng xuất thành công', 'success');
                 setTimeout(() => {
                     window.location.href = "{% url 'frontend:login' %}";
