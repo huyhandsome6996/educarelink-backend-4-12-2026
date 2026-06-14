@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
@@ -181,7 +181,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         # Chỉ phụ huynh mới được đăng việc
         if self.request.user.role != 'parent':
-            raise serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
+            raise drf_serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
         serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
 
 
@@ -283,22 +283,22 @@ class ReviewCreateAPIView(generics.CreateAPIView):
             try:
                 task = Task.objects.get(id=task_id)
                 if task.status != 'completed':
-                    raise serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
+                    raise drf_serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
                 if task.parent != self.request.user:
-                    raise serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
+                    raise drf_serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
                 # Kiểm tra đã review chưa
                 if hasattr(task, 'review'):
-                    raise serializers.ValidationError({'task': 'Công việc này đã được đánh giá.'})
+                    raise drf_serializers.ValidationError({'task': 'Công việc này đã được đánh giá.'})
                 # Tự động xác định reviewee là worker được accept
                 accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
                 if accepted_app:
                     serializer.save(reviewer=self.request.user, reviewee=accepted_app.worker)
                 else:
-                    serializer.save(reviewer=self.request.user)
+                    raise drf_serializers.ValidationError({'task': 'Không tìm thấy người thực hiện công việc này.'})
             except Task.DoesNotExist:
-                raise serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
+                raise drf_serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
         else:
-            serializer.save(reviewer=self.request.user)
+            raise drf_serializers.ValidationError({'task': 'Vui lòng chọn công việc cần đánh giá.'})
 
 # --- PHẦN 4: LUỒNG DÀNH CHO SINH VIÊN ---
 class ApplyTaskAPIView(APIView):
@@ -504,6 +504,13 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 # Tạo Task trong database
                 from django.utils.dateparse import parse_datetime
                 scheduled = parse_datetime(task_data['scheduled_time'])
+                if not scheduled:
+                    raise drf_serializers.ValidationError({'scheduled_time': 'Định dạng thời gian không hợp lệ từ AI.'})
+                
+                try:
+                    price_val = int(str(task_data['price']).replace('.', '').replace(',', '').replace('đ', '').replace('Đ', '').replace('VNĐ', '').replace('vnd', '').strip())
+                except (ValueError, TypeError):
+                    raise drf_serializers.ValidationError({'price': 'Định dạng giá không hợp lệ từ AI.'})
 
                 new_task = Task.objects.create(
                     parent=request.user,
@@ -512,7 +519,7 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                     description=task_data['description'],
                     location=task_data['location'],
                     scheduled_time=scheduled,
-                    price=int(task_data['price']),
+                    price=price_val,
                     status='open',
                     ai_generated_from_prompt=user_message,  # Lưu lại câu chat gốc
                 )

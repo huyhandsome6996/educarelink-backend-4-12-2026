@@ -695,8 +695,7 @@
         function handleLogout() {
             showConfirmModal('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?').then(confirmed => {
                 if (confirmed) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('refresh_token');
+                    localStorage.clear();
                     window.location.href = "{% url 'frontend:login' %}";
                 }
             });
