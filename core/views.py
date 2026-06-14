@@ -698,10 +698,18 @@ class AdminAllWorkersAPIView(APIView):
         return Response(data)
 
 class AdminSeedDemoDataAPIView(APIView):
-    """API tạo dữ liệu mẫu cho ban giám khảo — chỉ Admin mới gọi được"""
-    permission_classes = [IsAdminUser]
+    """API tạo dữ liệu mẫu cho ban giám khảo — Admin hoặc secret key"""
+    permission_classes = [AllowAny]
 
     def post(self, request):
+        # Cho phép: (1) Admin đã đăng nhập, HOẶC (2) gửi secret key, HOẶC (3) database chưa có user nào
+        is_admin = request.user and request.user.is_authenticated and request.user.is_staff
+        secret_key = request.data.get('secret_key', '')
+        db_empty = User.objects.count() == 0
+
+        if not is_admin and secret_key != 'EduCareLink2026Seed' and not db_empty:
+            return Response({'error': 'Không có quyền truy cập. Cần đăng nhập Admin hoặc cung cấp secret_key.'}, status=403)
+
         from django.core.management import call_command
         from io import StringIO
         out = StringIO()
