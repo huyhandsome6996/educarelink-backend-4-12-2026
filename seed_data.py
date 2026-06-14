@@ -648,6 +648,24 @@ print(f"  6. Carepartner ung tuyen -> Dang nhap carepartner_*")
 print(f"  7. AI Chatbot        -> Dung tu bat ky trang nao")
 print(f"  8. Xem danh gia      -> Vao cong viec da hoan thanh")
 
+# ===== RESET MẬT KHẨU CHO TẤT CẢ TÀI KHOẢN DEMO =====
+print(f"\n[BONUS] Dang dong bo mat khau cho tat ca tai khoan demo...")
+demo_usernames = [
+    "admin", "phuhuynh_test", "phuhuynh_lan", "phuhuynh_minh", "phuhuynh_hoa",
+    "sinhvien_test", "carepartner_anh", "carepartner_linh", "carepartner_duc",
+    "carepartner_mai", "locked_vipham",
+]
+reset_count = 0
+for uname in demo_usernames:
+    try:
+        user = User.objects.get(username=uname)
+        user.set_password(TEST_PASSWORD)
+        user.save()
+        reset_count += 1
+    except User.DoesNotExist:
+        pass
+print(f"   -> Da dat lai mat khau cho {reset_count} tai khoan -> {TEST_PASSWORD}")
+
 print(f"\nKhoi dong backend  : python manage.py runserver 0.0.0.0:8000")
 print(f"Admin dashboard    : http://127.0.0.1:8000/admin-dashboard/")
 print(f"Trang chu          : http://127.0.0.1:8000/")
