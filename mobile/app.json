@@ -11,6 +11,14 @@
       "backgroundColor": "#F26522",
       "resizeMode": "contain"
     },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.educarelink.app"
@@ -21,6 +29,7 @@
         "backgroundColor": "#F26522"
       },
       "package": "com.educarelink.app",
+      "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]
@@ -37,14 +46,18 @@
           "cameraPermission": "EduCareLink cần camera để chụp ảnh CCCD và chân dung."
         }
       ],
+      "expo-notifications",
       [
-        "expo-notifications",
+        "expo-build-properties",
         {
-          "icon": "./assets/notification_icon_xhdpi.png",
-          "color": "#F26522"
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "35.0.0"
+          }
         }
-      ],
-      "expo-build-properties"
+      ]
     ],
     "extra": {
       "eas": {
