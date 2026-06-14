@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>EduCareLink - Hướng dẫn sử dụng</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
+                        secondary: '#2DB84B',
+                        secondaryDark: '#1E9439',
+                        secondaryLight: '#EAFBEF',
+                        background: '#F7F7F7',
+                        surface: '#FFFFFF',
+                        surfaceAlt: '#FFF9F5',
+                        textPrimary: '#1A1A2E',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        success: '#10B981',
+                        info: '#3B82F6',
+                        border: '#F0F0F0',
+                        divider: '#E5E7EB',
+                    },
+                    fontFamily: {
+                        headline: ['Manrope', 'sans-serif'],
+                        body: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(60px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-60px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+        .animate-fade-in { animation: fadeIn 0.5s ease forwards; }
+        .animate-scale-in { animation: scaleIn 0.5s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+        .animate-slide-right { animation: slideInRight 0.5s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+        .animate-slide-left { animation: slideInLeft 0.5s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+
+        .step-content { display: none; }
+        .step-content.active { display: flex; }
+
+        .progress-bar-fill {
+            transition: width 0.5s cubic-bezier(0.21, 1.02, 0.73, 1);
+        }
+
+        .step-dot {
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background: #F26522;
+            transform: scale(1.3);
+            box-shadow: 0 0 0 4px rgba(242, 101, 34, 0.2);
+        }
+        .step-dot.completed {
+            background: #10B981;
+        }
+
+        .feature-card {
+            transition: all 0.25s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(242, 101, 34, 0.12);
+        }
+
+        .glow-circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .illustration-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .illustration-container {
+                width: 200px;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center p-4">
+
+    <!-- Background decorations -->
+    <div class="glow-circle bg-primary" style="width: 400px; height: 400px; top: -100px; right: -100px;"></div>
+    <div class="glow-circle bg-secondary" style="width: 300px; height: 300px; bottom: -80px; left: -80px;"></div>
+
+    <!-- Main Onboarding Container -->
+    <div class="w-full max-w-2xl mx-auto">
+        <!-- Logo + Header -->
+        <div class="text-center mb-6 animate-fade-in-up">
+            <img src="/static/images/logo.png" alt="EduCareLink" class="h-16 w-16 rounded-2xl object-contain mx-auto mb-3 shadow-lg ring-2 ring-primary/20">
+            <h1 class="text-2xl md:text-3xl font-headline font-bold text-textPrimary">Chào mừng đến EduCareLink!</h1>
+            <p class="text-textSecondary mt-1 text-sm md:text-base">Hướng dẫn sử dụng cho Phụ huynh</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-8 animate-fade-in-up" style="animation-delay: 0.1s;">
+            <div class="flex items-center justify-center gap-2 mb-3">
+                <div class="step-dot active w-3 h-3 rounded-full bg-gray-300" data-step="0"></div>
+                <div class="w-8 h-0.5 bg-gray-200 rounded-full step-line" data-line="0"></div>
+                <div class="step-dot w-3 h-3 rounded-full bg-gray-300" data-step="1"></div>
+                <div class="w-8 h-0.5 bg-gray-200 rounded-full step-line" data-line="1"></div>
+                <div class="step-dot w-3 h-3 rounded-full bg-gray-300" data-step="2"></div>
+                <div class="w-8 h-0.5 bg-gray-200 rounded-full step-line" data-line="2"></div>
+                <div class="step-dot w-3 h-3 rounded-full bg-gray-300" data-step="3"></div>
+                <div class="w-8 h-0.5 bg-gray-200 rounded-full step-line" data-line="3"></div>
+                <div class="step-dot w-3 h-3 rounded-full bg-gray-300" data-step="4"></div>
+                <div class="w-8 h-0.5 bg-gray-200 rounded-full step-line" data-line="4"></div>
+                <div class="step-dot w-3 h-3 rounded-full bg-gray-300" data-step="5"></div>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div class="progress-bar-fill bg-primary h-full rounded-full" style="width: 16.6%"></div>
+            </div>
+            <p class="text-center text-xs text-textMuted mt-2">Bước <span id="currentStep">1</span>/6</p>
+        </div>
+
+        <!-- Card Container -->
+        <div class="bg-surface rounded-3xl shadow-xl border border-border overflow-hidden">
+            <!-- Step 1: Welcome -->
+            <div class="step-content active flex-col items-center p-6 md:p-10" data-step="0">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-primaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-primarySoft/30"></div>
+                        <span class="material-symbols-outlined filled text-primary" style="font-size: 100px;">waving_hand</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">Xin chào Phụ huynh!</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed">
+                    EduCareLink là nền tảng kết nối phụ huynh với các carepartner (sinh viên) đáng tin cậy để chăm sóc và hỗ trợ học tập cho con em bạn. 
+                    Hãy cùng khám phá cách sử dụng nền tảng chỉ trong vài bước đơn giản!
+                </p>
+            </div>
+
+            <!-- Step 2: Create Task -->
+            <div class="step-content flex-col items-center p-6 md:p-10" data-step="1">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-primaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-primarySoft/30"></div>
+                        <span class="material-symbols-outlined filled text-primary" style="font-size: 100px;">add_circle</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">1. Đăng công việc</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed mb-5">
+                    Bạn cần tìm người giúp việc cho con? Hãy nhấn nút <strong class="text-primary">"+ Tạo việc mới"</strong> trên trang chủ. 
+                    Chọn danh mục dịch vụ (gia sư, trông trẻ, nấu ăn...), điền thông tin chi tiết, thời gian và mức lương. 
+                    AI Chatbot cũng có thể giúp bạn tạo việc nhanh chóng chỉ bằng cách chat!
+                </p>
+                <div class="flex flex-wrap gap-2 justify-center">
+                    <span class="px-3 py-1.5 bg-primaryLight text-primary text-xs font-semibold rounded-full">Gia sư</span>
+                    <span class="px-3 py-1.5 bg-primaryLight text-primary text-xs font-semibold rounded-full">Trông trẻ</span>
+                    <span class="px-3 py-1.5 bg-primaryLight text-primary text-xs font-semibold rounded-full">Nấu ăn</span>
+                    <span class="px-3 py-1.5 bg-primaryLight text-primary text-xs font-semibold rounded-full">Dọn dẹp</span>
+                    <span class="px-3 py-1.5 bg-primaryLight text-primary text-xs font-semibold rounded-full">Đón trẻ</span>
+                </div>
+            </div>
+
+            <!-- Step 3: Browse Candidates -->
+            <div class="step-content flex-col items-center p-6 md:p-10" data-step="2">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-primaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-primarySoft/30"></div>
+                        <span class="material-symbols-outlined filled text-primary" style="font-size: 100px;">group</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">2. Xem ứng viên</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed mb-5">
+                    Khi carepartner ứng tuyển vào công việc của bạn, bạn sẽ thấy danh sách ứng viên trong mục 
+                    <strong class="text-primary">"Xem ứng viên"</strong>. Bạn có thể xem hồ sơ, bằng cấp và đánh giá 
+                    từ các phụ huynh khác trước khi quyết định chọn người phù hợp nhất cho con mình.
+                </p>
+                <div class="bg-surfaceAlt rounded-2xl p-4 w-full max-w-sm">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 bg-secondary/20 rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-secondary" style="font-size: 20px;">person</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">Nguyễn Văn A</p>
+                            <p class="text-xs text-textMuted">Gia sư Toán - 4.8 sao</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-secondary/20 rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-secondary" style="font-size: 20px;">person</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">Trần Thị B</p>
+                            <p class="text-xs text-textMuted">Trông trẻ - 4.5 sao</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Approve & Track -->
+            <div class="step-content flex-col items-center p-6 md:p-10" data-step="3">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-primaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-primarySoft/30"></div>
+                        <span class="material-symbols-outlined filled text-primary" style="font-size: 100px;">task_alt</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">3. Chọn & Theo dõi</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed mb-5">
+                    Chọn ứng viên phù hợp bằng nút <strong class="text-primary">"Chọn"</strong>. Sau đó, công việc sẽ chuyển sang trạng thái 
+                    <strong>"Đang thực hiện"</strong>. Bạn có thể theo dõi tiến độ trong mục <strong class="text-primary">"Việc của tôi"</strong> 
+                    và cập nhật trạng thái khi hoàn thành.
+                </p>
+                <div class="flex gap-3 justify-center">
+                    <div class="bg-success/10 text-success px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+                        Đang thực hiện
+                    </div>
+                    <div class="bg-primary/10 text-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">verified</span>
+                        Hoàn thành
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Review -->
+            <div class="step-content flex-col items-center p-6 md:p-10" data-step="4">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-primaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-primarySoft/30"></div>
+                        <span class="material-symbols-outlined filled text-primary" style="font-size: 100px;">star_rate</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">4. Đánh giá & AI Chatbot</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed mb-5">
+                    Sau khi hoàn thành, hãy <strong class="text-primary">đánh giá carepartner</strong> để giúp cộng đồng tham khảo. 
+                    Ngoài ra, <strong class="text-primary">AI Chatbot</strong> luôn sẵn sàng hỗ trợ bạn tạo công việc, giải đáp thắc mắc 
+                    và đưa ra gợi ý phù hợp chỉ bằng cách chat tự nhiên!
+                </p>
+                <div class="bg-surfaceAlt rounded-2xl p-4 w-full max-w-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined filled text-warning" style="font-size: 20px;">star</span>
+                        <span class="material-symbols-outlined filled text-warning" style="font-size: 20px;">star</span>
+                        <span class="material-symbols-outlined filled text-warning" style="font-size: 20px;">star</span>
+                        <span class="material-symbols-outlined filled text-warning" style="font-size: 20px;">star</span>
+                        <span class="material-symbols-outlined filled text-warning" style="font-size: 20px;">star</span>
+                        <span class="text-sm font-semibold text-textPrimary ml-1">5.0</span>
+                    </div>
+                    <p class="text-xs text-textSecondary">"Rất tận tâm và chuyên nghiệp!"</p>
+                </div>
+            </div>
+
+            <!-- Step 6: Quick Summary -->
+            <div class="step-content flex-col items-center p-6 md:p-10" data-step="5">
+                <div class="illustration-container mb-6">
+                    <div class="w-full h-full bg-secondaryLight rounded-full flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-secondary/10 to-green-100/30"></div>
+                        <span class="material-symbols-outlined filled text-secondary" style="font-size: 100px;">celebration</span>
+                    </div>
+                </div>
+                <h2 class="text-xl md:text-2xl font-headline font-bold text-textPrimary mb-3 text-center">Bạn đã sẵn sàng!</h2>
+                <p class="text-textSecondary text-center max-w-md leading-relaxed mb-5">
+                    Đây là tóm tắt nhanh các tính năng chính dành cho Phụ huynh:
+                </p>
+                <div class="grid grid-cols-1 gap-3 w-full max-w-sm">
+                    <div class="feature-card flex items-center gap-3 bg-surfaceAlt p-3 rounded-xl">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-primary" style="font-size: 22px;">add_circle</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">Tạo việc mới</p>
+                            <p class="text-xs text-textMuted">Đăng yêu cầu tìm carepartner</p>
+                        </div>
+                    </div>
+                    <div class="feature-card flex items-center gap-3 bg-surfaceAlt p-3 rounded-xl">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-primary" style="font-size: 22px;">group</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">Xem ứng viên</p>
+                            <p class="text-xs text-textMuted">Chọn người phù hợp nhất</p>
+                        </div>
+                    </div>
+                    <div class="feature-card flex items-center gap-3 bg-surfaceAlt p-3 rounded-xl">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-primary" style="font-size: 22px;">star_rate</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">Đánh giá</p>
+                            <p class="text-xs text-textMuted">Đánh giá sau khi hoàn thành</p>
+                        </div>
+                    </div>
+                    <div class="feature-card flex items-center gap-3 bg-surfaceAlt p-3 rounded-xl">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-primary" style="font-size: 22px;">smart_toy</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-textPrimary">AI Chatbot</p>
+                            <p class="text-xs text-textMuted">Hỗ trợ tạo việc nhanh chóng</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex items-center justify-between p-4 md:p-6 border-t border-border bg-surfaceAlt/50">
+                <button id="btnPrev" class="flex items-center gap-1.5 px-4 py-2.5 text-textSecondary hover:text-textPrimary hover:bg-gray-100 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed" disabled>
+                    <span class="material-symbols-outlined" style="font-size: 20px;">arrow_back</span>
+                    <span class="text-sm font-semibold">Quay lại</span>
+                </button>
+                <button id="btnSkip" class="px-4 py-2.5 text-textMuted hover:text-textSecondary text-sm font-medium hover:bg-gray-100 rounded-xl transition-all duration-200">
+                    Bỏ qua
+                </button>
+                <button id="btnNext" class="flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-95">
+                    <span class="text-sm font-semibold" id="btnNextText">Tiếp theo</span>
+                    <span class="material-symbols-outlined" style="font-size: 20px;" id="btnNextIcon">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer hint -->
+        <p class="text-center text-xs text-textMuted mt-4">
+            Bạn có thể xem lại hướng dẫn bất cứ lúc nào từ menu trang chủ
+        </p>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 6;
+        const stepContents = document.querySelectorAll('.step-content');
+        const stepDots = document.querySelectorAll('.step-dot');
+        const stepLines = document.querySelectorAll('.step-line');
+        const progressBar = document.querySelector('.progress-bar-fill');
+        const currentStepLabel = document.getElementById('currentStep');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const btnSkip = document.getElementById('btnSkip');
+        const btnNextText = document.getElementById('btnNextText');
+        const btnNextIcon = document.getElementById('btnNextIcon');
+
+        function goToStep(step) {
+            if (step < 0 || step >= totalSteps) return;
+
+            // Hide current
+            stepContents[currentStep].classList.remove('active');
+            
+            // Show new
+            currentStep = step;
+            stepContents[currentStep].classList.add('active');
+
+            // Update progress
+            const progress = ((currentStep + 1) / totalSteps) * 100;
+            progressBar.style.width = progress + '%';
+            currentStepLabel.textContent = currentStep + 1;
+
+            // Update dots
+            stepDots.forEach((dot, i) => {
+                dot.classList.remove('active', 'completed');
+                if (i < currentStep) dot.classList.add('completed');
+                if (i === currentStep) dot.classList.add('active');
+            });
+
+            // Update lines
+            stepLines.forEach((line, i) => {
+                if (i < currentStep) {
+                    line.style.background = '#10B981';
+                } else {
+                    line.style.background = '#E5E7EB';
+                }
+            });
+
+            // Update buttons
+            btnPrev.disabled = currentStep === 0;
+            
+            if (currentStep === totalSteps - 1) {
+                btnNextText.textContent = 'Bắt đầu!';
+                btnNextIcon.textContent = 'rocket_launch';
+                btnNext.classList.remove('bg-primary', 'hover:bg-primaryDark');
+                btnNext.classList.add('bg-secondary', 'hover:bg-secondaryDark');
+            } else {
+                btnNextText.textContent = 'Tiếp theo';
+                btnNextIcon.textContent = 'arrow_forward';
+                btnNext.classList.remove('bg-secondary', 'hover:bg-secondaryDark');
+                btnNext.classList.add('bg-primary', 'hover:bg-primaryDark');
+            }
+
+            // Add animation
+            stepContents[currentStep].style.opacity = '0';
+            requestAnimationFrame(() => {
+                stepContents[currentStep].style.opacity = '1';
+                stepContents[currentStep].classList.add('animate-fade-in-up');
+                setTimeout(() => stepContents[currentStep].classList.remove('animate-fade-in-up'), 600);
+            });
+        }
+
+        btnNext.addEventListener('click', () => {
+            if (currentStep === totalSteps - 1) {
+                completeOnboarding();
+            } else {
+                goToStep(currentStep + 1);
+            }
+        });
+
+        btnPrev.addEventListener('click', () => goToStep(currentStep - 1));
+        btnSkip.addEventListener('click', () => completeOnboarding());
+
+        async function completeOnboarding() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login/';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/onboarding/complete/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                if (response.ok) {
+                    // Redirect to parent home
+                    window.location.href = '/parent/';
+                } else {
+                    // Still redirect even if API fails
+                    window.location.href = '/parent/';
+                }
+            } catch (error) {
+                console.error('Onboarding complete error:', error);
+                window.location.href = '/parent/';
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'Enter') {
+                if (currentStep < totalSteps - 1) goToStep(currentStep + 1);
+                else completeOnboarding();
+            } else if (e.key === 'ArrowLeft') {
+                goToStep(currentStep - 1);
+            }
+        });
+    </script>
+</body>
+</html>

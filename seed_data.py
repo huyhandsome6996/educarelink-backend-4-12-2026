@@ -660,6 +660,7 @@ for uname in demo_usernames:
     try:
         user = User.objects.get(username=uname)
         user.set_password(TEST_PASSWORD)
+        user.first_login = False  # Tài khoản demo không cần xem hướng dẫn
         user.save()
         reset_count += 1
     except User.DoesNotExist:

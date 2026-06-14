@@ -12,7 +12,8 @@ class UserSerializer(serializers.ModelSerializer):
             'email', 'password', 'role', 'phone_number',
             'address', 'is_verified', 'is_approved', 'ai_profile_summary',
             'id_card_front', 'id_card_back', 'selfie_photo',
-            'certificate_photo', 'qualifications', 'expo_push_token'
+            'certificate_photo', 'qualifications', 'expo_push_token',
+            'first_login'
         ]
         extra_kwargs = {
             'password': {'write_only': True},
