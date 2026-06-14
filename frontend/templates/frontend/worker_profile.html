@@ -197,6 +197,12 @@
                         Hồ sơ
                     </a>
                 </li>
+                <li>
+                    <a href="{% url 'frontend:worker_chatbot' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">smart_toy</span>
+                        AI Trợ lý
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -446,8 +452,18 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </button>
+                    <!-- Profile Change Requests -->
+                    <button id="btn-change-requests" onclick="openChangeRequestsModal()" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-purple-500 text-lg">pending_actions</span>
+                            </div>
+                            <span class="font-semibold text-sm text-textPrimary">Yêu cầu thay đổi hồ sơ</span>
+                        </div>
+                        <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
+                    </button>
                     <!-- Help Center -->
-                    <button onclick="showToast('Trung tâm trợ giúp sắp ra mắt!', 'info')" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                    <button onclick="openHelpCenterModal()" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
                                 <span class="material-symbols-outlined text-blue-500 text-lg">help_center</span>
@@ -519,6 +535,11 @@
                     <span class="material-symbols-outlined text-textSecondary">close</span>
                 </button>
             </div>
+            <!-- Admin approval notice -->
+            <div class="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-amber-500 text-lg mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span>
+                <p class="text-xs text-amber-700 leading-relaxed">Lưu ý: Thay đổi thông tin cá nhân sẽ được gửi đến Admin để xem xét và duyệt. Bạn sẽ nhận được thông báo khi Admin đưa ra quyết định.</p>
+            </div>
             <div class="px-6 py-5 space-y-5">
                 <div>
                     <label class="block text-sm font-semibold text-textPrimary mb-1.5">Họ</label>
@@ -559,7 +580,7 @@
             </div>
             <div class="sticky bottom-0 bg-white rounded-b-2xl px-6 py-4 border-t border-gray-100 flex gap-3">
                 <button onclick="closeEditProfileModal()" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all">Hủy</button>
-                <button onclick="saveProfileAndCredential()" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all">Lưu thay đổi</button>
+                <button onclick="saveProfileAndCredential()" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all">Gửi yêu cầu thay đổi</button>
             </div>
         </div>
     </div>
@@ -578,6 +599,83 @@
                 <div class="flex items-center justify-center py-8 text-textSecondary">
                     <span class="material-symbols-outlined mr-2">description</span>
                     Chưa gửi bằng cấp nào
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HELP CENTER MODAL (AI Chat) ========== -->
+    <div id="help-center-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeHelpCenterModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg h-[85vh] flex flex-col modal-content-enter">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-blue-500 text-lg" style="font-variation-settings: 'FILL' 1;">help_center</span>
+                    </div>
+                    <div>
+                        <h3 class="font-manrope font-bold text-base text-textPrimary">Trung tâm trợ giúp</h3>
+                        <p class="text-[11px] text-textSecondary">Hỏi AI về cách sử dụng EduCareLink</p>
+                    </div>
+                </div>
+                <button onclick="closeHelpCenterModal()" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary">close</span>
+                </button>
+            </div>
+            <!-- Chat messages -->
+            <div id="help-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+                <!-- Welcome message -->
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-blue-500 text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+                    </div>
+                    <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] border border-gray-100 shadow-sm">
+                        <p class="text-sm text-textPrimary leading-relaxed">Xin chào! Tôi là trợ lý AI của EduCareLink. Tôi có thể giúp bạn:</p>
+                        <ul class="text-sm text-textSecondary mt-2 space-y-1.5">
+                            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">•</span> Hướng dẫn sử dụng nền tảng</li>
+                            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">•</span> Giải đáp thắc mắc về tài khoản</li>
+                            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">•</span> Tư vấn cách ứng tuyển hiệu quả</li>
+                            <li class="flex items-start gap-2"><span class="text-primary mt-0.5">•</span> Hỗ trợ quy trình gửi bằng cấp</li>
+                        </ul>
+                        <p class="text-sm text-textPrimary mt-2">Hãy đặt câu hỏi cho tôi nhé!</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Quick questions -->
+            <div id="help-quick-questions" class="px-4 py-2 border-t border-gray-100 bg-white flex-shrink-0">
+                <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <button onclick="sendHelpQuickQuestion('Cách ứng tuyển việc?')" class="whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-all">Cách ứng tuyển?</button>
+                    <button onclick="sendHelpQuickQuestion('Làm sao để gửi bằng cấp?')" class="whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-all">Gửi bằng cấp?</button>
+                    <button onclick="sendHelpQuickQuestion('Cách chỉnh sửa hồ sơ?')" class="whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-all">Chỉnh sửa hồ sơ?</button>
+                    <button onclick="sendHelpQuickQuestion('Tại sao tài khoản chưa được duyệt?')" class="whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-all">Chưa được duyệt?</button>
+                </div>
+            </div>
+            <!-- Input area -->
+            <div class="px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0">
+                <div class="flex items-end gap-2">
+                    <textarea id="help-chat-input" rows="1" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none max-h-24" placeholder="Nhập câu hỏi của bạn..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHelpMessage();}"></textarea>
+                    <button onclick="sendHelpMessage()" id="help-send-btn" class="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-all flex-shrink-0">
+                        <span class="material-symbols-outlined text-lg">send</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PROFILE CHANGE REQUESTS MODAL ========== -->
+    <div id="change-requests-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeChangeRequestsModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div class="sticky top-0 bg-white rounded-t-2xl px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
+                <h3 class="font-manrope font-bold text-lg text-textPrimary">Yêu cầu thay đổi hồ sơ</h3>
+                <button onclick="closeChangeRequestsModal()" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary">close</span>
+                </button>
+            </div>
+            <div id="change-requests-list" class="p-5 space-y-4">
+                <div class="flex items-center justify-center py-8 text-textSecondary">
+                    <span class="material-symbols-outlined mr-2">pending_actions</span>
+                    Chưa có yêu cầu nào
                 </div>
             </div>
         </div>
@@ -810,9 +908,9 @@
                         is_approved: workerData.is_verified,
                         is_verified: workerData.is_verified,
                         ai_profile_summary: workerData.ai_profile_summary,
-                        phone_number: '',
-                        address: '',
-                        email: '',
+                        phone_number: workerData.phone_number || '',
+                        address: workerData.address || '',
+                        email: workerData.email || '',
                     };
                     
                     renderProfile(profile, [], workerData, true);
@@ -847,11 +945,13 @@
                 // Ẩn các nút chỉnh sửa, logout, credentials — chỉ hiển thị khi là hồ sơ của mình
                 const editBtn = document.getElementById('btn-edit-profile');
                 const credBtn = document.getElementById('btn-my-credentials');
+                const changeReqBtn = document.getElementById('btn-change-requests');
                 const helpBtn = editBtn?.parentElement?.querySelector('[onclick*="Trung tâm trợ giúp"]')?.closest('button');
                 const logoutBtn = document.querySelector('[onclick="handleLogout()"]');
                 const notifBell = document.getElementById('notification-bell-area');
                 if (editBtn) editBtn.style.display = 'none';
                 if (credBtn) credBtn.style.display = 'none';
+                if (changeReqBtn) changeReqBtn.style.display = 'none';
                 if (logoutBtn) logoutBtn.style.display = 'none';
                 if (notifBell) notifBell.style.display = 'none';
             }
@@ -1031,7 +1131,7 @@
         }
 
         async function saveProfileAndCredential() {
-            // 1) Cập nhật thông tin cá nhân
+            // 1) Gửi yêu cầu thay đổi hồ sơ (thay vì cập nhật trực tiếp)
             const patchData = {
                 first_name: document.getElementById('edit-first-name').value.trim(),
                 last_name: document.getElementById('edit-last-name').value.trim(),
@@ -1041,19 +1141,24 @@
             };
             
             try {
-                const resp = await apiFetch(API_BASE + '/profile/', {
-                    method: 'PATCH',
+                const resp = await apiFetch(API_BASE + '/worker/profile-change-request/', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(patchData)
                 });
                 if (resp && resp.ok) {
-                    showToast('Cập nhật hồ sơ thành công!', 'success');
+                    const result = await resp.json();
+                    showToast(result.message || 'Đã gửi yêu cầu thay đổi hồ sơ!', 'success');
                 } else {
                     const err = await resp.json().catch(() => ({}));
-                    showToast('Lỗi cập nhật: ' + (err.detail || JSON.stringify(err)), 'error');
+                    if (err.error) {
+                        showToast(err.error, 'warning');
+                    } else {
+                        showToast('Lỗi gửi yêu cầu: ' + (err.detail || JSON.stringify(err)), 'error');
+                    }
                 }
             } catch (e) {
-                showToast('Lỗi kết nối khi cập nhật hồ sơ.', 'error');
+                showToast('Lỗi kết nối khi gửi yêu cầu thay đổi.', 'error');
             }
 
             // 2) Gửi bằng cấp nếu có ảnh hoặc mô tả
@@ -1139,9 +1244,202 @@
         }
 
         init();
-    </script>
 
-    <!-- Mobile App-like Transition -->
+        // ===== HELP CENTER (AI CHAT) =====
+        let helpChatHistory = [];
+
+        function openHelpCenterModal() {
+            const modal = document.getElementById('help-center-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            helpChatHistory = [];
+        }
+
+        function closeHelpCenterModal() {
+            const modal = document.getElementById('help-center-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function sendHelpQuickQuestion(question) {
+            document.getElementById('help-chat-input').value = question;
+            sendHelpMessage();
+        }
+
+        async function sendHelpMessage() {
+            const input = document.getElementById('help-chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            input.value = '';
+            const chatMessages = document.getElementById('help-chat-messages');
+            
+            // Add user message
+            chatMessages.innerHTML += `
+                <div class="flex items-start gap-3 justify-end">
+                    <div class="bg-primary text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%]">
+                        <p class="text-sm leading-relaxed">${escapeHtml(message)}</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-lg bg-primaryLight flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">person</span>
+                    </div>
+                </div>`;
+            
+            // Add loading indicator
+            const loadingId = 'help-loading-' + Date.now();
+            chatMessages.innerHTML += `
+                <div id="${loadingId}" class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-blue-500 text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+                    </div>
+                    <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 border border-gray-100 shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                            <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                            <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                        </div>
+                    </div>
+                </div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const resp = await apiFetch(API_BASE + '/help-center/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, history: helpChatHistory })
+                });
+
+                // Remove loading
+                const loadingEl = document.getElementById(loadingId);
+                if (loadingEl) loadingEl.remove();
+
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    const aiResponse = data.response || 'Xin lỗi, tôi không thể trả lời lúc này.';
+                    
+                    // Add to history
+                    helpChatHistory.push({ role: 'user', text: message });
+                    helpChatHistory.push({ role: 'model', text: aiResponse });
+                    
+                    // Render AI response with markdown-like formatting
+                    const formattedResponse = formatAIResponse(aiResponse);
+                    chatMessages.innerHTML += `
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-blue-500 text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+                            </div>
+                            <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] border border-gray-100 shadow-sm">
+                                <div class="text-sm text-textPrimary leading-relaxed">${formattedResponse}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    chatMessages.innerHTML += `
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-error text-sm" style="font-variation-settings: 'FILL' 1;">error</span>
+                            </div>
+                            <div class="bg-red-50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] border border-red-100">
+                                <p class="text-sm text-error">Lỗi kết nối AI. Vui lòng thử lại.</p>
+                            </div>
+                        </div>`;
+                }
+            } catch (e) {
+                const loadingEl = document.getElementById(loadingId);
+                if (loadingEl) loadingEl.remove();
+                chatMessages.innerHTML += `
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-error text-sm" style="font-variation-settings: 'FILL' 1;">error</span>
+                        </div>
+                        <div class="bg-red-50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] border border-red-100">
+                            <p class="text-sm text-error">Lỗi kết nối. Vui lòng thử lại sau.</p>
+                        </div>
+                    </div>`;
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function formatAIResponse(text) {
+            // Simple markdown-like formatting
+            let formatted = escapeHtml(text);
+            // Bold: **text**
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Line breaks
+            formatted = formatted.replace(/\n/g, '<br>');
+            // Lists: - item
+            formatted = formatted.replace(/^- (.+)$/gm, '<span class="flex items-start gap-1.5"><span class="text-primary mt-0.5">•</span><span>$1</span></span>');
+            return formatted;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== PROFILE CHANGE REQUESTS =====
+        function openChangeRequestsModal() {
+            const modal = document.getElementById('change-requests-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            loadChangeRequests();
+        }
+
+        function closeChangeRequestsModal() {
+            const modal = document.getElementById('change-requests-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function loadChangeRequests() {
+            const list = document.getElementById('change-requests-list');
+            list.innerHTML = '<div class="flex items-center justify-center py-8"><div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>';
+            
+            try {
+                const resp = await apiFetch(API_BASE + '/worker/profile-change-request/');
+                if (resp && resp.ok) {
+                    const requests = await resp.json();
+                    if (requests.length === 0) {
+                        list.innerHTML = '<div class="flex items-center justify-center py-8 text-textSecondary"><span class="material-symbols-outlined mr-2">pending_actions</span>Chưa có yêu cầu nào</div>';
+                        return;
+                    }
+                    const fieldLabels = {
+                        'first_name': 'Họ',
+                        'last_name': 'Tên',
+                        'phone_number': 'Số điện thoại',
+                        'address': 'Địa chỉ',
+                        'email': 'Email'
+                    };
+                    list.innerHTML = requests.map(r => {
+                        let statusColor, statusBg, statusIcon;
+                        if (r.status === 'approved') { statusColor = 'text-success'; statusBg = 'bg-emerald-50'; statusIcon = 'check_circle'; }
+                        else if (r.status === 'rejected') { statusColor = 'text-error'; statusBg = 'bg-red-50'; statusIcon = 'cancel'; }
+                        else { statusColor = 'text-amber-500'; statusBg = 'bg-amber-50'; statusIcon = 'schedule'; }
+                        
+                        const changesHtml = Object.entries(r.proposed_changes).map(([field, value]) => {
+                            const label = fieldLabels[field] || field;
+                            return `<div class="flex items-center gap-2 text-sm"><span class="text-textSecondary">${label}:</span><span class="font-semibold text-textPrimary">${escapeHtml(String(value))}</span></div>`;
+                        }).join('');
+                        
+                        return `
+                        <div class="p-4 rounded-xl ${statusBg} border border-gray-100">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="inline-flex items-center gap-1.5 ${statusColor} text-xs font-bold">
+                                    <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">${statusIcon}</span>
+                                    ${r.status_display}
+                                </span>
+                                <span class="text-[10px] text-textMuted">${r.created_at}</span>
+                            </div>
+                            <div class="space-y-1.5 mb-2">${changesHtml}</div>
+                            ${r.admin_review ? `<div class="mt-2 p-2 bg-white rounded-lg border border-gray-100"><p class="text-xs text-textSecondary font-medium">Phản hồi từ Admin:</p><p class="text-sm text-textPrimary mt-1">${escapeHtml(r.admin_review)}</p></div>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                list.innerHTML = '<div class="text-center py-8 text-error text-sm">Lỗi tải yêu cầu</div>';
+            }
+        }
+    </script>
     <style>
         @media (max-width: 767px) {
             body {

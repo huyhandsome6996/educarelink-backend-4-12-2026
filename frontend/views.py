@@ -52,3 +52,9 @@ class ParentOnboardingView(TemplateView):
 
 class WorkerOnboardingView(TemplateView):
     template_name = "frontend/onboarding_worker.html"
+
+class WorkerChatbotView(TemplateView):
+    template_name = "frontend/worker_chatbot.html"
+
+class HelpCenterView(TemplateView):
+    template_name = "frontend/help_center.html"

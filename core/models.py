@@ -138,7 +138,29 @@ class CredentialSubmission(models.Model):
         return f"{self.worker.username} - {self.get_status_display()} - {self.created_at.strftime('%d/%m/%Y')}"
 
 
-# 7. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
+# 7. BẢNG YÊU CẦU THAY ĐỔI HỒ SƠ (Carepartner yêu cầu sửa thông tin, Admin duyệt)
+class ProfileChangeRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Chờ duyệt'),
+        ('approved', 'Đã duyệt'),
+        ('rejected', 'Bị từ chối'),
+    )
+    worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_change_requests')
+    # Dữ liệu thay đổi (lưu dưới dạng JSON: field -> giá trị mới)
+    proposed_changes = models.JSONField(help_text="Dữ liệu thay đổi yêu cầu, ví dụ: {'first_name': 'Minh', 'phone_number': '0987654321'}")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_review = models.TextField(blank=True, null=True, help_text="Admin ghi chú lý do duyệt/từ chối")
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.worker.username} - Yêu cầu thay đổi hồ sơ - {self.get_status_display()}"
+
+
+# 8. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True, help_text="Null = gửi cho tất cả Carepartner")
     title = models.CharField(max_length=255)
