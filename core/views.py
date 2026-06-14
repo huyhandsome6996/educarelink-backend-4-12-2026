@@ -1000,25 +1000,32 @@ class UserNotificationsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        user = request.user
         # Lấy thông báo cá nhân + thông báo chung (recipient=null)
         notifications = Notification.objects.filter(
-            db_models.Q(recipient=request.user) | db_models.Q(recipient=None)
+            db_models.Q(recipient=user) | db_models.Q(recipient=None)
         ).order_by('-created_at')
 
         data = []
         for n in notifications:
+            if n.recipient_id is not None:
+                # Thông báo cá nhân: dùng is_read
+                is_read = n.is_read
+            else:
+                # Thông báo chung: kiểm tra user ID trong read_by
+                read_by = n.read_by if isinstance(n.read_by, list) else []
+                is_read = user.id in read_by
+
             data.append({
                 'id': n.id,
                 'title': n.title,
                 'message': n.message,
-                'is_read': n.is_read if n.recipient else True,  # Broadcast luôn đọc nếu đã xem
+                'is_read': is_read,
                 'is_broadcast': n.recipient is None,
                 'created_at': n.created_at.strftime('%d/%m/%Y %H:%M'),
             })
 
-        # Đánh dấu đã đọc cho thông báo cá nhân
-        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
-
+        # KHÔNG tự động đánh dấu đã đọc — chỉ đánh dấu khi gọi endpoint mark-read
         return Response(data)
 
 
@@ -1027,8 +1034,56 @@ class UnreadNotificationCountAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = Notification.objects.filter(recipient=request.user, is_read=False).count()
-        return Response({'unread_count': count})
+        user = request.user
+        # Đếm thông báo cá nhân chưa đọc
+        personal_unread = Notification.objects.filter(recipient=user, is_read=False).count()
+
+        # Đếm thông báo chung chưa đọc (recipient=null và user ID chưa trong read_by)
+        broadcast_notifications = Notification.objects.filter(recipient=None)
+        broadcast_unread = 0
+        for n in broadcast_notifications:
+            read_by = n.read_by if isinstance(n.read_by, list) else []
+            if user.id not in read_by:
+                broadcast_unread += 1
+
+        return Response({'unread_count': personal_unread + broadcast_unread})
+
+
+class MarkNotificationsReadAPIView(APIView):
+    """API đánh dấu thông báo đã đọc — gọi riêng, không tự động khi GET"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        notification_ids = request.data.get('notification_ids', None)  # List of IDs, or None = mark all
+
+        if notification_ids is not None:
+            # Đánh dấu các thông báo cụ thể đã đọc
+            notifications = Notification.objects.filter(
+                db_models.Q(recipient=user) | db_models.Q(recipient=None),
+                id__in=notification_ids
+            )
+        else:
+            # Đánh dấu TẤT CẢ thông báo chưa đọc thành đã đọc
+            notifications = Notification.objects.filter(
+                db_models.Q(recipient=user) | db_models.Q(recipient=None)
+            )
+
+        marked_count = 0
+        for n in notifications:
+            if n.recipient_id is not None and not n.is_read:
+                n.is_read = True
+                n.save(update_fields=['is_read'])
+                marked_count += 1
+            elif n.recipient_id is None:
+                read_by = n.read_by if isinstance(n.read_by, list) else []
+                if user.id not in read_by:
+                    read_by.append(user.id)
+                    n.read_by = read_by
+                    n.save(update_fields=['read_by'])
+                    marked_count += 1
+
+        return Response({'message': f'Đã đánh dấu {marked_count} thông báo là đã đọc.', 'marked_count': marked_count})
 
 
 # --- PHẦN 9: YÊU CẦU THAY ĐỔI HỒ SƠ (CAREPARTNER GỬI, ADMIN DUYỆT) ---
@@ -1243,6 +1298,10 @@ QUY TẮC:
         from django.conf import settings
         import json
         import re
+
+        # Chỉ Carepartner mới được sử dụng chatbot này
+        if request.user.role != 'worker':
+            return Response({'error': 'Chỉ Carepartner mới được sử dụng tính năng này.'}, status=status.HTTP_403_FORBIDDEN)
 
         user_message = request.data.get('message', '').strip()
         chat_history = request.data.get('history', [])

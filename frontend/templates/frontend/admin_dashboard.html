@@ -686,6 +686,7 @@
                     </div></td>
                     <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
                     <td><div class="action-btns">
+                        <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${w.id}','_blank')">&#128065; Xem hồ sơ</button>
                         <button class="btn btn-approve" data-action="approve" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9989; Duyệt</button>
                         <button class="btn btn-reject" data-action="reject" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#10005; Từ chối</button>
                     </div></td>
@@ -729,6 +730,7 @@
                         ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp" />` : ''}
                     </div></td>
                     <td><div class="action-btns">
+                        <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${w.id}','_blank')">&#128065; Xem hồ sơ</button>
                         <button class="btn btn-approve btn-sm" style="background:#0284c7" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9998; Sửa bằng cấp</button>
                         <button class="btn btn-revoke btn-sm" data-action="revoke" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#9888; Tước quyền</button>
                     </div></td>
@@ -995,7 +997,8 @@
                         <td style="max-width:250px;color:#94a3b8;font-size:13px;">${escapeHtml(s.description) || '<span style="color:#64748b">Không có mô tả</span>'}</td>
                         <td style="color:#94a3b8;font-size:13px;">${s.created_at}</td>
                         <td><div class="action-btns">
-                            <button class="btn btn-approve btn-sm" onclick="openCredentialReview(${s.id}, '${escapeHtml(s.worker_name)}', '${escapeHtml(s.worker_username)}', '${s.certificate_photo || ''}', '${escapeHtml(s.description || '')}')">Duyệt & Đánh giá</button>
+                            <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${s.worker_id}','_blank')">&#128065; Xem hồ sơ</button>
+                            <button class="btn btn-approve btn-sm" onclick="openCredentialReview(${s.id}, '${escapeHtml(s.worker_name)}', '${escapeHtml(s.worker_username)}', '${s.certificate_photo || ''}', '${escapeHtml(s.description || '')}', ${s.worker_id})">Duyệt & Đánh giá</button>
                         </div></td>
                     </tr>`;
                 }
@@ -1004,13 +1007,14 @@
             } catch (e) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi kết nối</div></div>'; }
         }
 
-        function openCredentialReview(id, name, username, photo, desc) {
+        function openCredentialReview(id, name, username, photo, desc, workerId) {
             currentCredSubmissionId = id;
             document.getElementById('credentialModalTitle').textContent = `Duyệt bằng cấp - ${name}`;
             document.getElementById('credentialModalBody').innerHTML = `
                 <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">@${username}</div>
                 ${photo ? `<img src="${photo}" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #334155;margin-bottom:12px;cursor:pointer;" onclick="openModal('${photo}', 'Bằng cấp - ${username}')"/>` : ''}
                 ${desc ? `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;color:#94a3b8;">${desc}</div>` : ''}
+                <a href="/worker/profile/?worker_id=${workerId}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#6366f1;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:12px;">&#128065; Xem hồ sơ đầy đủ</a>
                 <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">Đánh giá bằng cấp (Admin viết):</div>
                 <textarea id="credAdminReview" class="edit-modal-textarea" placeholder="Ví dụ: Bằng cử nhân Sư phạm Toán đã được xác minh." style="height:100px;"></textarea>
                 <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;margin-top:12px;">Cập nhật bằng cấp cho Carepartner (cách nhau bởi dấu phẩy):</div>
@@ -1186,6 +1190,7 @@
                             </div>
                             <div style="margin-bottom:12px;"><div style="font-size:12px;color:#64748b;margin-bottom:6px;">Thay đổi yêu cầu:</div>${changesHtml}</div>
                             <div style="display:flex;gap:8px;">
+                                <button onclick="window.open('/worker/profile/?worker_id=${r.worker_id}','_blank')" style="background:#6366f1;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;">&#128065; Xem hồ sơ</button>
                                 <button onclick="openProfileChangeReviewModal(${r.id}, '${escapeHtml(r.worker_name)}')" style="background:#22c55e;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;">Duyệt / Từ chối</button>
                             </div>
                         </div>`;
