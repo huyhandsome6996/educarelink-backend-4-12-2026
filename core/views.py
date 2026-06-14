@@ -7,7 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import os
 import requests
-from .models import User, Task, TaskApplication, ServiceCategory, Review
+from django.db import models as db_models
+from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification
 
 
 def build_absolute_uri(request, url):
@@ -760,3 +761,268 @@ class CompleteOnboardingAPIView(APIView):
         user.first_login = False
         user.save(update_fields=['first_login'])
         return Response({'message': 'Đã hoàn thành hướng dẫn sử dụng!'}, status=status.HTTP_200_OK)
+
+
+# --- PHẦN 7: CAREPARTNER GỬI BẰNG CẤP CHO ADMIN DUYỆT ---
+class WorkerSubmitCredentialAPIView(APIView):
+    """API cho Carepartner gửi ảnh minh chứng + mô tả bằng cấp cho Admin duyệt"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request):
+        if request.user.role != 'worker':
+            return Response({'error': 'Chỉ Carepartner mới được gửi bằng cấp.'}, status=status.HTTP_403_FORBIDDEN)
+
+        certificate_photo = request.FILES.get('certificate_photo')
+        description = request.data.get('description', '').strip()
+
+        if not certificate_photo and not description:
+            return Response({'error': 'Vui lòng tải lên ảnh hoặc viết mô tả về bằng cấp.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        submission = CredentialSubmission.objects.create(
+            worker=request.user,
+            certificate_photo=certificate_photo if certificate_photo else None,
+            description=description if description else None,
+            status='pending'
+        )
+
+        return Response({
+            'message': 'Đã gửi bằng cấp thành công! Vui lòng đợi Admin duyệt.',
+            'submission': {
+                'id': submission.id,
+                'certificate_photo': build_absolute_uri(request, submission.certificate_photo.url) if submission.certificate_photo else None,
+                'description': submission.description,
+                'status': submission.status,
+                'created_at': submission.created_at.strftime('%d/%m/%Y %H:%M'),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        """Lấy danh sách bằng cấp đã gửi của Carepartner hiện tại"""
+        if request.user.role != 'worker':
+            return Response({'error': 'Chỉ Carepartner mới có danh sách bằng cấp.'}, status=status.HTTP_403_FORBIDDEN)
+
+        submissions = CredentialSubmission.objects.filter(worker=request.user).order_by('-created_at')
+        data = []
+        for s in submissions:
+            data.append({
+                'id': s.id,
+                'certificate_photo': build_absolute_uri(request, s.certificate_photo.url) if s.certificate_photo else None,
+                'description': s.description,
+                'status': s.status,
+                'status_display': s.get_status_display(),
+                'admin_review': s.admin_review,
+                'reviewed_at': s.reviewed_at.strftime('%d/%m/%Y %H:%M') if s.reviewed_at else None,
+                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+        return Response(data)
+
+
+# --- PHẦN 8: ADMIN DUYỆT BẰNG CẤP VÀ GỬI THÔNG BÁO ---
+class AdminCredentialSubmissionsAPIView(APIView):
+    """API lấy danh sách bằng cấp chờ duyệt (Admin)"""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        status_filter = request.query_params.get('status', 'pending')
+        if status_filter == 'all':
+            submissions = CredentialSubmission.objects.all().order_by('-created_at')
+        else:
+            submissions = CredentialSubmission.objects.filter(status=status_filter).order_by('-created_at')
+
+        data = []
+        for s in submissions:
+            data.append({
+                'id': s.id,
+                'worker_id': s.worker.id,
+                'worker_username': s.worker.username,
+                'worker_name': f"{s.worker.first_name} {s.worker.last_name}".strip() or s.worker.username,
+                'certificate_photo': build_absolute_uri(request, s.certificate_photo.url) if s.certificate_photo else None,
+                'description': s.description,
+                'status': s.status,
+                'status_display': s.get_status_display(),
+                'admin_review': s.admin_review,
+                'reviewed_at': s.reviewed_at.strftime('%d/%m/%Y %H:%M') if s.reviewed_at else None,
+                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+        return Response(data)
+
+
+class AdminReviewCredentialAPIView(APIView):
+    """API cho Admin duyệt/từ chối + viết đánh giá bằng cấp cho Carepartner"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, submission_id):
+        try:
+            submission = CredentialSubmission.objects.get(id=submission_id)
+        except CredentialSubmission.DoesNotExist:
+            return Response({'error': 'Không tìm thấy yêu cầu gửi bằng cấp.'}, status=status.HTTP_404_NOT_FOUND)
+
+        action = request.data.get('action')  # 'approve' hoặc 'reject'
+        admin_review = request.data.get('admin_review', '').strip()  # Admin viết đánh giá
+        qualifications_update = request.data.get('qualifications', [])  # Cập nhật bằng cấp cho user
+
+        from django.utils import timezone
+
+        if action == 'approve':
+            submission.status = 'approved'
+            submission.admin_review = admin_review if admin_review else 'Bằng cấp đã được xác nhận bởi Admin.'
+            submission.reviewed_at = timezone.now()
+            submission.save()
+
+            # Cập nhật is_verified cho worker nếu chưa
+            worker = submission.worker
+            if not worker.is_verified:
+                worker.is_verified = True
+                worker.save(update_fields=['is_verified'])
+
+            # Cập nhật qualifications cho worker nếu admin có nhập
+            if isinstance(qualifications_update, list) and len(qualifications_update) > 0:
+                existing_quals = worker.qualifications if isinstance(worker.qualifications, list) else []
+                # Thêm bằng cấp mới không trùng
+                for q in qualifications_update:
+                    if q and q not in existing_quals:
+                        existing_quals.append(q)
+                worker.qualifications = existing_quals
+                worker.save(update_fields=['qualifications'])
+
+            # Gửi thông báo cho worker
+            Notification.objects.create(
+                recipient=worker,
+                title='Bằng cấp đã được duyệt!',
+                message=f'Admin đã duyệt bằng cấp của bạn. {submission.admin_review}'
+            )
+
+            # Push notification
+            if worker.expo_push_token:
+                send_expo_push_notification(
+                    token=worker.expo_push_token,
+                    title='Bằng cấp đã được duyệt!',
+                    body=f'Admin đã duyệt bằng cấp của bạn.',
+                    data={'type': 'credential_approved'}
+                )
+
+            return Response({'message': f'Đã duyệt bằng cấp cho {worker.username}.'})
+
+        elif action == 'reject':
+            submission.status = 'rejected'
+            submission.admin_review = admin_review if admin_review else 'Bằng cấp không đạt yêu cầu.'
+            submission.reviewed_at = timezone.now()
+            submission.save()
+
+            # Gửi thông báo cho worker
+            Notification.objects.create(
+                recipient=submission.worker,
+                title='Bằng cấp bị từ chối',
+                message=f'Admin đã từ chối bằng cấp của bạn. Lý do: {submission.admin_review}'
+            )
+
+            # Push notification
+            if submission.worker.expo_push_token:
+                send_expo_push_notification(
+                    token=submission.worker.expo_push_token,
+                    title='Bằng cấp bị từ chối',
+                    body=f'Admin đã từ chối bằng cấp của bạn.',
+                    data={'type': 'credential_rejected'}
+                )
+
+            return Response({'message': f'Đã từ chối bằng cấp của {submission.worker.username}.'})
+
+        else:
+            return Response({'error': 'Action không hợp lệ. Dùng approve hoặc reject.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminSendNotificationAPIView(APIView):
+    """API cho Admin gửi thông báo cho 1 Carepartner hoặc tất cả"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        title = request.data.get('title', '').strip()
+        message = request.data.get('message', '').strip()
+        recipient_id = request.data.get('recipient_id')  # Null = gửi cho tất cả worker
+        send_to_all = request.data.get('send_to_all', False)
+
+        if not title or not message:
+            return Response({'error': 'Tiêu đề và nội dung thông báo là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if send_to_all:
+            # Gửi cho tất cả Carepartner (đã duyệt)
+            workers = User.objects.filter(role='worker', is_approved=True, is_active=True)
+            notifications = []
+            for worker in workers:
+                notifications.append(Notification(
+                    recipient=worker,
+                    title=title,
+                    message=message
+                ))
+                # Push notification
+                if worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=worker.expo_push_token,
+                        title=title,
+                        body=message,
+                        data={'type': 'admin_notification'}
+                    )
+            Notification.objects.bulk_create(notifications)
+            return Response({'message': f'Đã gửi thông báo cho {len(notifications)} Carepartner.'})
+        else:
+            # Gửi cho 1 Carepartner cụ thể
+            if not recipient_id:
+                return Response({'error': 'Cần chỉ định recipient_id hoặc send_to_all=true.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                worker = User.objects.get(id=recipient_id, role='worker')
+            except User.DoesNotExist:
+                return Response({'error': 'Không tìm thấy Carepartner.'}, status=status.HTTP_404_NOT_FOUND)
+
+            notification = Notification.objects.create(
+                recipient=worker,
+                title=title,
+                message=message
+            )
+
+            # Push notification
+            if worker.expo_push_token:
+                send_expo_push_notification(
+                    token=worker.expo_push_token,
+                    title=title,
+                    body=message,
+                    data={'type': 'admin_notification'}
+                )
+
+            return Response({'message': f'Đã gửi thông báo cho {worker.username}.'})
+
+
+class UserNotificationsAPIView(APIView):
+    """API lấy danh sách thông báo của người dùng hiện tại"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Lấy thông báo cá nhân + thông báo chung (recipient=null)
+        notifications = Notification.objects.filter(
+            db_models.Q(recipient=request.user) | db_models.Q(recipient=None)
+        ).order_by('-created_at')
+
+        data = []
+        for n in notifications:
+            data.append({
+                'id': n.id,
+                'title': n.title,
+                'message': n.message,
+                'is_read': n.is_read if n.recipient else True,  # Broadcast luôn đọc nếu đã xem
+                'is_broadcast': n.recipient is None,
+                'created_at': n.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+
+        # Đánh dấu đã đọc cho thông báo cá nhân
+        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+
+        return Response(data)
+
+
+class UnreadNotificationCountAPIView(APIView):
+    """API đếm số thông báo chưa đọc"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+        return Response({'unread_count': count})

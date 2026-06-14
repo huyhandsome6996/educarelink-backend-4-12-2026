@@ -344,6 +344,15 @@
                 <span class="icon">&#128274;</span>
                 Qu&#7843;n l&#253; t&#224;i kho&#7843;n
             </div>
+            <div class="nav-item" onclick="switchTab('credentials')">
+                <span class="icon">&#127942;</span>
+                B&#7857;ng c&#7845;p CP
+                <span class="nav-badge" id="credentialBadge" style="display:none;">0</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('notifications')">
+                <span class="icon">&#128276;</span>
+                G&#7917;i th&#244;ng b&#225;o
+            </div>
         </div>
         <div style="padding: 12px 12px; border-top: 1px solid #334155;">
             <button class="btn" style="width:100%;background:#F26522;color:#fff;font-weight:800;font-size:13px;padding:12px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;" onclick="seedDemoData()" id="seedBtn">
@@ -437,6 +446,62 @@
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
+
+    <!-- Credential Review Modal -->
+    <div class="edit-modal" id="credentialModal">
+        <div class="edit-modal-content" style="width: 550px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title" id="credentialModalTitle">Duyệt bằng cấp</div>
+                <button class="modal-close" style="position:static" onclick="closeCredentialModal()">✕</button>
+            </div>
+            <div class="edit-modal-body" id="credentialModalBody">
+                <!-- Dynamic content -->
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeCredentialModal()">Đóng</button>
+                <button class="edit-modal-btn btn-reject" id="rejectCredBtn" onclick="reviewCredential('reject')">Từ chối</button>
+                <button class="edit-modal-btn btn-approve" id="approveCredBtn" onclick="reviewCredential('approve')">Duyệt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Notification Modal -->
+    <div class="edit-modal" id="notifModal">
+        <div class="edit-modal-content" style="width: 500px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title">Gửi thông báo</div>
+                <button class="modal-close" style="position:static" onclick="closeNotifModal()">✕</button>
+            </div>
+            <div class="edit-modal-body">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Người nhận:</div>
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="notif-target" value="all" checked onchange="toggleNotifRecipient()"> Gửi cho tất cả Carepartner
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="notif-target" value="single" onchange="toggleNotifRecipient()"> Gửi cho 1 người
+                        </label>
+                    </div>
+                    <select id="notifRecipient" style="display:none;width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;">
+                        <option value="">-- Chọn Carepartner --</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Tiêu đề:</div>
+                    <input type="text" id="notifTitle" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;" placeholder="Nhập tiêu đề thông báo"/>
+                </div>
+                <div>
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Nội dung:</div>
+                    <textarea id="notifMessage" class="edit-modal-textarea" placeholder="Nhập nội dung thông báo" style="height:120px;"></textarea>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeNotifModal()">Hủy</button>
+                <button class="edit-modal-btn btn-save" onclick="sendNotification()">Gửi thông báo</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ===== CẤU HÌNH =====
@@ -814,29 +879,196 @@
         }
 
         // ===== TAB SWITCHING =====
+        let currentCredSubmissionId = null;
+        let allWorkersList = [];
+        
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             resetStatsIcons();
+            const navItems = document.querySelectorAll('.nav-item');
             if (tab === 'pending') {
-                document.querySelectorAll('.nav-item')[0].classList.add('active');
+                navItems[0].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Danh sách chờ duyệt';
                 document.getElementById('pageTitle').textContent = 'Quản lý Carepartner';
                 document.getElementById('pageSubtitle').textContent = 'Duyệt đăng ký và quản lý tài khoản sinh viên';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
             } else if (tab === 'all') {
-                document.querySelectorAll('.nav-item')[1].classList.add('active');
+                navItems[1].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Tất cả Carepartner';
                 document.getElementById('pageTitle').textContent = 'Tất cả Carepartner';
                 document.getElementById('pageSubtitle').textContent = 'Quản lý bằng cấp và tước quyền';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
             } else if (tab === 'users') {
-                document.querySelectorAll('.nav-item')[2].classList.add('active');
+                navItems[2].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Quản lý tài khoản';
                 document.getElementById('pageTitle').textContent = 'Quản lý tài khoản';
                 document.getElementById('pageSubtitle').textContent = 'Khoá/mở tài khoản và tước quyền Carepartner';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
+            } else if (tab === 'credentials') {
+                navItems[3].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Bằng cấp chờ duyệt';
+                document.getElementById('pageTitle').textContent = 'Duyệt bằng cấp Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Xem minh chứng và viết đánh giá bằng cấp';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                loadCredentialSubmissions();
+                return;
+            } else if (tab === 'notifications') {
+                navItems[4].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Gửi thông báo';
+                document.getElementById('pageTitle').textContent = 'Gửi thông báo cho Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Gửi thông báo cho 1 hoặc tất cả Carepartner';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = 'none';
+                openNotifModal();
+                return;
             }
             document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
             loadData();
             if (window.innerWidth < 1024) closeSidebar();
+        }
+
+        // ===== CREDENTIAL SUBMISSIONS =====
+        async function loadCredentialSubmissions() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/?status=pending`);
+                if (!res.ok) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi tải dữ liệu</div></div>'; return; }
+                const submissions = await res.json();
+                
+                // Update badge
+                const badge = document.getElementById('credentialBadge');
+                if (submissions.length > 0) { badge.style.display = ''; badge.textContent = submissions.length; }
+                else { badge.style.display = 'none'; }
+                
+                if (submissions.length === 0) {
+                    document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-title">Không có bằng cấp chờ duyệt</div><div class="empty-text">Tất cả đã được xử lý</div></div>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>Carepartner</th><th>Ảnh minh chứng</th><th>Mô tả</th><th>Ngày gửi</th><th>Hành động</th></tr></thead><tbody>';
+                for (const s of submissions) {
+                    html += `<tr>
+                        <td><div class="user-cell"><div class="user-avatar"><div class="user-avatar-placeholder">${(s.worker_username||'?')[0].toUpperCase()}</div></div><div><div class="user-name">${escapeHtml(s.worker_name)}</div><div class="user-username">@${escapeHtml(s.worker_username)}</div></div></div></td>
+                        <td>${s.certificate_photo ? `<img src="${s.certificate_photo}" class="photo-thumb" onclick="openModal('${s.certificate_photo}', 'Bằng cấp - ${escapeHtml(s.worker_username)}')" alt="Bằng cấp"/>` : '<span style="color:#64748b">Không có ảnh</span>'}</td>
+                        <td style="max-width:250px;color:#94a3b8;font-size:13px;">${escapeHtml(s.description) || '<span style="color:#64748b">Không có mô tả</span>'}</td>
+                        <td style="color:#94a3b8;font-size:13px;">${s.created_at}</td>
+                        <td><div class="action-btns">
+                            <button class="btn btn-approve btn-sm" onclick="openCredentialReview(${s.id}, '${escapeHtml(s.worker_name)}', '${escapeHtml(s.worker_username)}', '${s.certificate_photo || ''}', '${escapeHtml(s.description || '')}')">Duyệt & Đánh giá</button>
+                        </div></td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('tableBody').innerHTML = html;
+            } catch (e) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi kết nối</div></div>'; }
+        }
+
+        function openCredentialReview(id, name, username, photo, desc) {
+            currentCredSubmissionId = id;
+            document.getElementById('credentialModalTitle').textContent = `Duyệt bằng cấp - ${name}`;
+            document.getElementById('credentialModalBody').innerHTML = `
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">@${username}</div>
+                ${photo ? `<img src="${photo}" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #334155;margin-bottom:12px;cursor:pointer;" onclick="openModal('${photo}', 'Bằng cấp - ${username}')"/>` : ''}
+                ${desc ? `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;color:#94a3b8;">${desc}</div>` : ''}
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">Đánh giá bằng cấp (Admin viết):</div>
+                <textarea id="credAdminReview" class="edit-modal-textarea" placeholder="Ví dụ: Bằng cử nhân Sư phạm Toán đã được xác minh." style="height:100px;"></textarea>
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;margin-top:12px;">Cập nhật bằng cấp cho Carepartner (cách nhau bởi dấu phẩy):</div>
+                <input type="text" id="credQualifications" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;" placeholder="VD: Cử nhân Sư phạm, Chứng chỉ IELTS 7.0"/>
+            `;
+            document.getElementById('credentialModal').classList.add('show');
+        }
+
+        function closeCredentialModal() {
+            document.getElementById('credentialModal').classList.remove('show');
+            currentCredSubmissionId = null;
+        }
+
+        async function reviewCredential(action) {
+            if (!currentCredSubmissionId) return;
+            const adminReview = document.getElementById('credAdminReview').value.trim();
+            const qualsInput = document.getElementById('credQualifications').value.trim();
+            const qualifications = qualsInput ? qualsInput.split(',').map(q => q.trim()).filter(q => q) : [];
+            
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/${currentCredSubmissionId}/review/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, admin_review: adminReview, qualifications })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeCredentialModal();
+                    loadCredentialSubmissions();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        }
+
+        // ===== SEND NOTIFICATION =====
+        async function openNotifModal() {
+            document.getElementById('notifTitle').value = '';
+            document.getElementById('notifMessage').value = '';
+            document.querySelector('input[name="notif-target"][value="all"]').checked = true;
+            document.getElementById('notifRecipient').style.display = 'none';
+            
+            // Load workers list
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-workers/`);
+                if (res.ok) {
+                    allWorkersList = await res.json();
+                    const sel = document.getElementById('notifRecipient');
+                    sel.innerHTML = '<option value="">-- Chọn Carepartner --</option>';
+                    for (const w of allWorkersList) {
+                        sel.innerHTML += `<option value="${w.id}">${escapeHtml(w.first_name || '')} ${escapeHtml(w.last_name || '')} (@${w.username})</option>`;
+                    }
+                }
+            } catch (e) {}
+            
+            document.getElementById('notifModal').classList.add('show');
+        }
+
+        function closeNotifModal() {
+            document.getElementById('notifModal').classList.remove('show');
+        }
+
+        function toggleNotifRecipient() {
+            const val = document.querySelector('input[name="notif-target"]:checked').value;
+            document.getElementById('notifRecipient').style.display = val === 'single' ? 'block' : 'none';
+        }
+
+        async function sendNotification() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            const targetMode = document.querySelector('input[name="notif-target"]:checked').value;
+            const recipientId = document.getElementById('notifRecipient').value;
+            
+            if (!title || !message) { showToast('Vui lòng nhập tiêu đề và nội dung', 'error'); return; }
+            if (targetMode === 'single' && !recipientId) { showToast('Vui lòng chọn Carepartner', 'error'); return; }
+            
+            try {
+                const body = { title, message };
+                if (targetMode === 'all') body.send_to_all = true;
+                else body.recipient_id = parseInt(recipientId);
+                
+                const res = await apiFetch(`${API_BASE}/admin/send-notification/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeNotifModal();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
         }
 
         // ===== MODAL =====
@@ -891,7 +1123,21 @@
         // ===== INIT =====
         displayAdminName();
         loadData();
+        loadCredentialBadgeCount();
         setInterval(loadData, 30000);
+        setInterval(loadCredentialBadgeCount, 30000);
+
+        async function loadCredentialBadgeCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/?status=pending`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('credentialBadge');
+                    if (data.length > 0) { badge.style.display = ''; badge.textContent = data.length; }
+                    else { badge.style.display = 'none'; }
+                }
+            } catch (e) {}
+        }
     </script>
 
     <!-- Mobile App-like Transition -->
