@@ -22,3 +22,8 @@ mobile/node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+
+# Node (root level for docx generation)
+node_modules/
+bun.lock
+package.json
