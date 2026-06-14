@@ -36,9 +36,15 @@
             border-bottom: 1px solid #334155;
         }
         .sidebar-logo {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .sidebar-logo img {
+            width: 40px; height: 40px; border-radius: 10px; object-fit: contain;
+        }
+        .sidebar-logo-text {
             font-size: 20px; font-weight: 900; color: #F26522;
         }
-        .sidebar-logo span { color: #94a3b8; font-weight: 500; font-size: 12px; display: block; margin-top: 2px; }
+        .sidebar-logo-text span { color: #94a3b8; font-weight: 500; font-size: 12px; display: block; margin-top: 2px; }
         .sidebar-nav { padding: 16px 12px; flex: 1; }
         .nav-item {
             display: flex; align-items: center; gap: 12px;
@@ -326,8 +332,11 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo">
-                Educarelink
-                <span>Admin Dashboard</span>
+                <img src="/static/images/logo.png" alt="EduCareLink">
+                <div class="sidebar-logo-text">
+                    EduCareLink
+                    <span>Admin Dashboard</span>
+                </div>
             </div>
         </div>
         <div class="sidebar-nav">
