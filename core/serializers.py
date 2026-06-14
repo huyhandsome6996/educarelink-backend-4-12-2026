@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, ServiceCategory, Task, TaskApplication, Review
+from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification
 
 
 # 1. Dịch dữ liệu Người dùng (Dùng cho Đăng ký/Đăng nhập & Màn hình Hồ sơ)

@@ -117,3 +117,39 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.rating} sao cho việc: {self.task.title}"
+
+
+# 6. BẢNG GỬI BẰNG CẤP (Carepartner gửi minh chứng cho Admin duyệt)
+class CredentialSubmission(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Chờ duyệt'),
+        ('approved', 'Đã duyệt'),
+        ('rejected', 'Bị từ chối'),
+    )
+    worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='credential_submissions')
+    certificate_photo = models.ImageField(upload_to='credential_submissions/', blank=True, null=True, help_text="Ảnh bằng cấp/chứng chỉ minh chứng")
+    description = models.TextField(blank=True, null=True, help_text="Mô tả về bằng cấp, kinh nghiệm")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_review = models.TextField(blank=True, null=True, help_text="Admin viết đánh giá bằng cấp cho Carepartner")
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.worker.username} - {self.get_status_display()} - {self.created_at.strftime('%d/%m/%Y')}"
+
+
+# 7. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
+class Notification(models.Model):
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True, help_text="Null = gửi cho tất cả Carepartner")
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False, help_text="Đánh dấu đã đọc (chỉ áp dụng cho thông báo cá nhân)")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        if self.recipient:
+            return f"Thông báo cho {self.recipient.username}: {self.title}"
+        return f"Thông báo chung: {self.title}"

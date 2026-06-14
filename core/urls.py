@@ -10,6 +10,10 @@ from .views import (
     AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
     AdminSeedDemoDataAPIView,
     CompleteOnboardingAPIView,
+    WorkerSubmitCredentialAPIView,
+    AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
+    AdminSendNotificationAPIView,
+    UserNotificationsAPIView, UnreadNotificationCountAPIView,
 )
 
 urlpatterns = [
@@ -49,4 +53,16 @@ urlpatterns = [
     path('admin/all-users/', AdminAllUsersAPIView.as_view(), name='admin-all-users'),
     path('admin/seed-demo-data/', AdminSeedDemoDataAPIView.as_view(), name='admin-seed-demo-data'),
     path('onboarding/complete/', CompleteOnboardingAPIView.as_view(), name='complete-onboarding'),
+    
+    # Carepartner gửi bằng cấp cho Admin duyệt
+    path('worker/submit-credential/', WorkerSubmitCredentialAPIView.as_view(), name='worker-submit-credential'),
+    
+    # Admin duyệt bằng cấp + gửi thông báo
+    path('admin/credential-submissions/', AdminCredentialSubmissionsAPIView.as_view(), name='admin-credential-submissions'),
+    path('admin/credential-submissions/<int:submission_id>/review/', AdminReviewCredentialAPIView.as_view(), name='admin-review-credential'),
+    path('admin/send-notification/', AdminSendNotificationAPIView.as_view(), name='admin-send-notification'),
+    
+    # Thông báo cho người dùng
+    path('notifications/', UserNotificationsAPIView.as_view(), name='user-notifications'),
+    path('notifications/unread-count/', UnreadNotificationCountAPIView.as_view(), name='unread-notification-count'),
 ]

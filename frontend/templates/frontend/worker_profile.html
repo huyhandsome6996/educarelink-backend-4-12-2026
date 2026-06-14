@@ -229,8 +229,15 @@
                             <span class="material-symbols-outlined text-white text-lg filled" style="font-variation-settings: 'FILL' 1;">school</span>
                         </div>
                         <div>
-                            <h1 class="font-manrope font-extrabold text-2xl text-textPrimary">Hồ sơ của tôi</h1>
+                            <h1 id="page-title" class="font-manrope font-extrabold text-2xl text-textPrimary">Hồ sơ của tôi</h1>
                             <p id="header-greeting" class="text-sm text-textSecondary mt-0.5">Quản lý thông tin cá nhân</p>
+                        </div>
+                        <!-- Notification Bell -->
+                        <div id="notification-bell-area" class="flex items-center gap-2 ml-3">
+                            <button onclick="toggleNotificationPanel()" class="relative w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center hover:bg-primary/10 transition-all duration-200">
+                                <span class="material-symbols-outlined text-primary text-xl">notifications</span>
+                                <span id="notification-badge" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center" style="display:none;">0</span>
+                            </button>
                         </div>
                     </div>
                     <!-- Mobile: avatar -->
@@ -419,13 +426,23 @@
 
                 <!-- 5. Menu Options -->
                 <section class="space-y-3">
-                    <!-- Edit Profile -->
-                    <button onclick="showToast('Tính năng chỉnh sửa hồ sơ sắp ra mắt!', 'info')" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                    <!-- Edit Profile / Submit Credential -->
+                    <button id="btn-edit-profile" onclick="openEditProfileModal()" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center">
                                 <span class="material-symbols-outlined text-primary text-lg">edit</span>
                             </div>
                             <span class="font-semibold text-sm text-textPrimary">Chỉnh sửa hồ sơ</span>
+                        </div>
+                        <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
+                    </button>
+                    <!-- My Credentials -->
+                    <button id="btn-my-credentials" onclick="openMyCredentialsModal()" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-amber-500 text-lg">workspace_premium</span>
+                            </div>
+                            <span class="font-semibold text-sm text-textPrimary">Bằng cấp của tôi</span>
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </button>
@@ -472,6 +489,99 @@
             </a>
         </div>
     </nav>
+
+    <!-- ========== NOTIFICATION PANEL ========== -->
+    <div id="notification-panel" class="fixed top-0 right-0 h-full w-full md:w-[400px] bg-white shadow-2xl z-[100] transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="flex flex-col h-full">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-manrope font-bold text-lg text-textPrimary">Thông báo</h3>
+                <button onclick="toggleNotificationPanel()" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary">close</span>
+                </button>
+            </div>
+            <div id="notification-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <div class="flex items-center justify-center py-12 text-textSecondary">
+                    <span class="material-symbols-outlined mr-2">notifications_off</span>
+                    Chưa có thông báo
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="notification-overlay" class="fixed inset-0 bg-black/30 z-[99] hidden" onclick="toggleNotificationPanel()"></div>
+
+    <!-- ========== EDIT PROFILE MODAL ========== -->
+    <div id="edit-profile-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeEditProfileModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div class="sticky top-0 bg-white rounded-t-2xl px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
+                <h3 class="font-manrope font-bold text-lg text-textPrimary">Chỉnh sửa hồ sơ</h3>
+                <button onclick="closeEditProfileModal()" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary">close</span>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Họ</label>
+                    <input type="text" id="edit-first-name" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập họ"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Tên</label>
+                    <input type="text" id="edit-last-name" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập tên"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Số điện thoại</label>
+                    <input type="tel" id="edit-phone" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập số điện thoại"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Địa chỉ</label>
+                    <input type="text" id="edit-address" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập địa chỉ"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Email</label>
+                    <input type="email" id="edit-email" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập email"/>
+                </div>
+                <!-- Credential Upload Section -->
+                <div class="pt-3 border-t border-gray-100">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-amber-500 text-lg">workspace_premium</span>
+                        <h4 class="font-manrope font-bold text-base text-textPrimary">Gửi bằng cấp cho Admin duyệt</h4>
+                    </div>
+                    <p class="text-xs text-textSecondary mb-3">Tải lên ảnh minh chứng bằng cấp và viết mô tả để Admin xem xét và đánh giá.</p>
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Ảnh bằng cấp / chứng chỉ</label>
+                        <input type="file" id="edit-certificate-photo" accept="image/*" class="w-full text-sm text-textSecondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primaryLight file:text-primary hover:file:bg-primary/20 transition-all"/>
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Mô tả về bằng cấp</label>
+                        <textarea id="edit-credential-desc" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none" placeholder="Ví dụ: Cử nhân Sư phạm Toán, Chứng chỉ IELTS 7.0..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="sticky bottom-0 bg-white rounded-b-2xl px-6 py-4 border-t border-gray-100 flex gap-3">
+                <button onclick="closeEditProfileModal()" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all">Hủy</button>
+                <button onclick="saveProfileAndCredential()" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MY CREDENTIALS MODAL ========== -->
+    <div id="my-credentials-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeMyCredentialsModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div class="sticky top-0 bg-white rounded-t-2xl px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
+                <h3 class="font-manrope font-bold text-lg text-textPrimary">Bằng cấp của tôi</h3>
+                <button onclick="closeMyCredentialsModal()" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary">close</span>
+                </button>
+            </div>
+            <div id="credentials-list" class="p-5 space-y-4">
+                <div class="flex items-center justify-center py-8 text-textSecondary">
+                    <span class="material-symbols-outlined mr-2">description</span>
+                    Chưa gửi bằng cấp nào
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ========== JAVASCRIPT ========== -->
     <script>
@@ -529,6 +639,8 @@
         // ===== GLOBAL STATE =====
         let profileData = null;
         let confirmResolve = null;
+        let viewingWorkerId = null;  // Nếu != null thì đang xem hồ sơ của worker khác
+        let isOwnProfile = true;     // Có phải hồ sơ của mình không
 
         // ===== TOAST SYSTEM (replaces all alert()) =====
         function showToast(message, type = 'info') {
@@ -632,52 +744,83 @@
         // ===== FETCH ALL DATA FROM API =====
         async function fetchProfileData() {
             try {
-                // 1) Fetch current user profile from /api/profile/
-                const profileResp = await apiFetch(API_BASE + "/profile/");
-
-                if (profileResp && !profileResp.ok) {
-                    if (profileResp.status === 401) {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('refresh_token');
-                        window.location.href = LOGIN_URL;
-                        return;
-                    }
-                    throw new Error('Không thể tải hồ sơ');
-                }
-                if (!profileResp) return;
-
-                profileData = await profileResp.json();
-
-                // 2) Fetch worker's jobs from /api/worker/my-jobs/ for stats
-                let jobsData = [];
-                try {
-                    const jobsResp = await apiFetch(API_BASE + "/worker/my-jobs/");
-                    if (jobsResp.ok) {
-                        jobsData = await jobsResp.json();
-                    }
-                } catch (e) {
-                    console.error('Lỗi tải danh sách việc:', e);
+                // Kiểm tra URL parameter worker_id — nếu có thì đang xem hồ sơ của worker khác
+                const urlParams = new URLSearchParams(window.location.search);
+                const workerIdFromUrl = urlParams.get('worker_id');
+                
+                if (workerIdFromUrl) {
+                    viewingWorkerId = parseInt(workerIdFromUrl);
+                    isOwnProfile = false;
+                } else {
+                    isOwnProfile = true;
+                    viewingWorkerId = null;
                 }
 
-                // 3) Fetch worker profile detail for rating from /api/worker/<id>/profile/
-                let ratingData = null;
-                try {
-                    const ratingResp = await apiFetch(API_BASE + "/worker/" + profileData.id + "/profile/");
-                    if (ratingResp.ok) {
-                        ratingData = await ratingResp.json();
+                if (isOwnProfile) {
+                    // XEM HỒ SƠ CỦA MÌNH — fetch từ /api/profile/
+                    const profileResp = await apiFetch(API_BASE + "/profile/");
+                    if (profileResp && !profileResp.ok) {
+                        if (profileResp.status === 401) {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return;
+                        }
+                        throw new Error('Không thể tải hồ sơ');
                     }
-                } catch (e) {
-                    console.error('Lỗi tải đánh giá:', e);
-                }
+                    if (!profileResp) return;
+                    profileData = await profileResp.json();
 
-                // Render everything with fetched data
-                renderProfile(profileData, jobsData, ratingData);
+                    // Fetch jobs for stats
+                    let jobsData = [];
+                    try {
+                        const jobsResp = await apiFetch(API_BASE + "/worker/my-jobs/");
+                        if (jobsResp.ok) jobsData = await jobsResp.json();
+                    } catch (e) { console.error('Lỗi tải danh sách việc:', e); }
+
+                    // Fetch rating detail
+                    let ratingData = null;
+                    try {
+                        const ratingResp = await apiFetch(API_BASE + "/worker/" + profileData.id + "/profile/");
+                        if (ratingResp.ok) ratingData = await ratingResp.json();
+                    } catch (e) { console.error('Lỗi tải đánh giá:', e); }
+
+                    renderProfile(profileData, jobsData, ratingData);
+                } else {
+                    // XEM HỒ SƠ CỦA WORKER KHÁC — fetch từ /api/worker/<id>/profile/
+                    const workerResp = await apiFetch(API_BASE + "/worker/" + viewingWorkerId + "/profile/");
+                    if (!workerResp || !workerResp.ok) {
+                        throw new Error('Không thể tải hồ sơ Carepartner');
+                    }
+                    const workerData = await workerResp.json();
+                    
+                    // Cần thêm thông tin cá nhân (phone, address, email)
+                    let profileExtra = {};
+                    try {
+                        const profileResp = await apiFetch(API_BASE + "/profile/");
+                        if (profileResp.ok) profileData = await profileResp.json();
+                    } catch(e) {}
+
+                    // Tạo profile object từ worker detail API
+                    const profile = {
+                        id: workerData.id,
+                        username: workerData.username,
+                        first_name: workerData.first_name,
+                        last_name: workerData.last_name,
+                        is_approved: workerData.is_verified,
+                        is_verified: workerData.is_verified,
+                        ai_profile_summary: workerData.ai_profile_summary,
+                        phone_number: '',
+                        address: '',
+                        email: '',
+                    };
+                    
+                    renderProfile(profile, [], workerData, true);
+                }
 
             } catch (e) {
                 console.error('Lỗi tải hồ sơ:', e);
                 showToast('Không thể tải thông tin hồ sơ. Vui lòng thử lại.', 'error');
-
-                // Show error state in loading area
                 document.getElementById('loading-state').innerHTML = `
                     <div class="flex flex-col items-center justify-center py-16 text-center">
                         <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
@@ -692,10 +835,26 @@
         }
 
         // ===== RENDER PROFILE WITH DYNAMIC DATA =====
-        function renderProfile(profile, jobs, ratingDetail) {
+        function renderProfile(profile, jobs, ratingDetail, isViewingOther = false) {
             // Hide loading, show content
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('profile-content').style.display = '';
+
+            // Cập nhật tiêu đề trang nếu đang xem hồ sơ người khác
+            if (isViewingOther || !isOwnProfile) {
+                document.getElementById('page-title').textContent = 'Hồ sơ Carepartner';
+                document.getElementById('header-greeting').textContent = 'Xem thông tin Carepartner';
+                // Ẩn các nút chỉnh sửa, logout, credentials — chỉ hiển thị khi là hồ sơ của mình
+                const editBtn = document.getElementById('btn-edit-profile');
+                const credBtn = document.getElementById('btn-my-credentials');
+                const helpBtn = editBtn?.parentElement?.querySelector('[onclick*="Trung tâm trợ giúp"]')?.closest('button');
+                const logoutBtn = document.querySelector('[onclick="handleLogout()"]');
+                const notifBell = document.getElementById('notification-bell-area');
+                if (editBtn) editBtn.style.display = 'none';
+                if (credBtn) credBtn.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                if (notifBell) notifBell.style.display = 'none';
+            }
 
             // --- Full Name (first_name + last_name from API) ---
             const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.username || 'Carepartner';
@@ -774,6 +933,209 @@
         // ===== INIT =====
         async function init() {
             await fetchProfileData();
+            // Chỉ load notifications nếu là hồ sơ của mình
+            if (isOwnProfile) {
+                loadUnreadCount();
+                // Poll notifications mỗi 30 giây
+                setInterval(loadUnreadCount, 30000);
+            }
+        }
+
+        // ===== NOTIFICATION PANEL =====
+        function toggleNotificationPanel() {
+            const panel = document.getElementById('notification-panel');
+            const overlay = document.getElementById('notification-overlay');
+            const isOpen = !panel.classList.contains('translate-x-full');
+            if (isOpen) {
+                panel.classList.add('translate-x-full');
+                overlay.classList.add('hidden');
+            } else {
+                panel.classList.remove('translate-x-full');
+                overlay.classList.remove('hidden');
+                loadNotifications();
+            }
+        }
+
+        async function loadNotifications() {
+            try {
+                const resp = await apiFetch(API_BASE + '/notifications/');
+                if (resp && resp.ok) {
+                    const notifications = await resp.json();
+                    renderNotifications(notifications);
+                }
+            } catch (e) { console.error('Lỗi tải thông báo:', e); }
+        }
+
+        function renderNotifications(notifications) {
+            const list = document.getElementById('notification-list');
+            if (!notifications || notifications.length === 0) {
+                list.innerHTML = '<div class="flex items-center justify-center py-12 text-textSecondary"><span class="material-symbols-outlined mr-2">notifications_off</span>Chưa có thông báo</div>';
+                return;
+            }
+            list.innerHTML = notifications.map(n => {
+                const bgColor = n.is_read ? 'bg-gray-50/50' : 'bg-primaryLight/30';
+                const icon = n.is_broadcast ? 'campaign' : 'notifications';
+                return `
+                <div class="p-4 rounded-xl ${bgColor} border border-gray-100">
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span class="material-symbols-outlined text-primary text-lg">${icon}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm text-textPrimary">${n.title}</p>
+                            <p class="text-xs text-textSecondary mt-1 leading-relaxed">${n.message}</p>
+                            <p class="text-[10px] text-textMuted mt-2">${n.created_at}</p>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            // Cập nhật badge
+            loadUnreadCount();
+        }
+
+        async function loadUnreadCount() {
+            try {
+                const resp = await apiFetch(API_BASE + '/notifications/unread-count/');
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    const badge = document.getElementById('notification-badge');
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (e) { console.error('Lỗi tải unread count:', e); }
+        }
+
+        // ===== EDIT PROFILE MODAL =====
+        function openEditProfileModal() {
+            if (!profileData) return;
+            document.getElementById('edit-first-name').value = profileData.first_name || '';
+            document.getElementById('edit-last-name').value = profileData.last_name || '';
+            document.getElementById('edit-phone').value = profileData.phone_number || '';
+            document.getElementById('edit-address').value = profileData.address || '';
+            document.getElementById('edit-email').value = profileData.email || '';
+            document.getElementById('edit-certificate-photo').value = '';
+            document.getElementById('edit-credential-desc').value = '';
+            const modal = document.getElementById('edit-profile-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEditProfileModal() {
+            const modal = document.getElementById('edit-profile-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function saveProfileAndCredential() {
+            // 1) Cập nhật thông tin cá nhân
+            const patchData = {
+                first_name: document.getElementById('edit-first-name').value.trim(),
+                last_name: document.getElementById('edit-last-name').value.trim(),
+                phone_number: document.getElementById('edit-phone').value.trim(),
+                address: document.getElementById('edit-address').value.trim(),
+                email: document.getElementById('edit-email').value.trim(),
+            };
+            
+            try {
+                const resp = await apiFetch(API_BASE + '/profile/', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(patchData)
+                });
+                if (resp && resp.ok) {
+                    showToast('Cập nhật hồ sơ thành công!', 'success');
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    showToast('Lỗi cập nhật: ' + (err.detail || JSON.stringify(err)), 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi kết nối khi cập nhật hồ sơ.', 'error');
+            }
+
+            // 2) Gửi bằng cấp nếu có ảnh hoặc mô tả
+            const certPhoto = document.getElementById('edit-certificate-photo').files[0];
+            const certDesc = document.getElementById('edit-credential-desc').value.trim();
+            
+            if (certPhoto || certDesc) {
+                const formData = new FormData();
+                if (certPhoto) formData.append('certificate_photo', certPhoto);
+                if (certDesc) formData.append('description', certDesc);
+                
+                try {
+                    const credResp = await apiFetch(API_BASE + '/worker/submit-credential/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (credResp && credResp.ok) {
+                        showToast('Đã gửi bằng cấp cho Admin duyệt!', 'success');
+                    } else {
+                        const err = await credResp.json().catch(() => ({}));
+                        showToast('Lỗi gửi bằng cấp: ' + (err.error || JSON.stringify(err)), 'error');
+                    }
+                } catch (e) {
+                    showToast('Lỗi kết nối khi gửi bằng cấp.', 'error');
+                }
+            }
+
+            closeEditProfileModal();
+            // Reload profile
+            await fetchProfileData();
+        }
+
+        // ===== MY CREDENTIALS MODAL =====
+        function openMyCredentialsModal() {
+            const modal = document.getElementById('my-credentials-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            loadMyCredentials();
+        }
+
+        function closeMyCredentialsModal() {
+            const modal = document.getElementById('my-credentials-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function loadMyCredentials() {
+            const list = document.getElementById('credentials-list');
+            list.innerHTML = '<div class="flex items-center justify-center py-8"><div class="spinner w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>';
+            
+            try {
+                const resp = await apiFetch(API_BASE + '/worker/submit-credential/');
+                if (resp && resp.ok) {
+                    const credentials = await resp.json();
+                    if (credentials.length === 0) {
+                        list.innerHTML = '<div class="flex items-center justify-center py-8 text-textSecondary"><span class="material-symbols-outlined mr-2">description</span>Chưa gửi bằng cấp nào</div>';
+                        return;
+                    }
+                    list.innerHTML = credentials.map(c => {
+                        let statusColor, statusBg, statusIcon;
+                        if (c.status === 'approved') { statusColor = 'text-success'; statusBg = 'bg-emerald-50'; statusIcon = 'check_circle'; }
+                        else if (c.status === 'rejected') { statusColor = 'text-error'; statusBg = 'bg-red-50'; statusIcon = 'cancel'; }
+                        else { statusColor = 'text-amber-500'; statusBg = 'bg-amber-50'; statusIcon = 'schedule'; }
+                        
+                        return `
+                        <div class="p-4 rounded-xl ${statusBg} border border-gray-100">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="inline-flex items-center gap-1.5 ${statusColor} text-xs font-bold">
+                                    <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">${statusIcon}</span>
+                                    ${c.status_display}
+                                </span>
+                                <span class="text-[10px] text-textMuted">${c.created_at}</span>
+                            </div>
+                            ${c.certificate_photo ? `<img src="${c.certificate_photo}" class="w-full h-32 object-cover rounded-lg mb-2 border border-gray-200" alt="Bằng cấp"/>` : ''}
+                            ${c.description ? `<p class="text-sm text-textPrimary">${c.description}</p>` : ''}
+                            ${c.admin_review ? `<div class="mt-2 p-2 bg-white rounded-lg border border-gray-100"><p class="text-xs text-textSecondary font-medium">Đánh giá từ Admin:</p><p class="text-sm text-textPrimary mt-1">${c.admin_review}</p></div>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                list.innerHTML = '<div class="text-center py-8 text-error text-sm">Lỗi tải bằng cấp</div>';
+            }
         }
 
         init();
