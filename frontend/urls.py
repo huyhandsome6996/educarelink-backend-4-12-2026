@@ -20,5 +20,7 @@ urlpatterns = [
     path('worker/task-detail/', TaskDetailView.as_view(), name='task_detail'),
     path('worker/my-jobs/', WorkerJobsView.as_view(), name='worker_jobs'),
     path('worker/profile/', WorkerProfileView.as_view(), name='worker_profile'),
+    path('worker/chatbot/', WorkerChatbotView.as_view(), name='worker_chatbot'),
+    path('worker/help-center/', HelpCenterView.as_view(), name='help_center'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]

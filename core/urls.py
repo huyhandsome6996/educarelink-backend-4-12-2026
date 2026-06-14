@@ -14,6 +14,8 @@ from .views import (
     AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
     AdminSendNotificationAPIView,
     UserNotificationsAPIView, UnreadNotificationCountAPIView,
+    WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
+    WorkerChatbotAPIView, HelpCenterAPIView,
 )
 
 urlpatterns = [
@@ -65,4 +67,15 @@ urlpatterns = [
     # Thông báo cho người dùng
     path('notifications/', UserNotificationsAPIView.as_view(), name='user-notifications'),
     path('notifications/unread-count/', UnreadNotificationCountAPIView.as_view(), name='unread-notification-count'),
+    
+    # Yêu cầu thay đổi hồ sơ (Carepartner gửi, Admin duyệt)
+    path('worker/profile-change-request/', WorkerProfileChangeRequestAPIView.as_view(), name='worker-profile-change-request'),
+    path('admin/profile-change-requests/', AdminProfileChangeRequestsAPIView.as_view(), name='admin-profile-change-requests'),
+    path('admin/profile-change-requests/<int:request_id>/review/', AdminReviewProfileChangeRequestAPIView.as_view(), name='admin-review-profile-change'),
+    
+    # AI Chatbot cho Carepartner
+    path('worker/chatbot/', WorkerChatbotAPIView.as_view(), name='worker-chatbot'),
+    
+    # Trung tâm trợ giúp AI
+    path('help-center/', HelpCenterAPIView.as_view(), name='help-center'),
 ]

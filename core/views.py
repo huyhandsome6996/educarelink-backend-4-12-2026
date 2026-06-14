@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate
 import os
 import requests
 from django.db import models as db_models
-from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification
+from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest
 
 
 def build_absolute_uri(request, url):
@@ -366,7 +366,10 @@ class WorkerProfileDetailAPIView(APIView):
                 "avg_rating": round(avg_rating, 1) if reviews.exists() else 0.0,
                 "review_count": reviews.count(),
                 "qualifications": qualifications,
-                "reviews": serialized_reviews
+                "reviews": serialized_reviews,
+                "phone_number": worker.phone_number or "",
+                "address": worker.address or "",
+                "email": worker.email or "",
             }
             return Response(data, status=status.HTTP_200_OK)
         except User.DoesNotExist:
@@ -1026,3 +1029,393 @@ class UnreadNotificationCountAPIView(APIView):
     def get(self, request):
         count = Notification.objects.filter(recipient=request.user, is_read=False).count()
         return Response({'unread_count': count})
+
+
+# --- PHẦN 9: YÊU CẦU THAY ĐỔI HỒ SƠ (CAREPARTNER GỬI, ADMIN DUYỆT) ---
+class WorkerProfileChangeRequestAPIView(APIView):
+    """API cho Carepartner gửi yêu cầu thay đổi hồ sơ cá nhân — Admin sẽ duyệt"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    ALLOWED_FIELDS = ['first_name', 'last_name', 'phone_number', 'address', 'email']
+
+    def post(self, request):
+        if request.user.role != 'worker':
+            return Response({'error': 'Chỉ Carepartner mới được yêu cầu thay đổi hồ sơ.'}, status=status.HTTP_403_FORBIDDEN)
+
+        proposed_changes = {}
+        for field in self.ALLOWED_FIELDS:
+            if field in request.data:
+                value = request.data.get(field, '').strip() if isinstance(request.data.get(field), str) else request.data.get(field)
+                # Chỉ lưu nếu thực sự thay đổi
+                current_value = getattr(request.user, field, '') or ''
+                if str(value) != str(current_value):
+                    proposed_changes[field] = value
+
+        if not proposed_changes:
+            return Response({'error': 'Không có thay đổi nào để gửi.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        change_request = ProfileChangeRequest.objects.create(
+            worker=request.user,
+            proposed_changes=proposed_changes,
+            status='pending'
+        )
+
+        # Gửi thông báo cho Admin (tạo notification cho tất cả admin/staff)
+        admin_users = User.objects.filter(is_staff=True, is_active=True)
+        for admin in admin_users:
+            Notification.objects.create(
+                recipient=admin,
+                title='Yêu cầu thay đổi hồ sơ',
+                message=f'Carepartner {request.user.username} ({request.user.first_name} {request.user.last_name}) yêu cầu thay đổi hồ sơ cá nhân. Vui lòng kiểm tra và duyệt.'
+            )
+
+        return Response({
+            'message': 'Đã gửi yêu cầu thay đổi hồ sơ! Vui lòng đợi Admin duyệt.',
+            'request': {
+                'id': change_request.id,
+                'proposed_changes': change_request.proposed_changes,
+                'status': change_request.status,
+                'created_at': change_request.created_at.strftime('%d/%m/%Y %H:%M'),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        """Lấy danh sách yêu cầu thay đổi hồ sơ của Carepartner hiện tại"""
+        if request.user.role != 'worker':
+            return Response({'error': 'Chỉ Carepartner mới có danh sách yêu cầu.'}, status=status.HTTP_403_FORBIDDEN)
+
+        requests_list = ProfileChangeRequest.objects.filter(worker=request.user).order_by('-created_at')
+        data = []
+        for r in requests_list:
+            data.append({
+                'id': r.id,
+                'proposed_changes': r.proposed_changes,
+                'status': r.status,
+                'status_display': r.get_status_display(),
+                'admin_review': r.admin_review,
+                'reviewed_at': r.reviewed_at.strftime('%d/%m/%Y %H:%M') if r.reviewed_at else None,
+                'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+        return Response(data)
+
+
+class AdminProfileChangeRequestsAPIView(APIView):
+    """API cho Admin xem danh sách yêu cầu thay đổi hồ sơ"""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        status_filter = request.query_params.get('status', 'pending')
+        if status_filter == 'all':
+            requests_list = ProfileChangeRequest.objects.all().order_by('-created_at')
+        else:
+            requests_list = ProfileChangeRequest.objects.filter(status=status_filter).order_by('-created_at')
+
+        data = []
+        for r in requests_list:
+            data.append({
+                'id': r.id,
+                'worker_id': r.worker.id,
+                'worker_username': r.worker.username,
+                'worker_name': f"{r.worker.first_name} {r.worker.last_name}".strip() or r.worker.username,
+                'proposed_changes': r.proposed_changes,
+                'status': r.status,
+                'status_display': r.get_status_display(),
+                'admin_review': r.admin_review,
+                'reviewed_at': r.reviewed_at.strftime('%d/%m/%Y %H:%M') if r.reviewed_at else None,
+                'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+        return Response(data)
+
+
+class AdminReviewProfileChangeRequestAPIView(APIView):
+    """API cho Admin duyệt/từ chối yêu cầu thay đổi hồ sơ"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, request_id):
+        from django.utils import timezone
+
+        try:
+            change_request = ProfileChangeRequest.objects.get(id=request_id)
+        except ProfileChangeRequest.DoesNotExist:
+            return Response({'error': 'Không tìm thấy yêu cầu thay đổi hồ sơ.'}, status=status.HTTP_404_NOT_FOUND)
+
+        action = request.data.get('action')  # 'approve' hoặc 'reject'
+        admin_review = request.data.get('admin_review', '').strip()
+
+        if action == 'approve':
+            change_request.status = 'approved'
+            change_request.admin_review = admin_review if admin_review else 'Yêu cầu thay đổi hồ sơ đã được Admin duyệt.'
+            change_request.reviewed_at = timezone.now()
+            change_request.save()
+
+            # Áp dụng thay đổi vào hồ sơ của worker
+            worker = change_request.worker
+            allowed_fields = ['first_name', 'last_name', 'phone_number', 'address', 'email']
+            for field, value in change_request.proposed_changes.items():
+                if field in allowed_fields:
+                    setattr(worker, field, value)
+            worker.save(update_fields=[f for f in change_request.proposed_changes.keys() if f in allowed_fields])
+
+            # Gửi thông báo cho worker
+            Notification.objects.create(
+                recipient=worker,
+                title='Yêu cầu thay đổi hồ sơ đã được duyệt!',
+                message=f'Admin đã duyệt yêu cầu thay đổi hồ sơ của bạn. {change_request.admin_review}'
+            )
+
+            # Push notification
+            if worker.expo_push_token:
+                send_expo_push_notification(
+                    token=worker.expo_push_token,
+                    title='Hồ sơ đã được cập nhật!',
+                    body='Admin đã duyệt yêu cầu thay đổi hồ sơ của bạn.',
+                    data={'type': 'profile_change_approved'}
+                )
+
+            return Response({'message': f'Đã duyệt yêu cầu thay đổi hồ sơ cho {worker.username}.'})
+
+        elif action == 'reject':
+            change_request.status = 'rejected'
+            change_request.admin_review = admin_review if admin_review else 'Yêu cầu thay đổi hồ sơ bị từ chối.'
+            change_request.reviewed_at = timezone.now()
+            change_request.save()
+
+            # Gửi thông báo cho worker
+            Notification.objects.create(
+                recipient=change_request.worker,
+                title='Yêu cầu thay đổi hồ sơ bị từ chối',
+                message=f'Admin đã từ chối yêu cầu thay đổi hồ sơ của bạn. Lý do: {change_request.admin_review}'
+            )
+
+            # Push notification
+            if change_request.worker.expo_push_token:
+                send_expo_push_notification(
+                    token=change_request.worker.expo_push_token,
+                    title='Yêu cầu thay đổi hồ sơ bị từ chối',
+                    body='Admin đã từ chối yêu cầu thay đổi hồ sơ của bạn.',
+                    data={'type': 'profile_change_rejected'}
+                )
+
+            return Response({'message': f'Đã từ chối yêu cầu thay đổi hồ sơ của {change_request.worker.username}.'})
+
+        else:
+            return Response({'error': 'Action không hợp lệ. Dùng approve hoặc reject.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- PHẦN 10: CAREPARTNER AI CHATBOT & TRUNG TÂM TRỢ GIÚP ---
+class WorkerChatbotAPIView(APIView):
+    """API Chatbot AI dành riêng cho Carepartner — hỗ trợ tư vấn việc làm, kỹ năng, v.v."""
+    permission_classes = [IsAuthenticated]
+
+    SYSTEM_PROMPT = """
+Bạn là trợ lý AI của ứng dụng Educarelink — nền tảng kết nối phụ huynh với sinh viên/người chăm sóc (Carepartner).
+Nhiệm vụ của bạn là giúp CAREPARTNER (người chăm sóc) giải đáp thắc mắc, tư vấn kỹ năng, và hỗ trợ trong quá trình làm việc.
+
+BẠN CÓ THỂ HỖ TRỢ:
+1. Tư vấn kỹ năng làm việc: cách chăm sóc trẻ, gia sư hiệu quả, giao tiếp với phụ huynh
+2. Giải đáp thắc mắc về nền tảng: cách ứng tuyển, xem việc, cập nhật hồ sơ
+3. Gợi ý cách tăng đánh giá sao và thu hút phụ huynh
+4. Hỗ trợ viết mô tả bản thân ấn tượng
+5. Tư vấn an toàn khi làm việc (đặc biệt với trẻ em)
+6. Giải thích các quyền lợi và trách nhiệm của Carepartner
+
+QUY TẮC:
+- Luôn trả lời bằng TIẾNG VIỆT, thân thiện và chuyên nghiệp
+- Cung cấp câu trả lời chi tiết, có ví dụ thực tế khi có thể
+- Không tạo task hay thực hiện hành động thay người dùng — chỉ tư vấn và hướng dẫn
+- Nếu câu hỏi ngoài phạm vi, hãy lịch sự chuyển hướng về chủ đề liên quan
+- Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng
+"""
+
+    def _build_contents(self, user_message, chat_history=None):
+        contents = []
+        if chat_history and isinstance(chat_history, list):
+            for msg in chat_history:
+                role = msg.get('role', '')
+                text = msg.get('text', '')
+                if role in ('user', 'model') and text:
+                    contents.append({'role': role, 'parts': [{'text': text}]})
+        contents.append({'role': 'user', 'parts': [{'text': user_message}]})
+        return contents
+
+    def post(self, request):
+        from django.conf import settings
+        import json
+        import re
+
+        user_message = request.data.get('message', '').strip()
+        chat_history = request.data.get('history', [])
+
+        if not user_message:
+            return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
+
+        gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if not gemini_key or gemini_key == 'your_gemini_api_key_here':
+            return Response({
+                "response": "Tính năng AI chưa được kích hoạt. Vui lòng liên hệ admin để cấu hình.",
+                "type": "info"
+            })
+
+        # Bổ sung ngữ cảnh người dùng vào system prompt
+        user = request.user
+        enriched_prompt = self.SYSTEM_PROMPT + f"""
+
+THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
+- Tên: {user.first_name} {user.last_name}
+- Vai trò: Carepartner
+- Đã xác thực: {'Có' if user.is_verified else 'Chưa'}
+- Bằng cấp: {', '.join(user.qualifications) if isinstance(user.qualifications, list) and user.qualifications else 'Chưa cập nhật'}
+"""
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=gemini_key)
+            contents = self._build_contents(user_message, chat_history)
+
+            gemini_response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=enriched_prompt,
+                    temperature=0.8,
+                    max_output_tokens=2048,
+                )
+            )
+            ai_text = gemini_response.text
+
+            return Response({
+                "response": ai_text,
+                "type": "message"
+            })
+
+        except Exception as e:
+            error_msg = str(e)
+            if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper():
+                detail = "API key Gemini không hợp lệ."
+            elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
+                detail = "Đã hết hạn mức sử dụng Gemini hôm nay. Thử lại vào ngày mai!"
+            elif 'HIGH DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper():
+                detail = "Hệ thống AI đang quá tải. Vui lòng thử lại sau vài giây!"
+            else:
+                detail = f"Lỗi kết nối AI: {error_msg}"
+            return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class HelpCenterAPIView(APIView):
+    """API Trung tâm trợ giúp AI — trả lời câu hỏi về nền tảng EduCareLink"""
+    permission_classes = [IsAuthenticated]
+
+    SYSTEM_PROMPT = """
+Bạn là trợ lý AI của Trung tâm trợ giúp EduCareLink — nền tảng kết nối phụ huynh với sinh viên/người chăm sóc (Carepartner).
+
+NHIỆM VỤ: Giúp người dùng giải đáp mọi thắc mắc về cách sử dụng nền tảng EduCareLink.
+
+HƯỚNG DẪN CHI TIẾT VỀ NỀN TẢNG:
+
+**Đối với Phụ huynh:**
+1. Đăng việc: Vào trang chủ → bấm nút "Đăng việc" hoặc dùng AI Chatbot để mô tả yêu cầu → AI tự động tạo việc
+2. Tìm Carepartner: Đăng việc → chờ Carepartner ứng tuyển → duyệt ứng viên phù hợp
+3. Quản lý việc: Xem danh sách việc đã đăng, cập nhật trạng thái (hoàn thành/hủy)
+4. Đánh giá: Sau khi hoàn thành việc → vào "Việc của tôi" → đánh giá Carepartner
+5. Chatbot AI: Bấm "AI Trợ lý" trên sidebar → mô tả yêu cầu bằng lời nói tự nhiên
+
+**Đối với Carepartner:**
+1. Tìm việc: Vào "Tìm việc" → duyệt danh sách → bấm "Ứng tuyển"
+2. Việc của tôi: Xem danh sách việc đã ứng tuyển và trạng thái
+3. Hồ sơ: Cập nhật thông tin cá nhân → gửi yêu cầu thay đổi (Admin sẽ duyệt)
+4. Bằng cấp: Tải lên ảnh bằng cấp/chứng chỉ → Admin xem xét và đánh giá
+5. Thông báo: Nhận thông báo từ Admin (duyệt hồ sơ, duyệt bằng cấp, v.v.)
+
+**Quy trình đăng ký Carepartner:**
+- Điền thông tin → Tải ảnh CCCD mặt trước + mặt sau + ảnh chân dung → Chờ Admin duyệt
+- Sau khi được duyệt, có thể bắt đầu ứng tuyển việc
+
+**Quy trình thay đổi hồ sơ:**
+- Vào "Chỉnh sửa hồ sơ" → Sửa thông tin → Bấm "Lưu thay đổi" → Yêu cầu gửi đến Admin
+- Admin sẽ duyệt hoặc từ chối → Nhận thông báo kết quả
+
+**Quy trình gửi bằng cấp:**
+- Vào "Bằng cấp của tôi" → Tải ảnh + mô tả → Gửi → Chờ Admin đánh giá
+- Admin duyệt → Bằng cấp được cập nhật vào hồ sơ
+
+QUY TẮC:
+- Luôn trả lời bằng TIẾNG VIỆT, thân thiện, rõ ràng
+- Hướng dẫn từng bước khi giải thích tính năng
+- Nếu câu hỏi không liên quan đến EduCareLink, lịch sự chuyển hướng
+- Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng
+"""
+
+    def _build_contents(self, user_message, chat_history=None):
+        contents = []
+        if chat_history and isinstance(chat_history, list):
+            for msg in chat_history:
+                role = msg.get('role', '')
+                text = msg.get('text', '')
+                if role in ('user', 'model') and text:
+                    contents.append({'role': role, 'parts': [{'text': text}]})
+        contents.append({'role': 'user', 'parts': [{'text': user_message}]})
+        return contents
+
+    def post(self, request):
+        from django.conf import settings
+        import json
+        import re
+
+        user_message = request.data.get('message', '').strip()
+        chat_history = request.data.get('history', [])
+
+        if not user_message:
+            return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
+
+        gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if not gemini_key or gemini_key == 'your_gemini_api_key_here':
+            return Response({
+                "response": "Tính năng AI chưa được kích hoạt. Vui lòng liên hệ admin.",
+                "type": "info"
+            })
+
+        # Bổ sung ngữ cảnh người dùng
+        user = request.user
+        role_display = 'Phụ huynh' if user.role == 'parent' else 'Carepartner'
+        enriched_prompt = self.SYSTEM_PROMPT + f"""
+
+THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
+- Tên: {user.first_name} {user.last_name}
+- Vai trò: {role_display}
+- Đã xác thực: {'Có' if user.is_verified else 'Chưa'}
+- Tài khoản đã duyệt: {'Có' if user.is_approved else 'Chưa'}
+"""
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=gemini_key)
+            contents = self._build_contents(user_message, chat_history)
+
+            gemini_response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=enriched_prompt,
+                    temperature=0.7,
+                    max_output_tokens=2048,
+                )
+            )
+            ai_text = gemini_response.text
+
+            return Response({
+                "response": ai_text,
+                "type": "message"
+            })
+
+        except Exception as e:
+            error_msg = str(e)
+            if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper():
+                detail = "API key Gemini không hợp lệ."
+            elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
+                detail = "Đã hết hạn mức sử dụng AI hôm nay. Thử lại vào ngày mai!"
+            elif 'HIGH DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper():
+                detail = "Hệ thống AI đang quá tải. Vui lòng thử lại sau vài giây!"
+            else:
+                detail = f"Lỗi kết nối AI: {error_msg}"
+            return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

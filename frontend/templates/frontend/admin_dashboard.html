@@ -353,6 +353,11 @@
                 <span class="icon">&#128276;</span>
                 G&#7917;i th&#244;ng b&#225;o
             </div>
+            <div class="nav-item" onclick="switchTab('profile_changes')">
+                <span class="icon">&#9998;</span>
+                Y&#234;u c&#7847;u s&#7917;a h&#7891; s&#417;
+                <span class="nav-badge" id="profileChangeBadge" style="display:none;">0</span>
+            </div>
         </div>
         <div style="padding: 12px 12px; border-top: 1px solid #334155;">
             <button class="btn" style="width:100%;background:#F26522;color:#fff;font-weight:800;font-size:13px;padding:12px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;" onclick="seedDemoData()" id="seedBtn">
@@ -503,8 +508,31 @@
         </div>
     </div>
 
+    <!-- Profile Change Review Modal -->
+    <div class="edit-modal" id="profileChangeModal">
+        <div class="edit-modal-content" style="width: 500px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title">Duyệt yêu cầu thay đổi hồ sơ</div>
+                <button class="modal-close" style="position:static" onclick="closeProfileChangeModal()">✕</button>
+            </div>
+            <div class="edit-modal-body">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Carepartner:</div>
+                    <div style="font-weight:700; font-size:15px; color:#f1f5f9;" id="profileChangeWorkerName">-</div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Đánh giá / Ghi chú (tuỳ chọn):</div>
+                    <textarea id="profileChangeAdminReview" class="edit-modal-textarea" placeholder="Nhập lý do duyệt hoặc từ chối..." style="height:100px;"></textarea>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn" onclick="reviewProfileChange('reject')" style="background:#ef4444;color:#fff;border:none;padding:10px 24px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">Từ chối</button>
+                <button class="edit-modal-btn btn-save" onclick="reviewProfileChange('approve')">Duyệt thay đổi</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ===== CẤU HÌNH =====
         const API_BASE = '/api';
         let currentTab = 'pending';
 
@@ -926,6 +954,15 @@
                 document.querySelector('.table-container').style.display = 'none';
                 openNotifModal();
                 return;
+            } else if (tab === 'profile_changes') {
+                navItems[5].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Yêu cầu thay đổi hồ sơ';
+                document.getElementById('pageTitle').textContent = 'Duyệt yêu cầu thay đổi hồ sơ';
+                document.getElementById('pageSubtitle').textContent = 'Xem và duyệt yêu cầu thay đổi thông tin từ Carepartner';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                loadProfileChangeRequests();
+                return;
             }
             document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
             loadData();
@@ -1120,12 +1157,96 @@
             btn.disabled = false;
         }
 
+        // ===== PROFILE CHANGE REQUESTS =====
+        let currentProfileChangeId = null;
+
+        async function loadProfileChangeRequests() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/?status=pending`);
+                if (res.ok) {
+                    const requests = await res.json();
+                    if (requests.length === 0) {
+                        tbody.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;margin-bottom:12px;">&#128203;</div><div style="font-size:16px;font-weight:700;">Không có yêu cầu nào</div><div style="font-size:13px;margin-top:4px;">Tất cả yêu cầu đã được xử lý</div></div>';
+                        return;
+                    }
+                    const fieldLabels = { first_name: 'Họ', last_name: 'Tên', phone_number: 'SĐT', address: 'Địa chỉ', email: 'Email' };
+                    tbody.innerHTML = requests.map(r => {
+                        const changesHtml = Object.entries(r.proposed_changes).map(([f, v]) => 
+                            `<span style="background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:6px;font-size:12px;margin:2px;">${fieldLabels[f] || f}: ${escapeHtml(String(v))}</span>`
+                        ).join(' ');
+                        return `<div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;margin-bottom:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <div>
+                                    <div style="font-weight:800;font-size:15px;color:#f1f5f9;">${escapeHtml(r.worker_name)}</div>
+                                    <div style="font-size:12px;color:#64748b;">@${escapeHtml(r.worker_username)} • ${r.created_at}</div>
+                                </div>
+                                <span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;">${escapeHtml(r.status_display)}</span>
+                            </div>
+                            <div style="margin-bottom:12px;"><div style="font-size:12px;color:#64748b;margin-bottom:6px;">Thay đổi yêu cầu:</div>${changesHtml}</div>
+                            <div style="display:flex;gap:8px;">
+                                <button onclick="openProfileChangeReviewModal(${r.id}, '${escapeHtml(r.worker_name)}')" style="background:#22c55e;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;">Duyệt / Từ chối</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) { showToast('Lỗi tải yêu cầu', 'error'); }
+        }
+
+        function openProfileChangeReviewModal(requestId, workerName) {
+            currentProfileChangeId = requestId;
+            document.getElementById('profileChangeWorkerName').textContent = workerName;
+            document.getElementById('profileChangeAdminReview').value = '';
+            document.getElementById('profileChangeModal').classList.add('show');
+        }
+
+        function closeProfileChangeModal() {
+            document.getElementById('profileChangeModal').classList.remove('show');
+            currentProfileChangeId = null;
+        }
+
+        async function reviewProfileChange(action) {
+            if (!currentProfileChangeId) return;
+            const adminReview = document.getElementById('profileChangeAdminReview').value.trim();
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/${currentProfileChangeId}/review/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, admin_review: adminReview })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeProfileChangeModal();
+                    loadProfileChangeRequests();
+                    loadProfileChangeBadgeCount();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        }
+
+        async function loadProfileChangeBadgeCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/?status=pending`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('profileChangeBadge');
+                    if (data.length > 0) { badge.style.display = ''; badge.textContent = data.length; }
+                    else { badge.style.display = 'none'; }
+                }
+            } catch (e) {}
+        }
+
         // ===== INIT =====
         displayAdminName();
         loadData();
         loadCredentialBadgeCount();
+        loadProfileChangeBadgeCount();
         setInterval(loadData, 30000);
         setInterval(loadCredentialBadgeCount, 30000);
+        setInterval(loadProfileChangeBadgeCount, 30000);
 
         async function loadCredentialBadgeCount() {
             try {
