@@ -7,6 +7,8 @@ from .views import (
     ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
     ChatbotAPIView,
     AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
+    AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
+    AdminSeedDemoDataAPIView,
 )
 
 urlpatterns = [
@@ -41,4 +43,8 @@ urlpatterns = [
     path('admin/pending-workers/', AdminPendingWorkersAPIView.as_view(), name='admin-pending-workers'),
     path('admin/workers/<int:user_id>/action/', AdminApproveWorkerAPIView.as_view(), name='admin-approve-worker'),
     path('admin/all-workers/', AdminAllWorkersAPIView.as_view(), name='admin-all-workers'),
+    path('admin/users/<int:user_id>/toggle-active/', AdminToggleUserActiveAPIView.as_view(), name='admin-toggle-user-active'),
+    path('admin/users/<int:user_id>/revoke-carepartner/', AdminRevokeCarepartnerAPIView.as_view(), name='admin-revoke-carepartner'),
+    path('admin/all-users/', AdminAllUsersAPIView.as_view(), name='admin-all-users'),
+    path('admin/seed-demo-data/', AdminSeedDemoDataAPIView.as_view(), name='admin-seed-demo-data'),
 ]

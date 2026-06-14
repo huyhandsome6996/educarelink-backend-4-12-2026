@@ -601,6 +601,77 @@ class AdminApproveWorkerAPIView(APIView):
             return Response({'error': 'Không tìm thấy tài khoản.'}, status=404)
 
 
+class AdminToggleUserActiveAPIView(APIView):
+    """API khoá/mở tài khoản người dùng (Admin)"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            # Không cho phép khoá chính mình hoặc superuser
+            if user.id == request.user.id:
+                return Response({'error': 'Không thể khoá chính tài khoản của bạn.'}, status=400)
+            if user.is_superuser:
+                return Response({'error': 'Không thể khoá tài khoản Superuser.'}, status=400)
+
+            user.is_active = not user.is_active
+            user.save(update_fields=['is_active'])
+            status_text = 'mở khoá' if user.is_active else 'khoá'
+            return Response({
+                'message': f'Đã {status_text} tài khoản {user.username}.',
+                'is_active': user.is_active,
+            })
+        except User.DoesNotExist:
+            return Response({'error': 'Không tìm thấy tài khoản.'}, status=404)
+
+
+class AdminRevokeCarepartnerAPIView(APIView):
+    """API tước quyền Carepartner — đổi role từ worker về parent"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            if user.role != 'worker':
+                return Response({'error': 'Tài khoản này không phải là Carepartner.'}, status=400)
+
+            user.role = 'parent'
+            user.is_approved = False
+            user.is_verified = False
+            user.qualifications = []
+            user.save(update_fields=['role', 'is_approved', 'is_verified', 'qualifications'])
+            return Response({
+                'message': f'Đã tước quyền Carepartner của {user.username}. Tài khoản đã chuyển về vai trò Phụ huynh.',
+            })
+        except User.DoesNotExist:
+            return Response({'error': 'Không tìm thấy tài khoản.'}, status=404)
+
+
+class AdminAllUsersAPIView(APIView):
+    """API lấy tất cả người dùng (Admin) — hỗ trợ khoá/mở tài khoản"""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        users = User.objects.filter(is_staff=False, is_superuser=False).order_by('-date_joined')
+        data = []
+        for u in users:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'phone_number': u.phone_number,
+                'role': u.role,
+                'is_active': u.is_active,
+                'is_approved': u.is_approved,
+                'is_verified': u.is_verified,
+                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
+            })
+        return Response(data)
+
+
 class AdminAllWorkersAPIView(APIView):
     """API lấy tất cả Carepartner (đã duyệt + chờ duyệt)"""
     permission_classes = [IsAdminUser]  # Yêu cầu quyền admin (is_staff=True)
@@ -625,3 +696,18 @@ class AdminAllWorkersAPIView(APIView):
                 'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)
+
+class AdminSeedDemoDataAPIView(APIView):
+    """API tạo dữ liệu mẫu cho ban giám khảo — chỉ Admin mới gọi được"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('seed_demo_data', stdout=out)
+        output = out.getvalue()
+        return Response({
+            'message': 'Đã tạo dữ liệu mẫu thành công!',
+            'details': output,
+        })

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
-    <title>Educarelink Admin - Quản lý duyệt tài khoản</title>
+    <title>Educarelink Admin - Quản lý hệ thống</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth; }
@@ -96,9 +96,10 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 20px;
         }
-        .stat-icon.pending { background: #F26522 + '20'; background: rgba(242,101,34,0.15); color: #F26522; }
+        .stat-icon.pending { background: rgba(242,101,34,0.15); color: #F26522; }
         .stat-icon.approved { background: rgba(34,197,94,0.15); color: #22c55e; }
         .stat-icon.total { background: rgba(99,102,241,0.15); color: #6366f1; }
+        .stat-icon.locked { background: rgba(239,68,68,0.15); color: #ef4444; }
         .stat-value { font-size: 28px; font-weight: 900; color: #f1f5f9; }
         .stat-label { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
 
@@ -155,6 +156,11 @@
         }
         .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
         .badge-approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-locked { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-parent { background: rgba(99,102,241,0.15); color: #6366f1; }
+        .badge-worker { background: rgba(242,101,34,0.15); color: #F26522; }
+        .badge-active { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-inactive { background: rgba(239,68,68,0.15); color: #ef4444; }
         .photo-thumbs { display: flex; gap: 6px; }
         .photo-thumb {
             width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
@@ -162,7 +168,7 @@
             transition: all 0.2s;
         }
         .photo-thumb:hover { border-color: #F26522; transform: scale(1.1); }
-        .action-btns { display: flex; gap: 8px; }
+        .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn {
             padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
             cursor: pointer; border: none; transition: all 0.2s ease;
@@ -172,6 +178,13 @@
         .btn-approve:hover { background: #16a34a; box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
         .btn-reject { background: #334155; color: #ef4444; border: 1px solid #475569; }
         .btn-reject:hover { background: #ef4444; color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+        .btn-lock { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .btn-lock:hover { background: #ef4444; color: #fff; }
+        .btn-unlock { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .btn-unlock:hover { background: #22c55e; color: #fff; }
+        .btn-revoke { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+        .btn-revoke:hover { background: #f59e0b; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 11px; }
 
         .empty-state {
             padding: 60px 20px; text-align: center;
@@ -304,7 +317,7 @@
 </head>
 <body>
     <!-- Hamburger Button -->
-    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">&#9776;</button>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -312,28 +325,37 @@
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-logo" style="display:flex;align-items:center;gap:10px;">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+            <div class="sidebar-logo">
                 Educarelink
                 <span>Admin Dashboard</span>
             </div>
         </div>
         <div class="sidebar-nav">
             <div class="nav-item active" onclick="switchTab('pending')">
-                <span class="icon">⏳</span>
-                Chờ duyệt
+                <span class="icon">&#9203;</span>
+                Ch&#7901; duy&#7879;t
                 <span class="nav-badge" id="pendingBadge">0</span>
             </div>
             <div class="nav-item" onclick="switchTab('all')">
-                <span class="icon">👥</span>
-                Tất cả Carepartner
+                <span class="icon">&#128101;</span>
+                T&#7845;t c&#7843; Carepartner
             </div>
+            <div class="nav-item" onclick="switchTab('users')">
+                <span class="icon">&#128274;</span>
+                Qu&#7843;n l&#253; t&#224;i kho&#7843;n
+            </div>
+        </div>
+        <div style="padding: 12px 12px; border-top: 1px solid #334155;">
+            <button class="btn" style="width:100%;background:#F26522;color:#fff;font-weight:800;font-size:13px;padding:12px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;" onclick="seedDemoData()" id="seedBtn">
+                &#127793; T&#7841;o d&#7919; li&#7879;u m&#7851;u
+            </button>
+            <div style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">T&#7841;o t&#224;i kho&#7843;n demo cho BGK</div>
         </div>
         <div style="padding: 16px 12px; border-top: 1px solid #334155;">
             <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="adminName">Admin</div>
             <div class="nav-item" onclick="logoutAdmin()" style="color: #ef4444;">
-                <span class="icon">🚪</span>
-                Đăng xuất
+                <span class="icon">&#128682;</span>
+                &#272;&#259;ng xu&#7845;t
             </div>
         </div>
     </div>
@@ -342,33 +364,33 @@
     <div class="main">
         <div class="page-header">
             <div>
-                <h1 class="page-title">Quản lý Carepartner</h1>
-                <p class="page-subtitle">Duyệt đăng ký và quản lý tài khoản sinh viên</p>
+                <h1 class="page-title" id="pageTitle">Qu&#7843;n l&#253; Carepartner</h1>
+                <p class="page-subtitle" id="pageSubtitle">Duy&#7879;t &#273;&#259;ng k&#253; v&#224; qu&#7843;n l&#253; t&#224;i kho&#7843;n sinh vi&#234;n</p>
             </div>
-            <button class="refresh-btn" onclick="loadData()">🔄 Làm mới</button>
+            <button class="refresh-btn" onclick="loadData()">&#128260; L&#224;m m&#7899;i</button>
         </div>
 
         <!-- Stats -->
-        <div class="stats-row">
+        <div class="stats-row" id="statsRow">
             <div class="stat-card">
-                <div class="stat-icon pending">⏳</div>
+                <div class="stat-icon pending">&#9203;</div>
                 <div>
                     <div class="stat-value" id="statPending">0</div>
-                    <div class="stat-label">Chờ duyệt</div>
+                    <div class="stat-label">Ch&#7901; duy&#7879;t</div>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon approved">✅</div>
+                <div class="stat-icon approved">&#9989;</div>
                 <div>
                     <div class="stat-value" id="statApproved">0</div>
-                    <div class="stat-label">Đã duyệt</div>
+                    <div class="stat-label">&#272;&#227; duy&#7879;t</div>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon total">👥</div>
+                <div class="stat-icon total">&#128101;</div>
                 <div>
                     <div class="stat-value" id="statTotal">0</div>
-                    <div class="stat-label">Tổng cộng</div>
+                    <div class="stat-label">T&#7893;ng c&#7897;ng</div>
                 </div>
             </div>
         </div>
@@ -376,7 +398,7 @@
         <!-- Table -->
         <div class="table-container">
             <div class="table-header">
-                <span class="table-title" id="tableTitle">Danh sách chờ duyệt</span>
+                <span class="table-title" id="tableTitle">Danh s&#225;ch ch&#7901; duy&#7879;t</span>
             </div>
             <div id="tableBody">
                 <div class="loading-spinner"><div class="spinner"></div></div>
@@ -387,7 +409,7 @@
     <!-- Photo Modal -->
     <div class="modal-overlay" id="photoModal" onclick="closeModal()" style="z-index: 200;">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="closeModal()">✕</button>
+            <button class="modal-close" onclick="closeModal()">&#10005;</button>
             <img id="modalImg" src="" alt="Preview" />
             <div class="modal-label" id="modalLabel"></div>
         </div>
@@ -397,18 +419,18 @@
     <div class="edit-modal" id="editModal">
         <div class="edit-modal-content">
             <div class="edit-modal-header">
-                <div class="edit-modal-title" id="editModalTitle">Cập nhật bằng cấp</div>
-                <button class="modal-close" style="position:static" onclick="closeEditModal()">✕</button>
+                <div class="edit-modal-title" id="editModalTitle">C&#7853;p nh&#7853;t b&#7857;ng c&#7845;p</div>
+                <button class="modal-close" style="position:static" onclick="closeEditModal()">&#10005;</button>
             </div>
             <div class="edit-modal-body">
-                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px">Ảnh xác minh của ứng viên:</div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px">&#7842;nh x&#225;c minh c&#7911;a &#7913;ng vi&#234;n:</div>
                 <div class="edit-modal-photos" id="editModalPhotos"></div>
-                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px; margin-top:16px;">Bằng cấp/Chứng chỉ (cách nhau bởi dấu phẩy):</div>
-                <textarea class="edit-modal-textarea" id="editModalInput" placeholder="Ví dụ: Đại học Bách Khoa, Chứng chỉ sư phạm"></textarea>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px; margin-top:16px;">B&#7857;ng c&#7845;p/Ch&#7913;ng ch&#7881; (c&#225;ch nhau b&#7873;i d&#7845;u ph&#7849;y):</div>
+                <textarea class="edit-modal-textarea" id="editModalInput" placeholder="V&#237; d&#7909;: &#272;&#7841;i h&#7885;c B&#225;ch Khoa, Ch&#7913;ng ch&#7881; s&#432; ph&#7841;m"></textarea>
             </div>
             <div class="edit-modal-footer">
-                <button class="edit-modal-btn btn-cancel" onclick="closeEditModal()">Huỷ</button>
-                <button class="edit-modal-btn btn-save" id="editModalSaveBtn">Lưu thay đổi</button>
+                <button class="edit-modal-btn btn-cancel" onclick="closeEditModal()">Hu&#7927;</button>
+                <button class="edit-modal-btn btn-save" id="editModalSaveBtn">L&#432;u thay &#273;&#7893;i</button>
             </div>
         </div>
     </div>
@@ -421,36 +443,20 @@
         const API_BASE = '/api';
         let currentTab = 'pending';
 
-        // ===== AUTH: Lấy JWT token từ localStorage =====
-        function getAuthToken() {
-            return localStorage.getItem('token');
-        }
+        // ===== AUTH =====
+        function getAuthToken() { return localStorage.getItem('token'); }
 
-        function authHeaders() {
-            const token = getAuthToken();
-            if (!token) return {};
-            return { 'Authorization': 'Bearer ' + token };
-        }
-
-        // ===== apiFetch: Tự động refresh token khi 401 =====
         async function apiFetch(url, options = {}) {
-            // Gắn auth headers
             if (!options.headers) options.headers = {};
             const token = getAuthToken();
             if (token) options.headers['Authorization'] = `Bearer ${token}`;
             if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
                 options.headers['Content-Type'] = 'application/json';
             }
-
             let response = await fetch(url, options);
-
-            // Nếu 401 → thử refresh token
             if (response.status === 401) {
                 const refreshToken = localStorage.getItem('refresh_token');
-                if (!refreshToken) {
-                    handleAuthError(response);
-                    return response;
-                }
+                if (!refreshToken) { handleAuthError(response); return response; }
                 try {
                     const refreshRes = await fetch(`${API_BASE}/auth/token/refresh/`, {
                         method: 'POST',
@@ -461,32 +467,22 @@
                         const data = await refreshRes.json();
                         localStorage.setItem('token', data.access);
                         if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
-                        // Retry request gốc
                         options.headers['Authorization'] = `Bearer ${data.access}`;
                         response = await fetch(url, options);
-                    } else {
-                        handleAuthError(response);
-                    }
-                } catch (e) {
-                    handleAuthError(response);
-                }
+                    } else { handleAuthError(response); }
+                } catch (e) { handleAuthError(response); }
             }
             return response;
         }
 
-        // ===== XSS Prevention: Escape HTML =====
         function escapeHtml(str) {
             if (!str) return '';
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
-        // Kiểm tra đăng nhập admin
         function checkAdminAuth() {
             const token = getAuthToken();
-            if (!token) {
-                window.location.href = '/login/?next=/admin-dashboard/';
-                return false;
-            }
+            if (!token) { window.location.href = '/login/?next=/admin-dashboard/'; return false; }
             return true;
         }
 
@@ -496,58 +492,60 @@
             try {
                 if (currentTab === 'pending') {
                     const res = await apiFetch(`${API_BASE}/admin/pending-workers/`);
-                    if (res.status === 401 || res.status === 403) {
-                        handleAuthError(res);
-                        return;
-                    }
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
                     const pending = await res.json();
                     renderPendingTable(pending);
-
-                    // Stats
                     const allRes = await apiFetch(`${API_BASE}/admin/all-workers/`);
-                    if (allRes.status === 401 || allRes.status === 403) {
-                        handleAuthError(allRes);
-                        return;
-                    }
+                    if (allRes.status === 401 || allRes.status === 403) { handleAuthError(allRes); return; }
                     const allWorkers = await allRes.json();
                     const approved = allWorkers.filter(w => w.is_approved).length;
                     document.getElementById('statPending').textContent = pending.length;
                     document.getElementById('statApproved').textContent = approved;
                     document.getElementById('statTotal').textContent = allWorkers.length;
                     document.getElementById('pendingBadge').textContent = pending.length;
-                } else {
+                } else if (currentTab === 'all') {
                     const res = await apiFetch(`${API_BASE}/admin/all-workers/`);
-                    if (res.status === 401 || res.status === 403) {
-                        handleAuthError(res);
-                        return;
-                    }
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
                     const allWorkers = await res.json();
                     renderAllTable(allWorkers);
-
                     const pending = allWorkers.filter(w => !w.is_approved).length;
                     const approved = allWorkers.filter(w => w.is_approved).length;
                     document.getElementById('statPending').textContent = pending;
                     document.getElementById('statApproved').textContent = approved;
                     document.getElementById('statTotal').textContent = allWorkers.length;
                     document.getElementById('pendingBadge').textContent = pending;
+                } else if (currentTab === 'users') {
+                    const res = await apiFetch(`${API_BASE}/admin/all-users/`);
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
+                    const allUsers = await res.json();
+                    renderUsersTable(allUsers);
+                    const locked = allUsers.filter(u => !u.is_active).length;
+                    const workers = allUsers.filter(u => u.role === 'worker').length;
+                    document.getElementById('statPending').textContent = locked;
+                    document.querySelector('#statsRow .stat-icon.pending').textContent = '🔒';
+                    document.querySelectorAll('.stat-label')[0].textContent = 'Đã khoá';
+                    document.getElementById('statApproved').textContent = workers;
+                    document.querySelector('#statsRow .stat-icon.approved').textContent = '👥';
+                    document.querySelectorAll('.stat-label')[1].textContent = 'Carepartner';
+                    document.getElementById('statTotal').textContent = allUsers.length;
+                    document.querySelectorAll('.stat-label')[2].textContent = 'Tổng người dùng';
                 }
             } catch (e) {
                 console.error('Error loading data:', e);
                 document.getElementById('tableBody').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">❌</div>
+                        <div class="empty-icon">&#10060;</div>
                         <div class="empty-title">Không thể kết nối đến server</div>
                         <div class="empty-text">Kiểm tra backend Django có đang chạy không</div>
                     </div>`;
             }
         }
 
-        // ===== XỬ LÝ LỖI AUTH =====
         function handleAuthError(response) {
             if (response.status === 401) {
                 document.getElementById('tableBody').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">🔒</div>
+                        <div class="empty-icon">&#128274;</div>
                         <div class="empty-title">Phiên đăng nhập hết hạn</div>
                         <div class="empty-text"><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập lại</a></div>
                     </div>`;
@@ -555,7 +553,7 @@
             } else if (response.status === 403) {
                 document.getElementById('tableBody').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">🚫</div>
+                        <div class="empty-icon">&#128683;</div>
                         <div class="empty-title">Không có quyền truy cập</div>
                         <div class="empty-text">Bạn cần đăng nhập bằng tài khoản Admin để truy cập trang này.<br><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập bằng tài khoản Admin</a></div>
                     </div>`;
@@ -564,170 +562,152 @@
 
         // ===== RENDER TABLES =====
         function renderPendingTable(workers) {
+            resetStatsIcons();
             if (workers.length === 0) {
                 document.getElementById('tableBody').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">🎉</div>
+                        <div class="empty-icon">&#127881;</div>
                         <div class="empty-title">Không có yêu cầu chờ duyệt</div>
                         <div class="empty-text">Tất cả Carepartner đã được xét duyệt</div>
                     </div>`;
                 return;
             }
-
-            let html = `<table>
-                <thead><tr>
-                    <th>Carepartner</th>
-                    <th>Liên hệ</th>
-                    <th>Ảnh xác minh</th>
-                    <th>Ngày đăng ký</th>
-                    <th>Thao tác</th>
-                </tr></thead><tbody>`;
-
+            let html = `<table><thead><tr>
+                <th>Carepartner</th><th>Liên hệ</th><th>Ảnh xác minh</th><th>Ngày đăng ký</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
             workers.forEach(w => {
                 const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
                 const qualsStr = escapeHtml((w.qualifications || []).join(', '));
                 html += `<tr>
-                    <td>
-                        <div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
-                            <div class="user-avatar">
-                                ${w.selfie_photo 
-                                    ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` 
-                                    : `<div class="user-avatar-placeholder">${initial}</div>`}
-                            </div>
-                            <div>
-                                <div class="user-name">${name}</div>
-                                <div class="user-username">@${escapeHtml(w.username)}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-size:13px">${escapeHtml(w.email || '—')}</div>
-                        <div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div>
-                    </td>
-                    <td>
-                        <div class="photo-thumbs">
-                            ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="Mặt trước CCCD" title="CCCD trước" />` : ''}
-                            ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="Mặt sau CCCD" title="CCCD sau" />` : ''}
-                            ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Ảnh chân dung" title="Chân dung" />` : ''}
-                            ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp/Chứng chỉ" title="Bằng cấp" />` : ''}
-                        </div>
-                    </td>
+                    <td><div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
+                        <div class="user-avatar">${w.selfie_photo ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` : `<div class="user-avatar-placeholder">${initial}</div>`}</div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(w.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(w.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div></td>
+                    <td><div class="photo-thumbs">
+                        ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="Mặt trước CCCD" title="CCCD trước" />` : ''}
+                        ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="Mặt sau CCCD" title="CCCD sau" />` : ''}
+                        ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Ảnh chân dung" title="Chân dung" />` : ''}
+                        ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp/Chứng chỉ" title="Bằng cấp" />` : ''}
+                    </div></td>
                     <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn btn-approve" data-action="approve" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">✅ Duyệt</button>
-                            <button class="btn btn-reject" data-action="reject" data-id="${w.id}" data-username="${escapeHtml(w.username)}">✕ Từ chối</button>
-                        </div>
-                    </td>
+                    <td><div class="action-btns">
+                        <button class="btn btn-approve" data-action="approve" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9989; Duyệt</button>
+                        <button class="btn btn-reject" data-action="reject" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#10005; Từ chối</button>
+                    </div></td>
                 </tr>`;
             });
-
             html += '</tbody></table>';
             document.getElementById('tableBody').innerHTML = html;
-            // Attach event listeners using data attributes (XSS-safe)
             attachTableEventListeners();
         }
 
         function renderAllTable(workers) {
+            resetStatsIcons();
             if (workers.length === 0) {
                 document.getElementById('tableBody').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">📭</div>
+                        <div class="empty-icon">&#128237;</div>
                         <div class="empty-title">Chưa có Carepartner nào</div>
                         <div class="empty-text">Chờ sinh viên đăng ký nhé</div>
                     </div>`;
                 return;
             }
-
-            let html = `<table>
-                <thead><tr>
-                    <th>Carepartner</th>
-                    <th>Liên hệ</th>
-                    <th>Trạng thái</th>
-                    <th>Ngày đăng ký</th>
-                    <th>Ảnh xác minh</th>
-                    <th>Thao tác</th>
-                </tr></thead><tbody>`;
-
+            let html = `<table><thead><tr>
+                <th>Carepartner</th><th>Liên hệ</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Ảnh xác minh</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
             workers.forEach(w => {
                 const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
                 const initial = (w.first_name || w.username || '?')[0].toUpperCase();
                 const qualsStr = escapeHtml((w.qualifications || []).join(', '));
                 html += `<tr>
-                    <td>
-                        <div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
-                            <div class="user-avatar">
-                                ${w.selfie_photo 
-                                    ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` 
-                                    : `<div class="user-avatar-placeholder">${initial}</div>`}
-                            </div>
-                            <div>
-                                <div class="user-name">${name}</div>
-                                <div class="user-username">@${escapeHtml(w.username)}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-size:13px">${escapeHtml(w.email || '—')}</div>
-                        <div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div>
-                    </td>
-                    <td>
-                        <span class="badge ${w.is_approved ? 'badge-approved' : 'badge-pending'}">
-                            ${w.is_approved ? '✅ Đã duyệt' : '⏳ Chờ duyệt'}
-                        </span>
-                    </td>
+                    <td><div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
+                        <div class="user-avatar">${w.selfie_photo ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` : `<div class="user-avatar-placeholder">${initial}</div>`}</div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(w.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(w.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div></td>
+                    <td><span class="badge ${w.is_approved ? 'badge-approved' : 'badge-pending'}">${w.is_approved ? '&#9989; Đã duyệt' : '&#9203; Chờ duyệt'}</span></td>
                     <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
-                    <td>
-                        <div class="photo-thumbs">
-                            ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="CCCD trước" />` : ''}
-                            ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="CCCD sau" />` : ''}
-                            ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Chân dung" />` : ''}
-                            ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp" />` : ''}
-                        </div>
-                    </td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn btn-approve" style="background:#0284c7" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">✏️ Sửa bằng cấp</button>
-                        </div>
-                    </td>
+                    <td><div class="photo-thumbs">
+                        ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="CCCD trước" />` : ''}
+                        ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="CCCD sau" />` : ''}
+                        ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Chân dung" />` : ''}
+                        ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp" />` : ''}
+                    </div></td>
+                    <td><div class="action-btns">
+                        <button class="btn btn-approve btn-sm" style="background:#0284c7" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9998; Sửa bằng cấp</button>
+                        <button class="btn btn-revoke btn-sm" data-action="revoke" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#9888; Tước quyền</button>
+                    </div></td>
                 </tr>`;
             });
-
             html += '</tbody></table>';
             document.getElementById('tableBody').innerHTML = html;
-            // Attach event listeners using data attributes (XSS-safe)
             attachTableEventListeners();
         }
 
-        // ===== EVENT DELEGATION (XSS-safe) =====
+        function renderUsersTable(users) {
+            if (users.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#128237;</div>
+                        <div class="empty-title">Chưa có người dùng nào</div>
+                    </div>`;
+                return;
+            }
+            let html = `<table><thead><tr>
+                <th>Người dùng</th><th>Liên hệ</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
+            users.forEach(u => {
+                const name = `${escapeHtml(u.last_name || '')} ${escapeHtml(u.first_name || '')}`.trim() || escapeHtml(u.username);
+                const roleLabel = u.role === 'worker' ? 'Carepartner' : 'Phụ huynh';
+                const roleClass = u.role === 'worker' ? 'badge-worker' : 'badge-parent';
+                const activeLabel = u.is_active ? 'Hoạt động' : 'Đã khoá';
+                const activeClass = u.is_active ? 'badge-active' : 'badge-inactive';
+                html += `<tr>
+                    <td><div class="user-cell">
+                        <div class="user-avatar"><div class="user-avatar-placeholder">${(u.first_name || u.username || '?')[0].toUpperCase()}</div></div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(u.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(u.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(u.phone_number || '—')}</div></td>
+                    <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+                    <td><span class="badge ${activeClass}">${activeLabel}</span></td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(u.date_joined)}</td>
+                    <td><div class="action-btns">
+                        ${u.is_active
+                            ? `<button class="btn btn-lock btn-sm" data-action="toggle-active" data-id="${u.id}" data-username="${escapeHtml(u.username)}" data-active="true">&#128274; Khoá</button>`
+                            : `<button class="btn btn-unlock btn-sm" data-action="toggle-active" data-id="${u.id}" data-username="${escapeHtml(u.username)}" data-active="false">&#128275; Mở khoá</button>`
+                        }
+                        ${u.role === 'worker' ? `<button class="btn btn-revoke btn-sm" data-action="revoke" data-id="${u.id}" data-username="${escapeHtml(u.username)}">&#9888; Tước quyền CP</button>` : ''}
+                    </div></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+            attachTableEventListeners();
+        }
+
+        function resetStatsIcons() {
+            document.querySelector('#statsRow .stat-icon.pending').textContent = '⏳';
+            document.querySelector('#statsRow .stat-icon.approved').textContent = '✅';
+            document.querySelectorAll('.stat-label')[0].textContent = 'Chờ duyệt';
+            document.querySelectorAll('.stat-label')[1].textContent = 'Đã duyệt';
+            document.querySelectorAll('.stat-label')[2].textContent = 'Tổng cộng';
+        }
+
+        // ===== EVENT DELEGATION =====
         function attachTableEventListeners() {
             document.querySelectorAll('[data-action="edit"]').forEach(el => {
                 el.addEventListener('click', function() {
-                    openEditModal(
-                        parseInt(this.dataset.id),
-                        this.dataset.username,
-                        this.dataset.quals,
-                        this.dataset.idfront,
-                        this.dataset.idback,
-                        this.dataset.selfie,
-                        this.dataset.cert,
-                        this.dataset.action === 'edit' && this.textContent.includes('Duyệt')
-                    );
+                    openEditModal(parseInt(this.dataset.id), this.dataset.username, this.dataset.quals,
+                        this.dataset.idfront, this.dataset.idback, this.dataset.selfie, this.dataset.cert,
+                        this.dataset.action === 'edit' && this.textContent.includes('Duyệt'));
                 });
             });
             document.querySelectorAll('[data-action="approve"]').forEach(el => {
                 el.addEventListener('click', function() {
-                    openEditModal(
-                        parseInt(this.dataset.id),
-                        this.dataset.username,
-                        this.dataset.quals,
-                        this.dataset.idfront,
-                        this.dataset.idback,
-                        this.dataset.selfie,
-                        this.dataset.cert,
-                        true
-                    );
+                    openEditModal(parseInt(this.dataset.id), this.dataset.username, this.dataset.quals,
+                        this.dataset.idfront, this.dataset.idback, this.dataset.selfie, this.dataset.cert, true);
                 });
             });
             document.querySelectorAll('[data-action="reject"]').forEach(el => {
@@ -740,105 +720,122 @@
                     openModal(this.dataset.src, this.dataset.label);
                 });
             });
+            document.querySelectorAll('[data-action="toggle-active"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    toggleUserActive(parseInt(this.dataset.id), this.dataset.username, this.dataset.active === 'true');
+                });
+            });
+            document.querySelectorAll('[data-action="revoke"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    revokeCarepartner(parseInt(this.dataset.id), this.dataset.username);
+                });
+            });
         }
+
         let editingUserId = null;
         let isApprovingMode = false;
 
         function openEditModal(userId, username, currentQuals, idFront, idBack, selfie, cert, isApprove = false) {
             editingUserId = userId;
             isApprovingMode = isApprove;
-            
             document.getElementById('editModalTitle').textContent = isApprove ? `Duyệt tài khoản @${escapeHtml(username)}` : `Cập nhật bằng cấp @${escapeHtml(username)}`;
             document.getElementById('editModalInput').value = currentQuals;
             document.getElementById('editModalSaveBtn').textContent = isApprove ? '✅ Lưu & Duyệt' : 'Lưu thay đổi';
-            
             let photosHtml = '';
             if (idFront) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idFront)}" data-action="modal-photo" data-src="${escapeHtml(idFront)}" data-label="CCCD trước" />`;
             if (idBack) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idBack)}" data-action="modal-photo" data-src="${escapeHtml(idBack)}" data-label="CCCD sau" />`;
             if (selfie) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(selfie)}" data-action="modal-photo" data-src="${escapeHtml(selfie)}" data-label="Chân dung" />`;
             if (cert) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(cert)}" data-action="modal-photo" data-src="${escapeHtml(cert)}" data-label="Bằng cấp" />`;
-            
             if (!photosHtml) photosHtml = '<div style="font-size:12px;color:#64748b">Không có ảnh xác minh</div>';
             document.getElementById('editModalPhotos').innerHTML = photosHtml;
-            
-            // Attach click listeners cho modal photos
             document.querySelectorAll('[data-action="modal-photo"]').forEach(el => {
-                el.addEventListener('click', function() {
-                    openModal(this.dataset.src, this.dataset.label);
-                });
+                el.addEventListener('click', function() { openModal(this.dataset.src, this.dataset.label); });
             });
-            
             document.getElementById('editModal').classList.add('show');
-            
             document.getElementById('editModalSaveBtn').onclick = async function() {
                 const val = document.getElementById('editModalInput').value;
                 const arr = val.split(',').map(s => s.trim()).filter(s => s !== '');
-                
                 try {
                     const res = await apiFetch(`${API_BASE}/admin/workers/${editingUserId}/action/`, {
                         method: 'POST',
-                        body: JSON.stringify({ 
-                            action: isApprovingMode ? 'approve' : 'update_qualifications',
-                            qualifications: arr 
-                        }),
+                        body: JSON.stringify({ action: isApprovingMode ? 'approve' : 'update_qualifications', qualifications: arr }),
                     });
                     const data = await res.json();
                     showToast(data.message, 'success');
                     closeEditModal();
                     loadData();
-                } catch (e) {
-                    showToast('Lỗi khi thực hiện', 'error');
-                }
+                } catch (e) { showToast('Lỗi khi thực hiện', 'error'); }
             };
         }
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.remove('show');
-        }
+        function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
 
         async function rejectWorker(userId, username) {
             if (!confirm(`Từ chối tài khoản @${username}? Tài khoản sẽ bị vô hiệu hoá.`)) return;
             try {
                 const res = await apiFetch(`${API_BASE}/admin/workers/${userId}/action/`, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'reject' }),
+                    method: 'POST', body: JSON.stringify({ action: 'reject' }),
                 });
                 const data = await res.json();
                 showToast(data.message, 'success');
                 loadData();
-            } catch (e) {
-                showToast('Lỗi khi từ chối tài khoản', 'error');
-            }
+            } catch (e) { showToast('Lỗi khi từ chối tài khoản', 'error'); }
+        }
+
+        async function toggleUserActive(userId, username, currentlyActive) {
+            const action = currentlyActive ? 'khoá' : 'mở khoá';
+            if (!confirm(`Bạn có chắc muốn ${action} tài khoản @${username}?`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/users/${userId}/toggle-active/`, { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) { showToast('Lỗi khi thay đổi trạng thái tài khoản', 'error'); }
+        }
+
+        async function revokeCarepartner(userId, username) {
+            if (!confirm(`Tước quyền Carepartner của @${username}?\n\nTài khoản sẽ chuyển về vai trò Phụ huynh và mất tất cả quyền của Carepartner.`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/users/${userId}/revoke-carepartner/`, { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) { showToast('Lỗi khi tước quyền Carepartner', 'error'); }
         }
 
         // ===== SIDEBAR TOGGLE =====
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
         }
         function closeSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
         }
 
         // ===== TAB SWITCHING =====
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            resetStatsIcons();
             if (tab === 'pending') {
                 document.querySelectorAll('.nav-item')[0].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Danh sách chờ duyệt';
-            } else {
+                document.getElementById('pageTitle').textContent = 'Quản lý Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Duyệt đăng ký và quản lý tài khoản sinh viên';
+            } else if (tab === 'all') {
                 document.querySelectorAll('.nav-item')[1].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Tất cả Carepartner';
+                document.getElementById('pageTitle').textContent = 'Tất cả Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Quản lý bằng cấp và tước quyền';
+            } else if (tab === 'users') {
+                document.querySelectorAll('.nav-item')[2].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Quản lý tài khoản';
+                document.getElementById('pageTitle').textContent = 'Quản lý tài khoản';
+                document.getElementById('pageSubtitle').textContent = 'Khoá/mở tài khoản và tước quyền Carepartner';
             }
             document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
             loadData();
-            // Close sidebar on mobile after tab switch
             if (window.innerWidth < 1024) closeSidebar();
         }
 
@@ -848,9 +845,7 @@
             document.getElementById('modalLabel').textContent = label;
             document.getElementById('photoModal').classList.add('show');
         }
-        function closeModal() {
-            document.getElementById('photoModal').classList.remove('show');
-        }
+        function closeModal() { document.getElementById('photoModal').classList.remove('show'); }
 
         // ===== LOGOUT =====
         function logoutAdmin() {
@@ -860,11 +855,11 @@
             window.location.href = '/login/';
         }
 
-        // ===== HIỂN THỊ TÊN ADMIN =====
+        // ===== ADMIN NAME =====
         function displayAdminName() {
             const username = localStorage.getItem('admin_username') || 'Admin';
             const el = document.getElementById('adminName');
-            if (el) el.textContent = '👋 ' + username;
+            if (el) el.textContent = '\uD83D\uDC4B ' + username;
         }
 
         // ===== TOAST =====
@@ -875,10 +870,29 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // ===== SEED DEMO DATA =====
+        async function seedDemoData() {
+            const btn = document.getElementById('seedBtn');
+            if (!confirm('T\u1ea1o d\u1eef li\u1ec7u m\u1eabu cho ban gi\u00e1m kh\u1ea3o?\n\nT\u1ea5t c\u1ea3 t\u00e0i kho\u1ea3n demo s\u1ebd \u0111\u01b0\u1ee3c t\u1ea1o (m\u1eadt kh\u1ea9u: Demo@2026).')) return;
+            btn.textContent = '\u23f3 \u0110ang t\u1ea1o...';
+            btn.disabled = true;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/seed-demo-data/`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    loadData();
+                } else {
+                    showToast(data.error || 'L\u1ed7i khi t\u1ea1o d\u1eef li\u1ec7u', 'error');
+                }
+            } catch (e) { showToast('L\u1ed7i k\u1ebft n\u1ed1i', 'error'); }
+            btn.innerHTML = '&#127793; T&#7841;o d&#7919; li&#7879;u m&#7851;u';
+            btn.disabled = false;
+        }
+
         // ===== INIT =====
         displayAdminName();
         loadData();
-        // Auto-refresh mỗi 30 giây
         setInterval(loadData, 30000);
     </script>
 
@@ -903,12 +917,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (window.innerWidth <= 767) {
-                // Initial load animation
-                requestAnimationFrame(() => {
-                    document.body.classList.add('page-loaded');
-                });
-
-                // Link click transitions
+                requestAnimationFrame(() => { document.body.classList.add('page-loaded'); });
                 document.querySelectorAll('a').forEach(link => {
                     link.addEventListener('click', (e) => {
                         const href = link.getAttribute('href');
@@ -917,20 +926,15 @@
                             e.preventDefault();
                             document.body.classList.remove('page-loaded');
                             document.body.classList.add('page-exit');
-                            setTimeout(() => {
-                                window.location.href = href;
-                            }, 300); // match transition duration
+                            setTimeout(() => { window.location.href = href; }, 300);
                         }
                     });
                 });
             } else {
-                // Ensure visibility on desktop if resized
                 document.body.style.opacity = '1';
                 document.body.style.transform = 'none';
             }
         });
-        
-        // Handle back/forward navigation cache
         window.addEventListener('pageshow', (event) => {
             if (event.persisted && window.innerWidth <= 767) {
                 document.body.classList.remove('page-exit');
@@ -938,6 +942,5 @@
             }
         });
     </script>
-
 </body>
 </html>
