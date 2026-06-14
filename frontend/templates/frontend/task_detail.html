@@ -220,6 +220,12 @@
                         Hồ sơ
                     </a>
                 </li>
+                <li>
+                    <a href="{% url 'frontend:help_center' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">help_center</span>
+                        Trung tâm trợ giúp
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -446,6 +452,10 @@
             <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
                 <span class="material-symbols-outlined text-2xl">person</span>
                 <span class="text-[11px] font-semibold mt-1">Hồ sơ</span>
+            </a>
+            <a href="{% url 'frontend:help_center' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">help_center</span>
+                <span class="text-[11px] font-semibold mt-1">Trợ giúp</span>
             </a>
         </div>
     </nav>

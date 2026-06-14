@@ -745,7 +745,7 @@
         // ===== LOAD USER PROFILE =====
         async function loadUserProfile() {
             try {
-                const resp = await apiFetch(API_BASE + "/worker/profile/");
+                const resp = await apiFetch(API_BASE + "/profile/");
                 if (resp && resp.ok) {
                     const prof = await resp.json();
                     const fullName = (prof.first_name || '') + ' ' + (prof.last_name || '');
