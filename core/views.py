@@ -108,7 +108,24 @@ class RegisterAPIView(generics.CreateAPIView):
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
-        user = authenticate(username=request.data.get('username'), password=request.data.get('password'))
+        username = request.data.get('username', '')
+        password = request.data.get('password', '')
+        
+        # Check if user exists and is locked BEFORE authenticate()
+        # (Django's authenticate() returns None for inactive users)
+        try:
+            existing_user = User.objects.get(username=username)
+            if not existing_user.is_active:
+                # Verify password first to confirm it's really the account owner
+                if existing_user.check_password(password):
+                    return Response({
+                        "error": "Tài khoản của bạn đã bị khoá. Vui lòng liên hệ Admin.",
+                        "status": "account_locked"
+                    }, status=status.HTTP_403_FORBIDDEN)
+        except User.DoesNotExist:
+            pass
+        
+        user = authenticate(username=username, password=password)
         if user:
             # Carepartner phải được admin duyệt mới đăng nhập được
             if user.role == 'worker' and not user.is_approved:
@@ -161,6 +178,9 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def perform_create(self, serializer):
+        # Chỉ phụ huynh mới được đăng việc
+        if self.request.user.role != 'parent':
+            raise serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
         serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
 
 

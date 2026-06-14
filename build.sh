@@ -14,8 +14,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 from core.models import User
 if User.objects.count() == 0:
-    print('Database trống → chạy seed_data.py...')
-    exec(open('seed_data.py').read())
+    print('Database trống → chạy seed_demo_data...')
+    from django.core.management import call_command
+    call_command('seed_demo_data')
 else:
     print(f'Database đã có {User.objects.count()} users → bỏ qua seed_data.')
 "
