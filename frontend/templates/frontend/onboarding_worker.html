@@ -448,7 +448,7 @@
         async function completeOnboarding() {
             const token = localStorage.getItem('token');
             if (!token) {
-                window.location.href = '/login/';
+                window.location.href = "{% url 'frontend:login' %}";
                 return;
             }
 
@@ -461,15 +461,48 @@
                     },
                 });
                 
+                if (response.status === 401) {
+                    // Token expired — try refresh
+                    const refreshToken = localStorage.getItem('refresh_token');
+                    if (refreshToken) {
+                        try {
+                            const refreshResp = await fetch('/api/auth/token/refresh/', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ refresh: refreshToken }),
+                            });
+                            if (refreshResp.ok) {
+                                const refreshData = await refreshResp.json();
+                                localStorage.setItem('token', refreshData.access);
+                                const retryResp = await fetch('/api/onboarding/complete/', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${refreshData.access}`,
+                                        'Content-Type': 'application/json',
+                                    },
+                                });
+                                if (retryResp.ok) {
+                                    localStorage.removeItem('first_login_redirect');
+                                    window.location.href = "{% url 'frontend:worker_feed' %}";
+                                    return;
+                                }
+                            }
+                        } catch (e) { /* refresh failed, redirect to login */ }
+                    }
+                    localStorage.clear();
+                    window.location.href = "{% url 'frontend:login' %}";
+                    return;
+                }
+
                 if (response.ok) {
-                    // Redirect to worker feed
-                    window.location.href = '/worker/';
+                    localStorage.removeItem('first_login_redirect');
+                    window.location.href = "{% url 'frontend:worker_feed' %}";
                 } else {
-                    window.location.href = '/worker/';
+                    window.location.href = "{% url 'frontend:worker_feed' %}";
                 }
             } catch (error) {
                 console.error('Onboarding complete error:', error);
-                window.location.href = '/worker/';
+                window.location.href = "{% url 'frontend:worker_feed' %}";
             }
         }
 

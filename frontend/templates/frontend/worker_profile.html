@@ -946,7 +946,7 @@
                 const editBtn = document.getElementById('btn-edit-profile');
                 const credBtn = document.getElementById('btn-my-credentials');
                 const changeReqBtn = document.getElementById('btn-change-requests');
-                const helpBtn = editBtn?.parentElement?.querySelector('[onclick*="Trung tâm trợ giúp"]')?.closest('button');
+                const helpBtn = document.querySelector('[onclick="openHelpCenterModal()"]');
                 const logoutBtn = document.querySelector('[onclick="handleLogout()"]');
                 const notifBell = document.getElementById('notification-bell-area');
                 if (editBtn) editBtn.style.display = 'none';

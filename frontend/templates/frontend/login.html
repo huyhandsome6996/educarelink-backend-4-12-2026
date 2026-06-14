@@ -14,7 +14,10 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: { DEFAULT: '#F26522', dark: '#D4541E', light: '#FFF4ED', soft: '#FFCFB3' },
+                        primary: '#F26522',
+                        primaryDark: '#D4541E',
+                        primaryLight: '#FFF4ED',
+                        primarySoft: '#FFCFB3',
                         secondary: '#2DB84B',
                         background: '#F7F7F7',
                         surface: '#FFFFFF',
@@ -540,13 +543,13 @@
                             if (data.is_staff) {
                                 // Kiểm tra nếu có ?next= parameter
                                 const urlParams = new URLSearchParams(window.location.search);
-                                const nextUrl = urlParams.get('next') || '/admin-dashboard/';
+                                const nextUrl = urlParams.get('next') || "{% url 'frontend:admin_dashboard' %}";
                                 window.location.href = nextUrl;
                             } else if (data.first_login) {
                                 // Lần đầu đăng nhập → hiển thị hướng dẫn sử dụng
                                 window.location.href = data.role === 'parent'
-                                    ? "/onboarding/parent/"
-                                    : "/onboarding/worker/";
+                                    ? "{% url 'frontend:parent_onboarding' %}"
+                                    : "{% url 'frontend:worker_onboarding' %}";
                             } else {
                                 window.location.href = data.role === 'parent'
                                     ? "{% url 'frontend:parent_home' %}"
