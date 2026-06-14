@@ -14,6 +14,8 @@ services:
         value: "4"
       - key: DEBUG
         value: "False"
+      - key: GEMINI_API_KEY
+        sync: false
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL
