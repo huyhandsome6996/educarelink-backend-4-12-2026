@@ -13,7 +13,7 @@ from .views import (
     WorkerSubmitCredentialAPIView,
     AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
     AdminSendNotificationAPIView,
-    UserNotificationsAPIView, UnreadNotificationCountAPIView,
+    UserNotificationsAPIView, UnreadNotificationCountAPIView, MarkNotificationsReadAPIView,
     WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
     WorkerChatbotAPIView, HelpCenterAPIView,
 )
@@ -67,6 +67,7 @@ urlpatterns = [
     # Thông báo cho người dùng
     path('notifications/', UserNotificationsAPIView.as_view(), name='user-notifications'),
     path('notifications/unread-count/', UnreadNotificationCountAPIView.as_view(), name='unread-notification-count'),
+    path('notifications/mark-read/', MarkNotificationsReadAPIView.as_view(), name='mark-notifications-read'),
     
     # Yêu cầu thay đổi hồ sơ (Carepartner gửi, Admin duyệt)
     path('worker/profile-change-request/', WorkerProfileChangeRequestAPIView.as_view(), name='worker-profile-change-request'),

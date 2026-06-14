@@ -166,6 +166,7 @@ class Notification(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
     is_read = models.BooleanField(default=False, help_text="Đánh dấu đã đọc (chỉ áp dụng cho thông báo cá nhân)")
+    read_by = models.JSONField(default=list, blank=True, help_text="Danh sách user ID đã đọc thông báo chung (recipient=null)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

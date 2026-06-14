@@ -1072,11 +1072,13 @@
                 list.innerHTML = '<div class="flex items-center justify-center py-12 text-textSecondary"><span class="material-symbols-outlined mr-2">notifications_off</span>Chưa có thông báo</div>';
                 return;
             }
+            const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
             list.innerHTML = notifications.map(n => {
                 const bgColor = n.is_read ? 'bg-gray-50/50' : 'bg-primaryLight/30';
                 const icon = n.is_broadcast ? 'campaign' : 'notifications';
+                const unreadDot = n.is_read ? '' : '<div class="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2"></div>';
                 return `
-                <div class="p-4 rounded-xl ${bgColor} border border-gray-100">
+                <div class="p-4 rounded-xl ${bgColor} border border-gray-100 cursor-pointer hover:bg-orange-50/50 transition-all" onclick="markNotificationRead(${n.id})">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 rounded-lg bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
                             <span class="material-symbols-outlined text-primary text-lg">${icon}</span>
@@ -1086,11 +1088,38 @@
                             <p class="text-xs text-textSecondary mt-1 leading-relaxed">${n.message}</p>
                             <p class="text-[10px] text-textMuted mt-2">${n.created_at}</p>
                         </div>
+                        ${unreadDot}
                     </div>
                 </div>`;
-            }).join('');
+            }).join('') + (unreadIds.length > 0 ? `
+                <button onclick="markAllNotificationsRead()" class="w-full mt-3 py-2.5 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-all">
+                    Đánh dấu tất cả đã đọc
+                </button>
+            ` : '');
             // Cập nhật badge
             loadUnreadCount();
+        }
+
+        async function markNotificationRead(notificationId) {
+            try {
+                await apiFetch(API_BASE + '/notifications/mark-read/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notification_ids: [notificationId] })
+                });
+                loadNotifications();
+            } catch (e) { console.error('Lỗi đánh dấu đã đọc:', e); }
+        }
+
+        async function markAllNotificationsRead() {
+            try {
+                await apiFetch(API_BASE + '/notifications/mark-read/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                loadNotifications();
+            } catch (e) { console.error('Lỗi đánh dấu tất cả đã đọc:', e); }
         }
 
         async function loadUnreadCount() {
