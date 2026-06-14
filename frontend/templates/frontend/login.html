@@ -542,6 +542,11 @@
                                 const urlParams = new URLSearchParams(window.location.search);
                                 const nextUrl = urlParams.get('next') || '/admin-dashboard/';
                                 window.location.href = nextUrl;
+                            } else if (data.first_login) {
+                                // Lần đầu đăng nhập → hiển thị hướng dẫn sử dụng
+                                window.location.href = data.role === 'parent'
+                                    ? "/onboarding/parent/"
+                                    : "/onboarding/worker/";
                             } else {
                                 window.location.href = data.role === 'parent'
                                     ? "{% url 'frontend:parent_home' %}"

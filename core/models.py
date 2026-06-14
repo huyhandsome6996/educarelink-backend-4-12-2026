@@ -35,6 +35,9 @@ class User(AbstractUser):
         null=True, 
         help_text="AI sẽ tự động tổng hợp điểm mạnh dựa trên lịch sử."
     )
+    
+    # Hướng dẫn sử dụng lần đầu
+    first_login = models.BooleanField(default=True, help_text="Đánh dấu chưa xem hướng dẫn sử dụng")
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

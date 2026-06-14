@@ -141,6 +141,7 @@ class LoginAPIView(APIView):
                 "is_approved": user.is_approved,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "first_login": user.first_login,
             }, status=status.HTTP_200_OK)
         return Response({"error": "Sai tài khoản hoặc mật khẩu"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -739,3 +740,16 @@ class AdminSeedDemoDataAPIView(APIView):
             'message': 'Đã tạo dữ liệu mẫu thành công!',
             'details': output,
         })
+
+
+class CompleteOnboardingAPIView(APIView):
+    """API đánh dấu đã hoàn thành hướng dẫn sử dụng lần đầu"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.first_login:
+            return Response({'message': 'Hướng dẫn đã được hoàn thành trước đó.'}, status=status.HTTP_200_OK)
+        user.first_login = False
+        user.save(update_fields=['first_login'])
+        return Response({'message': 'Đã hoàn thành hướng dẫn sử dụng!'}, status=status.HTTP_200_OK)

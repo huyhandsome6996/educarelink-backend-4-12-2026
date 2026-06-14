@@ -46,3 +46,9 @@ class ChatbotView(TemplateView):
 
 class AdminDashboardView(TemplateView):
     template_name = "frontend/admin_dashboard.html"
+
+class ParentOnboardingView(TemplateView):
+    template_name = "frontend/onboarding_parent.html"
+
+class WorkerOnboardingView(TemplateView):
+    template_name = "frontend/onboarding_worker.html"

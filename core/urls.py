@@ -9,6 +9,7 @@ from .views import (
     AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
     AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
     AdminSeedDemoDataAPIView,
+    CompleteOnboardingAPIView,
 )
 
 urlpatterns = [
@@ -47,4 +48,5 @@ urlpatterns = [
     path('admin/users/<int:user_id>/revoke-carepartner/', AdminRevokeCarepartnerAPIView.as_view(), name='admin-revoke-carepartner'),
     path('admin/all-users/', AdminAllUsersAPIView.as_view(), name='admin-all-users'),
     path('admin/seed-demo-data/', AdminSeedDemoDataAPIView.as_view(), name='admin-seed-demo-data'),
+    path('onboarding/complete/', CompleteOnboardingAPIView.as_view(), name='complete-onboarding'),
 ]
