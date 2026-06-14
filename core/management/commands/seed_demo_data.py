@@ -342,3 +342,21 @@ class Command(BaseCommand):
   ║ locked_vipham       | Lê Vi Phạm                         ║
   ╚══════════════════════════════════════════════════════════╝
 """)
+
+        # ===== RESET MẬT KHẨU CHO TẤT CẢ TÀI KHOẢN DEMO =====
+        self.stdout.write("\n[BONUS] Đang đồng bộ mật khẩu cho tất cả tài khoản demo...")
+        demo_usernames = [
+            "admin", "phuhuynh_test", "phuhuynh_lan", "phuhuynh_minh", "phuhuynh_hoa",
+            "sinhvien_test", "carepartner_anh", "carepartner_linh", "carepartner_duc",
+            "carepartner_mai", "locked_vipham",
+        ]
+        reset_count = 0
+        for uname in demo_usernames:
+            try:
+                user = User.objects.get(username=uname)
+                user.set_password(TEST_PASSWORD)
+                user.save()
+                reset_count += 1
+            except User.DoesNotExist:
+                pass
+        self.stdout.write(f"   ✅ Đã đặt lại mật khẩu cho {reset_count} tài khoản → {TEST_PASSWORD}")
