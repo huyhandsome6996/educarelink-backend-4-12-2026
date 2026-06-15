@@ -1594,3 +1594,358 @@ class DistanceCalculationAPIView(APIView):
             result["travel_info"] = travel_info
 
         return Response(result)
+
+
+# ===== ADMIN AI CHATBOT — THỐNG KÊ, PHÁT HIỆN BẤT THƯỜNG, HÀNH ĐỘNG, PHÂN TÍCH ẢNH =====
+
+import base64 as _base64
+
+def _get_platform_stats():
+    """Trích xuất thống kê nền tảng thực tế từ database để làm ngữ cảnh cho AI."""
+    from django.utils import timezone
+    now = timezone.now()
+    today = now.date()
+    week_ago = today - __import__('datetime').timedelta(days=7)
+
+    total_users = User.objects.count()
+    total_parents = User.objects.filter(role='parent').count()
+    total_workers = User.objects.filter(role='worker').count()
+    active_workers = User.objects.filter(role='worker', is_active=True, is_approved=True).count()
+    pending_workers = User.objects.filter(role='worker', is_approved=False).count()
+    banned_users = User.objects.filter(is_active=False).exclude(is_staff=True).count()
+    unverified_workers = User.objects.filter(role='worker', is_verified=False, is_approved=True).count()
+    new_users_week = User.objects.filter(date_joined__date__gte=week_ago).count()
+    total_tasks = Task.objects.count()
+    open_tasks = Task.objects.filter(status='open').count()
+    in_progress_tasks = Task.objects.filter(status='in_progress').count()
+    completed_tasks = Task.objects.filter(status='completed').count()
+    cancelled_tasks = Task.objects.filter(status='cancelled').count()
+    pending_credentials = CredentialSubmission.objects.filter(status='pending').count()
+    pending_profile_changes = ProfileChangeRequest.objects.filter(status='pending').count()
+    total_reviews = Review.objects.count()
+    avg_rating = Review.objects.aggregate(avg=db_models.Avg('rating'))['avg']
+
+    # Phát hiện bất thường (anomaly)
+    anomalies = []
+
+    # 1. Tài khoản không có ảnh CCCD nhưng đã được duyệt
+    no_id_approved = User.objects.filter(
+        role='worker', is_approved=True
+    ).filter(
+        db_models.Q(id_card_front='') | db_models.Q(id_card_front__isnull=True)
+    ).count()
+    if no_id_approved > 0:
+        anomalies.append(f"⚠️ {no_id_approved} Carepartner đã duyệt nhưng KHÔNG có ảnh CCCD mặt trước")
+
+    # 2. Tài khoản không có ảnh chân dung
+    no_selfie = User.objects.filter(
+        role='worker', is_approved=True
+    ).filter(
+        db_models.Q(selfie_photo='') | db_models.Q(selfie_photo__isnull=True)
+    ).count()
+    if no_selfie > 0:
+        anomalies.append(f"⚠️ {no_selfie} Carepartner đã duyệt nhưng KHÔNG có ảnh chân dung")
+
+    # 3. Tài khoản bị khóa (is_active=False)
+    if banned_users > 0:
+        banned_list = User.objects.filter(is_active=False).exclude(is_staff=True).values_list('username', flat=True)[:10]
+        anomalies.append(f"⚠️ {banned_users} tài khoản đang bị khóa: {', '.join(list(banned_list))}")
+
+    # 4. Nhiều đăng ký mới bất thường (>10 trong tuần)
+    if new_users_week > 10:
+        anomalies.append(f"⚠️ {new_users_week} người dùng mới trong 7 ngày qua — có thể cần kiểm tra spam")
+
+    # 5. Carepartner đã duyệt nhưng chưa xác thực
+    if unverified_workers > 0:
+        anomalies.append(f"⚠️ {unverified_workers} Carepartner đã duyệt nhưng chưa xác thực CCCD")
+
+    # 6. Bằng cấp chờ duyệt quá nhiều
+    if pending_credentials > 5:
+        anomalies.append(f"⚠️ {pending_credentials} bằng cấp đang chờ duyệt — cần xử lý kịp thời")
+
+    # 7. Việc đăng nhưng không ai ứng tuyển
+    old_open_tasks = Task.objects.filter(
+        status='open',
+        created_at__date__lt=week_ago
+    ).count()
+    if old_open_tasks > 0:
+        anomalies.append(f"⚠️ {old_open_tasks} việc đã đăng >7 ngày vẫn chưa có người nhận")
+
+    # 8. Đánh giá 1 sao
+    one_star_reviews = Review.objects.filter(rating=1).count()
+    if one_star_reviews > 0:
+        anomalies.append(f"⚠️ {one_star_reviews} đánh giá 1 sao — cần kiểm tra chất lượng Carepartner")
+
+    stats_text = f"""
+THỐNG KÊ NỀN TẢNG ({today.strftime('%d/%m/%Y')}):
+- Tổng người dùng: {total_users} (Phụ huynh: {total_parents}, Carepartner: {total_workers})
+- Carepartner hoạt động: {active_workers} | Chờ duyệt: {pending_workers}
+- Tài khoản bị khóa: {banned_users}
+- Người dùng mới (7 ngày): {new_users_week}
+- Tổng việc: {total_tasks} (Mở: {open_tasks}, Đang làm: {in_progress_tasks}, Xong: {completed_tasks}, Hủy: {cancelled_tasks})
+- Bằng cấp chờ duyệt: {pending_credentials}
+- Yêu cầu sửa hồ sơ chờ duyệt: {pending_profile_changes}
+- Tổng đánh giá: {total_reviews} | Điểm TB: {round(avg_rating, 1) if avg_rating else 'Chưa có'}
+"""
+    if anomalies:
+        stats_text += "\nPHÁT HIỆN BẤT THƯỜNG:\n" + "\n".join(anomalies)
+    else:
+        stats_text += "\nKhông phát hiện bất thường."
+
+    return stats_text
+
+
+def _execute_admin_action(command_text):
+    """Phân tích lệnh từ admin và thực hiện hành động. Trả về (success, message)."""
+    import re
+    cmd = command_text.strip().lower()
+
+    # Cấm/khóa tài khoản: "cấm user 5" hoặc "khóa user 5" hoặc "ban user 5"
+    ban_match = re.search(r'(cấm|khóa|ban|lock)\s+(user\s+)?(\d+)', cmd)
+    if ban_match:
+        user_id = int(ban_match.group(3))
+        try:
+            target = User.objects.get(id=user_id)
+            if target.is_staff:
+                return False, f"Không thể khóa tài khoản admin (ID: {user_id})"
+            if not target.is_active:
+                return False, f"Tài khoản {target.username} (ID: {user_id}) đã bị khóa trước đó"
+            target.is_active = False
+            target.save(update_fields=['is_active'])
+            return True, f"✅ Đã khóa tài khoản {target.username} (ID: {user_id})"
+        except User.DoesNotExist:
+            return False, f"Không tìm thấy user ID: {user_id}"
+
+    # Mở khóa: "mở user 5" hoặc "unban user 5" hoặc "unlock user 5"
+    unban_match = re.search(r'(mở|mở khóa|unban|unlock|kích hoạt)\s+(user\s+)?(\d+)', cmd)
+    if unban_match:
+        user_id = int(unban_match.group(3))
+        try:
+            target = User.objects.get(id=user_id)
+            if target.is_active:
+                return False, f"Tài khoản {target.username} (ID: {user_id}) đang hoạt động bình thường"
+            target.is_active = True
+            target.save(update_fields=['is_active'])
+            return True, f"✅ Đã mở khóa tài khoản {target.username} (ID: {user_id})"
+        except User.DoesNotExist:
+            return False, f"Không tìm thấy user ID: {user_id}"
+
+    # Duyệt tài khoản: "duyệt user 5" hoặc "approve user 5"
+    approve_match = re.search(r'(duyệt|approve|chấp nhận)\s+(user\s+)?(\d+)', cmd)
+    if approve_match:
+        user_id = int(approve_match.group(3))
+        try:
+            target = User.objects.get(id=user_id, role='worker')
+            if target.is_approved:
+                return False, f"Carepartner {target.username} (ID: {user_id}) đã được duyệt trước đó"
+            target.is_approved = True
+            target.is_active = True
+            target.save(update_fields=['is_approved', 'is_active'])
+            # Gửi thông báo
+            Notification.objects.create(
+                recipient=target,
+                title='Tài khoản đã được duyệt!',
+                message='Chúc mừng! Tài khoản Carepartner của bạn đã được Admin duyệt. Bây giờ bạn có thể ứng tuyển việc.'
+            )
+            return True, f"✅ Đã duyệt Carepartner {target.username} (ID: {user_id})"
+        except User.DoesNotExist:
+            return False, f"Không tìm thấy Carepartner ID: {user_id}"
+
+    # Từ chối tài khoản: "từ chối user 5" hoặc "reject user 5"
+    reject_match = re.search(r'(từ chối|từchối|reject|refuse)\s+(user\s+)?(\d+)', cmd)
+    if reject_match:
+        user_id = int(reject_match.group(3))
+        try:
+            target = User.objects.get(id=user_id, role='worker')
+            if not target.is_approved and target.is_active:
+                return False, f"Carepartner {target.username} (ID: {user_id}) đã bị từ chối trước đó"
+            target.is_approved = False
+            target.is_active = False
+            target.save(update_fields=['is_approved', 'is_active'])
+            Notification.objects.create(
+                recipient=target,
+                title='Tài khoản chưa được duyệt',
+                message='Rất tiếc, tài khoản Carepartner của bạn chưa được Admin duyệt. Vui lòng cập nhật hồ sơ và thử lại.'
+            )
+            return True, f"✅ Đã từ chối Carepartner {target.username} (ID: {user_id})"
+        except User.DoesNotExist:
+            return False, f"Không tìm thấy Carepartner ID: {user_id}"
+
+    return None, None  # Không phải lệnh hành động
+
+
+class AdminChatbotAPIView(APIView):
+    """API Chatbot AI dành riêng cho Admin — thống kê, phát hiện bất thường, hành động, phân tích ảnh bằng cấp."""
+    permission_classes = [IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    SYSTEM_PROMPT = """Bạn là AI Trợ lý Quản trị của nền tảng EduCareLink — hệ thống kết nối phụ huynh với sinh viên/người chăm sóc (Carepartner).
+
+KHẢ NĂNG CỦA BẠN:
+1. **Thống kê & Tổng hợp**: Cung cấp số liệu tổng quan, xu hướng, báo cáo về nền tảng.
+2. **Phát hiện bất thường**: Cảnh báo tài khoản đáng ngờ, đánh giá thấp, việc không ai nhận, v.v.
+3. **Hành động tài khoản**: Khi admin yêu cầu, bạn có thể gợi ý lệnh để:
+   - Khóa tài khoản: "cấm user <ID>" hoặc "khóa user <ID>"
+   - Mở khóa: "mở user <ID>" hoặc "mở khóa user <ID>"
+   - Duyệt Carepartner: "duyệt user <ID>"
+   - Từ chối: "từ chối user <ID>"
+4. **Phân tích hình ảnh bằng cấp**: Khi admin gửi ảnh bằng cấp/chứng chỉ, bạn đọc nội dung, đánh giá tính hợp lệ, và gợi ý cách viết đánh giá cho admin.
+5. **Viết thông báo**: Soạn thông báo chuyên nghiệp cho Carepartner.
+6. **Tư vấn cải tiến**: Đề xuất cách tối ưu quy trình duyệt, quản lý, vận hành nền tảng.
+
+QUY TẮC:
+- Luôn trả lời bằng TIẾNG VIỆT, chuyên nghiệp, rõ ràng, có cấu trúc.
+- Khi admin yêu cầu hành động (cấm, duyệt, mở khóa...), bạn phải XÁC NHẬN lại trước: "Bạn có chắc muốn <hành động> với tài khoản <tên> (ID: <id>) không?"
+- Sau khi admin xác nhận, thực hiện hành động và báo kết quả.
+- Khi phân tích ảnh bằng cấp, hãy mô tả chi tiết nội dung, đánh giá mức độ hợp lệ, và gợi ý mẫu đánh giá cho admin (admin có thể dùng hoặc không).
+- Nếu không đủ thông tin, hãy yêu cầu admin cung cấp thêm.
+- KHÔNG tự ý thực hiện hành động nếu admin chưa xác nhận.
+"""
+
+    def _build_contents(self, user_message, chat_history=None):
+        contents = []
+        if chat_history and isinstance(chat_history, list):
+            for msg in chat_history:
+                role = msg.get('role', '')
+                text = msg.get('text', '')
+                if role in ('user', 'model') and text:
+                    contents.append({'role': role, 'parts': [{'text': text}]})
+        contents.append({'role': 'user', 'parts': [{'text': user_message}]})
+        return contents
+
+    def _build_contents_with_image(self, user_message, image_base64, mime_type, chat_history=None):
+        """Xây dựng nội dung cho Gemini kèm hình ảnh (dùng cho phân tích bằng cấp)."""
+        contents = []
+        if chat_history and isinstance(chat_history, list):
+            for msg in chat_history:
+                role = msg.get('role', '')
+                text = msg.get('text', '')
+                if role in ('user', 'model') and text:
+                    contents.append({'role': role, 'parts': [{'text': text}]})
+
+        image_part = {
+            'inline_data': {
+                'mime_type': mime_type,
+                'data': image_base64
+            }
+        }
+        contents.append({
+            'role': 'user',
+            'parts': [
+                {'text': user_message},
+                image_part
+            ]
+        })
+        return contents
+
+    def post(self, request):
+        from django.conf import settings
+        import json
+        import re
+
+        user_message = request.data.get('message', '').strip()
+        chat_history = request.data.get('history', [])
+        image_file = request.FILES.get('image')
+
+        if not user_message and not image_file:
+            return Response({"error": "Tin nhắn hoặc hình ảnh không được trống."}, status=status.HTTP_400_BAD_REQUEST)
+
+        gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if not gemini_key or gemini_key == 'your_gemini_api_key_here':
+            return Response({
+                "response": "Tính năng AI chưa được kích hoạt. Vui lòng cấu hình GEMINI_API_KEY.",
+                "type": "info"
+            })
+
+        # Bước 1: Kiểm tra xem có phải lệnh hành động không
+        if user_message:
+            action_success, action_msg = _execute_admin_action(user_message)
+            if action_success is not None:
+                # Đây là lệnh hành động, trả về kết quả ngay
+                return Response({
+                    "response": action_msg,
+                    "type": "action_result"
+                })
+
+        # Bước 2: Lấy ngữ cảnh thống kê nền tảng
+        stats_context = _get_platform_stats()
+
+        # Bước 3: Nếu admin nhắn "thống kê" hoặc "tình hình" → trả về thống kê trực tiếp
+        if user_message and any(kw in user_message.lower() for kw in ['thống kê', 'tình hình', 'số liệu', 'bao nhiêu', 'tổng quan', 'overview', 'stats']):
+            enriched_prompt = self.SYSTEM_PROMPT + f"""
+
+{stats_context}
+
+Hãy dựa trên số liệu thực tế ở trên để trả lời admin. Phân tích và đưa ra nhận xét, lời khuyên cụ thể."""
+        else:
+            enriched_prompt = self.SYSTEM_PROMPT + f"""
+
+NGỮ CẢNH NỀN TẢNG HIỆN TẠI:
+{stats_context}
+
+Hãy sử dụng thông tin này khi cần để trả lời admin."""
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=gemini_key)
+
+            # Nếu có ảnh bằng cấp → dùng Gemini Vision
+            if image_file:
+                image_data = image_file.read()
+                image_b64 = _base64.b64encode(image_data).decode('utf-8')
+                mime_type = image_file.content_type or 'image/jpeg'
+
+                analysis_prompt = user_message or "Hãy phân tích ảnh bằng cấp/chứng chỉ này. Mô tả chi tiết nội dung, loại bằng cấp, trường/cơ sở cấp, ngày cấp, và bất kỳ thông tin nào có thể đọc được. Sau đó đánh giá mức độ hợp lệ và gợi ý cách viết đánh giá cho admin."
+
+                contents = self._build_contents_with_image(
+                    analysis_prompt, image_b64, mime_type, chat_history
+                )
+
+                gemini_response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=contents,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=enriched_prompt,
+                        temperature=0.5,
+                        max_output_tokens=3000,
+                    )
+                )
+            else:
+                # Chat thông thường
+                contents = self._build_contents(user_message, chat_history)
+                gemini_response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=contents,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=enriched_prompt,
+                        temperature=0.7,
+                        max_output_tokens=2048,
+                    )
+                )
+
+            ai_text = gemini_response.text
+            if not ai_text:
+                return Response({"response": "AI không thể trả lời do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
+
+            response_type = "message"
+            if image_file:
+                response_type = "image_analysis"
+            elif any(kw in user_message.lower() for kw in ['thống kê', 'tình hình', 'số liệu', 'bao nhiêu', 'tổng quan']):
+                response_type = "statistics"
+
+            return Response({
+                "response": ai_text,
+                "type": response_type
+            })
+
+        except Exception as e:
+            error_msg = str(e)
+            if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper():
+                detail = "API key Gemini không hợp lệ."
+            elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
+                detail = "Đã hết hạn mức sử dụng Gemini hôm nay. Thử lại vào ngày mai!"
+            elif 'HIGH DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper():
+                detail = "Hệ thống AI đang quá tải. Vui lòng thử lại sau vài giây!"
+            else:
+                detail = f"Lỗi kết nối AI: {error_msg}"
+            return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

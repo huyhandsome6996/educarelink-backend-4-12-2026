@@ -464,11 +464,127 @@
             30% { transform: translateY(-6px); }
         }
         .ai-chat-input-area {
-            padding: 16px 20px;
+            padding: 12px 16px 16px 16px;
             border-top: 1px solid #334155;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ai-chat-input-row {
+            display: flex;
+            gap: 8px;
             align-items: flex-end;
+        }
+        .ai-chat-image-preview {
+            display: none;
+            position: relative;
+            padding: 8px;
+            background: #1e293b;
+            border-radius: 10px;
+            border: 1px dashed #475569;
+        }
+        .ai-chat-image-preview.visible {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ai-chat-image-preview img {
+            max-height: 60px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+        .ai-chat-image-preview .remove-image {
+            position: absolute;
+            top: 2px;
+            right: 6px;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 20px; height: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .ai-chat-image-preview .image-label {
+            font-size: 12px;
+            color: #94a3b8;
+            flex: 1;
+        }
+        .ai-chat-upload-btn {
+            width: 44px; height: 44px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .ai-chat-upload-btn:hover {
+            border-color: #F26522;
+            color: #F26522;
+            background: rgba(242,101,34,0.08);
+        }
+        .ai-chat-action-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .ai-chat-action-btn.approve {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.approve:hover {
+            background: rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.reject {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.reject:hover {
+            background: rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.ban {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.ban:hover {
+            background: rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.unban {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.unban:hover {
+            background: rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.stats {
+            background: rgba(99,102,241,0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99,102,241,0.3);
+        }
+        .ai-chat-action-btn.stats:hover {
+            background: rgba(99,102,241,0.3);
+        }
+        .ai-action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
         }
         .ai-chat-input {
             flex: 1;
@@ -550,6 +666,8 @@
             .ai-chat-msg { max-width: 92%; }
             .ai-chat-input-area { padding: 12px; }
             .ai-chat-suggestions { padding: 0 12px 10px 12px; }
+            .ai-action-buttons { gap: 4px; }
+            .ai-chat-action-btn { font-size: 11px; padding: 5px 10px; }
         }
     </style>
 </head>
@@ -671,7 +789,7 @@
                     <div class="ai-chat-header-icon">&#129302;</div>
                     <div>
                         <div class="ai-chat-header-title">AI Tr&#7907; l&#253; Qu&#7843;n tr&#7883;</div>
-                        <div class="ai-chat-header-sub">H&#7895; tr&#7907; qu&#7843;n l&#253; n&#7873;n t&#7843;ng EducareLink</div>
+                        <div class="ai-chat-header-sub">Thống kê · Phát hiện bất thường · Hành động · Phân tích ảnh</div>
                     </div>
                     <div class="ai-chat-header-badge">Gemini AI</div>
                 </div>
@@ -679,18 +797,29 @@
                     <div class="ai-chat-welcome" id="aiChatWelcome">
                         <div class="ai-chat-welcome-icon">&#129302;</div>
                         <div class="ai-chat-welcome-title">Xin ch&#224;o, T&#244;i l&#224; AI Tr&#7907; l&#253;</div>
-                        <div class="ai-chat-welcome-text">T&#244;i c&#243; th&#7875; gi&#250;p b&#7841;n qu&#7843;n l&#253; n&#7873;n t&#7843;ng, ph&#226;n t&#237;ch d&#7919; li&#7879;u, vi&#7871;t th&#244;ng b&#225;o, t&#243;m t&#7855;t h&#7891; s&#417; Carepartner v&#224; nhi&#7873;u h&#417;n n&#7915;a.</div>
+                        <div class="ai-chat-welcome-text">Tôi có thể thống kê dữ liệu, phát hiện bất thường, duyệt/khóa tài khoản, phân tích ảnh bằng cấp và nhiều hơn nữa. Thử gõ lệnh: "duyệt user 5" hoặc "cấm user 3".</div>
                     </div>
                 </div>
                 <div class="ai-chat-suggestions" id="aiChatSuggestions">
-                    <div class="ai-chat-suggestion" onclick="sendSuggestion('T\u00f3m t\u1eaft t\u00ecnh h\u00ecnh n\u1ec1n t\u1ea3ng hi\u1ec7n t\u1ea1i')">T&#243;m t&#7855;t t&#236;nh h&#236;nh n&#7873;n t&#7843;ng</div>
-                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Vi\u1ebft m\u1eabu th\u00f4ng b\u00e1o cho Carepartner')">Vi&#7871;t m&#7851;u th&#244;ng b&#225;o</div>
-                    <div class="ai-chat-suggestion" onclick="sendSuggestion('G\u1ee3i \u00fd c\u1ea3i thi\u1ec7n quy tr\u00ecnh duy\u1ec7t h\u1ed3 s\u01a1')">G&#7907;i &#253; c&#7843;i thi&#7879;n duy&#7879;t h&#7891; s&#417;</div>
-                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Ph\u00e2n t\u00edch b\u1eb1ng c\u1ea5p ch\u01a1 duy\u1ec7t')">Ph&#226;n t&#237;ch b&#7857;ng c&#7845;p ch&#7901; duy&#7879;t</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Thống kê tình hình nền tảng')">Thống kê nền tảng</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Kiểm tra bất thường')">Kiểm tra bất thường</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Viết mẫu thông báo cho Carepartner')">Viết thông báo</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Gợi ý cải thiện quy trình duyệt hồ sơ')">Cải thiện quy trình</div>
                 </div>
                 <div class="ai-chat-input-area">
-                    <textarea class="ai-chat-input" id="aiChatInput" placeholder="Nh&#7853;p c&#226;u h&#7887;i cho AI..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeInput(this)"></textarea>
-                    <button class="ai-chat-send-btn" id="aiChatSendBtn" onclick="sendAiMessage()">&#10148;</button>
+                    <div class="ai-chat-image-preview" id="aiImagePreview">
+                        <img id="aiImagePreviewImg" src="" alt="Preview">
+                        <span class="image-label" id="aiImageLabel">Ảnh bằng cấp</span>
+                        <button class="remove-image" onclick="removeAiImage()">&#10005;</button>
+                    </div>
+                    <div class="ai-chat-input-row">
+                        <label class="ai-chat-upload-btn" title="Tải ảnh bằng cấp">
+                            &#128206;
+                            <input type="file" id="aiImageInput" accept="image/*" style="display:none" onchange="handleAiImageUpload(event)">
+                        </label>
+                        <textarea class="ai-chat-input" id="aiChatInput" placeholder="Nhập câu hỏi, hoặc lệnh: duyệt user 5, cấm user 3..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeInput(this)"></textarea>
+                        <button class="ai-chat-send-btn" id="aiChatSendBtn" onclick="sendAiMessage()">&#10148;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1542,19 +1671,7 @@
         // ===== AI CHAT =====
         let aiChatHistory = [];
         let aiChatLoading = false;
-        const AI_SYSTEM_PROMPT = `Bạn là AI Trợ lý Quản trị của nền tảng EducareLink — hệ thống quản lý Carepartner (người chăm sóc/giáo viên). Vai trò của bạn:
-
-1. Hỗ trợ quản lý: Giúp admin duyệt hồ sơ, phân tích dữ liệu Carepartner, đề xuất hành động.
-2. Viết thông báo: Soạn thông báo chuyên nghiệp, rõ ràng cho Carepartner.
-3. Tóm tắt hồ sơ: Tóm tắt thông tin Carepartner, đánh giá bằng cấp, kinh nghiệm.
-4. Phân tích dữ liệu: Thống kê số lượng, xu hướng, đề xuất cải thiện quy trình.
-5. Gợi ý cải tiến: Đề xuất cách tối ưu quy trình duyệt, quản lý tài khoản, kiểm tra bằng cấp.
-
-Quy tắc:
-- Luôn trả lời bằng tiếng Việt.
-- Trả lời ngắn gọn, rõ ràng, có cấu trúc (dùng bullet point, in đậm khi cần).
-- Nếu không đủ thông tin, hãy yêu cầu admin cung cấp thêm.
-- Luôn lịch sự, chuyên nghiệp và hữu ích.`;
+        let aiImageFile = null; // Lưu file ảnh bằng cấp để gửi kèm
 
         function handleChatKeydown(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1573,7 +1690,36 @@ Quy tắc:
             sendAiMessage();
         }
 
-        function renderAiMessage(content, isUser) {
+        // === Xử lý tải ảnh bằng cấp ===
+        function handleAiImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('Chỉ chấp nhận file ảnh (PNG, JPG, WEBP)');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('Ảnh quá lớn, tối đa 10MB');
+                return;
+            }
+            aiImageFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('aiImagePreviewImg').src = e.target.result;
+                document.getElementById('aiImageLabel').textContent = file.name;
+                document.getElementById('aiImagePreview').classList.add('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeAiImage() {
+            aiImageFile = null;
+            document.getElementById('aiImageInput').value = '';
+            document.getElementById('aiImagePreview').classList.remove('visible');
+            document.getElementById('aiImagePreviewImg').src = '';
+        }
+
+        function renderAiMessage(content, isUser, responseType) {
             const welcome = document.getElementById('aiChatWelcome');
             if (welcome) welcome.style.display = 'none';
             const suggestions = document.getElementById('aiChatSuggestions');
@@ -1598,11 +1744,112 @@ Quy tắc:
             msgDiv.appendChild(avatarDiv);
             msgDiv.appendChild(bubbleDiv);
 
+            // Nếu AI gợi ý hành động → thêm nút bấm
+            if (!isUser && responseType === 'message') {
+                addActionButtons(content, bubbleDiv);
+            }
+            if (!isUser && responseType === 'action_result') {
+                bubbleDiv.style.borderLeft = '3px solid #22c55e';
+            }
+            if (!isUser && responseType === 'statistics') {
+                bubbleDiv.style.borderLeft = '3px solid #818cf8';
+            }
+            if (!isUser && responseType === 'image_analysis') {
+                bubbleDiv.style.borderLeft = '3px solid #F26522';
+            }
+
             const messagesContainer = document.getElementById('aiChatMessages');
             messagesContainer.appendChild(msgDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             return msgDiv;
+        }
+
+        function addActionButtons(content, bubbleDiv) {
+            // Tìm lệnh gợi ý trong nội dung AI để tạo nút bấm nhanh
+            const actionContainer = document.createElement('div');
+            actionContainer.className = 'ai-action-buttons';
+            let hasActions = false;
+
+            // Tìm "cấm user X" hoặc "khóa user X"
+            const banMatches = content.match(/(cấm|khóa|ban)\s+user\s+(\d+)/gi);
+            if (banMatches) {
+                banMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn ban';
+                        btn.textContent = `Khóa user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "duyệt user X"
+            const approveMatches = content.match(/duyệt\s+user\s+(\d+)/gi);
+            if (approveMatches) {
+                approveMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn approve';
+                        btn.textContent = `Duyệt user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "mở user X" hoặc "mở khóa user X"
+            const unbanMatches = content.match(/(mở|mở khóa)\s+user\s+(\d+)/gi);
+            if (unbanMatches) {
+                unbanMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn unban';
+                        btn.textContent = `Mở khóa user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "từ chối user X"
+            const rejectMatches = content.match(/từ chối\s+user\s+(\d+)/gi);
+            if (rejectMatches) {
+                rejectMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn reject';
+                        btn.textContent = `Từ chối user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            if (hasActions) {
+                bubbleDiv.appendChild(actionContainer);
+            }
         }
 
         function formatAiResponse(text) {
@@ -1663,28 +1910,32 @@ Quy tắc:
 
             const input = document.getElementById('aiChatInput');
             const message = input.value.trim();
-            if (!message) return;
+            if (!message && !aiImageFile) return;
 
             input.value = '';
             input.style.height = 'auto';
             aiChatLoading = true;
             document.getElementById('aiChatSendBtn').disabled = true;
 
-            // Render user message
-            renderAiMessage(message, true);
-            aiChatHistory.push({ role: 'user', content: message });
+            // Hiển thị tin nhắn user (kèm ảnh nếu có)
+            const displayMsg = aiImageFile ? `[Ảnh: ${aiImageFile.name}] ${message}` : message;
+            renderAiMessage(displayMsg, true);
+            aiChatHistory.push({ role: 'user', text: message || 'Phân tích ảnh bằng cấp này' });
 
             // Show typing indicator
             showAiTyping();
 
             try {
-                const res = await apiFetch(`${API_BASE}/chatbot/`, {
+                // Chuẩn bị FormData (hỗ trợ gửi ảnh + text)
+                const formData = new FormData();
+                if (message) formData.append('message', message);
+                if (aiImageFile) formData.append('image', aiImageFile);
+                // Gửi history dạng JSON string
+                formData.append('history', JSON.stringify(aiChatHistory.slice(-20).map(h => ({ role: h.role, text: h.text }))));
+
+                const res = await apiFetch(`${API_BASE}/admin/chatbot/`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        message: message,
-                        chat_history: aiChatHistory.slice(-20), // Keep last 20 messages for context
-                        system_prompt: AI_SYSTEM_PROMPT
-                    })
+                    body: formData
                 });
 
                 removeAiTyping();
@@ -1692,8 +1943,9 @@ Quy tắc:
                 if (res.ok) {
                     const data = await res.json();
                     const aiResponse = data.response || data.message || data.reply || 'Xin lỗi, tôi không thể xử lý yêu cầu này.';
-                    renderAiMessage(aiResponse, false);
-                    aiChatHistory.push({ role: 'assistant', content: aiResponse });
+                    const responseType = data.type || 'message';
+                    renderAiMessage(aiResponse, false, responseType);
+                    aiChatHistory.push({ role: 'model', text: aiResponse });
                 } else {
                     const errorData = await res.json().catch(() => ({}));
                     renderAiMessage('Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại. ' + (errorData.error || ''), false);
@@ -1703,6 +1955,8 @@ Quy tắc:
                 renderAiMessage('Xin lỗi, không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.', false);
             }
 
+            // Xóa ảnh preview sau khi gửi
+            removeAiImage();
             aiChatLoading = false;
             document.getElementById('aiChatSendBtn').disabled = false;
             input.focus();
