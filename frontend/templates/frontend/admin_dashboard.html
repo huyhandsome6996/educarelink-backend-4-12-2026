@@ -83,6 +83,88 @@
         }
         .refresh-btn:hover { background: #475569; transform: translateY(-1px); }
 
+        /* === HEADER ACTIONS (Bell + Logout) === */
+        .header-actions {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .notification-bell {
+            position: relative; width: 42px; height: 42px;
+            border-radius: 12px; background: #1e293b;
+            border: 1px solid #334155; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: all 0.2s;
+            color: #94a3b8;
+        }
+        .notification-bell:hover { background: #334155; color: #F26522; border-color: rgba(242,101,34,0.3); }
+        .notification-bell.has-unread { border-color: rgba(239,68,68,0.5); }
+        .notification-badge {
+            position: absolute; top: -4px; right: -4px;
+            min-width: 18px; height: 18px; border-radius: 9px;
+            background: #ef4444; color: #fff; font-size: 10px;
+            font-weight: 800; display: flex; align-items: center;
+            justify-content: center; padding: 0 4px;
+            border: 2px solid #0f172a;
+        }
+        .notification-badge:empty { display: none; }
+
+        /* Notification Dropdown */
+        .notification-dropdown {
+            display: none; position: absolute; top: 50px; right: 0;
+            width: 380px; max-height: 500px; overflow-y: auto;
+            background: #1e293b; border: 1px solid #334155;
+            border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            z-index: 200; padding: 0;
+        }
+        .notification-dropdown.show { display: block; }
+        .notification-dropdown-header {
+            padding: 16px 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .notification-dropdown-header h3 {
+            font-size: 14px; font-weight: 800; color: #f1f5f9;
+        }
+        .notification-mark-all {
+            font-size: 12px; color: #F26522; cursor: pointer;
+            font-weight: 700; background: none; border: none;
+        }
+        .notification-mark-all:hover { text-decoration: underline; }
+        .notification-list { padding: 8px; }
+        .notification-item {
+            padding: 12px 14px; border-radius: 10px; margin-bottom: 4px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .notification-item:hover { background: #334155; }
+        .notification-item.unread { background: rgba(242,101,34,0.08); border-left: 3px solid #F26522; }
+        .notification-item-title {
+            font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 3px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .notification-item-title .ai-tag {
+            font-size: 9px; background: rgba(242,101,34,0.2); color: #F26522;
+            padding: 1px 6px; border-radius: 4px; font-weight: 800;
+        }
+        .notification-item-msg {
+            font-size: 12px; color: #94a3b8; line-height: 1.5;
+        }
+        .notification-item-time {
+            font-size: 11px; color: #475569; margin-top: 4px;
+        }
+        .notification-empty {
+            padding: 40px 20px; text-align: center; color: #64748b;
+            font-size: 13px;
+        }
+        .notification-empty-icon { font-size: 32px; margin-bottom: 8px; }
+
+        .logout-btn {
+            padding: 10px 18px; border-radius: 10px;
+            background: rgba(239,68,68,0.12); color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.25);
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: #ef4444; color: #fff; transform: translateY(-1px); }
+
         /* === STATS === */
         .stats-row {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
@@ -318,6 +400,10 @@
             .page-title { font-size: 20px; }
             table { font-size: 13px; }
             td, th { padding: 10px 12px; }
+            .notification-dropdown { width: calc(100vw - 32px); right: -80px; }
+            .header-actions { gap: 6px; }
+            .logout-btn span { display: none; }
+            .refresh-btn { padding: 8px 12px; font-size: 12px; }
         }
 
         /* === AI CHAT PANEL === */
@@ -744,7 +830,32 @@
                 <h1 class="page-title" id="pageTitle">Qu&#7843;n l&#253; Carepartner</h1>
                 <p class="page-subtitle" id="pageSubtitle">Duy&#7879;t &#273;&#259;ng k&#253; v&#224; qu&#7843;n l&#253; t&#224;i kho&#7843;n sinh vi&#234;n</p>
             </div>
-            <button class="refresh-btn" onclick="loadData()">&#128260; L&#224;m m&#7899;i</button>
+            <div class="header-actions">
+                <button class="refresh-btn" onclick="loadData()">&#128260; L&#224;m m&#7899;i</button>
+                <!-- Chu&#244;ng th&#244;ng b&#225;o AI -->
+                <div style="position:relative;">
+                    <button class="notification-bell" id="notifBell" onclick="toggleNotifDropdown()">
+                        &#128276;
+                        <span class="notification-badge" id="notifBadge"></span>
+                    </button>
+                    <div class="notification-dropdown" id="notifDropdown">
+                        <div class="notification-dropdown-header">
+                            <h3>&#129302; Th&#244;ng b&#225;o AI</h3>
+                            <button class="notification-mark-all" onclick="markAllNotifRead()">&#272;&#227; &#273;&#7885;c t&#7845;t c&#7843;</button>
+                        </div>
+                        <div class="notification-list" id="notifList">
+                            <div class="notification-empty">
+                                <div class="notification-empty-icon">&#128276;</div>
+                                Kh&#244;ng c&#243; th&#244;ng b&#225;o m&#7899;i
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- N&#250;t &#273;&#259;ng xu&#7845;t -->
+                <button class="logout-btn" onclick="logoutAdmin()">
+                    &#128682; &#272;&#259;ng xu&#7845;t
+                </button>
+            </div>
         </div>
 
         <!-- Stats -->
@@ -1550,6 +1661,125 @@
             window.location.href = '/login/';
         }
 
+        // ===== AI NOTIFICATION BELL =====
+        let notifDropdownOpen = false;
+        let adminNotifIds = []; // track notification IDs for mark-read
+
+        function toggleNotifDropdown() {
+            notifDropdownOpen = !notifDropdownOpen;
+            const dd = document.getElementById('notifDropdown');
+            if (notifDropdownOpen) {
+                dd.classList.add('show');
+                loadAdminNotifications();
+            } else {
+                dd.classList.remove('show');
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const bellArea = document.getElementById('notifBell')?.parentElement;
+            if (bellArea && !bellArea.contains(e.target)) {
+                notifDropdownOpen = false;
+                document.getElementById('notifDropdown')?.classList.remove('show');
+            }
+        });
+
+        async function loadAdminUnreadCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/notifications/unread-count/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('notifBadge');
+                    const bell = document.getElementById('notifBell');
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        bell.classList.add('has-unread');
+                    } else {
+                        badge.textContent = '';
+                        bell.classList.remove('has-unread');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function loadAdminNotifications() {
+            try {
+                const res = await apiFetch(`${API_BASE}/notifications/`);
+                if (res.ok) {
+                    const notifications = await res.json();
+                    adminNotifIds = notifications.map(n => n.id);
+                    renderNotifList(notifications);
+                }
+            } catch (e) {}
+        }
+
+        function renderNotifList(notifications) {
+            const list = document.getElementById('notifList');
+            if (!notifications || notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="notification-empty">
+                        <div class="notification-empty-icon">&#128276;</div>
+                        Không có thông báo mới
+                    </div>`;
+                return;
+            }
+
+            // Show most recent 20, AI alerts first
+            const sorted = [...notifications].sort((a, b) => {
+                const aIsAI = a.title && a.title.includes('[AI') ? 1 : 0;
+                const bIsAI = b.title && b.title.includes('[AI') ? 1 : 0;
+                if (aIsAI !== bIsAI) return bIsAI - aIsAI;
+                return new Date(b.created_at) - new Date(a.created_at);
+            }).slice(0, 20);
+
+            list.innerHTML = sorted.map(n => {
+                const isAI = n.title && n.title.includes('[AI');
+                const isUnread = !n.is_read && !n.is_broadcast || (n.is_broadcast && true);
+                const timeAgo = getTimeAgo(n.created_at);
+                return `
+                    <div class="notification-item ${isUnread ? 'unread' : ''}">
+                        <div class="notification-item-title">
+                            ${isAI ? '<span class="ai-tag">AI</span>' : ''}
+                            ${escapeHtml(n.title || 'Thông báo')}
+                        </div>
+                        <div class="notification-item-msg">${escapeHtml(n.message || '')}</div>
+                        <div class="notification-item-time">${timeAgo}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function markAllNotifRead() {
+            try {
+                await apiFetch(`${API_BASE}/notifications/mark-read/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notification_ids: null })
+                });
+                loadAdminUnreadCount();
+                loadAdminNotifications();
+            } catch (e) {}
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getTimeAgo(dateStr) {
+            const now = new Date();
+            const date = new Date(dateStr);
+            const diffMs = now - date;
+            const diffMin = Math.floor(diffMs / 60000);
+            if (diffMin < 1) return 'Vừa xong';
+            if (diffMin < 60) return diffMin + ' phút trước';
+            const diffHour = Math.floor(diffMin / 60);
+            if (diffHour < 24) return diffHour + ' giờ trước';
+            const diffDay = Math.floor(diffHour / 24);
+            return diffDay + ' ngày trước';
+        }
+
         // ===== ADMIN NAME =====
         function displayAdminName() {
             const username = localStorage.getItem('admin_username') || 'Admin';
@@ -1967,9 +2197,11 @@
         loadData();
         loadCredentialBadgeCount();
         loadProfileChangeBadgeCount();
+        loadAdminUnreadCount();
         setInterval(loadData, 30000);
         setInterval(loadCredentialBadgeCount, 30000);
         setInterval(loadProfileChangeBadgeCount, 30000);
+        setInterval(loadAdminUnreadCount, 30000);  // Poll notification badge every 30s
 
         async function loadCredentialBadgeCount() {
             try {

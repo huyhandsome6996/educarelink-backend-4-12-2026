@@ -25,6 +25,11 @@ services:
         value: "3"
       - key: RENDER_URL
         value: "https://educarelink-backend.onrender.com"
+      # AI Anomaly Detection (tự quét bất thường mỗi 10 phút → thông báo Admin)
+      - key: ANOMALY_ENABLED
+        value: "true"
+      - key: ANOMALY_CHECK_INTERVAL
+        value: "10"
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL
