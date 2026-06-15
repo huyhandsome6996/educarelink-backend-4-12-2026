@@ -118,7 +118,7 @@ class Review(models.Model):
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
     reviewee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_received')
     rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)]) # 1 đến 5 sao
-    comment = models.TextField()
+    comment = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

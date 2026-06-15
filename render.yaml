@@ -4,16 +4,18 @@ services:
     plan: free
     env: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn backend.wsgi:application"
+    startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.5"
+        value: "3.11"
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
-        value: "4"
+        value: "2"
       - key: DEBUG
         value: "False"
+      - key: RENDER
+        value: "true"
       - key: GEMINI_API_KEY
         sync: false
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard

@@ -17,7 +17,7 @@ def build_absolute_uri(request, url):
         return None
     abs_url = request.build_absolute_uri(url)
     # Fix: trên Render, request.build_absolute_uri() sinh ra http:// thay vì https://
-    if os.environ.get('RENDER', '') == 'true':
+    if os.environ.get('RENDER', '') or request.is_secure():
         abs_url = abs_url.replace('http://', 'https://', 1)
     return abs_url
 
@@ -157,7 +157,7 @@ class UserProfileAPIView(APIView):
     def patch(self, request):
         # Ngăn chặn role escalation — loại role, is_staff, is_superuser khỏi data
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified']:
+        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified', 'qualifications']:
             data.pop(forbidden_field, None)
         
         # Nếu có password mới → hash đúng cách
@@ -281,6 +281,10 @@ class ReviewCreateAPIView(generics.CreateAPIView):
         task_id = self.request.data.get('task')
         # Validate: chỉ review task đã hoàn thành
         if task_id:
+            try:
+                task_id = int(task_id)
+            except (TypeError, ValueError):
+                raise drf_serializers.ValidationError({'task': 'ID công việc không hợp lệ.'})
             try:
                 task = Task.objects.get(id=task_id)
                 if task.status != 'completed':
@@ -482,6 +486,8 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 )
             )
             ai_text = gemini_response.text
+            if not ai_text:
+                return Response({"response": "AI không thể trả lời câu hỏi này do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Kiểm tra xem AI có trả về JSON để tạo task không
             task_json_match = re.search(r'<TASK_JSON>(.*?)</TASK_JSON>', ai_text, re.DOTALL)
@@ -730,18 +736,10 @@ class AdminAllWorkersAPIView(APIView):
         return Response(data)
 
 class AdminSeedDemoDataAPIView(APIView):
-    """API tạo dữ liệu mẫu cho ban giám khảo — Admin hoặc secret key"""
-    permission_classes = [AllowAny]
+    """API tạo dữ liệu mẫu cho ban giám khảo — Chỉ Admin"""
+    permission_classes = [IsAdminUser]
 
     def post(self, request):
-        # Cho phép: (1) Admin đã đăng nhập, HOẶC (2) gửi secret key, HOẶC (3) database chưa có user nào
-        is_admin = request.user and request.user.is_authenticated and request.user.is_staff
-        secret_key = request.data.get('secret_key', '')
-        db_empty = User.objects.count() == 0
-
-        if not is_admin and secret_key != 'EduCareLink2026Seed' and not db_empty:
-            return Response({'error': 'Không có quyền truy cập. Cần đăng nhập Admin hoặc cung cấp secret_key.'}, status=403)
-
         from django.core.management import call_command
         from io import StringIO
         out = StringIO()
@@ -1209,6 +1207,11 @@ class AdminReviewProfileChangeRequestAPIView(APIView):
             allowed_fields = ['first_name', 'last_name', 'phone_number', 'address', 'email']
             for field, value in change_request.proposed_changes.items():
                 if field in allowed_fields:
+                    # Kiểm tra trùng email
+                    if field == 'email' and value:
+                        existing = User.objects.filter(email=value).exclude(id=worker.id)
+                        if existing.exists():
+                            return Response({'error': f'Email "{value}" đã được sử dụng bởi tài khoản khác.'}, status=status.HTTP_400_BAD_REQUEST)
                     setattr(worker, field, value)
             worker.save(update_fields=[f for f in change_request.proposed_changes.keys() if f in allowed_fields])
 
@@ -1342,6 +1345,8 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
                 )
             )
             ai_text = gemini_response.text
+            if not ai_text:
+                return Response({"response": "AI không thể trả lời do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({
                 "response": ai_text,
@@ -1461,6 +1466,8 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
                 )
             )
             ai_text = gemini_response.text
+            if not ai_text:
+                return Response({"response": "AI không thể trả lời do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({
                 "response": ai_text,

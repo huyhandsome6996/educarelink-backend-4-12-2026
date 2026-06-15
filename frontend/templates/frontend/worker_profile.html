@@ -921,6 +921,12 @@
         let isOwnProfile = true;     // Có phải hồ sơ của mình không
 
         // ===== TOAST SYSTEM (replaces all alert()) =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        }
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -941,7 +947,7 @@
             toast.className = `pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-white text-sm font-medium toast-enter ${colors[type] || colors.info}`;
             toast.innerHTML = `
                 <span class="material-symbols-outlined text-xl filled" style="font-variation-settings: 'FILL' 1;">${icons[type] || icons.info}</span>
-                <span class="flex-1">${message}</span>
+                <span class="flex-1">${escapeHtml(message)}</span>
                 <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
                     <span class="material-symbols-outlined text-lg">close</span>
                 </button>
