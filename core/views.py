@@ -11,6 +11,29 @@ from django.db import models as db_models
 from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest
 
 
+class HealthCheckAPIView(APIView):
+    """API Health Check — cho keep-alive ping, không cần xác thực."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from django.db import connection
+        from django.utils import timezone
+        try:
+            # Test DB connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            db_ok = True
+        except Exception:
+            db_ok = False
+
+        return Response({
+            "status": "ok" if db_ok else "degraded",
+            "timestamp": timezone.now().isoformat(),
+            "database": "connected" if db_ok else "error",
+            "version": "1.0.0",
+        })
+
+
 def build_absolute_uri(request, url):
     """Tạo URL tuyệt đối, đảm bảo dùng HTTPS trên Render."""
     if not url:
