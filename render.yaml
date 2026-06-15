@@ -30,6 +30,14 @@ services:
         value: "true"
       - key: ANOMALY_CHECK_INTERVAL
         value: "10"
+      # Social OAuth (Google + Facebook đăng nhập cho Phụ huynh)
+      # Đặt giá trị thực trên Render Dashboard → Settings → Environment Variables
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL

@@ -7,7 +7,14 @@ class User(AbstractUser):
         ('parent', 'Phụ huynh'),
         ('worker', 'Carepartner'),
     )
+    AUTH_PROVIDER_CHOICES = (
+        ('email', 'Email / Mật khẩu'),
+        ('google', 'Google'),
+        ('facebook', 'Facebook'),
+    )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='parent')
+    auth_provider = models.CharField(max_length=20, choices=AUTH_PROVIDER_CHOICES, default='email', help_text="Phương thức đăng ký/đăng nhập")
+    avatar_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL ảnh đại diện từ Google/Facebook")
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     

@@ -324,7 +324,7 @@
 
                     <!-- Social Login -->
                     <div class="grid grid-cols-2 gap-3">
-                        <button class="flex items-center justify-center gap-2.5 py-2.5 border border-gray-200 rounded-xl hover:bg-background transition-all duration-200 group">
+                        <button id="google-login-btn" class="flex items-center justify-center gap-2.5 py-2.5 border border-gray-200 rounded-xl hover:bg-background transition-all duration-200 group">
                             <svg class="w-5 h-5" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -333,7 +333,7 @@
                             </svg>
                             <span class="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Google</span>
                         </button>
-                        <button class="flex items-center justify-center gap-2.5 py-2.5 border border-gray-200 rounded-xl hover:bg-background transition-all duration-200 group">
+                        <button id="facebook-login-btn" class="flex items-center justify-center gap-2.5 py-2.5 border border-gray-200 rounded-xl hover:bg-background transition-all duration-200 group">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                             </svg>
@@ -610,6 +610,212 @@
 
         // Initialize role UI
         updateRoleUI();
+
+        // ============ SOCIAL OAUTH ============
+        let oauthConfig = null;
+
+        // Load OAuth config from backend
+        async function loadOAuthConfig() {
+            try {
+                const res = await fetch(API_BASE + '/auth/oauth-config/');
+                if (res.ok) {
+                    oauthConfig = await res.json();
+                    updateOAuthButtons();
+                }
+            } catch (e) {
+                console.warn('Could not load OAuth config:', e);
+            }
+        }
+
+        function updateOAuthButtons() {
+            const googleBtn = document.getElementById('google-login-btn');
+            const facebookBtn = document.getElementById('facebook-login-btn');
+            if (!oauthConfig) return;
+
+            // Hide buttons if OAuth not configured
+            if (!oauthConfig.google.enabled) {
+                googleBtn.style.opacity = '0.4';
+                googleBtn.style.cursor = 'not-allowed';
+            }
+            if (!oauthConfig.facebook.enabled) {
+                facebookBtn.style.opacity = '0.4';
+                facebookBtn.style.cursor = 'not-allowed';
+            }
+
+            // Initialize Google Identity Services
+            if (oauthConfig.google.enabled && oauthConfig.google.client_id) {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    google.accounts.id.initialize({
+                        client_id: oauthConfig.google.client_id,
+                        callback: handleGoogleResponse,
+                        auto_select: false,
+                    });
+                };
+                document.head.appendChild(script);
+            }
+
+            // Initialize Facebook SDK
+            if (oauthConfig.facebook.enabled && oauthConfig.facebook.app_id) {
+                const script = document.createElement('script');
+                script.src = 'https://connect.facebook.net/vi_VN/sdk.js';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    FB.init({
+                        appId: oauthConfig.facebook.app_id,
+                        cookie: true,
+                        xfbml: false,
+                        version: 'v21.0',
+                    });
+                };
+                document.head.appendChild(script);
+            }
+        }
+
+        // Google OAuth handler
+        function handleGoogleResponse(response) {
+            if (!response.credential) {
+                showToast('Đăng nhập Google thất bại. Vui lòng thử lại.', 'error');
+                return;
+            }
+            sendOAuthToken('google', response.credential);
+        }
+
+        // Google button click
+        document.getElementById('google-login-btn').addEventListener('click', () => {
+            if (!oauthConfig || !oauthConfig.google.enabled) {
+                showToast('Đăng nhập Google chưa được kích hoạt.', 'warning');
+                return;
+            }
+            try {
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        // Fallback: use popup
+                        const tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: oauthConfig.google.client_id,
+                            scope: 'email profile',
+                            callback: (resp) => {
+                                if (resp.access_token) {
+                                    // With access token, we need to get ID token
+                                    // Use the token endpoint approach
+                                    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                        headers: { 'Authorization': 'Bearer ' + resp.access_token }
+                                    }).then(r => r.json()).then(userInfo => {
+                                        sendOAuthToken('google', resp.access_token, 'access_token');
+                                    });
+                                }
+                            },
+                        });
+                        tokenClient.requestAccessToken();
+                    }
+                });
+            } catch (e) {
+                console.error('Google OAuth error:', e);
+                showToast('Không thể mở đăng nhập Google.', 'error');
+            }
+        });
+
+        // Facebook button click
+        document.getElementById('facebook-login-btn').addEventListener('click', () => {
+            if (!oauthConfig || !oauthConfig.facebook.enabled) {
+                showToast('Đăng nhập Facebook chưa được kích hoạt.', 'warning');
+                return;
+            }
+            try {
+                FB.login((response) => {
+                    if (response.authResponse && response.authResponse.accessToken) {
+                        sendOAuthToken('facebook', response.authResponse.accessToken);
+                    } else if (response.status !== 'connected') {
+                        showToast('Đăng nhập Facebook đã bị huỷ.', 'info');
+                    }
+                }, { scope: 'email,public_profile' });
+            } catch (e) {
+                console.error('Facebook OAuth error:', e);
+                showToast('Không thể mở đăng nhập Facebook.', 'error');
+            }
+        });
+
+        // Send OAuth token to backend
+        async function sendOAuthToken(provider, token, tokenType = 'id_token') {
+            const endpoint = provider === 'google' ? '/auth/google/' : '/auth/facebook/';
+            const body = provider === 'google'
+                ? (tokenType === 'access_token' ? { access_token: token } : { token: token })
+                : { access_token: token };
+
+            // Show loading
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Save JWT tokens and redirect (same as normal login)
+                    localStorage.setItem('token', data.tokens.access);
+                    localStorage.setItem('refresh_token', data.tokens.refresh);
+                    localStorage.setItem('role', data.role);
+                    if (data.is_staff) localStorage.setItem('is_staff', 'true');
+                    if (data.username) localStorage.setItem('admin_username', data.username);
+                    if (data.avatar_url) localStorage.setItem('avatar_url', data.avatar_url);
+                    localStorage.setItem('auth_provider', data.auth_provider || provider);
+
+                    showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+
+                    setTimeout(() => {
+                        if (data.is_staff) {
+                            window.location.href = '/admin-dashboard/';
+                        } else if (data.first_login) {
+                            window.location.href = data.role === 'parent'
+                                ? '/onboarding-parent/'
+                                : '/onboarding-worker/';
+                        } else {
+                            window.location.href = data.role === 'parent'
+                                ? '/parent-home/'
+                                : '/worker-feed/';
+                        }
+                    }, 1200);
+
+                } else {
+                    // Handle errors
+                    if (response.status === 409) {
+                        // Email conflict
+                        const providerName = provider === 'google' ? 'Google' : 'Facebook';
+                        if (data.code === 'EMAIL_ALREADY_REGISTERED') {
+                            showToast('Email này đã đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng email và mật khẩu.', 'error');
+                        } else if (data.code === 'EMAIL_LINKED_FACEBOOK') {
+                            showToast('Email này đã liên kết với Facebook. Vui lòng đăng nhập bằng Facebook.', 'error');
+                        } else if (data.code === 'EMAIL_LINKED_GOOGLE') {
+                            showToast('Email này đã liên kết với Google. Vui lòng đăng nhập bằng Google.', 'error');
+                        } else {
+                            showToast(data.error || 'Lỗi xác thực.', 'error');
+                        }
+                    } else {
+                        showToast(data.error || 'Đăng nhập thất bại. Vui lòng thử lại.', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('OAuth error:', err);
+                showToast('Không thể kết nối đến máy chủ.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.classList.remove('hidden');
+                submitSpinner.classList.add('hidden');
+            }
+        }
+
+        // Load OAuth config on page load
+        loadOAuthConfig();
     </script>
 
     <!-- Mobile App-like Transition -->
