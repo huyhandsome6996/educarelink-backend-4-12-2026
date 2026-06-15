@@ -132,6 +132,75 @@
             50% { transform: scale(1.15); }
         }
         .star-pulse { animation: starPulse 2s ease-in-out infinite; }
+
+        /* ===== PROFILE TOUR STYLES ===== */
+        .tour-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(2px);
+            transition: opacity 0.35s ease;
+        }
+        .tour-overlay.hidden { display: none; }
+        .tour-spotlight {
+            position: absolute;
+            border-radius: 16px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+            z-index: 9001;
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+            pointer-events: none;
+        }
+        .tour-spotlight::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 2.5px dashed #F26522;
+            border-radius: 18px;
+            animation: tourPulse 2s ease-in-out infinite;
+        }
+        @keyframes tourPulse {
+            0%, 100% { border-color: #F26522; opacity: 1; }
+            50% { border-color: #FFCFB3; opacity: 0.6; }
+        }
+        .tour-tooltip {
+            position: fixed;
+            z-index: 9002;
+            background: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(242,101,34,0.1);
+            padding: 24px;
+            max-width: 360px;
+            width: calc(100vw - 32px);
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .tour-tooltip.hidden { display: none; }
+        .tour-step-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        .tour-step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #E5E7EB;
+            transition: all 0.3s ease;
+        }
+        .tour-step-dot.active {
+            background: #F26522;
+            width: 24px;
+            border-radius: 4px;
+        }
+        .tour-step-dot.completed {
+            background: #2DB84B;
+        }
+        @keyframes tourFadeIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .tour-animate { animation: tourFadeIn 0.35s ease-out forwards; }
     </style>
 </head>
 <body class="bg-bg text-textPrimary antialiased">
@@ -246,9 +315,15 @@
                             </button>
                         </div>
                     </div>
-                    <!-- Mobile: avatar -->
-                    <div class="md:hidden w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
-                        <img id="mobile-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff" alt="Avatar"/>
+                    <div class="flex items-center gap-2">
+                        <!-- Replay tour button -->
+                        <button onclick="replayProfileTour()" class="w-9 h-9 rounded-xl bg-primaryLight hover:bg-primarySoft flex items-center justify-center text-primary transition-all duration-200" title="Xem hướng dẫn">
+                            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">help_outline</span>
+                        </button>
+                        <!-- Mobile: avatar -->
+                        <div class="md:hidden w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
+                            <img id="mobile-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff" alt="Avatar"/>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1030,6 +1105,266 @@
             document.getElementById('info-email').textContent = profile.email || 'Chưa cập nhật';
         }
 
+        // ===== PROFILE TOUR SYSTEM =====
+        const TOUR_KEY = 'educarelink_worker_profile_tour_done';
+        let tourActive = false;
+        let currentTourStep = 0;
+
+        const tourSteps = [
+            {
+                target: null, // Welcome step — no specific target
+                title: 'Chào mừng bạn đến với Hồ sơ!',
+                description: 'Đây là trang hồ sơ cá nhân của bạn. Hãy để chúng tôi hướng dẫn bạn cách sử dụng từng mục. Bạn có thể bỏ qua bất cứ lúc nào.',
+                icon: 'waving_hand',
+                position: 'center'
+            },
+            {
+                target: '#profile-content .profile-card:first-child',
+                title: 'Hồ sơ cá nhân',
+                description: 'Tại đây hiển thị ảnh đại diện, tên của bạn và trạng thái xác thực. Trạng thái "Chờ duyệt" nghĩa là hồ sơ đang chờ Admin kiểm tra bằng cấp. Khi được duyệt, huy hiệu xanh "Đã xác thực" sẽ xuất hiện.',
+                icon: 'badge',
+                position: 'bottom'
+            },
+            {
+                target: '#ai-summary-section',
+                title: 'Đánh giá từ AI',
+                description: 'AI sẽ tự động phân tích hồ sơ và đánh giá năng lực của bạn dựa trên kinh nghiệm, bằng cấp và phản hồi từ phụ huynh. Phần này giúp phụ huynh hiểu rõ hơn về bạn.',
+                icon: 'auto_awesome',
+                position: 'bottom'
+            },
+            {
+                target: '#profile-content .grid.grid-cols-2',
+                title: 'Thống kê nhanh',
+                description: 'Hiển thị số việc bạn đã hoàn thành và tổng thu nhập. Những con số này tăng lên khi bạn hoàn thành nhiều việc hơn, giúp phụ huynh đánh giá kinh nghiệm của bạn.',
+                icon: 'leaderboard',
+                position: 'bottom'
+            },
+            {
+                target: '#profile-content .profile-card:nth-of-type(4)',
+                title: 'Thông tin cá nhân',
+                description: 'Số điện thoại, địa chỉ và email của bạn được hiển thị tại đây. Để cập nhật thông tin, hãy nhấn "Chỉnh sửa hồ sơ" ở bên dưới. Đảm bảo thông tin liên lạc chính xác để phụ huynh có thể liên hệ bạn.',
+                icon: 'contact_page',
+                position: 'bottom'
+            },
+            {
+                target: '#btn-edit-profile',
+                title: 'Chỉnh sửa hồ sơ & Gửi bằng cấp',
+                description: 'Nhấn vào đây để chỉnh sửa thông tin cá nhân VÀ gửi ảnh bằng cấp, chứng chỉ cho Admin duyệt. Việc cung cấp bằng cấp rất quan trọng để được xác thực và tăng cơ hội nhận việc!',
+                icon: 'edit',
+                position: 'bottom'
+            },
+            {
+                target: '#btn-my-credentials',
+                title: 'Bằng cấp của tôi',
+                description: 'X lại danh sách các bằng cấp bạn đã gửi và trạng thái duyệt từ Admin (Chờ duyệt / Đã duyệt / Từ chối). Nếu bị từ chối, bạn có thể gửi lại bằng cấp mới.',
+                icon: 'workspace_premium',
+                position: 'bottom'
+            },
+            {
+                target: '#btn-change-requests',
+                title: 'Yêu cầu thay đổi hồ sơ',
+                description: 'Xem lại các yêu cầu thay đổi thông tin cá nhân đã gửi và phản hồi từ Admin. Mọi thay đổi hồ sơ đều cần được Admin phê duyệt trước khi áp dụng.',
+                icon: 'pending_actions',
+                position: 'bottom'
+            },
+            {
+                target: '#profile-content .space-y-3 button:nth-of-type(4)',
+                title: 'Trung tâm trợ giúp',
+                description: 'Chat với AI trợ giúp nếu bạn có thắc mắc về cách sử dụng nền tảng. AI sẵn sàng hỗ trợ bạn 24/7! Nhấn nút (?) ở góc phải header để xem lại hướng dẫn này bất cứ lúc nào.',
+                icon: 'help_center',
+                position: 'bottom'
+            }
+        ];
+
+        function shouldShowTour() {
+            try {
+                return !localStorage.getItem(TOUR_KEY);
+            } catch(e) { return true; }
+        }
+
+        function markTourDone() {
+            try {
+                localStorage.setItem(TOUR_KEY, '1');
+            } catch(e) {}
+        }
+
+        function startProfileTour() {
+            if (tourActive) return;
+            tourActive = true;
+            currentTourStep = 0;
+
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'tour-overlay';
+            overlay.className = 'tour-overlay';
+            document.body.appendChild(overlay);
+
+            // Create spotlight
+            const spotlight = document.createElement('div');
+            spotlight.id = 'tour-spotlight';
+            spotlight.className = 'tour-spotlight hidden';
+            document.body.appendChild(spotlight);
+
+            // Create tooltip
+            const tooltip = document.createElement('div');
+            tooltip.id = 'tour-tooltip';
+            tooltip.className = 'tour-tooltip hidden';
+            document.body.appendChild(tooltip);
+
+            renderTourStep();
+        }
+
+        function renderTourStep() {
+            const step = tourSteps[currentTourStep];
+            const overlay = document.getElementById('tour-overlay');
+            const spotlight = document.getElementById('tour-spotlight');
+            const tooltip = document.getElementById('tour-tooltip');
+
+            if (!step || !overlay || !tooltip) {
+                endProfileTour();
+                return;
+            }
+
+            // Build step dots HTML
+            let dotsHTML = '';
+            for (let i = 0; i < tourSteps.length; i++) {
+                const cls = i === currentTourStep ? 'active' : (i < currentTourStep ? 'completed' : '');
+                dotsHTML += '<div class="tour-step-dot ' + cls + '"></div>';
+            }
+
+            const isFirst = currentTourStep === 0;
+            const isLast = currentTourStep === tourSteps.length - 1;
+
+            // Build tooltip content
+            tooltip.innerHTML = ''
+                + '<div class="tour-animate">'
+                + '  <div class="flex items-center gap-3 mb-3">'
+                + '    <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0">'
+                + '      <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: \'FILL\' 1;">' + step.icon + '</span>'
+                + '    </div>'
+                + '    <div class="flex-1">'
+                + '      <div class="flex items-center gap-2">'
+                + '        <h4 class="font-manrope font-bold text-textPrimary text-base">' + step.title + '</h4>'
+                + '        <span class="text-xs text-textSecondary font-medium bg-gray-100 px-2 py-0.5 rounded-full">' + (currentTourStep + 1) + '/' + tourSteps.length + '</span>'
+                + '      </div>'
+                + '    </div>'
+                + '  </div>'
+                + '  <p class="text-sm text-textSecondary leading-relaxed mb-4">' + step.description + '</p>'
+                + '  <div class="flex items-center justify-between">'
+                + '    <button onclick="skipProfileTour()" class="text-sm text-textSecondary font-medium hover:text-textPrimary transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50">Bỏ qua</button>'
+                + '    <div class="flex items-center gap-2">'
+                + (isFirst ? '' : '<button onclick="prevTourStep()" class="px-4 py-2 rounded-xl border border-gray-200 text-textSecondary text-sm font-semibold hover:bg-gray-50 transition-all">Trước</button>')
+                + '<button onclick="nextTourStep()" class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all">' + (isLast ? 'Hoàn thành' : 'Tiếp theo') + '</button>'
+                + '    </div>'
+                + '  </div>'
+                + '  <div class="tour-step-dots">' + dotsHTML + '</div>'
+                + '</div>';
+
+            // Position spotlight and tooltip
+            if (step.position === 'center' || !step.target) {
+                // Welcome step — center the tooltip, no spotlight
+                spotlight.classList.add('hidden');
+                overlay.style.background = 'rgba(0,0,0,0.6)';
+                tooltip.style.left = '50%';
+                tooltip.style.top = '50%';
+                tooltip.style.transform = 'translate(-50%, -50%)';
+                tooltip.style.right = 'auto';
+                tooltip.style.bottom = 'auto';
+                tooltip.style.margin = '0';
+            } else {
+                const targetEl = document.querySelector(step.target);
+                if (targetEl) {
+                    // Scroll target into view first
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    setTimeout(() => {
+                        const rect = targetEl.getBoundingClientRect();
+                        const padding = 10;
+
+                        // Position spotlight
+                        spotlight.classList.remove('hidden');
+                        spotlight.style.top = (rect.top - padding) + 'px';
+                        spotlight.style.left = (rect.left - padding) + 'px';
+                        spotlight.style.width = (rect.width + padding * 2) + 'px';
+                        spotlight.style.height = (rect.height + padding * 2) + 'px';
+
+                        // Position tooltip below the spotlight
+                        const tooltipRect = tooltip.getBoundingClientRect();
+                        const spaceBelow = window.innerHeight - rect.bottom - padding;
+                        const spaceAbove = rect.top - padding;
+
+                        let tooltipTop, tooltipLeft;
+
+                        if (spaceBelow >= 200 || spaceBelow > spaceAbove) {
+                            tooltipTop = rect.bottom + padding + 12;
+                        } else {
+                            tooltipTop = rect.top - padding - 12 - 280; // approximate tooltip height
+                        }
+
+                        // Center horizontally
+                        tooltipLeft = rect.left + rect.width / 2 - 180;
+                        tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - 376));
+
+                        tooltip.style.top = Math.max(16, tooltipTop) + 'px';
+                        tooltip.style.left = tooltipLeft + 'px';
+                        tooltip.style.transform = 'none';
+                        tooltip.style.right = 'auto';
+                        tooltip.style.bottom = 'auto';
+                        tooltip.style.margin = '0';
+
+                        // Make overlay cover everything except spotlight area
+                        overlay.style.background = 'rgba(0,0,0,0)';
+                    }, 350);
+                } else {
+                    spotlight.classList.add('hidden');
+                    overlay.style.background = 'rgba(0,0,0,0.6)';
+                }
+            }
+
+            tooltip.classList.remove('hidden');
+        }
+
+        function nextTourStep() {
+            if (currentTourStep < tourSteps.length - 1) {
+                currentTourStep++;
+                renderTourStep();
+            } else {
+                endProfileTour();
+            }
+        }
+
+        function prevTourStep() {
+            if (currentTourStep > 0) {
+                currentTourStep--;
+                renderTourStep();
+            }
+        }
+
+        function skipProfileTour() {
+            endProfileTour();
+        }
+
+        function replayProfileTour() {
+            if (tourActive) return;
+            try { localStorage.removeItem(TOUR_KEY); } catch(e) {}
+            startProfileTour();
+        }
+
+        function endProfileTour() {
+            tourActive = false;
+            markTourDone();
+
+            const overlay = document.getElementById('tour-overlay');
+            const spotlight = document.getElementById('tour-spotlight');
+            const tooltip = document.getElementById('tour-tooltip');
+
+            if (overlay) overlay.remove();
+            if (spotlight) spotlight.remove();
+            if (tooltip) tooltip.remove();
+
+            showToast('Bạn có thể xem lại hướng dẫn bất cứ lúc nào tại Trung tâm trợ giúp!', 'success');
+        }
+
         // ===== INIT =====
         async function init() {
             await fetchProfileData();
@@ -1038,6 +1373,14 @@
                 loadUnreadCount();
                 // Poll notifications mỗi 30 giây
                 setInterval(loadUnreadCount, 30000);
+            }
+
+            // Start profile tour if first time
+            if (shouldShowTour()) {
+                // Wait a bit for content to render and settle
+                setTimeout(() => {
+                    startProfileTour();
+                }, 800);
             }
         }
 
