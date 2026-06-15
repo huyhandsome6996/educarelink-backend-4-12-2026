@@ -158,10 +158,11 @@ def start_scheduler():
         )
 
         # Ping ngay lần đầu (sau 10 giây để server sẵn sàng)
+        from datetime import timedelta
         _scheduler.add_job(
             _ping_self,
             trigger='date',
-            run_date=datetime.now().timestamp() + 10,
+            run_date=datetime.now() + timedelta(seconds=10),
             id='keepalive_initial_ping',
             name='EduCareLink Initial Ping',
             replace_existing=True,
