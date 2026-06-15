@@ -17,6 +17,7 @@ from .views import (
     WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
     WorkerChatbotAPIView, HelpCenterAPIView,
     DistanceCalculationAPIView,
+    AdminChatbotAPIView,
 )
 
 urlpatterns = [
@@ -83,4 +84,7 @@ urlpatterns = [
 
     # Tính khoảng cách (Haversine + Gemini AI)
     path('distance/', DistanceCalculationAPIView.as_view(), name='distance-calculation'),
+
+    # AI Chatbot cho Admin (thống kê, hành động, phân tích ảnh)
+    path('admin/chatbot/', AdminChatbotAPIView.as_view(), name='admin-chatbot'),
 ]
