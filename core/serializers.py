@@ -13,7 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
             'address', 'is_verified', 'is_approved', 'ai_profile_summary',
             'id_card_front', 'id_card_back', 'selfie_photo',
             'certificate_photo', 'qualifications', 'expo_push_token',
-            'first_login', 'latitude', 'longitude'
+            'first_login', 'latitude', 'longitude',
+            'auth_provider', 'avatar_url',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -24,6 +25,8 @@ class UserSerializer(serializers.ModelSerializer):
             'is_approved': {'read_only': True},
             'ai_profile_summary': {'read_only': True},
             'role': {'read_only': True},  # Ngăn chặn role escalation qua API
+            'auth_provider': {'read_only': True},  # Không cho thay đổi provider qua API
+            'avatar_url': {'read_only': True},
             'id_card_front': {'required': False},
             'id_card_back': {'required': False},
             'selfie_photo': {'required': False},

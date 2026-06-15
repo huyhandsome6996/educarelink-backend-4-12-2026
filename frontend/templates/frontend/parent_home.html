@@ -199,6 +199,31 @@
                     <span>Hướng dẫn</span>
                 </a>
             </div>
+
+            <!-- Nâng cấp Carepartner (chỉ hiện cho parent social auth) -->
+            <div id="upgrade-section" class="mt-6 hidden">
+                <div class="mx-2 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primaryLight/50">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <span class="material-symbols-outlined filled text-primary text-xl">workspace_premium</span>
+                        <span class="font-semibold text-sm text-primary">Trở thành Carepartner</span>
+                    </div>
+                    <p class="text-xs text-textSecondary mb-3 leading-relaxed">Nâng cấp tài khoản để nhận việc và kiếm thu nhập</p>
+                    <button onclick="openUpgradeModal()"
+                            class="w-full py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primaryDark transition-all active:scale-95">
+                        Nộp hồ sơ nâng cấp
+                    </button>
+                </div>
+            </div>
+            <!-- Đang chờ duyệt nâng cấp -->
+            <div id="upgrade-pending-section" class="mt-6 hidden">
+                <div class="mx-2 p-4 rounded-2xl border border-warning/30 bg-yellow-50">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <span class="material-symbols-outlined filled text-warning text-xl">hourglass_top</span>
+                        <span class="font-semibold text-sm text-warning">Đang chờ duyệt</span>
+                    </div>
+                    <p class="text-xs text-textSecondary leading-relaxed">Hồ sơ nâng cấp Carepartner của bạn đang được Admin xem xét</p>
+                </div>
+            </div>
         </nav>
 
         <!-- User Section (Bottom) -->
@@ -669,8 +694,12 @@
                 const fullName = (prof.first_name && prof.last_name)
                     ? `${prof.first_name} ${prof.last_name}`
                     : prof.username || 'Người dùng';
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
+                // Use avatar_url from social auth if available
+                const avatarUrl = prof.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
                 const greeting = `${getGreeting()}, ${fullName}`;
+
+                // Save auth_provider to localStorage for upgrade check
+                if (prof.auth_provider) localStorage.setItem('auth_provider', prof.auth_provider);
 
                 // Update all name displays
                 document.getElementById('sidebar-user-name').textContent = fullName;
@@ -817,6 +846,207 @@
                 document.body.classList.add('page-loaded');
             }
         });
+    </script>
+
+    <!-- ========================= -->
+    <!-- UPGRADE TO CAREPARTNER MODAL -->
+    <!-- ========================= -->
+    <div id="upgrade-modal" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeUpgradeModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-surface rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
+                <!-- Header -->
+                <div class="sticky top-0 bg-surface z-10 flex items-center justify-between px-6 py-4 border-b border-border">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center">
+                            <span class="material-symbols-outlined filled text-primary">workspace_premium</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline font-bold text-lg text-textPrimary">Nâng cấp Carepartner</h3>
+                            <p class="text-xs text-textSecondary">Nộp hồ sơ để trở thành Carepartner</p>
+                        </div>
+                    </div>
+                    <button onclick="closeUpgradeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-all">
+                        <span class="material-symbols-outlined text-textSecondary">close</span>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form id="upgrade-form" class="p-6 space-y-5" onsubmit="submitUpgrade(event)">
+                    <!-- Info banner -->
+                    <div class="bg-blue-50 rounded-xl p-4 flex gap-3">
+                        <span class="material-symbols-outlined text-info text-xl flex-shrink-0 mt-0.5">info</span>
+                        <p class="text-xs text-blue-800 leading-relaxed">Bạn cần cung cấp đầy đủ thông tin và bằng cấp. Sau khi nộp, Admin sẽ xem xét và duyệt hồ sơ của bạn.</p>
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Số điện thoại <span class="text-error">*</span></label>
+                        <input type="tel" id="upgrade-phone" required placeholder="0912345678"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all">
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Địa chỉ <span class="text-error">*</span></label>
+                        <textarea id="upgrade-address" required rows="2" placeholder="Số nhà, đường, quận, thành phố..."
+                                  class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- ID Card Front -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Ảnh mặt trước CCCD <span class="text-error">*</span></label>
+                        <div class="relative">
+                            <input type="file" id="upgrade-id-front" accept="image/*" required class="hidden" onchange="previewImage(this, 'preview-id-front')">
+                            <div id="preview-id-front" onclick="document.getElementById('upgrade-id-front').click()"
+                                 class="w-full h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primaryLight/20 transition-all">
+                                <span class="material-symbols-outlined text-textMuted text-3xl mb-1">add_photo_alternate</span>
+                                <span class="text-xs text-textMuted">Nhấn để tải lên</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ID Card Back -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Ảnh mặt sau CCCD <span class="text-error">*</span></label>
+                        <div class="relative">
+                            <input type="file" id="upgrade-id-back" accept="image/*" required class="hidden" onchange="previewImage(this, 'preview-id-back')">
+                            <div id="preview-id-back" onclick="document.getElementById('upgrade-id-back').click()"
+                                 class="w-full h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primaryLight/20 transition-all">
+                                <span class="material-symbols-outlined text-textMuted text-3xl mb-1">add_photo_alternate</span>
+                                <span class="text-xs text-textMuted">Nhấn để tải lên</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selfie -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Ảnh chân dung <span class="text-error">*</span></label>
+                        <div class="relative">
+                            <input type="file" id="upgrade-selfie" accept="image/*" required class="hidden" onchange="previewImage(this, 'preview-selfie')">
+                            <div id="preview-selfie" onclick="document.getElementById('upgrade-selfie').click()"
+                                 class="w-full h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primaryLight/20 transition-all">
+                                <span class="material-symbols-outlined text-textMuted text-3xl mb-1">person</span>
+                                <span class="text-xs text-textMuted">Nhấn để tải ảnh chân dung</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Certificate (optional) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-textPrimary mb-1.5">Ảnh bằng cấp/chứng chỉ <span class="text-textMuted font-normal">(tùy chọn)</span></label>
+                        <div class="relative">
+                            <input type="file" id="upgrade-certificate" accept="image/*" class="hidden" onchange="previewImage(this, 'preview-certificate')">
+                            <div id="preview-certificate" onclick="document.getElementById('upgrade-certificate').click()"
+                                 class="w-full h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primaryLight/20 transition-all">
+                                <span class="material-symbols-outlined text-textMuted text-3xl mb-1">school</span>
+                                <span class="text-xs text-textMuted">Nhấn để tải lên</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" id="upgrade-submit-btn"
+                            class="w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:bg-primaryDark transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-lg">send</span>
+                        Gửi hồ sơ nâng cấp
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---- Upgrade Modal Functions ----
+        function openUpgradeModal() {
+            document.getElementById('upgrade-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeUpgradeModal() {
+            document.getElementById('upgrade-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-xl">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function submitUpgrade(e) {
+            e.preventDefault();
+            const btn = document.getElementById('upgrade-submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Đang gửi...';
+
+            const formData = new FormData();
+            formData.append('phone_number', document.getElementById('upgrade-phone').value);
+            formData.append('address', document.getElementById('upgrade-address').value);
+            formData.append('id_card_front', document.getElementById('upgrade-id-front').files[0]);
+            formData.append('id_card_back', document.getElementById('upgrade-id-back').files[0]);
+            formData.append('selfie_photo', document.getElementById('upgrade-selfie').files[0]);
+            const certFile = document.getElementById('upgrade-certificate').files[0];
+            if (certFile) formData.append('certificate_photo', certFile);
+
+            try {
+                const token = localStorage.getItem('token');
+                const resp = await fetch(API_BASE + '/auth/upgrade-carepartner/', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData,
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    showToast('Hồ sơ nâng cấp đã gửi thành công! Vui lòng đợi Admin duyệt.', 'success');
+                    closeUpgradeModal();
+                    // Show pending section, hide upgrade section
+                    document.getElementById('upgrade-section').classList.add('hidden');
+                    document.getElementById('upgrade-pending-section').classList.remove('hidden');
+                } else {
+                    showToast(data.error || 'Gửi hồ sơ thất bại. Vui lòng thử lại.', 'error');
+                }
+            } catch (err) {
+                console.error('Upgrade error:', err);
+                showToast('Không thể kết nối máy chủ.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-lg">send</span> Gửi hồ sơ nâng cấp';
+            }
+        }
+
+        // ---- Check upgrade status ----
+        async function checkUpgradeStatus() {
+            try {
+                const token = localStorage.getItem('token');
+                const role = localStorage.getItem('role');
+                const authProvider = localStorage.getItem('auth_provider');
+                // Only check for parent accounts created via social auth
+                if (role !== 'parent' || !authProvider || authProvider === 'email') return;
+
+                const resp = await fetch(API_BASE + '/auth/upgrade-status/', {
+                    headers: { 'Authorization': 'Bearer ' + token },
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                if (data.status === 'pending') {
+                    document.getElementById('upgrade-pending-section').classList.remove('hidden');
+                } else if (data.can_upgrade) {
+                    document.getElementById('upgrade-section').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.warn('Could not check upgrade status:', e);
+            }
+        }
+
+        // Check on load
+        checkUpgradeStatus();
     </script>
 
 </body>

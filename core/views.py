@@ -189,7 +189,7 @@ class UserProfileAPIView(APIView):
     def patch(self, request):
         # Ngăn chặn role escalation — loại role, is_staff, is_superuser khỏi data
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified', 'qualifications']:
+        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified', 'qualifications', 'auth_provider', 'avatar_url']:
             data.pop(forbidden_field, None)
         
         # Nếu có password mới → hash đúng cách
@@ -733,6 +733,8 @@ class AdminAllUsersAPIView(APIView):
                 'email': u.email,
                 'phone_number': u.phone_number,
                 'role': u.role,
+                'auth_provider': u.auth_provider,
+                'avatar_url': u.avatar_url or '',
                 'is_active': u.is_active,
                 'is_approved': u.is_approved,
                 'is_verified': u.is_verified,
@@ -903,61 +905,95 @@ class AdminReviewCredentialAPIView(APIView):
             submission.reviewed_at = timezone.now()
             submission.save()
 
-            # Cập nhật is_verified cho worker nếu chưa
             worker = submission.worker
-            if not worker.is_verified:
+            is_upgrade = '[NÂNG CẤP]' in (submission.description or '')
+
+            if is_upgrade:
+                # Phụ huynh nâng cấp thành Carepartner → đổi role + duyệt
+                worker.role = 'worker'
+                worker.is_approved = True
                 worker.is_verified = True
-                worker.save(update_fields=['is_verified'])
+                worker.save(update_fields=['role', 'is_approved', 'is_verified'])
+                logger.info(f"[Upgrade] {worker.username} upgraded to Carepartner by admin")
+            else:
+                # Carepartner bình thường gửi bằng cấp
+                if not worker.is_verified:
+                    worker.is_verified = True
+                    worker.save(update_fields=['is_verified'])
 
             # Cập nhật qualifications cho worker nếu admin có nhập
             if isinstance(qualifications_update, list) and len(qualifications_update) > 0:
                 existing_quals = worker.qualifications if isinstance(worker.qualifications, list) else []
-                # Thêm bằng cấp mới không trùng
                 for q in qualifications_update:
                     if q and q not in existing_quals:
                         existing_quals.append(q)
                 worker.qualifications = existing_quals
                 worker.save(update_fields=['qualifications'])
 
-            # Gửi thông báo cho worker
-            Notification.objects.create(
-                recipient=worker,
-                title='Bằng cấp đã được duyệt!',
-                message=f'Admin đã duyệt bằng cấp của bạn. {submission.admin_review}'
-            )
-
-            # Push notification
-            if worker.expo_push_token:
-                send_expo_push_notification(
-                    token=worker.expo_push_token,
-                    title='Bằng cấp đã được duyệt!',
-                    body=f'Admin đã duyệt bằng cấp của bạn.',
-                    data={'type': 'credential_approved'}
+            # Gửi thông báo
+            if is_upgrade:
+                Notification.objects.create(
+                    recipient=worker,
+                    title='Đã được duyệt làm Carepartner!',
+                    message=f'Chúc mừng! Admin đã duyệt hồ sơ nâng cấp của bạn. Bạn nay đã là Carepartner. {submission.admin_review}'
                 )
+                if worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=worker.expo_push_token,
+                        title='Đã được duyệt làm Carepartner!',
+                        body='Admin đã duyệt hồ sơ nâng cấp của bạn.',
+                        data={'type': 'upgrade_approved'}
+                    )
+            else:
+                Notification.objects.create(
+                    recipient=worker,
+                    title='Bằng cấp đã được duyệt!',
+                    message=f'Admin đã duyệt bằng cấp của bạn. {submission.admin_review}'
+                )
+                if worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=worker.expo_push_token,
+                        title='Bằng cấp đã được duyệt!',
+                        body=f'Admin đã duyệt bằng cấp của bạn.',
+                        data={'type': 'credential_approved'}
+                    )
 
             return Response({'message': f'Đã duyệt bằng cấp cho {worker.username}.'})
 
         elif action == 'reject':
             submission.status = 'rejected'
-            submission.admin_review = admin_review if admin_review else 'Bằng cấp không đạt yêu cầu.'
+            is_upgrade = '[NÂNG CẤP]' in (submission.description or '')
+            submission.admin_review = admin_review if admin_review else ('Hồ sơ nâng cấp không đạt yêu cầu.' if is_upgrade else 'Bằng cấp không đạt yêu cầu.')
             submission.reviewed_at = timezone.now()
             submission.save()
 
-            # Gửi thông báo cho worker
-            Notification.objects.create(
-                recipient=submission.worker,
-                title='Bằng cấp bị từ chối',
-                message=f'Admin đã từ chối bằng cấp của bạn. Lý do: {submission.admin_review}'
-            )
-
-            # Push notification
-            if submission.worker.expo_push_token:
-                send_expo_push_notification(
-                    token=submission.worker.expo_push_token,
-                    title='Bằng cấp bị từ chối',
-                    body=f'Admin đã từ chối bằng cấp của bạn.',
-                    data={'type': 'credential_rejected'}
+            # Gửi thông báo cho user
+            if is_upgrade:
+                Notification.objects.create(
+                    recipient=submission.worker,
+                    title='Yêu cầu nâng cấp bị từ chối',
+                    message=f'Admin đã từ chối hồ sơ nâng cấp Carepartner của bạn. Lý do: {submission.admin_review}'
                 )
+                if submission.worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=submission.worker.expo_push_token,
+                        title='Yêu cầu nâng cấp bị từ chối',
+                        body='Admin đã từ chối hồ sơ nâng cấp của bạn.',
+                        data={'type': 'upgrade_rejected'}
+                    )
+            else:
+                Notification.objects.create(
+                    recipient=submission.worker,
+                    title='Bằng cấp bị từ chối',
+                    message=f'Admin đã từ chối bằng cấp của bạn. Lý do: {submission.admin_review}'
+                )
+                if submission.worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=submission.worker.expo_push_token,
+                        title='Bằng cấp bị từ chối',
+                        body=f'Admin đã từ chối bằng cấp của bạn.',
+                        data={'type': 'credential_rejected'}
+                    )
 
             return Response({'message': f'Đã từ chối bằng cấp của {submission.worker.username}.'})
 
