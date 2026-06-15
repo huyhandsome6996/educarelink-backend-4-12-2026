@@ -529,6 +529,39 @@
                     </button>
                 </form>
 
+                <!-- Social Register (chỉ cho Phụ huynh) -->
+                <div id="social-register-section" class="mt-6">
+                    <!-- Divider -->
+                    <div class="relative my-5">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-dividerMain"></div>
+                        </div>
+                        <div class="relative flex justify-center text-xs uppercase">
+                            <span class="bg-surface px-3 text-textMuted font-medium">Hoặc đăng ký nhanh với</span>
+                        </div>
+                    </div>
+
+                    <!-- Social Buttons -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="google-register-btn" class="flex items-center justify-center gap-2.5 py-3 border border-borderMain rounded-xl hover:bg-bgMain transition-all duration-200 group">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                            </svg>
+                            <span class="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Google</span>
+                        </button>
+                        <button id="facebook-register-btn" class="flex items-center justify-center gap-2.5 py-3 border border-borderMain rounded-xl hover:bg-bgMain transition-all duration-200 group">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            <span class="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Facebook</span>
+                        </button>
+                    </div>
+                    <p class="text-center text-[11px] text-textMuted mt-2">Đăng ký bằng Google/Facebook tạo tài khoản Phụ huynh</p>
+                </div>
+
                 <!-- Login Link -->
                 <p class="text-center text-sm text-textSecondary mt-6 mb-8 lg:mb-0">
                     Đã có tài khoản?
@@ -661,6 +694,14 @@
             workerFields.classList.add('visible');
         } else {
             workerFields.classList.remove('visible');
+        }
+
+        // Toggle social register section visibility (chỉ hiện cho Phụ huynh)
+        const socialSection = document.getElementById('social-register-section');
+        if (role === 'parent') {
+            socialSection.style.display = '';
+        } else {
+            socialSection.style.display = 'none';
         }
     }
 
@@ -1007,6 +1048,191 @@
             document.getElementById('reg-map-buttons').style.display = 'none';
         }
     };
+
+    // ============================================================
+    // Social OAuth (Google & Facebook) for Register
+    // ============================================================
+    let oauthConfig = null;
+
+    async function loadOAuthConfig() {
+        try {
+            const res = await fetch(API_BASE + '/auth/oauth-config/');
+            if (res.ok) {
+                oauthConfig = await res.json();
+                initOAuthSDKs();
+            }
+        } catch (e) {
+            console.warn('Could not load OAuth config:', e);
+        }
+    }
+
+    function initOAuthSDKs() {
+        if (!oauthConfig) return;
+
+        const googleBtn = document.getElementById('google-register-btn');
+        const facebookBtn = document.getElementById('facebook-register-btn');
+
+        // Disable buttons if not configured
+        if (!oauthConfig.google.enabled) {
+            googleBtn.style.opacity = '0.4';
+            googleBtn.style.cursor = 'not-allowed';
+        }
+        if (!oauthConfig.facebook.enabled) {
+            facebookBtn.style.opacity = '0.4';
+            facebookBtn.style.cursor = 'not-allowed';
+        }
+
+        // Initialize Google Identity Services
+        if (oauthConfig.google.enabled && oauthConfig.google.client_id) {
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.onload = () => {
+                google.accounts.id.initialize({
+                    client_id: oauthConfig.google.client_id,
+                    callback: handleGoogleResponse,
+                    auto_select: false,
+                });
+            };
+            document.head.appendChild(script);
+        }
+
+        // Initialize Facebook SDK
+        if (oauthConfig.facebook.enabled && oauthConfig.facebook.app_id) {
+            const script = document.createElement('script');
+            script.src = 'https://connect.facebook.net/vi_VN/sdk.js';
+            script.async = true;
+            script.defer = true;
+            script.onload = () => {
+                FB.init({
+                    appId: oauthConfig.facebook.app_id,
+                    cookie: true,
+                    xfbml: false,
+                    version: 'v21.0',
+                });
+            };
+            document.head.appendChild(script);
+        }
+
+        // Google button click
+        googleBtn.addEventListener('click', () => {
+            if (!oauthConfig || !oauthConfig.google.enabled) {
+                showToast('Đăng nhập Google chưa được kích hoạt.', 'warning');
+                return;
+            }
+            try {
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        const tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: oauthConfig.google.client_id,
+                            scope: 'email profile',
+                            callback: (resp) => {
+                                if (resp.access_token) {
+                                    sendOAuthToken('google', resp.access_token, 'access_token');
+                                }
+                            },
+                        });
+                        tokenClient.requestAccessToken();
+                    }
+                });
+            } catch (e) {
+                console.error('Google OAuth error:', e);
+                showToast('Không thể mở đăng nhập Google.', 'error');
+            }
+        });
+
+        // Facebook button click
+        facebookBtn.addEventListener('click', () => {
+            if (!oauthConfig || !oauthConfig.facebook.enabled) {
+                showToast('Đăng nhập Facebook chưa được kích hoạt.', 'warning');
+                return;
+            }
+            try {
+                FB.login((response) => {
+                    if (response.authResponse && response.authResponse.accessToken) {
+                        sendOAuthToken('facebook', response.authResponse.accessToken);
+                    } else if (response.status !== 'connected') {
+                        showToast('Đăng nhập Facebook đã bị huỷ.', 'info');
+                    }
+                }, { scope: 'email,public_profile' });
+            } catch (e) {
+                console.error('Facebook OAuth error:', e);
+                showToast('Không thể mở đăng nhập Facebook.', 'error');
+            }
+        });
+    }
+
+    function handleGoogleResponse(response) {
+        if (!response.credential) {
+            showToast('Đăng nhập Google thất bại. Vui lòng thử lại.', 'error');
+            return;
+        }
+        sendOAuthToken('google', response.credential);
+    }
+
+    async function sendOAuthToken(provider, token, tokenType = 'id_token') {
+        const endpoint = provider === 'google' ? '/auth/google/' : '/auth/facebook/';
+        const body = provider === 'google'
+            ? (tokenType === 'access_token' ? { access_token: token } : { token: token })
+            : { access_token: token };
+
+        try {
+            const response = await fetch(API_BASE + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('token', data.tokens.access);
+                localStorage.setItem('refresh_token', data.tokens.refresh);
+                localStorage.setItem('role', data.role);
+                if (data.is_staff) localStorage.setItem('is_staff', 'true');
+                if (data.username) localStorage.setItem('admin_username', data.username);
+                if (data.avatar_url) localStorage.setItem('avatar_url', data.avatar_url);
+                localStorage.setItem('auth_provider', data.auth_provider || provider);
+
+                showToast('Đăng ký thành công! Đang chuyển hướng...', 'success');
+
+                setTimeout(() => {
+                    if (data.is_staff) {
+                        window.location.href = '/admin-dashboard/';
+                    } else if (data.first_login) {
+                        window.location.href = data.role === 'parent'
+                            ? '/onboarding-parent/'
+                            : '/onboarding-worker/';
+                    } else {
+                        window.location.href = data.role === 'parent'
+                            ? '/parent-home/'
+                            : '/worker-feed/';
+                    }
+                }, 1200);
+            } else {
+                if (response.status === 409) {
+                    if (data.code === 'EMAIL_ALREADY_REGISTERED') {
+                        showToast('Email này đã đăng ký bằng mật khẩu. Vui lòng đăng nhập.', 'error');
+                    } else if (data.code === 'EMAIL_LINKED_FACEBOOK') {
+                        showToast('Email này đã liên kết Facebook. Vui lòng đăng nhập bằng Facebook.', 'error');
+                    } else if (data.code === 'EMAIL_LINKED_GOOGLE') {
+                        showToast('Email này đã liên kết Google. Vui lòng đăng nhập bằng Google.', 'error');
+                    } else {
+                        showToast(data.error || 'Lỗi xác thực.', 'error');
+                    }
+                } else {
+                    showToast(data.error || 'Đăng ký thất bại. Vui lòng thử lại.', 'error');
+                }
+            }
+        } catch (err) {
+            console.error('OAuth error:', err);
+            showToast('Không thể kết nối đến máy chủ.', 'error');
+        }
+    }
+
+    // Load OAuth config on page load
+    loadOAuthConfig();
 </script>
 
 

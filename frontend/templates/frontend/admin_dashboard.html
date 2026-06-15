@@ -1267,7 +1267,7 @@
                 return;
             }
             let html = `<table><thead><tr>
-                <th>Người dùng</th><th>Liên hệ</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Thao tác</th>
+                <th>Người dùng</th><th>Liên hệ</th><th>Vai trò</th><th>Đăng nhập</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Thao tác</th>
             </tr></thead><tbody>`;
             users.forEach(u => {
                 const name = `${escapeHtml(u.last_name || '')} ${escapeHtml(u.first_name || '')}`.trim() || escapeHtml(u.username);
@@ -1275,6 +1275,11 @@
                 const roleClass = u.role === 'worker' ? 'badge-worker' : 'badge-parent';
                 const activeLabel = u.is_active ? 'Hoạt động' : 'Đã khoá';
                 const activeClass = u.is_active ? 'badge-active' : 'badge-inactive';
+                const authProvider = u.auth_provider || 'email';
+                const authLabels = { 'email': 'Email/Mật khẩu', 'google': 'Google', 'facebook': 'Facebook' };
+                const authColors = { 'email': '#64748b', 'google': '#4285F4', 'facebook': '#1877F2' };
+                const authLabel = authLabels[authProvider] || 'Email/Mật khẩu';
+                const authColor = authColors[authProvider] || '#64748b';
                 html += `<tr>
                     <td><div class="user-cell">
                         <div class="user-avatar"><div class="user-avatar-placeholder">${(u.first_name || u.username || '?')[0].toUpperCase()}</div></div>
@@ -1282,6 +1287,7 @@
                     </div></td>
                     <td><div style="font-size:13px">${escapeHtml(u.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(u.phone_number || '—')}</div></td>
                     <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+                    <td><span class="badge" style="background:${authColor}20;color:${authColor};font-size:11px;">${authLabel}</span></td>
                     <td><span class="badge ${activeClass}">${activeLabel}</span></td>
                     <td style="font-size:13px;color:#94a3b8">${escapeHtml(u.date_joined)}</td>
                     <td><div class="action-btns">
