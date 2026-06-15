@@ -9,6 +9,9 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <!-- Leaflet.js Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -386,14 +389,27 @@
                         </div>
 
                         <div class="space-y-4">
-                            <!-- Address -->
+                            <!-- Address with Map Picker -->
                             <div>
                                 <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Địa chỉ <span class="text-errorMain">*</span></label>
-                                <div class="relative">
+                                <div class="relative mb-2">
                                     <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">location_on</span>
                                     <input type="text" id="address" name="address"
                                         class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
-                                        placeholder="Quận 1, TP. Hồ Chí Minh"/>
+                                        placeholder="Bấm vào bản đồ hoặc gõ địa chỉ..." onfocus="showRegMap()"/>
+                                </div>
+                                <input type="hidden" id="reg-lat" />
+                                <input type="hidden" id="reg-lng" />
+                                <div id="reg-map-wrapper" class="rounded-xl overflow-hidden border border-borderMain mb-2" style="display:none;">
+                                    <div id="reg-location-map" style="width:100%;height:250px;"></div>
+                                </div>
+                                <div class="flex gap-2" id="reg-map-buttons" style="display:none;">
+                                    <button type="button" onclick="useMyLocationReg()" class="flex items-center gap-1.5 px-3 py-2 bg-primaryLight text-primary rounded-lg text-xs font-semibold hover:bg-primarySoft transition-all">
+                                        <span class="material-symbols-outlined text-sm">my_location</span> Vị trí của tôi
+                                    </button>
+                                    <button type="button" onclick="searchAddressReg()" class="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-all">
+                                        <span class="material-symbols-outlined text-sm">search</span> Tìm địa chỉ
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -807,6 +823,10 @@
                 formData.append('last_name', lastName);
                 formData.append('phone_number', phoneNumber);
                 formData.append('address', document.getElementById('address').value.trim());
+                const regLat = document.getElementById('reg-lat').value;
+                const regLng = document.getElementById('reg-lng').value;
+                if (regLat) formData.append('latitude', regLat);
+                if (regLng) formData.append('longitude', regLng);
                 formData.append('id_card_front', uploadedFiles.id_card_front);
                 formData.append('id_card_back', uploadedFiles.id_card_back);
                 formData.append('selfie_photo', uploadedFiles.selfie_photo);
@@ -882,6 +902,111 @@
     // Initialize: Set parent as default selected role
     // ============================================================
     selectRole('parent');
+
+    // ===== MAP PICKER FOR CAREPARTNER REGISTRATION =====
+    let regMapInstance = null;
+    let regMapMarker = null;
+    const REG_DEFAULT_LAT = 10.8231;
+    const REG_DEFAULT_LNG = 106.6297;
+
+    function showRegMap() {
+        if (selectedRole !== 'worker') return;
+        document.getElementById('reg-map-wrapper').style.display = 'block';
+        document.getElementById('reg-map-buttons').style.display = 'flex';
+        if (!regMapInstance) {
+            setTimeout(() => initRegMap(), 100);
+        }
+    }
+
+    function initRegMap() {
+        regMapInstance = L.map('reg-location-map').setView([REG_DEFAULT_LAT, REG_DEFAULT_LNG], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(regMapInstance);
+        regMapInstance.on('click', function(e) {
+            setRegMapPin(e.latlng.lat, e.latlng.lng);
+            reverseGeocodeReg(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    function setRegMapPin(lat, lng) {
+        document.getElementById('reg-lat').value = lat;
+        document.getElementById('reg-lng').value = lng;
+        if (regMapMarker) {
+            regMapMarker.setLatLng([lat, lng]);
+        } else {
+            regMapMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    html: '<div style="background:#F26522;width:28px;height:28px;border-radius:50% 50% 50% 0;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:12px;">📍</span></div>',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28],
+                    className: ''
+                })
+            }).addTo(regMapInstance);
+        }
+        regMapInstance.panTo([lat, lng]);
+    }
+
+    function reverseGeocodeReg(lat, lng) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.display_name) {
+                    document.getElementById('address').value = data.display_name;
+                }
+            })
+            .catch(() => {});
+    }
+
+    function searchAddressReg() {
+        const query = document.getElementById('address').value.trim();
+        if (!query) return;
+        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&accept-language=vi&limit=1`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lng = parseFloat(data[0].lon);
+                    setRegMapPin(lat, lng);
+                    document.getElementById('address').value = data[0].display_name;
+                    regMapInstance.setView([lat, lng], 15);
+                } else {
+                    showToast('Không tìm thấy địa chỉ. Thử gõ khác nhé!', 'warning');
+                }
+            })
+            .catch(() => showToast('Lỗi tìm kiếm địa chỉ.', 'error'));
+    }
+
+    function useMyLocationReg() {
+        if (!navigator.geolocation) {
+            showToast('Trình duyệt không hỗ trợ GPS.', 'error');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setRegMapPin(lat, lng);
+                reverseGeocodeReg(lat, lng);
+                regMapInstance.setView([lat, lng], 15);
+                showToast('Đã lấy vị trí của bạn!', 'success');
+            },
+            () => showToast('Không thể lấy vị trí. Vui lòng cho phép truy cập GPS.', 'error'),
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
+
+    // Auto-show map when switching to worker role
+    const origSelectRole = selectRole;
+    selectRole = function(role) {
+        origSelectRole(role);
+        if (role === 'worker') {
+            showRegMap();
+        } else {
+            document.getElementById('reg-map-wrapper').style.display = 'none';
+            document.getElementById('reg-map-buttons').style.display = 'none';
+        }
+    };
 </script>
 
 
