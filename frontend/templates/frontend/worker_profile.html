@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Leaflet.js Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -629,8 +632,24 @@
                     <input type="tel" id="edit-phone" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập số điện thoại"/>
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Địa chỉ</label>
-                    <input type="text" id="edit-address" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Nhập địa chỉ"/>
+                    <label class="block text-sm font-semibold text-textPrimary mb-1.5">Địa chỉ <span class="text-textMuted text-xs font-normal">(Bấm trên bản đồ hoặc gõ)</span></label>
+                    <input type="text" id="edit-address" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Bấm trên bản đồ hoặc gõ địa chỉ..."/>
+                    <input type="hidden" id="edit-lat" />
+                    <input type="hidden" id="edit-lng" />
+                    <!-- Map picker in modal -->
+                    <div id="edit-map-container" class="mt-2 rounded-xl overflow-hidden border border-gray-200" style="height: 220px;">
+                        <div id="edit-location-map" style="width: 100%; height: 100%;"></div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button type="button" onclick="useMyLocationForProfile()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primaryLight text-primary text-xs font-semibold hover:bg-primarySoft transition-all">
+                            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">my_location</span>
+                            Vị trí của tôi
+                        </button>
+                        <button type="button" onclick="searchAddressForProfile()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-textSecondary text-xs font-semibold hover:bg-gray-200 transition-all">
+                            <span class="material-symbols-outlined text-sm">search</span>
+                            Tìm
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-textPrimary mb-1.5">Email</label>
@@ -1149,7 +1168,7 @@
             {
                 target: '#btn-edit-profile',
                 title: 'Chỉnh sửa hồ sơ & Gửi bằng cấp',
-                description: 'Nhấn vào đây để chỉnh sửa thông tin cá nhân VÀ gửi ảnh bằng cấp, chứng chỉ cho Admin duyệt. Việc cung cấp bằng cấp rất quan trọng để được xác thực và tăng cơ hội nhận việc!',
+                description: 'Nhấn vào đây để chỉnh sửa thông tin cá nhân VÀ gửi ảnh bằng cấp cho Admin duyệt. Bạn cũng có thể chọn vị trí nhà trên bản đồ để hệ thống tính khoảng cách đến công việc. Việc cung cấp bằng cấp và vị trí rất quan trọng để được xác thực và tăng cơ hội nhận việc!',
                 icon: 'edit',
                 position: 'bottom'
             },
@@ -1488,12 +1507,16 @@
             document.getElementById('edit-last-name').value = profileData.last_name || '';
             document.getElementById('edit-phone').value = profileData.phone_number || '';
             document.getElementById('edit-address').value = profileData.address || '';
+            document.getElementById('edit-lat').value = profileData.latitude || '';
+            document.getElementById('edit-lng').value = profileData.longitude || '';
             document.getElementById('edit-email').value = profileData.email || '';
             document.getElementById('edit-certificate-photo').value = '';
             document.getElementById('edit-credential-desc').value = '';
             const modal = document.getElementById('edit-profile-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            // Initialize edit map after modal is shown
+            setTimeout(() => initEditMap(), 200);
         }
 
         function closeEditProfileModal() {
@@ -1503,6 +1526,19 @@
         }
 
         async function saveProfileAndCredential() {
+            // 0) Save latitude/longitude directly (no approval needed for location)
+            const editLat = document.getElementById('edit-lat').value;
+            const editLng = document.getElementById('edit-lng').value;
+            if (editLat && editLng) {
+                try {
+                    await apiFetch(API_BASE + '/profile/', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude: parseFloat(editLat), longitude: parseFloat(editLng) })
+                    });
+                } catch (e) { console.error('Lỗi lưu vị trí:', e); }
+            }
+
             // 1) Gửi yêu cầu thay đổi hồ sơ (thay vì cập nhật trực tiếp)
             const patchData = {
                 first_name: document.getElementById('edit-first-name').value.trim(),
@@ -1748,6 +1784,99 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // ===== LEAFLET MAP FOR EDIT PROFILE =====
+        let editMapInstance = null;
+        let editMapMarker = null;
+
+        function initEditMap() {
+            const lat = parseFloat(document.getElementById('edit-lat').value) || 10.8231;
+            const lng = parseFloat(document.getElementById('edit-lng').value) || 106.6297;
+            const zoom = (document.getElementById('edit-lat').value) ? 15 : 12;
+
+            if (editMapInstance) {
+                editMapInstance.setView([lat, lng], zoom);
+                if (document.getElementById('edit-lat').value) setEditMapPin(lat, lng);
+                return;
+            }
+
+            editMapInstance = L.map('edit-location-map').setView([lat, lng], zoom);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap', maxZoom: 19
+            }).addTo(editMapInstance);
+
+            editMapInstance.on('click', function(e) {
+                setEditMapPin(e.latlng.lat, e.latlng.lng);
+                reverseGeocodeEdit(e.latlng.lat, e.latlng.lng);
+            });
+
+            if (document.getElementById('edit-lat').value) {
+                setEditMapPin(lat, lng);
+            }
+        }
+
+        function setEditMapPin(lat, lng) {
+            document.getElementById('edit-lat').value = lat;
+            document.getElementById('edit-lng').value = lng;
+            if (editMapMarker) {
+                editMapMarker.setLatLng([lat, lng]);
+            } else {
+                const orangeIcon = L.divIcon({
+                    className: 'custom-map-pin',
+                    html: '<div style="background:#F26522;width:28px;height:28px;border-radius:50% 50% 50% 0;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:12px;">📍</span></div>',
+                    iconSize: [28, 28], iconAnchor: [14, 28],
+                });
+                editMapMarker = L.marker([lat, lng], { icon: orangeIcon }).addTo(editMapInstance);
+            }
+            editMapInstance.setView([lat, lng], Math.max(editMapInstance.getZoom(), 15));
+        }
+
+        async function reverseGeocodeEdit(lat, lng) {
+            try {
+                const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    document.getElementById('edit-address').value = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        async function searchAddressForProfile() {
+            const query = document.getElementById('edit-address').value.trim();
+            if (!query) { showToast('Vui lòng nhập địa chỉ', 'warning'); return; }
+            try {
+                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=vi`);
+                if (resp.ok) {
+                    const results = await resp.json();
+                    if (results.length > 0) {
+                        const r = results[0];
+                        setEditMapPin(parseFloat(r.lat), parseFloat(r.lon));
+                        document.getElementById('edit-address').value = r.display_name;
+                        showToast('Đã tìm thấy!', 'success');
+                    } else {
+                        showToast('Không tìm thấy địa chỉ', 'warning');
+                    }
+                }
+            } catch (e) { showToast('Lỗi tìm kiếm', 'error'); }
+        }
+
+        function useMyLocationForProfile() {
+            if (!navigator.geolocation) { showToast('Trình duyệt không hỗ trợ', 'warning'); return; }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setEditMapPin(pos.coords.latitude, pos.coords.longitude);
+                    reverseGeocodeEdit(pos.coords.latitude, pos.coords.longitude);
+                    showToast('Đã lấy vị trí!', 'success');
+                },
+                () => { showToast('Không thể lấy vị trí', 'warning'); },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // Enter key in address field triggers search
+        document.getElementById('edit-address').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); searchAddressForProfile(); }
+        });
 
         // ===== PROFILE CHANGE REQUESTS =====
         function openChangeRequestsModal() {

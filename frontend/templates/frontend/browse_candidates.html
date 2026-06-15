@@ -773,12 +773,51 @@ function renderCandidates(candidates) {
                         <span>Ứng tuyển ${c.applied_at || c.created_at ? formatAppliedDate(c.applied_at || c.created_at) : 'gần đây'}</span>
                     </div>
 
+                    <!-- Distance badge (if available) -->
+                    <div id="distance-badge-${c.worker_id || c.worker}" class="hidden items-center gap-1.5 text-xs mb-3 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">
+                        <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">straight</span>
+                        <span class="font-semibold" id="distance-text-${c.worker_id || c.worker}">Đang tính...</span>
+                    </div>
+
                     <!-- Action buttons -->
                     ${actionButtons}
                 </div>
             </article>
         `;
     }).join('');
+}
+
+// ==================== DISTANCE FETCHING ====================
+async function fetchDistancesForCandidates(candidates) {
+    // Only fetch if task has lat/lng
+    if (!currentTask || currentTask.latitude == null || currentTask.longitude == null) return;
+
+    for (const c of candidates) {
+        const workerId = c.worker_id || c.worker;
+        try {
+            const resp = await apiFetch(`${API_BASE}/distance/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lat1: currentTask.latitude,
+                    lon1: currentTask.longitude,
+                    user_id: workerId
+                })
+            });
+            if (resp && resp.ok) {
+                const data = await resp.json();
+                const badge = document.getElementById(`distance-badge-${workerId}`);
+                const text = document.getElementById(`distance-text-${workerId}`);
+                if (badge && text && data.distance_km != null) {
+                    let distText = `Cách ${data.distance_km} km`;
+                    if (data.travel_info) distText += ` • ${data.travel_info}`;
+                    text.textContent = distText;
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                }
+            }
+        } catch (e) { /* ignore distance errors */ }
+    }
 }
 
 // ==================== APPROVE LOGIC ====================
@@ -821,6 +860,9 @@ async function fetchCandidates() {
 
         candidatesList = await candResp.json();
         renderCandidates(candidatesList);
+
+        // Fetch distances for each candidate (non-blocking)
+        fetchDistancesForCandidates(candidatesList);
 
     } catch (e) {
         console.error('Candidates fetch error:', e);

@@ -16,6 +16,7 @@ from .views import (
     UserNotificationsAPIView, UnreadNotificationCountAPIView, MarkNotificationsReadAPIView,
     WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
     WorkerChatbotAPIView, HelpCenterAPIView,
+    DistanceCalculationAPIView,
 )
 
 urlpatterns = [
@@ -79,4 +80,7 @@ urlpatterns = [
     
     # Trung tâm trợ giúp AI
     path('help-center/', HelpCenterAPIView.as_view(), name='help-center'),
+
+    # Tính khoảng cách (Haversine + Gemini AI)
+    path('distance/', DistanceCalculationAPIView.as_view(), name='distance-calculation'),
 ]

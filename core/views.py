@@ -1478,3 +1478,112 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
             else:
                 detail = f"Lỗi kết nối AI: {error_msg}"
             return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# ===== DISTANCE CALCULATION API =====
+import math as math_module
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Tính khoảng cách giữa 2 điểm trên Trái Đất bằng công thức Haversine (đơn vị: km)"""
+    R = 6371  # Bán kính Trái Đất (km)
+    dlat = math_module.radians(lat2 - lat1)
+    dlon = math_module.radians(lon2 - lon1)
+    a = math_module.sin(dlat / 2)**2 + math_module.cos(math_module.radians(lat1)) * math_module.cos(math_module.radians(lat2)) * math_module.sin(dlon / 2)**2
+    c = 2 * math_module.asin(math_module.sqrt(a))
+    return round(R * c, 2)
+
+
+class DistanceCalculationAPIView(APIView):
+    """Tính khoảng cách giữa 2 người dùng hoặc giữa người dùng và công việc.
+    Sử dụng Haversine cho khoảng cách chính xác + Gemini AI để ước tính thời gian di chuyển."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        lat1 = request.data.get('lat1')
+        lon1 = request.data.get('lon1')
+        lat2 = request.data.get('lat2')
+        lon2 = request.data.get('lon2')
+
+        # Hoặc truyền user_id / task_id để tự lấy tọa độ
+        user_id = request.data.get('user_id')
+        task_id = request.data.get('task_id')
+
+        # Lấy tọa độ từ user_id
+        if user_id and (lat2 is None or lon2 is None):
+            try:
+                target_user = User.objects.get(id=user_id)
+                if target_user.latitude is not None and target_user.longitude is not None:
+                    lat2 = target_user.latitude
+                    lon2 = target_user.longitude
+                else:
+                    return Response({"error": "Người dùng này chưa cập nhật vị trí trên bản đồ."}, status=status.HTTP_400_BAD_REQUEST)
+            except User.DoesNotExist:
+                return Response({"error": "Không tìm thấy người dùng."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Lấy tọa độ từ task_id
+        if task_id and (lat2 is None or lon2 is None):
+            try:
+                task = Task.objects.get(id=task_id)
+                if task.latitude is not None and task.longitude is not None:
+                    lat2 = task.latitude
+                    lon2 = task.longitude
+                else:
+                    return Response({"error": "Công việc này chưa có vị trí trên bản đồ."}, status=status.HTTP_400_BAD_REQUEST)
+            except Task.DoesNotExist:
+                return Response({"error": "Không tìm thấy công việc."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Nếu không có lat1/lon1, dùng vị trí của người dùng hiện tại
+        if lat1 is None or lon1 is None:
+            if request.user.latitude is not None and request.user.longitude is not None:
+                lat1 = request.user.latitude
+                lon1 = request.user.longitude
+            else:
+                return Response({"error": "Bạn chưa cập nhật vị trí trên bản đồ. Vui lòng chọn vị trí trong hồ sơ."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            lat1 = float(lat1)
+            lon1 = float(lon1)
+            lat2 = float(lat2)
+            lon2 = float(lon2)
+        except (TypeError, ValueError):
+            return Response({"error": "Tọa độ không hợp lệ."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Tính khoảng cách bằng Haversine
+        distance_km = haversine_distance(lat1, lon1, lat2, lon2)
+
+        # Dùng Gemini AI để ước tính thời gian di chuyển
+        travel_info = None
+        gemini_key = os.environ.get('GEMINI_API_KEY', '')
+        if gemini_key:
+            try:
+                from google import genai
+                client = genai.Client(api_key=gemini_key)
+                prompt = (
+                    f"Hai địa điểm có tọa độ ({lat1}, {lon1}) và ({lat2}, {lon2}), "
+                    f"khoảng cách đường chim bay là {distance_km} km. "
+                    f"Đây là Việt Nam. Hãy ước tính thời gian di chuyển thực tế bằng xe máy "
+                    f"(phương tiện phổ biến nhất ở Việt Nam) và bằng ô tô. "
+                    f"Chỉ trả lời ngắn gọn theo format: 'Xe máy: ~X phút, Ô tô: ~Y phút'. "
+                    f"Không thêm giải thích."
+                )
+                gemini_response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=0.3,
+                        max_output_tokens=128,
+                    )
+                )
+                travel_info = gemini_response.text.strip()
+            except Exception:
+                travel_info = None
+
+        result = {
+            "distance_km": distance_km,
+            "lat1": lat1, "lon1": lon1,
+            "lat2": lat2, "lon2": lon2,
+        }
+        if travel_info:
+            result["travel_info"] = travel_info
+
+        return Response(result)
