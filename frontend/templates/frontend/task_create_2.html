@@ -612,6 +612,8 @@
                 title: step1Data.title,
                 description: notes,
                 location: address,
+                latitude: step1Data.latitude || null,
+                longitude: step1Data.longitude || null,
                 scheduled_time: scheduled_time,
                 price: parseInt(budget),
             };

@@ -351,6 +351,13 @@
                     </div>
                     <p class="text-xs text-textSecondary font-medium mb-1">Địa điểm</p>
                     <p id="task-location" class="font-bold text-sm text-textPrimary leading-snug"></p>
+                    <!-- Distance display (worker → task) -->
+                    <div id="distance-info" class="hidden mt-2 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-100">
+                        <div class="flex items-center gap-1.5 text-blue-600 text-xs">
+                            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">straight</span>
+                            <span id="distance-text" class="font-semibold">Đang tính khoảng cách...</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -683,6 +690,11 @@
             // Location
             document.getElementById('task-location').textContent = task.location || 'Chưa xác định';
 
+            // Fetch distance if task has coordinates
+            if (task.latitude != null && task.longitude != null) {
+                fetchDistanceToTask(task.latitude, task.longitude);
+            }
+
             // Description
             document.getElementById('task-description').textContent = task.description || 'Không có mô tả chi tiết.';
 
@@ -693,6 +705,34 @@
 
             // Show mobile apply bar
             document.getElementById('mobile-apply-bar').style.display = '';
+        }
+
+        // ===== FETCH DISTANCE (Worker → Task) =====
+        async function fetchDistanceToTask(taskLat, taskLng) {
+            try {
+                const resp = await apiFetch(`${API_BASE}/distance/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat2: taskLat,
+                        lon2: taskLng
+                        // lat1/lon1 will be auto-filled from user's saved location
+                    })
+                });
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    const distEl = document.getElementById('distance-info');
+                    const distText = document.getElementById('distance-text');
+                    if (distEl && distText && data.distance_km != null) {
+                        let text = `Cách bạn ${data.distance_km} km`;
+                        if (data.travel_info) text += ` • ${data.travel_info}`;
+                        distText.textContent = text;
+                        distEl.classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                // Distance fetch failed — silently ignore
+            }
         }
 
         // ===== SHOW ERROR =====

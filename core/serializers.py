@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
             'address', 'is_verified', 'is_approved', 'ai_profile_summary',
             'id_card_front', 'id_card_back', 'selfie_photo',
             'certificate_photo', 'qualifications', 'expo_push_token',
-            'first_login'
+            'first_login', 'latitude', 'longitude'
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -29,6 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
             'selfie_photo': {'required': False},
             'certificate_photo': {'required': False},
             'qualifications': {'required': False},
+            'latitude': {'required': False, 'allow_null': True},
+            'longitude': {'required': False, 'allow_null': True},
         }
 
     def create(self, validated_data):

@@ -39,6 +39,10 @@ class User(AbstractUser):
     # Hướng dẫn sử dụng lần đầu
     first_login = models.BooleanField(default=True, help_text="Đánh dấu chưa xem hướng dẫn sử dụng")
 
+    # Vị trí địa lý (để tính khoảng cách)
+    latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
+    longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
+
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
 
@@ -71,6 +75,8 @@ class Task(models.Model):
     category = models.ForeignKey(ServiceCategory, on_delete=models.SET_NULL, null=True)
     
     location = models.CharField(max_length=255)
+    latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ địa điểm công việc")
+    longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ địa điểm công việc")
     scheduled_time = models.DateTimeField() # Thời gian bắt đầu làm
     
     # ---> KHUNG CHỜ AI: Lưu lại câu chat gốc của phụ huynh
