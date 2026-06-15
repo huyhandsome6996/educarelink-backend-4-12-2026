@@ -212,3 +212,8 @@ LOGGING = {
 }
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+# --- CẤU HÌNH SOCIAL OAUTH ---
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
+FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')

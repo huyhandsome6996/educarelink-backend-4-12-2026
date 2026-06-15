@@ -21,6 +21,7 @@ from .views import (
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
 )
+from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView
 
 urlpatterns = [
     # Health Check (cho keep-alive ping)
@@ -29,6 +30,9 @@ urlpatterns = [
     # Màn hình Chung (Auth & Profile)
     path('auth/register/', RegisterAPIView.as_view(), name='register'),
     path('auth/login/', LoginAPIView.as_view(), name='login'),
+    path('auth/google/', GoogleOAuthAPIView.as_view(), name='google-oauth'),
+    path('auth/facebook/', FacebookOAuthAPIView.as_view(), name='facebook-oauth'),
+    path('auth/oauth-config/', OAuthConfigAPIView.as_view(), name='oauth-config'),
     path('profile/', UserProfileAPIView.as_view(), name='profile'),
     
     # Bảng tin chung (Cho sinh viên tìm việc / Phụ huynh đăng việc)
