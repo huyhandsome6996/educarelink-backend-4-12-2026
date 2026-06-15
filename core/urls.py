@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
+    HealthCheckAPIView,
     RegisterAPIView, LoginAPIView, UserProfileAPIView,
     TaskListCreateAPIView, TaskDetailAPIView, TaskUpdateStatusAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
     ApproveCandidateAPIView, ReviewCreateAPIView,
@@ -21,6 +22,9 @@ from .views import (
 )
 
 urlpatterns = [
+    # Health Check (cho keep-alive ping)
+    path('health/', HealthCheckAPIView.as_view(), name='health-check'),
+
     # Màn hình Chung (Auth & Profile)
     path('auth/register/', RegisterAPIView.as_view(), name='register'),
     path('auth/login/', LoginAPIView.as_view(), name='login'),
