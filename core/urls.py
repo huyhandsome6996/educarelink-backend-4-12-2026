@@ -19,6 +19,7 @@ from .views import (
     WorkerChatbotAPIView, HelpCenterAPIView,
     DistanceCalculationAPIView,
     AdminChatbotAPIView,
+    KeepAliveStatsAPIView,
 )
 
 urlpatterns = [
@@ -91,4 +92,7 @@ urlpatterns = [
 
     # AI Chatbot cho Admin (thống kê, hành động, phân tích ảnh)
     path('admin/chatbot/', AdminChatbotAPIView.as_view(), name='admin-chatbot'),
+
+    # Keep-Alive Scheduler Stats (xem trạng thái tự ping)
+    path('admin/keepalive-stats/', KeepAliveStatsAPIView.as_view(), name='keepalive-stats'),
 ]

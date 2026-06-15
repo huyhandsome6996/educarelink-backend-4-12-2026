@@ -18,6 +18,13 @@ services:
         value: "true"
       - key: GEMINI_API_KEY
         sync: false
+      # Keep-Alive Scheduler (tự ping mỗi 3 phút để Render free không sleep)
+      - key: KEEPALIVE_ENABLED
+        value: "true"
+      - key: KEEPALIVE_INTERVAL
+        value: "3"
+      - key: RENDER_URL
+        value: "https://educarelink-backend.onrender.com"
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL

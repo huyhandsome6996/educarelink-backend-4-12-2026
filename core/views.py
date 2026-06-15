@@ -34,6 +34,15 @@ class HealthCheckAPIView(APIView):
         })
 
 
+class KeepAliveStatsAPIView(APIView):
+    """API xem thống kê Keep-Alive Scheduler — chỉ Admin."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from .keepalive_scheduler import get_stats
+        return Response(get_stats())
+
+
 def build_absolute_uri(request, url):
     """Tạo URL tuyệt đối, đảm bảo dùng HTTPS trên Render."""
     if not url:
