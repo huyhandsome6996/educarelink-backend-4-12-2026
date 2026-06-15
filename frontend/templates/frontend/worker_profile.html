@@ -136,48 +136,96 @@
         }
         .star-pulse { animation: starPulse 2s ease-in-out infinite; }
 
-        /* ===== PROFILE TOUR STYLES ===== */
+        /* ===== PARENT BACK BUTTON ===== */
+        .parent-back-banner {
+            display: none;
+            background: linear-gradient(135deg, #F26522 0%, #D4541E 100%);
+            color: white;
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 35;
+            box-shadow: 0 4px 20px rgba(242,101,34,0.3);
+        }
+        .parent-back-banner.visible { display: flex; }
+        .parent-back-banner a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            text-decoration: none;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        .parent-back-banner a:hover {
+            transform: translateX(-3px);
+        }
+        .parent-back-banner .back-arrow-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .parent-back-banner .back-text-label {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+
+        /* ===== PROFILE TOUR STYLES (Redesigned — no dimming, high contrast) ===== */
         .tour-overlay {
             position: fixed;
             inset: 0;
             z-index: 9000;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(2px);
-            transition: opacity 0.35s ease;
+            background: transparent;
+            pointer-events: none;
         }
         .tour-overlay.hidden { display: none; }
         .tour-spotlight {
             position: absolute;
             border-radius: 16px;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
             z-index: 9001;
             transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
             pointer-events: none;
+            background: transparent;
+            outline: none;
         }
         .tour-spotlight::after {
             content: '';
             position: absolute;
-            inset: -4px;
-            border: 2.5px dashed #F26522;
+            inset: -6px;
+            border: 3px solid #F26522;
             border-radius: 18px;
             animation: tourPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 0 6px rgba(242,101,34,0.15), 0 0 24px rgba(242,101,34,0.2);
         }
         @keyframes tourPulse {
-            0%, 100% { border-color: #F26522; opacity: 1; }
-            50% { border-color: #FFCFB3; opacity: 0.6; }
+            0%, 100% { border-color: #F26522; box-shadow: 0 0 0 6px rgba(242,101,34,0.15), 0 0 24px rgba(242,101,34,0.2); }
+            50% { border-color: #FFCFB3; box-shadow: 0 0 0 10px rgba(242,101,34,0.08), 0 0 36px rgba(242,101,34,0.12); }
         }
         .tour-tooltip {
             position: fixed;
             z-index: 9002;
             background: #FFFFFF;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(242,101,34,0.1);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 0 0 2px #F26522, 0 0 0 6px rgba(242,101,34,0.1);
             padding: 24px;
-            max-width: 360px;
+            max-width: 380px;
             width: calc(100vw - 32px);
             max-height: calc(100vh - 32px);
             overflow-y: auto;
             transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+            pointer-events: auto;
         }
         .tour-tooltip.hidden { display: none; }
         .tour-step-dots {
@@ -318,6 +366,20 @@
             </div>
         </div>
     </aside>
+
+    <!-- ========== PARENT BACK BANNER (visible only when parent views carepartner profile) ========== -->
+    <div id="parent-back-banner" class="parent-back-banner md:ml-[260px]">
+        <a href="/parent/">
+            <div class="back-arrow-circle">
+                <span class="material-symbols-outlined" style="font-size:22px;">arrow_back</span>
+            </div>
+            <div>
+                <div>Quay về Trang chủ Phụ huynh</div>
+                <div style="font-size:12px; opacity:0.8; font-weight:500;">Bấm vào đây để trở về trang của bạn</div>
+            </div>
+            <div class="back-text-label">← Trang chủ</div>
+        </a>
+    </div>
 
     <!-- ========== MAIN CONTENT ========== -->
     <main class="main-area md:ml-[260px] min-h-screen pb-24 md:pb-8">
@@ -1067,11 +1129,29 @@
                 const helpBtn = document.querySelector('[onclick="openHelpCenterModal()"]');
                 const logoutBtn = document.querySelector('[onclick="handleLogout()"]');
                 const notifBell = document.getElementById('notification-bell-area');
+                const replayTourBtn = document.querySelector('[onclick="replayProfileTour()"]');
                 if (editBtn) editBtn.style.display = 'none';
                 if (credBtn) credBtn.style.display = 'none';
                 if (changeReqBtn) changeReqBtn.style.display = 'none';
                 if (logoutBtn) logoutBtn.style.display = 'none';
                 if (notifBell) notifBell.style.display = 'none';
+                if (replayTourBtn) replayTourBtn.style.display = 'none';
+
+                // Hiển thị banner "Quay về Trang chủ Phụ huynh"
+                const backBanner = document.getElementById('parent-back-banner');
+                if (backBanner) backBanner.classList.add('visible');
+
+                // Ẩn sidebar (phụ huynh không cần thấy menu carepartner)
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.style.display = 'none';
+                // Ẩn mobile bottom nav
+                const mobileNav = document.querySelector('.mobile-bottom-nav');
+                if (mobileNav) mobileNav.style.display = 'none';
+                // Bỏ margin-left của main content
+                const mainArea = document.querySelector('.main-area');
+                if (mainArea) mainArea.style.marginLeft = '0';
+                // Bỏ margin-left của back banner
+                if (backBanner) backBanner.style.marginLeft = '0';
             }
 
             // --- Full Name (first_name + last_name from API) ---
@@ -1308,7 +1388,6 @@
             if (step.position === 'center' || !step.target) {
                 // Welcome step — center the tooltip, no spotlight
                 spotlight.classList.add('hidden');
-                overlay.style.background = 'rgba(0,0,0,0.6)';
                 tooltip.style.left = '50%';
                 tooltip.style.top = '50%';
                 tooltip.style.transform = 'translate(-50%, -50%)';
@@ -1327,7 +1406,7 @@
                         const padding = 10;
                         const gap = 14;
 
-                        // Position spotlight
+                        // Position spotlight (orange border highlight, no dimming)
                         spotlight.classList.remove('hidden');
                         spotlight.style.top = (rect.top - padding) + 'px';
                         spotlight.style.left = (rect.left - padding) + 'px';
@@ -1340,7 +1419,7 @@
                         tooltip.style.transform = 'none';
                         tooltip.classList.remove('hidden');
                         const tooltipHeight = tooltip.offsetHeight;
-                        const tooltipWidth = Math.min(360, window.innerWidth - 32);
+                        const tooltipWidth = Math.min(380, window.innerWidth - 32);
 
                         const spaceBelow = window.innerHeight - rect.bottom - padding - gap;
                         const spaceAbove = rect.top - padding - gap;
@@ -1351,13 +1430,10 @@
 
                         // Decide: place below or above the spotlight
                         if (spaceBelow >= tooltipHeight) {
-                            // Fits below
                             tooltipTop = rect.bottom + padding + gap;
                         } else if (spaceAbove >= tooltipHeight) {
-                            // Fits above
                             tooltipTop = rect.top - padding - gap - tooltipHeight;
                         } else {
-                            // Doesn't fit above or below — pick whichever has more space
                             if (spaceBelow >= spaceAbove) {
                                 tooltipTop = rect.bottom + padding + gap;
                             } else {
@@ -1378,13 +1454,9 @@
                         tooltip.style.right = 'auto';
                         tooltip.style.bottom = 'auto';
                         tooltip.style.margin = '0';
-
-                        // Make overlay cover everything except spotlight area
-                        overlay.style.background = 'rgba(0,0,0,0)';
                     }, 400);
                 } else {
                     spotlight.classList.add('hidden');
-                    overlay.style.background = 'rgba(0,0,0,0.6)';
                     tooltip.classList.remove('hidden');
                     // Center tooltip if target not found
                     tooltip.style.left = '50%';
