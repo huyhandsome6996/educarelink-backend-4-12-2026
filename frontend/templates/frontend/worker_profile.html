@@ -175,6 +175,8 @@
             padding: 24px;
             max-width: 360px;
             width: calc(100vw - 32px);
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
             transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
         }
         .tour-tooltip.hidden { display: none; }
@@ -204,6 +206,28 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .tour-animate { animation: tourFadeIn 0.35s ease-out forwards; }
+        .tour-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: #F3F4F6;
+            color: #6B7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            transition: all 0.2s ease;
+        }
+        .tour-close-btn:hover {
+            background: #E5E7EB;
+            color: #1A1A2E;
+        }
     </style>
 </head>
 <body class="bg-bg text-textPrimary antialiased">
@@ -1254,10 +1278,11 @@
             const isFirst = currentTourStep === 0;
             const isLast = currentTourStep === tourSteps.length - 1;
 
-            // Build tooltip content
+            // Build tooltip content — with close (X) button as safety net
             tooltip.innerHTML = ''
-                + '<div class="tour-animate">'
-                + '  <div class="flex items-center gap-3 mb-3">'
+                + '<div class="tour-animate" style="position:relative;">'
+                + '  <button onclick="skipProfileTour()" class="tour-close-btn" title="Đóng hướng dẫn">&times;</button>'
+                + '  <div class="flex items-center gap-3 mb-3 pr-8">'
                 + '    <div class="w-10 h-10 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0">'
                 + '      <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: \'FILL\' 1;">' + step.icon + '</span>'
                 + '    </div>'
@@ -1290,6 +1315,7 @@
                 tooltip.style.right = 'auto';
                 tooltip.style.bottom = 'auto';
                 tooltip.style.margin = '0';
+                tooltip.classList.remove('hidden');
             } else {
                 const targetEl = document.querySelector(step.target);
                 if (targetEl) {
@@ -1299,6 +1325,7 @@
                     setTimeout(() => {
                         const rect = targetEl.getBoundingClientRect();
                         const padding = 10;
+                        const gap = 14;
 
                         // Position spotlight
                         spotlight.classList.remove('hidden');
@@ -1307,24 +1334,45 @@
                         spotlight.style.width = (rect.width + padding * 2) + 'px';
                         spotlight.style.height = (rect.height + padding * 2) + 'px';
 
-                        // Position tooltip below the spotlight
-                        const tooltipRect = tooltip.getBoundingClientRect();
-                        const spaceBelow = window.innerHeight - rect.bottom - padding;
-                        const spaceAbove = rect.top - padding;
+                        // Temporarily show tooltip off-screen to measure its actual height
+                        tooltip.style.left = '-9999px';
+                        tooltip.style.top = '0';
+                        tooltip.style.transform = 'none';
+                        tooltip.classList.remove('hidden');
+                        const tooltipHeight = tooltip.offsetHeight;
+                        const tooltipWidth = Math.min(360, window.innerWidth - 32);
+
+                        const spaceBelow = window.innerHeight - rect.bottom - padding - gap;
+                        const spaceAbove = rect.top - padding - gap;
+                        const vw = window.innerWidth;
+                        const vh = window.innerHeight;
 
                         let tooltipTop, tooltipLeft;
 
-                        if (spaceBelow >= 200 || spaceBelow > spaceAbove) {
-                            tooltipTop = rect.bottom + padding + 12;
+                        // Decide: place below or above the spotlight
+                        if (spaceBelow >= tooltipHeight) {
+                            // Fits below
+                            tooltipTop = rect.bottom + padding + gap;
+                        } else if (spaceAbove >= tooltipHeight) {
+                            // Fits above
+                            tooltipTop = rect.top - padding - gap - tooltipHeight;
                         } else {
-                            tooltipTop = rect.top - padding - 12 - 280; // approximate tooltip height
+                            // Doesn't fit above or below — pick whichever has more space
+                            if (spaceBelow >= spaceAbove) {
+                                tooltipTop = rect.bottom + padding + gap;
+                            } else {
+                                tooltipTop = Math.max(16, rect.top - padding - gap - tooltipHeight);
+                            }
                         }
 
-                        // Center horizontally
-                        tooltipLeft = rect.left + rect.width / 2 - 180;
-                        tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - 376));
+                        // Center horizontally relative to spotlight
+                        tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+                        tooltipLeft = Math.max(16, Math.min(tooltipLeft, vw - tooltipWidth - 16));
 
-                        tooltip.style.top = Math.max(16, tooltipTop) + 'px';
+                        // Clamp within viewport — ensure buttons are always visible
+                        tooltipTop = Math.max(16, Math.min(tooltipTop, vh - tooltipHeight - 16));
+
+                        tooltip.style.top = tooltipTop + 'px';
                         tooltip.style.left = tooltipLeft + 'px';
                         tooltip.style.transform = 'none';
                         tooltip.style.right = 'auto';
@@ -1333,14 +1381,20 @@
 
                         // Make overlay cover everything except spotlight area
                         overlay.style.background = 'rgba(0,0,0,0)';
-                    }, 350);
+                    }, 400);
                 } else {
                     spotlight.classList.add('hidden');
                     overlay.style.background = 'rgba(0,0,0,0.6)';
+                    tooltip.classList.remove('hidden');
+                    // Center tooltip if target not found
+                    tooltip.style.left = '50%';
+                    tooltip.style.top = '50%';
+                    tooltip.style.transform = 'translate(-50%, -50%)';
+                    tooltip.style.right = 'auto';
+                    tooltip.style.bottom = 'auto';
+                    tooltip.style.margin = '0';
                 }
             }
-
-            tooltip.classList.remove('hidden');
         }
 
         function nextTourStep() {
@@ -1383,6 +1437,13 @@
 
             showToast('Bạn có thể xem lại hướng dẫn bất cứ lúc nào tại Trung tâm trợ giúp!', 'success');
         }
+
+        // Escape key to close tour
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && tourActive) {
+                endProfileTour();
+            }
+        });
 
         // ===== INIT =====
         async function init() {
