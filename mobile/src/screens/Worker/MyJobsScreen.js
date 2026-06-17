@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
+import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const TABS = [
@@ -111,12 +112,15 @@ export default function MyJobsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Việc của tôi</Text>
-        {totalEarned > 0 && (
-          <View style={styles.earningsBadge}>
-            <Ionicons name="wallet-outline" size={14} color={COLORS.success} />
-            <Text style={styles.earningsText}>{totalEarned.toLocaleString('vi-VN')}đ</Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          <NotificationBell dark />
+          {totalEarned > 0 && (
+            <View style={styles.earningsBadge}>
+              <Ionicons name="wallet-outline" size={14} color={COLORS.success} />
+              <Text style={styles.earningsText}>{totalEarned.toLocaleString('vi-VN')}đ</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Tabs */}
@@ -164,6 +168,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface,
   },
   headerTitle: { ...TYPO.h1, fontSize: 24, color: COLORS.textPrimary },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SIZES.sm },
   earningsBadge: {
     flexDirection: 'row', gap: 6, alignItems: 'center',
     backgroundColor: COLORS.successBg, borderRadius: SIZES.radiusXl,

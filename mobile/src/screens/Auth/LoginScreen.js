@@ -1,21 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Animated
+  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Animated, View as RNView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Google from 'expo-auth-session/providers/google';
+import * as Facebook from 'expo-facebook';
 import { useAuth } from '../../context/AuthContext';
+import { getOAuthConfig } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const { login } = useAuth();
+  const { login, loginWithOAuth, user } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(null); // 'google' | 'facebook'
+  const [oauthConfig, setOauthConfig] = useState(null);
 
   // Focus state tracking for input wrappers
   const [usernameFocused, setUsernameFocused] = useState(false);
@@ -32,6 +37,25 @@ export default function LoginScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  // Lấy OAuth config từ backend (Client IDs)
+  useEffect(() => {
+    getOAuthConfig()
+      .then(res => setOauthConfig(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Google auth request
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    clientId: oauthConfig?.google_client_id,
+    redirectUri: 'https://auth.expo.io/@educarelink/educarelink',
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      handleGoogleLogin(googleResponse.authentication.accessToken);
+    }
+  }, [googleResponse]);
 
   const handlePressIn = () => {
     Animated.spring(btnScale, { toValue: 0.97, tension: 300, friction: 10, useNativeDriver: true }).start();
@@ -58,7 +82,6 @@ export default function LoginScreen() {
       await login(username.trim(), password);
       // Navigator tự phân luồng theo role trong AuthContext
     } catch (error) {
-      // Xử lý đặc biệt: Carepartner chưa được admin duyệt (403 Forbidden)
       const status = error.response?.status;
       const data = error.response?.data;
       if (status === 403 && data?.status === 'pending_approval') {
@@ -75,6 +98,48 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleLogin = async (accessToken) => {
+    setOauthLoading('google');
+    try {
+      await loginWithOAuth('google', accessToken);
+      // Navigator tự chuyển
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Đăng nhập Google thất bại.';
+      showAlert('Lỗi', msg);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleGooglePress = async () => {
+    if (!oauthConfig?.google_client_id) {
+      showAlert('Chưa sẵn sàng', 'Đăng nhập Google chưa được cấu hình. Vui lòng dùng tài khoản/mật khẩu.');
+      return;
+    }
+    await googlePromptAsync();
+  };
+
+  const handleFacebookLogin = async () => {
+    if (!oauthConfig?.facebook_app_id) {
+      showAlert('Chưa sẵn sàng', 'Đăng nhập Facebook chưa được cấu hình.');
+      return;
+    }
+    setOauthLoading('facebook');
+    try {
+      await Facebook.initializeAsync({ appId: oauthConfig.facebook_app_id });
+      const result = await Facebook.logInWithReadPermissionsAsync({
+        permissions: ['public_profile', 'email'],
+      });
+      if (result.type === 'success' && result.token) {
+        await loginWithOAuth('facebook', result.token);
+      }
+    } catch (e) {
+      const msg = e.message || 'Đăng nhập Facebook thất bại.';
+      showAlert('Lỗi', msg);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -158,6 +223,48 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>hoặc</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* OAuth buttons */}
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGooglePress}
+            disabled={oauthLoading !== null}
+            activeOpacity={0.85}
+          >
+            {oauthLoading === 'google' ? (
+              <ActivityIndicator size="small" color={COLORS.textPrimary} />
+            ) : (
+              <>
+                <View style={styles.googleLogo}>
+                  <Text style={styles.googleLogoText}>G</Text>
+                </View>
+                <Text style={styles.oauthBtnText}>Đăng nhập với Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.facebookBtn}
+            onPress={handleFacebookLogin}
+            disabled={oauthLoading !== null}
+            activeOpacity={0.85}
+          >
+            {oauthLoading === 'facebook' ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="logo-facebook" size={20} color="#fff" />
+                <Text style={[styles.oauthBtnText, { color: '#fff' }]}>Đăng nhập với Facebook</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           {/* Chuyển đến Đăng ký */}
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>Chưa có tài khoản? </Text>
@@ -189,7 +296,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 44 },
-  header: { alignItems: 'center', marginBottom: 44 },
+  header: { alignItems: 'center', marginBottom: 32 },
   logo: {
     width: 80,
     height: 80,
@@ -198,7 +305,7 @@ const styles = StyleSheet.create({
   },
   title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
   subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  form: { gap: 18, marginBottom: 36 },
+  form: { gap: 14, marginBottom: 24 },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
@@ -229,7 +336,33 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.7 },
   loginBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+  dividerRow: {
+    flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  dividerText: { ...TYPO.caption, color: COLORS.textMuted, fontWeight: '600' },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg, height: 54,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    ...SHADOWS.small,
+    marginBottom: 10,
+  },
+  googleLogo: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#4285F4',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  googleLogoText: {
+    color: '#4285F4', fontWeight: '900', fontSize: 16,
+  },
+  facebookBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#1877F2', borderRadius: SIZES.radiusLg, height: 54,
+    ...SHADOWS.small,
+  },
+  oauthBtnText: { ...TYPO.body, color: COLORS.textPrimary, fontWeight: '600' },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
   registerText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
   registerLink: { ...TYPO.buttonSmall, color: COLORS.primary },
   testAccountBox: {

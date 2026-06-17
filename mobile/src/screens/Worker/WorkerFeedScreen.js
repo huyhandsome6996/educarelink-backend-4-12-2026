@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
 const CATEGORY_MAP = [
@@ -174,9 +175,7 @@ export default function WorkerFeedScreen() {
             <Text style={styles.headerGreet}>Carepartner</Text>
             <Text style={styles.headerName}>Chào, {displayName}!</Text>
           </View>
-          <View style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)" />
-          </View>
+          <NotificationBell />
         </View>
         {/* Search bar */}
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
