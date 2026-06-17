@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # --- APP CỦA CHÚNG TA ---
     'core',
     'frontend',
+    'payments',   # Module thanh toán MoMo (escrow + cash settlement)
 ]
 
 MIDDLEWARE = [
@@ -217,3 +218,36 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+
+# ────────────────────────────────────────────────────────────────────
+# CẤU HÌNH MOMO PAYMENT (thêm bởi module payments)
+# ────────────────────────────────────────────────────────────────────
+# Lấy credentials tại: https://business.momo.vn/
+# Sandbox (test) | Production (live)
+MOMO_ENVIRONMENT = os.environ.get('MOMO_ENVIRONMENT', 'sandbox')   # 'sandbox' | 'production'
+MOMO_PARTNER_CODE = os.environ.get('MOMO_PARTNER_CODE', '')
+MOMO_ACCESS_KEY = os.environ.get('MOMO_ACCESS_KEY', '')
+MOMO_SECRET_KEY = os.environ.get('MOMO_SECRET_KEY', '')
+MOMO_STORE_ID = os.environ.get('MOMO_STORE_ID', 'EduCareLinkStore')
+
+# URL base cho redirect sau khi user pay xong (browser redirect, không phải IPN)
+# Phải là domain public để MoMo redirect được
+MOMO_RETURN_BASE_URL = os.environ.get(
+    'MOMO_RETURN_BASE_URL',
+    'https://educarelink-backend.onrender.com'
+)
+# IPN URL — MoMo gọi server-to-server khi giao dịch hoàn tất
+# Phải là URL public có thể nhận POST từ MoMo
+MOMO_IPN_URL = os.environ.get(
+    'MOMO_IPN_URL',
+    'https://educarelink-backend.onrender.com/api/payments/momo-ipn/'
+)
+
+# Tỷ lệ hoa hồng nền tảng (mặc định 20%)
+PAYMENT_COMMISSION_RATE = float(os.environ.get('PAYMENT_COMMISSION_RATE', '0.20'))
+
+# Số ngày hạn thanh toán cho QR hoa hồng (Carepartner nộp commission cho nền tảng)
+PAYMENT_SETTLEMENT_DUE_DAYS = int(os.environ.get('PAYMENT_SETTLEMENT_DUE_DAYS', '7'))
+
+# Bật/tắt monthly settlement scheduler (chỉ chạy trên Render)
+PAYMENT_SCHEDULER_ENABLED = os.environ.get('PAYMENT_SCHEDULER_ENABLED', 'true').lower() == 'true'

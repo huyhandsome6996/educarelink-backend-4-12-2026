@@ -42,3 +42,26 @@ services:
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL
       # Value: connection string từ Neon (postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require)
+      # ── MoMo Payment (escrow + cash settlement) ──
+      # Đăng ký đối tác tại https://business.momo.vn/ để lấy Partner Code / Access Key / Secret Key
+      # Sandbox test credentials có sẵn trong docs https://developers.momo.vn/v3/vi/docs/payment/app/app-in-app/payment-link
+      - key: MOMO_ENVIRONMENT
+        value: "sandbox"     # chuyển sang "production" khi go-live
+      - key: MOMO_PARTNER_CODE
+        sync: false
+      - key: MOMO_ACCESS_KEY
+        sync: false
+      - key: MOMO_SECRET_KEY
+        sync: false
+      - key: MOMO_STORE_ID
+        value: "EduCareLinkStore"
+      - key: MOMO_RETURN_BASE_URL
+        value: "https://educarelink-backend.onrender.com"
+      - key: MOMO_IPN_URL
+        value: "https://educarelink-backend.onrender.com/api/payments/momo-ipn/"
+      - key: PAYMENT_COMMISSION_RATE
+        value: "0.20"
+      - key: PAYMENT_SETTLEMENT_DUE_DAYS
+        value: "7"
+      - key: PAYMENT_SCHEDULER_ENABLED
+        value: "true"
