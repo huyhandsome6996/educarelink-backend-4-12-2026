@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
+import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import apiClient from '../api/client';
 
@@ -62,14 +63,42 @@ export function AuthProvider({ children }) {
 
   const register = async (username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto) => {
     const response = await registerApi(username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto);
-    
+
     // Carepartner không auto-login (chờ admin duyệt)
     if (role === 'worker') {
       return { status: 'pending_approval' };
     }
-    
+
     // Phụ huynh: đăng ký xong auto đăng nhập luôn
     return await login(username, password);
+  };
+
+  // OAuth login — nhận access token từ Google/Facebook
+  const loginWithOAuth = async (provider, accessToken, role = 'parent') => {
+    const apiFn = provider === 'google'
+      ? (await import('../api/auth')).loginWithGoogle
+      : (await import('../api/auth')).loginWithFacebook;
+    const response = await apiFn(accessToken, role);
+    const { tokens, role: returnedRole, is_staff } = response.data;
+
+    await storage.setItem('access_token', tokens.access);
+    await storage.setItem('refresh_token', tokens.refresh);
+    await storage.setItem('user_role', returnedRole);
+    if (is_staff) await storage.setItem('is_staff', 'true');
+
+    const profileResp = await getProfile();
+    setUser(profileResp.data);
+
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await apiClient.patch('/profile/', { expo_push_token: pushToken });
+      }
+    } catch (e) {
+      console.log('Failed to send push token', e);
+    }
+
+    return profileResp.data;
   };
 
   const logout = async () => {
@@ -80,8 +109,38 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Refresh user profile từ server (dùng sau khi update profile, complete onboarding, ...)
+  const refreshUser = async () => {
+    try {
+      const response = await getProfile();
+      setUser(response.data);
+      return response.data;
+    } catch (e) {
+      console.warn('refreshUser failed:', e);
+    }
+  };
+
+  // Đánh dấu đã hoàn thành onboarding — gọi API + cập nhật state
+  const completeOnboardingInContext = async () => {
+    try {
+      await completeOnboardingApi();
+      // Cập nhật user.first_login = false trong state (không cần fetch lại)
+      setUser(prev => prev ? { ...prev, first_login: false } : prev);
+    } catch (e) {
+      console.warn('completeOnboardingInContext failed:', e);
+      // Vẫn đánh dấu first_login = false trong state để user đi tiếp
+      setUser(prev => prev ? { ...prev, first_login: false } : prev);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{
+      user, isLoading,
+      login, register, logout,
+      loginWithOAuth,
+      refreshUser,
+      completeOnboardingInContext,
+    }}>
       {children}
     </AuthContext.Provider>
   );

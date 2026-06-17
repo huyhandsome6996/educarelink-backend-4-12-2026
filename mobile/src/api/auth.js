@@ -80,3 +80,34 @@ export const updateCertificate = (certificatePhoto) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+// ====================================================================
+// OAUTH — đồng bộ với web (login.html, register.html)
+// ====================================================================
+
+// Lấy config OAuth (Client ID của Google, App ID của Facebook)
+export const getOAuthConfig = () => apiClient.get('/auth/oauth-config/');
+
+// Đăng nhập bằng Google (gửi access token Google cho backend verify)
+// Body: { access_token, role? }
+export const loginWithGoogle = (accessToken, role = 'parent') =>
+  apiClient.post('/auth/google/', { access_token: accessToken, role });
+
+// Đăng nhập bằng Facebook (gửi access token Facebook cho backend verify)
+// Body: { access_token, role? }
+export const loginWithFacebook = (accessToken, role = 'parent') =>
+  apiClient.post('/auth/facebook/', { access_token: accessToken, role });
+
+// ====================================================================
+// UPGRADE TO CAREPARTNER — đồng bộ với web (parent_home.html)
+// ====================================================================
+
+// Phụ huynh yêu cầu nâng cấp thành Carepartner
+// Body: FormData với id_card_front, id_card_back, selfie_photo, phone_number, address?
+export const upgradeToCarepartner = (formData) =>
+  apiClient.post('/auth/upgrade-carepartner/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+// Kiểm tra trạng thái yêu cầu nâng cấp
+export const getUpgradeStatus = () => apiClient.get('/auth/upgrade-status/');

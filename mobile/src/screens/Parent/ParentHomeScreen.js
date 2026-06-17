@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
+import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -84,9 +85,7 @@ export default function ParentHomeScreen() {
             <Text style={styles.greetName}>{displayName}</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIconBtn}>
-              <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
+            <NotificationBell />
             <TouchableOpacity onPress={() => {
               if (Platform.OS === 'web') {
                 if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
@@ -153,6 +152,26 @@ export default function ParentHomeScreen() {
               <Text style={styles.seeAll}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
+
+          {/* === Upgrade to Carepartner banner (only if user is parent + not yet a carepartner) === */}
+          {user?.role === 'parent' && !user?.is_staff && (
+            <TouchableOpacity
+              style={styles.upgradeBanner}
+              onPress={() => navigation.navigate('UpgradeToCarepartner')}
+              activeOpacity={0.9}
+            >
+              <View style={styles.upgradeBannerIconCircle}>
+                <Ionicons name="school" size={22} color={COLORS.primary} />
+              </View>
+              <View style={styles.upgradeBannerInfo}>
+                <Text style={styles.upgradeBannerTitle}>Trở thành Carepartner</Text>
+                <Text style={styles.upgradeBannerDesc}>
+                  Kiếm thêm thu nhập linh hoạt bằng việc làm sinh viên
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
 
           {isLoading ? (
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
@@ -301,4 +320,20 @@ const styles = StyleSheet.create({
     marginTop: SIZES.xs,
   },
   emptyBtnText: { color: '#fff', ...TYPO.button },
+  // === UPGRADE BANNER ===
+  upgradeBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    padding: SIZES.md, marginBottom: 12,
+    borderLeftWidth: 4, borderLeftColor: COLORS.primary,
+    ...SHADOWS.cardHover,
+  },
+  upgradeBannerIconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  upgradeBannerInfo: { flex: 1 },
+  upgradeBannerTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
+  upgradeBannerDesc: { ...TYPO.caption, color: COLORS.textSecondary, marginTop: 2 },
 });

@@ -1,16 +1,35 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Image, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { updateCertificate } from '../../api/auth';
+import { submitCredential, requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import NotificationBell from '../../components/NotificationBell';
 
 export default function WorkerProfileScreen() {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [isUploading, setIsUploading] = React.useState(false);
+
+  // Modal states cho Submit Credential
+  const [credModalVisible, setCredModalVisible] = React.useState(false);
+  const [credPhoto, setCredPhoto] = React.useState(null);
+  const [credDesc, setCredDesc] = React.useState('');
+  const [credSubmitting, setCredSubmitting] = React.useState(false);
+
+  // Modal states cho Profile Change Request
+  const [changeModalVisible, setChangeModalVisible] = React.useState(false);
+  const [changeForm, setChangeForm] = React.useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    phone_number: user?.phone_number || '',
+    email: user?.email || '',
+    address: user?.address || '',
+  });
+  const [changeSubmitting, setChangeSubmitting] = React.useState(false);
 
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()
@@ -18,14 +37,99 @@ export default function WorkerProfileScreen() {
 
   const MENU_ITEMS = [
     { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary, action: 'view_reviews' },
+    { icon: 'wallet-outline', label: 'Thu nhập của tôi', color: COLORS.success, action: 'view_earnings' },
+    { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
+    { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
+    { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.info, action: 'help_center' },
     { icon: 'card-outline', label: 'Xác thực thẻ sinh viên / bằng cấp', color: COLORS.primary, action: 'upload_cert' },
     { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.primary },
-    { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.textSecondary },
   ];
+
+  const pickCredPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập bị từ chối', 'Cần quyền truy cập thư viện ảnh.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], allowsEditing: true, quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      setCredPhoto(result.assets[0]);
+    }
+  };
+
+  const handleSubmitCredential = async () => {
+    if (!credPhoto) {
+      Alert.alert('Thiếu ảnh', 'Vui lòng chọn ảnh bằng cấp.');
+      return;
+    }
+    setCredSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('certificate_photo', {
+        uri: credPhoto.uri,
+        type: credPhoto.mimeType || 'image/jpeg',
+        name: 'credential.jpg',
+      });
+      if (credDesc.trim()) formData.append('description', credDesc.trim());
+
+      await submitCredential(formData);
+      Alert.alert('✅ Thành công', 'Đã gửi bằng cấp. Admin sẽ xem xét sớm!');
+      setCredModalVisible(false);
+      setCredPhoto(null);
+      setCredDesc('');
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Gửi thất bại.';
+      Alert.alert('Lỗi', typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setCredSubmitting(false);
+    }
+  };
+
+  const handleRequestChange = async () => {
+    setChangeSubmitting(true);
+    try {
+      const changes = {};
+      Object.keys(changeForm).forEach(key => {
+        const newVal = (changeForm[key] || '').trim();
+        const oldVal = (user?.[key] || '').trim();
+        if (newVal && newVal !== oldVal) changes[key] = newVal;
+      });
+      if (Object.keys(changes).length === 0) {
+        Alert.alert('Không có thay đổi', 'Bạn chưa sửa thông tin nào.');
+        setChangeSubmitting(false);
+        return;
+      }
+      await requestProfileChange(changes);
+      Alert.alert('✅ Đã gửi', 'Yêu cầu thay đổi hồ sơ đã gửi. Admin sẽ duyệt trong 1-2 ngày.');
+      setChangeModalVisible(false);
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Gửi yêu cầu thất bại.';
+      Alert.alert('Lỗi', typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setChangeSubmitting(false);
+    }
+  };
 
   const handleMenuPress = async (action) => {
     if (action === 'view_reviews') {
       navigation.navigate('CandidateProfile', { workerId: user.id, isPending: false });
+    } else if (action === 'view_earnings') {
+      navigation.navigate('MyEarnings');
+    } else if (action === 'help_center') {
+      navigation.navigate('HelpCenter');
+    } else if (action === 'submit_credential') {
+      setCredModalVisible(true);
+    } else if (action === 'request_change') {
+      setChangeForm({
+        first_name: user?.first_name || '',
+        last_name: user?.last_name || '',
+        phone_number: user?.phone_number || '',
+        email: user?.email || '',
+        address: user?.address || '',
+      });
+      setChangeModalVisible(true);
     } else if (action === 'upload_cert') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -33,9 +137,7 @@ export default function WorkerProfileScreen() {
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.8,
+        mediaTypes: ['images'], allowsEditing: true, quality: 0.8,
       });
 
       if (!result.canceled) {
@@ -65,6 +167,11 @@ export default function WorkerProfileScreen() {
 
         {/* Header cam */}
         <View style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <View style={{ width: 40 }} />
+            <Text style={styles.headerTitle}>Hồ sơ</Text>
+            <NotificationBell color="rgba(255,255,255,0.9)" />
+          </View>
           {/* Decorative circles */}
           <View style={styles.headerDeco1} />
           <View style={styles.headerDeco2} />
@@ -144,8 +251,8 @@ export default function WorkerProfileScreen() {
         {/* Menu Actions */}
         <View style={styles.section}>
           {MENU_ITEMS.map((item, index) => (
-            <TouchableOpacity 
-              key={item.label} 
+            <TouchableOpacity
+              key={item.label}
               style={[styles.actionRow, index === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
               onPress={() => item.action && handleMenuPress(item.action)}
               activeOpacity={0.7}
@@ -187,21 +294,137 @@ export default function WorkerProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Modal: Submit Credential */}
+      <Modal visible={credModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCredModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Gửi bằng cấp mới</Text>
+              <TouchableOpacity onPress={() => setCredModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Ảnh bằng cấp/chứng chỉ *</Text>
+            {credPhoto ? (
+              <TouchableOpacity onPress={pickCredPhoto} activeOpacity={0.8}>
+                <Image source={{ uri: credPhoto.uri }} style={styles.credImagePreview} />
+                <Text style={styles.changePhotoText}>Chạm để đổi ảnh</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.uploadBtn} onPress={pickCredPhoto} activeOpacity={0.85}>
+                <Ionicons name="cloud-upload-outline" size={28} color={COLORS.primary} />
+                <Text style={styles.uploadBtnText}>Chọn ảnh từ thư viện</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={styles.modalLabel}>Mô tả (tuỳ chọn)</Text>
+            <TextInput
+              style={styles.modalTextarea}
+              placeholder="VD: Bằng cử nhân Sư phạm Toán, chứng chỉ IELTS 7.5..."
+              placeholderTextColor={COLORS.textMuted}
+              value={credDesc}
+              onChangeText={setCredDesc}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, credSubmitting && { opacity: 0.7 }]}
+              onPress={handleSubmitCredential}
+              disabled={credSubmitting}
+              activeOpacity={0.85}
+            >
+              {credSubmitting ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Ionicons name="send" size={18} color="#fff" />
+                  <Text style={styles.modalSubmitText}>Gửi cho Admin duyệt</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal: Profile Change Request */}
+      <Modal visible={changeModalVisible} animationType="slide" transparent={true} onRequestClose={() => setChangeModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Yêu cầu sửa hồ sơ</Text>
+              <TouchableOpacity onPress={() => setChangeModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Họ</Text>
+            <TextInput style={styles.modalInput} value={changeForm.last_name}
+              onChangeText={(v) => setChangeForm({...changeForm, last_name: v})}
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Tên</Text>
+            <TextInput style={styles.modalInput} value={changeForm.first_name}
+              onChangeText={(v) => setChangeForm({...changeForm, first_name: v})}
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Số điện thoại</Text>
+            <TextInput style={styles.modalInput} value={changeForm.phone_number}
+              onChangeText={(v) => setChangeForm({...changeForm, phone_number: v})}
+              keyboardType="phone-pad" placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Email</Text>
+            <TextInput style={styles.modalInput} value={changeForm.email}
+              onChangeText={(v) => setChangeForm({...changeForm, email: v})}
+              keyboardType="email-address" autoCapitalize="none"
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Địa chỉ</Text>
+            <TextInput style={styles.modalInput} value={changeForm.address}
+              onChangeText={(v) => setChangeForm({...changeForm, address: v})}
+              multiline placeholderTextColor={COLORS.textMuted} />
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.infoBoxText}>Yêu cầu sẽ được Admin duyệt trong 1-2 ngày. Bạn vẫn dùng thông tin cũ cho đến khi được duyệt.</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, changeSubmitting && { opacity: 0.7 }]}
+              onPress={handleRequestChange}
+              disabled={changeSubmitting}
+              activeOpacity={0.85}
+            >
+              {changeSubmitting ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Ionicons name="send" size={18} color="#fff" />
+                  <Text style={styles.modalSubmitText}>Gửi yêu cầu</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   // === HEADER ===
   header: {
-    alignItems: 'center', paddingTop: 56, paddingBottom: 32,
+    alignItems: 'center', paddingTop: 16, paddingBottom: 32,
     backgroundColor: COLORS.primary, gap: 6,
     borderBottomLeftRadius: SIZES.radiusXl, borderBottomRightRadius: SIZES.radiusXl,
     overflow: 'hidden',
     position: 'relative',
   },
+  headerTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 16, width: '100%',
+  },
+  headerTitle: { ...TYPO.h5, color: '#fff', fontWeight: '700' },
   headerDeco1: {
     position: 'absolute', top: -40, right: -30,
     width: 140, height: 140, borderRadius: 70,
@@ -304,4 +527,56 @@ const styles = StyleSheet.create({
     margin: SIZES.xs,
     ...SHADOWS.small,
   },
+  // === MODAL ===
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface, borderTopLeftRadius: SIZES.radiusXl, borderTopRightRadius: SIZES.radiusXl,
+    padding: 20, paddingBottom: 36, maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
+  modalCloseBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center',
+  },
+  modalLabel: { ...TYPO.overline, color: COLORS.textMuted, marginBottom: 6, marginTop: 12 },
+  modalInput: {
+    backgroundColor: COLORS.background, borderRadius: SIZES.radiusSm, borderWidth: 1.5,
+    borderColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 10,
+    ...TYPO.body, color: COLORS.textPrimary,
+  },
+  modalTextarea: {
+    backgroundColor: COLORS.background, borderRadius: SIZES.radiusSm, borderWidth: 1.5,
+    borderColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 10,
+    ...TYPO.body, color: COLORS.textPrimary, minHeight: 80,
+  },
+  uploadBtn: {
+    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd,
+    padding: 24, alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: COLORS.primarySoft, borderStyle: 'dashed',
+  },
+  uploadBtnText: { ...TYPO.bodySmall, color: COLORS.primary, fontWeight: '600' },
+  credImagePreview: {
+    width: '100%', height: 180, borderRadius: SIZES.radiusMd, backgroundColor: COLORS.background,
+  },
+  changePhotoText: { ...TYPO.caption, color: COLORS.primary, textAlign: 'center', marginTop: 6 },
+  infoBox: {
+    flexDirection: 'row', gap: 6, alignItems: 'flex-start',
+    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm, padding: 10,
+    marginTop: 12, borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  infoBoxText: { flex: 1, ...TYPO.caption, color: COLORS.primaryDark, lineHeight: 18 },
+  modalSubmitBtn: {
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 50,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
+    marginTop: 20,
+    ...SHADOWS.large,
+  },
+  modalSubmitText: { color: '#fff', ...TYPO.button, fontSize: 15 },
 });

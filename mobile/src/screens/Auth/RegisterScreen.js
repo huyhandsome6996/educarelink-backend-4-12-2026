@@ -6,8 +6,31 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { getOAuthConfig, loginWithGoogle, loginWithFacebook } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
+
+// === OAuth providers (lazy import để tránh crash trên web/Expo Go chưa cài) ===
+let Google = null;
+let Facebook = null;
+let WebBrowser = null;
+if (Platform.OS !== 'web') {
+  try { Google = require('expo-auth-session/providers/google'); } catch (e) {}
+  try { Facebook = require('expo-facebook'); } catch (e) {}
+  try { WebBrowser = require('expo-web-browser'); } catch (e) {}
+}
+
+// Logo Google & Facebook
+const GoogleLogo = ({ size = 20 }) => (
+  <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
+    <Text style={{ color: '#4285F4', fontWeight: '900', fontSize: size * 0.55 }}>G</Text>
+  </View>
+);
+const FacebookLogo = ({ size = 20 }) => (
+  <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
+    <Text style={{ color: '#1877F2', fontWeight: '900', fontSize: size * 0.6 }}>f</Text>
+  </View>
+);
 
 const ROLES = [
   {
@@ -42,6 +65,17 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(null); // 'google' | 'facebook' | null
+
+  // OAuth config (client IDs)
+  const [oauthConfig, setOauthConfig] = useState(null);
+
+  // Load OAuth config khi mount
+  useEffect(() => {
+    getOAuthConfig()
+      .then((res) => setOauthConfig(res.data))
+      .catch(() => {});
+  }, []);
 
   // Ảnh cho Carepartner
   const [idCardFront, setIdCardFront] = useState(null);
@@ -235,6 +269,102 @@ export default function RegisterScreen() {
       )}
     </View>
   );
+
+  // === OAuth handlers (đăng ký nhanh: dùng OAuth → tạo account với role đã chọn) ===
+  const handleGoogleRegister = async () => {
+    if (!oauthConfig?.google?.enabled) {
+      showAlert('Chưa kích hoạt', 'Đăng nhập Google chưa được kích hoạt.');
+      return;
+    }
+    if (!Google) {
+      showAlert('Chưa cài đặt', 'Cần cài expo-auth-session. Chạy: npm install expo-auth-session expo-web-browser');
+      return;
+    }
+    setOauthLoading('google');
+    try {
+      const redirectUri = WebBrowser?.makeRedirectUri?.({ scheme: 'educarelink', path: 'auth' }) || 'https://auth.expo.io';
+      const request = new Google.AuthRequest({
+        clientId: oauthConfig.google.client_id,
+        scopes: ['openid', 'profile', 'email'],
+        redirectUri,
+      });
+      const result = await request.promptAsync();
+      if (result.type !== 'success') {
+        setOauthLoading(null);
+        return;
+      }
+      const accessToken = result.authentication?.accessToken;
+      if (!accessToken) {
+        showAlert('Lỗi', 'Không lấy được access token từ Google.');
+        setOauthLoading(null);
+        return;
+      }
+      // Gửi access token cho backend → tạo account với role đã chọn
+      const resp = await loginWithGoogle(accessToken, selectedRole);
+      await finishOAuth(resp);
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || 'Đăng ký Google thất bại.';
+      showAlert('Lỗi Google', msg);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleFacebookRegister = async () => {
+    if (!oauthConfig?.facebook?.enabled) {
+      showAlert('Chưa kích hoạt', 'Đăng nhập Facebook chưa được kích hoạt.');
+      return;
+    }
+    if (!Facebook) {
+      showAlert('Chưa cài đặt', 'Cần cài expo-facebook. Chạy: npm install expo-facebook');
+      return;
+    }
+    setOauthLoading('facebook');
+    try {
+      await Facebook.initializeAsync({
+        appId: oauthConfig.facebook.app_id,
+        appName: 'Educarelink',
+      });
+      const result = await Facebook.logInWithReadPermissionsAsync({
+        permissions: ['public_profile', 'email'],
+      });
+      if (result.type !== 'success') {
+        setOauthLoading(null);
+        return;
+      }
+      const accessToken = result.token;
+      const resp = await loginWithFacebook(accessToken, selectedRole);
+      await finishOAuth(resp);
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || 'Đăng ký Facebook thất bại.';
+      showAlert('Lỗi Facebook', msg);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  // Lưu token sau OAuth thành công → reload app
+  const finishOAuth = async (resp) => {
+    const { tokens, role, is_staff } = resp.data;
+    const { storage } = require('../../utils/storage');
+    await storage.setItem('access_token', tokens.access);
+    await storage.setItem('refresh_token', tokens.refresh);
+    await storage.setItem('user_role', role);
+    if (is_staff) await storage.setItem('is_staff', 'true');
+    showAlert('✅ Thành công', 'Đã đăng ký và đăng nhập bằng OAuth.');
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        window.location.reload();
+      } else {
+        try {
+          const Updates = require('expo-updates').default;
+          Updates.reloadAsync();
+        } catch (e) {
+          showAlert('Thông báo', 'Vui lòng khởi động lại app để hoàn tất.');
+        }
+      }
+    }, 500);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -452,6 +582,45 @@ export default function RegisterScreen() {
               <Text style={styles.loginLink}>Đăng nhập</Text>
             </TouchableOpacity>
           </View>
+
+          {/* === OAuth buttons === */}
+          <View style={styles.oauthSection}>
+            <View style={styles.oauthDivider}>
+              <View style={styles.oauthDividerLine} />
+              <Text style={styles.oauthDividerText}>hoặc đăng ký nhanh với</Text>
+              <View style={styles.oauthDividerLine} />
+            </View>
+            <TouchableOpacity
+              style={[styles.oauthBtn, styles.oauthBtnGoogle, oauthLoading === 'google' && { opacity: 0.7 }]}
+              onPress={handleGoogleRegister}
+              disabled={!!oauthLoading}
+              activeOpacity={0.85}
+            >
+              {oauthLoading === 'google' ? (
+                <ActivityIndicator color={COLORS.textPrimary} size="small" />
+              ) : (
+                <>
+                  <GoogleLogo size={22} />
+                  <Text style={styles.oauthBtnTextDark}>Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.oauthBtn, styles.oauthBtnFacebook, oauthLoading === 'facebook' && { opacity: 0.7 }]}
+              onPress={handleFacebookRegister}
+              disabled={!!oauthLoading}
+              activeOpacity={0.85}
+            >
+              {oauthLoading === 'facebook' ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <FacebookLogo size={22} />
+                  <Text style={styles.oauthBtnTextLight}>Facebook</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -556,4 +725,25 @@ const styles = StyleSheet.create({
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
   loginText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
   loginLink: { ...TYPO.buttonSmall, color: COLORS.primary },
+  // === OAUTH ===
+  oauthSection: { marginTop: 24, gap: 12 },
+  oauthDivider: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4,
+  },
+  oauthDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  oauthDividerText: { ...TYPO.bodySmall, color: COLORS.textMuted, fontWeight: '600' },
+  oauthBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    height: 50, borderRadius: SIZES.radiusLg,
+    ...SHADOWS.small,
+  },
+  oauthBtnGoogle: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5, borderColor: COLORS.border,
+  },
+  oauthBtnFacebook: {
+    backgroundColor: '#1877F2',
+  },
+  oauthBtnTextDark: { ...TYPO.button, color: COLORS.textPrimary, fontSize: 15 },
+  oauthBtnTextLight: { ...TYPO.button, color: '#fff', fontSize: 15 },
 });

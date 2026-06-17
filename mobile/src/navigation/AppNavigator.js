@@ -13,6 +13,10 @@ import SplashScreen from '../screens/Auth/SplashScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 
+// Onboarding Screens
+import ParentOnboardingScreen from '../screens/Onboarding/ParentOnboardingScreen';
+import WorkerOnboardingScreen from '../screens/Onboarding/WorkerOnboardingScreen';
+
 // Parent Screens
 import ParentHomeScreen from '../screens/Parent/ParentHomeScreen';
 import CreateTaskScreen from '../screens/Parent/CreateTaskScreen';
@@ -20,20 +24,36 @@ import MyTasksScreen from '../screens/Parent/MyTasksScreen';
 import CandidatesScreen from '../screens/Parent/CandidatesScreen';
 import ReviewScreen from '../screens/Parent/ReviewScreen';
 import CandidateProfileScreen from '../screens/Parent/CandidateProfileScreen';
+import UpgradeToCarepartnerScreen from '../screens/Parent/UpgradeToCarepartnerScreen';
 
 // Worker Screens
 import WorkerFeedScreen from '../screens/Worker/WorkerFeedScreen';
 import TaskDetailScreen from '../screens/Worker/TaskDetailScreen';
 import MyJobsScreen from '../screens/Worker/MyJobsScreen';
 import WorkerProfileScreen from '../screens/Worker/WorkerProfileScreen';
+import WorkerChatbotScreen from '../screens/Worker/WorkerChatbotScreen';
 
-// Chatbot (dùng chung)
+// Payment Screens
+import PaymentSetupScreen from '../screens/Payment/PaymentSetupScreen';
+import MyEarningsScreen from '../screens/Payment/MyEarningsScreen';
+import SettlementDetailScreen from '../screens/Payment/SettlementDetailScreen';
+
+// Help Center
+import HelpCenterScreen from '../screens/HelpCenter/HelpCenterScreen';
+
+// Notifications
+import NotificationsScreen from '../screens/NotificationsScreen';
+
+// Admin
+import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
+
+// Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// === Custom Tab Bar Icon with refined indicator (taste-skill) ===
+// === Custom Tab Bar Icon with refined indicator ===
 function TabIcon({ name, focused, color }) {
   return (
     <View style={styles.tabIconContainer}>
@@ -45,7 +65,7 @@ function TabIcon({ name, focused, color }) {
   );
 }
 
-// === Tab Navigator dành cho PHỤHUYNH ===
+// === Tab Navigator dành cho PHỤ HUYNH ===
 function ParentTabs() {
   return (
     <Tab.Navigator
@@ -72,7 +92,7 @@ function ParentTabs() {
   );
 }
 
-// === Tab Navigator dành cho SINH VIÊN ===
+// === Tab Navigator dành cho SINH VIÊN (4 tabs — thêm AI Trợ lý) ===
 function WorkerTabs() {
   return (
     <Tab.Navigator
@@ -81,6 +101,7 @@ function WorkerTabs() {
           let iconName;
           if (route.name === 'WorkerFeed') iconName = focused ? 'search' : 'search-outline';
           else if (route.name === 'MyJobs') iconName = focused ? 'briefcase' : 'briefcase-outline';
+          else if (route.name === 'WorkerChatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
           else if (route.name === 'WorkerProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
@@ -94,6 +115,7 @@ function WorkerTabs() {
     >
       <Tab.Screen name="WorkerFeed" component={WorkerFeedScreen} options={{ tabBarLabel: 'Tìm việc' }} />
       <Tab.Screen name="MyJobs" component={MyJobsScreen} options={{ tabBarLabel: 'Việc của tôi' }} />
+      <Tab.Screen name="WorkerChatbot" component={WorkerChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
       <Tab.Screen name="WorkerProfile" component={WorkerProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
     </Tab.Navigator>
   );
@@ -124,6 +146,20 @@ export default function AppNavigator() {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
+        ) : user.first_login ? (
+          // Đăng nhập lần đầu → hiện Onboarding theo role
+          <>
+            <Stack.Screen
+              name="Onboarding"
+              component={user.role === 'worker' ? WorkerOnboardingScreen : ParentOnboardingScreen}
+            />
+          </>
+        ) : user.is_staff ? (
+          // Admin → Admin Dashboard
+          <>
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          </>
         ) : user.role === 'parent' ? (
           // Đã đăng nhập là Phụ huynh
           <>
@@ -132,6 +168,9 @@ export default function AppNavigator() {
             <Stack.Screen name="Candidates" component={CandidatesScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)
@@ -139,6 +178,10 @@ export default function AppNavigator() {
             <Stack.Screen name="WorkerTabs" component={WorkerTabs} />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="MyEarnings" component={MyEarningsScreen} />
+            <Stack.Screen name="SettlementDetail" component={SettlementDetailScreen} />
+            <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
           </>
         )}
       </Stack.Navigator>
@@ -174,7 +217,6 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 88 : 84,
     paddingBottom: Platform.OS === 'ios' ? 28 : 24,
     paddingTop: 6,
-    // taste-skill: primary-tinted shadow on tab bar
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
