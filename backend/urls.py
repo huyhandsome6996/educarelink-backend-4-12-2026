@@ -8,7 +8,9 @@ from django.urls import re_path
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Đưa tất cả các API của app core vào nhánh /api/
-    path('api/', include('core.urls')), 
+    path('api/', include('core.urls')),
+    # Module Payments (MoMo + Escrow + Commission 20%)
+    path('api/payments/', include('payments.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

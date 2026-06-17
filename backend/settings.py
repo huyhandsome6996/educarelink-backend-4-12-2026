@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # --- APP CỦA CHÚNG TA ---
     'core',
     'frontend',
+    'payments',  # Module thanh toán MoMo + Escrow + Commission 20%
 ]
 
 MIDDLEWARE = [
@@ -217,3 +218,40 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+
+# ───────────────────────────────────────────────────────────────
+# CẤU HÌNH MODULE PAYMENTS (MoMo + Escrow + Commission 20%)
+# ───────────────────────────────────────────────────────────────
+# 1. MoMo Payment Gateway (test/prod)
+MOMO_PARTNER_CODE = os.environ.get('MOMO_PARTNER_CODE', '')
+MOMO_ACCESS_KEY   = os.environ.get('MOMO_ACCESS_KEY',   '')
+MOMO_SECRET_KEY   = os.environ.get('MOMO_SECRET_KEY',   '')
+MOMO_ENDPOINT     = os.environ.get(
+    'MOMO_ENDPOINT',
+    'https://test-payment.momo.vn/v2/gateway/api/create'
+)
+MOMO_RETURN_URL   = os.environ.get('MOMO_RETURN_URL', '')
+# IPN URL — phải PUBLIC, MoMo gọi server-to-server
+MOMO_NOTIFY_URL   = os.environ.get(
+    'MOMO_NOTIFY_URL',
+    'https://educarelink-backend.onrender.com/api/payments/momo/ipn/'
+)
+MOMO_PARTNER_NAME = os.environ.get('MOMO_PARTNER_NAME', 'EduCareLink')
+
+# 2. MoMo Disbursement API (rút tiền cho Worker — cần đăng ký riêng với MoMo)
+MOMO_DISBURSEMENT_ENDPOINT = os.environ.get(
+    'MOMO_DISBURSEMENT_ENDPOINT',
+    'https://test-payment.momo.vn/v2/gateway/api/disbursement'
+)
+
+# 3. Cấu hình hoa hồng & admin nhận hoa hồng
+PAYMENT_COMMISSION_RATE = os.environ.get('PAYMENT_COMMISSION_RATE', '0.20')  # 20%
+PAYMENT_ADMIN_USER_ID   = os.environ.get('PAYMENT_ADMIN_USER_ID', '')        # ID user admin nhận 20%
+
+# 4. VietQR — Admin bank account nhận hoa hồng (cho luồng CASH cuối tháng)
+PAYMENT_ADMIN_BANK_BIN         = os.environ.get('PAYMENT_ADMIN_BANK_BIN',         '970436')  # Vietcombank
+PAYMENT_ADMIN_BANK_ACCOUNT     = os.environ.get('PAYMENT_ADMIN_BANK_ACCOUNT',    '')
+PAYMENT_ADMIN_BANK_ACCOUNT_NAME = os.environ.get('PAYMENT_ADMIN_BANK_ACCOUNT_NAME', '')  # IN HOA KHÔNG DẤU
+
+# 5. Scheduler enable
+COMMISSION_SCHEDULER_ENABLED = os.environ.get('COMMISSION_SCHEDULER_ENABLED', 'true').lower() == 'true'
