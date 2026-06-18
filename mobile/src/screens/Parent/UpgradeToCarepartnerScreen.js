@@ -1,14 +1,74 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar,
-  Alert, ActivityIndicator, ScrollView, Image, KeyboardAvoidingView, Platform,
+  Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import { upgradeToCarepartner, getUpgradeStatus } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+
+const pickImage = async (setter, label) => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Cần quyền', 'Vui lòng cấp quyền truy cập thư viện ảnh.');
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.7,
+  });
+  if (!result.canceled && result.assets?.[0]) {
+    setter(result.assets[0]);
+  }
+};
+
+const takePhoto = async (setter) => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Cần quyền', 'Vui lòng cấp quyền camera.');
+    return;
+  }
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.7,
+  });
+  if (!result.canceled && result.assets?.[0]) {
+    setter(result.assets[0]);
+  }
+};
+
+const renderImagePicker = (label, image, setter) => (
+  <View style={styles.imagePicker}>
+    <Text style={styles.imageLabel}>{label}</Text>
+    {image ? (
+      <TouchableOpacity onPress={() => pickImage(setter, label)} activeOpacity={0.8}>
+        <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+        <View style={styles.imageOverlay}>
+          <Ionicons name="create-outline" size={14} color="#fff" />
+          <Text style={styles.imageOverlayText}>Đổi ảnh</Text>
+        </View>
+      </TouchableOpacity>
+    ) : (
+      <View style={styles.imageActions}>
+        <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(setter, label)}>
+          <Ionicons name="images-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.imageBtnText}>Thư viện</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.imageBtn} onPress={() => takePhoto(setter)}>
+          <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.imageBtnText}>Camera</Text>
+        </TouchableOpacity>
+      </View>
+    )}
+  </View>
+);
 
 export default function UpgradeToCarepartnerScreen() {
   const navigation = useNavigation();
@@ -19,39 +79,6 @@ export default function UpgradeToCarepartnerScreen() {
   const [idCardBack, setIdCardBack] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const pickImage = async (setter, label) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Cần quyền', 'Vui lòng cấp quyền truy cập thư viện ảnh.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      setter(result.assets[0]);
-    }
-  };
-
-  const takePhoto = async (setter) => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Cần quyền', 'Vui lòng cấp quyền camera.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      setter(result.assets[0]);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!phone.trim()) {
@@ -94,32 +121,6 @@ export default function UpgradeToCarepartnerScreen() {
       setIsLoading(false);
     }
   };
-
-  const renderImagePicker = (label, image, setter) => (
-    <View style={styles.imagePicker}>
-      <Text style={styles.imageLabel}>{label}</Text>
-      {image ? (
-        <TouchableOpacity onPress={() => pickImage(setter, label)} activeOpacity={0.8}>
-          <Image source={{ uri: image.uri }} style={styles.imagePreview} />
-          <View style={styles.imageOverlay}>
-            <Ionicons name="create-outline" size={14} color="#fff" />
-            <Text style={styles.imageOverlayText}>Đổi ảnh</Text>
-          </View>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.imageActions}>
-          <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(setter, label)}>
-            <Ionicons name="images-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.imageBtnText}>Thư viện</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.imageBtn} onPress={() => takePhoto(setter)}>
-            <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.imageBtnText}>Camera</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

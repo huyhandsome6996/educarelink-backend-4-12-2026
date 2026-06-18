@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
+import { checkConsent, grantConsent } from '../../api/tracking';
+import { startTracking, stopTracking, isTracking as isLocationTracking, getCurrentTaskId } from '../../services/LocationService';
 import NotificationBell from '../../components/NotificationBell';
+import TrackingConsentModal from '../../components/TrackingConsentModal';
+import ActiveTrackingBanner from '../../components/ActiveTrackingBanner';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const TABS = [
@@ -24,10 +28,30 @@ export default function MyJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
+  // Tracking state
+  const [consentModalVisible, setConsentModalVisible] = useState(false);
+  const [consentTask, setConsentTask] = useState(null);
+  const [consentMap, setConsentMap] = useState({}); // {task_id: 'granted'|'denied'|'revoked'|null}
+  const [trackingTaskId, setTrackingTaskId] = useState(null);
+
   const fetchJobs = async () => {
     try {
       const res = await getMyJobsAsWorker();
       setApplications(res.data);
+
+      // Check consent cho các task được accept (task.status='in_progress')
+      const acceptedApps = res.data.filter(a => a.status === 'accepted' && a.task);
+      const consents = {};
+      await Promise.all(acceptedApps.map(async (app) => {
+        try {
+          const r = await checkConsent(app.task);
+          const c = r.data?.consent?.consent || (r.data?.has_consent ? null : 'pending');
+          consents[app.task] = c;
+        } catch (e) {
+          consents[app.task] = null;
+        }
+      }));
+      setConsentMap(consents);
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); setRefreshing(false); }
   };
@@ -60,8 +84,46 @@ export default function MyJobsScreen() {
     .filter(a => a.status === 'accepted')
     .reduce((sum, a) => sum + parseFloat(a.task_price || 0), 0);
 
+  const handleOpenConsent = (app) => {
+    setConsentTask(app);
+    setConsentModalVisible(true);
+  };
+
+  const handleConsentChoice = async (granted) => {
+    setConsentModalVisible(false);
+    if (!consentTask) return;
+    const taskId = consentTask.task;
+    setConsentMap(prev => ({ ...prev, [taskId]: granted ? 'granted' : 'denied' }));
+
+    if (granted) {
+      // Bắt đầu tracking
+      const ok = await startTracking(taskId);
+      if (ok) {
+        setTrackingTaskId(taskId);
+        Alert.alert('✅ Đã bật chia sẻ vị trí', 'Phụ huynh sẽ thấy vị trí của bạn khi đang làm việc.');
+      } else {
+        Alert.alert('⚠️ Không thể bật', 'Không có quyền truy cập vị trí. Vui lòng cấp quyền trong Settings.');
+      }
+    }
+    setConsentTask(null);
+  };
+
+  const handleStopTracking = async () => {
+    setTrackingTaskId(null);
+    // Refresh consent map
+    if (consentTask) {
+      setConsentMap(prev => ({ ...prev, [consentTask.task]: 'revoked' }));
+    } else {
+      // Refresh all consents
+      fetchJobs();
+    }
+  };
+
   const renderItem = ({ item: app }) => {
     const st = STATUS_STYLE[app.status] || STATUS_STYLE.rejected;
+    const consent = consentMap[app.task];
+    const showTrackingUI = app.status === 'accepted';
+    const isCurrentlyTracking = trackingTaskId === app.task;
     return (
       <View style={styles.card}>
         <View style={styles.cardRow}>
@@ -102,6 +164,56 @@ export default function MyJobsScreen() {
               <Text style={styles.parentName}>{app.parent_username}</Text>
             </View>
           </View>
+        )}
+
+        {/* === LIVE TRACKING UI === */}
+        {showTrackingUI && (
+          <>
+            {isCurrentlyTracking ? (
+              <ActiveTrackingBanner
+                taskId={app.task}
+                taskTitle={app.task_title}
+                onStopped={() => {
+                  setTrackingTaskId(null);
+                  setConsentMap(prev => ({ ...prev, [app.task]: 'revoked' }));
+                }}
+              />
+            ) : consent === 'granted' ? (
+              <TouchableOpacity
+                style={styles.trackingStartBtn}
+                onPress={async () => {
+                  const ok = await startTracking(app.task);
+                  if (ok) {
+                    setTrackingTaskId(app.task);
+                  } else {
+                    Alert.alert('⚠️ Không thể bật', 'Không có quyền truy cập vị trí.');
+                  }
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="play-circle" size={16} color={COLORS.success} />
+                <Text style={styles.trackingStartText}>Bắt đầu chia sẻ vị trí</Text>
+              </TouchableOpacity>
+            ) : consent === 'denied' || consent === 'revoked' ? (
+              <TouchableOpacity
+                style={styles.trackingStartBtn}
+                onPress={() => handleOpenConsent(app)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="location-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.trackingStartText}>Đồng ý chia sẻ vị trí</Text>
+              </TouchableOpacity>
+            ) : consent === null || consent === undefined ? (
+              <TouchableOpacity
+                style={styles.trackingStartBtn}
+                onPress={() => handleOpenConsent(app)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="location-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.trackingStartText}>Cho phép theo dõi vị trí</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
         )}
       </View>
     );
@@ -157,6 +269,16 @@ export default function MyJobsScreen() {
           }
         />
       )}
+
+      {/* Tracking Consent Modal */}
+      <TrackingConsentModal
+        visible={consentModalVisible}
+        taskId={consentTask?.task}
+        parentName={consentTask?.parent_username}
+        taskTitle={consentTask?.task_title}
+        onConsent={handleConsentChoice}
+        onClose={() => setConsentModalVisible(false)}
+      />
     </View>
   );
 }
@@ -242,4 +364,11 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
   emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
+  trackingStartBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight, borderWidth: 1, borderColor: COLORS.primarySoft,
+    marginTop: 8,
+  },
+  trackingStartText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
 });

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Animated
+  StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Animated
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { sendChatMessage } from '../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
@@ -14,6 +15,24 @@ const INITIAL_MESSAGES = [
     text: '👋 Xin chào! Tôi là trợ lý AI của Educarelink.\n\nBạn có thể nói với tôi như:\n• "Tôi cần tìm gia sư Toán lớp 5 vào tối thứ 3 ở Quận 1"\n• "Cần người đón bé lúc 11h sáng"\n\nTôi sẽ giúp bạn tạo công việc nhanh chóng! 🚀',
   },
 ];
+
+const renderMessage = ({ item }) => {
+  const isUser = item.role === 'user';
+  return (
+    <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
+      {!isUser && (
+        <View style={styles.botAvatar}>
+          <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+        </View>
+      )}
+      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
+        <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
+          {item.text}
+        </Text>
+      </View>
+    </View>
+  );
+};
 
 export default function ChatbotScreen() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
@@ -103,27 +122,10 @@ export default function ChatbotScreen() {
 
   useEffect(() => {
     if (flatListRef.current) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      const timerId = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      return () => clearTimeout(timerId);
     }
   }, [messages, isTyping]);
-
-  const renderMessage = ({ item }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
-        {!isUser && (
-          <View style={styles.botAvatar}>
-            <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
-          </View>
-        )}
-        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-          <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
-            {item.text}
-          </Text>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={88}>
@@ -146,7 +148,7 @@ export default function ChatbotScreen() {
       <FlatList ref={flatListRef} data={messages} keyExtractor={i => i.id}
         renderItem={renderMessage} contentContainerStyle={styles.list}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        ListFooterComponent={isTyping ? (
+        ListFooterComponent={React.useMemo(() => isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
               <Image source={require('../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
@@ -158,7 +160,7 @@ export default function ChatbotScreen() {
               <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
             </View>
           </View>
-        ) : null}
+        ) : null, [isTyping, dot1Anim, dot2Anim, dot3Anim])}
       />
 
       {/* Input bar */}
@@ -212,10 +214,7 @@ const styles = StyleSheet.create({
   bubbleUser: {
     backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
     ...SHADOWS.small,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
+    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.25)',
   },
   bubbleBot: {
     backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
@@ -260,16 +259,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.small,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
+    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.3)',
   },
   sendBtnDisabled: {
     backgroundColor: COLORS.divider,
-    shadowColor: '#000',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    boxShadow: 'none',
   },
 });

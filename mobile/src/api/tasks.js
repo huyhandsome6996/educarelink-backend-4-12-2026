@@ -33,8 +33,11 @@ export const createReview = (reviewData) =>
 
 // === SINH VIÊN ===
 // Ứng tuyển một việc
-export const applyTask = (taskId) =>
-  apiClient.post(`/worker/tasks/${taskId}/apply/`);
+// consentTracking: true | false | null (null = không có geofence, apply bình thường)
+export const applyTask = (taskId, consentTracking = null) => {
+  const body = consentTracking !== null ? { consent_tracking: consentTracking } : {};
+  return apiClient.post(`/worker/tasks/${taskId}/apply/`, body);
+};
 
 // Lấy danh sách việc sinh viên đã ứng tuyển
 export const getMyJobsAsWorker = () => apiClient.get('/worker/my-jobs/');

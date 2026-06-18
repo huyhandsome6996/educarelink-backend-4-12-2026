@@ -1,36 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Animated
+  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Animated
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { getOAuthConfig, loginWithGoogle, loginWithFacebook } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
 
-// === OAuth providers (lazy import để tránh crash trên web/Expo Go chưa cài) ===
-let Google = null;
-let Facebook = null;
-let WebBrowser = null;
-if (Platform.OS !== 'web') {
-  try { Google = require('expo-auth-session/providers/google'); } catch (e) {}
-  try { Facebook = require('expo-facebook'); } catch (e) {}
-  try { WebBrowser = require('expo-web-browser'); } catch (e) {}
-}
-
-// Logo Google & Facebook
-const GoogleLogo = ({ size = 20 }) => (
-  <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ color: '#4285F4', fontWeight: '900', fontSize: size * 0.55 }}>G</Text>
-  </View>
-);
-const FacebookLogo = ({ size = 20 }) => (
-  <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ color: '#1877F2', fontWeight: '900', fontSize: size * 0.6 }}>f</Text>
-  </View>
-);
+// ====================================================================
+// ⚠️  OAuth (Google / Facebook) TẠM THỜI VÔ HIỆU HOÁ
+//  Lý do: gây crash APK khi build (theo handoff file)
+//  Sẽ bật lại sau khi release APK cơ bản hoàn tất
+// ====================================================================
+// import { getOAuthConfig, loginWithGoogle, loginWithFacebook } from '../../api/auth';
+// let Google = null, Facebook = null, WebBrowser = null;
+// if (Platform.OS !== 'web') {
+//   try { Google = require('expo-auth-session/providers/google'); } catch (e) {}
+//   try { Facebook = require('expo-facebook'); } catch (e) {}
+//   try { WebBrowser = require('expo-web-browser'); } catch (e) {}
+// }
 
 const ROLES = [
   {
@@ -51,6 +42,73 @@ const ROLES = [
   },
 ];
 
+const showAlert = (title, message) => {
+  if (Platform.OS === 'web') {
+    alert(`${title}: ${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
+
+const pickImage = async (setter) => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    showAlert('Cần quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh.');
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.7,
+  });
+  if (!result.canceled && result.assets?.[0]) {
+    setter(result.assets[0]);
+  }
+};
+
+const takePhoto = async (setter) => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    showAlert('Cần quyền truy cập', 'Vui lòng cấp quyền sử dụng camera.');
+    return;
+  }
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.7,
+  });
+  if (!result.canceled && result.assets?.[0]) {
+    setter(result.assets[0]);
+  }
+};
+
+const renderImagePicker = (label, image, setter, icon) => (
+  <View style={styles.imagePicker}>
+    <Text style={styles.imageLabel}>{label}</Text>
+    {image ? (
+      <TouchableOpacity onPress={() => pickImage(setter)} activeOpacity={0.8}>
+        <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+        <View style={styles.imageOverlay}>
+          <Ionicons name="create-outline" size={16} color="#fff" />
+          <Text style={styles.imageOverlayText}>Đổi ảnh</Text>
+        </View>
+      </TouchableOpacity>
+    ) : (
+      <View style={styles.imageActions}>
+        <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(setter)}>
+          <Ionicons name="images-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.imageBtnText}>Thư viện</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.imageBtn} onPress={() => takePhoto(setter)}>
+          <Ionicons name="camera-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.imageBtnText}>Camera</Text>
+        </TouchableOpacity>
+      </View>
+    )}
+  </View>
+);
+
 export default function RegisterScreen() {
   const navigation = useNavigation();
   const { register } = useAuth();
@@ -65,17 +123,13 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(null); // 'google' | 'facebook' | null
 
-  // OAuth config (client IDs)
-  const [oauthConfig, setOauthConfig] = useState(null);
-
-  // Load OAuth config khi mount
-  useEffect(() => {
-    getOAuthConfig()
-      .then((res) => setOauthConfig(res.data))
-      .catch(() => {});
-  }, []);
+  // ⚠️ OAuth disabled — xem comment đầu file để khôi phục
+  // const [oauthLoading, setOauthLoading] = useState(null);
+  // const [oauthConfig, setOauthConfig] = useState(null);
+  // useEffect(() => {
+  //   getOAuthConfig().then(res => setOauthConfig(res.data)).catch(() => {});
+  // }, []);
 
   // Ảnh cho Carepartner
   const [idCardFront, setIdCardFront] = useState(null);
@@ -122,47 +176,6 @@ export default function RegisterScreen() {
   const handleRolePressOut = (roleId) => {
     const scaleRef = roleId === 'parent' ? roleScaleParent : roleScaleWorker;
     Animated.spring(scaleRef, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-
-  const showAlert = (title, message) => {
-    if (Platform.OS === 'web') {
-      alert(`${title}: ${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
-
-  const pickImage = async (setter) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Cần quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh để chọn ảnh.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      setter(result.assets[0]);
-    }
-  };
-
-  const takePhoto = async (setter) => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Cần quyền truy cập', 'Vui lòng cấp quyền sử dụng camera.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      setter(result.assets[0]);
-    }
   };
 
   const handleRegister = async () => {
@@ -244,127 +257,10 @@ export default function RegisterScreen() {
     }
   };
 
-  const renderImagePicker = (label, image, setter, icon) => (
-    <View style={styles.imagePicker}>
-      <Text style={styles.imageLabel}>{label}</Text>
-      {image ? (
-        <TouchableOpacity onPress={() => pickImage(setter)} activeOpacity={0.8}>
-          <Image source={{ uri: image.uri }} style={styles.imagePreview} />
-          <View style={styles.imageOverlay}>
-            <Ionicons name="create-outline" size={16} color="#fff" />
-            <Text style={styles.imageOverlayText}>Đổi ảnh</Text>
-          </View>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.imageActions}>
-          <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(setter)}>
-            <Ionicons name="images-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.imageBtnText}>Thư viện</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.imageBtn} onPress={() => takePhoto(setter)}>
-            <Ionicons name="camera-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.imageBtnText}>Camera</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  // === OAuth handlers (đăng ký nhanh: dùng OAuth → tạo account với role đã chọn) ===
-  const handleGoogleRegister = async () => {
-    if (!oauthConfig?.google?.enabled) {
-      showAlert('Chưa kích hoạt', 'Đăng nhập Google chưa được kích hoạt.');
-      return;
-    }
-    if (!Google) {
-      showAlert('Chưa cài đặt', 'Cần cài expo-auth-session. Chạy: npm install expo-auth-session expo-web-browser');
-      return;
-    }
-    setOauthLoading('google');
-    try {
-      const redirectUri = WebBrowser?.makeRedirectUri?.({ scheme: 'educarelink', path: 'auth' }) || 'https://auth.expo.io';
-      const request = new Google.AuthRequest({
-        clientId: oauthConfig.google.client_id,
-        scopes: ['openid', 'profile', 'email'],
-        redirectUri,
-      });
-      const result = await request.promptAsync();
-      if (result.type !== 'success') {
-        setOauthLoading(null);
-        return;
-      }
-      const accessToken = result.authentication?.accessToken;
-      if (!accessToken) {
-        showAlert('Lỗi', 'Không lấy được access token từ Google.');
-        setOauthLoading(null);
-        return;
-      }
-      // Gửi access token cho backend → tạo account với role đã chọn
-      const resp = await loginWithGoogle(accessToken, selectedRole);
-      await finishOAuth(resp);
-    } catch (e) {
-      const msg = e.response?.data?.error || e.message || 'Đăng ký Google thất bại.';
-      showAlert('Lỗi Google', msg);
-    } finally {
-      setOauthLoading(null);
-    }
-  };
-
-  const handleFacebookRegister = async () => {
-    if (!oauthConfig?.facebook?.enabled) {
-      showAlert('Chưa kích hoạt', 'Đăng nhập Facebook chưa được kích hoạt.');
-      return;
-    }
-    if (!Facebook) {
-      showAlert('Chưa cài đặt', 'Cần cài expo-facebook. Chạy: npm install expo-facebook');
-      return;
-    }
-    setOauthLoading('facebook');
-    try {
-      await Facebook.initializeAsync({
-        appId: oauthConfig.facebook.app_id,
-        appName: 'Educarelink',
-      });
-      const result = await Facebook.logInWithReadPermissionsAsync({
-        permissions: ['public_profile', 'email'],
-      });
-      if (result.type !== 'success') {
-        setOauthLoading(null);
-        return;
-      }
-      const accessToken = result.token;
-      const resp = await loginWithFacebook(accessToken, selectedRole);
-      await finishOAuth(resp);
-    } catch (e) {
-      const msg = e.response?.data?.error || e.message || 'Đăng ký Facebook thất bại.';
-      showAlert('Lỗi Facebook', msg);
-    } finally {
-      setOauthLoading(null);
-    }
-  };
-
-  // Lưu token sau OAuth thành công → reload app
-  const finishOAuth = async (resp) => {
-    const { tokens, role, is_staff } = resp.data;
-    const { storage } = require('../../utils/storage');
-    await storage.setItem('access_token', tokens.access);
-    await storage.setItem('refresh_token', tokens.refresh);
-    await storage.setItem('user_role', role);
-    if (is_staff) await storage.setItem('is_staff', 'true');
-    showAlert('✅ Thành công', 'Đã đăng ký và đăng nhập bằng OAuth.');
-    setTimeout(() => {
-      if (Platform.OS === 'web') {
-        window.location.reload();
-      } else {
-        try {
-          const Updates = require('expo-updates').default;
-          Updates.reloadAsync();
-        } catch (e) {
-          showAlert('Thông báo', 'Vui lòng khởi động lại app để hoàn tất.');
-        }
-      }
-    }, 500);
-  };
+  // ⚠️ OAuth disabled — xem comment đầu file để khôi phục
+  // const handleGoogleRegister = async () => { ... };
+  // const handleFacebookRegister = async () => { ... };
+  // const finishOAuth = async (resp) => { ... };
 
   return (
     <KeyboardAvoidingView
@@ -583,44 +479,23 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* === OAuth buttons === */}
+          {/* === OAuth buttons DISABLED (comment lại để khôi phục sau) ===
           <View style={styles.oauthSection}>
             <View style={styles.oauthDivider}>
               <View style={styles.oauthDividerLine} />
               <Text style={styles.oauthDividerText}>hoặc đăng ký nhanh với</Text>
               <View style={styles.oauthDividerLine} />
             </View>
-            <TouchableOpacity
-              style={[styles.oauthBtn, styles.oauthBtnGoogle, oauthLoading === 'google' && { opacity: 0.7 }]}
-              onPress={handleGoogleRegister}
-              disabled={!!oauthLoading}
-              activeOpacity={0.85}
-            >
-              {oauthLoading === 'google' ? (
-                <ActivityIndicator color={COLORS.textPrimary} size="small" />
-              ) : (
-                <>
-                  <GoogleLogo size={22} />
-                  <Text style={styles.oauthBtnTextDark}>Google</Text>
-                </>
-              )}
+            <TouchableOpacity style={[styles.oauthBtn, styles.oauthBtnGoogle]} onPress={handleGoogleRegister}>
+              <GoogleLogo size={22} />
+              <Text style={styles.oauthBtnTextDark}>Google</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.oauthBtn, styles.oauthBtnFacebook, oauthLoading === 'facebook' && { opacity: 0.7 }]}
-              onPress={handleFacebookRegister}
-              disabled={!!oauthLoading}
-              activeOpacity={0.85}
-            >
-              {oauthLoading === 'facebook' ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <FacebookLogo size={22} />
-                  <Text style={styles.oauthBtnTextLight}>Facebook</Text>
-                </>
-              )}
+            <TouchableOpacity style={[styles.oauthBtn, styles.oauthBtnFacebook]} onPress={handleFacebookRegister}>
+              <FacebookLogo size={22} />
+              <Text style={styles.oauthBtnTextLight}>Facebook</Text>
             </TouchableOpacity>
           </View>
+          */}
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>

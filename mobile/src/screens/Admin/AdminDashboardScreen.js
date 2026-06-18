@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar,
-  ActivityIndicator, RefreshControl, Alert, ScrollView, Image, Platform,
+  ActivityIndicator, RefreshControl, Alert, ScrollView, Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -239,6 +240,10 @@ export default function AdminDashboardScreen() {
     );
   };
 
+  const listHeaderComponent = React.useMemo(() => (
+    <Text style={styles.countText}>{data.length} {activeTab === 'pending' ? 'chờ duyệt' : (activeTab === 'workers' ? 'carepartner' : 'người dùng')}</Text>
+  ), [data.length, activeTab]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
@@ -278,9 +283,7 @@ export default function AdminDashboardScreen() {
           renderItem={renderUser}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          ListHeaderComponent={
-            <Text style={styles.countText}>{data.length} {activeTab === 'pending' ? 'chờ duyệt' : (activeTab === 'workers' ? 'carepartner' : 'người dùng')}</Text>
-          }
+          ListHeaderComponent={listHeaderComponent}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>

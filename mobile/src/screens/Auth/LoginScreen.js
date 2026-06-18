@@ -1,26 +1,37 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Animated, View as RNView
+  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Animated
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Google from 'expo-auth-session/providers/google';
-import * as Facebook from 'expo-facebook';
 import { useAuth } from '../../context/AuthContext';
-import { getOAuthConfig } from '../../api/auth';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+
+// ====================================================================
+// ⚠️  OAuth (Google / Facebook) TẠM THỜI VÔ HIỆU HOÁ
+//  Lý do: gây crash APK khi build (theo handoff file)
+//  Sẽ bật lại sau khi release APK cơ bản hoàn tất
+//  Code OAuth cũ được comment tại phần dưới, không xóa để dễ khôi phục
+// ====================================================================
+
+const showAlert = (title, message) => {
+  if (Platform.OS === 'web') {
+    alert(`${title}: ${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const { login, loginWithOAuth, user } = useAuth();
+  const { login } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(null); // 'google' | 'facebook'
-  const [oauthConfig, setOauthConfig] = useState(null);
 
   // Focus state tracking for input wrappers
   const [usernameFocused, setUsernameFocused] = useState(false);
@@ -38,38 +49,11 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
-  // Lấy OAuth config từ backend (Client IDs)
-  useEffect(() => {
-    getOAuthConfig()
-      .then(res => setOauthConfig(res.data))
-      .catch(() => {});
-  }, []);
-
-  // Google auth request
-  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    clientId: oauthConfig?.google_client_id,
-    redirectUri: 'https://auth.expo.io/@educarelink/educarelink',
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      handleGoogleLogin(googleResponse.authentication.accessToken);
-    }
-  }, [googleResponse]);
-
   const handlePressIn = () => {
     Animated.spring(btnScale, { toValue: 0.97, tension: 300, friction: 10, useNativeDriver: true }).start();
   };
   const handlePressOut = () => {
     Animated.spring(btnScale, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-
-  const showAlert = (title, message) => {
-    if (Platform.OS === 'web') {
-      alert(`${title}: ${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
   };
 
   const handleLogin = async () => {
@@ -82,6 +66,7 @@ export default function LoginScreen() {
       await login(username.trim(), password);
       // Navigator tự phân luồng theo role trong AuthContext
     } catch (error) {
+      // Xử lý đặc biệt: Carepartner chưa được admin duyệt (403 Forbidden)
       const status = error.response?.status;
       const data = error.response?.data;
       if (status === 403 && data?.status === 'pending_approval') {
@@ -95,49 +80,6 @@ export default function LoginScreen() {
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async (accessToken) => {
-    setOauthLoading('google');
-    try {
-      await loginWithOAuth('google', accessToken);
-      // Navigator tự chuyển
-    } catch (e) {
-      const msg = e.response?.data?.error || 'Đăng nhập Google thất bại.';
-      showAlert('Lỗi', msg);
-    } finally {
-      setOauthLoading(null);
-    }
-  };
-
-  const handleGooglePress = async () => {
-    if (!oauthConfig?.google_client_id) {
-      showAlert('Chưa sẵn sàng', 'Đăng nhập Google chưa được cấu hình. Vui lòng dùng tài khoản/mật khẩu.');
-      return;
-    }
-    await googlePromptAsync();
-  };
-
-  const handleFacebookLogin = async () => {
-    if (!oauthConfig?.facebook_app_id) {
-      showAlert('Chưa sẵn sàng', 'Đăng nhập Facebook chưa được cấu hình.');
-      return;
-    }
-    setOauthLoading('facebook');
-    try {
-      await Facebook.initializeAsync({ appId: oauthConfig.facebook_app_id });
-      const result = await Facebook.logInWithReadPermissionsAsync({
-        permissions: ['public_profile', 'email'],
-      });
-      if (result.type === 'success' && result.token) {
-        await loginWithOAuth('facebook', result.token);
-      }
-    } catch (e) {
-      const msg = e.message || 'Đăng nhập Facebook thất bại.';
-      showAlert('Lỗi', msg);
-    } finally {
-      setOauthLoading(null);
     }
   };
 
@@ -223,48 +165,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>hoặc</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* OAuth buttons */}
-          <TouchableOpacity
-            style={styles.googleBtn}
-            onPress={handleGooglePress}
-            disabled={oauthLoading !== null}
-            activeOpacity={0.85}
-          >
-            {oauthLoading === 'google' ? (
-              <ActivityIndicator size="small" color={COLORS.textPrimary} />
-            ) : (
-              <>
-                <View style={styles.googleLogo}>
-                  <Text style={styles.googleLogoText}>G</Text>
-                </View>
-                <Text style={styles.oauthBtnText}>Đăng nhập với Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.facebookBtn}
-            onPress={handleFacebookLogin}
-            disabled={oauthLoading !== null}
-            activeOpacity={0.85}
-          >
-            {oauthLoading === 'facebook' ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="logo-facebook" size={20} color="#fff" />
-                <Text style={[styles.oauthBtnText, { color: '#fff' }]}>Đăng nhập với Facebook</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
           {/* Chuyển đến Đăng ký */}
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>Chưa có tài khoản? </Text>
@@ -293,10 +193,101 @@ export default function LoginScreen() {
   );
 }
 
+/* ====================================================================
+   ⚠️  OAuth CODE (ĐÃ VÔ HIỆU HOÁ — KHÔNG XÓA)
+   Khi nào muốn bật lại OAuth:
+   1. Đảm bảo đã cài: npm install expo-auth-session expo-web-browser expo-facebook
+   2. Đảm bảo backend có GOOGLE_OAUTH_CLIENT_ID + FACEBOOK_APP_ID
+   3. Bỏ comment các import + handleGooglePress + handleFacebookLogin + 2 button OAuth
+   4. Test kỹ trên Expo Go trước khi build APK
+   ====================================================================
+
+import * as Google from 'expo-auth-session/providers/google';
+import * as Facebook from 'expo-facebook';
+import { getOAuthConfig } from '../../api/auth';
+
+// Trong component:
+// const { login, loginWithOAuth } = useAuth();
+// const [oauthLoading, setOauthLoading] = useState(null);
+// const [oauthConfig, setOauthConfig] = useState(null);
+
+// useEffect(() => {
+//   getOAuthConfig().then(res => setOauthConfig(res.data)).catch(() => {});
+// }, []);
+
+// const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+//   clientId: oauthConfig?.google_client_id,
+//   redirectUri: 'https://auth.expo.io/@educarelink/educarelink',
+// });
+
+// useEffect(() => {
+//   if (googleResponse?.type === 'success') {
+//     handleGoogleLogin(googleResponse.authentication.accessToken);
+//   }
+// }, [googleResponse]);
+
+// const handleGoogleLogin = async (accessToken) => {
+//   setOauthLoading('google');
+//   try { await loginWithOAuth('google', accessToken); }
+//   catch (e) { showAlert('Lỗi', e.response?.data?.error || 'Đăng nhập Google thất bại.'); }
+//   finally { setOauthLoading(null); }
+// };
+
+// const handleGooglePress = async () => {
+//   if (!oauthConfig?.google_client_id) {
+//     showAlert('Chưa sẵn sàng', 'Đăng nhập Google chưa được cấu hình.');
+//     return;
+//   }
+//   await googlePromptAsync();
+// };
+
+// const handleFacebookLogin = async () => {
+//   if (!oauthConfig?.facebook_app_id) {
+//     showAlert('Chưa sẵn sàng', 'Đăng nhập Facebook chưa được cấu hình.');
+//     return;
+//   }
+//   setOauthLoading('facebook');
+//   try {
+//     await Facebook.initializeAsync({ appId: oauthConfig.facebook_app_id });
+//     const result = await Facebook.logInWithReadPermissionsAsync({
+//       permissions: ['public_profile', 'email'],
+//     });
+//     if (result.type === 'success' && result.token) {
+//       await loginWithOAuth('facebook', result.token);
+//     }
+//   } catch (e) {
+//     showAlert('Lỗi', e.message || 'Đăng nhập Facebook thất bại.');
+//   } finally { setOauthLoading(null); }
+// };
+
+// Trong JSX (sau nút Đăng nhập):
+// <View style={styles.dividerRow}>
+//   <View style={styles.dividerLine} />
+//   <Text style={styles.dividerText}>hoặc</Text>
+//   <View style={styles.dividerLine} />
+// </View>
+// <TouchableOpacity style={styles.googleBtn} onPress={handleGooglePress} disabled={oauthLoading !== null}>
+//   {oauthLoading === 'google' ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : (
+//     <>
+//       <View style={styles.googleLogo}><Text style={styles.googleLogoText}>G</Text></View>
+//       <Text style={styles.oauthBtnText}>Đăng nhập với Google</Text>
+//     </>
+//   )}
+// </TouchableOpacity>
+// <TouchableOpacity style={styles.facebookBtn} onPress={handleFacebookLogin} disabled={oauthLoading !== null}>
+//   {oauthLoading === 'facebook' ? <ActivityIndicator color="#fff" /> : (
+//     <>
+//       <Ionicons name="logo-facebook" size={20} color="#fff" />
+//       <Text style={[styles.oauthBtnText, { color: '#fff' }]}>Đăng nhập với Facebook</Text>
+//     </>
+//   )}
+// </TouchableOpacity>
+==================================================================== */
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 44 },
-  header: { alignItems: 'center', marginBottom: 32 },
+  header: { alignItems: 'center', marginBottom: 44 },
   logo: {
     width: 80,
     height: 80,
@@ -305,7 +296,7 @@ const styles = StyleSheet.create({
   },
   title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
   subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  form: { gap: 14, marginBottom: 24 },
+  form: { gap: 18, marginBottom: 36 },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
@@ -336,6 +327,20 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.7 },
   loginBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+  registerText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
+  registerLink: { ...TYPO.buttonSmall, color: COLORS.primary },
+  testAccountBox: {
+    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusLg, padding: 18,
+    borderWidth: 1.5, borderColor: COLORS.primarySoft,
+  },
+  testAccountIconRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8,
+  },
+  testAccountTitle: { ...TYPO.h5, fontSize: 13, color: COLORS.primaryDark, marginBottom: 0 },
+  testAccountText: { ...TYPO.bodySmall, color: COLORS.primary, lineHeight: 22 },
+
+  // === OAUTH STYLES (giữ lại để dùng khi bật lại OAuth) ===
   dividerRow: {
     flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 12,
   },
@@ -362,16 +367,4 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   oauthBtnText: { ...TYPO.body, color: COLORS.textPrimary, fontWeight: '600' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
-  registerText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  registerLink: { ...TYPO.buttonSmall, color: COLORS.primary },
-  testAccountBox: {
-    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusLg, padding: 18,
-    borderWidth: 1.5, borderColor: COLORS.primarySoft,
-  },
-  testAccountIconRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8,
-  },
-  testAccountTitle: { ...TYPO.h5, fontSize: 13, color: COLORS.primaryDark, marginBottom: 0 },
-  testAccountText: { ...TYPO.bodySmall, color: COLORS.primary, lineHeight: 22 },
 });

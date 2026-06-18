@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyTasksAsParent, getCandidates, updateTaskStatus } from '../../api/tasks';
+import { checkConsent } from '../../api/tracking';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
 
@@ -176,6 +177,41 @@ export default function MyTasksScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Live tracking button — chỉ hiện cho in_progress */}
+        {task.status === 'in_progress' && (
+          <TouchableOpacity
+            style={styles.trackBtn}
+            onPress={async () => {
+              try {
+                const res = await checkConsent(task.id);
+                const consent = res.data?.consent?.consent || res.data?.consent;
+                if (res.data?.has_consent && consent === 'granted') {
+                  navigation.navigate('LiveTracking', {
+                    taskId: task.id,
+                    taskTitle: task.title,
+                    taskLatitude: task.latitude,
+                    taskLongitude: task.longitude,
+                  });
+                } else if (res.data?.has_consent && consent === 'revoked') {
+                  Alert.alert('⚠️ Đã dừng', 'Carepartner đã dừng chia sẻ vị trí. Vui lòng liên hệ trực tiếp.');
+                } else {
+                  Alert.alert(
+                    'Chưa có vị trí',
+                    'Carepartner chưa đồng ý chia sẻ vị trí cho việc này.',
+                  );
+                }
+              } catch (e) {
+                Alert.alert('Lỗi', 'Không thể kiểm tra trạng thái theo dõi. Vui lòng thử lại.');
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="location" size={16} color="#fff" />
+            <Text style={styles.trackBtnText}>Theo dõi vị trí Carepartner</Text>
+            <Ionicons name="chevron-forward" size={14} color="#fff" />
+          </TouchableOpacity>
+        )}
+
         {task.status === 'completed' && (
           <TouchableOpacity style={[styles.btn, styles.btnSuccess]}
             onPress={async () => {
@@ -283,6 +319,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   paymentBtnText: { ...TYPO.caption, color: COLORS.primary, fontWeight: '600' },
+  trackBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primary,
+    marginTop: 6,
+    ...SHADOWS.large,
+  },
+  trackBtnText: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 4, ...SHADOWS.small },
   emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },

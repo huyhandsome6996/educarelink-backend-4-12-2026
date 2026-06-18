@@ -85,6 +85,22 @@ class Task(models.Model):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ địa điểm công việc")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ địa điểm công việc")
     scheduled_time = models.DateTimeField() # Thời gian bắt đầu làm
+
+    # ---- GEOFENCE (VÙNG AN TOÀN) — thêm cho chức năng Live Tracking ----
+    # Parent có thể vẽ vùng an toàn trên bản đồ khi đăng việc.
+    # Carepartner rời vùng này → phụ huynh nhận chuông cảnh báo.
+    geofence_lat = models.FloatField(
+        null=True, blank=True,
+        help_text="Vĩ độ tâm vùng an toàn (geofence) — parent vẽ trên bản đồ khi đăng việc"
+    )
+    geofence_lng = models.FloatField(
+        null=True, blank=True,
+        help_text="Kinh độ tâm vùng an toàn (geofence)"
+    )
+    geofence_radius = models.FloatField(
+        null=True, blank=True, default=500,
+        help_text="Bán kính vùng an toàn (mét). Mặc định 500m"
+    )
     
     # ---> KHUNG CHỜ AI: Lưu lại câu chat gốc của phụ huynh
     ai_generated_from_prompt = models.TextField(

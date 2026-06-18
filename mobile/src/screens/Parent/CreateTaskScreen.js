@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image
+  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
@@ -87,6 +88,9 @@ export default function CreateTaskScreen() {
 
   const cat = CATEGORIES.find(c => c.id === selectedCat);
 
+  const [enableGeofence, setEnableGeofence] = useState(false);
+  const [geofenceRadius, setGeofenceRadius] = useState('500');
+
   const handleSubmit = async () => {
     if (!title || !description || !location || !date || !time || !price) {
       Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ tất cả các trường.');
@@ -102,14 +106,48 @@ export default function CreateTaskScreen() {
 
     setIsLoading(true);
     try {
-      await createTask({
+      const taskData = {
         category: selectedCat,
         title,
         description,
         location,
         scheduled_time: `${date}T${time}:00+07:00`,
         price: parseInt(price),
-      });
+      };
+
+      // ===== GEOFENCE (nếu parent bật) =====
+      // Mobile chưa có map picker nên dùng location mặc định null
+      // Parent có thể set geofence sau khi tạo task trên web
+      // Hoặc nếu parent dùng app có GPS, ta xin quyền location và dùng làm tâm vùng
+      if (enableGeofence) {
+        try {
+          // Xin quyền location
+          const LocationModule = await import('expo-location');
+          const { status } = await LocationModule.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await LocationModule.getCurrentPositionAsync({ accuracy: LocationModule.Accuracy.High });
+            taskData.geofence_lat = loc.coords.latitude;
+            taskData.geofence_lng = loc.coords.longitude;
+            taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
+          } else {
+            Alert.alert(
+              'Cần quyền vị trí',
+              'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bạn có thể bỏ qua hoặc thử lại.',
+              [
+                { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
+                { text: 'Tiếp tục không có geofence' },
+              ]
+            );
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn('Location permission error:', e);
+          // Vẫn tiếp tục submit không có geofence
+        }
+      }
+
+      await createTask(taskData);
       Alert.alert('✅ Thành công!', 'Đã đăng việc lên cộng đồng.', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
@@ -166,7 +204,7 @@ export default function CreateTaskScreen() {
             onFocus={() => setDescFocused(true)} onBlur={() => setDescFocused(false)} />
           <View style={[styles.inputRow, locationFocused && styles.inputRowFocused]}>
             <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput style={[styles.inputInline]}
+            <TextInput style={styles.inputInline}
               placeholder="Địa điểm thực hiện *" placeholderTextColor={COLORS.textMuted}
               value={location} onChangeText={setLocation}
               onFocus={() => setLocationFocused(true)} onBlur={() => setLocationFocused(false)} />
@@ -204,12 +242,46 @@ export default function CreateTaskScreen() {
             />
           )}
           <View style={[styles.inputRow, priceFocused && styles.inputRowFocused]}>
-            <TextInput style={[styles.priceInput]}
+            <TextInput style={styles.priceInput}
               placeholder="0" placeholderTextColor={COLORS.textMuted} value={price} onChangeText={setPrice}
               keyboardType="numeric"
               onFocus={() => setPriceFocused(true)} onBlur={() => setPriceFocused(false)} />
             <Text style={styles.currency}>VNĐ/buổi</Text>
           </View>
+
+          {/* ===== GEOFENCE TOGGLE (VÙNG AN TOÀN) ===== */}
+          <TouchableOpacity
+            style={[styles.geofenceToggle, enableGeofence && styles.geofenceToggleActive]}
+            onPress={() => setEnableGeofence(!enableGeofence)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.geofenceCheckbox, enableGeofence && styles.geofenceCheckboxActive]}>
+              {enableGeofence && <Ionicons name="checkmark" size={16} color="#fff" />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.geofenceToggleTitle}>
+                <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} /> Yêu cầu theo dõi vị trí Carepartner
+              </Text>
+              <Text style={styles.geofenceToggleDesc}>
+                Carepartner phải đồng ý chia sẻ vị trí mới được nhận việc. Bạn sẽ nhận chuông cảnh báo khi họ rời vùng an toàn.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {enableGeofence && (
+            <View style={styles.geofenceSettings}>
+              <Text style={styles.geofenceLabel}>Bán kính vùng an toàn (mét):</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="map-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
+                <TextInput style={styles.priceInput}
+                  placeholder="500" placeholderTextColor={COLORS.textMuted}
+                  value={geofenceRadius} onChangeText={setGeofenceRadius}
+                  keyboardType="numeric" />
+                <Text style={styles.currency}>mét</Text>
+              </View>
+              <Text style={styles.geofenceHint}>Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng vị trí hiện tại của bạn.</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -258,4 +330,39 @@ const styles = StyleSheet.create({
   footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
   submitBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large },
   submitText: { color: '#fff', ...TYPO.button },
+
+  // === GEOFENCE TOGGLE ===
+  geofenceToggle: {
+    flexDirection: 'row', gap: 12, alignItems: 'flex-start',
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm,
+    borderWidth: 1.5, borderColor: COLORS.border, padding: 14,
+    marginTop: 8,
+  },
+  geofenceToggleActive: {
+    borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight,
+  },
+  geofenceCheckbox: {
+    width: 22, height: 22, borderRadius: 6,
+    borderWidth: 2, borderColor: COLORS.border,
+    justifyContent: 'center', alignItems: 'center',
+    marginTop: 2,
+  },
+  geofenceCheckboxActive: {
+    backgroundColor: COLORS.primary, borderColor: COLORS.primary,
+  },
+  geofenceToggleTitle: {
+    ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4,
+  },
+  geofenceToggleDesc: {
+    ...TYPO.caption, color: COLORS.textSecondary, lineHeight: 18,
+  },
+  geofenceSettings: {
+    marginTop: 10, gap: 8,
+  },
+  geofenceLabel: {
+    ...TYPO.overline, color: COLORS.textMuted, fontWeight: '700',
+  },
+  geofenceHint: {
+    ...TYPO.caption, color: COLORS.textMuted, fontStyle: 'italic',
+  },
 });

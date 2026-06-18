@@ -18,7 +18,6 @@ export default function CandidatesScreen() {
   // AI insights state
   const [aiInsights, setAiInsights] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiHasError, setAiHasError] = useState(false);
 
   useEffect(() => {
     getCandidates(taskId)
@@ -43,10 +42,9 @@ export default function CandidatesScreen() {
         const hasPending = res.data.some(c => c.status === 'pending');
         if (hasPending) {
           setAiLoading(true);
-          setAiHasError(false);
           getCandidateRecommendations(taskId)
-            .then(r => { setAiInsights(r.data); setAiHasError(false); })
-            .catch(e => { console.warn('AI insights failed:', e); setAiHasError(true); })
+            .then(r => setAiInsights(r.data))
+            .catch(e => console.warn('AI insights failed:', e))
             .finally(() => setAiLoading(false));
         }
       })
@@ -56,10 +54,9 @@ export default function CandidatesScreen() {
 
   const reloadAIInsights = () => {
     setAiLoading(true);
-    setAiHasError(false);
     getCandidateRecommendations(taskId, true)
-      .then(r => { setAiInsights(r.data); setAiHasError(false); })
-      .catch(e => { console.warn(e); setAiHasError(true); })
+      .then(r => setAiInsights(r.data))
+      .catch(e => console.warn(e))
       .finally(() => setAiLoading(false));
   };
 
@@ -141,7 +138,7 @@ export default function CandidatesScreen() {
   const listHeaderComponent = React.useMemo(() => (
     <>
       {/* ===== AI INSIGHTS PANEL ===== */}
-      {(aiLoading || aiHasError || aiInsights) && (
+      {(aiLoading || (aiInsights?.has_ai && aiInsights?.recommendations?.length > 0)) && (
         <View style={styles.aiPanel}>
           <View style={styles.aiPanelHeader}>
             <View style={styles.aiPanelHeaderLeft}>
@@ -157,11 +154,6 @@ export default function CandidatesScreen() {
             <View style={styles.aiLoadingBox}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.aiLoadingText}>AI đang phân tích các ứng viên...</Text>
-            </View>
-          ) : aiHasError ? (
-            <View style={styles.aiLoadingBox}>
-              <Ionicons name="alert-circle-outline" size={16} color={COLORS.textMuted} />
-              <Text style={styles.aiLoadingText}>Không tải được AI. Nhấn 🔄 thử lại.</Text>
             </View>
           ) : (
             <>
@@ -208,7 +200,7 @@ export default function CandidatesScreen() {
 
       <Text style={styles.countText}>{candidates.length} Carepartner đã ứng tuyển</Text>
     </>
-  ), [aiLoading, aiHasError, aiInsights, candidates.length]);
+  ), [aiLoading, aiInsights, candidates.length]);
 
   return (
     <View style={styles.container}>

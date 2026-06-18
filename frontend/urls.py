@@ -22,5 +22,6 @@ urlpatterns = [
     path('worker/profile/', WorkerProfileView.as_view(), name='worker_profile'),
     path('worker/chatbot/', WorkerChatbotView.as_view(), name='worker_chatbot'),
     path('worker/help-center/', HelpCenterView.as_view(), name='help_center'),
+    path('parent/tracking/', LiveTrackingView.as_view(), name='live_tracking'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]

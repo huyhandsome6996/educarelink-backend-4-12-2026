@@ -286,6 +286,23 @@
 
         <!-- Job feed -->
         <div class="max-w-6xl mx-auto px-4 md:px-8 pb-8">
+            <!-- ===== AI RECOMMENDATIONS SECTION ===== -->
+            <div id="ai-recommendations-section" class="mb-6 hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="font-manrope font-bold text-lg text-textPrimary flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        AI gợi ý cho bạn
+                    </h2>
+                    <button onclick="loadAIRecommendations(true)" class="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
+                        Làm mới
+                    </button>
+                </div>
+                <div id="ai-recommendations-container" class="space-y-2">
+                    <!-- AI recs sẽ render ở đây -->
+                </div>
+            </div>
+
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-manrope font-bold text-lg text-textPrimary">Việc làm mới nhất</h2>
                 <span id="results-count" class="text-sm text-textSecondary font-medium"></span>
@@ -573,8 +590,8 @@
 
                     <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
                         <span class="text-xs text-textSecondary font-medium">Đăng bởi ${t.parent_name || 'Hệ thống'}</span>
-                        <button onclick="event.stopPropagation(); apply(${t.id})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
-                            Ứng tuyển
+                        <button onclick="event.stopPropagation(); apply(${t.id}, ${JSON.stringify(t).replace(/"/g, '&quot;')})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                            ${t.geofence_lat ? '📍 Ứng tuyển' : 'Ứng tuyển'}
                         </button>
                     </div>
                 </article>
@@ -582,30 +599,129 @@
             }).join('');
         }
 
-        // ===== APPLY =====
-        async function apply(id) {
-            const confirmed = await showConfirmModal(
-                'Xác nhận ứng tuyển',
-                'Bạn có muốn ứng tuyển công việc này không?'
-            );
-            if (!confirmed) return;
+        // ===== APPLY (với consent cho tracking) =====
+        async function apply(id, taskData) {
+            // Bước 1: Nếu task có geofence → phải đồng ý tracking trước
+            let consentTracking = null;
+            const hasGeofence = taskData && taskData.geofence_lat && taskData.geofence_lng;
+
+            if (hasGeofence) {
+                const agreed = await showConsentModal(taskData);
+                if (!agreed) return; // user không đồng ý → không apply
+                consentTracking = true;
+            } else {
+                // Task không có geofence → confirm bình thường
+                const confirmed = await showConfirmModal(
+                    'Xác nhận ứng tuyển',
+                    'Bạn có muốn ứng tuyển công việc này không?'
+                );
+                if (!confirmed) return;
+            }
 
             try {
                 const r = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ consent_tracking: consentTracking })
                 });
                 const d = await r.json();
 
                 if (r.ok) {
                     showToast(d.message || 'Ứng tuyển thành công!', 'success');
-                    // Refresh task list after short delay
                     setTimeout(() => fetchTasks(), 1500);
+                } else if (d.error === 'CONSENT_REQUIRED') {
+                    // Backend yêu cầu consent → hiện modal
+                    const agreed = await showConsentModal({
+                        title: taskData?.title,
+                        geofence_lat: d.geofence_lat,
+                        geofence_lng: d.geofence_lng,
+                        geofence_radius: d.geofence_radius,
+                    });
+                    if (!agreed) return;
+                    // Retry với consent = true
+                    const r2 = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ consent_tracking: true })
+                    });
+                    const d2 = await r2.json();
+                    if (r2.ok) {
+                        showToast(d2.message || 'Đã ứng tuyển với theo dõi vị trí!', 'success');
+                        setTimeout(() => fetchTasks(), 1500);
+                    } else {
+                        showToast(d2.error || d2.message || 'Không thể ứng tuyển.', 'error');
+                    }
                 } else {
-                    showToast(d.error || 'Không thể ứng tuyển.', 'error');
+                    showToast(d.error || d.message || 'Không thể ứng tuyển.', 'error');
                 }
             } catch (e) {
                 showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
             }
+        }
+
+        // ===== CONSENT MODAL (cho tracking) =====
+        function showConsentModal(task) {
+            return new Promise((resolve) => {
+                // Tạo modal element
+                const modalHtml = `
+                <div id="consent-modal-overlay" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+                        <div class="text-center mb-4">
+                            <div class="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                <span class="material-symbols-outlined text-blue-500 text-3xl" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-textPrimary">Cho phép theo dõi vị trí?</h3>
+                            <p class="text-sm text-textSecondary mt-1">Phụ huynh yêu cầu theo dõi vị trí cho việc này</p>
+                        </div>
+
+                        <div class="bg-blue-50 rounded-xl p-3 mb-4 space-y-2">
+                            <div class="flex items-start gap-2 text-xs text-blue-700">
+                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
+                                <span>Chỉ chia sẻ <strong>khi đang làm việc</strong></span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs text-blue-700">
+                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
+                                <span>Phụ huynh chỉ thấy <strong>vị trí hiện tại</strong>, không lưu lịch sử</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs text-blue-700">
+                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
+                                <span>Bạn có thể <strong>dừng bất cứ lúc nào</strong></span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs text-blue-700">
+                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
+                                <span>Dữ liệu mã hóa, chỉ phụ huynh sở hữu việc mới xem</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+                            <p class="text-xs text-amber-700">
+                                ⚠️ Vùng an toàn: bán kính <strong>${(task.geofence_radius || 500).toFixed(0)}m</strong>.
+                                Nếu bạn rời vùng, phụ huynh sẽ nhận chuông cảnh báo.
+                            </p>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button id="consent-no-btn" class="flex-1 py-3 bg-gray-100 text-textSecondary font-bold text-sm rounded-xl hover:bg-gray-200 transition">
+                                Không nhận việc
+                            </button>
+                            <button id="consent-yes-btn" class="flex-1 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primaryDark transition shadow-md shadow-primary/30">
+                                Đồng ý & nhận việc
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                const overlay = document.getElementById('consent-modal-overlay');
+                document.getElementById('consent-no-btn').onclick = () => {
+                    overlay.remove();
+                    resolve(false);
+                };
+                document.getElementById('consent-yes-btn').onclick = () => {
+                    overlay.remove();
+                    resolve(true);
+                };
+            });
         }
 
         // ===== LOGOUT =====
@@ -659,9 +775,79 @@
 
                 // Fetch tasks
                 await fetchTasks();
+
+                // Load AI recommendations (async, không block)
+                loadAIRecommendations();
             } catch (e) {
                 console.error(e);
                 showToast('Không thể tải thông tin. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        // ===== AI RECOMMENDATIONS =====
+        async function loadAIRecommendations(forceRefresh = false) {
+            try {
+                const section = document.getElementById('ai-recommendations-section');
+                const container = document.getElementById('ai-recommendations-container');
+
+                // Loading state
+                container.innerHTML = `
+                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-blue-100 flex items-center gap-3">
+                        <div class="spinner" style="border-color: #F26522 transparent transparent transparent;"></div>
+                        <span class="text-sm text-textSecondary">AI đang phân tích hồ sơ của bạn...</span>
+                    </div>
+                `;
+                section.classList.remove('hidden');
+
+                const url = API_BASE + '/ai/recommendations/worker/' + (forceRefresh ? '?_t=' + Date.now() : '');
+                const resp = await apiFetch(url);
+                if (!resp || !resp.ok) {
+                    section.classList.add('hidden');
+                    return;
+                }
+                const data = await resp.json();
+
+                if (!data.has_ai || !data.recommendations || data.recommendations.length === 0) {
+                    section.classList.add('hidden');
+                    return;
+                }
+
+                // Render top 3 recommendations
+                const top3 = data.recommendations.slice(0, 3);
+                container.innerHTML = top3.map(rec => {
+                    const t = rec.task;
+                    if (!t) return '';
+                    const score = rec.match_score;
+                    const scoreColor = score >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                                       : score >= 50 ? 'text-amber-600 bg-amber-50 border-amber-200'
+                                       : 'text-gray-500 bg-gray-50 border-gray-200';
+                    const scoreLabel = score >= 80 ? 'Rất phù hợp' : score >= 50 ? 'Phù hợp' : 'Ít phù hợp';
+                    return `
+                    <div class="bg-gradient-to-r from-purple-50 via-white to-blue-50 rounded-xl p-4 border border-blue-100 hover:shadow-md transition cursor-pointer"
+                         onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${t.id}'">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor}">${scoreLabel} ${score}/100</span>
+                                    ${t.has_geofence ? '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">📍 Tracking</span>' : ''}
+                                </div>
+                                <h4 class="font-bold text-sm text-textPrimary line-clamp-1">${t.title}</h4>
+                                <p class="text-xs text-textSecondary line-clamp-2 mt-1">${rec.reason}</p>
+                                <div class="flex items-center gap-3 mt-2 text-xs text-textMuted">
+                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${t.location}</span>
+                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">payments</span>${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
+                                </div>
+                            </div>
+                            <span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition">chevron_right</span>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                section.classList.remove('hidden');
+            } catch (e) {
+                console.warn('AI recommendations load failed:', e);
+                document.getElementById('ai-recommendations-section').classList.add('hidden');
             }
         }
 

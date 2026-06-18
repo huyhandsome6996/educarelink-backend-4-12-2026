@@ -68,7 +68,6 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['parent']  # Tự động lấy từ JWT Token khi tạo việc
 
-
 # 4. Dịch dữ liệu Ứng tuyển (Dành cho màn hình Việc của tôi — cả Parent lẫn Worker)
 class TaskApplicationSerializer(serializers.ModelSerializer):
     # Thông tin worker (sinh viên)

@@ -9,8 +9,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, FlatList,
-  ActivityIndicator, RefreshControl, Animated, Platform, Image
+  ActivityIndicator, RefreshControl, Animated, Platform
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getNotifications, getUnreadCount, markNotificationsRead } from '../api/notifications';

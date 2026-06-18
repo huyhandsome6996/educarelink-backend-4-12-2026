@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES, TYPO } from '../../theme/colors';
@@ -164,11 +165,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     overflow: 'hidden',
     // Soft glow shadow
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    boxShadow: '0px 0px 20px rgba(255, 255, 255, 0.3)',
   },
   logoImage: {
     width: '100%',

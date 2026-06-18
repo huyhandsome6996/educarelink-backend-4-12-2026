@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'core',
     'frontend',
     'payments',   # Module thanh toán MoMo (escrow + cash settlement)
+    'tracking',   # Module định vị real-time (live tracking + SOS)
+    'ai_recommendations',  # AI gợi ý việc + đánh giá ứng viên (Gemini)
 ]
 
 MIDDLEWARE = [
@@ -251,3 +253,12 @@ PAYMENT_SETTLEMENT_DUE_DAYS = int(os.environ.get('PAYMENT_SETTLEMENT_DUE_DAYS', 
 
 # Bật/tắt monthly settlement scheduler (chỉ chạy trên Render)
 PAYMENT_SCHEDULER_ENABLED = os.environ.get('PAYMENT_SCHEDULER_ENABLED', 'true').lower() == 'true'
+
+# ────────────────────────────────────────────────────────────────────
+# CẤU HÌNH TRACKING MODULE (thêm bởi module tracking)
+# ────────────────────────────────────────────────────────────────────
+# Bán kính geofence (mét) — cảnh báo khi carepartner rời vùng an toàn
+TRACKING_GEOFENCE_RADIUS = int(os.environ.get('TRACKING_GEOFENCE_RADIUS', '500'))
+
+# Tần suất carepartner app gửi vị trí (giây) — dùng cho frontend biết
+TRACKING_UPDATE_INTERVAL = int(os.environ.get('TRACKING_UPDATE_INTERVAL', '10'))

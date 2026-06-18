@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
-  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions, Image
+  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
