@@ -47,9 +47,13 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 
 // Admin
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
+import AdminModerationScreen from '../screens/Admin/AdminModerationScreen';
 
 // Live Tracking (Parent)
 import LiveTrackingScreen from '../screens/Parent/LiveTrackingScreen';
+
+// Complaint (Worker)
+import ComplaintScreen from '../screens/Worker/ComplaintScreen';
 
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
@@ -166,6 +170,7 @@ export default function AppNavigator() {
           // Admin → Admin Dashboard
           <>
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="AdminModeration" component={AdminModerationScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </>
         ) : user.role === 'parent' ? (
@@ -191,6 +196,7 @@ export default function AppNavigator() {
             <Stack.Screen name="MyEarnings" component={MyEarningsScreen} />
             <Stack.Screen name="SettlementDetail" component={SettlementDetailScreen} />
             <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+            <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
           </>
         )}
       </Stack.Navigator>

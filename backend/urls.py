@@ -15,6 +15,8 @@ urlpatterns = [
     path('api/', include('tracking.urls')),
     # API AI recommendations (Gemini)
     path('api/', include('ai_recommendations.urls')),
+    # API kiểm duyệt + khiếu nại (AI moderation)
+    path('api/', include('moderation.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]
