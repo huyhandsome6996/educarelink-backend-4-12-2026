@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidates, approveCandidate, getWorkerProfile } from '../../api/tasks';
+import { getCandidateRecommendations } from '../../api/ai_recommendations';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 export default function CandidatesScreen() {
@@ -12,6 +14,11 @@ export default function CandidatesScreen() {
   const [candidates, setCandidates] = useState([]);
   const [workerRatings, setWorkerRatings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+
+  // AI insights state
+  const [aiInsights, setAiInsights] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiHasError, setAiHasError] = useState(false);
 
   useEffect(() => {
     getCandidates(taskId)
@@ -31,10 +38,30 @@ export default function CandidatesScreen() {
             })
             .catch(() => {}); // Bỏ qua lỗi rating
         });
+
+        // Load AI insights nếu có ứng viên pending
+        const hasPending = res.data.some(c => c.status === 'pending');
+        if (hasPending) {
+          setAiLoading(true);
+          setAiHasError(false);
+          getCandidateRecommendations(taskId)
+            .then(r => { setAiInsights(r.data); setAiHasError(false); })
+            .catch(e => { console.warn('AI insights failed:', e); setAiHasError(true); })
+            .finally(() => setAiLoading(false));
+        }
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [taskId]);
+
+  const reloadAIInsights = () => {
+    setAiLoading(true);
+    setAiHasError(false);
+    getCandidateRecommendations(taskId, true)
+      .then(r => { setAiInsights(r.data); setAiHasError(false); })
+      .catch(e => { console.warn(e); setAiHasError(true); })
+      .finally(() => setAiLoading(false));
+  };
 
   const handleApprove = async (appId, workerName) => {
     const startApprove = async () => {
@@ -111,6 +138,78 @@ export default function CandidatesScreen() {
     </TouchableOpacity>
   );
 
+  const listHeaderComponent = React.useMemo(() => (
+    <>
+      {/* ===== AI INSIGHTS PANEL ===== */}
+      {(aiLoading || aiHasError || aiInsights) && (
+        <View style={styles.aiPanel}>
+          <View style={styles.aiPanelHeader}>
+            <View style={styles.aiPanelHeaderLeft}>
+              <Ionicons name="sparkles" size={16} color={COLORS.primary} />
+              <Text style={styles.aiPanelTitle}>AI đánh giá ứng viên</Text>
+            </View>
+            <TouchableOpacity onPress={reloadAIInsights} disabled={aiLoading}>
+              <Ionicons name="refresh" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {aiLoading && !aiInsights ? (
+            <View style={styles.aiLoadingBox}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.aiLoadingText}>AI đang phân tích các ứng viên...</Text>
+            </View>
+          ) : aiHasError ? (
+            <View style={styles.aiLoadingBox}>
+              <Ionicons name="alert-circle-outline" size={16} color={COLORS.textMuted} />
+              <Text style={styles.aiLoadingText}>Không tải được AI. Nhấn 🔄 thử lại.</Text>
+            </View>
+          ) : (
+            <>
+              {aiInsights?.summary ? (
+                <Text style={styles.aiSummary}>{aiInsights.summary}</Text>
+              ) : null}
+              {aiInsights?.recommendations?.map((rec, idx) => {
+                const w = rec.worker;
+                if (!w) return null;
+                const score = rec.match_score || 0;
+                const scoreColor = score >= 80 ? COLORS.success : score >= 50 ? COLORS.warning : COLORS.textMuted;
+                const scoreLabel = score >= 80 ? '⭐ Rất phù hợp' : score >= 50 ? '✓ Phù hợp' : 'Ít phù hợp';
+                const displayName = (w.first_name || w.last_name)
+                  ? `${w.first_name} ${w.last_name || ''}`.trim()
+                  : w.username;
+                return (
+                  <View key={`ai_${idx}`} style={styles.aiInsightCard}>
+                    <View style={styles.aiInsightHeader}>
+                      <View style={styles.aiInsightAvatar}>
+                        <Text style={styles.aiInsightAvatarText}>{displayName[0]?.toUpperCase() || '?'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.aiInsightName}>{displayName}</Text>
+                        <View style={[styles.aiInsightScore, { backgroundColor: scoreColor + '20', borderColor: scoreColor }]}>
+                          <Text style={[styles.aiInsightScoreText, { color: scoreColor }]}>{scoreLabel} {score}/100</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={styles.aiInsightReason}>{rec.reason}</Text>
+                    {rec.highlight && rec.highlight !== '—' ? (
+                      <View style={styles.aiInsightHighlight}>
+                        <Ionicons name="star" size={11} color={COLORS.success} />
+                        <Text style={styles.aiInsightHighlightText}>{rec.highlight}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+              <Text style={styles.aiDisclaimer}>* Gợi ý AI chỉ tham khảo. Quyền quyết định thuộc về bạn.</Text>
+            </>
+          )}
+        </View>
+      )}
+
+      <Text style={styles.countText}>{candidates.length} Carepartner đã ứng tuyển</Text>
+    </>
+  ), [aiLoading, aiHasError, aiInsights, candidates.length]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -129,9 +228,7 @@ export default function CandidatesScreen() {
       ) : (
         <FlatList data={candidates} keyExtractor={i => i.id.toString()} renderItem={renderCandidate}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <Text style={styles.countText}>{candidates.length} Carepartner đã ứng tuyển</Text>
-          }
+          ListHeaderComponent={listHeaderComponent}
           ListEmptyComponent={
             <View style={styles.empty}>
               <View style={styles.emptyIconCircle}>
@@ -177,4 +274,50 @@ const styles = StyleSheet.create({
   emptyIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 4, ...SHADOWS.small },
   emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
   emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
+
+  // === AI INSIGHTS PANEL ===
+  aiPanel: {
+    marginBottom: 12,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: SIZES.radiusMd, padding: 14,
+    borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  aiPanelHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 10,
+  },
+  aiPanelHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiPanelTitle: { ...TYPO.h5, color: COLORS.primary, fontWeight: '700' },
+  aiLoadingBox: {
+    flexDirection: 'row', gap: 8, alignItems: 'center', padding: 8,
+  },
+  aiLoadingText: { ...TYPO.bodySmall, color: COLORS.primary },
+  aiSummary: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 10, lineHeight: 18 },
+  aiInsightCard: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm,
+    padding: 10, marginBottom: 8,
+  },
+  aiInsightHeader: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 6 },
+  aiInsightAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
+  },
+  aiInsightAvatarText: { color: COLORS.primary, fontWeight: '800', fontSize: 13 },
+  aiInsightName: { ...TYPO.bodySmall, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 3 },
+  aiInsightScore: {
+    alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: SIZES.radiusXs, borderWidth: 1,
+  },
+  aiInsightScoreText: { ...TYPO.caption, fontSize: 10, fontWeight: '700' },
+  aiInsightReason: { ...TYPO.caption, color: COLORS.textSecondary, lineHeight: 16, marginBottom: 4 },
+  aiInsightHighlight: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.successBg, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  aiInsightHighlightText: { ...TYPO.caption, color: COLORS.success, fontSize: 10, fontWeight: '600' },
+  aiDisclaimer: {
+    ...TYPO.caption, color: COLORS.textMuted, fontStyle: 'italic',
+    marginTop: 4, textAlign: 'center',
+  },
 });
