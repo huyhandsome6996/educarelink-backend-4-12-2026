@@ -11,6 +11,10 @@ urlpatterns = [
     path('api/', include('core.urls')),
     # API thanh toán MoMo (escrow + cash settlement)
     path('api/', include('payments.urls')),
+    # API định vị real-time (live tracking + SOS)
+    path('api/', include('tracking.urls')),
+    # API AI recommendations (Gemini)
+    path('api/', include('ai_recommendations.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

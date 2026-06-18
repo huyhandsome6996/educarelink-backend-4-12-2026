@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar, Animated, Image,
+  View, Text, StyleSheet, StatusBar, Animated,
   ScrollView, TouchableOpacity, Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { completeOnboarding } from '../../api/onboarding';
@@ -41,6 +42,7 @@ export default function WorkerOnboardingScreen() {
   const { completeOnboardingInContext } = useAuth();
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const activeIndexRef = React.useRef(0);  // tránh setState trong onScroll
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -48,9 +50,14 @@ export default function WorkerOnboardingScreen() {
   }, []);
 
   const handleScroll = (e) => {
+    // Dùng onMomentumScrollEnd + onScrollDragEnd thay vì onScroll để tránh
+    // setState liên tục khi user đang kéo.
     const x = e.nativeEvent.contentOffset.x;
     const idx = Math.round(x / width);
-    if (idx !== activeIndex) setActiveIndex(idx);
+    if (idx !== activeIndexRef.current) {
+      activeIndexRef.current = idx;
+      setActiveIndex(idx);
+    }
   };
 
   const finish = async () => {
@@ -85,8 +92,8 @@ export default function WorkerOnboardingScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScroll}
+        onScrollEndDrag={handleScroll}
         style={styles.scroll}
       >
         {SLIDES.map((slide, idx) => (

@@ -12,11 +12,7 @@ const DEV_IP = '192.168.1.31'; // <-- ĐỔI IP CỦA MÁY TÍNH BẠN VÀO ĐÂ
 // Production URL cho Render deployment
 const PROD_URL = 'https://educarelink-backend.onrender.com/api';
 
-const BASE_URL = Platform.OS === 'web'
-  ? 'http://localhost:8000/api'
-  : __DEV__
-    ? `http://${DEV_IP}:8000/api`
-    : PROD_URL;
+const BASE_URL = PROD_URL; // Ép dùng Render backend cho mọi môi trường (Web, Expo Go, APK)
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

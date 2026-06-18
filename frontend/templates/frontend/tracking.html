@@ -1,0 +1,546 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theo dõi Carepartner — EduCareLink</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Manrope', sans-serif; }
+    body { margin: 0; padding: 0; background: #f7f7f7; color: #1a1a2e; }
+    #map { width: 100%; height: calc(100vh - 200px); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .live-badge { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .worker-marker, .parent-marker {
+      width: 44px; height: 44px; border-radius: 22px;
+      border: 3px solid #fff; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .worker-marker { background: #F26522; }
+    .parent-marker { background: #10B981; }
+    .leaflet-popup-content-wrapper { border-radius: 12px; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .sos-btn {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      animation: sosPulse 2s infinite;
+    }
+    @keyframes sosPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="bg-[#F26522] text-white shadow-lg">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="/parent/tasks/" class="bg-white/20 hover:bg-white/30 rounded-lg w-10 h-10 flex items-center justify-center transition">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-lg font-bold">Theo dõi Carepartner</h1>
+        <p id="task-title" class="text-xs text-white/80">Đang tải...</p>
+      </div>
+    </div>
+    <div id="live-badge" class="bg-green-500 live-badge px-3 py-1 rounded-full text-xs font-bold hidden">
+      ● LIVE
+    </div>
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="max-w-6xl mx-auto p-4">
+  <!-- Stats bar -->
+  <div class="grid grid-cols-4 gap-3 mb-4">
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-xs text-gray-500 font-semibold uppercase">Trạng thái</div>
+      <div id="stat-status" class="text-base font-bold text-gray-800 mt-1">Đang tải...</div>
+    </div>
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-xs text-gray-500 font-semibold uppercase">Khoảng cách</div>
+      <div id="stat-distance" class="text-base font-bold text-[#F26522] mt-1">—</div>
+    </div>
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-xs text-gray-500 font-semibold uppercase">Tốc độ</div>
+      <div id="stat-speed" class="text-base font-bold text-gray-800 mt-1">—</div>
+    </div>
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-xs text-gray-500 font-semibold uppercase">Cập nhật</div>
+      <div id="stat-update" class="text-base font-bold text-gray-800 mt-1">—</div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Carepartner info card -->
+  <div id="carepartner-card" class="bg-white rounded-xl p-4 shadow-sm mt-4 hidden">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 bg-[#F26522] rounded-full flex items-center justify-center text-white font-bold text-xl" id="carepartner-avatar">C</div>
+      <div class="flex-1">
+        <div class="text-lg font-bold text-gray-800" id="carepartner-name">Carepartner</div>
+        <div class="text-sm text-gray-500 flex items-center gap-1" id="carepartner-status">
+          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+          <span>Đang làm việc</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs text-gray-500">Vị trí hiện tại</div>
+        <div class="text-sm font-mono text-gray-700" id="carepartner-coords">—</div>
+      </div>
+    </div>
+
+    <!-- Geofence warning -->
+    <div id="geofence-warning" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg hidden">
+      <div class="flex items-center gap-2 text-red-700">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="font-semibold">Carepartner đã rời vùng an toàn!</span>
+      </div>
+      <div class="text-sm text-red-600 mt-1" id="geofence-detail">Cách vị trí làm việc — mét</div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="flex gap-2 mt-4">
+      <button onclick="callCarepartner()" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Gọi
+      </button>
+      <button onclick="messageCarepartner()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Nhắn
+      </button>
+      <button onclick="triggerSOS()" class="sos-btn text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M12 9v4m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        SOS
+      </button>
+    </div>
+  </div>
+
+  <!-- Not tracking state -->
+  <div id="not-tracking" class="bg-white rounded-xl p-8 shadow-sm mt-4 text-center hidden">
+    <div class="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+      <svg width="40" height="40" fill="none" stroke="#9ca3af" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M21 21l-4.35-4.35M21 21a8 8 0 11-12-7.87 8 8 0 0112 7.87z" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="text-lg font-bold text-gray-800 mb-1" id="not-tracking-title">Carepartner chưa chia sẻ vị trí</div>
+    <div class="text-sm text-gray-500" id="not-tracking-desc">Vị trí sẽ hiện tại đây khi carepartner bật chia sẻ.</div>
+  </div>
+
+  <!-- Refresh button -->
+  <div class="text-center mt-4 pb-8">
+    <button onclick="fetchLiveLocation()" class="text-sm text-[#F26522] hover:underline font-semibold">
+      🔄 Làm mới
+    </button>
+  </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API_BASE = '/api';
+const POLL_INTERVAL_MS = 5000;
+const GEOFENCE_RADIUS = 500; // mét
+
+let map = null;
+let workerMarker = null;
+let parentMarker = null;
+let geofenceCircle = null;
+let routeLine = null;
+let pollTimer = null;
+let taskId = null;
+let taskTitle = null;
+let taskLat = null;
+let taskLng = null;
+let geofenceLat = null;
+let geofenceLng = null;
+let geofenceRadius = 500;
+let wasOutsideGeofence = false;
+let alarmAudioCtx = null;
+let alarmInterval = null;
+
+// ====================================================================
+// AUTHENTICATION
+// ====================================================================
+function getAuthToken() {
+  return localStorage.getItem('access_token');
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  if (!token) {
+    window.location.href = '/login/';
+    throw new Error('No auth token');
+  }
+  const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+  if (options.body && typeof options.body === 'object') {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) {
+    // Try refresh token
+    const refreshed = await tryRefreshToken();
+    if (refreshed) return authFetch(url, options);
+    window.location.href = '/login/';
+    throw new Error('Auth expired');
+  }
+  return resp;
+}
+
+async function tryRefreshToken() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const r = await fetch(`${API_BASE}/auth/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    localStorage.setItem('access_token', data.access);
+    if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+    return true;
+  } catch (e) { return false; }
+}
+
+// ====================================================================
+// INIT
+// ====================================================================
+async function init() {
+  // Get task_id from URL query param: ?task_id=123
+  const params = new URLSearchParams(window.location.search);
+  taskId = params.get('task_id');
+  if (!taskId) {
+    showToast('❌ Thiếu task_id. Quay lại danh sách việc.');
+    setTimeout(() => window.location.href = '/parent/tasks/', 1500);
+    return;
+  }
+
+  // Fetch task detail để có title + lat/lng + geofence
+  try {
+    const r = await authFetch(`${API_BASE}/tasks/${taskId}/`);
+    if (r.ok) {
+      const task = await r.json();
+      taskTitle = task.title;
+      taskLat = task.latitude ? parseFloat(task.latitude) : null;
+      taskLng = task.longitude ? parseFloat(task.longitude) : null;
+      // Geofence từ task (parent vẽ khi đăng việc)
+      if (task.geofence_lat && task.geofence_lng) {
+        geofenceLat = parseFloat(task.geofence_lat);
+        geofenceLng = parseFloat(task.geofence_lng);
+        geofenceRadius = parseFloat(task.geofence_radius) || 500;
+      }
+      document.getElementById('task-title').textContent = taskTitle || `Task #${taskId}`;
+    }
+  } catch (e) { /* ignore */ }
+
+  initMap();
+  fetchLiveLocation();
+  pollTimer = setInterval(fetchLiveLocation, POLL_INTERVAL_MS);
+}
+
+function initMap() {
+  // Default center: geofence center nếu có, else task location, else HCM
+  const centerLat = geofenceLat || taskLat || 10.762622;
+  const centerLng = geofenceLng || taskLng || 106.660172;
+  map = L.map('map', { zoomControl: true }).setView([centerLat, centerLng], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Parent home marker (task location)
+  if (taskLat && taskLng) {
+    const parentIcon = L.divIcon({
+      html: '<div class="parent-marker">🏠</div>',
+      className: '', iconSize: [44, 44], iconAnchor: [22, 22]
+    });
+    parentMarker = L.marker([taskLat, taskLng], { icon: parentIcon }).addTo(map)
+      .bindPopup('<b>Nhà bạn</b><br>Điểm đến của carepartner');
+  }
+
+  // Geofence circle (vùng an toàn — parent vẽ khi đăng việc)
+  if (geofenceLat && geofenceLng) {
+    geofenceCircle = L.circle([geofenceLat, geofenceLng], {
+      color: '#3b82f6',
+      fillColor: '#3b82f6',
+      fillOpacity: 0.08,
+      weight: 2,
+      dashArray: '6,4',
+      radius: geofenceRadius
+    }).addTo(map).bindPopup(`<b>Vùng an toàn</b><br>Bán kính ${geofenceRadius}m`);
+  }
+}
+
+// ====================================================================
+// FETCH LIVE LOCATION
+// ====================================================================
+async function fetchLiveLocation() {
+  try {
+    const r = await authFetch(`${API_BASE}/tracking/${taskId}/live/`);
+    if (!r.ok) throw new Error('Network error');
+    const data = await r.json();
+    updateUI(data);
+  } catch (e) {
+    console.error('fetchLiveLocation error:', e);
+  }
+}
+
+function updateUI(data) {
+  const now = new Date();
+  document.getElementById('stat-update').textContent = now.toLocaleTimeString('vi-VN');
+
+  if (!data.is_tracking || !data.location) {
+    document.getElementById('live-badge').classList.add('hidden');
+    document.getElementById('carepartner-card').classList.add('hidden');
+    document.getElementById('not-tracking').classList.remove('hidden');
+    document.getElementById('not-tracking-desc').textContent = data.message || 'Vị trí sẽ hiện tại đây khi carepartner bật chia sẻ.';
+    document.getElementById('stat-status').textContent = 'Chưa chia sẻ';
+    document.getElementById('stat-distance').textContent = '—';
+    document.getElementById('stat-speed').textContent = '—';
+    return;
+  }
+
+  document.getElementById('live-badge').classList.remove('hidden');
+  document.getElementById('carepartner-card').classList.remove('hidden');
+  document.getElementById('not-tracking').classList.add('hidden');
+
+  const loc = data.location;
+  const workerLat = parseFloat(loc.latitude);
+  const workerLng = parseFloat(loc.longitude);
+
+  // Update status
+  document.getElementById('stat-status').textContent = loc.is_outside_geofence ? '⚠️ Rời vùng' : '🟢 Đang làm';
+  document.getElementById('stat-status').style.color = loc.is_outside_geofence ? '#ef4444' : '#10b981';
+
+  // Update coords
+  document.getElementById('carepartner-coords').textContent = `${workerLat.toFixed(5)}, ${workerLng.toFixed(5)}`;
+
+  // Update speed
+  if (loc.speed != null) {
+    const kmh = (parseFloat(loc.speed) * 3.6).toFixed(1);
+    document.getElementById('stat-speed').textContent = `${kmh} km/h`;
+  }
+
+  // Update geofence warning
+  if (loc.is_outside_geofence) {
+    document.getElementById('geofence-warning').classList.remove('hidden');
+    // 🚨 CHUÔNG CẢNH BÁO TO KHI CAREPARTNER RỜI VÙNG AN TOÀN
+    if (!wasOutsideGeofence) {
+      wasOutsideGeofence = true;
+      triggerAlarm();
+    }
+  } else {
+    document.getElementById('geofence-warning').classList.add('hidden');
+    if (wasOutsideGeofence) {
+      wasOutsideGeofence = false;
+      stopAlarm();
+      showToast('✅ Carepartner đã quay lại vùng an toàn');
+    }
+  }
+
+  // Calculate distance from geofence center (ưu tiên geofence_lat/lng)
+  const refLat = geofenceLat || taskLat;
+  const refLng = geofenceLng || taskLng;
+  if (refLat && refLng) {
+    const dist = haversine(workerLat, workerLng, refLat, refLng);
+    document.getElementById('stat-distance').textContent = dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+    if (loc.is_outside_geofence) {
+      document.getElementById('geofence-detail').textContent = `Cách tâm vùng an toàn ${Math.round(dist)} mét (vượt giới hạn ${geofenceRadius}m)`;
+    }
+  }
+
+  // Update worker marker
+  const workerIcon = L.divIcon({
+    html: '<div class="worker-marker">🚶</div>',
+    className: '', iconSize: [44, 44], iconAnchor: [22, 22]
+  });
+  if (workerMarker) {
+    workerMarker.setLatLng([workerLat, workerLng]);
+  } else {
+    workerMarker = L.marker([workerLat, workerLng], { icon: workerIcon }).addTo(map)
+      .bindPopup('<b>Carepartner</b><br>Đang ở đây');
+  }
+
+  // Update route line
+  if (taskLat && taskLng) {
+    if (routeLine) {
+      routeLine.setLatLngs([[workerLat, workerLng], [taskLat, taskLng]]);
+    } else {
+      routeLine = L.polyline([[workerLat, workerLng], [taskLat, taskLng]], {
+        color: '#F26522', weight: 3, dashArray: '6,4', opacity: 0.7
+      }).addTo(map);
+    }
+
+    // Fit bounds để thấy cả 2 marker
+    const bounds = L.latLngBounds([workerLat, workerLng], [taskLat, taskLng]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+  } else {
+    map.setView([workerLat, workerLng], 16);
+  }
+}
+
+// ====================================================================
+// ACTIONS
+// ====================================================================
+async function callCarepartner() {
+  // Try to fetch carepartner phone from task applications
+  try {
+    const r = await authFetch(`${API_BASE}/parent/tasks/${taskId}/candidates/`);
+    if (r.ok) {
+      const candidates = await r.json();
+      const accepted = candidates.find(c => c.status === 'accepted');
+      if (accepted) {
+        showToast('📞 Đang gọi carepartner...');
+        // In production: window.location.href = `tel:${phone}`;
+        return;
+      }
+    }
+  } catch (e) {}
+  showToast('Không tìm thấy thông tin carepartner');
+}
+
+function messageCarepartner() {
+  showToast('💬 Tính năng nhắn tin đang phát triển');
+}
+
+async function triggerSOS() {
+  if (!confirm('🆘 Gửi SOS khẩn cấp cho Carepartner?')) return;
+  try {
+    const r = await authFetch(`${API_BASE}/tracking/sos/`, {
+      method: 'POST',
+      body: { task_id: parseInt(taskId), message: 'Phụ huynh cần hỗ trợ khẩn cấp!' }
+    });
+    if (r.ok) {
+      showToast('✅ Đã gửi SOS cho carepartner');
+    } else {
+      showToast('❌ Không thể gửi SOS');
+    }
+  } catch (e) {
+    showToast('❌ Lỗi mạng');
+  }
+}
+
+// ====================================================================
+// HELPERS
+// ====================================================================
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ====================================================================
+// ALARM (chuông cảnh báo to khi carepartner rời vùng an toàn)
+// ====================================================================
+function triggerAlarm() {
+  // Hiển thị thông báo lỗi
+  showToast('🚨🚨🚨 CẢNH BÁO: Carepartner đã rời vùng an toàn! 🚨🚨🚨');
+
+  // Phát chuông dùng Web Audio API (không cần file mp3)
+  try {
+    if (!alarmAudioCtx) {
+      alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // Resume context nếu bị suspend (browser policy)
+    if (alarmAudioCtx.state === 'suspended') {
+      alarmAudioCtx.resume();
+    }
+
+    // Lặp chuông mỗi 1.5 giây cho đến khi dừng
+    if (alarmInterval) clearInterval(alarmInterval);
+    playBeep(); // chơi ngay 1 lần
+    alarmInterval = setInterval(playBeep, 1500);
+
+    // Sau 30 giây tự dừng (tránh spam quá lâu)
+    setTimeout(() => {
+      if (alarmInterval) stopAlarm();
+    }, 30000);
+  } catch (e) {
+    console.warn('Audio alarm không khả dụng:', e);
+    // Fallback: dùng Notification API
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🚨 EduCareLink: Cảnh báo!', {
+        body: 'Carepartner đã rời vùng an toàn!',
+        icon: '/static/images/logo.png'
+      });
+    }
+  }
+}
+
+function playBeep() {
+  if (!alarmAudioCtx) return;
+  const oscillator = alarmAudioCtx.createOscillator();
+  const gainNode = alarmAudioCtx.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(alarmAudioCtx.destination);
+
+  // Chuông cảnh báo: tần số cao (880Hz) + thấp (440Hz) xen kẽ
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(880, alarmAudioCtx.currentTime);
+  oscillator.frequency.setValueAtTime(440, alarmAudioCtx.currentTime + 0.2);
+  oscillator.frequency.setValueAtTime(880, alarmAudioCtx.currentTime + 0.4);
+
+  gainNode.gain.setValueAtTime(0.3, alarmAudioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, alarmAudioCtx.currentTime + 0.6);
+
+  oscillator.start(alarmAudioCtx.currentTime);
+  oscillator.stop(alarmAudioCtx.currentTime + 0.6);
+}
+
+function stopAlarm() {
+  if (alarmInterval) {
+    clearInterval(alarmInterval);
+    alarmInterval = null;
+  }
+}
+
+// Xin quyền Notification để show alert ngay cả khi tab nền
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// Start
+init();
+</script>
+
+</body>
+</html>

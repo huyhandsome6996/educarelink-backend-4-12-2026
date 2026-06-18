@@ -194,7 +194,7 @@ export default function WorkerFeedScreen() {
   const listHeaderComponent = React.useMemo(() => (
     <>
       {/* ===== AI RECOMMENDATIONS SECTION ===== */}
-      {(aiLoading || aiRecs.length > 0 || aiHasError) && (
+      {aiRecs.length > 0 && (
         <View style={styles.aiSection}>
           <View style={styles.aiHeader}>
             <View style={styles.aiHeaderLeft}>
@@ -206,15 +206,10 @@ export default function WorkerFeedScreen() {
             </TouchableOpacity>
           </View>
 
-          {aiLoading ? (
+          {aiLoading && aiRecs.length === 0 ? (
             <View style={styles.aiLoadingBox}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.aiLoadingText}>AI đang phân tích hồ sơ của bạn...</Text>
-            </View>
-          ) : aiHasError ? (
-            <View style={styles.aiErrorBox}>
-              <Ionicons name="alert-circle-outline" size={16} color={COLORS.textMuted} />
-              <Text style={styles.aiErrorText}>Không tải được gợi ý AI. Nhấn 🔄 để thử lại.</Text>
             </View>
           ) : (
             aiRecs.map((rec, idx) => {
@@ -448,12 +443,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.primarySoft,
   },
   aiLoadingText: { ...TYPO.bodySmall, color: COLORS.primary },
-  aiErrorBox: {
-    flexDirection: 'row', gap: 8, alignItems: 'center',
-    backgroundColor: COLORS.background, padding: 12, borderRadius: SIZES.radiusSm,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  aiErrorText: { ...TYPO.bodySmall, color: COLORS.textMuted, flex: 1 },
   aiCard: {
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radiusMd,

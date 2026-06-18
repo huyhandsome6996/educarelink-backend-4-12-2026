@@ -351,8 +351,54 @@ class ApplyTaskAPIView(APIView):
             if task.parent == request.user:
                  return Response({"error": "Không thể tự nhận việc của mình."}, status=400)
 
-            app, created = TaskApplication.objects.get_or_create(task=task, worker=request.user, defaults={'status': 'pending'})
-            if created: return Response({"message": "Đã ứng tuyển!"}, status=201)
+            # ================================================================
+            # CONSENT CHO TRACKING (yêu cầu mới)
+            # Frontend phải gửi 'consent_tracking' (true/false) trong body.
+            # Nếu task có geofence → BẮT BUỘC đồng ý tracking mới được apply.
+            # Nếu task không có geofence → không yêu cầu, vẫn apply bình thường.
+            # ================================================================
+            consent_tracking = request.data.get('consent_tracking', None)
+            has_geofence = bool(task.geofence_lat and task.geofence_lng)
+
+            if has_geofence and consent_tracking is None:
+                return Response({
+                    "error": "CONSENT_REQUIRED",
+                    "message": "Phụ huynh đã yêu cầu theo dõi vị trí cho việc này. Bạn phải đồng ý chia sẻ vị trí mới được nhận việc.",
+                    "geofence_lat": task.geofence_lat,
+                    "geofence_lng": task.geofence_lng,
+                    "geofence_radius": task.geofence_radius or 500,
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            app, created = TaskApplication.objects.get_or_create(
+                task=task, worker=request.user, defaults={'status': 'pending'}
+            )
+            if created:
+                # ================================================================
+                # TẠO LOCATION CONSENT (nếu worker đồng ý)
+                # ================================================================
+                if consent_tracking is True and has_geofence:
+                    try:
+                        from tracking.models import LocationConsent
+                        from django.utils import timezone
+                        LocationConsent.objects.update_or_create(
+                            task=task, worker=request.user,
+                            defaults={
+                                'consent': 'granted',
+                                'granted_at': timezone.now(),
+                                'revoked_at': None,
+                            }
+                        )
+                    except Exception as e:
+                        # Không fail nếu tracking module chưa sẵn sàng
+                        import logging
+                        logging.getLogger('educarelink.apply').warning(
+                            f"Không tạo được LocationConsent cho task#{task.id}: {e}"
+                        )
+
+                return Response({
+                    "message": "Đã ứng tuyển!",
+                    "consent_tracking": bool(consent_tracking and has_geofence),
+                }, status=201)
             return Response({"message": "Bạn đã ứng tuyển rồi!"}, status=400)
         except Task.DoesNotExist:
             return Response({"error": "Không tìm thấy công việc."}, status=404)

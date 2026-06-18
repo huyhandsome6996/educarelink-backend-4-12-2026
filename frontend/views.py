@@ -58,3 +58,8 @@ class WorkerChatbotView(TemplateView):
 
 class HelpCenterView(TemplateView):
     template_name = "frontend/help_center.html"
+
+
+class LiveTrackingView(TemplateView):
+    """Trang theo dõi vị trí Carepartner real-time (parent)."""
+    template_name = "frontend/tracking.html"

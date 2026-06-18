@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { Image } from 'expo-image';
 
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
@@ -47,6 +48,9 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 // Admin
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
 
+// Live Tracking (Parent)
+import LiveTrackingScreen from '../screens/Parent/LiveTrackingScreen';
+
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
 
@@ -83,6 +87,8 @@ function ParentTabs() {
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
+        // ⚠️ tabBarHideOnKeyboard: BẮT BUỘC GIỮ — fix lỗi bàn phím đè lên content (handoff)
+        tabBarHideOnKeyboard: true,
       })}
     >
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
@@ -111,6 +117,8 @@ function WorkerTabs() {
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
+        // ⚠️ tabBarHideOnKeyboard: BẮT BUỘC GIỮ — fix lỗi bàn phím đè lên content (handoff)
+        tabBarHideOnKeyboard: true,
       })}
     >
       <Tab.Screen name="WorkerFeed" component={WorkerFeedScreen} options={{ tabBarLabel: 'Tìm việc' }} />
@@ -171,6 +179,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)
@@ -217,11 +226,7 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 88 : 84,
     paddingBottom: Platform.OS === 'ios' ? 28 : 24,
     paddingTop: 6,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 6,
+    boxShadow: '0px -2px 12px rgba(242, 101, 34, 0.06)',
   },
   tabBarLabel: {
     ...TYPO.caption,

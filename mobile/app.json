@@ -14,24 +14,36 @@
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/3e841ddf-23c3-42ce-a2e1-8827c06311a2"
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.educarelink.app"
+      "bundleIdentifier": "com.educarelink.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "EduCareLink cần vị trí của bạn để chia sẻ với phụ huynh khi đang làm việc.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "EduCareLink cần vị trí của bạn để chia sẻ với phụ huynh khi đang làm việc, kể cả khi app ở nền.",
+        "NSCameraUsageDescription": "EduCareLink cần camera để chụp ảnh CCCD và chân dung.",
+        "NSPhotoLibraryUsageDescription": "EduCareLink cần truy cập ảnh để tải lên CCCD và ảnh chân dung.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#F26522"
       },
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.educarelink.app",
-      "versionCode": 1,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ]
     },
     "web": {
@@ -39,6 +51,7 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
+      "expo-location",
       [
         "expo-image-picker",
         {

@@ -50,41 +50,21 @@ export const COLORS = {
 // Thay vì dùng shadow đen đơn điệu, dùng shadow pha màu primary
 export const SHADOWS = {
   small: {
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
   },
   medium: {
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
-    elevation: 4,
+    boxShadow: '0px 4px 14px rgba(0, 0, 0, 0.07)',
   },
   large: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
+    boxShadow: '0px 6px 20px rgba(242, 101, 34, 0.2)',
   },
   // Colored shadow cho card khi press/hover
   cardHover: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
+    boxShadow: '0px 4px 16px rgba(242, 101, 34, 0.12)',
   },
   // Subtle shadow cho input focus
   inputFocus: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.1)',
   },
 };
 

@@ -581,6 +581,10 @@ function renderTasks() {
             </div>
             <span class="material-symbols-outlined text-blue-400 text-lg">autorenew</span>
           </div>
+          <button onclick="trackCarepartner(${t.id}, '${(t.title || '').replace(/'/g, "\\'")}')" class="w-full py-3 bg-gradient-to-r from-primary to-primaryDark text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/30 hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">location_on</span>
+            Theo dõi vị trí Carepartner
+          </button>
           <div class="flex gap-2">
             <button onclick="completeTask(${t.id})" class="flex-1 py-3 bg-emerald-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
               <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
@@ -674,6 +678,29 @@ function viewCandidates(id) {
 
 function goToReview(taskId) {
   window.location.href = "{% url 'frontend:review' %}?task_id=" + taskId;
+}
+
+// ==================== TRACK CAREPARTNER (Live Tracking) ====================
+async function trackCarepartner(taskId, taskTitle) {
+  // Check consent trước khi mở trang tracking
+  try {
+    const r = await apiFetch(`${API_BASE}/tracking/${taskId}/consent/`);
+    if (r.ok) {
+      const data = await r.json();
+      const consent = data?.consent?.consent || (data?.has_consent ? data.consent?.consent : null);
+      if (data.has_consent && consent === 'granted') {
+        window.location.href = "{% url 'frontend:live_tracking' %}?task_id=" + taskId;
+      } else if (data.has_consent && consent === 'revoked') {
+        alert('⚠️ Carepartner đã dừng chia sẻ vị trí. Vui lòng liên hệ trực tiếp.');
+      } else {
+        alert('📍 Carepartner chưa đồng ý chia sẻ vị trí cho việc này.');
+      }
+    } else {
+      alert('Không thể kiểm tra trạng thái theo dõi. Vui lòng thử lại.');
+    }
+  } catch (e) {
+    alert('Lỗi mạng. Vui lòng thử lại.');
+  }
 }
 
 // ==================== COMPLETE & CANCEL TASK ====================

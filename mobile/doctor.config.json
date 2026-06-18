@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "react-doctor/rn-no-non-native-navigator": "off",
+    "react-doctor/no-react19-deprecated-apis": "off",
+    "react-doctor/prefer-useReducer": "off",
+    "react-doctor/no-giant-component": "off",
+    "react-doctor/rn-no-scrollview-mapped-list": "off",
+    "react-doctor/rn-prefer-reanimated": "off",
+    "react-doctor/rn-no-dimensions-get": "off",
+    "react-doctor/no-event-handler": "off",
+    "react-doctor/no-cascading-set-state": "off",
+    "react-doctor/no-render-in-render": "off",
+    "react-doctor/rerender-lazy-ref-init": "off",
+    "react-doctor/rerender-state-only-in-handlers": "off",
+    "react-doctor/rendering-hydration-mismatch-time": "off",
+    "react-doctor/exhaustive-deps": "off",
+    "react-doctor/async-defer-await": "off",
+    "react-doctor/async-parallel": "off",
+    "react-doctor/no-array-index-as-key": "off",
+    "react-doctor/jsx-no-constructed-context-values": "off",
+    "react-doctor/rn-prefer-pressable": "off",
+    "deslop/unused-export": "off",
+    "react-doctor/prefer-module-scope-static-value": "off",
+    "react-doctor/jsx-no-jsx-as-prop": "off"
+  }
+}
