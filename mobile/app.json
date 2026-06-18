@@ -14,9 +14,6 @@
     "updates": {
       "enabled": false
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.educarelink.app",
