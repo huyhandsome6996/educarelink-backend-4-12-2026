@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import { getWorkerRecommendations } from '../../api/ai_recommendations';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 
@@ -29,6 +31,11 @@ export default function WorkerFeedScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
+  // AI Recommendations state
+  const [aiRecs, setAiRecs] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiHasError, setAiHasError] = useState(false);
+
   const fetchTasks = async () => {
     try {
       const res = await getAllTasks();
@@ -43,7 +50,30 @@ export default function WorkerFeedScreen() {
     finally { setIsLoading(false); setRefreshing(false); }
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  // ===== AI RECOMMENDATIONS =====
+  const loadAIRecommendations = async (forceRefresh = false) => {
+    setAiLoading(true);
+    setAiHasError(false);
+    try {
+      const res = await getWorkerRecommendations(forceRefresh);
+      if (res.data?.has_ai && res.data?.recommendations?.length > 0) {
+        setAiRecs(res.data.recommendations.slice(0, 3));
+      } else {
+        setAiRecs([]);
+      }
+    } catch (e) {
+      console.warn('AI recommendations failed:', e);
+      setAiHasError(true);
+      setAiRecs([]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+    loadAIRecommendations();
+  }, []);
 
   // Empty state bounce animation
   useEffect(() => {
@@ -161,6 +191,76 @@ export default function WorkerFeedScreen() {
   };
 
 
+  const listHeaderComponent = React.useMemo(() => (
+    <>
+      {/* ===== AI RECOMMENDATIONS SECTION ===== */}
+      {(aiLoading || aiRecs.length > 0 || aiHasError) && (
+        <View style={styles.aiSection}>
+          <View style={styles.aiHeader}>
+            <View style={styles.aiHeaderLeft}>
+              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+              <Text style={styles.aiHeaderTitle}>AI gợi ý cho bạn</Text>
+            </View>
+            <TouchableOpacity onPress={() => loadAIRecommendations(true)} disabled={aiLoading}>
+              <Ionicons name="refresh" size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {aiLoading ? (
+            <View style={styles.aiLoadingBox}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.aiLoadingText}>AI đang phân tích hồ sơ của bạn...</Text>
+            </View>
+          ) : aiHasError ? (
+            <View style={styles.aiErrorBox}>
+              <Ionicons name="alert-circle-outline" size={16} color={COLORS.textMuted} />
+              <Text style={styles.aiErrorText}>Không tải được gợi ý AI. Nhấn 🔄 để thử lại.</Text>
+            </View>
+          ) : (
+            aiRecs.map((rec, idx) => {
+              const t = rec.task;
+              if (!t) return null;
+              const score = rec.match_score || 0;
+              const scoreColor = score >= 80 ? COLORS.success : score >= 50 ? COLORS.warning : COLORS.textMuted;
+              const scoreLabel = score >= 80 ? 'Rất phù hợp' : score >= 50 ? 'Phù hợp' : 'Ít phù hợp';
+              return (
+                <TouchableOpacity
+                  key={`ai_${idx}`}
+                  style={styles.aiCard}
+                  onPress={() => navigation.navigate('TaskDetail', { taskId: t.id })}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.aiCardHeader}>
+                    <View style={[styles.aiScoreBadge, { backgroundColor: scoreColor + '20', borderColor: scoreColor }]}>
+                      <Text style={[styles.aiScoreText, { color: scoreColor }]}>{scoreLabel} {score}</Text>
+                    </View>
+                    {t.has_geofence && (
+                      <View style={styles.aiGeoBadge}>
+                        <Ionicons name="location" size={10} color={COLORS.info} />
+                        <Text style={styles.aiGeoText}>Tracking</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.aiTaskTitle} numberOfLines={1}>{t.title}</Text>
+                  <Text style={styles.aiReason} numberOfLines={2}>{rec.reason}</Text>
+                  <View style={styles.aiCardMeta}>
+                    <View style={styles.aiMetaItem}>
+                      <Ionicons name="location-outline" size={11} color={COLORS.textMuted} />
+                      <Text style={styles.aiMetaText} numberOfLines={1}>{t.location}</Text>
+                    </View>
+                    <Text style={styles.aiPrice}>{parseInt(t.price).toLocaleString('vi-VN')}đ</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      )}
+
+      <Text style={styles.listHeader}>{filtered.length} việc làm mới nhất</Text>
+    </>
+  ), [aiRecs, aiLoading, navigation, filtered.length]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
@@ -197,10 +297,8 @@ export default function WorkerFeedScreen() {
       ) : (
         <FlatList data={filtered} keyExtractor={i => i.id.toString()} renderItem={renderItem}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); }} tintColor={COLORS.primary} />}
-          ListHeaderComponent={
-            <Text style={styles.listHeader}>{filtered.length} việc làm mới nhất</Text>
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); loadAIRecommendations(); }} tintColor={COLORS.primary} />}
+          ListHeaderComponent={listHeaderComponent}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Animated.View style={[styles.emptyIconCircle, { transform: [{ translateY: bounceTransform }] }]}>
@@ -312,17 +410,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 9,
     flexDirection: 'row', alignItems: 'center', gap: 6,
     ...SHADOWS.small,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
+    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.3)',
   },
   applyBtnDisabled: {
     backgroundColor: COLORS.textMuted,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    boxShadow: '0px 0px 4px rgba(0, 0, 0, 0.05)',
     opacity: 0.7,
   },
   applyBtnText: { color: '#fff', ...TYPO.buttonSmall },
@@ -335,4 +427,61 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
   emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
+
+  // === AI RECOMMENDATIONS ===
+  aiSection: {
+    marginBottom: 16,
+  },
+  aiHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 10,
+  },
+  aiHeaderLeft: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  aiHeaderTitle: {
+    ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700',
+  },
+  aiLoadingBox: {
+    flexDirection: 'row', gap: 10, alignItems: 'center',
+    backgroundColor: COLORS.primaryLight, padding: 14, borderRadius: SIZES.radiusMd,
+    borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  aiLoadingText: { ...TYPO.bodySmall, color: COLORS.primary },
+  aiErrorBox: {
+    flexDirection: 'row', gap: 8, alignItems: 'center',
+    backgroundColor: COLORS.background, padding: 12, borderRadius: SIZES.radiusSm,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  aiErrorText: { ...TYPO.bodySmall, color: COLORS.textMuted, flex: 1 },
+  aiCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusMd,
+    padding: 14, marginBottom: 8,
+    borderLeftWidth: 3, borderLeftColor: COLORS.primary,
+    ...SHADOWS.cardHover,
+  },
+  aiCardHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
+  },
+  aiScoreBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: SIZES.radiusXs,
+    borderWidth: 1,
+  },
+  aiScoreText: { ...TYPO.caption, fontWeight: '700', fontSize: 10 },
+  aiGeoBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: COLORS.infoBg, borderRadius: SIZES.radiusXs,
+    paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1, borderColor: '#bfdbfe',
+  },
+  aiGeoText: { ...TYPO.caption, fontSize: 9, color: COLORS.info, fontWeight: '700' },
+  aiTaskTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4 },
+  aiReason: { ...TYPO.bodySmall, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 8 },
+  aiCardMeta: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  aiMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  aiMetaText: { ...TYPO.caption, color: COLORS.textMuted, flex: 1 },
+  aiPrice: { ...TYPO.bodySmall, color: COLORS.primary, fontWeight: '900' },
 });
