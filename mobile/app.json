@@ -12,10 +12,7 @@
       "resizeMode": "contain"
     },
     "updates": {
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/3e841ddf-23c3-42ce-a2e1-8827c06311a2"
+      "enabled": false
     },
     "runtimeVersion": {
       "policy": "appVersion"
