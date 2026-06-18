@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'payments',   # Module thanh toán MoMo (escrow + cash settlement)
     'tracking',   # Module định vị real-time (live tracking + SOS)
     'ai_recommendations',  # AI gợi ý việc + đánh giá ứng viên (Gemini)
+    'moderation',  # Kiểm duyệt công việc + Khiếu nại (AI)
 ]
 
 MIDDLEWARE = [
