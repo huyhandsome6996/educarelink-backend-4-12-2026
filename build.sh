@@ -7,16 +7,7 @@ pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
 
-# Chỉ seed data nếu database chưa có dữ liệu (tránh reset mỗi lần deploy)
-python -c "
-import django, os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
-django.setup()
-from core.models import User
-if User.objects.count() == 0:
-    print('Database trống → chạy seed_demo_data...')
-    from django.core.management import call_command
-    call_command('seed_demo_data')
-else:
-    print(f'Database đã có {User.objects.count()} users → bỏ qua seed_data.')
-"
+# RESET dữ liệu mẫu mỗi lần deploy — luôn đảm bảo state demo nhất quán cho giám khảo.
+# seed_demo_data đã được viết ở chế độ idempotent (xoá + tạo lại, giữ 3 tài khoản
+# bảo vệ: admin / phuhuynh_test / sinhvien_test).
+python manage.py seed_demo_data || echo "⚠️ seed_demo_data failed, continuing deploy..."

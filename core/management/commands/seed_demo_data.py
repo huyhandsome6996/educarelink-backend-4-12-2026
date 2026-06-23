@@ -1,42 +1,109 @@
 """
-Django Management Command: seed_demo_data
-==========================================
-Tạo toàn bộ dữ liệu mẫu cho ban giám khảo kiểm tra sản phẩm.
+Django Management Command: seed_demo_data  (BẢN RESET TOÀN BỘ)
+=================================================================
+Thực hiện RESET dữ liệu mẫu cho ban giám khảo:
+  1. Xoá TOÀN BỘ dữ liệu demo (Tasks, Applications, Reviews, Notifications,
+     Credentials, ProfileChangeRequests, Tracking, Payments, Moderation).
+  2. Xoá MỌI user KHÔNG nằm trong danh sách bảo vệ.
+  3. GIỮ NGUYÊN 3 tài khoản đã tạo: admin / phuhuynh_test / sinhvien_test
+     (không đổi password, không đổi profile, không reset first_login).
+  4. Tạo lại dữ liệu mẫu MỚI (tên user, task khác bản cũ) để giám khảo demo.
 
-Chạy lệnh: python manage.py seed_demo_data
-
-Dữ liệu được tạo:
-  - 8 danh mục dịch vụ (ServiceCategory)
-  - 1 tài khoản Admin
-  - 4 tài khoản Phụ huynh (Parent)
-  - 5 tài khoản Carepartner (Worker): 4 đã duyệt, 1 chờ duyệt
-  - 1 tài khoản bị khoá (test chức năng mở khoá)
-  - 10 công việc (Task) ở các trạng thái khác nhau
-  - 15 ứng tuyển (TaskApplication)
-  - 3 đánh giá (Review)
-
-Mật khẩu chung cho tất cả: Demo@2026
+Chạy: python manage.py seed_demo_data
+Idempotent: chạy nhiều lần vẫn an toàn (luôn reset về cùng 1 state).
 """
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.db import transaction
 from datetime import timedelta
-from core.models import User, ServiceCategory, Task, TaskApplication, Review
+from core.models import (
+    User, ServiceCategory, Task, TaskApplication, Review,
+    CredentialSubmission, Notification, ProfileChangeRequest,
+)
+
+# ── 3 TÀI KHOẢN BẢO VỆ — TUYỆT ĐỐI KHÔNG ĐỤNG ──────────────────────
+PROTECTED_USERNAMES = {"admin", "phuhuynh_test", "sinhvien_test"}
+
+TEST_PASSWORD = "Demo@2026"
 
 
 class Command(BaseCommand):
-    help = 'Tạo toàn bộ dữ liệu mẫu cho ban giám khảo kiểm tra sản phẩm EduCareLink'
+    help = 'RESET toàn bộ dữ liệu mẫu cho ban giám khảo. Giữ 3 tài khoản admin/phuhuynh_test/sinhvien_test.'
 
     def handle(self, *args, **options):
-        TEST_PASSWORD = "Demo@2026"
         now = timezone.now()
 
-        self.stdout.write("\n" + "=" * 60)
-        self.stdout.write("  EDUCARELINK - TẠO DỮ LIỆU MẪU CHO BAN GIÁM KHẢO")
-        self.stdout.write("=" * 60)
+        self.stdout.write("\n" + "=" * 64)
+        self.stdout.write("  EDUCARELINK — RESET DU LIEU MAU (BAN GIAM KHAO)")
+        self.stdout.write("=" * 64)
+        self.stdout.write(f"  Tai khoan BAO VE (khong duoc xoa): {sorted(PROTECTED_USERNAMES)}")
 
-        # ===== 1. DANH MỤC DỊCH VỤ =====
-        self.stdout.write("\n[1/6] Đang nạp danh mục dịch vụ...")
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 0: XÓA TOÀN BỘ DỮ LIỆU DEMO
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[0/7] Dang xoa toan bo du lieu demo cu...")
+
+        # Cross-app imports (có thể có app chưa cài khi chạy local)
+        deleted_counts = {}
+
+        def safe_delete(label, queryset):
+            try:
+                cnt = queryset.count()
+                queryset.delete()
+                deleted_counts[label] = cnt
+                self.stdout.write(f"   - Xoa {cnt:>5} {label}")
+            except Exception as e:
+                self.stdout.write(f"   ! Bo qua {label}: {e}")
+
+        # Moderation
+        try:
+            from moderation.models import TaskModeration, Complaint, ComplaintEvidence
+            safe_delete("ComplaintEvidence", ComplaintEvidence.objects.all())
+            safe_delete("Complaint", Complaint.objects.all())
+            safe_delete("TaskModeration", TaskModeration.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! Moderation module khong san sang: {e}")
+
+        # Payments
+        try:
+            from payments.models import Payment, CommissionSettlement, PaymentLog
+            safe_delete("PaymentLog", PaymentLog.objects.all())
+            safe_delete("CommissionSettlement", CommissionSettlement.objects.all())
+            safe_delete("Payment", Payment.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! Payments module khong san sang: {e}")
+
+        # Tracking
+        try:
+            from tracking.models import LocationConsent, LiveLocation, LocationHistory, SOSAlert
+            safe_delete("SOSAlert", SOSAlert.objects.all())
+            safe_delete("LocationHistory", LocationHistory.objects.all())
+            safe_delete("LiveLocation", LiveLocation.objects.all())
+            safe_delete("LocationConsent", LocationConsent.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! Tracking module khong san sang: {e}")
+
+        # Core
+        safe_delete("Review", Review.objects.all())
+        safe_delete("TaskApplication", TaskApplication.objects.all())
+        safe_delete("Notification", Notification.objects.all())
+        safe_delete("ProfileChangeRequest", ProfileChangeRequest.objects.all())
+        safe_delete("CredentialSubmission", CredentialSubmission.objects.all())
+        safe_delete("Task", Task.objects.all())
+
+        # Xoá MỌI user không nằm trong danh sách bảo vệ
+        old_users = User.objects.exclude(username__in=PROTECTED_USERNAMES)
+        old_count = old_users.count()
+        protected_kept = User.objects.filter(username__in=PROTECTED_USERNAMES).count()
+        old_users.delete()
+        self.stdout.write(f"   - Xoa {old_count:>5} User (non-protected)")
+        self.stdout.write(f"   - GIU  {protected_kept:>5} User (protected: admin/phuhuynh_test/sinhvien_test)")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 1: DANH MỤC DỊCH VỤ (giữ nguyên nếu đã có)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[1/7] Dang nap danh muc dich vu...")
 
         categories_data = [
             {"name": "Gia sư", "icon_name": "BookOpen", "description": "Dạy kèm các môn học từ tiểu học đến đại học."},
@@ -57,307 +124,281 @@ class Command(BaseCommand):
             )
             if created:
                 created_cats += 1
-        self.stdout.write(f"   ✅ Đã tạo {created_cats} danh mục mới. Tổng: {ServiceCategory.objects.count()}")
+        self.stdout.write(f"   + Tao {created_cats} danh muc moi. Tong: {ServiceCategory.objects.count()}")
 
-        # ===== 2. ADMIN =====
-        self.stdout.write("\n[2/6] Đang tạo tài khoản Admin...")
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 2: KIỂM TRA 3 TÀI KHOẢN BẢO VỆ (không tạo mới, không sửa)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[2/7] Kiem tra 3 tai khoan bao ve...")
 
-        admin_user, created = User.objects.get_or_create(
-            username="admin",
-            defaults={
-                "role": "parent", "first_name": "Admin", "last_name": "EduCareLink",
-                "email": "admin@educarelink.com", "phone_number": "0900000000",
-                "is_staff": True, "is_superuser": True, "is_verified": True, "is_approved": True,
-            }
-        )
-        if created:
-            admin_user.set_password(TEST_PASSWORD)
-            admin_user.save()
-            self.stdout.write(f"   ✅ Tạo mới Admin: admin / {TEST_PASSWORD}")
-        else:
-            if not admin_user.is_staff or not admin_user.is_superuser:
-                admin_user.is_staff = True
-                admin_user.is_superuser = True
-                admin_user.save()
-            self.stdout.write(f"   ⏭️  Đã tồn tại admin")
+        for uname in sorted(PROTECTED_USERNAMES):
+            try:
+                u = User.objects.get(username=uname)
+                role_vi = "Admin" if u.is_staff else ("Phu huynh" if u.role == "parent" else "Carepartner")
+                self.stdout.write(f"   [DA TON TAI] {uname:18s} ({role_vi}) — KHONG THAY DOI")
+            except User.DoesNotExist:
+                self.stdout.write(self.style.WARNING(f"   [THIEU] {uname} — tai khoan nay chua duoc tao, bo qua."))
 
-        # ===== 3. PHỤ HUYNH =====
-        self.stdout.write("\n[3/6] Đang tạo tài khoản Phụ huynh...")
+        # Lấy reference tới các tài khoản bảo vệ (nếu có) để gán làm parent/worker cho task mẫu
+        admin_ref = User.objects.filter(username="admin", is_staff=True).first()
+        parent_ref = User.objects.filter(username="phuhuynh_test", role="parent").first()
+        worker_ref = User.objects.filter(username="sinhvien_test", role="worker").first()
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 3: TẠO PHỤ HUYNH MỚI (4 tài khoản — tên khác bản cũ)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[3/7] Dang tao Phu huynh moi...")
 
         parents_data = [
-            {"username": "phuhuynh_test", "first_name": "Văn", "last_name": "Nguyễn", "email": "nguyenvan@email.com", "phone_number": "0901234567", "address": "123 Đường Lê Lợi, Quận 1, TP.HCM"},
-            {"username": "phuhuynh_lan", "first_name": "Thị Lan", "last_name": "Trần", "email": "tranlan@email.com", "phone_number": "0912345678", "address": "45 Đường Nguyễn Huệ, Quận 1, TP.HCM"},
-            {"username": "phuhuynh_minh", "first_name": "Hoàng Minh", "last_name": "Lê", "email": "leminh@email.com", "phone_number": "0923456789", "address": "78 Đường Cách Mạng Tháng 8, Quận 3, TP.HCM"},
-            {"username": "phuhuynh_hoa", "first_name": "Thị Hoa", "last_name": "Phạm", "email": "phamhoa@email.com", "phone_number": "0934567890", "address": "200 Đường Võ Văn Tần, Quận 3, TP.HCM"},
+            {"username": "phuhuynh_baolinh", "first_name": "Bảo Lĩnh", "last_name": "Phạm", "email": "baolinh.pham@email.com", "phone_number": "0901002003", "address": "22 Ung Văn Khiên, Bình Thạnh, TP.HCM"},
+            {"username": "phuhuynh_minhkhoi", "first_name": "Minh Khôi", "last_name": "Đặng", "email": "minhkhoi.dang@email.com", "phone_number": "0901002004", "address": "8 Xa Lộ Hà Nội, Thủ Đức, TP.HCM"},
+            {"username": "phuhuynh_yenchi", "first_name": "Yến Chi", "last_name": "Hồ", "email": "yenchi.ho@email.com", "phone_number": "0901002005", "address": "156 Nguyễn Đình Chiểu, Quận 3, TP.HCM"},
+            {"username": "phuhuynh_congvinh", "first_name": "Công Vinh", "last_name": "Trương", "email": "congvinh.truong@email.com", "phone_number": "0901002006", "address": "40 Lý Thường Kiệt, Quận 10, TP.HCM"},
         ]
 
         parent_users = {}
         for p_data in parents_data:
-            user, created = User.objects.get_or_create(
+            user = User.objects.create_user(
                 username=p_data["username"],
-                defaults={
-                    "role": "parent", "first_name": p_data["first_name"], "last_name": p_data["last_name"],
-                    "email": p_data["email"], "phone_number": p_data["phone_number"],
-                    "address": p_data["address"], "is_verified": True, "is_approved": True,
-                }
+                password=TEST_PASSWORD,
+                role="parent",
+                first_name=p_data["first_name"],
+                last_name=p_data["last_name"],
+                email=p_data["email"],
+                phone_number=p_data["phone_number"],
+                address=p_data["address"],
+                is_verified=True,
+                is_approved=True,
+                first_login=False,
             )
-            if created:
-                user.set_password(TEST_PASSWORD)
-                user.save()
-                self.stdout.write(f"   ✅ {p_data['last_name']} {p_data['first_name']}: {p_data['username']}")
-            else:
-                if not user.is_approved:
-                    user.is_approved = True
-                    user.save()
-                self.stdout.write(f"   ⏭️  Đã tồn tại {p_data['username']}")
             parent_users[p_data["username"]] = user
+            self.stdout.write(f"   + {p_data['last_name']} {p_data['first_name']}: {p_data['username']}")
 
-        # ===== 4. CAREPARTNER =====
-        self.stdout.write("\n[4/6] Đang tạo tài khoản Carepartner...")
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 4: TẠO CAREPARTNER MỚI (4 đã duyệt + 1 chờ duyệt)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[4/7] Dang tao Carepartner moi...")
 
         workers_data = [
-            {"username": "sinhvien_test", "first_name": "Minh", "last_name": "Trần", "email": "tranminh@email.com", "phone_number": "0981111111", "address": "Ký túc xá ĐH Quốc Gia, Thủ Đức, TP.HCM", "is_approved": True, "is_verified": True, "is_active": True, "qualifications": ["Sinh viên năm 3 ĐH Sư Phạm", "Chứng chỉ IELTS 6.5"], "ai_profile_summary": "Sinh viên năm 3 ngành Sư phạm Toán, có 2 năm kinh nghiệm dạy kèm. Đánh giá 4.8/5 sao từ 15 phụ huynh."},
-            {"username": "carepartner_anh", "first_name": "Minh Anh", "last_name": "Nguyễn", "email": "nguyenanh@email.com", "phone_number": "0982222222", "address": "256 Đường Lê Văn Việt, Quận 9, TP.HCM", "is_approved": True, "is_verified": True, "is_active": True, "qualifications": ["Cử nhân Sư Phạm Mầm Non", "Chứng chỉ sơ cấp cứu"], "ai_profile_summary": "Cử nhân Sư phạm Mầm Non, 3 năm kinh nghiệm trông trẻ và đón trẻ. Nhiệt tình, yêu trẻ, có chứng chỉ sơ cấp cứu."},
-            {"username": "carepartner_linh", "first_name": "Thị Linh", "last_name": "Võ", "email": "volinh@email.com", "phone_number": "0983333333", "address": "12 Đường Trần Não, Quận 2, TP.HCM", "is_approved": True, "is_verified": True, "is_active": True, "qualifications": ["Sinh viên năm cuối ĐH Kinh Tế", "Chứng chỉ nấu ăn Việt-Á"], "ai_profile_summary": "Sinh viên năm cuối ĐH Kinh Tế, phụ việc nhà và nấu ăn 2 năm. Nấu ăn ngon, gọn gàng, chu đáo."},
-            {"username": "carepartner_duc", "first_name": "Đức Thắng", "last_name": "Hoàng", "email": "hoangduc@email.com", "phone_number": "0984444444", "address": "88 Đường Phạm Văn Đồng, Thủ Đức, TP.HCM", "is_approved": True, "is_verified": True, "is_active": True, "qualifications": ["Sinh viên năm 2 ĐH Bách Khoa", "Chứng chỉ gia sư Toán-Lý"], "ai_profile_summary": "Sinh viên Bách Khoa, chuyên gia sư Toán-Lý cho học sinh cấp 2-3. Có phương pháp dạy dễ hiểu, kiên nhẫn."},
-            {"username": "carepartner_mai", "first_name": "Thị Mai", "last_name": "Đỗ", "email": "domai@email.com", "phone_number": "0985555555", "address": "56 Đường Nguyễn Oanh, Gò Vấp, TP.HCM", "is_approved": False, "is_verified": False, "is_active": True, "qualifications": [], "ai_profile_summary": ""},
+            {"username": "carepartner_tuankiet", "first_name": "Tuấn Kiệt", "last_name": "Lương", "email": "tuankiet.luong@email.com", "phone_number": "0987001001", "address": "KTX Khu B ĐHQG, Thủ Đức, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm 3 ĐH Sư Phạm Toán", "Chứng chỉ IELTS 7.0"], "ai_profile_summary": "Sinh viên Sư phạm Toán năm 3, 2 năm kinh nghiệm gia sư. Kiên nhẫn, có phương pháp dạy trực quan. Đánh giá 4.9/5 từ 18 phụ huynh."},
+            {"username": "carepartner_hoango", "first_name": "Hoàng Ngân", "last_name": "Đỗ", "email": "hoango.do@email.com", "phone_number": "0987001002", "address": "Đường Lê Văn Sĩ, Tân Phú, TP.HCM", "is_approved": True, "qualifications": ["Cử nhân Sư Phạm Mầm Non", "Chứng chỉ Sơ cấp cứu", "Chứng chỉ Montessori cơ bản"], "ai_profile_summary": "Cử nhân Sư phạm Mầm Non, 4 năm kinh nghiệm trông trẻ. Có chứng chỉ sơ cấp cứu và Montessori. Yêu trẻ, nhiệt tình."},
+            {"username": "carepartner_mylinh", "first_name": "Mỹ Linh", "last_name": "Trần", "email": "mylinh.tran@email.com", "phone_number": "0987001003", "address": "Đường Phan Xích Long, Phú Nhuận, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm cuối ĐH Kinh Tế", "Chứng chỉ nấu ăn Việt–Á"], "ai_profile_summary": "Sinh viên năm cuối ĐH Kinh Tế, 2 năm phụ việc nhà + nấu ăn. Nấu ăn ngon, gọn gàng, chu đáo với trẻ nhỏ."},
+            {"username": "carepartner_phuoc", "first_name": "Phước", "last_name": "Nguyễn", "email": "phuoc.nguyen@email.com", "phone_number": "0987001004", "address": "Đường Tô Ký, Quận 12, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm 2 ĐH Bách Khoa", "Chứng chỉ gia sư Lý–Hóa"], "ai_profile_summary": "Sinh viên Bách Khoa, chuyên gia sư Lý–Hóa cấp 3. Dạy dễ hiểu, có bài tập thực hành."},
+            {"username": "carepartner_pending_hai", "first_name": "Hải", "last_name": "Bùi", "email": "hai.bui@email.com", "phone_number": "0987001005", "address": "Đường Trường Chinh, Tân Phú, TP.HCM", "is_approved": False, "qualifications": [], "ai_profile_summary": ""},
         ]
 
         worker_users = {}
         for w_data in workers_data:
-            user, created = User.objects.get_or_create(
+            user = User.objects.create_user(
                 username=w_data["username"],
-                defaults={
-                    "role": "worker", "first_name": w_data["first_name"], "last_name": w_data["last_name"],
-                    "email": w_data["email"], "phone_number": w_data["phone_number"],
-                    "address": w_data["address"], "is_approved": w_data["is_approved"],
-                    "is_verified": w_data["is_verified"], "is_active": w_data["is_active"],
-                    "qualifications": w_data["qualifications"], "ai_profile_summary": w_data["ai_profile_summary"],
-                }
+                password=TEST_PASSWORD,
+                role="worker",
+                first_name=w_data["first_name"],
+                last_name=w_data["last_name"],
+                email=w_data["email"],
+                phone_number=w_data["phone_number"],
+                address=w_data["address"],
+                is_approved=w_data["is_approved"],
+                is_verified=w_data["is_approved"],
+                is_active=True,
+                qualifications=w_data["qualifications"],
+                ai_profile_summary=w_data["ai_profile_summary"],
+                first_login=False,
             )
-            if created:
-                user.set_password(TEST_PASSWORD)
-                user.save()
-                trang_thai = "CHỜ DUYỆT" if not w_data["is_approved"] else "Đã duyệt"
-                self.stdout.write(f"   ✅ {w_data['last_name']} {w_data['first_name']}: {w_data['username']} ({trang_thai})")
-            else:
-                updated = False
-                for field in ["is_approved", "is_verified", "is_active", "qualifications", "ai_profile_summary"]:
-                    if getattr(user, field) != w_data[field]:
-                        setattr(user, field, w_data[field])
-                        updated = True
-                if updated:
-                    user.save()
-                self.stdout.write(f"   ⏭️  Đã tồn tại {w_data['username']}")
             worker_users[w_data["username"]] = user
+            trang_thai = "CHO DUYET" if not w_data["is_approved"] else "Da duyet"
+            self.stdout.write(f"   + {w_data['last_name']} {w_data['first_name']}: {w_data['username']} ({trang_thai})")
 
-        # Tài khoản bị khoá
-        locked_user, created = User.objects.get_or_create(
-            username="locked_vipham",
-            defaults={
-                "role": "parent", "first_name": "Vi Phạm", "last_name": "Lê",
-                "email": "vipham@email.com", "phone_number": "0986666666",
-                "address": "999 Đường Không Tồn Tại, Quận 10, TP.HCM",
-                "is_verified": True, "is_approved": True, "is_active": False,
-            }
+        # Tài khoản bị khoá (test mở khoá)
+        locked_user = User.objects.create_user(
+            username="locked_test_2",
+            password=TEST_PASSWORD,
+            role="parent",
+            first_name="Thị Hà",
+            last_name="Vũ",
+            email="ha.vu@email.com",
+            phone_number="0987001999",
+            address="Đường Sư Vạn Hạnh, Quận 10, TP.HCM",
+            is_verified=True,
+            is_approved=True,
+            is_active=False,
+            first_login=False,
         )
-        if created:
-            locked_user.set_password(TEST_PASSWORD)
-            locked_user.save()
-            self.stdout.write(f"   ✅ Lê Vi Phạm: locked_vipham (BỊ KHOÁ)")
-        else:
-            if locked_user.is_active:
-                locked_user.is_active = False
-                locked_user.save()
-            self.stdout.write(f"   ⏭️  Đã tồn tại locked_vipham (BỊ KHOÁ)")
+        self.stdout.write(f"   + {locked_user.last_name} {locked_user.first_name}: locked_test_2 (BI KHOA — test mo khoa)")
 
-        # ===== 5. CÔNG VIỆC =====
-        self.stdout.write("\n[5/6] Đang tạo công việc mẫu...")
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 5: TẠO CÔNG VIỆC MỚI (10 việc — tiêu đề/mô tả khác bản cũ)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[5/7] Dang tao cong viec moi...")
 
-        try:
-            cat_giasu = ServiceCategory.objects.get(name="Gia sư")
-            cat_dontre = ServiceCategory.objects.get(name="Đón trẻ")
-            cat_dondep = ServiceCategory.objects.get(name="Dọn dẹp nhà cửa")
-            cat_trongtre = ServiceCategory.objects.get(name="Trông trẻ")
-            cat_muasam = ServiceCategory.objects.get(name="Mua sắm hộ")
-            cat_nauan = ServiceCategory.objects.get(name="Nấu ăn")
-            cat_hotroAI = ServiceCategory.objects.get(name="Hỗ trợ AI")
-        except ServiceCategory.DoesNotExist:
-            self.stdout.write("   ❌ Không tìm thấy danh mục!")
-            return
+        cat_giasu = ServiceCategory.objects.get(name="Gia sư")
+        cat_dontre = ServiceCategory.objects.get(name="Đón trẻ")
+        cat_dondep = ServiceCategory.objects.get(name="Dọn dẹp nhà cửa")
+        cat_trongtre = ServiceCategory.objects.get(name="Trông trẻ")
+        cat_muasam = ServiceCategory.objects.get(name="Mua sắm hộ")
+        cat_nauan = ServiceCategory.objects.get(name="Nấu ăn")
+        cat_hotroAI = ServiceCategory.objects.get(name="Hỗ trợ AI")
 
-        p1 = parent_users["phuhuynh_test"]
-        p2 = parent_users["phuhuynh_lan"]
-        p3 = parent_users["phuhuynh_minh"]
-        p4 = parent_users["phuhuynh_hoa"]
-        w1 = worker_users["sinhvien_test"]
-        w2 = worker_users["carepartner_anh"]
-        w3 = worker_users["carepartner_linh"]
-        w4 = worker_users["carepartner_duc"]
+        p1 = parent_users["phuhuynh_baolinh"]
+        p2 = parent_users["phuhuynh_minhkhoi"]
+        p3 = parent_users["phuhuynh_yenchi"]
+        p4 = parent_users["phuhuynh_congvinh"]
+
+        w1 = worker_users["carepartner_tuankiet"]
+        w2 = worker_users["carepartner_hoango"]
+        w3 = worker_users["carepartner_mylinh"]
+        w4 = worker_users["carepartner_phuoc"]
 
         tasks_data = [
-            {"title": "Cần gia sư dạy Toán lớp 8 - 2 buổi/tuần", "description": "Bé nhà tôi học yếu môn Toán, cần gia sư kiên nhẫn, phương pháp dạy tốt. Ưu tiên sinh viên năm 3-4 trở lên. Dạy tại nhà vào tối thứ 3 và thứ 5 mỗi tuần.", "price": 200000, "category": cat_giasu, "location": "123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM", "scheduled_time": now + timedelta(days=3), "status": "open", "parent": p1},
-            {"title": "[GẤP] Đón bé lớp 1 từ trường Tiểu học Lê Văn Tám", "description": "Tôi cần người đón bé gái 6 tuổi từ trường về nhà lúc 11h trưa các ngày trong tuần. Nhà cách trường khoảng 2km.", "price": 150000, "category": cat_dontre, "location": "45 Đường Phan Đình Phùng, Phú Nhuận, TP.HCM", "scheduled_time": now + timedelta(days=1), "status": "open", "parent": p2},
-            {"title": "Dọn dẹp căn hộ 60m2 cuối tuần", "description": "Căn hộ 2 phòng ngủ, cần lau dọn toàn bộ sàn nhà, vệ sinh nhà bếp và 1 phòng tắm. Dụng cụ vệ sinh tôi đã chuẩn bị sẵn.", "price": 250000, "category": cat_dondep, "location": "Chung cư Vinhomes Grand Park, Quận 9, TP.HCM", "scheduled_time": now + timedelta(days=5), "status": "open", "parent": p3},
-            {"title": "Trông bé 3 tuổi buổi sáng thứ 7", "description": "Vợ chồng tôi có lịch họp vào sáng thứ 7, cần người trông bé từ 8h-12h. Bé ngoan, đã quen với người lạ.", "price": 180000, "category": cat_trongtre, "location": "78 Đường Hoàng Diệu 2, Thủ Đức, TP.HCM", "scheduled_time": now + timedelta(days=2), "status": "open", "parent": p4},
-            {"title": "Gia sư Tiếng Anh lớp 6 - 3 buổi/tuần", "description": "Bé mới chuyển sang chương trình song ngữ, cần gia sư Tiếng Anh phụ đạo 3 buổi/tuần. Yêu cầu phát âm chuẩn, có chứng chỉ IELTS hoặc TOEFL.", "price": 250000, "category": cat_giasu, "location": "200 Đường Nam Kỳ Khởi Nghĩa, Quận 1, TP.HCM", "scheduled_time": now + timedelta(days=7), "status": "in_progress", "parent": p1},
-            {"title": "Nấu ăn gia đình 5 người - 5 ngày/tuần", "description": "Cần người nấu bữa tối cho gia đình 5 người từ thứ 2 đến thứ 6 hàng tuần. Yêu cầu nấu ăn ngon, biết nấu cả món Việt và món Á.", "price": 350000, "category": cat_nauan, "location": "56 Đường Nguyễn Trãi, Quận 5, TP.HCM", "scheduled_time": now + timedelta(days=4), "status": "in_progress", "parent": p2},
-            {"title": "Dọn dẹp văn phòng 100m2 cuối tháng", "description": "Văn phòng công ty cần lau dọn tổng vệ sinh cuối tháng. Bao gồm 4 phòng làm việc, 1 phòng họp, 1 nhà bếp và 2 nhà vệ sinh.", "price": 500000, "category": cat_dondep, "location": "Tòa nhà Viettel, Quận 10, TP.HCM", "scheduled_time": now - timedelta(days=5), "status": "completed", "parent": p3},
-            {"title": "Mua sắm đồ tết cho gia đình", "description": "Cần người đi chợ Bến Thành mua sắm đồ tết theo danh sách: hoa mai, bánh tét, mứt, đồ thờ cúng. Giao hàng tận nhà.", "price": 200000, "category": cat_muasam, "location": "Chợ Bến Thành, Quận 1, TP.HCM", "scheduled_time": now - timedelta(days=10), "status": "completed", "parent": p4},
-            {"title": "Trông trẻ tối cuối tuần - 5 tiếng", "description": "Vợ chồng tôi đi dự tiệc tối thứ 7, cần người trông 2 bé (4 tuổi và 7 tuổi) tại nhà.", "price": 300000, "category": cat_trongtre, "location": "300 Đường Nguyễn Đình Chiểu, Quận 3, TP.HCM", "scheduled_time": now - timedelta(days=8), "status": "completed", "parent": p1},
-            {"title": "Hỗ trợ AI học tập cho bé lớp 3", "description": "Tìm người có kinh nghiệm sử dụng các công cụ AI giáo dục để hỗ trợ con tôi học tập.", "price": 220000, "category": cat_hotroAI, "location": "150 Đường Lý Thường Kiệt, Quận Tân Bình, TP.HCM", "scheduled_time": now - timedelta(days=3), "status": "cancelled", "parent": p2},
+            # OPEN (4)
+            {"title": "Gia su Vat Ly lop 10 - buoi toi thu 4 & thu 6", "description": "Be gai hoc yeu Vat Ly, can gia su kien nhan, co phuong phap day hieu qua. Day tai nha 1.5 tieng/buoi. Uu tien sinh vien Bach Khoa hoac Su Pham.", "price": 220000, "category": cat_giasu, "location": "Khu Can Ho Vinhomes Central Park, Binh Thanh, TP.HCM", "scheduled_time": now + timedelta(days=3), "status": "open", "parent": p1},
+            {"title": "[GAP] Don be lop 2 chieu thu 7 tai truong Nguyen Du", "description": "Can nguoi don be trai 7 tuoi chieu thu 7 luc 11h30. Nha cach truong 1.5km. Yeu cau co xe may, bang lai A1, than thien voi tre em.", "price": 120000, "category": cat_dontre, "location": "Truong Tieu Hoc Nguyen Du, Quan 10, TP.HCM", "scheduled_time": now + timedelta(days=2), "status": "open", "parent": p2},
+            {"title": "Don dep can ho 2 phong ngu cuoi tuan", "description": "Can ho 75m2, can lau san, ve sinh bep va 2 phong tam. Cong viec khoang 4 tieng sang thu 7. Dung cu ve sinh toi chuan bi san.", "price": 280000, "category": cat_dondep, "location": "Chung cu The Manor, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=5), "status": "open", "parent": p3},
+            {"title": "Trong be 4 tuoi buoi chieu CN", "description": "Vc toi di du sinh nhat ban, can nguoi trong be 4 tuoi tai nha tu 13h-18h CN. Be ngoan, da quen nguoi la. Co do an va do choi san.", "price": 200000, "category": cat_trongtre, "location": "Hem 123 Le Van Sy, Phu Nhuan, TP.HCM", "scheduled_time": now + timedelta(days=4), "status": "open", "parent": p4},
+            # IN_PROGRESS (2)
+            {"title": "Gia su Hoa lop 11 - 2 buoi/tuan", "description": "Be chuyen sang khoi A, can phu dao Hoa nang cao. Day thu 3 & thu 5 toi, 19h-20h30. Yeu cau co phuong phap day de hieu, giai de mau.", "price": 250000, "category": cat_giasu, "location": "Duong Nguyen Thai Hoc, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=7), "status": "in_progress", "parent": p1},
+            {"title": "Nau com toi cho gia dinh 4 nguoi", "description": "Can nguoi nau com toi thu 2-den-thu 6 hang tuan cho 4 nguoi (2 nguoi lon, 2 tre em). Biet nau mon Viet va mon chay. Nguyen lieu toi chuan bi.", "price": 320000, "category": cat_nauan, "location": "Duong Nguyen Van Troi, Phu Nhuan, TP.HCM", "scheduled_time": now + timedelta(days=4), "status": "in_progress", "parent": p3},
+            # COMPLETED (3)
+            {"title": "Don dep nha 4 tang cuoi thang", "description": "Nha pho 4 tang can tong ve sinh: lau san, ve sinh bep, 3 phong tam. Yeu cu lam can than.", "price": 600000, "category": cat_dondep, "location": "Duong Nguyen Dinh Chieu, Quan 3, TP.HCM", "scheduled_time": now - timedelta(days=6), "status": "completed", "parent": p2},
+            {"title": "Di cho mua do dung sinh nhat be", "description": "Can nguoi den coopmart mua banh kem, baloon, do trang tri sinh nhat theo danh sach. Giao hang tan nha. Chi phi chuan bi truoc.", "price": 180000, "category": cat_muasam, "location": "Coopmart Nguyen Kiem, Phu Nhuan, TP.HCM", "scheduled_time": now - timedelta(days=11), "status": "completed", "parent": p4},
+            {"title": "Trong 2 be toi thu 7 - 4 tieng", "description": "Vc di an toi sinh nhat, can nguoi trong 2 be (5 tuoi va 8 tuoi) tu 18h-22h. Be lon tu choi, be nho can cho an va ru ngu.", "price": 350000, "category": cat_trongtre, "location": "Duong Cach Mang Thang 8, Quan Tan Binh, TP.HCM", "scheduled_time": now - timedelta(days=9), "status": "completed", "parent": p1},
+            # CANCELLED (1)
+            {"title": "Ho tro AI hoc tap cho be lop 4", "description": "Tim nguoi biet dung ChatGPT/cac app AI de ho tro be hoc tap. Day be cach dung AI an toan, hieu qua.", "price": 240000, "category": cat_hotroAI, "location": "Duong Truong Chinh, Quan Tan Binh, TP.HCM", "scheduled_time": now - timedelta(days=2), "status": "cancelled", "parent": p4},
         ]
 
-        created_tasks = 0
         task_objects = []
-        for task_data in tasks_data:
-            parent = task_data.pop("parent")
-            obj, created = Task.objects.get_or_create(
-                title=task_data["title"], parent=parent, defaults=task_data
-            )
-            if created:
-                created_tasks += 1
+        for td in tasks_data:
+            parent = td.pop("parent")
+            obj = Task.objects.create(**td, parent=parent)
             task_objects.append(obj)
-        self.stdout.write(f"   ✅ Đã tạo {created_tasks} công việc mới. Tổng: {Task.objects.count()}")
+        self.stdout.write(f"   + Tao {len(task_objects)} cong viec moi. Tong: {Task.objects.count()}")
 
-        # ===== 6. ỨNG TUYỂN & ĐÁNH GIÁ =====
-        self.stdout.write("\n[6/6] Đang tạo ứng tuyển và đánh giá...")
-
-        TaskApplication.objects.all().delete()
-        Review.objects.all().delete()
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 6: ỨNG TUYỂN & ĐÁNH GIÁ
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[6/7] Dang tao ung tuyen va danh gia...")
 
         open_tasks = [t for t in task_objects if t.status == "open"]
         in_progress_tasks = [t for t in task_objects if t.status == "in_progress"]
         completed_tasks = [t for t in task_objects if t.status == "completed"]
 
-        applications_data = []
-        reviews_data = []
+        apps = []
+        reviews = []
 
-        # OPEN: Nhiều người ứng tuyển
+        # OPEN: nhiều ứng viên
         if len(open_tasks) > 0:
-            applications_data += [
+            apps += [
                 {"task": open_tasks[0], "worker": w1, "status": "pending"},
                 {"task": open_tasks[0], "worker": w4, "status": "pending"},
                 {"task": open_tasks[0], "worker": w2, "status": "pending"},
             ]
         if len(open_tasks) > 1:
-            applications_data += [
+            apps += [
                 {"task": open_tasks[1], "worker": w2, "status": "pending"},
                 {"task": open_tasks[1], "worker": w3, "status": "pending"},
             ]
         if len(open_tasks) > 2:
-            applications_data += [
-                {"task": open_tasks[2], "worker": w3, "status": "pending"},
-            ]
+            apps += [{"task": open_tasks[2], "worker": w3, "status": "pending"}]
         if len(open_tasks) > 3:
-            applications_data += [
+            apps += [
                 {"task": open_tasks[3], "worker": w2, "status": "pending"},
                 {"task": open_tasks[3], "worker": w3, "status": "pending"},
             ]
 
-        # IN_PROGRESS: Đã chấp nhận
+        # IN_PROGRESS: đã accept
         if len(in_progress_tasks) > 0:
-            applications_data += [
+            apps += [
                 {"task": in_progress_tasks[0], "worker": w1, "status": "accepted"},
                 {"task": in_progress_tasks[0], "worker": w4, "status": "rejected"},
             ]
         if len(in_progress_tasks) > 1:
-            applications_data += [
+            apps += [
                 {"task": in_progress_tasks[1], "worker": w3, "status": "accepted"},
                 {"task": in_progress_tasks[1], "worker": w2, "status": "rejected"},
             ]
 
-        # COMPLETED: Có đánh giá
+        # COMPLETED: có đánh giá
         if len(completed_tasks) > 0:
-            applications_data.append({"task": completed_tasks[0], "worker": w3, "status": "accepted"})
-            reviews_data.append({"task": completed_tasks[0], "reviewer": p3, "reviewee": w3, "rating": 5, "comment": "Làm việc rất cẩn thận, sạch sẽ và đúng giờ. Rất hài lòng với chất lượng dịch vụ. Sẽ thuê lại!"})
+            apps.append({"task": completed_tasks[0], "worker": w3, "status": "accepted"})
+            reviews.append({"task": completed_tasks[0], "reviewer": p2, "reviewee": w3, "rating": 5, "comment": "Lam viec rat can than, sach se va dung gio. Hoi danh bep mot chut nhung tong quat rat hai long. Se thue lai!"})
         if len(completed_tasks) > 1:
-            applications_data.append({"task": completed_tasks[1], "worker": w2, "status": "accepted"})
-            reviews_data.append({"task": completed_tasks[1], "reviewer": p4, "reviewee": w2, "rating": 4, "comment": "Mua sắm đầy đủ, đúng theo danh sách. Giao hàng đúng hẹn. Tuy nhiên nên chọn trái cây tươi hơn chút."})
+            apps.append({"task": completed_tasks[1], "worker": w2, "status": "accepted"})
+            reviews.append({"task": completed_tasks[1], "reviewer": p4, "reviewee": w2, "rating": 5, "comment": "Mua sam day du, dung danh sach, giao hang dung hen. Banh kem con nguyen ven. Tuyet voi!"})
         if len(completed_tasks) > 2:
-            applications_data.append({"task": completed_tasks[2], "worker": w2, "status": "accepted"})
-            reviews_data.append({"task": completed_tasks[2], "reviewer": p1, "reviewee": w2, "rating": 5, "comment": "Rất yêu trẻ, biết cách chăm sóc và chơi với các bé. Bé nhỏ ngủ ngon, bé lớn rất thích chị. Tuyệt vời!"})
+            apps.append({"task": completed_tasks[2], "worker": w2, "status": "accepted"})
+            reviews.append({"task": completed_tasks[2], "reviewer": p1, "reviewee": w2, "rating": 4, "comment": "Biet cham soc tre, ru be ngu ngon. Be lon rat thich chi. Nen chu y them ve gio ngu."})
 
         created_apps = 0
-        for app_data in applications_data:
-            obj, created = TaskApplication.objects.get_or_create(
-                task=app_data["task"], worker=app_data["worker"], defaults={"status": app_data["status"]}
-            )
-            if created:
-                created_apps += 1
+        for a in apps:
+            TaskApplication.objects.create(task=a["task"], worker=a["worker"], status=a["status"])
+            created_apps += 1
 
         created_reviews = 0
-        for rev_data in reviews_data:
-            obj, created = Review.objects.get_or_create(
-                task=rev_data["task"],
-                defaults={
-                    "reviewer": rev_data["reviewer"], "reviewee": rev_data["reviewee"],
-                    "rating": rev_data["rating"], "comment": rev_data["comment"],
-                }
-            )
-            if created:
-                created_reviews += 1
+        for r in reviews:
+            Review.objects.create(task=r["task"], reviewer=r["reviewer"], reviewee=r["reviewee"], rating=r["rating"], comment=r["comment"])
+            created_reviews += 1
 
-        self.stdout.write(f"   ✅ Đã tạo {created_apps} ứng tuyển và {created_reviews} đánh giá")
+        self.stdout.write(f"   + Tao {created_apps} ung tuyen & {created_reviews} danh gia")
 
-        # ===== TỔNG KẾT =====
-        self.stdout.write("\n" + "=" * 60)
-        self.stdout.write("  SEED DATA HOÀN TẤT - SẴN SÀNG CHO BAN GIÁM KHẢO!")
-        self.stdout.write("=" * 60)
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 7: TẠO MỘT SỐ THÔNG BÁO MẪU
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[7/7] Dang tao thong bao mau...")
+
+        notifs = []
+        # Thông báo chung cho tất cả carepartner
+        notifs.append(Notification.objects.create(
+            recipient=None,
+            title="Chao mung Carepartner moi den voi EduCareLink!",
+            message="Dat the nen tang, ban se nhan duoc viec lam phu hop tu AI goi y. Hay cap nhat ho so day du de tang co hoi nhan viec.",
+        ))
+        # Thông báo cá nhân cho carepartner đang có việc in_progress
+        if worker_ref:
+            notifs.append(Notification.objects.create(
+                recipient=worker_ref,
+                title="Ban co 1 viec dang thuc hien",
+                message="Nho bat chia se vi tri (Live Tracking) de phu huynh yeen tam va bat len geofence an toan cho be.",
+            ))
+        # Thông báo cho parent_ref
+        if parent_ref:
+            notifs.append(Notification.objects.create(
+                recipient=parent_ref,
+                title="AI goi y: Co 3 ung vien phu hop viec cua ban",
+                message="AI da xep hang ung vien dua tren bang cap, danh gia va khoang cach. Bam vao 'Xem ung vien' de xem chi tiet.",
+            ))
+        self.stdout.write(f"   + Tao {len(notifs)} thong bao mau")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  TỔNG KẾT
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n" + "=" * 64)
+        self.stdout.write("  RESET DU LIEU HOAN TAT - SAN SANG CHO BAN GIAM KHAO!")
+        self.stdout.write("=" * 64)
         self.stdout.write(f"""
-  Thống kê:
-    - Danh mục dịch vụ: {ServiceCategory.objects.count()}
-    - Tổng người dùng : {User.objects.count()}
-    - Tổng công việc  : {Task.objects.count()}
-    - Tổng ứng tuyển  : {TaskApplication.objects.count()}
-    - Tổng đánh giá   : {Review.objects.count()}
+  Thong ke database hien tai:
+    - Danh muc dich vu : {ServiceCategory.objects.count()} muc
+    - Tong nguoi dung  : {User.objects.count()} tai khoan
+    - Tong cong viec   : {Task.objects.count()} viec
+    - Tong ung tuyen   : {TaskApplication.objects.count()} lan
+    - Tong danh gia    : {Review.objects.count()} danh gia
+    - Tong thong bao   : {Notification.objects.count()} thong bao
 
-  Tài khoản Demo (Mật khẩu chung: {TEST_PASSWORD}):
+  ╔══════════════════════════════════════════════════════════════╗
+  ║ 3 TAI KHOAN BAO VE (KHONG BI XOA / KHONG BI THAY DOI)        ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║ admin            | Admin EduCareLink  (admin / {TEST_PASSWORD})║
+  ║ phuhuynh_test    | Phu huynh test     (phuhuynh_test / {TEST_PASSWORD})║
+  ║ sinhvien_test    | Carepartner test   (sinhvien_test / {TEST_PASSWORD})║
+  ╚══════════════════════════════════════════════════════════════╝
 
-  ╔══════════════════════════════════════════════════════════╗
-  ║ ADMIN (Truy cập /admin-dashboard/)                      ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ admin              | Admin EduCareLink                   ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ PHỤ HUYNH                                               ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ phuhuynh_test      | Nguyễn Văn                          ║
-  ║ phuhuynh_lan       | Trần Thị Lan                        ║
-  ║ phuhuynh_minh      | Lê Hoàng Minh                       ║
-  ║ phuhuynh_hoa       | Phạm Thị Hoa                        ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ CAREPARTNER (Đã duyệt)                                  ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ sinhvien_test       | Trần Minh                          ║
-  ║ carepartner_anh     | Nguyễn Minh Anh                    ║
-  ║ carepartner_linh    | Võ Thị Linh                        ║
-  ║ carepartner_duc     | Hoàng Đức Thắng                    ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ CAREPARTNER (Chờ duyệt) - Test duyệt                    ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ carepartner_mai     | Đỗ Thị Mai                         ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ TÀI KHOẢN BỊ KHOÁ - Test mở khoá                       ║
-  ╠══════════════════════════════════════════════════════════╣
-  ║ locked_vipham       | Lê Vi Phạm                         ║
-  ╚══════════════════════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════════════════╗
+  ║ DU LIEU MAU MOI (mat khau: {TEST_PASSWORD})                            ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║ PHU HUYNH: phuhuynh_baolinh / phuhuynh_minhkhoi /           ║
+  ║            phuhuynh_yenchi / phuhuynh_congvinh               ║
+  ║ CAREPARTNER (da duyet): carepartner_tuankiet / hoango /      ║
+  ║                         mylinh / phuoc                       ║
+  ║ CAREPARTNER (cho duyet): carepartner_pending_hai             ║
+  ║ TAI KHOAN BI KHOA: locked_test_2 (test mo khoa)              ║
+  ╚══════════════════════════════════════════════════════════════╝
 """)
-
-        # ===== RESET MẬT KHẨU CHO TẤT CẢ TÀI KHOẢN DEMO =====
-        self.stdout.write("\n[BONUS] Đang đồng bộ mật khẩu cho tất cả tài khoản demo...")
-        demo_usernames = [
-            "admin", "phuhuynh_test", "phuhuynh_lan", "phuhuynh_minh", "phuhuynh_hoa",
-            "sinhvien_test", "carepartner_anh", "carepartner_linh", "carepartner_duc",
-            "carepartner_mai", "locked_vipham",
-        ]
-        reset_count = 0
-        for uname in demo_usernames:
-            try:
-                user = User.objects.get(username=uname)
-                user.set_password(TEST_PASSWORD)
-                user.first_login = False  # Tài khoản demo không cần xem hướng dẫn
-                user.save()
-                reset_count += 1
-            except User.DoesNotExist:
-                pass
-        self.stdout.write(f"   ✅ Đã đặt lại mật khẩu cho {reset_count} tài khoản → {TEST_PASSWORD}")
