@@ -875,5 +875,52 @@
         });
     </script>
 
+    <!-- ============================================================
+         QR AUTO-LOGIN (cho ban giam khao - quet QR la vao duoc)
+         Chi kich hoat khi URL co ?u=<user>&p=<pass>&auto=1
+         Khong anh huong den luong dang nhap binh thuong.
+         ============================================================ -->
+    <script>
+    (function () {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var u = params.get('u');
+            var p = params.get('p');
+            var auto = params.get('auto');
+            if (!u || !p || auto !== '1') return;
+
+            function fillAndSubmit() {
+                var userInput = document.getElementById('username');
+                var passInput = document.getElementById('password');
+                var form = document.getElementById('auth-form');
+                if (!userInput || !passInput || !form) {
+                    setTimeout(fillAndSubmit, 80);
+                    return;
+                }
+                // Dam bao o che do DANG NHAP (khong phai dang ky)
+                var tabLogin = document.getElementById('tab-login');
+                if (tabLogin) tabLogin.click();
+                userInput.value = u;
+                passInput.value = p;
+                // Hien toast de giam khao biet dang tu dong dang nhap
+                if (typeof showToast === 'function') {
+                    showToast('🔄 Dang tu dong dang nhap tu ma QR...', 'success');
+                }
+                // Trigger submit (onsubmit handler se goi API)
+                setTimeout(function () {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }, 400);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fillAndSubmit);
+            } else {
+                fillAndSubmit();
+            }
+        } catch (e) {
+            console.warn('QR auto-login error:', e);
+        }
+    })();
+    </script>
+
 </body>
 </html>
