@@ -598,8 +598,18 @@
         const existingToken = localStorage.getItem('token');
         const existingRole = localStorage.getItem('role');
         const isStaff = localStorage.getItem('is_staff');
-        if (existingToken && existingRole) {
-            const urlParams = new URLSearchParams(window.location.search);
+        // ⚠️ Nếu URL có ?auto=1 (QR auto-login) → PHẢI clear localStorage cũ
+        // để tránh redirect sang admin dashboard khi vẫn còn token admin cũ
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAutoLogin = urlParams.get('auto') === '1';
+        if (isAutoLogin) {
+            // Xoá toàn bộ session cũ để auto-login chạy sạch sẽ
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('is_staff');
+            localStorage.removeItem('admin_username');
+        } else if (existingToken && existingRole) {
             const nextUrl = urlParams.get('next');
             if (isStaff === 'true') {
                 window.location.href = nextUrl || '/admin-dashboard/';
