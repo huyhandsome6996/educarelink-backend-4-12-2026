@@ -2063,3 +2063,79 @@ Hãy sử dụng thông tin này khi cần để trả lời admin."""
             else:
                 detail = f"Lỗi kết nối AI: {error_msg}"
             return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class AdminKeepAliveToggleAPIView(APIView):
+    """
+    API để Admin bật/tắt Keep-Alive Scheduler.
+    Chỉ Admin (is_staff=True) mới được truy cập.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        """Lấy trạng thái hiện tại của Keep-Alive"""
+        from .models import SystemSetting
+        from .keepalive_scheduler import get_stats, ENABLE_KEEPALIVE, IS_RENDER
+        
+        # Lấy setting từ DB
+        is_enabled = SystemSetting.get_bool('keepalive_enabled', default=True)
+        
+        # Lấy thông tin admin đã cập nhật gần nhất
+        try:
+            setting = SystemSetting.objects.get(key='keepalive_enabled')
+            updated_by = setting.updated_by.username if setting.updated_by else None
+            updated_at = setting.updated_at.isoformat() if setting.updated_at else None
+        except SystemSetting.DoesNotExist:
+            updated_by = None
+            updated_at = None
+        
+        return Response({
+            'enabled': is_enabled,
+            'scheduler_running': ENABLE_KEEPALIVE and IS_RENDER,
+            'is_render': IS_RENDER,
+            'updated_by': updated_by,
+            'updated_at': updated_at,
+            'message': f"Keep-Alive hiện đang {'BẬT' if is_enabled else 'TẮT'}",
+        })
+
+    def post(self, request):
+        """Bật hoặc tắt Keep-Alive"""
+        from .models import SystemSetting
+        import logging
+        
+        action = request.data.get('action', '').lower()
+        
+        if action not in ['enable', 'disable', 'toggle']:
+            return Response(
+                {'error': 'action phải là "enable", "disable" hoặc "toggle"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Lấy trạng thái hiện tại
+        current_state = SystemSetting.get_bool('keepalive_enabled', default=True)
+        
+        # Xác định trạng thái mới
+        if action == 'enable':
+            new_state = True
+        elif action == 'disable':
+            new_state = False
+        else:  # toggle
+            new_state = not current_state
+        
+        # Cập nhật vào DB
+        SystemSetting.set_bool('keepalive_enabled', new_state, updated_by=request.user)
+        
+        action_text = 'BẬT' if new_state else 'TẮT'
+        
+        # Ghi log
+        logger = logging.getLogger('educarelink.keepalive')
+        logger.info(f"[AdminToggle] Admin {request.user.username} đã {action_text} Keep-Alive")
+        
+        # Trả về kết quả
+        return Response({
+            'success': True,
+            'enabled': new_state,
+            'action': action_text,
+            'message': f'Admin đã {action_text} Keep-Alive thành công. Scheduler sẽ {"khởi động lại" if new_state else "dừng"} ở lần deploy/restart tiếp theo.',
+            'note': 'Thay đổi có hiệu lực ngay với các worker mới. Worker hiện tại cần restart để áp dụng.',
+        })

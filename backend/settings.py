@@ -17,6 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = 'django-insecure-fallback-for-dev-only'
@@ -25,7 +26,6 @@ if not SECRET_KEY:
         raise ImproperlyConfigured("SECRET_KEY environment variable must be set in production.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'educarelink-backend.onrender.com,localhost,127.0.0.1').split(',')
 

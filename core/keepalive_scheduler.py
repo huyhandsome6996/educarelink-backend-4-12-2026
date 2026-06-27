@@ -28,7 +28,21 @@ logger = logging.getLogger('educarelink.keepalive')
 # ───────────────────────────────────────────────────────
 RENDER_URL = os.environ.get('RENDER_URL', 'https://educarelink-backend.onrender.com')
 PING_INTERVAL_MINUTES = int(os.environ.get('KEEPALIVE_INTERVAL', '3'))  # mặc định 3 phút
-ENABLE_KEEPALIVE = os.environ.get('KEEPALIVE_ENABLED', 'true').lower() == 'true'
+
+# Ưu tiên: Kiểm tra DB setting trước, sau đó mới đến env var (fallback)
+def _is_keepalive_enabled():
+    """Kiểm tra xem keep-alive có được bật không - ưu tiên DB setting"""
+    try:
+        from .models import SystemSetting
+        # Nếu có setting trong DB thì dùng nó (admin đã cấu hình)
+        return SystemSetting.get_bool('keepalive_enabled', default=None)
+    except Exception:
+        # Nếu chưa có migration hoặc DB chưa sẵn sàng, fallback về env var
+        pass
+    # Fallback: dùng environment variable
+    return os.environ.get('KEEPALIVE_ENABLED', 'true').lower() == 'true'
+
+ENABLE_KEEPALIVE = _is_keepalive_enabled()
 
 # Chỉ chạy trên Render (production), không chạy local
 IS_RENDER = os.environ.get('RENDER', '') == 'true'

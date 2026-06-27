@@ -20,6 +20,7 @@ from .views import (
     DistanceCalculationAPIView,
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
+    AdminKeepAliveToggleAPIView,
 )
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
@@ -101,4 +102,7 @@ urlpatterns = [
 
     # Keep-Alive Scheduler Stats (xem trạng thái tự ping)
     path('admin/keepalive-stats/', KeepAliveStatsAPIView.as_view(), name='keepalive-stats'),
+
+    # Admin bật/tắt Keep-Alive (toggle switch)
+    path('admin/keepalive-toggle/', AdminKeepAliveToggleAPIView.as_view(), name='admin-keepalive-toggle'),
 ]
