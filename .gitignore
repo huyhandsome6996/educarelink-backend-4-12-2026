@@ -1,29 +1,39 @@
+```
 # Python
+*.pyc
 __pycache__/
-*.py[cod]
 *.pyo
-venv/
+*.pyd
+.Python
 env/
-.env
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
 
 # Django
-db.sqlite3
 *.log
-staticfiles/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
 media/
+staticfiles/
+.env
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# Node / Expo (trong thư mục mobile/)
-mobile/node_modules/
-mobile/.expo/
-mobile/dist/
-mobile/web-build/
+# OS
+.DS_Store
+Thumbs.db
 
-# Node (root level for docx generation)
-node_modules/
-bun.lock
-package.json
+# Coverage
+.coverage
+htmlcov/
+.coverage.*
+```

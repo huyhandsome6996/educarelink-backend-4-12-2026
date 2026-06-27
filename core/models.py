@@ -205,3 +205,43 @@ class Notification(models.Model):
         if self.recipient:
             return f"Thông báo cho {self.recipient.username}: {self.title}"
         return f"Thông báo chung: {self.title}"
+
+
+# 9. BẢNG CẤU HÌNH HỆ THỐNG (Lưu các setting như bật/tắt keep-alive)
+class SystemSetting(models.Model):
+    """Lưu cấu hình hệ thống - chỉ có 1 record duy nhất cho mỗi key"""
+    key = models.CharField(max_length=100, unique=True, help_text="Khóa cấu hình, VD: 'keepalive_enabled'")
+    value = models.TextField(help_text="Giá trị cấu hình (lưu dưới dạng text, có thể parse sang JSON/bool/int)")
+    description = models.TextField(blank=True, help_text="Mô tả ý nghĩa của cấu hình này")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Thời gian cập nhật cuối cùng")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, help_text="Admin cập nhật gần nhất")
+
+    class Meta:
+        verbose_name = "Cấu hình hệ thống"
+        verbose_name_plural = "Cấu hình hệ thống"
+        ordering = ['key']
+
+    def __str__(self):
+        return f"{self.key} = {self.value}"
+
+    @classmethod
+    def get_bool(cls, key, default=False):
+        """Lấy giá trị boolean từ setting"""
+        try:
+            setting = cls.objects.get(key=key)
+            return setting.value.lower() in ('true', '1', 'yes', 'on')
+        except cls.DoesNotExist:
+            return default
+
+    @classmethod
+    def set_bool(cls, key, value, updated_by=None):
+        """Đặt giá trị boolean cho setting"""
+        setting, created = cls.objects.get_or_create(
+            key=key,
+            defaults={'value': 'true' if value else 'false'}
+        )
+        if not created:
+            setting.value = 'true' if value else 'false'
+            setting.updated_by = updated_by
+            setting.save()
+        return setting
