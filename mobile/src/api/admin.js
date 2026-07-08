@@ -4,6 +4,9 @@ import apiClient from './client';
 // ADMIN API — đồng bộ với web (admin_dashboard.html)
 // ====================================================================
 
+// Timeout dài cho AI Chatbot (60s) — Gemini cần thời gian xử lý
+const AI_TIMEOUT = 60000;
+
 // ── DUYỆT CAREPARTNER ─────────────────────────────────────────────
 // List carepartner đang chờ Admin duyệt
 export const getPendingWorkers = () => apiClient.get('/admin/pending-workers/');
@@ -51,3 +54,15 @@ export const reviewProfileChange = (requestId, payload) =>
 
 // ── DEMO DATA ─────────────────────────────────────────────────────
 export const seedDemoData = () => apiClient.post('/admin/seed-demo-data/');
+
+// ── ADMIN AI CHATBOT (với vision — upload ảnh + message) ──────────
+// Body: FormData { message, image? }
+// Trả về: { response, actions?, image_analysis? }
+export const sendAdminChatMessage = (formData) =>
+  apiClient.post('/admin/chatbot/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: AI_TIMEOUT,
+  });
+
+// ── KEEPALIVE SCHEDULER STATS ─────────────────────────────────────
+export const getKeepaliveStats = () => apiClient.get('/admin/keepalive-stats/');

@@ -19,3 +19,8 @@ export const getCandidateRecommendations = (taskId, forceRefresh = false) => {
   const url = '/ai/recommendations/candidates/' + taskId + '/' + (forceRefresh ? '?_t=' + Date.now() : '');
   return apiClient.get(url, { timeout: AI_TIMEOUT });
 };
+
+// Xoá cache AI recommendations (Admin only)
+// Body tuỳ chọn: { worker_id?, task_id? }
+export const clearRecommendationsCache = (payload = {}) =>
+  apiClient.post('/ai/recommendations/clear-cache/', payload);
