@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated, Alert, Platform, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
-import { checkConsent, grantConsent } from '../../api/tracking';
+import { checkConsent, grantConsent, triggerSOS, getSOSAlerts, resolveSOS } from '../../api/tracking';
 import { startTracking, stopTracking, isTracking as isLocationTracking, getCurrentTaskId } from '../../services/LocationService';
 import NotificationBell from '../../components/NotificationBell';
 import TrackingConsentModal from '../../components/TrackingConsentModal';
@@ -33,6 +33,12 @@ export default function MyJobsScreen() {
   const [consentTask, setConsentTask] = useState(null);
   const [consentMap, setConsentMap] = useState({}); // {task_id: 'granted'|'denied'|'revoked'|null}
   const [trackingTaskId, setTrackingTaskId] = useState(null);
+
+  // SOS state — đồng bộ với web (parent có SOS, worker cũng cần)
+  const [sosModal, setSosModal] = useState(null); // { taskId }
+  const [sosMessage, setSosMessage] = useState('');
+  const [sosAlertsMap, setSosAlertsMap] = useState({}); // {task_id: [alerts]}
+  const [sosLoading, setSosLoading] = useState(false);
 
   const fetchJobs = async () => {
     try {
@@ -116,6 +122,55 @@ export default function MyJobsScreen() {
     } else {
       // Refresh all consents
       fetchJobs();
+    }
+  };
+
+  // === SOS HANDLERS — đồng bộ với web (parent có SOS, worker cũng có) ===
+  const fetchSOSAlerts = async (taskId) => {
+    try {
+      const r = await getSOSAlerts(taskId);
+      setSosAlertsMap(prev => ({ ...prev, [taskId]: r.data || [] }));
+    } catch (e) {
+      console.error('fetchSOSAlerts error:', e);
+    }
+  };
+
+  const handleTriggerSOS = async () => {
+    if (!sosModal?.taskId) return;
+    setSosLoading(true);
+    try {
+      // Lấy vị trí hiện tại nếu có (cần LocationService)
+      let lat = null, lng = null;
+      try {
+        const LocationService = await import('../../services/LocationService');
+        const loc = LocationService.getCurrentLocation?.();
+        if (loc) { lat = loc.latitude; lng = loc.longitude; }
+      } catch (e) { /* ignore */ }
+
+      await triggerSOS({
+        task_id: sosModal.taskId,
+        latitude: lat,
+        longitude: lng,
+        message: sosMessage.trim(),
+      });
+      Alert.alert('🆘 Đã gửi SOS', 'Phụ huynh đã nhận được cảnh báo khẩn cấp.');
+      setSosModal(null);
+      setSosMessage('');
+      fetchSOSAlerts(sosModal.taskId);
+    } catch (e) {
+      Alert.alert('Lỗi', e.response?.data?.error || 'Gửi SOS thất bại.');
+    } finally {
+      setSosLoading(false);
+    }
+  };
+
+  const handleResolveSOS = async (sosId, taskId) => {
+    try {
+      await resolveSOS(sosId);
+      Alert.alert('✅ Đã giải quyết', 'SOS đã được đánh dấu đã xử lý.');
+      fetchSOSAlerts(taskId);
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể giải quyết SOS.');
     }
   };
 
@@ -213,6 +268,49 @@ export default function MyJobsScreen() {
                 <Text style={styles.trackingStartText}>Cho phép theo dõi vị trí</Text>
               </TouchableOpacity>
             ) : null}
+
+            {/* === SOS BUTTON — worker có thể gặp tình huống khẩn cấp === */}
+            <View style={styles.sosRow}>
+              <TouchableOpacity
+                style={styles.sosBtn}
+                onPress={() => {
+                  setSosModal({ taskId: app.task, taskTitle: app.task_title });
+                  fetchSOSAlerts(app.task);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="warning" size={16} color="#fff" />
+                <Text style={styles.sosBtnText}>SOS khẩn cấp</Text>
+              </TouchableOpacity>
+              {sosAlertsMap[app.task]?.filter(a => a.status === 'active').length > 0 && (
+                <View style={styles.sosActiveBadge}>
+                  <Ionicons name="alert-circle" size={11} color={COLORS.error} />
+                  <Text style={styles.sosActiveText}>
+                    {sosAlertsMap[app.task].filter(a => a.status === 'active').length} SOS active
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* List SOS alerts của task (nếu có) */}
+            {sosAlertsMap[app.task]?.length > 0 && (
+              <View style={styles.sosAlertsBox}>
+                <Text style={styles.sosAlertsLabel}>🚨 SOS alerts gần đây:</Text>
+                {sosAlertsMap[app.task].slice(0, 3).map(alert => (
+                  <View key={alert.id} style={styles.sosAlertItem}>
+                    <View style={[styles.sosAlertDot, { backgroundColor: alert.status === 'active' ? COLORS.error : COLORS.success }]} />
+                    <Text style={styles.sosAlertText}>
+                      {alert.sender === 'worker' ? 'Bạn' : 'Phụ huynh'} • {alert.message || '(không có tin nhắn)'}
+                    </Text>
+                    {alert.status === 'active' && (
+                      <TouchableOpacity onPress={() => handleResolveSOS(alert.id, app.task)}>
+                        <Text style={styles.sosResolveBtn}>Giải quyết</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
           </>
         )}
       </View>
@@ -279,6 +377,56 @@ export default function MyJobsScreen() {
         onConsent={handleConsentChoice}
         onClose={() => setConsentModalVisible(false)}
       />
+
+      {/* SOS Modal — worker gửi SOS khẩn cấp */}
+      <Modal visible={!!sosModal} transparent animationType="fade" onRequestClose={() => setSosModal(null)}>
+        <View style={styles.sosOverlay}>
+          <View style={styles.sosModalContent}>
+            <View style={styles.sosModalHeader}>
+              <Ionicons name="warning" size={28} color={COLORS.error} />
+              <Text style={styles.sosModalTitle}>SOS Khẩn cấp</Text>
+            </View>
+            <Text style={styles.sosModalHint}>
+              Gửi SOS cho phụ huynh về tình huống khẩn cấp. Vị trí hiện tại của bạn sẽ được gửi kèm (nếu đang bật tracking).
+            </Text>
+            {sosModal?.taskTitle && (
+              <Text style={styles.sosModalTask}>📋 {sosModal.taskTitle}</Text>
+            )}
+
+            <Text style={styles.sosInputLabel}>Tin nhắn (tuỳ chọn):</Text>
+            <TextInput
+              style={styles.sosInput}
+              value={sosMessage}
+              onChangeText={setSosMessage}
+              placeholder="VD: Gặp sự cố an toàn, cần phụ huynh liên hệ ngay..."
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.sosModalActions}>
+              <TouchableOpacity style={styles.sosCancelBtn} onPress={() => setSosModal(null)}>
+                <Text style={styles.sosCancelText}>Huỷ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sosSendBtn, sosLoading && { opacity: 0.6 }]}
+                onPress={handleTriggerSOS}
+                disabled={sosLoading}
+              >
+                {sosLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="send" size={14} color="#fff" />
+                    <Text style={styles.sosSendText}>Gửi SOS</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -371,4 +519,57 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   trackingStartText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
+  // SOS UI
+  sosRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  sosBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: COLORS.error, borderRadius: SIZES.radiusSm, paddingVertical: 10,
+    ...SHADOWS.small,
+  },
+  sosBtnText: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '800' },
+  sosActiveBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.errorBg, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#fecaca',
+  },
+  sosActiveText: { ...TYPO.overline, color: COLORS.error, fontWeight: '800', fontSize: 9 },
+  sosAlertsBox: {
+    backgroundColor: COLORS.errorBg, borderRadius: SIZES.radiusSm, padding: 10, marginTop: 8, gap: 6,
+    borderWidth: 1, borderColor: '#fecaca',
+  },
+  sosAlertsLabel: { ...TYPO.overline, color: COLORS.error, fontWeight: '700' },
+  sosAlertItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  sosAlertDot: { width: 8, height: 8, borderRadius: 4 },
+  sosAlertText: { flex: 1, ...TYPO.bodySmall, color: COLORS.textPrimary },
+  sosResolveBtn: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
+  // SOS Modal
+  sosOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
+  sosModalContent: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg, padding: 20, ...SHADOWS.large,
+  },
+  sosModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  sosModalTitle: { ...TYPO.h4, color: COLORS.error, fontWeight: '800' },
+  sosModalHint: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 12 },
+  sosModalTask: {
+    ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700',
+    backgroundColor: COLORS.background, padding: 8, borderRadius: SIZES.radiusSm, marginBottom: 12,
+  },
+  sosInputLabel: { ...TYPO.buttonSmall, color: COLORS.textSecondary, marginBottom: 4 },
+  sosInput: {
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: SIZES.radiusSm,
+    paddingHorizontal: 12, paddingVertical: 10, ...TYPO.body, color: COLORS.textPrimary,
+    minHeight: 80, textAlignVertical: 'top',
+  },
+  sosModalActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 16 },
+  sosCancelBtn: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.background,
+  },
+  sosCancelText: { ...TYPO.button, color: COLORS.textSecondary },
+  sosSendBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 20, paddingVertical: 10, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.error, ...SHADOWS.small,
+  },
+  sosSendText: { ...TYPO.button, color: '#fff', fontWeight: '800' },
 });

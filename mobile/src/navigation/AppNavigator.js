@@ -48,15 +48,24 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 // Admin
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
 import AdminModerationScreen from '../screens/Admin/AdminModerationScreen';
+import AdminChatbotScreen from '../screens/Admin/AdminChatbotScreen';
+import AdminPaymentsScreen from '../screens/Admin/AdminPaymentsScreen';
+import AdminTrackingOverviewScreen from '../screens/Admin/AdminTrackingOverviewScreen';
+import AdminReviewScreen from '../screens/Admin/AdminReviewScreen';
+import AdminSendNotificationScreen from '../screens/Admin/AdminSendNotificationScreen';
 
 // Live Tracking (Parent)
 import LiveTrackingScreen from '../screens/Parent/LiveTrackingScreen';
 
 // Complaint (Worker)
 import ComplaintScreen from '../screens/Worker/ComplaintScreen';
+import MyComplaintsScreen from '../screens/Worker/MyComplaintsScreen';
 
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
+
+// Image Preview (shared)
+import ImagePreviewScreen from '../screens/ImagePreviewScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -167,11 +176,17 @@ export default function AppNavigator() {
             />
           </>
         ) : user.is_staff ? (
-          // Admin → Admin Dashboard
+          // Admin → Admin Dashboard + các screen admin mới
           <>
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="AdminModeration" component={AdminModerationScreen} />
+            <Stack.Screen name="AdminChatbot" component={AdminChatbotScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} />
+            <Stack.Screen name="AdminTracking" component={AdminTrackingOverviewScreen} />
+            <Stack.Screen name="AdminReview" component={AdminReviewScreen} />
+            <Stack.Screen name="AdminSendNotification" component={AdminSendNotificationScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         ) : user.role === 'parent' ? (
           // Đã đăng nhập là Phụ huynh
@@ -185,6 +200,7 @@ export default function AppNavigator() {
             <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
+            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)
@@ -197,6 +213,8 @@ export default function AppNavigator() {
             <Stack.Screen name="SettlementDetail" component={SettlementDetailScreen} />
             <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
             <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
+            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         )}
       </Stack.Navigator>

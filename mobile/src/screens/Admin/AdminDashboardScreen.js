@@ -19,6 +19,16 @@ const TABS = [
   { key: 'users',   label: 'Tất cả user', icon: 'person-outline' },
 ];
 
+// Quick access buttons cho admin — mở các screen chuyên biệt
+const QUICK_ACTIONS = [
+  { key: 'admin_chatbot', label: 'AI Trợ lý', icon: 'sparkles', color: COLORS.primary, target: 'AdminChatbot' },
+  { key: 'admin_payments', label: 'Thanh toán', icon: 'card', color: '#D82D8B', target: 'AdminPayments' },
+  { key: 'admin_review', label: 'Duyệt hồ sơ', icon: 'document-attach', color: COLORS.secondary, target: 'AdminReview' },
+  { key: 'admin_moderation', label: 'Kiểm duyệt', icon: 'shield-checkmark', color: COLORS.warning, target: 'AdminModeration' },
+  { key: 'admin_tracking', label: 'Tracking', icon: 'locate', color: COLORS.info, target: 'AdminTracking' },
+  { key: 'admin_send_notify', label: 'Gửi thông báo', icon: 'notifications', color: '#8B5CF6', target: 'AdminSendNotification' },
+];
+
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('pending');
@@ -256,6 +266,25 @@ export default function AdminDashboardScreen() {
         <NotificationBell color="#fff" />
       </View>
 
+      {/* Quick Actions — các nút truy cập nhanh tới tính năng admin */}
+      <View style={styles.quickActionsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsScroll}>
+          {QUICK_ACTIONS.map(action => (
+            <TouchableOpacity
+              key={action.key}
+              style={styles.quickActionBtn}
+              onPress={() => navigation.navigate(action.target)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
+                <Ionicons name={action.icon} size={18} color="#fff" />
+              </View>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {/* Tabs */}
       <View style={styles.tabs}>
         {TABS.map(tab => {
@@ -392,4 +421,16 @@ const styles = StyleSheet.create({
     ...SHADOWS.large,
   },
   seedBtnText: { color: '#fff', ...TYPO.button, fontSize: 15 },
+  // Quick Actions
+  quickActionsWrap: {
+    backgroundColor: COLORS.surface, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  quickActionsScroll: { paddingHorizontal: 16, gap: 12 },
+  quickActionBtn: { alignItems: 'center', width: 70, gap: 4 },
+  quickActionIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center', ...SHADOWS.small,
+  },
+  quickActionLabel: { ...TYPO.caption, color: COLORS.textSecondary, textAlign: 'center', fontWeight: '600', fontSize: 10 },
 });

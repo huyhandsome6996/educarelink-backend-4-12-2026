@@ -39,5 +39,9 @@ export const regenerateSettlementQR = (settlementId) =>
 export const runMonthlySettlement = (payload = {}) =>
   apiClient.post('/payments/admin/run-settlement/', payload);
 
+// Audit logs — filter theo payment_id hoặc settlement_id
+export const getPaymentLogs = (params = {}) =>
+  apiClient.get('/payments/admin/logs/', { params });
+
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkPaymentHealth = () => apiClient.get('/payments/health/');
