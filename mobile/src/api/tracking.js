@@ -51,5 +51,23 @@ export const resolveSOS = (sosId) =>
 export const getAdminTrackingOverview = () =>
   apiClient.get('/tracking/admin/overview/');
 
+// Trigger manual offline check (admin debug)
+export const runOfflineCheck = () =>
+  apiClient.post('/tracking/admin/run-offline-check/');
+
+// ── DEVICE HEARTBEAT & OFFLINE ALERT (chống tắt máy) ──────────────
+// Carepartner gửi heartbeat mỗi 30s khi đang tracking
+// Body: { task_id, latitude?, longitude?, battery_level?, app_state?, network_type? }
+export const sendHeartbeat = (payload) =>
+  apiClient.post('/tracking/heartbeat/', payload);
+
+// Parent lấy trạng thái thiết bị carepartner (online/offline + alert active)
+export const getDeviceStatus = (taskId) =>
+  apiClient.get(`/tracking/${taskId}/device-status/`);
+
+// Parent list offline alerts của task (lưu vĩnh viễn)
+export const getOfflineAlerts = (taskId, limit = 50) =>
+  apiClient.get(`/tracking/${taskId}/offline-alerts/`, { params: { limit } });
+
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkTrackingHealth = () => apiClient.get('/tracking/health/');

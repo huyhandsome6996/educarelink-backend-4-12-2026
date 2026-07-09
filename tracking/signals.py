@@ -31,6 +31,7 @@ def _clear_tracking_on_task_save(sender, instance: Task, created: bool, **kwargs
     """
     Khi task.status chuyển sang 'completed' hoặc 'cancelled':
       - Xóa LiveLocation (parent không thấy vị trí nữa)
+      - Clear DeviceHeartbeat + close DeviceOfflineAlert (chống tắt máy)
       - LocationHistory + Consent vẫn giữ vĩnh viễn
     """
     if kwargs.get('raw'):
@@ -43,10 +44,11 @@ def _clear_tracking_on_task_save(sender, instance: Task, created: bool, **kwargs
         return
 
     if new_status in ('completed', 'cancelled'):
-        from .services import clear_task_tracking
+        from .services import clear_task_tracking, clear_task_heartbeat
         try:
             clear_task_tracking(instance)
+            clear_task_heartbeat(instance)
         except Exception as e:
             logger.exception(
-                f"[tracking.signals] clear_task_tracking thất bại cho Task#{instance.id}: {e}"
+                f"[tracking.signals] clear_task_tracking/heartbeat thất bại cho Task#{instance.id}: {e}"
             )

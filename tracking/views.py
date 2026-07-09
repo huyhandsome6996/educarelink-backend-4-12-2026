@@ -25,16 +25,19 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 
 from core.models import Task
-from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert
+from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert, DeviceHeartbeat, DeviceOfflineAlert
 from .serializers import (
     LocationConsentSerializer, LiveLocationSerializer,
     LocationHistorySerializer, SOSAlertSerializer,
     GrantConsentSerializer, UpdateLocationSerializer, SOSSerializer,
+    HeartbeatSerializer,
 )
 from .services import (
     grant_consent, revoke_consent, update_worker_location,
     get_live_location, get_location_history, trigger_sos,
     get_accepted_worker,
+    update_heartbeat, get_device_status, get_offline_alerts_for_task,
+    check_offline_devices,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -333,6 +336,106 @@ class SOSResolveAPIView(APIView):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  DEVICE HEARTBEAT & OFFLINE ALERT (chống tắt máy/đập máy)
+# ═══════════════════════════════════════════════════════════════════
+
+class HeartbeatAPIView(APIView):
+    """
+    POST /api/tracking/heartbeat/
+    Body: {
+        task_id, latitude?, longitude?,
+        battery_level?, app_state?, network_type?
+    }
+
+    Carepartner app gửi heartbeat mỗi 30s khi đang tracking.
+    Backend dùng để phát hiện thiết bị tắt nguồn/mất mạng.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = HeartbeatSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            task = Task.objects.get(pk=data['task_id'])
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            hb = update_heartbeat(
+                task=task, worker=request.user,
+                latitude=data.get('latitude'),
+                longitude=data.get('longitude'),
+                battery_level=data.get('battery_level'),
+                app_state=data.get('app_state', ''),
+                network_type=data.get('network_type', ''),
+            )
+            return Response({
+                'status': 'ok',
+                'heartbeat_id': hb.id,
+                'last_seen': hb.last_seen.isoformat(),
+                'device_status': hb.device_status,
+            }, status=status.HTTP_200_OK)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeviceStatusAPIView(APIView):
+    """
+    GET /api/tracking/<task_id>/device-status/
+
+    Parent lấy trạng thái thiết bị carepartner (online/offline + alert active).
+    Poll mỗi 10s khi đang theo dõi.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            status_data = get_device_status(task=task, requester=request.user)
+            return Response(status_data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class OfflineAlertsListAPIView(APIView):
+    """
+    GET /api/tracking/<task_id>/offline-alerts/?limit=50
+
+    Parent lấy list offline alerts của task (lưu vĩnh viễn — để xem lại lịch sử).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        limit = int(request.query_params.get('limit', 50))
+        try:
+            alerts = get_offline_alerts_for_task(task=task, requester=request.user, limit=limit)
+            return Response({
+                'count': len(alerts),
+                'task_id': task.id,
+                'task_title': task.title,
+                'alerts': alerts,
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  ADMIN ENDPOINT
 # ═══════════════════════════════════════════════════════════════════
 
@@ -341,6 +444,7 @@ class AdminTrackingOverviewAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
+        from django.conf import settings as dj_settings
         return Response({
             'total_consents': LocationConsent.objects.count(),
             'active_consents': LocationConsent.objects.filter(consent='granted').count(),
@@ -348,8 +452,36 @@ class AdminTrackingOverviewAPIView(APIView):
             'total_history_points': LocationHistory.objects.count(),
             'active_sos': SOSAlert.objects.filter(status='active').count(),
             'total_sos': SOSAlert.objects.count(),
-            'geofence_radius_meters': __import__('django.conf', fromlist=['settings']).settings.TRACKING_GEOFENCE_RADIUS if hasattr(__import__('django.conf', fromlist=['settings']).settings, 'TRACKING_GEOFENCE_RADIUS') else 500,
+            'geofence_radius_meters': getattr(dj_settings, 'TRACKING_GEOFENCE_RADIUS', 500),
+            # Device offline alert stats
+            'device_heartbeats': {
+                'total': DeviceHeartbeat.objects.count(),
+                'online': DeviceHeartbeat.objects.filter(device_status='online').count(),
+                'offline': DeviceHeartbeat.objects.filter(device_status='offline').count(),
+                'stopped': DeviceHeartbeat.objects.filter(device_status='stopped').count(),
+            },
+            'offline_alerts': {
+                'total': DeviceOfflineAlert.objects.count(),
+                'active': DeviceOfflineAlert.objects.filter(status='active').count(),
+                'recovered': DeviceOfflineAlert.objects.filter(status='recovered').count(),
+                'task_ended': DeviceOfflineAlert.objects.filter(status='task_ended').count(),
+            },
+            'offline_threshold_seconds': getattr(dj_settings, 'TRACKING_OFFLINE_THRESHOLD', 90),
+            'heartbeat_interval_seconds': getattr(dj_settings, 'TRACKING_HEARTBEAT_INTERVAL', 30),
         })
+
+
+class AdminRunOfflineCheckAPIView(APIView):
+    """
+    POST /api/tracking/admin/run-offline-check/
+
+    Admin trigger manual check offline devices (debug).
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        stats = check_offline_devices()
+        return Response(stats)
 
 
 class TrackingHealthCheckAPIView(APIView):
