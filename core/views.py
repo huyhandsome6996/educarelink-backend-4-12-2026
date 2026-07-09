@@ -207,10 +207,11 @@ class UserProfileAPIView(APIView):
 
 # --- PHẦN 2: CHUNG CHO CẢ PHỤ HUYNH & SINH VIÊN ---
 class TaskListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Task.objects.all().order_by('-created_at')
+    # ⚡ TỐI ƯU: select_related → giảm N+1 queries (parent + category load chung 1 query)
+    queryset = Task.objects.select_related('parent', 'category').all().order_by('-created_at')
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def perform_create(self, serializer):
         # Chỉ phụ huynh mới được đăng việc
         if self.request.user.role != 'parent':
@@ -220,7 +221,8 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
 
 class TaskDetailAPIView(generics.RetrieveAPIView):
     """API lấy chi tiết 1 công việc theo ID — tránh fetch ALL tasks rồi filter client-side"""
-    queryset = Task.objects.all()
+    # ⚡ TỐI ƯU: select_related + prefetch_related
+    queryset = Task.objects.select_related('parent', 'category').prefetch_related('applications').all()
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
@@ -262,15 +264,17 @@ class ParentTasksAPIView(generics.ListAPIView):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
-         # Phục vụ Màn 5: Lấy danh sách việc phụ huynh đã đăng
-         return Task.objects.filter(parent=self.request.user).order_by('-created_at')
+         # ⚡ TỐI ƯU: select_related giảm N+1 (parent + category)
+         return Task.objects.select_related('parent', 'category').filter(parent=self.request.user).order_by('-created_at')
 
 class TaskCandidatesAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
-        # Phục vụ Màn 6: Phụ huynh xem ai đã ứng tuyển vào việc của mình
-        return TaskApplication.objects.filter(task_id=self.kwargs['task_id'], task__parent=self.request.user)
+        # ⚡ TỐI ƯU: select_related('worker', 'task', 'task__parent') giảm N+1
+        return TaskApplication.objects.select_related(
+            'worker', 'task', 'task__parent', 'task__category'
+        ).filter(task_id=self.kwargs['task_id'], task__parent=self.request.user)
 
 class ApproveCandidateAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -407,26 +411,35 @@ class WorkerJobsAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
-        # Phục vụ Màn 10: Việc của tôi (Sinh viên)
-        return TaskApplication.objects.filter(worker=self.request.user).order_by('-applied_at')
+        # ⚡ TỐI ƯU: select_related giảm N+1 (worker, task, task__parent)
+        return TaskApplication.objects.select_related(
+            'worker', 'task', 'task__parent', 'task__category'
+        ).filter(worker=self.request.user).order_by('-applied_at')
 
 class WorkerProfileDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, worker_id):
+        # ⚡ TỐI ƯU: dùng select_related('reviewer') + aggregate() thay vì loop
+        # Trước: 1 query worker + 1 query reviews + N queries reviewer (N+1)
+        # Sau: 1 query worker + 1 query reviews (kèm reviewer) + 1 aggregate
         try:
             worker = User.objects.get(id=worker_id, role='worker')
-            # Lấy tất cả đánh giá mà sinh viên này nhận được
-            reviews = Review.objects.filter(reviewee=worker).order_by('-created_at')
-            
-            # Tính toán số sao trung bình
-            avg_rating = 0.0
-            if reviews.exists():
-                avg_rating = sum([r.rating for r in reviews]) / reviews.count()
-            
+            # Lấy reviews + reviewer info trong 1 query (select_related)
+            reviews = Review.objects.select_related('reviewer').filter(reviewee=worker).order_by('-created_at')[:50]  # limit 50
+
+            # ⚡ Aggregate avg_rating trong DB thay vì load tất cả + tính Python
+            from django.db.models import Avg, Count
+            stats = Review.objects.filter(reviewee=worker).aggregate(
+                avg_rating=Avg('rating'),
+                review_count=Count('id')
+            )
+            avg_rating = round(stats['avg_rating'], 1) if stats['avg_rating'] else 0.0
+            review_count = stats['review_count'] or 0
+
             # Bằng cấp/chứng chỉ lấy từ database (admin đã duyệt/nhập)
             qualifications = worker.qualifications if isinstance(worker.qualifications, list) else []
 
-            # Serialize reviews
+            # Serialize reviews (đã có reviewer info, không cần query thêm)
             serialized_reviews = []
             for r in reviews:
                 serialized_reviews.append({
@@ -445,8 +458,8 @@ class WorkerProfileDetailAPIView(APIView):
                 "last_name": worker.last_name,
                 "is_verified": worker.is_verified,
                 "ai_profile_summary": worker.ai_profile_summary or "Chưa có nhận xét từ AI.",
-                "avg_rating": round(avg_rating, 1) if reviews.exists() else 0.0,
-                "review_count": reviews.count(),
+                "avg_rating": avg_rating,
+                "review_count": review_count,
                 "qualifications": qualifications,
                 "reviews": serialized_reviews,
                 "phone_number": worker.phone_number or "",
