@@ -318,35 +318,58 @@ Phân tích:
 Trả lời siêu ngắn, tối đa 3 dòng, bằng tiếng Việt."""
 
     try:
+        # ⚡ Fallback chain model — thử lần lượt nếu 1 model bị deprecated
+        models_to_try = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
+        ai_text = None
         # Thử dùng requests nếu có (nhanh hơn)
         try:
             import requests as req_lib
-            response = req_lib.post(
-                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}',
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256}
-                },
-                timeout=15
-            )
-            if response.status_code == 200:
-                result = response.json()
-                ai_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            else:
-                ai_text = f"Lỗi API: HTTP {response.status_code}"
+            for model_name in models_to_try:
+                try:
+                    response = req_lib.post(
+                        f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_KEY}',
+                        json={
+                            "contents": [{"parts": [{"text": prompt}]}],
+                            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256}
+                        },
+                        timeout=15
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        ai_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                        if ai_text:
+                            break
+                    elif response.status_code == 404:
+                        # Model deprecated → thử model tiếp theo
+                        continue
+                    else:
+                        ai_text = f"Lỗi API: HTTP {response.status_code}"
+                        break
+                except Exception:
+                    continue
         except ImportError:
             # Fallback dùng urllib
-            url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
-            payload = json.dumps({
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256}
-            }).encode('utf-8')
-            req = urllib.request.Request(url, data=payload, headers={
-                'Content-Type': 'application/json',
-            })
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                result = json.loads(resp.read().decode('utf-8'))
-                ai_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            for model_name in models_to_try:
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_KEY}'
+                payload = json.dumps({
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256}
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    'Content-Type': 'application/json',
+                })
+                try:
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        result = json.loads(resp.read().decode('utf-8'))
+                        ai_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                        if ai_text:
+                            break
+                except urllib.error.HTTPError as he:
+                    if he.code == 404:
+                        continue  # Model deprecated → thử model tiếp theo
+                    else:
+                        ai_text = f"Lỗi API: HTTP {he.code}"
+                        break
 
         if ai_text:
             # Hiển thị phản hồi AI (mỗi dòng thụt vào)
