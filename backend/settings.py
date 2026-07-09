@@ -263,3 +263,14 @@ TRACKING_GEOFENCE_RADIUS = int(os.environ.get('TRACKING_GEOFENCE_RADIUS', '500')
 
 # Tần suất carepartner app gửi vị trí (giây) — dùng cho frontend biết
 TRACKING_UPDATE_INTERVAL = int(os.environ.get('TRACKING_UPDATE_INTERVAL', '10'))
+
+# ── DEVICE OFFLINE ALERT (chống tắt máy/đập máy để phạm tội) ──
+# Carepartner app gửi heartbeat mỗi 30s
+TRACKING_HEARTBEAT_INTERVAL = int(os.environ.get('TRACKING_HEARTBEAT_INTERVAL', '30'))
+
+# Ngưỡng phát hiện offline: nếu last_seen > 90s = 3 lần miss = chắc chắn tắt máy
+TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '90'))
+
+# Bật/tắt offline check scheduler (chỉ chạy trên Render)
+TRACKING_OFFLINE_CHECK_ENABLED = os.environ.get('TRACKING_OFFLINE_CHECK_ENABLED', 'true').lower() == 'true'
+TRACKING_OFFLINE_CHECK_INTERVAL = int(os.environ.get('TRACKING_OFFLINE_CHECK_INTERVAL', '1'))  # phút

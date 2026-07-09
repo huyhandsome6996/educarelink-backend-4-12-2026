@@ -15,12 +15,14 @@ from django.conf import settings
 from core.models import User, Task, TaskApplication, Notification
 from core.views import send_expo_push_notification
 
-from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert
+from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert, DeviceHeartbeat, DeviceOfflineAlert
 
 logger = logging.getLogger('educarelink.tracking')
 
 GEOFENCE_RADIUS_METERS = getattr(settings, 'TRACKING_GEOFENCE_RADIUS', 500)  # 500m mặc định
 UPDATE_INTERVAL_SECONDS = getattr(settings, 'TRACKING_UPDATE_INTERVAL', 10)
+HEARTBEAT_INTERVAL_SECONDS = getattr(settings, 'TRACKING_HEARTBEAT_INTERVAL', 30)
+OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 90)  # 3 lần miss heartbeat
 
 
 def _notify_user(user: User, title: str, message: str, data: dict = None):
@@ -318,3 +320,288 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
          + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  DEVICE OFFLINE ALERT — chống tắt máy/đập máy để phạm tội
+# ═══════════════════════════════════════════════════════════════════
+
+def update_heartbeat(*, task: Task, worker: User,
+                      latitude: float = None, longitude: float = None,
+                      battery_level: int = None, app_state: str = '',
+                      network_type: str = '') -> DeviceHeartbeat:
+    """
+    Carepartner app gửi heartbeat mỗi 30s khi đang tracking.
+    - Verify consent granted + task in_progress
+    - Update_or_create DeviceHeartbeat
+    - Nếu có alert active (đã recovered) → tự resolve + push "đã online trở lại"
+    """
+    # Verify consent
+    try:
+        consent = LocationConsent.objects.get(task=task, worker=worker)
+        if consent.consent != 'granted':
+            raise PermissionError(f"Consent hiện tại: {consent.consent} — không thể update heartbeat.")
+    except LocationConsent.DoesNotExist:
+        raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
+
+    # Verify task đang in_progress
+    if task.status != 'in_progress':
+        raise ValueError(f"Task status='{task.status}' — chỉ heartbeat khi in_progress.")
+
+    # Verify worker là người được accept
+    accepted_worker = get_accepted_worker(task)
+    if not accepted_worker or accepted_worker.id != worker.id:
+        raise PermissionError("Bạn không phải là carepartner được chọn cho task này.")
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        heartbeat, created = DeviceHeartbeat.objects.update_or_create(
+            task=task,
+            defaults={
+                'worker': worker,
+                'last_seen': now,
+                'last_location_lat': Decimal(str(latitude)) if latitude else None,
+                'last_location_lng': Decimal(str(longitude)) if longitude else None,
+                'device_status': 'online',
+                'battery_level': battery_level,
+                'app_state': app_state,
+                'network_type': network_type,
+                'offline_detected_at': None,
+                'offline_alert_sent': False,
+            }
+        )
+
+        # Nếu có alert active → resolve + notify parent "thiết bị đã online trở lại"
+        active_alerts = DeviceOfflineAlert.objects.filter(
+            task=task, worker=worker, status='active'
+        )
+        for alert in active_alerts:
+            alert.status = 'recovered'
+            alert.recovered_at = now
+            if alert.last_seen:
+                duration = (now - alert.last_seen).total_seconds()
+                alert.recovery_duration_seconds = int(duration)
+            alert.save(update_fields=['status', 'recovered_at', 'recovery_duration_seconds'])
+
+            # Notify parent
+            _notify_user(
+                task.parent,
+                title="✅ Thiết bị Carepartner đã online trở lại",
+                message=f"Thiết bị của carepartner đã kết nối lại cho công việc '{task.title}'. "
+                        f"Đã ngoại tuyến khoảng {alert.recovery_duration_seconds}s.",
+                data={
+                    'type': 'device_recovered',
+                    'task_id': task.id,
+                    'alert_id': alert.id,
+                    'priority': 'normal',
+                }
+            )
+
+    return heartbeat
+
+
+def check_offline_devices():
+    """
+    Scheduler chạy mỗi 1 phút — quét tất cả heartbeat có:
+      - device_status='online'
+      - task.status='in_progress'
+      - consent='granted'
+      - last_seen < now - OFFLINE_THRESHOLD_SECONDS (90s)
+
+    Với mỗi heartbeat thỏa mãn → tạo DeviceOfflineAlert + push priority=high cho parent.
+
+    Trả về dict thống kê.
+    """
+    now = timezone.now()
+    threshold = now - timedelta(seconds=OFFLINE_THRESHOLD_SECONDS)
+
+    # Tìm heartbeat quá hạn
+    stale_heartbeats = DeviceHeartbeat.objects.filter(
+        device_status='online',
+        last_seen__lt=threshold,
+        task__status='in_progress',
+    ).select_related('task', 'worker', 'task__parent')
+
+    stats = {
+        'checked_at': now.isoformat(),
+        'stale_count': stale_heartbeats.count(),
+        'new_alerts': 0,
+        'already_alerted': 0,
+        'push_failed': 0,
+    }
+
+    for hb in stale_heartbeats:
+        # Skip nếu đã có alert active cho task này (tránh spam)
+        existing_active = DeviceOfflineAlert.objects.filter(
+            task=hb.task, status='active'
+        ).exists()
+        if existing_active:
+            stats['already_alerted'] += 1
+            continue
+
+        # Đánh dấu heartbeat là offline
+        hb.device_status = 'offline'
+        hb.offline_detected_at = now
+        hb.save(update_fields=['device_status', 'offline_detected_at'])
+
+        # Tạo alert
+        alert = DeviceOfflineAlert.objects.create(
+            task=hb.task,
+            worker=hb.worker,
+            heartbeat=hb,
+            last_seen=hb.last_seen,
+            last_location_lat=hb.last_location_lat,
+            last_location_lng=hb.last_location_lng,
+            status='active',
+        )
+
+        # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
+        try:
+            _notify_user(
+                hb.task.parent,
+                title="🚨🚨🚨 CẢNH BÁO KHẨN CẤP: Thiết bị Carepartner mất kết nối!",
+                message=f"⚠️ Thiết bị của carepartner đã ngừng gửi tín hiệu "
+                        f"cho công việc '{hb.task.title}'. "
+                        f"Lần cuối online: {hb.last_seen:%H:%M:%S}. "
+                        f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
+                data={
+                    'type': 'device_offline',
+                    'task_id': hb.task.id,
+                    'alert_id': alert.id,
+                    'priority': 'high',  # expo: high priority = chuông kêu
+                    'sound': 'critical',  # iOS critical alert
+                    'android_channel_id': 'critical_alerts',
+                }
+            )
+            alert.push_sent = True
+            alert.push_sent_at = now
+            alert.save(update_fields=['push_sent', 'push_sent_at'])
+            stats['new_alerts'] += 1
+
+            # Notify admin cũng
+            try:
+                admin_users = User.objects.filter(is_staff=True, is_active=True)
+                for admin in admin_users:
+                    Notification.objects.create(
+                        recipient=admin,
+                        title="🚨 Thiết bị carepartner mất kết nối",
+                        message=f"Task '{hb.task.title}' (#{hb.task.id}) — carepartner {hb.worker.username} "
+                                f"đã offline. Parent {hb.task.parent.username} đã được báo động.",
+                    )
+            except Exception:
+                pass
+
+        except Exception as e:
+            logger.error(f"[tracking] Offline push failed for Task#{hb.task_id}: {e}")
+            stats['push_failed'] += 1
+
+    if stats['new_alerts'] > 0 or stats['already_alerted'] > 0:
+        logger.info(f"[tracking] Offline check: {stats}")
+
+    return stats
+
+
+def clear_task_heartbeat(task: Task):
+    """
+    Được gọi khi task completed/cancelled — clear heartbeat + close active alerts.
+    """
+    # Close active alerts
+    DeviceOfflineAlert.objects.filter(
+        task=task, status='active'
+    ).update(status='task_ended')
+
+    # Mark heartbeat as stopped
+    DeviceHeartbeat.objects.filter(task=task).update(device_status='stopped')
+    logger.info(f"[tracking] Cleared heartbeat for Task#{task.id} (status={task.status})")
+
+
+def get_device_status(*, task: Task, requester: User) -> dict:
+    """
+    Parent lấy trạng thái thiết bị carepartner cho task.
+    Trả về:
+      - heartbeat info (last_seen, device_status, battery, location cuối)
+      - active_offline_alerts: list alert active
+      - seconds_since_last_seen: số giây từ lần cuối heartbeat
+      - is_offline: bool (True nếu > OFFLINE_THRESHOLD_SECONDS)
+    """
+    if task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    try:
+        hb = DeviceHeartbeat.objects.get(task=task)
+    except DeviceHeartbeat.DoesNotExist:
+        return {
+            'has_heartbeat': False,
+            'is_offline': False,
+            'message': 'Carepartner chưa bật chia sẻ vị trí.',
+        }
+
+    now = timezone.now()
+    seconds_since = (now - hb.last_seen).total_seconds() if hb.last_seen else None
+    is_offline = (
+        hb.device_status == 'offline' or
+        (seconds_since is not None and seconds_since > OFFLINE_THRESHOLD_SECONDS)
+    )
+
+    active_alerts = DeviceOfflineAlert.objects.filter(
+        task=task, status='active'
+    ).order_by('-created_at')
+
+    return {
+        'has_heartbeat': True,
+        'is_offline': is_offline,
+        'device_status': hb.device_status,
+        'last_seen': hb.last_seen.isoformat() if hb.last_seen else None,
+        'seconds_since_last_seen': int(seconds_since) if seconds_since else None,
+        'offline_threshold_seconds': OFFLINE_THRESHOLD_SECONDS,
+        'last_location': {
+            'latitude': float(hb.last_location_lat) if hb.last_location_lat else None,
+            'longitude': float(hb.last_location_lng) if hb.last_location_lng else None,
+        },
+        'battery_level': hb.battery_level,
+        'app_state': hb.app_state,
+        'network_type': hb.network_type,
+        'active_alerts': [
+            {
+                'id': a.id,
+                'status': a.status,
+                'last_seen': a.last_seen.isoformat() if a.last_seen else None,
+                'created_at': a.created_at.isoformat(),
+                'push_sent': a.push_sent,
+                'recovered_at': a.recovered_at.isoformat() if a.recovered_at else None,
+                'recovery_duration_seconds': a.recovery_duration_seconds,
+            }
+            for a in active_alerts
+        ],
+        'last_alert': {
+            'id': active_alerts[0].id,
+            'created_at': active_alerts[0].created_at.isoformat(),
+            'last_seen': active_alerts[0].last_seen.isoformat() if active_alerts[0].last_seen else None,
+        } if active_alerts else None,
+    }
+
+
+def get_offline_alerts_for_task(*, task: Task, requester: User, limit: int = 50):
+    """Parent lấy list offline alerts của task (lưu vĩnh viễn)."""
+    if task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    qs = DeviceOfflineAlert.objects.filter(task=task).order_by('-created_at')[:limit]
+    return [
+        {
+            'id': a.id,
+            'status': a.status,
+            'last_seen': a.last_seen.isoformat() if a.last_seen else None,
+            'last_location': {
+                'latitude': float(a.last_location_lat) if a.last_location_lat else None,
+                'longitude': float(a.last_location_lng) if a.last_location_lng else None,
+            },
+            'push_sent': a.push_sent,
+            'push_sent_at': a.push_sent_at.isoformat() if a.push_sent_at else None,
+            'recovered_at': a.recovered_at.isoformat() if a.recovered_at else None,
+            'recovery_duration_seconds': a.recovery_duration_seconds,
+            'created_at': a.created_at.isoformat(),
+        }
+        for a in qs
+    ]

@@ -69,3 +69,13 @@ class SOSSerializer(serializers.Serializer):
     latitude = serializers.FloatField(required=False, allow_null=True)
     longitude = serializers.FloatField(required=False, allow_null=True)
     message = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class HeartbeatSerializer(serializers.Serializer):
+    """Input cho API heartbeat (chống tắt máy)."""
+    task_id = serializers.IntegerField()
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
+    battery_level = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=100)
+    app_state = serializers.CharField(required=False, allow_blank=True, default='')
+    network_type = serializers.CharField(required=False, allow_blank=True, default='')

@@ -2,17 +2,45 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, StatusBar,
   ActivityIndicator, Alert, Platform, Linking,
-  ScrollView, RefreshControl,
+  ScrollView, RefreshControl, Animated, Vibration, AppState,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
+  getDeviceStatus, getOfflineAlerts,
 } from '../../api/tracking';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
-const POLL_INTERVAL_MS = 5000; // Parent poll mỗi 5s
+const POLL_INTERVAL_MS = 5000; // Parent poll location mỗi 5s
+const DEVICE_STATUS_POLL_MS = 10000; // Parent poll device status mỗi 10s
 const GEOFENCE_RADIUS = 500; // mét
+
+// ====================================================================
+// Cấu hình notification handler — chuông kêu khi nhận offline alert
+// ====================================================================
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data || {};
+    // Nếu là device_offline alert → high priority, chuông kêu
+    if (data.type === 'device_offline') {
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      };
+    }
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      priority: Notifications.AndroidNotificationPriority.DEFAULT,
+    };
+  },
+});
 
 export default function LiveTrackingScreen() {
   const navigation = useNavigation();
@@ -20,11 +48,15 @@ export default function LiveTrackingScreen() {
   const { taskId, taskTitle, taskLatitude, taskLongitude } = route.params || {};
 
   const [liveData, setLiveData] = useState(null);
+  const [deviceStatus, setDeviceStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sosLoading, setSosLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [offlineAlertActive, setOfflineAlertActive] = useState(false);
   const pollRef = useRef(null);
+  const deviceStatusPollRef = useRef(null);
+  const lastAlertIdRef = useRef(null);
 
   // Poll live location
   const fetchLive = useCallback(async () => {
@@ -44,14 +76,82 @@ export default function LiveTrackingScreen() {
     }
   }, [taskId]);
 
+  // Poll device status (online/offline + alert)
+  const fetchDeviceStatus = useCallback(async () => {
+    if (!taskId) return;
+    try {
+      const res = await getDeviceStatus(taskId);
+      const status = res.data;
+      setDeviceStatus(status);
+
+      // Detect offline alert mới → chuông kêu
+      const activeAlert = status.active_alerts?.[0];
+      if (activeAlert && activeAlert.id !== lastAlertIdRef.current) {
+        lastAlertIdRef.current = activeAlert.id;
+        setOfflineAlertActive(true);
+        triggerAlarmSound();
+      } else if (!activeAlert) {
+        setOfflineAlertActive(false);
+      }
+    } catch (e) {
+      console.warn('fetchDeviceStatus error:', e?.response?.status);
+    }
+  }, [taskId]);
+
   useEffect(() => {
     fetchLive();
-    // Setup poll mỗi 5s
+    fetchDeviceStatus();
     pollRef.current = setInterval(fetchLive, POLL_INTERVAL_MS);
+    deviceStatusPollRef.current = setInterval(fetchDeviceStatus, DEVICE_STATUS_POLL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (deviceStatusPollRef.current) clearInterval(deviceStatusPollRef.current);
     };
-  }, [fetchLive]);
+  }, [fetchLive, fetchDeviceStatus]);
+
+  // Trigger alarm sound + vibration khi có offline alert
+  const triggerAlarmSound = async () => {
+    try {
+      // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần
+      Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
+
+      // Schedule local notification với sound critical
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
+          body: "Thiết bị Carepartner đã ngừng gửi tín hiệu! Vui lòng kiểm tra ngay.",
+          sound: 'critical',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: {
+            type: 'device_offline',
+            task_id: taskId,
+            priority: 'high',
+          },
+        },
+        trigger: null, // ngay lập tức
+      });
+    } catch (e) {
+      console.warn('triggerAlarmSound failed:', e);
+    }
+  };
+
+  // Listen notification khi app đang mở
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data || {};
+      if (data.type === 'device_offline') {
+        Alert.alert(
+          "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
+          notification.request.content.body || 'Thiết bị Carepartner mất kết nối!',
+          [
+            { text: 'Đã biết', style: 'destructive' },
+            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+          ]
+        );
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleSOS = () => {
     Alert.alert(
@@ -206,6 +306,69 @@ export default function LiveTrackingScreen() {
           </Text>
         </View>
       </View>
+
+      {/* === DEVICE OFFLINE ALERT BANNER — cảnh báo khẩn cấp === */}
+      {offlineAlertActive && deviceStatus?.active_alerts?.length > 0 && (
+        <View style={styles.offlineAlertBanner}>
+          <View style={styles.offlineAlertHeader}>
+            <Ionicons name="warning" size={28} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.offlineAlertTitle}>🚨 THIẾT BỊ MẤT KẾT NỐI!</Text>
+              <Text style={styles.offlineAlertSub}>
+                Carepartner đã ngừng gửi tín hiệu. Có thể thiết bị bị tắt, mất mạng hoặc đập máy.
+              </Text>
+            </View>
+          </View>
+          {deviceStatus.last_location && (
+            <Text style={styles.offlineAlertLocation}>
+              📍 Vị trí cuối: {deviceStatus.last_location.latitude?.toFixed(5)}, {deviceStatus.last_location.longitude?.toFixed(5)}
+            </Text>
+          )}
+          {deviceStatus.last_seen && (
+            <Text style={styles.offlineAlertTime}>
+              ⏰ Lần cuối online: {new Date(deviceStatus.last_seen).toLocaleString('vi-VN')}
+              {' '}({deviceStatus.seconds_since_last_seen}s trước)
+            </Text>
+          )}
+          <View style={styles.offlineAlertActions}>
+            <TouchableOpacity
+              style={styles.offlineAlertCallBtn}
+              onPress={() => Linking.openURL('tel:113')}
+            >
+              <Ionicons name="call" size={16} color="#fff" />
+              <Text style={styles.offlineAlertBtnText}>Gọi 113</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.offlineAlertContactBtn}
+              onPress={() => Linking.openURL('tel:')}
+            >
+              <Ionicons name="person" size={16} color="#fff" />
+              <Text style={styles.offlineAlertBtnText}>Gọi carepartner</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* === DEVICE STATUS BAR — hiển thị trạng thái thiết bị (online/offline) === */}
+      {deviceStatus?.has_heartbeat && !offlineAlertActive && (
+        <View style={styles.deviceStatusBar}>
+          <View style={styles.deviceStatusLeft}>
+            <View style={[styles.deviceStatusDot, {
+              backgroundColor: deviceStatus.is_offline ? COLORS.error : COLORS.success
+            }]} />
+            <Text style={styles.deviceStatusText}>
+              {deviceStatus.is_offline ? '⚠️ Offline' : '🟢 Online'}
+              {' · '}{deviceStatus.seconds_since_last_seen}s trước
+            </Text>
+          </View>
+          {deviceStatus.battery_level != null && (
+            <View style={styles.batteryBadge}>
+              <Ionicons name="battery-half" size={12} color={deviceStatus.battery_level < 20 ? COLORS.error : COLORS.success} />
+              <Text style={styles.batteryText}>{deviceStatus.battery_level}%</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Map area */}
       <View style={styles.mapArea}>
@@ -509,4 +672,66 @@ const styles = StyleSheet.create({
   },
   actionBtnTextWhite: { color: '#fff', ...TYPO.buttonSmall },
   actionBtnTextSos: { color: COLORS.error, ...TYPO.buttonSmall, fontWeight: '800' },
+
+  // === OFFLINE ALERT BANNER ===
+  offlineAlertBanner: {
+    backgroundColor: COLORS.error,
+    padding: 16, gap: 8,
+    borderBottomWidth: 2, borderBottomColor: '#991B1B',
+    ...SHADOWS.large,
+  },
+  offlineAlertHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  offlineAlertTitle: {
+    color: '#fff', ...TYPO.h4, fontWeight: '900', fontSize: 16,
+  },
+  offlineAlertSub: {
+    color: 'rgba(255,255,255,0.95)', ...TYPO.bodySmall, marginTop: 2,
+  },
+  offlineAlertLocation: {
+    color: '#fff', ...TYPO.caption, fontStyle: 'italic',
+  },
+  offlineAlertTime: {
+    color: 'rgba(255,255,255,0.85)', ...TYPO.caption,
+  },
+  offlineAlertActions: {
+    flexDirection: 'row', gap: 8, marginTop: 8,
+  },
+  offlineAlertCallBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#fff', borderRadius: SIZES.radiusSm, paddingVertical: 10,
+  },
+  offlineAlertContactBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: SIZES.radiusSm, paddingVertical: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+  },
+  offlineAlertBtnText: {
+    color: '#fff', ...TYPO.buttonSmall, fontWeight: '800',
+  },
+
+  // === DEVICE STATUS BAR ===
+  deviceStatusBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  deviceStatusLeft: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  deviceStatusDot: {
+    width: 8, height: 8, borderRadius: 4,
+  },
+  deviceStatusText: {
+    ...TYPO.caption, color: COLORS.textSecondary, fontWeight: '600',
+  },
+  batteryBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.background, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  batteryText: {
+    ...TYPO.caption, color: COLORS.textSecondary, fontWeight: '700', fontSize: 11,
+  },
 });
