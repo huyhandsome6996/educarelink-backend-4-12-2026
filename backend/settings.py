@@ -51,13 +51,16 @@ INSTALLED_APPS = [
     'tracking',   # Module định vị real-time (live tracking + SOS)
     'ai_recommendations',  # AI gợi ý việc + đánh giá ứng viên (Gemini)
     'moderation',  # Kiểm duyệt công việc + Khiếu nại (AI)
+    'performance',  # ⚡ Tối ưu hiệu năng (LRU cache, connection pool, spatial index)
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', 
+    # ⚡ Gzip middleware — nén API responses (giảm 70-90% size cho JSON)
+    'django.middleware.gzip.GZipMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -157,8 +160,32 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated', # Mặc định KHÓA tất cả API, ai gọi phải có Token
     ],
-    # KHÔNG dùng phân trang toàn cục — các template JS xử lý response như mảng thẳng
-    # Nếu cần phân trang, thêm PaginationClass riêng từng View thay vì toàn cục
+    # KHÔNG dùng phân trang toàn cục — web/mobile hiện tại expect array thẳng
+    # Nếu cần phân trang, thêm pagination_class=None nếu cần
+    # ⚡ Throttling — chống spam, giới hạn rate
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',  # anonymous: 60 req/phút
+        'user': '600/min',  # authenticated: 600 req/phút (10 req/s — đủ cho mobile polling)
+        'ai': '20/min',  # AI endpoints: 20 req/phút (tránh spam Gemini)
+    },
+}
+
+# ⚡ Cache backend — dùng LocMem (in-process, không cần Redis)
+# Production nên upgrade lên Redis khi có traffic cao
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'educarelink-cache',
+        'TIMEOUT': 300,  # 5 phút default
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+            'CULL_FREQUENCY': 3,  # Khi đầy, xoá 1/3 entries (LRU-ish)
+        }
+    }
 }
 
 # Cấu hình thời gian của Token
