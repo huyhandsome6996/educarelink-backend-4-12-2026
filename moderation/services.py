@@ -32,16 +32,15 @@ def _get_gemini_client():
 
 
 def _safe_call_gemini(client, system_prompt, user_prompt, temperature=0.2, max_tokens=2048):
+    """⚡ TỐI ƯU: dùng fallback chain thay vì hardcode model."""
     try:
-        from google import genai
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
+        from performance.gemini_model import generate_content_with_fallback
+        response, _ = generate_content_with_fallback(
+            client,
             contents=[{'role': 'user', 'parts': [{'text': user_prompt}]}],
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-            ),
+            system_instruction=system_prompt,
+            temperature=temperature,
+            max_output_tokens=max_tokens,
         )
         return response.text
     except Exception as e:

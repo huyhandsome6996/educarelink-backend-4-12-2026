@@ -561,20 +561,25 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
 
         try:
             from google import genai
+            from performance.gemini_pool import get_pooled_gemini_client
+            from performance.gemini_model import generate_content_with_fallback
 
-            client = genai.Client(api_key=gemini_key)
+            # ⚡ Dùng pooled client (singleton, tránh init 200ms mỗi call)
+            client = get_pooled_gemini_client()
+            if client is None:
+                # Fallback: init trực tiếp nếu pool chưa sẵn sàng
+                client = genai.Client(api_key=gemini_key)
 
             # Xây dựng nội dung với lịch sử hội thoại
             contents = self._build_contents(user_message, chat_history)
 
-            gemini_response = client.models.generate_content(
-                model='gemini-2.5-flash',
+            # ⚡ Dùng fallback chain — tự thử các model nếu 1 model bị deprecated
+            gemini_response, model_used = generate_content_with_fallback(
+                client,
                 contents=contents,
-                config=genai.types.GenerateContentConfig(
-                    system_instruction=self.SYSTEM_PROMPT,
-                    temperature=0.7,
-                    max_output_tokens=2048,
-                )
+                system_instruction=self.SYSTEM_PROMPT,
+                temperature=0.7,
+                max_output_tokens=2048,
             )
             ai_text = gemini_response.text
             if not ai_text:
@@ -1459,17 +1464,21 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
 
         try:
             from google import genai
-            client = genai.Client(api_key=gemini_key)
+            from performance.gemini_pool import get_pooled_gemini_client
+            from performance.gemini_model import generate_content_with_fallback
+
+            client = get_pooled_gemini_client()
+            if client is None:
+                client = genai.Client(api_key=gemini_key)
+
             contents = self._build_contents(user_message, chat_history)
 
-            gemini_response = client.models.generate_content(
-                model='gemini-2.5-flash',
+            gemini_response, model_used = generate_content_with_fallback(
+                client,
                 contents=contents,
-                config=genai.types.GenerateContentConfig(
-                    system_instruction=enriched_prompt,
-                    temperature=0.8,
-                    max_output_tokens=2048,
-                )
+                system_instruction=enriched_prompt,
+                temperature=0.8,
+                max_output_tokens=2048,
             )
             ai_text = gemini_response.text
             if not ai_text:
@@ -1580,17 +1589,21 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
 
         try:
             from google import genai
-            client = genai.Client(api_key=gemini_key)
+            from performance.gemini_pool import get_pooled_gemini_client
+            from performance.gemini_model import generate_content_with_fallback
+
+            client = get_pooled_gemini_client()
+            if client is None:
+                client = genai.Client(api_key=gemini_key)
+
             contents = self._build_contents(user_message, chat_history)
 
-            gemini_response = client.models.generate_content(
-                model='gemini-2.5-flash',
+            gemini_response, model_used = generate_content_with_fallback(
+                client,
                 contents=contents,
-                config=genai.types.GenerateContentConfig(
-                    system_instruction=enriched_prompt,
-                    temperature=0.7,
-                    max_output_tokens=2048,
-                )
+                system_instruction=enriched_prompt,
+                temperature=0.7,
+                max_output_tokens=2048,
             )
             ai_text = gemini_response.text
             if not ai_text:
@@ -1691,7 +1704,13 @@ class DistanceCalculationAPIView(APIView):
         if gemini_key:
             try:
                 from google import genai
-                client = genai.Client(api_key=gemini_key)
+                from performance.gemini_pool import get_pooled_gemini_client
+                from performance.gemini_model import generate_content_with_fallback
+
+                client = get_pooled_gemini_client()
+                if client is None:
+                    client = genai.Client(api_key=gemini_key)
+
                 prompt = (
                     f"Hai địa điểm có tọa độ ({lat1}, {lon1}) và ({lat2}, {lon2}), "
                     f"khoảng cách đường chim bay là {distance_km} km. "
@@ -1700,13 +1719,11 @@ class DistanceCalculationAPIView(APIView):
                     f"Chỉ trả lời ngắn gọn theo format: 'Xe máy: ~X phút, Ô tô: ~Y phút'. "
                     f"Không thêm giải thích."
                 )
-                gemini_response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                gemini_response, _ = generate_content_with_fallback(
+                    client,
                     contents=prompt,
-                    config=genai.types.GenerateContentConfig(
-                        temperature=0.3,
-                        max_output_tokens=128,
-                    )
+                    temperature=0.3,
+                    max_output_tokens=128,
                 )
                 travel_info = gemini_response.text.strip()
             except Exception:
@@ -2014,7 +2031,12 @@ Hãy sử dụng thông tin này khi cần để trả lời admin."""
 
         try:
             from google import genai
-            client = genai.Client(api_key=gemini_key)
+            from performance.gemini_pool import get_pooled_gemini_client
+            from performance.gemini_model import generate_content_with_fallback
+
+            client = get_pooled_gemini_client()
+            if client is None:
+                client = genai.Client(api_key=gemini_key)
 
             # Nếu có ảnh bằng cấp → dùng Gemini Vision
             if image_file:
@@ -2028,26 +2050,22 @@ Hãy sử dụng thông tin này khi cần để trả lời admin."""
                     analysis_prompt, image_b64, mime_type, chat_history
                 )
 
-                gemini_response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                gemini_response, _ = generate_content_with_fallback(
+                    client,
                     contents=contents,
-                    config=genai.types.GenerateContentConfig(
-                        system_instruction=enriched_prompt,
-                        temperature=0.5,
-                        max_output_tokens=3000,
-                    )
+                    system_instruction=enriched_prompt,
+                    temperature=0.5,
+                    max_output_tokens=3000,
                 )
             else:
                 # Chat thông thường
                 contents = self._build_contents(user_message, chat_history)
-                gemini_response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                gemini_response, _ = generate_content_with_fallback(
+                    client,
                     contents=contents,
-                    config=genai.types.GenerateContentConfig(
-                        system_instruction=enriched_prompt,
-                        temperature=0.7,
-                        max_output_tokens=2048,
-                    )
+                    system_instruction=enriched_prompt,
+                    temperature=0.7,
+                    max_output_tokens=2048,
                 )
 
             ai_text = gemini_response.text
