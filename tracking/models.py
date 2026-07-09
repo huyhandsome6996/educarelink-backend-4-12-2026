@@ -16,6 +16,13 @@
 ║                                                                   ║
 ║   SOS: cả 2 bên có thể bấm SOS → gửi vị trí hiện tại + push ngay  ║
 ║                                                                   ║
+║   DEVICE OFFLINE ALERT (an toàn chống tắt máy):                   ║
+║     - Carepartner app gửi heartbeat mỗi 30s                       ║
+║     - Backend scheduler chạy mỗi 1 phút quét                      ║
+║     - Nếu last_seen > 90s → tạo DeviceOfflineAlert                ║
+║       + push notification (priority=high) cho phụ huynh            ║
+║       + chuông kêu trên thiết bị parent                           ║
+║                                                                   ║
 ║   Bảo mật:                                                        ║
 ║     - Parent chỉ xem được vị trí carepartner của task mình         ║
 ║     - Carepartner chỉ update được vị trí của task mình đã accept   ║
@@ -193,3 +200,139 @@ class SOSAlert(models.Model):
 
     def __str__(self):
         return f"SOS Task#{self.task_id} | {self.get_sender_display()} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  DEVICE OFFLINE ALERT — chống tắt máy/đập máy để phạm tội
+# ═══════════════════════════════════════════════════════════════════
+# Luồng an toàn:
+#   1. Carepartner app gửi heartbeat mỗi 30s khi đang tracking
+#   2. Backend scheduler chạy mỗi 1 phút — quét tất cả heartbeat có
+#      task.status='in_progress' + consent='granted'
+#   3. Nếu last_seen > 90s (3 lần miss) → tạo DeviceOfflineAlert
+#      + push notification priority=high cho phụ huynh (chuông kêu)
+#      + notify admin
+#   4. Khi carepartner app gửi heartbeat lại → tự resolve alert
+#   5. Khi task completed/cancelled → clear heartbeat + alert
+# ═══════════════════════════════════════════════════════════════════
+
+
+class DeviceHeartbeat(models.Model):
+    """
+    Heartbeat thiết bị của carepartner khi đang tracking.
+    Mỗi task chỉ có 1 row (update-in-place).
+    Dùng để phát hiện thiết bị tắt nguồn/mất mạng/đập máy.
+    """
+    task = models.OneToOneField(
+        'core.Task',
+        on_delete=models.CASCADE,
+        related_name='device_heartbeat'
+    )
+    worker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='device_heartbeats'
+    )
+
+    last_seen = models.DateTimeField(db_index=True, help_text="Lần cuối carepartner gửi heartbeat")
+    last_location_lat = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True,
+        help_text="Vị trí GPS lần cuối (để parent biết carepartner ở đâu khi mất kết nối)"
+    )
+    last_location_lng = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+
+    # Trạng thái thiết bị
+    DEVICE_STATUS_CHOICES = (
+        ('online', 'Trực tuyến — đang gửi heartbeat'),
+        ('offline', 'Ngoại tuyến — không nhận heartbeat > 90s'),
+        ('stopped', 'Đã dừng — task hoàn thành/huỷ'),
+    )
+    device_status = models.CharField(
+        max_length=20, choices=DEVICE_STATUS_CHOICES, default='online',
+        db_index=True
+    )
+
+    # Thông tin thiết bị (debug + audit)
+    battery_level = models.IntegerField(null=True, blank=True, help_text="% pin (0-100)")
+    app_state = models.CharField(max_length=20, blank=True, default='', help_text="foreground/background/killed")
+    network_type = models.CharField(max_length=20, blank=True, default='', help_text="wifi/cellular/none")
+
+    offline_detected_at = models.DateTimeField(null=True, blank=True, help_text="Khi phát hiện offline")
+    offline_alert_sent = models.BooleanField(default=False, help_text="Đã gửi push cho phụ huynh chưa")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['device_status', 'last_seen']),
+            models.Index(fields=['worker', 'device_status']),
+        ]
+
+    def __str__(self):
+        return f"Heartbeat Task#{self.task_id} | {self.device_status} | last_seen={self.last_seen:%H:%M:%S}"
+
+
+class DeviceOfflineAlert(models.Model):
+    """
+    Alert khi thiết bị carepartner ngoại tuyến quá lâu (> 90s).
+    Đẩy chuông kêu (priority=high) cho phụ huynh.
+    """
+    ALERT_STATUS_CHOICES = (
+        ('active', 'Đang khẩn cấp — thiết bị vẫn offline'),
+        ('recovered', 'Thiết bị đã online trở lại'),
+        ('task_ended', 'Task đã kết thúc (completed/cancelled)'),
+        ('false', 'Báo động sai (lỗi mạng backend)'),
+    )
+
+    task = models.ForeignKey(
+        'core.Task',
+        on_delete=models.CASCADE,
+        related_name='device_offline_alerts'
+    )
+    worker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='device_offline_alerts'
+    )
+    heartbeat = models.ForeignKey(
+        DeviceHeartbeat,
+        on_delete=models.CASCADE,
+        related_name='alerts',
+        null=True, blank=True,
+    )
+
+    # Thông tin lúc phát hiện offline
+    last_seen = models.DateTimeField(help_text="Lần cuối carepartner gửi heartbeat trước khi mất kết nối")
+    last_location_lat = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True,
+        help_text="Vị trí GPS cuối cùng biết"
+    )
+    last_location_lng = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+
+    status = models.CharField(max_length=20, choices=ALERT_STATUS_CHOICES, default='active', db_index=True)
+
+    # Push notification tracking
+    push_sent = models.BooleanField(default=False, help_text="Đã gửi push cho phụ huynh")
+    push_sent_at = models.DateTimeField(null=True, blank=True)
+
+    # Khi thiết bị online trở lại
+    recovered_at = models.DateTimeField(null=True, blank=True)
+    recovery_duration_seconds = models.IntegerField(null=True, blank=True, help_text="Thời gian offline (giây)")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['task', 'status']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['worker', 'status']),
+        ]
+
+    def __str__(self):
+        return f"OfflineAlert Task#{self.task_id} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
