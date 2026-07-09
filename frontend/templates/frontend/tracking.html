@@ -118,6 +118,17 @@
       <div class="text-sm text-red-600 mt-1" id="geofence-detail">Cách vị trí làm việc — mét</div>
     </div>
 
+    <!-- Device status bar — online/offline + battery (chống tắt máy) -->
+    <div id="device-status-bar" class="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg hidden">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div id="device-status-dot" class="w-3 h-3 rounded-full bg-green-500"></div>
+          <span id="device-status-text" class="text-sm text-green-600 font-semibold">🟢 Online</span>
+        </div>
+        <div id="device-battery" class="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hidden"></div>
+      </div>
+    </div>
+
     <!-- Action buttons -->
     <div class="flex gap-2 mt-4">
       <button onclick="callCarepartner()" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
@@ -166,6 +177,7 @@
 <script>
 const API_BASE = '/api';
 const POLL_INTERVAL_MS = 5000;
+const DEVICE_STATUS_POLL_MS = 10000; // Poll device status mỗi 10s
 const GEOFENCE_RADIUS = 500; // mét
 
 let map = null;
@@ -174,6 +186,7 @@ let parentMarker = null;
 let geofenceCircle = null;
 let routeLine = null;
 let pollTimer = null;
+let deviceStatusTimer = null;
 let taskId = null;
 let taskTitle = null;
 let taskLat = null;
@@ -182,6 +195,7 @@ let geofenceLat = null;
 let geofenceLng = null;
 let geofenceRadius = 500;
 let wasOutsideGeofence = false;
+let lastOfflineAlertId = null;  // Track alert mới để trigger alarm 1 lần
 let alarmAudioCtx = null;
 let alarmInterval = null;
 
@@ -264,7 +278,9 @@ async function init() {
 
   initMap();
   fetchLiveLocation();
+  fetchDeviceStatus();
   pollTimer = setInterval(fetchLiveLocation, POLL_INTERVAL_MS);
+  deviceStatusTimer = setInterval(fetchDeviceStatus, DEVICE_STATUS_POLL_MS);
 }
 
 function initMap() {
@@ -313,6 +329,122 @@ async function fetchLiveLocation() {
   } catch (e) {
     console.error('fetchLiveLocation error:', e);
   }
+}
+
+// ====================================================================
+// FETCH DEVICE STATUS — kiểm tra thiết bị online/offline (chống tắt máy)
+// ====================================================================
+async function fetchDeviceStatus() {
+  try {
+    const r = await authFetch(`${API_BASE}/tracking/${taskId}/device-status/`);
+    if (!r.ok) return;
+    const data = await r.json();
+    updateDeviceStatusUI(data);
+
+    // Nếu có offline alert mới → trigger chuông kêu
+    const activeAlert = data.active_alerts && data.active_alerts[0];
+    if (activeAlert && activeAlert.id !== lastOfflineAlertId) {
+      lastOfflineAlertId = activeAlert.id;
+      triggerAlarm();  // chuông kêu to + vibration (nếu web hỗ trợ)
+      showOfflineAlertModal(data);
+    } else if (!activeAlert && lastOfflineAlertId !== null) {
+      // Đã online trở lại
+      lastOfflineAlertId = null;
+      stopAlarm();
+      hideOfflineAlertModal();
+      showToast('✅ Thiết bị Carepartner đã online trở lại');
+    }
+  } catch (e) {
+    console.error('fetchDeviceStatus error:', e);
+  }
+}
+
+function updateDeviceStatusUI(data) {
+  const statusBar = document.getElementById('device-status-bar');
+  if (!statusBar) return;
+
+  if (!data.has_heartbeat) {
+    statusBar.classList.add('hidden');
+    return;
+  }
+
+  statusBar.classList.remove('hidden');
+  const dot = document.getElementById('device-status-dot');
+  const text = document.getElementById('device-status-text');
+  const battery = document.getElementById('device-battery');
+
+  if (data.is_offline) {
+    dot.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse';
+    text.textContent = `⚠️ Offline · ${data.seconds_since_last_seen}s trước`;
+    text.className = 'text-sm text-red-600 font-semibold';
+  } else {
+    dot.className = 'w-3 h-3 rounded-full bg-green-500';
+    text.textContent = `🟢 Online · ${data.seconds_since_last_seen}s trước`;
+    text.className = 'text-sm text-green-600 font-semibold';
+  }
+
+  if (data.battery_level != null) {
+    battery.textContent = `${data.battery_level}% pin`;
+    battery.className = `text-xs px-2 py-1 rounded ${data.battery_level < 20 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+    battery.classList.remove('hidden');
+  } else {
+    battery.classList.add('hidden');
+  }
+}
+
+function showOfflineAlertModal(data) {
+  let modal = document.getElementById('offline-alert-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'offline-alert-modal';
+    modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-4 border-red-500">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="text-5xl">🚨</div>
+          <div>
+            <h2 class="text-xl font-bold text-red-600">CẢNH BÁO KHẨN CẤP</h2>
+            <p class="text-sm text-gray-700">Thiết bị Carepartner mất kết nối!</p>
+          </div>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-gray-800">
+          <p id="offline-modal-detail"></p>
+        </div>
+        <div class="flex gap-2">
+          <a href="tel:113" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg text-center">
+            📞 Gọi 113
+          </a>
+          <a href="tel:" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg text-center">
+            👤 Gọi carepartner
+          </a>
+        </div>
+        <button onclick="hideOfflineAlertModal()" class="mt-3 w-full text-gray-600 hover:text-gray-800 text-sm">
+          Đã biết (đóng)
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const detail = document.getElementById('offline-modal-detail');
+  let html = `Carepartner đã ngừng gửi tín hiệu.<br>`;
+  if (data.last_seen) {
+    html += `<strong>Lần cuối online:</strong> ${new Date(data.last_seen).toLocaleString('vi-VN')}<br>`;
+  }
+  if (data.seconds_since_last_seen != null) {
+    html += `<strong>Đã offline:</strong> ${data.seconds_since_last_seen} giây<br>`;
+  }
+  if (data.last_location && data.last_location.latitude) {
+    html += `<strong>Vị trí cuối:</strong> ${data.last_location.latitude.toFixed(5)}, ${data.last_location.longitude.toFixed(5)}<br>`;
+    html += `<a href="https://www.google.com/maps?q=${data.last_location.latitude},${data.last_location.longitude}" target="_blank" class="text-blue-600 hover:underline">Xem trên bản đồ →</a>`;
+  }
+  detail.innerHTML = html;
+  modal.classList.remove('hidden');
+}
+
+function hideOfflineAlertModal() {
+  const modal = document.getElementById('offline-alert-modal');
+  if (modal) modal.classList.add('hidden');
 }
 
 function updateUI(data) {
