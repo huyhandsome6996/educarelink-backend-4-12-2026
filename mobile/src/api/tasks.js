@@ -66,11 +66,25 @@ export const submitCredential = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 
+// LỊCH SỬ bằng cấp đã gửi (chờ duyệt / đã duyệt / bị từ chối)
+// Endpoint backend hiện trả list qua POST cùng path → dùng GET an toàn,
+// backend đã hỗ trợ GET trên /worker/submit-credential/ (xem core/views.py)
+export const getMyCredentials = () => apiClient.get('/worker/submit-credential/');
+
 // === WORKER: PROFILE CHANGE REQUEST — đồng bộ với web (worker_profile.html) ===
 // Carepartner yêu cầu sửa hồ sơ (email, phone, address, first/last name...)
 // Body: { proposed_changes: { first_name?, last_name?, phone_number?, email?, address? } }
 export const requestProfileChange = (proposedChanges) =>
   apiClient.post('/worker/profile-change-request/', { proposed_changes: proposedChanges });
+
+// LỊCH SỬ yêu cầu sửa hồ sơ đã gửi
+export const getMyProfileChangeRequests = () =>
+  apiClient.get('/worker/profile-change-request/');
+
+// === PATCH trực tiếp /profile/ (cho lat/lng + expo_push_token + các field không cần admin duyệt) ===
+// Web cho phép PATCH trực tiếp latitude/longitude, expo_push_token.
+// Lưu ý: first_name, last_name, phone_number, email, address CẦN qua ProfileChangeRequest.
+export const updateProfile = (payload) => apiClient.patch('/profile/', payload);
 
 // === DISTANCE CALCULATION — đồng bộ với web (worker_profile.html) ===
 // Tính khoảng cách giữa phụ huynh và carepartner
