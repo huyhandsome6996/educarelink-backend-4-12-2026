@@ -46,5 +46,10 @@ export const getSOSAlerts = (taskId) =>
 export const resolveSOS = (sosId) =>
   apiClient.post(`/tracking/sos/${sosId}/resolve/`);
 
+// ── ADMIN ─────────────────────────────────────────────────────────
+// Tổng quan tracking (số consent active, live locations, SOS active, ...)
+export const getAdminTrackingOverview = () =>
+  apiClient.get('/tracking/admin/overview/');
+
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkTrackingHealth = () => apiClient.get('/tracking/health/');

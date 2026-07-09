@@ -40,6 +40,7 @@ export default function WorkerProfileScreen() {
     { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary, action: 'view_reviews' },
     { icon: 'wallet-outline', label: 'Thu nhập của tôi', color: COLORS.success, action: 'view_earnings' },
     { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
+    { icon: 'documents-outline', label: 'Khiếu nại của tôi', color: COLORS.error, action: 'view_my_complaints' },
     { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
     { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.info, action: 'help_center' },
     { icon: 'card-outline', label: 'Xác thực thẻ sinh viên / bằng cấp', color: COLORS.primary, action: 'upload_cert' },
@@ -118,6 +119,8 @@ export default function WorkerProfileScreen() {
       navigation.navigate('CandidateProfile', { workerId: user.id, isPending: false });
     } else if (action === 'view_earnings') {
       navigation.navigate('MyEarnings');
+    } else if (action === 'view_my_complaints') {
+      navigation.navigate('MyComplaints');
     } else if (action === 'help_center') {
       navigation.navigate('HelpCenter');
     } else if (action === 'submit_credential') {
