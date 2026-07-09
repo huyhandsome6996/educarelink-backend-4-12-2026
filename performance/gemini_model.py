@@ -24,8 +24,10 @@ GEMINI_MODELS_FALLBACK = [
     'gemini-2.5-flash-lite',      # Model mặc định — ổn định + rẻ
     'gemini-2.5-flash',            # Backup — đôi khi vẫn hoạt động
     'gemini-2.0-flash',            # Backup cũ hơn
+    'gemini-2.0-flash-lite',       # Backup lite
     'gemini-flash-latest',         # Alias luôn trỏ model mới nhất
     'gemini-1.5-flash',            # Legacy fallback cuối cùng
+    'gemini-1.5-flash-latest',     # Legacy alias
 ]
 
 # Cache model nào hoạt động (tránh thử lại chain mỗi request)
@@ -98,6 +100,7 @@ def generate_content_with_fallback(client, *, contents, system_instruction=None,
     try_order = [cached_model] + [m for m in GEMINI_MODELS_FALLBACK if m != cached_model]
 
     errors = []
+    last_exception = None
     for model_name in try_order:
         try:
             response = client.models.generate_content(
@@ -111,17 +114,38 @@ def generate_content_with_fallback(client, *, contents, system_instruction=None,
             return response, model_name
         except Exception as e:
             error_msg = str(e)
-            errors.append(f'{model_name}: {error_msg[:100]}')
+            errors.append(f'{model_name}: {error_msg[:120]}')
+            last_exception = e
             # Log nhưng không raise — thử model tiếp theo
-            logger.warning(f'[GeminiModel] {model_name} failed: {error_msg[:150]}')
+            logger.warning(f'[GeminiModel] {model_name} failed: {error_msg[:200]}')
             continue
 
-    # Tất cả model fail
-    raise Exception(
-        f'Tất cả model Gemini đều thất bại. '
-        f'Đã thử: {", ".join(try_order)}. '
-        f'Errors: {" | ".join(errors[:3])}'
+    # Tất cả model fail — raise exception với message chi tiết
+    # Phân loại lỗi: nếu TẤT CẢ đều 404/NOT_FOUND → Google đã deprecate hết
+    all_not_found = all('not found' in e.lower() or '404' in e.lower() or 'not_available' in e.lower()
+                        for e in errors)
+    if all_not_found:
+        raise GeminiAllModelsDeprecatedError(
+            f'Tất cả model Gemini đều bị deprecated. '
+            f'Đã thử: {", ".join(try_order)}. '
+            f'Admin cần kiểm tra https://ai.google.dev/gemini-api/docs/models '
+            f'để lấy model name mới nhất.'
+        )
+    # Lỗi khác (quota, API key, network)
+    raise GeminiUnavailableError(
+        f'Không thể gọi Gemini. Đã thử {len(try_order)} model. '
+        f'Lỗi cuối: {str(last_exception)[:200]}'
     )
+
+
+class GeminiAllModelsDeprecatedError(Exception):
+    """Tất cả model trong fallback chain đều bị Google deprecated."""
+    pass
+
+
+class GeminiUnavailableError(Exception):
+    """Gemini tạm thời không khả dụng (quota, network, API key)."""
+    pass
 
 
 __all__ = [
