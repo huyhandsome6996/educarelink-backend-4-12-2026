@@ -657,16 +657,28 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
         except Exception as e:
             # Lỗi kết nối Gemini — trả về thân thiện
             error_msg = str(e)
-            if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper():
+            import logging
+            logger = logging.getLogger('educarelink.chatbot')
+            logger.error(f'[Chatbot] Gemini error: {error_msg}', exc_info=True)
+
+            if 'API_KEY' in error_msg.upper() or 'INVALID' in error_msg.upper() or 'permission_denied' in error_msg.lower():
                 detail = "API key Gemini không hợp lệ. Vui lòng kiểm tra lại trong file .env."
             elif 'QUOTA' in error_msg.upper() or 'RESOURCE_EXHAUSTED' in error_msg.upper():
                 detail = "Đã hết hạn mức sử dụng Gemini miễn phí trong hôm nay. Thử lại vào ngày mai!"
-            elif 'HIGH DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper() or '503' in error_msg.upper():
+            elif 'HIGH_DEMAND' in error_msg.upper() or 'UNAVAILABLE' in error_msg.upper() or '503' in error_msg.upper():
                 detail = "Hệ thống AI đang quá tải (High Demand). Vui lòng thử lại sau vài giây!"
-            elif 'MODEL' in error_msg.upper() or 'NOT_FOUND' in error_msg.upper():
-                detail = f"Model AI không khả dụng. Vui lòng liên hệ admin để cập nhật model."
+            elif 'deprecated' in error_msg.lower() or 'GeminiAllModelsDeprecated' in type(e).__name__:
+                detail = (
+                    "⚙️ Hệ thống AI đang bảo trì (Google đã cập nhật model). "
+                    "Admin đang cập nhật — vui lòng thử lại sau ít phút."
+                )
+            elif 'NOT_FOUND' in error_msg.upper() or 'MODEL' in error_msg.upper():
+                detail = (
+                    "⚙️ Model AI đang được cập nhật. "
+                    "Vui lòng thử lại sau ít phút hoặc liên hệ admin."
+                )
             else:
-                detail = f"Lỗi kết nối AI: {error_msg}"
+                detail = f"Lỗi kết nối AI: {error_msg[:150]}"
 
             return Response({
                 "response": f"❌ {detail}",
