@@ -115,6 +115,8 @@
             border-radius: 8px;
         }
     </style>
+    <!-- ⚡ Performance utilities — LRU cache, debounce, request dedup -->
+    <script src="{% static 'js/performance.js' %}"></script>
 </head>
 <body class="bg-bg text-textPrimary antialiased">
 
@@ -734,11 +736,18 @@
             });
         }
 
-        // ===== FETCH TASKS =====
+        // ===== FETCH TASKS (⚡ cached + stale-while-revalidate) =====
         async function fetchTasks() {
             try {
-                const resp = await apiFetch(API_BASE + "/tasks/");
-                allTasks = await resp.json();
+                // ⚡ Sử dụng cachedFetch — cache 60s, stale 5 phút
+                allTasks = await EduPerf.cachedFetch(
+                    'tasks:all',
+                    async () => {
+                        const resp = await apiFetch(API_BASE + "/tasks/");
+                        return await resp.json();
+                    },
+                    { ttl: EduPerf.TTL.LONG, forceRefresh: false }
+                );
                 // Re-apply search filter
                 handleSearch(document.getElementById('search-input').value);
             } catch (e) {

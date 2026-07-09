@@ -17,6 +17,8 @@ urlpatterns = [
     path('api/', include('ai_recommendations.urls')),
     # API kiểm duyệt + khiếu nại (AI moderation)
     path('api/', include('moderation.urls')),
+    # ⚡ API performance monitoring + cache stats
+    path('api/', include('performance.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

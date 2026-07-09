@@ -29,16 +29,21 @@ CACHE_TTL_PARENT = 180  # 3 phút
 
 
 def _get_gemini_client():
-    """Lấy Gemini client nếu đã config API key."""
-    gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
-    if not gemini_key or gemini_key == 'your_gemini_api_key_here':
-        return None, None
+    """⚡ TỐI ƯU: dùng pooled singleton client thay vì init mỗi call."""
     try:
-        from google import genai
-        return genai.Client(api_key=gemini_key), None
-    except Exception as e:
-        logger.warning(f"Không thể khởi tạo Gemini client: {e}")
-        return None, str(e)
+        from performance.gemini_pool import get_pooled_gemini_client
+        return get_pooled_gemini_client(), None
+    except ImportError:
+        # Fallback: legacy init nếu performance module chưa sẵn sàng
+        gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if not gemini_key or gemini_key == 'your_gemini_api_key_here':
+            return None, None
+        try:
+            from google import genai
+            return genai.Client(api_key=gemini_key), None
+        except Exception as e:
+            logger.warning(f"Không thể khởi tạo Gemini client: {e}")
+            return None, str(e)
 
 
 def _safe_call_gemini(client, system_prompt, user_prompt, temperature=0.3, max_tokens=2048):
