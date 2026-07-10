@@ -42,7 +42,25 @@ def _safe_call_gemini(client, system_prompt, user_prompt, temperature=0.2, max_t
             temperature=temperature,
             max_output_tokens=max_tokens,
         )
-        return response.text
+        # Handle safety block — response.text có thể raise ValueError
+        try:
+            text = response.text
+            if text:
+                return text
+            # response.text empty → check candidates
+            logger.warning(f"[gemini] response.text empty, checking candidates...")
+            if hasattr(response, 'candidates') and response.candidates:
+                cand = response.candidates[0]
+                if hasattr(cand, 'content') and cand.content:
+                    if hasattr(cand.content, 'parts') and cand.content.parts:
+                        return cand.content.parts[0].text
+            logger.warning(f"[gemini] No text in response — possibly safety blocked")
+            return None
+        except ValueError as ve:
+            # response.text raise ValueError khi bị safety block
+            logger.warning(f"[gemini] response.text raised ValueError (likely safety block): {ve}")
+            # Trả về JSON reject mặc định nếu AI bị safety block
+            return '{"verdict": "REJECTED", "confidence": 0.9, "flags": ["safety_blocked"], "explanation": "Nội dung bị AI chặn vì có thể vi phạm tiêu chuẩn an toàn.", "suggestion": ""}'
     except Exception as e:
         logger.warning(f"Gemini call failed: {e}")
         return None
@@ -323,8 +341,10 @@ Danh mục: {task.category.name if task.category else 'Khác'}
 Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Việt Nam."""
 
     logger.info(f"[moderate_task] Task#{task.id} calling Gemini...")
-    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=512)
-    logger.info(f"[moderate_task] Task#{task.id} Gemini response: {ai_text[:200] if ai_text else 'None'}")
+    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=1024)
+    logger.info(f"[moderate_task] Task#{task.id} Gemini response length: {len(ai_text) if ai_text else 0}")
+    if ai_text:
+        logger.info(f"[moderate_task] Task#{task.id} Gemini response preview: {ai_text[:300]}")
 
     if not ai_text:
         logger.warning(f"[moderate_task] Task#{task.id} AI no response → auto-approved")
