@@ -63,6 +63,18 @@ def get_tokens_for_user(user):
     return {'refresh': str(refresh), 'access': str(refresh.access_token)}
 
 def send_expo_push_notification(token, title, body, data=None):
+    """
+    Gửi push notification qua Expo.
+    Tự động config priority + sound + android_channel_id theo loại alert.
+
+    Loại alert được xác định qua data.type:
+    - 'device_offline'    → critical_alerts channel, priority=high, iOS sound=critical
+    - 'geofence_exit'     → geofence_alerts channel, priority=high, iOS sound=default
+    - 'sos_alert'         → sos_alerts channel, priority=high, iOS sound=default
+    - 'geofence_enter'    → recovery_alerts channel, priority=default
+    - 'device_recovered'  → recovery_alerts channel, priority=default
+    - khác (mặc định)     → default channel, priority=default
+    """
     if not token:
         return
     headers = {
@@ -70,13 +82,53 @@ def send_expo_push_notification(token, title, body, data=None):
         'Accept-encoding': 'gzip, deflate',
         'Content-Type': 'application/json',
     }
+    data = data or {}
+    alert_type = data.get('type', '')
+
+    # Mapping alert type → Android channel + iOS config
+    ALERT_CONFIG = {
+        'device_offline': {
+            'android_channel_id': 'critical_alerts',
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
+        'geofence_exit': {
+            'android_channel_id': 'geofence_alerts',
+            'priority': 'high',
+            'ios': {'sound': 'default', 'priority': 'high', 'category': 'GEOFENCE_ALERT'},
+        },
+        'sos_alert': {
+            'android_channel_id': 'sos_alerts',
+            'priority': 'high',
+            'ios': {'sound': 'default', 'priority': 'high', 'category': 'SOS_ALERT'},
+        },
+        'geofence_enter': {
+            'android_channel_id': 'recovery_alerts',
+            'priority': 'default',
+            'ios': {'sound': 'default', 'priority': 'default'},
+        },
+        'device_recovered': {
+            'android_channel_id': 'recovery_alerts',
+            'priority': 'default',
+            'ios': {'sound': 'default', 'priority': 'default'},
+        },
+    }
+
     payload = {
         'to': token,
         'sound': 'default',
         'title': title,
         'body': body,
-        'data': data or {},
+        'data': data,
     }
+
+    # Apply alert-specific config
+    config = ALERT_CONFIG.get(alert_type)
+    if config:
+        payload['android_channel_id'] = config['android_channel_id']
+        payload['priority'] = config['priority']
+        payload['ios'] = config['ios']
+
     try:
         requests.post('https://exp.host/--/api/v2/push/send', headers=headers, json=payload, timeout=5)
     except Exception as e:
