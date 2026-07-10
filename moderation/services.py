@@ -67,48 +67,153 @@ def _parse_json_safe(text):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  0. KEYWORD BLACKLIST — chặn đồng bộ NGAY LẬP TỨC (không cần AI)
+# ═══════════════════════════════════════════════════════════════════
+
+# Danh sách từ khóa cấm — vi phạm pháp luật VN nghiêm trọng
+# Match nếu xuất hiện trong title hoặc description (case-insensitive)
+BANNED_KEYWORDS = [
+    # Bạo lực / giết người / hại trẻ
+    'giết', 'giet', 'hại', 'hai tre', 'hiếp', 'hiep', 'cưỡng dâm', 'cuong dam',
+    'bắt cóc', 'bat coc', 'mua bán người', 'mua ban nguoi', 'buôn người',
+    'ma túy', 'ma tuy', 'bán thuốc', 'ban thuoc', 'cần sa', 'can sa',
+    'đánh nhau', 'danh nhau', 'đánh đập', 'danh dap', 'bạo hành', 'bao hanh',
+    'vũ khí', 'vu khi', 'súng', 'sung', 'dao giết', 'dao giet',
+    'cờ bạc', 'co bac', 'đánh bạc', 'danh bac', 'casino', 'xóc đĩa', 'xoc dia',
+    'lừa đảo', 'lua dao', 'chiếm đoạt', 'chiem doat', 'trục lợi',
+    # Chính trị / an ninh quốc gia
+    'chống phá', 'chong pha', 'đảo chính', 'dao chinh', 'phản động', 'phan dong',
+    # Nội dung người lớn liên quan trẻ em
+    'pedophile', 'ụ trẻ', 'pedop', 'xâm hại trẻ', 'xam hai tre',
+    # Khác
+    'tự sát', 'tu sat', 'tự tử', 'tu tu', 'khai thác bất hợp pháp',
+]
+
+# Từ khóa giá quá thấp — bóc lột lao động
+EXPLOITATION_PRICE_THRESHOLD = 20000  # VNĐ/giờ
+
+
+def _check_banned_keywords(title: str, description: str, price) -> dict:
+    """
+    Check keyword blacklist đồng bộ — chặn NGAY LẬP TỨC không cần AI.
+    Trả về {'banned': True/False, 'reason': '...', 'flags': [...]}
+    """
+    text = f"{title} {description}".lower()
+    flags = []
+
+    for keyword in BANNED_KEYWORDS:
+        if keyword in text:
+            flags.append(f'banned_keyword:{keyword}')
+            return {
+                'banned': True,
+                'reason': f'Công việc chứa từ khóa bị cấm: "{keyword}". Nội dung vi phạm pháp luật Việt Nam hoặc tiêu chuẩn cộng đồng.',
+                'flags': flags,
+                'confidence': 1.0,
+            }
+
+    # Check giá bóc lột (nếu price < 20.000 VNĐ → nghi ngờ bóc lột)
+    try:
+        price_val = int(str(price).replace('.', '').replace(',', '').replace('đ', '').replace('Đ', '').replace('VNĐ', '').replace('vnd', '').strip())
+        if price_val < EXPLOITATION_PRICE_THRESHOLD:
+            flags.append('exploitation_low_price')
+            return {
+                'banned': True,
+                'reason': f'Mức lương {price_val} VNĐ quá thấp (dưới {EXPLOITATION_PRICE_THRESHOLD} VNĐ), nghi ngờ bóc lột lao động theo Luật Lao động Việt Nam.',
+                'flags': flags,
+                'confidence': 0.95,
+            }
+    except (ValueError, TypeError):
+        pass
+
+    return {'banned': False, 'flags': flags}
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  1. TASK MODERATION
 # ═══════════════════════════════════════════════════════════════════
 
 TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI của EduCareLink — nền tảng kết nối phụ huynh với carepartner (sinh viên) tại Việt Nam.
 
 Nhiệm vụ: Kiểm duyệt công việc đăng tải dựa trên:
-1. Luật pháp Việt Nam (Hiến pháp, Bộ luật Dân sự, Luật Lao động, Luật Bảo vệ trẻ em)
+1. Luật pháp Việt Nam (Hiến pháp, Bộ luật Dân sự, Luật Lao động, Luật Bảo vệ trẻ em, Luật Phòng chống bạo lực gia đình)
 2. Đạo đức xã hội Việt Nam
 3. Chính trị: không chống phá Nhà nước, không vi phạm an ninh quốc gia
 4. Tiêu chuẩn cộng đồng: không bóc lột, không phân biệt đối xử, không nội dung người lớn với trẻ em
+5. AN TOÀN TRẺ EM: bất kỳ nội dung nào có nguy cơ hại trẻ em → REJECTED ngay lập tức
 
 Quy tắc đánh giá:
 - APPROVED: công việc bình thường, phù hợp (gia sư, dọn dẹp, trông trẻ, nấu ăn, v.v.)
-- REJECTED: vi phạm rõ ràng (bóc lột sức lao động, giá quá thấp < 20.000đ/giờ, nội dung vi phạm)
+- REJECTED: vi phạm rõ ràng (bóc lột sức lao động, giá quá thấp < 20.000đ/giờ, nội dung vi phạm pháp luật, bạo lực, hại trẻ em, lừa đảo, ma túy, cờ bạc, vũ khí, chính trị phản động)
 - NEEDS_REVIEW: nằm trong vùng xám, cần admin xem xét
+
+LƯU Ý QUAN TRỌNG: Nếu nội dung có bất kỳ dấu hiệu vi phạm pháp luật (giết người, bắt cóc, hiếp dâm, ma túy, bạo lực, vũ khí, cờ bạc, lừa đảo) → REJECTED với confidence 1.0.
 
 Trả về JSON:
 {
   "verdict": "APPROVED" | "REJECTED" | "NEEDS_REVIEW",
   "confidence": 0.0-1.0,
-  "flags": ["liệt kê cờ vi phạm nếu có, vd: lua_dao, boc_lot, chinh_tri, bao_luc, nguoi_lon, ..."],
+  "flags": ["liệt kê cờ vi phạm nếu có, vd: lua_dao, boc_lot, chinh_tri, bao_luc, nguoi_lon, giet_nguoi, ma_tuy, co_bac, ..."],
   "explanation": "giải thích ngắn gọn tiếng Việt",
   "suggestion": "nếu NEEDS_REVIEW, gợi ý cho admin"
 }
 
-Luôn dùng TIẾNG VIỆT. Trung thực, khách quan."""
+Luôn dùng TIẾNG VIỆT. Trung thực, khách quan. KHÔNG bao giờ APPROVED nội dung vi phạm pháp luật."""
 
 
 def moderate_task(task):
-    """Kiểm duyệt task bằng AI Gemini."""
+    """Kiểm duyệt task bằng AI Gemini + keyword blacklist."""
     from .models import TaskModeration
     from django.utils import timezone
 
+    # ⚡ BƯỚC 1: Check keyword blacklist ĐỒNG BỘ — chặn ngay lập tức
+    blacklist_result = _check_banned_keywords(
+        task.title or '',
+        task.description or '',
+        task.price
+    )
+    if blacklist_result['banned']:
+        # Chặn NGAY LẬP TỨC — không cần AI
+        moderation, _ = TaskModeration.objects.update_or_create(
+            task=task,
+            defaults={
+                'status': 'rejected',
+                'ai_verdict': blacklist_result['reason'],
+                'ai_confidence': blacklist_result['confidence'],
+                'ai_flags': blacklist_result['flags'],
+                'ai_suggestion': 'Nội dung vi phạm nghiêm trọng — tự động từ chối.',
+            }
+        )
+        # Notify parent
+        try:
+            from core.models import Notification
+            from core.views import send_expo_push_notification
+            Notification.objects.create(
+                recipient=task.parent,
+                title="🚫 Công việc bị từ chối",
+                message=f"Công việc '{task.title}' vi phạm tiêu chuẩn cộng đồng: {blacklist_result['reason'][:150]}",
+            )
+            if task.parent.expo_push_token:
+                send_expo_push_notification(
+                    token=task.parent.expo_push_token,
+                    title="🚫 Công việc bị từ chối",
+                    body=f"'{task.title}' vi phạm pháp luật hoặc tiêu chuẩn cộng đồng.",
+                    data={'type': 'task_rejected', 'task_id': task.id}
+                )
+        except Exception as e:
+            logger.warning(f"Notify parent on blacklist reject failed: {e}")
+        logger.info(f"[moderation] Task#{task.id} REJECTED by keyword blacklist: {blacklist_result['flags']}")
+        return moderation
+
+    # ⚡ BƯỚC 2: Nếu không bị blacklist → gọi AI Gemini để kiểm duyệt sâu hơn
     client = _get_gemini_client()
     if not client:
-        # Không có AI → auto-approved (không chặn user)
-        moderation, _ = TaskModeration.objects.get_or_create(
+        # Không có AI → auto-approved (đã check blacklist rồi)
+        moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
             defaults={
                 'status': 'approved',
-                'ai_verdict': 'AI chưa kích hoạt — tự động duyệt.',
-                'ai_confidence': 0.0,
+                'ai_verdict': 'Đã kiểm tra từ khóa cấm — không phát hiện vi phạm. AI chưa kích hoạt.',
+                'ai_confidence': 0.5,
             }
         )
         return moderation

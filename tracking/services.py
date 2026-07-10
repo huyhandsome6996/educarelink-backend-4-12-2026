@@ -167,6 +167,29 @@ def update_worker_location(*, task: Task, worker: User,
                 float(geofence_lat), float(geofence_lng)
             )
             outside = distance > geofence_radius
+
+            # ⚡ AI PREDICTIVE WARNING — báo TRƯỚC khi rời vùng (80% radius)
+            # Nếu carepartner đang ở 80-100% bán kính → cảnh báo sớm "sắp rời vùng"
+            warning_threshold = geofence_radius * 0.8
+            if not outside and distance >= warning_threshold and not live.is_outside_geofence:
+                # Chỉ warning 1 lần (đánh dấu via geofence_warned_at nếu chưa có)
+                if not hasattr(live, '_predictive_warned') or not live._predictive_warned:
+                    live._predictive_warned = True
+                    _notify_user(
+                        task.parent,
+                        title="⚠️ AI Cảnh báo: Carepartner sắp rời vùng an toàn!",
+                        message=f"Carepartner đang ở cách tâm vùng an toàn {distance:.0f}m "
+                                f"(vùng {geofence_radius:.0f}m). Có dấu hiệu sắp rời vùng — "
+                                f"vui lòng để ý!",
+                        data={
+                            'type': 'geofence_warning',
+                            'task_id': task.id,
+                            'distance': distance,
+                            'radius': geofence_radius,
+                            'priority': 'high',
+                        }
+                    )
+
             if outside and not live.is_outside_geofence:
                 # Vừa rời vùng → push cảnh báo
                 live.is_outside_geofence = True

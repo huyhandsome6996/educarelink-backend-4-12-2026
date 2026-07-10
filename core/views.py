@@ -98,6 +98,11 @@ def send_expo_push_notification(token, title, body, data=None):
             'priority': 'high',
             'ios': {'sound': 'default', 'priority': 'high', 'category': 'GEOFENCE_ALERT'},
         },
+        'geofence_warning': {
+            'android_channel_id': 'geofence_alerts',
+            'priority': 'high',
+            'ios': {'sound': 'default', 'priority': 'high', 'category': 'GEOFENCE_WARNING'},
+        },
         'sos_alert': {
             'android_channel_id': 'sos_alerts',
             'priority': 'high',
