@@ -25,7 +25,7 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data || {};
     // Các alert khẩn cấp → high priority, chuông kêu
-    const critical_types = ['device_offline', 'geofence_exit', 'sos_alert'];
+    const critical_types = ['device_offline', 'geofence_exit', 'geofence_warning', 'sos_alert'];
     if (critical_types.includes(data.type)) {
       return {
         shouldShowAlert: true,
@@ -153,6 +153,18 @@ export default function LiveTrackingScreen() {
           [
             { text: 'Đã biết', style: 'destructive' },
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
+            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+          ]
+        );
+      }
+      // === GEOFENCE WARNING (AI predictive — sắp rời vùng) ===
+      else if (data.type === 'geofence_warning') {
+        Vibration.vibrate([300, 200, 300, 200, 300], false);
+        Alert.alert(
+          "⚠️ AI Cảnh báo: Sắp rời vùng an toàn!",
+          body || 'Carepartner đang di chuyển gần ranh giới vùng an toàn. Vui lòng để ý!',
+          [
+            { text: 'Đã biết', style: 'default' },
             { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
           ]
         );
