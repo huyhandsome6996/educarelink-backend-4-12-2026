@@ -294,6 +294,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             raise drf_serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
 
         # ⚡ BƯỚC 1: Check keyword blacklist ĐỒNG BỘ (nhanh, <1ms)
+        # Chỉ chặn những từ khóa CỰC KỲ nghiêm trọng (giết, ma túy, cờ bạc...)
         title = self.request.data.get('title', '')
         description = self.request.data.get('description', '')
         price = self.request.data.get('price', 0)
@@ -310,33 +311,11 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         except ImportError:
             pass
 
-        # ⚡ BƯỚC 2: AI Gemini kiểm duyệt ĐỒNG BỘ (5-15s)
-        # Gọi AI ngay lúc đăng → nếu AI reject → KHÔNG tạo task
-        # User đợi 5-15s nhưng đảm bảo task vi phạm KHÔNG BAO GIỜ được tạo
-        try:
-            from moderation.services import moderate_task_sync
-            ai_result = moderate_task_sync(title, description, price, 
-                                           self.request.data.get('location', ''),
-                                           self.request.data.get('category', None))
-            if ai_result['rejected']:
-                raise drf_serializers.ValidationError({
-                    'detail': f'🚫 AI kiểm duyệt đã từ chối: {ai_result["reason"]}',
-                    'flags': ai_result['flags'],
-                    'confidence': ai_result['confidence'],
-                })
-        except ImportError:
-            pass  # moderation module chưa sẵn sàng → bỏ qua
-        except drf_serializers.ValidationError:
-            raise  # Re-raise ValidationError
-        except Exception as e:
-            # Nếu AI lỗi → vẫn cho tạo task (không chặn user do lỗi hệ thống)
-            # AI sẽ moderate lại async sau
-            import logging
-            logging.getLogger('educarelink.task_create').warning(
-                f'AI sync moderation failed, falling back to async: {e}'
-            )
-
-        serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
+        # ⚡ BƯỚC 2: Tạo task NGAY LẬP TỨC (không đợi AI)
+        # AI sẽ kiểm duyệt ASYNC trong tối đa 60 giây
+        # Nếu AI reject → task sẽ bị XÓA tự động
+        # User không phải đợi — task tạo thành công ngay lập tức
+        task = serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
 
 
 class TaskDetailAPIView(generics.RetrieveAPIView):
