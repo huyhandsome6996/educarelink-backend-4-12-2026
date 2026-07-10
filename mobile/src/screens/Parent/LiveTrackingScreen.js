@@ -19,13 +19,14 @@ const DEVICE_STATUS_POLL_MS = 10000; // Parent poll device status mỗi 10s
 const GEOFENCE_RADIUS = 500; // mét
 
 // ====================================================================
-// Cấu hình notification handler — chuông kêu khi nhận offline alert
+// Cấu hình notification handler — chuông kêu khi nhận alert khẩn cấp
 // ====================================================================
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data || {};
-    // Nếu là device_offline alert → high priority, chuông kêu
-    if (data.type === 'device_offline') {
+    // Các alert khẩn cấp → high priority, chuông kêu
+    const critical_types = ['device_offline', 'geofence_exit', 'sos_alert'];
+    if (critical_types.includes(data.type)) {
       return {
         shouldShowAlert: true,
         shouldPlaySound: true,
@@ -33,6 +34,7 @@ Notifications.setNotificationHandler({
         priority: Notifications.AndroidNotificationPriority.HIGH,
       };
     }
+    // Alert recovery → priority thấp
     return {
       shouldShowAlert: true,
       shouldPlaySound: true,
@@ -115,12 +117,12 @@ export default function LiveTrackingScreen() {
       // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần
       Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
 
-      // Schedule local notification với sound critical
+      // Schedule local notification với sound default (đảm bảo available)
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
           body: "Thiết bị Carepartner đã ngừng gửi tín hiệu! Vui lòng kiểm tra ngay.",
-          sound: 'critical',
+          sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: {
             type: 'device_offline',
@@ -139,14 +141,57 @@ export default function LiveTrackingScreen() {
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const data = notification.request.content.data || {};
+      const body = notification.request.content.body || '';
+
+      // === DEVICE OFFLINE alert ===
       if (data.type === 'device_offline') {
+        // Vibration pattern khẩn cấp
+        Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000], false);
         Alert.alert(
           "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
-          notification.request.content.body || 'Thiết bị Carepartner mất kết nối!',
+          body || 'Thiết bị Carepartner mất kết nối!',
           [
             { text: 'Đã biết', style: 'destructive' },
+            { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
             { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
           ]
+        );
+      }
+      // === GEOFENCE EXIT alert — carepartner rời vùng an toàn ===
+      else if (data.type === 'geofence_exit') {
+        // Vibration pattern cảnh báo
+        Vibration.vibrate([500, 250, 500, 250, 500, 250, 500], false);
+        Alert.alert(
+          "🚨🚨🚨 CẢNH BÁO: Carepartner rời vùng an toàn!",
+          body || 'Carepartner đã rời khỏi vùng an toàn. Vui lòng kiểm tra ngay!',
+          [
+            { text: 'Đã biết', style: 'default' },
+            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
+          ]
+        );
+      }
+      // === SOS alert ===
+      else if (data.type === 'sos_alert') {
+        Vibration.vibrate([800, 400, 800, 400, 800], false);
+        Alert.alert(
+          "🆘 SOS KHẨN CẤP",
+          body || 'Carepartner vừa gửi SOS khẩn cấp!',
+          [
+            { text: 'Đã biết', style: 'default' },
+            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
+          ]
+        );
+      }
+      // === GEOFENCE RE-ENTER (carepartner quay lại vùng) ===
+      else if (data.type === 'geofence_enter') {
+        // Vibration nhẹ báo yên tâm
+        Vibration.vibrate([200, 100, 200], false);
+        Alert.alert(
+          "✅ Carepartner đã quay lại vùng an toàn",
+          body || 'Carepartner đã quay lại trong vùng an toàn.',
+          [{ text: 'OK', style: 'default' }]
         );
       }
     });
