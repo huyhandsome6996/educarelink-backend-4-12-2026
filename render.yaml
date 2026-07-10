@@ -67,11 +67,11 @@ services:
         value: "true"
       # ── Device Offline Alert (chống tắt máy/đập máy) ──
       # Carepartner app gửi heartbeat mỗi 30s
-      # Backend scheduler quét mỗi 1 phút — nếu last_seen > 90s → push chuông cho phụ huynh
+      # Backend scheduler quét mỗi 1 phút — nếu last_seen > 60s → push chuông cho phụ huynh
       - key: TRACKING_HEARTBEAT_INTERVAL
         value: "30"
       - key: TRACKING_OFFLINE_THRESHOLD
-        value: "90"
+        value: "60"
       - key: TRACKING_OFFLINE_CHECK_ENABLED
         value: "true"
       - key: TRACKING_OFFLINE_CHECK_INTERVAL

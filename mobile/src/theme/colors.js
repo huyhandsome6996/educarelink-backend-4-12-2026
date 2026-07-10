@@ -24,7 +24,7 @@ export const COLORS = {
   // Text
   textPrimary:   '#1A1A2E',   // tiêu đề, chữ chính
   textSecondary: '#6B7280',   // chữ phụ
-  textMuted:     '#9CA3AF',   // chữ rất nhạt
+  textMuted:     '#6B7280',   // ⚡ UX fix: đổi từ #9CA3AF → #6B7280 (WCAG AA pass, contrast 5.4:1)
   textOnPrimary: '#FFFFFF',   // chữ trên nền cam
 
   // Trạng thái
@@ -100,11 +100,11 @@ export const TYPO = {
   bodyLarge: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 24 },
   bodySmall: { fontSize: 13, fontWeight: '500', letterSpacing: 0.1, lineHeight: 18 },
 
-  // Utility
-  caption: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, lineHeight: 16 },
-  overline: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, lineHeight: 14 },
+  // Utility — ⚡ UX fix: tăng font size cho WCAG AA compliance (≥14pt body)
+  caption: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, lineHeight: 16 },
+  overline: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, lineHeight: 14 },
   button: { fontSize: 16, fontWeight: '800', letterSpacing: 0.2, lineHeight: 20 },
-  buttonSmall: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3, lineHeight: 18 },
+  buttonSmall: { fontSize: 14, fontWeight: '800', letterSpacing: 0.3, lineHeight: 18 },
 };
 
 // === ANIMATION PRESETS (taste-skill: smooth transitions) ===

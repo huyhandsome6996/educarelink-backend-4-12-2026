@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import os
@@ -192,6 +193,10 @@ class RegisterAPIView(generics.CreateAPIView):
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
+    # ⚡ BUG-005 fix: Rate limit login — 5 attempts/phút per IP (chống brute-force)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
+
     def post(self, request):
         username = request.data.get('username', '')
         password = request.data.get('password', '')
@@ -944,12 +949,20 @@ class AdminSeedDemoDataAPIView(APIView):
         from django.core.management import call_command
         from io import StringIO
         out = StringIO()
-        call_command('seed_demo_data', stdout=out)
-        output = out.getvalue()
-        return Response({
-            'message': 'Đã tạo dữ liệu mẫu thành công!',
-            'details': output,
-        })
+        try:
+            call_command('seed_demo_data', stdout=out)
+            output = out.getvalue()
+            return Response({
+                'message': 'Đã tạo dữ liệu mẫu thành công!',
+                'details': output[-2000:] if len(output) > 2000 else output,
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger('educarelink.seed')
+            logger.exception(f'[SeedDemoData] Error: {e}')
+            return Response({
+                'error': f'Lỗi khi tạo dữ liệu mẫu: {str(e)[:200]}',
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CompleteOnboardingAPIView(APIView):

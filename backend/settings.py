@@ -171,6 +171,7 @@ REST_FRAMEWORK = {
         'anon': '60/min',  # anonymous: 60 req/phút
         'user': '600/min',  # authenticated: 600 req/phút (10 req/s — đủ cho mobile polling)
         'ai': '20/min',  # AI endpoints: 20 req/phút (tránh spam Gemini)
+        'login': '5/min',  # ⚡ BUG-005 fix: login endpoint — 5 attempts/phút (chống brute-force)
     },
 }
 
@@ -295,8 +296,9 @@ TRACKING_UPDATE_INTERVAL = int(os.environ.get('TRACKING_UPDATE_INTERVAL', '10'))
 # Carepartner app gửi heartbeat mỗi 30s
 TRACKING_HEARTBEAT_INTERVAL = int(os.environ.get('TRACKING_HEARTBEAT_INTERVAL', '30'))
 
-# Ngưỡng phát hiện offline: nếu last_seen > 90s = 3 lần miss = chắc chắn tắt máy
-TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '90'))
+# Ngưỡng phát hiện offline: nếu last_seen > 60s = 2 lần miss = phát hiện nhanh hơn
+# (Safety audit recommendation: giảm từ 90s xuống 60s để push < 2 phút worst case)
+TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '60'))
 
 # Bật/tắt offline check scheduler (chỉ chạy trên Render)
 TRACKING_OFFLINE_CHECK_ENABLED = os.environ.get('TRACKING_OFFLINE_CHECK_ENABLED', 'true').lower() == 'true'
