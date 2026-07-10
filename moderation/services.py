@@ -259,6 +259,8 @@ def moderate_task(task):
     from .models import TaskModeration
     from django.utils import timezone
 
+    logger.info(f"[moderate_task] START Task#{task.id} title='{task.title[:50]}'")
+
     # ⚡ BƯỚC 1: Check keyword blacklist ĐỒNG BỘ — chặn ngay lập tức
     blacklist_result = _check_banned_keywords(
         task.title or '',
@@ -295,13 +297,14 @@ def moderate_task(task):
                 )
         except Exception as e:
             logger.warning(f"Notify parent on blacklist reject failed: {e}")
-        logger.info(f"[moderation] Task#{task.id} REJECTED by keyword blacklist: {blacklist_result['flags']}")
+        logger.info(f"[moderate_task] Task#{task.id} REJECTED by keyword blacklist: {blacklist_result['flags']}")
         return moderation
 
     # ⚡ BƯỚC 2: Nếu không bị blacklist → gọi AI Gemini để kiểm duyệt sâu hơn
     client = _get_gemini_client()
     if not client:
         # Không có AI → auto-approved (đã check blacklist rồi)
+        logger.warning(f"[moderate_task] Task#{task.id} NO GEMINI CLIENT → auto-approved")
         moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
             defaults={
@@ -322,9 +325,13 @@ Danh mục: {task.category.name if task.category else 'Khác'}
 
 Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Việt Nam."""
 
-    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=1024)
+    logger.info(f"[moderate_task] Task#{task.id} calling Gemini...")
+    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=512)
+    logger.info(f"[moderate_task] Task#{task.id} Gemini response: {ai_text[:200] if ai_text else 'None'}")
+
     if not ai_text:
-        moderation, _ = TaskModeration.objects.get_or_create(
+        logger.warning(f"[moderate_task] Task#{task.id} AI no response → auto-approved")
+        moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
             defaults={'status': 'approved', 'ai_verdict': 'AI không phản hồi — tự động duyệt.', 'ai_confidence': 0.0}
         )
@@ -332,7 +339,8 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
 
     parsed = _parse_json_safe(ai_text)
     if not parsed:
-        moderation, _ = TaskModeration.objects.get_or_create(
+        logger.warning(f"[moderate_task] Task#{task.id} AI parse failed → auto-approved. Raw: {ai_text[:200]}")
+        moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
             defaults={'status': 'approved', 'ai_verdict': 'Không parse được AI — tự động duyệt.', 'ai_confidence': 0.0}
         )
@@ -350,6 +358,8 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
         'NEEDS_REVIEW': 'needs_review',
     }
     status = status_map.get(verdict, 'approved')
+
+    logger.info(f"[moderate_task] Task#{task.id} verdict={verdict} → status={status} confidence={confidence}")
 
     moderation, _ = TaskModeration.objects.update_or_create(
         task=task,
