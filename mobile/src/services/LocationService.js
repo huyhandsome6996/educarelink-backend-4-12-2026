@@ -264,6 +264,97 @@ export function getCurrentLocation() {
 }
 
 // ====================================================================
+// AUTO-RESUME TRACKING — khi app mở lại sau khi kill/reboot
+// ====================================================================
+
+/**
+ * Tự resume tracking nếu có task đang in_progress.
+ * Gọi khi app khởi động (App.js useEffect).
+ *
+ * Flow:
+ * 1. Đọc tracking_task_id từ storage
+ * 2. Nếu có → check task còn in_progress không (gọi API)
+ * 3. Nếu còn → startTracking(taskId)
+ * 4. Nếu task đã completed/cancelled → clear storage (không resume)
+ *
+ * @returns {Promise<number|null>} taskId đang resume, hoặc null
+ */
+export async function autoResumeTracking(): Promise<number | null> {
+  try {
+    const savedTaskId = await storage.getItem('tracking_task_id');
+    if (!savedTaskId) {
+      console.log('[LocationService] autoResume: no saved task_id');
+      return null;
+    }
+
+    const taskId = parseInt(savedTaskId, 10);
+    if (isNaN(taskId)) {
+      console.warn('[LocationService] autoResume: invalid task_id:', savedTaskId);
+      await storage.deleteItem('tracking_task_id');
+      return null;
+    }
+
+    // Check task còn in_progress không (gọi API)
+    try {
+      const resp = await apiClient.get(`/tasks/${taskId}/`);
+      const task = resp.data;
+
+      if (task.status === 'in_progress') {
+        console.log(`[LocationService] autoResume: task #${taskId} còn in_progress → resume tracking`);
+
+        // Check consent còn granted không
+        try {
+          const consentResp = await apiClient.get(`/tracking/${taskId}/consent/`);
+          const consent = consentResp.data?.consent?.consent;
+          if (consent !== 'granted') {
+            console.log('[LocationService] autoResume: consent không còn granted → không resume');
+            await storage.deleteItem('tracking_task_id');
+            return null;
+          }
+        } catch (e) {
+          console.warn('[LocationService] autoResume: check consent failed → vẫn resume:', e.message);
+        }
+
+        // Resume tracking
+        const ok = await startTracking(taskId);
+        if (ok) {
+          console.log(`[LocationService] autoResume: ✅ tracking resumed for task #${taskId}`);
+          return taskId;
+        } else {
+          console.warn('[LocationService] autoResume: startTracking failed');
+          return null;
+        }
+      } else {
+        // Task đã completed/cancelled → clear storage
+        console.log(`[LocationService] autoResume: task #${taskId} status=${task.status} → clear storage`);
+        await storage.deleteItem('tracking_task_id');
+        return null;
+      }
+    } catch (e) {
+      // API error (network/404) → thử resume anyway (có thể offline)
+      console.warn('[LocationService] autoResume: check task failed → resume anyway:', e.message);
+      const ok = await startTracking(taskId);
+      return ok ? taskId : null;
+    }
+  } catch (e) {
+    console.error('[LocationService] autoResume error:', e);
+    return null;
+  }
+}
+
+/**
+ * Check xem có task pending resume không (không start, chỉ check).
+ */
+export async function hasPendingResumeTask(): Promise<boolean> {
+  try {
+    const savedTaskId = await storage.getItem('tracking_task_id');
+    return !!savedTaskId;
+  } catch {
+    return false;
+  }
+}
+
+// ====================================================================
 // FOREGROUND INTERVALS — backup khi app mở
 // ====================================================================
 let locationIntervalId: any = null;
