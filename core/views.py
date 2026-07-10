@@ -308,6 +308,45 @@ class TaskUpdateStatusAPIView(APIView):
 
         task.status = new_status
         task.save()
+
+        # ⚡ Notify carepartner rằng task đã kết thúc → app tự clear tracking
+        try:
+            from tracking.models import LocationConsent
+            accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
+            if accepted_app and accepted_app.worker:
+                worker = accepted_app.worker
+                if new_status == 'completed':
+                    notif_title = '✅ Công việc đã hoàn thành'
+                    notif_body = f'Công việc "{task.title}" đã hoàn thành. Cảm ơn bạn!'
+                    notif_type = 'task_completed'
+                else:
+                    notif_title = '❌ Công việc đã bị hủy'
+                    notif_body = f'Công việc "{task.title}" đã bị hủy bởi phụ huynh. Theo dõi vị trí đã dừng.'
+                    notif_type = 'task_cancelled'
+
+                # In-app notification
+                Notification.objects.create(
+                    recipient=worker,
+                    title=notif_title,
+                    message=notif_body,
+                )
+                # Push notification (kèm type để app auto clear tracking)
+                if worker.expo_push_token:
+                    send_expo_push_notification(
+                        token=worker.expo_push_token,
+                        title=notif_title,
+                        body=notif_body,
+                        data={
+                            'type': notif_type,
+                            'task_id': task.id,
+                        }
+                    )
+        except Exception as e:
+            import logging
+            logging.getLogger('educarelink.task_status').warning(
+                f'Notify worker on task {new_status} failed: {e}'
+            )
+
         serializer = TaskSerializer(task)
         return Response(serializer.data)
 
