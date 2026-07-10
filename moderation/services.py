@@ -87,6 +87,13 @@ BANNED_KEYWORDS = [
     'pedophile', 'ụ trẻ', 'pedop', 'xâm hại trẻ', 'xam hai tre',
     # Khác
     'tự sát', 'tu sat', 'tự tử', 'tu tu', 'khai thác bất hợp pháp',
+    # ⚡ Thêm sau test thực tế: bạo lực đối với trẻ em
+    'đánh trẻ', 'danh tre', 'đánh bé', 'danh be', 'đánh con', 'danh con',
+    'đánh đòn', 'danh don', 'bạo lực trẻ em', 'bao luc tre em',
+    'hành hạ', 'hanh ha', 'tra tấn', 'tra tan', 'ngược đãi', 'nguoc dai',
+    'bóp cổ', 'bop co', 'siết cổ', 'siet co', 'dìm nước', 'dim nuoc',
+    'đốt', 'dot', 'phóng hỏa', 'phong hoa',
+    'cắt thịt', 'cat thit',
 ]
 
 # Từ khóa giá quá thấp — bóc lột lao động
