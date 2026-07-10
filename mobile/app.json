@@ -58,6 +58,7 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-location",
+      "expo-background-fetch",
       [
         "expo-image-picker",
         {
