@@ -301,26 +301,23 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
 def moderate_task_sync(title, description, price, location='', category_id=None):
     """
     ⚡ Kiểm duyệt ĐỒNG BỘ bằng AI Gemini — gọi NGAY LÚC ĐĂNG TASK.
-    Không cần task object (task chưa được tạo trong DB).
+    Timeout 5 giây — nếu AI không trả lời kịp → cho tạo task, async moderate sau.
 
     Trả về:
     {
-        'rejected': True/False,  # True = chặn, không cho tạo task
+        'rejected': True/False,
         'reason': str,
         'flags': list,
         'confidence': float,
     }
-
-    Nếu AI không khả dụng hoặc lỗi → return rejected=False (cho phép tạo,
-    AI sẽ moderate lại async sau).
     """
-    # Gọi AI Gemini đồng bộ
+    import threading
+
     client = _get_gemini_client()
     if not client:
-        logger.warning('[moderate_task_sync] Gemini client not available — skip sync moderation')
         return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
 
-    # Lấy category name nếu có
+    # Lấy category name
     category_name = 'Khác'
     if category_id:
         try:
@@ -340,15 +337,36 @@ Danh mục: {category_name}
 
 Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Việt Nam."""
 
-    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=1024)
+    # ⚡ Chạy AI call với timeout 5 giây dùng thread
+    result_box = [None]  # thread-safe container
+    error_box = [None]
 
+    def _call_ai():
+        try:
+            ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=512)
+            result_box[0] = ai_text
+        except Exception as e:
+            error_box[0] = e
+
+    t = threading.Thread(target=_call_ai, daemon=True)
+    t.start()
+    t.join(timeout=5.0)  # ⡡ Đợi tối đa 5 giây
+
+    if t.is_alive():
+        # AI chưa trả lời sau 5s → cho tạo task, async moderate sau
+        logger.warning('[moderate_task_sync] AI timeout 5s — cho phép tạo task, async moderate sau')
+        return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
+
+    if error_box[0]:
+        logger.warning(f'[moderate_task_sync] AI error: {error_box[0]}')
+        return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
+
+    ai_text = result_box[0]
     if not ai_text:
-        logger.warning('[moderate_task_sync] AI không phản hồi — cho phép tạo task, sẽ moderate async sau')
         return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
 
     parsed = _parse_json_safe(ai_text)
     if not parsed:
-        logger.warning('[moderate_task_sync] Không parse được AI response — cho phép tạo task')
         return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
 
     verdict = parsed.get('verdict', 'APPROVED').upper()
@@ -357,7 +375,7 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
     explanation = str(parsed.get('explanation', ''))[:500]
 
     if verdict == 'REJECTED':
-        logger.info(f'[moderate_task_sync] REJECTED: "{title}" — {flags} — {explanation[:100]}')
+        logger.info(f'[moderate_task_sync] REJECTED: "{title}" — {flags}')
         return {
             'rejected': True,
             'reason': explanation,
@@ -365,8 +383,7 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
             'confidence': confidence,
         }
 
-    # APPROVED hoặc NEEDS_REVIEW → cho phép tạo task
-    logger.info(f'[moderate_task_sync] {verdict}: "{title}" — confidence={confidence}')
+    logger.info(f'[moderate_task_sync] {verdict}: "{title}" — {confidence}')
     return {
         'rejected': False,
         'reason': explanation,
