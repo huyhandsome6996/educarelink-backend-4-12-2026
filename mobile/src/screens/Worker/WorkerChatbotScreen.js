@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { sendWorkerChatMessage } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import FormattedText from '../../components/FormattedText';
 
 const INITIAL_MESSAGES = [
   {
@@ -33,9 +34,17 @@ const renderMessage = ({ item }) => {
         </View>
       )}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-        <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
-          {item.text}
-        </Text>
+        {isUser ? (
+          <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
+            {item.text}
+          </Text>
+        ) : (
+          <FormattedText
+            text={item.text}
+            style={[styles.bubbleText, styles.bubbleTextBot]}
+            baseColor={COLORS.textPrimary}
+          />
+        )}
       </View>
     </View>
   );
