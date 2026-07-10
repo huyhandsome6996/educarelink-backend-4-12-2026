@@ -293,8 +293,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         if self.request.user.role != 'parent':
             raise drf_serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
 
-        # ⚡ CHẶN ĐỒNG BỘ: check keyword blacklist NGAY LÚC ĐĂNG TASK
-        # Nếu vi phạm → raise ValidationError, KHÔNG tạo task
+        # ⚡ BƯỚC 1: Check keyword blacklist ĐỒNG BỘ (nhanh, <1ms)
         title = self.request.data.get('title', '')
         description = self.request.data.get('description', '')
         price = self.request.data.get('price', 0)
@@ -303,14 +302,39 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             from moderation.services import _check_banned_keywords
             blacklist_result = _check_banned_keywords(title, description, price)
             if blacklist_result['banned']:
-                # ⚡ KHÔNG CHO TẠO TASK — trả lỗi ngay lập tức
                 raise drf_serializers.ValidationError({
                     'detail': f'🚫 Công việc bị từ chối: {blacklist_result["reason"]}',
                     'flags': blacklist_result['flags'],
                     'confidence': blacklist_result['confidence'],
                 })
         except ImportError:
-            pass  # moderation module chưa sẵn sàng → bỏ qua check
+            pass
+
+        # ⚡ BƯỚC 2: AI Gemini kiểm duyệt ĐỒNG BỘ (5-15s)
+        # Gọi AI ngay lúc đăng → nếu AI reject → KHÔNG tạo task
+        # User đợi 5-15s nhưng đảm bảo task vi phạm KHÔNG BAO GIỜ được tạo
+        try:
+            from moderation.services import moderate_task_sync
+            ai_result = moderate_task_sync(title, description, price, 
+                                           self.request.data.get('location', ''),
+                                           self.request.data.get('category', None))
+            if ai_result['rejected']:
+                raise drf_serializers.ValidationError({
+                    'detail': f'🚫 AI kiểm duyệt đã từ chối: {ai_result["reason"]}',
+                    'flags': ai_result['flags'],
+                    'confidence': ai_result['confidence'],
+                })
+        except ImportError:
+            pass  # moderation module chưa sẵn sàng → bỏ qua
+        except drf_serializers.ValidationError:
+            raise  # Re-raise ValidationError
+        except Exception as e:
+            # Nếu AI lỗi → vẫn cho tạo task (không chặn user do lỗi hệ thống)
+            # AI sẽ moderate lại async sau
+            import logging
+            logging.getLogger('educarelink.task_create').warning(
+                f'AI sync moderation failed, falling back to async: {e}'
+            )
 
         serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
 

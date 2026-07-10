@@ -298,6 +298,83 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
     return moderation
 
 
+def moderate_task_sync(title, description, price, location='', category_id=None):
+    """
+    ⚡ Kiểm duyệt ĐỒNG BỘ bằng AI Gemini — gọi NGAY LÚC ĐĂNG TASK.
+    Không cần task object (task chưa được tạo trong DB).
+
+    Trả về:
+    {
+        'rejected': True/False,  # True = chặn, không cho tạo task
+        'reason': str,
+        'flags': list,
+        'confidence': float,
+    }
+
+    Nếu AI không khả dụng hoặc lỗi → return rejected=False (cho phép tạo,
+    AI sẽ moderate lại async sau).
+    """
+    # Gọi AI Gemini đồng bộ
+    client = _get_gemini_client()
+    if not client:
+        logger.warning('[moderate_task_sync] Gemini client not available — skip sync moderation')
+        return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
+
+    # Lấy category name nếu có
+    category_name = 'Khác'
+    if category_id:
+        try:
+            from core.models import ServiceCategory
+            cat = ServiceCategory.objects.get(id=int(category_id))
+            category_name = cat.name
+        except Exception:
+            pass
+
+    user_prompt = f"""Kiểm duyệt công việc sau:
+
+Tiêu đề: {title}
+Mô tả: {description[:500]}
+Giá: {price} VNĐ
+Địa điểm: {location}
+Danh mục: {category_name}
+
+Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Việt Nam."""
+
+    ai_text = _safe_call_gemini(client, TASK_MODERATION_PROMPT, user_prompt, temperature=0.2, max_tokens=1024)
+
+    if not ai_text:
+        logger.warning('[moderate_task_sync] AI không phản hồi — cho phép tạo task, sẽ moderate async sau')
+        return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
+
+    parsed = _parse_json_safe(ai_text)
+    if not parsed:
+        logger.warning('[moderate_task_sync] Không parse được AI response — cho phép tạo task')
+        return {'rejected': False, 'reason': '', 'flags': [], 'confidence': 0.0}
+
+    verdict = parsed.get('verdict', 'APPROVED').upper()
+    confidence = float(parsed.get('confidence', 0.5))
+    flags = parsed.get('flags', [])
+    explanation = str(parsed.get('explanation', ''))[:500]
+
+    if verdict == 'REJECTED':
+        logger.info(f'[moderate_task_sync] REJECTED: "{title}" — {flags} — {explanation[:100]}')
+        return {
+            'rejected': True,
+            'reason': explanation,
+            'flags': flags,
+            'confidence': confidence,
+        }
+
+    # APPROVED hoặc NEEDS_REVIEW → cho phép tạo task
+    logger.info(f'[moderate_task_sync] {verdict}: "{title}" — confidence={confidence}')
+    return {
+        'rejected': False,
+        'reason': explanation,
+        'flags': flags,
+        'confidence': confidence,
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  2. COMPLAINT ANALYSIS
 # ═══════════════════════════════════════════════════════════════════
