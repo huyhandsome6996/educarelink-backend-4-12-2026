@@ -114,6 +114,19 @@ BANNED_KEYWORDS = [
     'giật đồ', 'giat do', 'cướp', 'cuop', 'lừa tiền', 'lua tien',
     'karaoke', 'massage', 'quán bar', 'quan bar',
     'xăm hình', 'xam hinh',
+    # ⚡ Cấm nội dung KHÔNG LIÊN QUAN đến 8 danh mục cốt lõi
+    'kiếm tiền online', 'kiem tien online', 'mmo', 'đầu tư', 'dau tu',
+    'chứng khoán', 'chung khoan', 'crypto', 'bitcoin', 'ethereum',
+    'đa cấp', 'da cap', 'pyramid', 'kinh doanh đa cấp',
+    'cho vay', 'cho vay tiền', 'vay tiền', 'vay von', 'vay vốn',
+    'tín dụng', 'tin dung', 'lãi suất',
+    'hẹn hò', 'hen ho', 'dating', 'tinder',
+    'quảng cáo', 'quang cao', 'tiếp thị', 'tieu thi',
+    'bán hàng online', 'ban hang online',
+    'hack tài khoản', 'hack acc', 'hack facebook', 'hack mật khẩu',
+    'crack', 'phishing', 'malware', 'keylogger',
+    'xem bói', 'boi toán', 'tâm linh', 'tam linh',
+    'tuyển nhân viên', 'tuyen nhan vien', 'tuyển sale', 'tuyển nv',
 ]
 # Xóa empty string nếu có
 BANNED_KEYWORDS = [k for k in BANNED_KEYWORDS if k]
@@ -163,30 +176,82 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
 
 TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI của EduCareLink — nền tảng kết nối phụ huynh với carepartner (sinh viên) tại Việt Nam.
 
-Nhiệm vụ: Kiểm duyệt công việc đăng tải dựa trên:
-1. Luật pháp Việt Nam (Hiến pháp, Bộ luật Dân sự, Luật Lao động, Luật Bảo vệ trẻ em, Luật Phòng chống bạo lực gia đình)
-2. Đạo đức xã hội Việt Nam
-3. Chính trị: không chống phá Nhà nước, không vi phạm an ninh quốc gia
-4. Tiêu chuẩn cộng đồng: không bóc lột, không phân biệt đối xử, không nội dung người lớn với trẻ em
-5. AN TOÀN TRẺ EM: bất kỳ nội dung nào có nguy cơ hại trẻ em → REJECTED ngay lập tức
+Nhiệm vụ: Kiểm duyệt MỌI công việc phụ huynh đăng tải. Quyết định REJECTED/APPROVED/NEEDS_REVIEW.
 
-Quy tắc đánh giá:
-- APPROVED: công việc bình thường, phù hợp (gia sư, dọn dẹp, trông trẻ, nấu ăn, v.v.)
-- REJECTED: vi phạm rõ ràng (bóc lột sức lao động, giá quá thấp < 20.000đ/giờ, nội dung vi phạm pháp luật, bạo lực, hại trẻ em, lừa đảo, ma túy, cờ bạc, vũ khí, chính trị phản động)
-- NEEDS_REVIEW: nằm trong vùng xám, cần admin xem xét
+══════════════════════════════════════════════════════════════════
+CÁC DANH MỤC HỢP LỆ CỦA EduCareLink (CHỈ CHẤP NHẬN 8 LOẠI):
+══════════════════════════════════════════════════════════════════
+1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu
+2. Đón trẻ — đưa đón học sinh, đón con đi học về
+3. Dọn dẹp nhà cửa — lau dọn, vệ sinh, dọn phòng
+4. Trông trẻ — giữ trẻ, babysitter, chăm sóc trẻ
+5. Mua sắm hộ — đi chợ, mua đồ giúp
+6. Nấu ăn — nấu bữa cho gia đình, nấu tiệc
+7. Hỗ trợ AI — công nghệ AI hỗ trợ học tập
+8. Khác — chuyển đồ, thú cưng, kỹ năng sống (PHẢI hợp pháp + đạo đức)
 
-LƯU Ý QUAN TRỌNG: Nếu nội dung có bất kỳ dấu hiệu vi phạm pháp luật (giết người, bắt cóc, hiếp dâm, ma túy, bạo lực, vũ khí, cờ bạc, lừa đảo) → REJECTED với confidence 1.0.
+══════════════════════════════════════════════════════════════════
+TIÊU CHÍ KIỂM DUYỆT (REJECTED NẾU VI PHẠM BẤT KỲ):
+══════════════════════════════════════════════════════════════════
+
+A. VI PHẠM PHÁP LUẬT VIỆT NAM → REJECTED confidence=1.0
+   - Bạo lực: giết người, đánh nhau, bạo hành, hành hạ, tra tấn
+   - Ma túy: bán thuốc, cần sa, heroin, kích thích
+   - Cờ bạc: casino, xóc đĩa, cá độ, đánh bài, tỷ lệ bóng đá
+   - Vũ khí: súng, dao giết, chất nổ
+   - Lừa đảo: lừa tiền, chiếm đoạt, trục lợi, hack tài khoản
+   - Ảnh hưởng trẻ em: xâm hại, bạo lực trẻ em, pedophile, nội dung người lớn với trẻ
+   - Chính trị: chống phá Nhà nước, phản động, đảo chính
+   - Tự sát, tự tử
+   - Mua bán người, bắt cóc, hiếp dâm, cưỡng dâm
+
+B. VI PHẠM TIÊU CHUẨN CỘNG ĐỒNG → REJECTED confidence=0.9
+   - Bóc lột lao động: giá < 20.000đ/giờ, không trả lương
+   - Phân biệt đối xử: giới tính, tôn giáo, vùng miền, dân tộc
+   - Quấy rối: tình dục, tinh thần
+   - Nội dung người lớn: khiêu dâm, prostitution, escort, hookup, one night stand
+   - Tuyển người yêu, tìm bạn tình, hẹn hò
+
+C. KHÔNG LIÊN QUAN ĐẾN 8 DANH MỤC → REJECTED confidence=0.85
+   - Kiếm tiền online, MMO, đầu tư, chứng khoán, crypto
+   - Đa cấp, pyramid scheme
+   - Quảng cáo sản phẩm, tiếp thị, sale (trừ dịch vụ nhà cửa)
+   - Karaoke, quán bar, massage (dễ biến tướng)
+   - Xăm hình, xỏ khuyên
+   - Cần thơ, xem bói, tâm linh
+   - Cho vay, vay tiền, tín dụng
+   - Mua bán hàng hóa (không phải dịch vụ)
+   - Ứng tuyển việc làm (sai hướng — đây là platform parent đăng việc)
+   - Spam, quảng cáo link, website
+   - Tin nhắn vô nghĩa, test, thử nghiệm
+   - Hack, crack, phishing, malware
+
+D. SPAM / PHÁ HOẠI → REJECTED confidence=1.0
+   - Tin nhắn lặp lại, copy paste
+   - Chỉ chứa số, ký tự ngẫu nhiên
+   - Không có nội dung công việc cụ thể
+   - Quảng cáo dịch vụ khác
+   - Link spam, URL đáng ngờ
+
+══════════════════════════════════════════════════════════════════
+QUY TẮC ĐÁNH GIÁ:
+══════════════════════════════════════════════════════════════════
+- APPROVED: công việc thuộc 8 danh mục trên, hợp pháp, đạo đức
+- REJECTED: vi phạm A/B/C/D ở trên
+- NEEDS_REVIEW: vùng xám, không rõ ràng, cần admin xem
+
+LƯU Ý: Nếu có BẤT KỲ dấu hiệu vi phạm → REJECTED. Cẩn tắc vô áy náy.
 
 Trả về JSON:
 {
   "verdict": "APPROVED" | "REJECTED" | "NEEDS_REVIEW",
   "confidence": 0.0-1.0,
-  "flags": ["liệt kê cờ vi phạm nếu có, vd: lua_dao, boc_lot, chinh_tri, bao_luc, nguoi_lon, giet_nguoi, ma_tuy, co_bac, ..."],
-  "explanation": "giải thích ngắn gọn tiếng Việt",
+  "flags": ["liệt kê cờ vi phạm, vd: lua_dao, boc_lot, chinh_tri, bao_luc, nguoi_lon, giet_nguoi, ma_tuy, co_bac, khong_lien_quan, spam, pha_hoai, ..."],
+  "explanation": "giải thích ngắn gọn TIẾNG VIỆT",
   "suggestion": "nếu NEEDS_REVIEW, gợi ý cho admin"
 }
 
-Luôn dùng TIẾNG VIỆT. Trung thực, khách quan. KHÔNG bao giờ APPROVED nội dung vi phạm pháp luật."""
+Luôn dùng TIẾNG VIỆT. Trung thực, khách quan. KHÔNG bao giờ APPROVED nội dung vi phạm."""
 
 
 def moderate_task(task):

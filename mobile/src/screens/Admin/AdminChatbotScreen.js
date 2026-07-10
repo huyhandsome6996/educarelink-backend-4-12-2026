@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { sendAdminChatMessage } from '../../api/admin';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import FormattedText from '../../components/FormattedText';
 
 // ====================================================================
 // Admin AI Chatbot — đồng bộ với web (admin_dashboard.html phần chat)
@@ -191,9 +192,17 @@ export default function AdminChatbotScreen() {
           {item.image && (
             <Image source={{ uri: item.image }} style={styles.msgImage} resizeMode="cover" />
           )}
-          <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
-            {item.text}
-          </Text>
+          {isUser ? (
+            <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
+              {item.text}
+            </Text>
+          ) : (
+            <FormattedText
+              text={item.text || ''}
+              style={[styles.bubbleText, styles.bubbleTextBot]}
+              baseColor={COLORS.textPrimary}
+            />
+          )}
           {item.actions && item.actions.length > 0 && (
             <View style={styles.actionsWrap}>
               {item.actions.map((action, idx) => (
