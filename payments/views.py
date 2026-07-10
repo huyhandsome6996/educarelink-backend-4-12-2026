@@ -87,6 +87,17 @@ class SetupPaymentAPIView(APIView):
             return Response({'error': 'Bạn không sở hữu công việc này.'},
                             status=status.HTTP_403_FORBIDDEN)
 
+        # ⚡ BUG-006 fix: Block setup 2 lần — chỉ cho phép nếu chưa có payment
+        # hoặc payment cũ đã cancelled (cho phép retry)
+        existing = Payment.objects.filter(task=task).first()
+        if existing and existing.status not in ('cancelled', 'pending'):
+            return Response({
+                'error': 'Công việc này đã được thiết lập thanh toán rồi.',
+                'existing_payment_id': existing.id,
+                'existing_method': existing.method,
+                'existing_status': existing.status,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             payment = setup_payment(task=task, method=method, actor=request.user)
         except (PermissionError, ValueError) as e:
