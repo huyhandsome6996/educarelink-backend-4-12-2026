@@ -642,6 +642,21 @@ QUY TẮC XỬ LÝ:
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện và ngắn gọn
 - Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng, tránh hỏi lại thông tin đã cung cấp
 
+QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
+- KHÔNG bao giờ viết 1 đoạn văn dài chình ình — RẤT KHÓ ĐỌC
+- Mỗi ý phải xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
+- Nếu có nhiều bước/hướng dẫn → đánh số thứ tự 1. 2. 3.
+- Giữa các phần khác nhau → để 1 dòng trống
+- Ví dụ đúng:
+  Chào phụ huynh! Em có thể giúp anh/chị:
+
+  • Đăng việc nhanh qua chat
+  • Tìm gia sư, người trông trẻ
+  • Hướng dẫn sử dụng app
+
+  Anh/chị muốn làm gì ạ?
+- Ví dụ SAI (cấm): "Chào phụ huynh! Em có thể giúp đăng việc, tìm gia sư, tìm người trông trẻ, hướng dẫn sử dụng app. Anh chị muốn làm gì?"
+
 FORMAT JSON khi tạo task (bắt buộc đủ các field):
 <TASK_JSON>
 {
@@ -1578,6 +1593,12 @@ BẠN CÓ THỂ HỖ TRỢ:
 
 QUY TẮC:
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện và chuyên nghiệp
+
+QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
+- KHÔNG viết 1 đoạn văn dài — RẤT KHÓ ĐỌC
+- Mỗi ý xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
+- Nhiều bước → đánh số 1. 2. 3.
+- Giữa các phần → để 1 dòng trống
 - Cung cấp câu trả lời chi tiết, có ví dụ thực tế khi có thể
 - Không tạo task hay thực hiện hành động thay người dùng — chỉ tư vấn và hướng dẫn
 - Nếu câu hỏi ngoài phạm vi, hãy lịch sự chuyển hướng về chủ đề liên quan
@@ -1707,6 +1728,12 @@ HƯỚNG DẪN CHI TIẾT VỀ NỀN TẢNG:
 
 QUY TẮC:
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện, rõ ràng
+
+QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
+- KHÔNG viết 1 đoạn văn dài — RẤT KHÓ ĐỌC
+- Mỗi ý xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
+- Nhiều bước → đánh số 1. 2. 3.
+- Giữa các phần → để 1 dòng trống
 - Hướng dẫn từng bước khi giải thích tính năng
 - Nếu câu hỏi không liên quan đến EduCareLink, lịch sự chuyển hướng
 - Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng
@@ -2105,6 +2132,12 @@ KHẢ NĂNG CỦA BẠN:
 
 QUY TẮC:
 - Luôn trả lời bằng TIẾNG VIỆT, chuyên nghiệp, rõ ràng, có cấu trúc.
+
+QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
+- KHÔNG viết 1 đoạn văn dài — RẤT KHÓ ĐỌC
+- Mỗi ý xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
+- Nhiều bước → đánh số 1. 2. 3.
+- Giữa các phần → để 1 dòng trống
 - Khi admin yêu cầu hành động (cấm, duyệt, mở khóa...), bạn phải XÁC NHẬN lại trước: "Bạn có chắc muốn <hành động> với tài khoản <tên> (ID: <id>) không?"
 - Sau khi admin xác nhận, thực hiện hành động và báo kết quả.
 - Khi phân tích ảnh bằng cấp, hãy mô tả chi tiết nội dung, đánh giá mức độ hợp lệ, và gợi ý mẫu đánh giá cho admin (admin có thể dùng hoặc không).
