@@ -319,7 +319,27 @@ Trả lời siêu ngắn, tối đa 3 dòng, bằng tiếng Việt."""
 
     try:
         # ⚡ Fallback chain model — thử lần lượt nếu 1 model bị deprecated
-        models_to_try = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
+        # Thử import shared model list từ performance module (nếu Django available)
+        # Nếu không → dùng local copy (đồng bộ với performance/gemini_model.py)
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+            import django
+            if not django.apps.apps.ready:
+                django.setup()
+            from performance.gemini_model import GEMINI_MODELS_FALLBACK as models_to_try
+        except Exception:
+            # Standalone mode — local copy đồng bộ với performance/gemini_model.py
+            models_to_try = [
+                'gemini-2.5-flash-lite',
+                'gemini-2.5-flash',
+                'gemini-2.0-flash',
+                'gemini-2.0-flash-lite',
+                'gemini-flash-latest',
+                'gemini-1.5-flash',
+                'gemini-1.5-flash-latest',
+            ]
+
         ai_text = None
         # Thử dùng requests nếu có (nhanh hơn)
         try:
