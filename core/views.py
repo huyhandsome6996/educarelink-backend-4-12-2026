@@ -270,14 +270,48 @@ class UserProfileAPIView(APIView):
 # --- PHẦN 2: CHUNG CHO CẢ PHỤ HUYNH & SINH VIÊN ---
 class TaskListCreateAPIView(generics.ListCreateAPIView):
     # ⚡ TỐI ƯU: select_related → giảm N+1 queries (parent + category load chung 1 query)
+    # ⚡ FILTER: exclude tasks có moderation status='rejected' (không hiển thị trên feed)
     queryset = Task.objects.select_related('parent', 'category').all().order_by('-created_at')
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # ⚡ Filter out rejected tasks — không hiển thị trên worker feed
+        qs = super().get_queryset()
+        try:
+            from moderation.models import TaskModeration
+            rejected_task_ids = TaskModeration.objects.filter(
+                status='rejected'
+            ).values_list('task_id', flat=True)
+            qs = qs.exclude(id__in=rejected_task_ids)
+        except Exception:
+            pass  # moderation module chưa sẵn sàng → không filter
+        return qs
 
     def perform_create(self, serializer):
         # Chỉ phụ huynh mới được đăng việc
         if self.request.user.role != 'parent':
             raise drf_serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
+
+        # ⚡ CHẶN ĐỒNG BỘ: check keyword blacklist NGAY LÚC ĐĂNG TASK
+        # Nếu vi phạm → raise ValidationError, KHÔNG tạo task
+        title = self.request.data.get('title', '')
+        description = self.request.data.get('description', '')
+        price = self.request.data.get('price', 0)
+
+        try:
+            from moderation.services import _check_banned_keywords
+            blacklist_result = _check_banned_keywords(title, description, price)
+            if blacklist_result['banned']:
+                # ⚡ KHÔNG CHO TẠO TASK — trả lỗi ngay lập tức
+                raise drf_serializers.ValidationError({
+                    'detail': f'🚫 Công việc bị từ chối: {blacklist_result["reason"]}',
+                    'flags': blacklist_result['flags'],
+                    'confidence': blacklist_result['confidence'],
+                })
+        except ImportError:
+            pass  # moderation module chưa sẵn sàng → bỏ qua check
+
         serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
 
 
@@ -366,7 +400,15 @@ class ParentTasksAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
          # ⚡ TỐI ƯU: select_related giảm N+1 (parent + category)
-         return Task.objects.select_related('parent', 'category').filter(parent=self.request.user).order_by('-created_at')
+         qs = Task.objects.select_related('parent', 'category').filter(parent=self.request.user).order_by('-created_at')
+         # ⚡ Filter out rejected tasks — phụ huynh cũng không thấy task bị reject
+         try:
+             from moderation.models import TaskModeration
+             rejected_task_ids = TaskModeration.objects.filter(status='rejected').values_list('task_id', flat=True)
+             qs = qs.exclude(id__in=rejected_task_ids)
+         except Exception:
+             pass
+         return qs
 
 class TaskCandidatesAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer
