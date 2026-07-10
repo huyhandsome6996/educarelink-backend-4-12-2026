@@ -52,18 +52,25 @@ def _parse_json_safe(text):
     if not text:
         return None
     import re
-    patterns = [r'```json\s*(.+?)\s*```', r'```\s*(.+?)\s*```', r'(\{.*\})']
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1))
-            except json.JSONDecodeError:
-                continue
+    # Strip markdown fences if present
+    text = text.strip()
+    # Remove ```json ... ``` fences
+    fence_match = re.search(r'```(?:json)?\s*(.+?)\s*```', text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1).strip()
+    # Try direct JSON parse
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return None
+        pass
+    # Extract {...} block
+    brace_match = re.search(r'\{.*\}', text, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -178,9 +185,7 @@ TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI 
 
 Nhiệm vụ: Kiểm duyệt MỌI công việc phụ huynh đăng tải. Quyết định REJECTED/APPROVED/NEEDS_REVIEW.
 
-══════════════════════════════════════════════════════════════════
 CÁC DANH MỤC HỢP LỆ CỦA EduCareLink (CHỈ CHẤP NHẬN 8 LOẠI):
-══════════════════════════════════════════════════════════════════
 1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu
 2. Đón trẻ — đưa đón học sinh, đón con đi học về
 3. Dọn dẹp nhà cửa — lau dọn, vệ sinh, dọn phòng
@@ -190,11 +195,9 @@ CÁC DANH MỤC HỢP LỆ CỦA EduCareLink (CHỈ CHẤP NHẬN 8 LOẠI):
 7. Hỗ trợ AI — công nghệ AI hỗ trợ học tập
 8. Khác — chuyển đồ, thú cưng, kỹ năng sống (PHẢI hợp pháp + đạo đức)
 
-══════════════════════════════════════════════════════════════════
 TIÊU CHÍ KIỂM DUYỆT (REJECTED NẾU VI PHẠM BẤT KỲ):
-══════════════════════════════════════════════════════════════════
 
-A. VI PHẠM PHÁP LUẬT VIỆT NAM → REJECTED confidence=1.0
+A. VI PHẠM PHÁP LUẬT VN → REJECTED confidence=1.0
    - Bạo lực: giết người, đánh nhau, bạo hành, hành hạ, tra tấn
    - Ma túy: bán thuốc, cần sa, heroin, kích thích
    - Cờ bạc: casino, xóc đĩa, cá độ, đánh bài, tỷ lệ bóng đá
@@ -209,7 +212,7 @@ B. VI PHẠM TIÊU CHUẨN CỘNG ĐỒNG → REJECTED confidence=0.9
    - Bóc lột lao động: giá < 20.000đ/giờ, không trả lương
    - Phân biệt đối xử: giới tính, tôn giáo, vùng miền, dân tộc
    - Quấy rối: tình dục, tinh thần
-   - Nội dung người lớn: khiêu dâm, prostitution, escort, hookup, one night stand
+   - Nội dung người lớn: khiêu dâm, nude, prostitution, escort, hookup, one night stand
    - Tuyển người yêu, tìm bạn tình, hẹn hò
 
 C. KHÔNG LIÊN QUAN ĐẾN 8 DANH MỤC → REJECTED confidence=0.85
@@ -221,9 +224,7 @@ C. KHÔNG LIÊN QUAN ĐẾN 8 DANH MỤC → REJECTED confidence=0.85
    - Cần thơ, xem bói, tâm linh
    - Cho vay, vay tiền, tín dụng
    - Mua bán hàng hóa (không phải dịch vụ)
-   - Ứng tuyển việc làm (sai hướng — đây là platform parent đăng việc)
    - Spam, quảng cáo link, website
-   - Tin nhắn vô nghĩa, test, thử nghiệm
    - Hack, crack, phishing, malware
 
 D. SPAM / PHÁ HOẠI → REJECTED confidence=1.0
@@ -233,25 +234,21 @@ D. SPAM / PHÁ HOẠI → REJECTED confidence=1.0
    - Quảng cáo dịch vụ khác
    - Link spam, URL đáng ngờ
 
-══════════════════════════════════════════════════════════════════
-QUY TẮC ĐÁNH GIÁ:
-══════════════════════════════════════════════════════════════════
-- APPROVED: công việc thuộc 8 danh mục trên, hợp pháp, đạo đức
-- REJECTED: vi phạm A/B/C/D ở trên
-- NEEDS_REVIEW: vùng xám, không rõ ràng, cần admin xem
+QUY TẮC:
+- APPROVED: công việc thuộc 8 danh mục, hợp pháp, đạo đức
+- REJECTED: vi phạm A/B/C/D
+- NEEDS_REVIEW: vùng xám
 
-LƯU Ý: Nếu có BẤT KỲ dấu hiệu vi phạm → REJECTED. Cẩn tắc vô áy náy.
+⚠️ QUAN TRỌNG - FORMAT OUTPUT BẮT BUỘC:
+Bạn PHẢI trả về ĐÚNG 1 JSON object, KHÔNG kèm text khác, KHÔNG kèm markdown fence.
 
-Trả về JSON:
-{
-  "verdict": "APPROVED" | "REJECTED" | "NEEDS_REVIEW",
-  "confidence": 0.0-1.0,
-  "flags": ["liệt kê cờ vi phạm, vd: lua_dao, boc_lot, chinh_tri, bao_luc, nguoi_lon, giet_nguoi, ma_tuy, co_bac, khong_lien_quan, spam, pha_hoai, ..."],
-  "explanation": "giải thích ngắn gọn TIẾNG VIỆT",
-  "suggestion": "nếu NEEDS_REVIEW, gợi ý cho admin"
-}
+JSON format (phải có đủ 5 fields):
+{"verdict": "APPROVED", "confidence": 0.95, "flags": [], "explanation": "viết tiếng Việt", "suggestion": ""}
 
-Luôn dùng TIẾNG VIỆT. Trung thực, khách quan. KHÔNG bao giờ APPROVED nội dung vi phạm."""
+Hoặc:
+{"verdict": "REJECTED", "confidence": 1.0, "flags": ["nguoi_lon"], "explanation": "viết tiếng Việt", "suggestion": ""}
+
+KHÔNG viết ```json``` fence. KHÔNG viết text trước/sau JSON. CHỈ trả JSON thuần."""
 
 
 def moderate_task(task):
