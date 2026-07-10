@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
 import { checkConsent, grantConsent, triggerSOS, getSOSAlerts, resolveSOS } from '../../api/tracking';
-import { startTracking, stopTracking, isTracking as isLocationTracking, getCurrentTaskId } from '../../services/LocationService';
+import { startTracking, stopTracking, isTracking as isLocationTracking, getCurrentTaskId, hasPendingResumeTask } from '../../services/LocationService';
 import NotificationBell from '../../components/NotificationBell';
 import TrackingConsentModal from '../../components/TrackingConsentModal';
 import ActiveTrackingBanner from '../../components/ActiveTrackingBanner';
@@ -44,6 +44,27 @@ export default function MyJobsScreen() {
     try {
       const res = await getMyJobsAsWorker();
       setApplications(res.data);
+
+      // ⚡ Auto-stop tracking nếu task đã completed/cancelled
+      // (parent đã update status nhưng app carepartner chưa biết)
+      const trackingTaskId = getCurrentTaskId();
+      if (trackingTaskId) {
+        const trackingApp = res.data.find(a => a.task === trackingTaskId);
+        if (trackingApp) {
+          // Check task status (task_status field từ serializer)
+          const taskStatus = trackingApp.task_status;
+          if (taskStatus && taskStatus !== 'in_progress') {
+            console.log(`[MyJobs] Task #${trackingTaskId} status=${taskStatus} → auto stop tracking`);
+            await stopTracking();
+            setTrackingTaskId(null);
+            Alert.alert(
+              'ⓘ Theo dõi vị trí đã dừng',
+              `Công việc "${trackingApp.task_title}" đã ${taskStatus === 'completed' ? 'hoàn thành' : 'bị hủy'}. Theo dõi vị trí đã tự động dừng.`,
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      }
 
       // Check consent cho các task được accept (task.status='in_progress')
       const acceptedApps = res.data.filter(a => a.status === 'accepted' && a.task);
