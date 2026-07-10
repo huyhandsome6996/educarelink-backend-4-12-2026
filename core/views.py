@@ -7,9 +7,12 @@ from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import os
+import logging
 import requests
 from django.db import models as db_models
 from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest
+
+logger = logging.getLogger('educarelink.core.views')
 
 
 class HealthCheckAPIView(APIView):
@@ -311,11 +314,38 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         except ImportError:
             pass
 
-        # ⚡ BƯỚC 2: Tạo task NGAY LẬP TỨC (không đợi AI)
-        # AI sẽ kiểm duyệt ASYNC trong tối đa 60 giây
-        # Nếu AI reject → task sẽ bị XÓA tự động
-        # User không phải đợi — task tạo thành công ngay lập tức
+        # ⚡ BƯỚC 2: Tạo task NGAY LẬP TỨC
         task = serializer.save(parent=self.request.user) # Phục vụ Màn 4: Phụ huynh đăng việc
+
+        # ⚡ BƯỚC 3: Gọi moderate_task ĐỒNG BỘ (2-5s) — không phụ thuộc signal
+        # Signal post_save không reliable trên Render/gunicorn, nên gọi trực tiếp
+        try:
+            from moderation.services import moderate_task
+            moderation = moderate_task(task)
+
+            # Nếu REJECTED → xóa task + notify parent ngay lập tức
+            if moderation.status == 'rejected':
+                try:
+                    from core.models import Notification
+                    reason = moderation.ai_verdict[:300] if moderation.ai_verdict else 'Vi phạm tiêu chuẩn cộng đồng'
+                    Notification.objects.create(
+                        recipient=task.parent,
+                        title="🚫 Công việc đã bị xóa",
+                        message=f'Công việc "{task.title}" đã bị AI xóa vì: {reason[:150]}. Vui lòng đăng lại nội dung phù hợp.',
+                    )
+                    if task.parent.expo_push_token:
+                        send_expo_push_notification(
+                            token=task.parent.expo_push_token,
+                            title="🚫 Công việc bị xóa",
+                            body=f'"{task.title}" bị AI xóa: {reason[:100]}',
+                            data={'type': 'task_rejected', 'task_id': task.id}
+                        )
+                    task.delete()
+                    logger.info(f"[task create] Task#{task.id} DELETED by AI moderation (rejected)")
+                except Exception as e:
+                    logger.exception(f"[task create] Failed to delete rejected task: {e}")
+        except Exception as e:
+            logger.exception(f"[task create] moderate_task failed: {e}")
 
 
 class TaskDetailAPIView(generics.RetrieveAPIView):
