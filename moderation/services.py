@@ -87,14 +87,36 @@ BANNED_KEYWORDS = [
     'pedophile', 'ụ trẻ', 'pedop', 'xâm hại trẻ', 'xam hai tre',
     # Khác
     'tự sát', 'tu sat', 'tự tử', 'tu tu', 'khai thác bất hợp pháp',
-    # ⚡ Thêm sau test thực tế: bạo lực đối với trẻ em
+    # Bạo lực đối với trẻ em
     'đánh trẻ', 'danh tre', 'đánh bé', 'danh be', 'đánh con', 'danh con',
     'đánh đòn', 'danh don', 'bạo lực trẻ em', 'bao luc tre em',
     'hành hạ', 'hanh ha', 'tra tấn', 'tra tan', 'ngược đãi', 'nguoc dai',
     'bóp cổ', 'bop co', 'siết cổ', 'siet co', 'dìm nước', 'dim nuoc',
     'đốt', 'dot', 'phóng hỏa', 'phong hoa',
     'cắt thịt', 'cat thit',
+    # ⚡ Từ khóa thô tục / tục tĩu (chặn ĐỒNG BỘ ngay lập tức)
+    'địt', 'dit', 'địt mẹ', 'dit me', 'địt con', 'dit con',
+    'buồi', 'cặc', 'lồn', 'củ cặc', 'cu cặc',
+    'đụ', 'đĩ', 'điếm', 'diem',
+    'bú cu', 'bu cu',
+    'fuck', 'shit', 'bitch', 'dick', 'pussy', 'asshole',
+    'mẹ mày', 'me may',
+    'thằng chó', 'thang cho', 'con chó', 'con cho',
+    'óc chó', 'oc cho',
+    # ⚡ Cấm nội dung không liên quan đến dự án
+    'tuyển người yêu', 'tuyen nguoi yeu', 'tìm người yêu', 'tim nguoi yeu',
+    'hookup', 'one night', 'quyến rũ', 'quyen ru',
+    'cờ bạc online', 'co bac online', 'đánh bài', 'danh bai',
+    'tỷ lệ bóng đá', 'ty le bong da', 'cá độ', 'ca do',
+    'đại lý đa cấp', 'dai ly da cap', 'kinh doanh đa cấp',
+    # ⚡ Cấm từ khóa vi phạm khác
+    'ăn cắp', 'an cap', 'ăn cướp', 'an cuop', 'trộm', 'trom',
+    'giật đồ', 'giat do', 'cướp', 'cuop', 'lừa tiền', 'lua tien',
+    'karaoke', 'massage', 'quán bar', 'quan bar',
+    'xăm hình', 'xam hinh',
 ]
+# Xóa empty string nếu có
+BANNED_KEYWORDS = [k for k in BANNED_KEYWORDS if k]
 
 # Từ khóa giá quá thấp — bóc lột lao động
 EXPLOITATION_PRICE_THRESHOLD = 20000  # VNĐ/giờ
