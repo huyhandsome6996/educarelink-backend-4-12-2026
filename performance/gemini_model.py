@@ -26,16 +26,16 @@ import os
 logger = logging.getLogger('educarelink.performance.gemini_model')
 
 # Fallback chain — thử lần lượt cho đến khi thành công
-# ⚡ Đã đổi: gemini-2.5-pro lên đầu (model tốt nhất, chất lượng cao nhất)
+# ⚡ Đã quay lại flash-lite (nhanh hơn Pro, đủ chất lượng cho demo)
 GEMINI_MODELS_FALLBACK = [
-    'gemini-2.5-pro',             # ⭐ Model TỐT NHẤT — chất lượng cao nhất
-    'gemini-2.5-flash',           # Backup — cân bằng tốc độ + chất lượng
-    'gemini-2.5-flash-lite',      # Backup — rẻ + nhanh
-    'gemini-2.0-flash',           # Backup cũ hơn
-    'gemini-2.0-flash-lite',      # Backup lite
-    'gemini-flash-latest',        # Alias luôn trỏ model mới nhất
-    'gemini-1.5-flash',           # Legacy fallback cuối cùng
-    'gemini-1.5-flash-latest',    # Legacy alias
+    'gemini-2.5-flash-lite',      # ⭐ Model mặc định — ổn định + rẻ + nhanh
+    'gemini-2.5-flash',            # Backup — cân bằng tốc độ + chất lượng
+    'gemini-2.5-pro',              # Backup — chậm nhưng chất lượng cao nhất
+    'gemini-2.0-flash',            # Backup cũ hơn
+    'gemini-2.0-flash-lite',       # Backup lite
+    'gemini-flash-latest',         # Alias luôn trỏ model mới nhất
+    'gemini-1.5-flash',            # Legacy fallback cuối cùng
+    'gemini-1.5-flash-latest',     # Legacy alias
 ]
 
 # Cache model nào hoạt động (tránh thử lại chain mỗi request)
