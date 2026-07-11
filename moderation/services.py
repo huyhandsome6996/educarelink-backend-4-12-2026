@@ -70,9 +70,9 @@ def _parse_json_safe(text):
     if not text:
         return None
     import re
-    # Strip markdown fences if present
+    # Strip whitespace
     text = text.strip()
-    # Remove ```json ... ``` fences
+    # Remove markdown fences ```json ... ``` or ``` ... ```
     fence_match = re.search(r'```(?:json)?\s*(.+?)\s*```', text, re.DOTALL)
     if fence_match:
         text = fence_match.group(1).strip()
@@ -81,13 +81,39 @@ def _parse_json_safe(text):
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # Extract {...} block
+    # Extract {...} block (greedy)
     brace_match = re.search(r'\{.*\}', text, re.DOTALL)
     if brace_match:
         try:
             return json.loads(brace_match.group(0))
         except json.JSONDecodeError:
             pass
+    # Fallback: extract verdict từ text (case AI trả text có chữ APPROVED/REJECTED)
+    text_lower = text.lower()
+    if 'rejected' in text_lower or 'reject' in text_lower:
+        return {
+            'verdict': 'REJECTED',
+            'confidence': 0.8,
+            'flags': ['ai_text_fallback'],
+            'explanation': text[:200],
+            'suggestion': '',
+        }
+    if 'needs_review' in text_lower or 'needs review' in text_lower:
+        return {
+            'verdict': 'NEEDS_REVIEW',
+            'confidence': 0.5,
+            'flags': ['ai_text_fallback'],
+            'explanation': text[:200],
+            'suggestion': '',
+        }
+    if 'approved' in text_lower or 'approve' in text_lower:
+        return {
+            'verdict': 'APPROVED',
+            'confidence': 0.7,
+            'flags': ['ai_text_fallback'],
+            'explanation': text[:200],
+            'suggestion': '',
+        }
     return None
 
 
