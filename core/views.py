@@ -681,6 +681,31 @@ QUY TẮC XỬ LÝ:
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện và ngắn gọn
 - Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng, tránh hỏi lại thông tin đã cung cấp
 
+🔒 TÍNH NĂNG BẢO ĐẢM AN TOÀN (QUAN TRỌNG):
+Khi phụ huynh muốn đăng việc thuộc 1 trong 3 danh mục:
+- Gia sư (category=1)
+- Đón trẻ (category=2)
+- Trông trẻ (category=4)
+
+Bạn PHẢI hỏi phụ huynh xem có muốn kích hoạt "Chế độ bảo đảm an toàn" không.
+
+Cách hỏi:
+"🔒 Để bảo vệ an toàn cho bé, anh/chị có muốn kích hoạt CHẾ ĐỘ BẢO ĐẢM AN TOÀN không?
+
+Chế độ này sẽ:
+• Vẽ vùng an toàn quanh nơi làm việc (mặc định 500m)
+• Cảnh báo ngay nếu Carepartner rời vùng an toàn
+• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 90 giây
+• Nút SOS khẩn cấp cho cả phụ huynh và Carepartner
+• Theo dõi vị trí real-time khi Carepartner đang làm việc
+
+👉 Trả lời 'có' để bật, hoặc 'không' để bỏ qua."
+
+Nếu phụ huynh trả lời "có" / "có nhé" / "bật đi" / "ok" / "yes" → thêm field "enable_safety": true vào TASK_JSON.
+Nếu phụ huynh trả lời "không" / "không cần" / "bỏ qua" → thêm field "enable_safety": false vào TASK_JSON.
+
+Chỉ tạo TASK_JSON khi phụ huynh đã trả lời câu hỏi an toàn (với 3 danh mục trên).
+
 QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
 - KHÔNG bao giờ viết 1 đoạn văn dài chình ình — RẤT KHÓ ĐỌC
 - Mỗi ý phải xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
@@ -704,7 +729,8 @@ FORMAT JSON khi tạo task (bắt buộc đủ các field):
   "description": "<mô tả chi tiết yêu cầu>",
   "location": "<địa điểm cụ thể>",
   "scheduled_time": "<YYYY-MM-DDTHH:MM:00+07:00>",
-  "price": <số tiền VND, không có dấu chấm>
+  "price": <số tiền VND, không có dấu chấm>,
+  "enable_safety": <true|false, chỉ dùng cho category 1, 2, 4>
 }
 </TASK_JSON>
 
@@ -818,22 +844,42 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 except (ValueError, TypeError):
                     raise drf_serializers.ValidationError({'price': 'Định dạng giá không hợp lệ từ AI.'})
 
-                new_task = Task.objects.create(
-                    parent=request.user,
-                    category=category,
-                    title=task_data['title'],
-                    description=task_data['description'],
-                    location=task_data['location'],
-                    scheduled_time=scheduled,
-                    price=price_val,
-                    status='open',
-                    ai_generated_from_prompt=user_message,  # Lưu lại câu chat gốc
-                )
+                # Xử lý enable_safety (chỉ cho category 1, 2, 4)
+                enable_safety = task_data.get('enable_safety', False)
+                category_id = int(task_data['category'])
+                safety_enabled = bool(enable_safety and category_id in [1, 2, 4])
+
+                # Lấy vị trí từ user để set geofence nếu safety enabled
+                user_lat = float(request.data.get('latitude', 0) or getattr(request.user, 'latitude', 0) or 10.762622)
+                user_lng = float(request.data.get('longitude', 0) or getattr(request.user, 'longitude', 0) or 106.660172)
+
+                task_kwargs = {
+                    'parent': request.user,
+                    'category': category,
+                    'title': task_data['title'],
+                    'description': task_data['description'],
+                    'location': task_data['location'],
+                    'scheduled_time': scheduled,
+                    'price': price_val,
+                    'status': 'open',
+                    'ai_generated_from_prompt': user_message,  # Lưu lại câu chat gốc
+                }
+
+                # Nếu safety enabled → set geofence fields
+                if safety_enabled:
+                    task_kwargs['geofence_lat'] = user_lat
+                    task_kwargs['geofence_lng'] = user_lng
+                    task_kwargs['geofence_radius'] = 500  # mặc định 500m
+
+                new_task = Task.objects.create(**task_kwargs)
 
                 # Trả về phản hồi sạch (không có JSON thô) + thông tin task đã tạo
                 clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
+                safety_msg = ""
+                if safety_enabled:
+                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 90s\n• Nút SOS sẵn sàng cho cả 2 bên"
                 return Response({
-                    "response": clean_response + f"\n\n✅ Đã tạo công việc thành công!",
+                    "response": clean_response + f"\n\n✅ Đã tạo công việc thành công!{safety_msg}",
                     "type": "task_created",
                     "task": {
                         "id": new_task.id,
@@ -844,6 +890,10 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                         "location": new_task.location,
                         "scheduled_time": new_task.scheduled_time.isoformat(),
                         "status": new_task.status,
+                        "safety_enabled": safety_enabled,
+                        "geofence_lat": float(new_task.geofence_lat) if new_task.geofence_lat else None,
+                        "geofence_lng": float(new_task.geofence_lng) if new_task.geofence_lng else None,
+                        "geofence_radius": float(new_task.geofence_radius) if new_task.geofence_radius else None,
                     }
                 })
             else:
@@ -1044,6 +1094,123 @@ class AdminAllWorkersAPIView(APIView):
                 'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)
+
+
+class AdminAllTasksAPIView(APIView):
+    """GET /api/admin/all-tasks/?moderation_status=all|pending|approved|rejected|needs_review
+    List tất cả task cho admin kiểm duyệt."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from moderation.models import TaskModeration
+        mod_status = request.query_params.get('moderation_status', 'all')
+
+        tasks = Task.objects.select_related('parent', 'category').order_by('-created_at')
+
+        # Filter theo moderation status
+        if mod_status != 'all':
+            task_ids = TaskModeration.objects.filter(status=mod_status).values_list('task_id', flat=True)
+            tasks = tasks.filter(id__in=task_ids)
+
+        data = []
+        for t in tasks:
+            # Get moderation info
+            try:
+                mod = TaskModeration.objects.get(task=t)
+                mod_status_val = mod.status
+                mod_verdict = mod.ai_verdict
+            except TaskModeration.DoesNotExist:
+                mod_status_val = 'pending'
+                mod_verdict = ''
+
+            data.append({
+                'id': t.id,
+                'title': t.title,
+                'description': t.description,
+                'price': str(t.price),
+                'status': t.status,
+                'location': t.location,
+                'scheduled_time': t.scheduled_time.isoformat() if t.scheduled_time else None,
+                'category_name': t.category.name if t.category else 'Khác',
+                'parent_name': f"{t.parent.last_name or ''} {t.parent.first_name or ''}".strip() or t.parent.username,
+                'parent_username': t.parent.username,
+                'geofence_lat': float(t.geofence_lat) if t.geofence_lat else None,
+                'geofence_lng': float(t.geofence_lng) if t.geofence_lng else None,
+                'geofence_radius': float(t.geofence_radius) if t.geofence_radius else None,
+                'moderation_status': mod_status_val,
+                'moderation_verdict': mod_verdict,
+                'created_at': t.created_at.isoformat() if t.created_at else None,
+            })
+        return Response(data)
+
+
+class AdminModerateTaskAPIView(APIView):
+    """POST /api/admin/all-tasks/<task_id>/moderate/
+    Admin duyệt hoặc xóa công việc.
+    Body: {action: 'approve_task' | 'reject_task'}"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, task_id):
+        from moderation.models import TaskModeration
+        action = request.data.get('action')
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if action == 'approve_task':
+            # Admin duyệt task
+            TaskModeration.objects.update_or_create(
+                task=task,
+                defaults={
+                    'status': 'admin_approved',
+                    'ai_verdict': 'Đã được admin duyệt thủ công.',
+                    'reviewed_by': request.user,
+                }
+            )
+            # Notify parent
+            try:
+                Notification.objects.create(
+                    recipient=task.parent,
+                    title="✅ Công việc đã được admin duyệt",
+                    message=f'Công việc "{task.title}" đã được admin duyệt.',
+                )
+                if task.parent.expo_push_token:
+                    send_expo_push_notification(
+                        token=task.parent.expo_push_token,
+                        title="✅ Công việc được duyệt",
+                        body=f'"{task.title}" đã được admin duyệt.',
+                        data={'type': 'task_approved', 'task_id': task.id}
+                    )
+            except Exception as e:
+                logger.warning(f"Notify parent on admin approve failed: {e}")
+            return Response({'message': 'Đã duyệt công việc.'})
+
+        elif action == 'reject_task':
+            # Admin xóa task
+            reason = request.data.get('reason', 'Admin xóa công việc do vi phạm hoặc không phù hợp.')
+            try:
+                Notification.objects.create(
+                    recipient=task.parent,
+                    title="🚫 Công việc đã bị admin xóa",
+                    message=f'Công việc "{task.title}" đã bị admin xóa. Lý do: {reason[:150]}',
+                )
+                if task.parent.expo_push_token:
+                    send_expo_push_notification(
+                        token=task.parent.expo_push_token,
+                        title="🚫 Công việc bị xóa",
+                        body=f'"{task.title}" bị admin xóa: {reason[:100]}',
+                        data={'type': 'task_rejected', 'task_id': task.id}
+                    )
+            except Exception as e:
+                logger.warning(f"Notify parent on admin reject failed: {e}")
+            task.delete()
+            logger.info(f"[admin] Task#{task_id} DELETED by admin {request.user.username}")
+            return Response({'message': 'Đã xóa công việc.'})
+
+        else:
+            return Response({'error': 'Action không hợp lệ. Dùng approve_task hoặc reject_task.'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AdminSeedDemoDataAPIView(APIView):
     """API tạo dữ liệu mẫu cho ban giám khảo — Chỉ Admin"""

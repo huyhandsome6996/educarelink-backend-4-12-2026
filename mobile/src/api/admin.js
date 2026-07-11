@@ -66,3 +66,13 @@ export const sendAdminChatMessage = (formData) =>
 
 // ── KEEPALIVE SCHEDULER STATS ─────────────────────────────────────
 export const getKeepaliveStats = () => apiClient.get('/admin/keepalive-stats/');
+
+// ── ADMIN KIỂM DUYỆT TẤT CẢ CÔNG VIỆC ─────────────────────────────
+// List tất cả task đã đăng, filter theo moderation_status
+export const getAllTasks = (moderationStatus = 'all') =>
+  apiClient.get('/admin/all-tasks/', { params: { moderation_status: moderationStatus } });
+
+// Admin duyệt hoặc xóa task
+// Body: { action: 'approve_task' | 'reject_task', reason? }
+export const moderateTask = (taskId, payload) =>
+  apiClient.post(`/admin/all-tasks/${taskId}/moderate/`, payload);

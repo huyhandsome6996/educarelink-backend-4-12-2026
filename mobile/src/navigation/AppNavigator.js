@@ -53,6 +53,7 @@ import AdminPaymentsScreen from '../screens/Admin/AdminPaymentsScreen';
 import AdminTrackingOverviewScreen from '../screens/Admin/AdminTrackingOverviewScreen';
 import AdminReviewScreen from '../screens/Admin/AdminReviewScreen';
 import AdminSendNotificationScreen from '../screens/Admin/AdminSendNotificationScreen';
+import AdminAllTasksScreen from '../screens/Admin/AdminAllTasksScreen';
 
 // Live Tracking (Parent)
 import LiveTrackingScreen from '../screens/Parent/LiveTrackingScreen';
@@ -185,6 +186,7 @@ export default function AppNavigator() {
             <Stack.Screen name="AdminTracking" component={AdminTrackingOverviewScreen} />
             <Stack.Screen name="AdminReview" component={AdminReviewScreen} />
             <Stack.Screen name="AdminSendNotification" component={AdminSendNotificationScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="AdminAllTasks" component={AdminAllTasksScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
