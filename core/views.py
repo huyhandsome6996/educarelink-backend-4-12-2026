@@ -346,6 +346,15 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
                     logger.exception(f"[task create] Failed to delete rejected task: {e}")
         except Exception as e:
             logger.exception(f"[task create] moderate_task failed: {e}")
+            # Fallback: mark needs_review để admin duyệt thủ công
+            try:
+                from moderation.models import TaskModeration
+                TaskModeration.objects.filter(task=task, status='pending').update(
+                    status='needs_review',
+                    ai_verdict='AI kiểm duyệt thất bại — chuyển admin duyệt.',
+                )
+            except Exception:
+                pass
 
 
 class TaskDetailAPIView(generics.RetrieveAPIView):

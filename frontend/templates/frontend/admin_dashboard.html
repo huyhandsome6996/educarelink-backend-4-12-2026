@@ -2090,22 +2090,27 @@
 
         function formatAiResponse(text) {
             // Convert markdown-like formatting to HTML
+            if (!text) return '';
             let html = escapeHtml(text);
 
             // Code blocks
             html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
             // Inline code
             html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            // Headings
+            html = html.replace(/^###\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin-top:8px;">$1</strong>');
             // Bold
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            // Italic
-            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            // Line breaks to paragraphs
-            html = html.replace(/\n\n/g, '</p><p>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Italic (single asterisk, not **)
+            html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+            // Numbered lists
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;"><strong>$1.</strong> $2</div>');
+            // Bullet lists
+            html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;display:flex;gap:6px;"><span style="color:#F26522;font-weight:700;">•</span><span>$1</span></div>');
+            // Line breaks
             html = html.replace(/\n/g, '<br>');
-            html = '<p>' + html + '</p>';
-            // Clean up empty paragraphs
-            html = html.replace(/<p>\s*<\/p>/g, '');
+            // Clean up <br> before block elements
+            html = html.replace(/<br>(\s*<(?:div|strong|pre))/g, '$1');
 
             return html;
         }

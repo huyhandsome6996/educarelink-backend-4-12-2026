@@ -192,6 +192,46 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
     except (ValueError, TypeError):
         pass
 
+    # ⚡ CATEGORY CHECK: Chỉ chấp nhận 5 danh mục cốt lõi
+    # Nếu task không chứa bất kỳ từ khóa nào của 5 danh mục → REJECT
+    CATEGORY_KEYWORDS = [
+        # 1. Gia sư
+        'gia sư', 'gia su', 'dạy kèm', 'day kem', 'học thêm', 'hoc them', 'ôn thi', 'on thi',
+        'ngoại ngữ', 'ngoai ngu', 'tiếng anh', 'tieng anh', 'tiếng việt', 'tieng viet',
+        'toán', 'toan', 'lý', 'ly', 'hóa', 'hoa', 'văn', 'lịch sử', 'lich su', 'địa lý', 'dia ly',
+        'piano', 'guitar', 'organ', 'vẽ', 've', 'mỹ thuật', 'my thuat', 'nhạc', 'nhac',
+        'dạy', 'day', 'giaovien', 'giáo viên', 'lớp', 'lop', 'học sinh', 'hoc sinh',
+        'sư phạm', 'su pham', ' ôn ', ' kiểu ', ' năng khiếu', 'nang khieu', 'ielts', 'toeic',
+        # 2. Đón trẻ
+        'đón trẻ', 'don tre', 'đón con', 'don con', 'đưa đón', 'dua don', 'đón bé', 'don be',
+        'đón học sinh', 'don hoc sinh', 'đón em', 'don em', 'đưa con', 'dua con',
+        'đi học về', 'di hoc ve', 'trường học', 'truong hoc', 'trẻ trường', 'đón hộ', 'don ho',
+        # 3. Dọn dẹp
+        'dọn dẹp', 'don dep', 'lau dọn', 'lau don', 'vệ sinh', 've sinh', 'dọn phòng', 'don phong',
+        'dọn nhà', 'don nha', 'lau nhà', 'lau nha', 'lau sàn', 'lau san', 'chùi', 'chui',
+        'quét', 'quet', 'lau chùi', 'lau chui', 'dọn vệ sinh', 'don ve sinh',
+        'dọn dẹp nhà', 'don dep nha', 'lau dọn nhà', 'lau don nha',
+        # 4. Trông trẻ
+        'trông trẻ', 'trong tre', 'trông bé', 'trong be', 'trông con', 'trong con',
+        'trông em', 'trong em', 'babysitter', 'giữ trẻ', 'giu tre', 'chăm sóc trẻ', 'cham soc tre',
+        'chăm bé', 'cham be', 'chăm con', 'cham con', 'người trông trẻ', 'nguoi trong tre',
+        'trông trẻ hộ', 'trong tre ho', ' giữ bé ', 'giu be',
+        # 5. Mua sắm hộ
+        'mua sắm', 'mua sam', 'mua hộ', 'mua ho', 'đi chợ', 'di cho', 'mua đồ', 'mua do',
+        'mua giúp', 'mua giup', 'mua thực phẩm', 'mua thuc pham', 'shopping hộ', 'shopping ho',
+        'mua tạp hóa', 'mua tap hoa', 'đi siêu thị', 'di sieu thi', 'mua đồ hộ', 'mua do ho',
+    ]
+
+    has_category_keyword = any(kw in text for kw in CATEGORY_KEYWORDS)
+    if not has_category_keyword:
+        flags.append('khong_lien_quan_danh_muc')
+        return {
+            'banned': True,
+            'reason': 'Công việc không thuộc 5 danh mục cốt lõi của EduCareLink (Gia sư, Đón trẻ, Dọn dẹp, Trông trẻ, Mua sắm hộ). Vui lòng đăng công việc phù hợp.',
+            'flags': flags,
+            'confidence': 0.95,
+        }
+
     return {'banned': False, 'flags': flags}
 
 
@@ -199,74 +239,28 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
 #  1. TASK MODERATION
 # ═══════════════════════════════════════════════════════════════════
 
-TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI của EduCareLink — nền tảng kết nối phụ huynh với carepartner (sinh viên) tại Việt Nam.
+TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI của EduCareLink.
 
-Nhiệm vụ: Kiểm duyệt MỌI công việc phụ huynh đăng tải. Quyết định REJECTED/APPROVED/NEEDS_REVIEW.
+Nhiệm vụ: Kiểm duyệt công việc phụ huynh đăng. CHỈ CHẤP NHẬN 5 DANH MỤC:
 
-CÁC DANH MỤC HỢP LỆ CỦA EduCareLink (CHỈ CHẤP NHẬN 8 LOẠI):
-1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu
+1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu (piano, guitar, vẽ)
 2. Đón trẻ — đưa đón học sinh, đón con đi học về
 3. Dọn dẹp nhà cửa — lau dọn, vệ sinh, dọn phòng
 4. Trông trẻ — giữ trẻ, babysitter, chăm sóc trẻ
 5. Mua sắm hộ — đi chợ, mua đồ giúp
-6. Nấu ăn — nấu bữa cho gia đình, nấu tiệc
-7. Hỗ trợ AI — công nghệ AI hỗ trợ học tập
-8. Khác — chuyển đồ, thú cưng, kỹ năng sống (PHẢI hợp pháp + đạo đức)
 
-TIÊU CHÍ KIỂM DUYỆT (REJECTED NẾU VI PHẠM BẤT KỲ):
+REJECTED nếu:
+- Không thuộc 5 danh mục trên (ví dụ: nấu ăn, dắt chó, rửa xe, trồng cây, chuyển nhà, làm bánh, bán hàng, xăm hình, karaoke, massage, xem bói, đầu tư, crypto, đa cấp, cho vay, hẹn hò, tuyển nhân viên, hack, crack)
+- Vi phạm pháp luật VN (bạo lực, ma túy, cờ bạc, vũ khí, lừa đảo, hiếp dâm, mua bán người, chính trị phản động, tự sát)
+- Vi phạm tiêu chuẩn cộng đồng (bóc lột giá < 20.000đ/giờ, nude, khiêu dâm, prostitution, hookup, tuyển người yêu, quấy rối, phân biệt đối xử)
+- Spam, quảng cáo, link đáng ngờ, tin nhắn vô nghĩa
 
-A. VI PHẠM PHÁP LUẬT VN → REJECTED confidence=1.0
-   - Bạo lực: giết người, đánh nhau, bạo hành, hành hạ, tra tấn
-   - Ma túy: bán thuốc, cần sa, heroin, kích thích
-   - Cờ bạc: casino, xóc đĩa, cá độ, đánh bài, tỷ lệ bóng đá
-   - Vũ khí: súng, dao giết, chất nổ
-   - Lừa đảo: lừa tiền, chiếm đoạt, trục lợi, hack tài khoản
-   - Ảnh hưởng trẻ em: xâm hại, bạo lực trẻ em, pedophile, nội dung người lớn với trẻ
-   - Chính trị: chống phá Nhà nước, phản động, đảo chính
-   - Tự sát, tự tử
-   - Mua bán người, bắt cóc, hiếp dâm, cưỡng dâm
+APPROVED nếu: thuộc 1 trong 5 danh mục trên + hợp pháp + đạo đức.
 
-B. VI PHẠM TIÊU CHUẨN CỘNG ĐỒNG → REJECTED confidence=0.9
-   - Bóc lột lao động: giá < 20.000đ/giờ, không trả lương
-   - Phân biệt đối xử: giới tính, tôn giáo, vùng miền, dân tộc
-   - Quấy rối: tình dục, tinh thần
-   - Nội dung người lớn: khiêu dâm, nude, prostitution, escort, hookup, one night stand
-   - Tuyển người yêu, tìm bạn tình, hẹn hò
-
-C. KHÔNG LIÊN QUAN ĐẾN 8 DANH MỤC → REJECTED confidence=0.85
-   - Kiếm tiền online, MMO, đầu tư, chứng khoán, crypto
-   - Đa cấp, pyramid scheme
-   - Quảng cáo sản phẩm, tiếp thị, sale (trừ dịch vụ nhà cửa)
-   - Karaoke, quán bar, massage (dễ biến tướng)
-   - Xăm hình, xỏ khuyên
-   - Cần thơ, xem bói, tâm linh
-   - Cho vay, vay tiền, tín dụng
-   - Mua bán hàng hóa (không phải dịch vụ)
-   - Spam, quảng cáo link, website
-   - Hack, crack, phishing, malware
-
-D. SPAM / PHÁ HOẠI → REJECTED confidence=1.0
-   - Tin nhắn lặp lại, copy paste
-   - Chỉ chứa số, ký tự ngẫu nhiên
-   - Không có nội dung công việc cụ thể
-   - Quảng cáo dịch vụ khác
-   - Link spam, URL đáng ngờ
-
-QUY TẮC:
-- APPROVED: công việc thuộc 8 danh mục, hợp pháp, đạo đức
-- REJECTED: vi phạm A/B/C/D
-- NEEDS_REVIEW: vùng xám
-
-⚠️ QUAN TRỌNG - FORMAT OUTPUT BẮT BUỘC:
-Bạn PHẢI trả về ĐÚNG 1 JSON object, KHÔNG kèm text khác, KHÔNG kèm markdown fence.
-
-JSON format (phải có đủ 5 fields):
-{"verdict": "APPROVED", "confidence": 0.95, "flags": [], "explanation": "viết tiếng Việt", "suggestion": ""}
-
-Hoặc:
-{"verdict": "REJECTED", "confidence": 1.0, "flags": ["nguoi_lon"], "explanation": "viết tiếng Việt", "suggestion": ""}
-
-KHÔNG viết ```json``` fence. KHÔNG viết text trước/sau JSON. CHỈ trả JSON thuần."""
+OUTPUT BẮT BUỘC: chỉ trả JSON thuần, không markdown fence, không text thừa.
+{"verdict": "APPROVED", "confidence": 0.95, "flags": [], "explanation": "tiếng Việt", "suggestion": ""}
+{"verdict": "REJECTED", "confidence": 1.0, "flags": ["khong_lien_quan"], "explanation": "tiếng Việt", "suggestion": ""}
+{"verdict": "NEEDS_REVIEW", "confidence": 0.5, "flags": [], "explanation": "tiếng Việt", "suggestion": "gợi ý admin"}"""
 
 
 def moderate_task(task):
@@ -347,19 +341,19 @@ Hãy đánh giá theo tiêu chuẩn pháp luật, đạo đức, chính trị Vi
         logger.info(f"[moderate_task] Task#{task.id} Gemini response preview: {ai_text[:300]}")
 
     if not ai_text:
-        logger.warning(f"[moderate_task] Task#{task.id} AI no response → auto-approved")
+        logger.warning(f"[moderate_task] Task#{task.id} AI no response → NEEDS_REVIEW")
         moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
-            defaults={'status': 'approved', 'ai_verdict': 'AI không phản hồi — tự động duyệt.', 'ai_confidence': 0.0}
+            defaults={'status': 'needs_review', 'ai_verdict': 'AI không phản hồi — chuyển admin duyệt.', 'ai_confidence': 0.0}
         )
         return moderation
 
     parsed = _parse_json_safe(ai_text)
     if not parsed:
-        logger.warning(f"[moderate_task] Task#{task.id} AI parse failed → auto-approved. Raw: {ai_text[:200]}")
+        logger.warning(f"[moderate_task] Task#{task.id} AI parse failed → NEEDS_REVIEW. Raw: {ai_text[:200]}")
         moderation, _ = TaskModeration.objects.update_or_create(
             task=task,
-            defaults={'status': 'approved', 'ai_verdict': 'Không parse được AI — tự động duyệt.', 'ai_confidence': 0.0}
+            defaults={'status': 'needs_review', 'ai_verdict': 'Không parse được AI — chuyển admin duyệt.', 'ai_confidence': 0.0}
         )
         return moderation
 

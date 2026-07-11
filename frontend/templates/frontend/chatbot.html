@@ -582,6 +582,28 @@
             return div.innerHTML;
         }
 
+        // Format AI response: parse markdown-lite (bold, italic, bullets, headings, line breaks)
+        function formatAiResponse(text) {
+            if (!text) return '';
+            // Escape HTML first to prevent XSS
+            let html = escapeHtml(text);
+            // Headings: ### text → <strong>text</strong> (line-level)
+            html = html.replace(/^###\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin-top:8px;">$1</strong>');
+            // Bold: **text** → <strong>text</strong>
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Italic: *text* → <em>text</em> (single asterisk, not **)
+            html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+            // Numbered list: lines starting with "1." "2." etc → wrap in <div> with indent
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;"><strong>$1.</strong> $2</div>');
+            // Bullet lines: lines starting with • - * → wrap in <div> with bullet
+            html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;display:flex;gap:6px;"><span style="color:#F26522;font-weight:700;">•</span><span>$1</span></div>');
+            // Convert \n to <br> for remaining newlines
+            html = html.replace(/\n/g, '<br>');
+            // Clean up: remove <br> right before </div> or block elements
+            html = html.replace(/<br>(\s*<(?:div|strong))/g, '$1');
+            return html;
+        }
+
         // Add user message bubble
         function addUserMessage(text) {
             // Hide suggestion chips after first user message
@@ -597,7 +619,7 @@
             msgDiv.innerHTML = `
                 <div class="max-w-[80%] lg:max-w-[65%]">
                     <div class="bg-primary rounded-2xl rounded-tr-md px-5 py-3.5">
-                        <p class="text-white text-[0.9375rem] leading-relaxed">${escapeHtml(text)}</p>
+                        <p class="text-white text-[0.9375rem] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
                     </div>
                     <span class="text-[11px] text-textMuted mt-1.5 block text-right mr-1">${time}</span>
                 </div>
@@ -620,7 +642,7 @@
                 </div>
                 <div class="max-w-[80%] lg:max-w-[65%]">
                     <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5">
-                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">${escapeHtml(text)}</p>
+                        <div class="text-textPrimary text-[0.9375rem] leading-relaxed">${formatAiResponse(text)}</div>
                     </div>
                     <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
                 </div>

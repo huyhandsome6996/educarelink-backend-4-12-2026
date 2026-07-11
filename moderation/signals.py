@@ -86,12 +86,12 @@ def _auto_moderate_task_on_create(sender, instance: Task, created: bool, **kwarg
 
     except Exception as e:
         logger.exception(f"Auto moderate Task#{instance.id} failed: {e}")
-        # Fallback: approve nếu AI fail (không xóa task vô cớ)
+        # Fallback: needs_review nếu AI fail (an toàn hơn approve)
         try:
             from .models import TaskModeration
             TaskModeration.objects.filter(task=instance, status='pending').update(
-                status='approved',
-                ai_verdict='AI kiểm duyệt thất bại — tự động duyệt.',
+                status='needs_review',
+                ai_verdict='AI kiểm duyệt thất bại — chuyển admin duyệt.',
             )
         except Exception:
             pass
