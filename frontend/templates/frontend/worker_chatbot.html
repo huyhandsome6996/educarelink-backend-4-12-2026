@@ -567,6 +567,20 @@
             return div.innerHTML;
         }
 
+        // Format AI response: parse markdown-lite (bold, italic, bullets, headings, line breaks)
+        function formatAiResponse(text) {
+            if (!text) return '';
+            let html = escapeHtml(text);
+            html = html.replace(/^###\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin-top:8px;">$1</strong>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;"><strong>$1.</strong> $2</div>');
+            html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;display:flex;gap:6px;"><span style="color:#F26522;font-weight:700;">•</span><span>$1</span></div>');
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/<br>(\s*<(?:div|strong))/g, '$1');
+            return html;
+        }
+
         // Add user message bubble
         function addUserMessage(text) {
             // Hide suggestion chips after first user message
@@ -582,7 +596,7 @@
             msgDiv.innerHTML = `
                 <div class="max-w-[80%] lg:max-w-[65%]">
                     <div class="bg-primary rounded-2xl rounded-tr-md px-5 py-3.5">
-                        <p class="text-white text-[0.9375rem] leading-relaxed">${escapeHtml(text)}</p>
+                        <p class="text-white text-[0.9375rem] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
                     </div>
                     <span class="text-[11px] text-textMuted mt-1.5 block text-right mr-1">${time}</span>
                 </div>
@@ -605,7 +619,7 @@
                 </div>
                 <div class="max-w-[80%] lg:max-w-[65%]">
                     <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5">
-                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">${escapeHtml(text)}</p>
+                        <div class="text-textPrimary text-[0.9375rem] leading-relaxed">${formatAiResponse(text)}</div>
                     </div>
                     <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
                 </div>

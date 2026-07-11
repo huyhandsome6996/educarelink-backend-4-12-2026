@@ -608,15 +608,21 @@
 
         // Simple markdown-like rendering for AI responses
         function renderMarkdown(text) {
+            if (!text) return '';
             let html = escapeHtml(text);
+            // Headings: ### text
+            html = html.replace(/^###\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin-top:8px;">$1</strong>');
             // Bold: **text**
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // Bullet lists: lines starting with • or -
-            html = html.replace(/^[-•]\s+(.*)$/gm, '<li class="ml-4 list-disc">$1</li>');
-            // Numbered lists: lines starting with 1. 2. etc.
-            html = html.replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ml-4 list-decimal">$2</li>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Italic: *text*
+            html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+            // Numbered lists
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;"><strong>$1.</strong> $2</div>');
+            // Bullet lists
+            html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;display:flex;gap:6px;"><span style="color:#2563EB;font-weight:700;">•</span><span>$1</span></div>');
             // Line breaks
-            html = html.replace(/\n/g, '<br/>');
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/<br>(\s*<(?:div|strong))/g, '$1');
             return html;
         }
 
