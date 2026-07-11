@@ -28,7 +28,9 @@ logger = logging.getLogger('educarelink.keepalive')
 # ───────────────────────────────────────────────────────
 RENDER_URL = os.environ.get('RENDER_URL', 'https://educarelink-backend.onrender.com')
 PING_INTERVAL_MINUTES = int(os.environ.get('KEEPALIVE_INTERVAL', '3'))  # mặc định 3 phút
-ENABLE_KEEPALIVE = os.environ.get('KEEPALIVE_ENABLED', 'true').lower() == 'true'
+# ⚡ Mặc định TẮT để Render có thể sleep (tiết kiệm giờ free tier)
+# Bật lại bằng cách set env var KEEPALIVE_ENABLED=true trên Render dashboard
+ENABLE_KEEPALIVE = os.environ.get('KEEPALIVE_ENABLED', 'false').lower() == 'true'
 
 # Chỉ chạy trên Render (production), không chạy local
 IS_RENDER = os.environ.get('RENDER', '') == 'true'
