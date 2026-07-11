@@ -6,12 +6,18 @@ Lý do: Google thường xuyên deprecate model (gemini-1.5-flash → gemini-2.0
 tất cả gọi qua helper này → chỉ cần đổi 1 chỗ.
 
 Fallback chain (thử lần lượt):
-1. gemini-2.5-flash-lite (mới nhất, ổn định, rẻ)
-2. gemini-2.0-flash (backup, vẫn ổn định)
-3. gemini-flash-latest (alias luôn trỏ model mới nhất)
-4. gemini-1.5-flash (legacy fallback)
+1. gemini-2.5-pro (model TỐT NHẤT — chất lượng cao nhất, dùng cho moderation + chatbot)
+2. gemini-2.5-flash (backup — cân bằng tốc độ + chất lượng)
+3. gemini-2.5-flash-lite (backup — rẻ + nhanh)
+4. gemini-2.0-flash (backup cũ hơn)
+5. gemini-flash-latest (alias luôn trỏ model mới nhất)
+6. gemini-1.5-flash (legacy fallback cuối cùng)
 
 Nếu TẤT CẢ đều fail → return error thân thiện cho user.
+
+Lưu ý: gemini-2.5-pro chậm hơn flash (3-8s vs 1-3s) nhưng chất lượng
+cao hơn đáng kể — đặc biệt cho AI moderation (kiểm duyệt nội dung vi phạm)
+và chatbot (câu trả lời có tâm, context-aware).
 """
 
 import logging
@@ -20,14 +26,16 @@ import os
 logger = logging.getLogger('educarelink.performance.gemini_model')
 
 # Fallback chain — thử lần lượt cho đến khi thành công
+# ⚡ Đã đổi: gemini-2.5-pro lên đầu (model tốt nhất, chất lượng cao nhất)
 GEMINI_MODELS_FALLBACK = [
-    'gemini-2.5-flash-lite',      # Model mặc định — ổn định + rẻ
-    'gemini-2.5-flash',            # Backup — đôi khi vẫn hoạt động
-    'gemini-2.0-flash',            # Backup cũ hơn
-    'gemini-2.0-flash-lite',       # Backup lite
-    'gemini-flash-latest',         # Alias luôn trỏ model mới nhất
-    'gemini-1.5-flash',            # Legacy fallback cuối cùng
-    'gemini-1.5-flash-latest',     # Legacy alias
+    'gemini-2.5-pro',             # ⭐ Model TỐT NHẤT — chất lượng cao nhất
+    'gemini-2.5-flash',           # Backup — cân bằng tốc độ + chất lượng
+    'gemini-2.5-flash-lite',      # Backup — rẻ + nhanh
+    'gemini-2.0-flash',           # Backup cũ hơn
+    'gemini-2.0-flash-lite',      # Backup lite
+    'gemini-flash-latest',        # Alias luôn trỏ model mới nhất
+    'gemini-1.5-flash',           # Legacy fallback cuối cùng
+    'gemini-1.5-flash-latest',    # Legacy alias
 ]
 
 # Cache model nào hoạt động (tránh thử lại chain mỗi request)
