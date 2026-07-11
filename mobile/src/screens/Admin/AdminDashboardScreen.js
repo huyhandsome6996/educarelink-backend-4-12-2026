@@ -22,6 +22,7 @@ const TABS = [
 // Quick access buttons cho admin — mở các screen chuyên biệt
 const QUICK_ACTIONS = [
   { key: 'admin_chatbot', label: 'AI Trợ lý', icon: 'sparkles', color: COLORS.primary, target: 'AdminChatbot' },
+  { key: 'admin_all_tasks', label: 'Tất cả việc', icon: 'documents', color: '#0EA5E9', target: 'AdminAllTasks' },
   { key: 'admin_payments', label: 'Thanh toán', icon: 'card', color: '#D82D8B', target: 'AdminPayments' },
   { key: 'admin_review', label: 'Duyệt hồ sơ', icon: 'document-attach', color: COLORS.secondary, target: 'AdminReview' },
   { key: 'admin_moderation', label: 'Kiểm duyệt', icon: 'shield-checkmark', color: COLORS.warning, target: 'AdminModeration' },

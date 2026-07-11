@@ -10,6 +10,7 @@ from .views import (
     AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
     AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
     AdminSeedDemoDataAPIView,
+    AdminAllTasksAPIView, AdminModerateTaskAPIView,
     CompleteOnboardingAPIView,
     WorkerSubmitCredentialAPIView,
     AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
@@ -67,6 +68,9 @@ urlpatterns = [
     path('admin/users/<int:user_id>/revoke-carepartner/', AdminRevokeCarepartnerAPIView.as_view(), name='admin-revoke-carepartner'),
     path('admin/all-users/', AdminAllUsersAPIView.as_view(), name='admin-all-users'),
     path('admin/seed-demo-data/', AdminSeedDemoDataAPIView.as_view(), name='admin-seed-demo-data'),
+    # Admin kiểm duyệt tất cả công việc
+    path('admin/all-tasks/', AdminAllTasksAPIView.as_view(), name='admin-all-tasks'),
+    path('admin/all-tasks/<int:task_id>/moderate/', AdminModerateTaskAPIView.as_view(), name='admin-moderate-task'),
     path('onboarding/complete/', CompleteOnboardingAPIView.as_view(), name='complete-onboarding'),
     
     # Carepartner gửi bằng cấp cho Admin duyệt

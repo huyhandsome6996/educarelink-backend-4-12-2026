@@ -785,6 +785,11 @@
                 <span class="icon">&#128101;</span>
                 T&#7845;t c&#7843; Carepartner
             </div>
+            <div class="nav-item" onclick="switchTab('tasks')">
+                <span class="icon">&#128203;</span>
+                T&#7845;t c&#7843; c&#244;ng vi&#7879;c
+                <span class="nav-badge" id="taskPendingBadge" style="display:none;">0</span>
+            </div>
             <div class="nav-item" onclick="switchTab('users')">
                 <span class="icon">&#128274;</span>
                 Qu&#7843;n l&#253; t&#224;i kho&#7843;n
@@ -1347,6 +1352,17 @@
                     revokeCarepartner(parseInt(this.dataset.id), this.dataset.username);
                 });
             });
+            // Task moderation buttons (approve/reject task)
+            document.querySelectorAll('[data-action="approve_task"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    adminTaskAction(parseInt(this.dataset.taskId), 'approve_task');
+                });
+            });
+            document.querySelectorAll('[data-action="reject_task"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    adminTaskAction(parseInt(this.dataset.taskId), 'reject_task');
+                });
+            });
         }
 
         let editingUserId = null;
@@ -1453,15 +1469,27 @@
                 document.getElementById('pageSubtitle').textContent = 'Quản lý bằng cấp và tước quyền';
                 document.querySelector('.stats-row').style.display = '';
                 document.querySelector('.table-container').style.display = '';
-            } else if (tab === 'users') {
+            } else if (tab === 'tasks') {
                 navItems[2].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Tất cả công việc đã đăng';
+                document.getElementById('pageTitle').textContent = 'Kiểm duyệt công việc';
+                document.getElementById('pageSubtitle').textContent = 'Xem và kiểm duyệt tất cả công việc phụ huynh đăng tải';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadAllTasks();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'users') {
+                navItems[3].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Quản lý tài khoản';
                 document.getElementById('pageTitle').textContent = 'Quản lý tài khoản';
                 document.getElementById('pageSubtitle').textContent = 'Khoá/mở tài khoản và tước quyền Carepartner';
                 document.querySelector('.stats-row').style.display = '';
                 document.querySelector('.table-container').style.display = '';
             } else if (tab === 'credentials') {
-                navItems[3].classList.add('active');
+                navItems[4].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Bằng cấp chờ duyệt';
                 document.getElementById('pageTitle').textContent = 'Duyệt bằng cấp Carepartner';
                 document.getElementById('pageSubtitle').textContent = 'Xem minh chứng và viết đánh giá bằng cấp';
@@ -1472,7 +1500,7 @@
                 loadCredentialSubmissions();
                 return;
             } else if (tab === 'notifications') {
-                navItems[4].classList.add('active');
+                navItems[5].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Gửi thông báo';
                 document.getElementById('pageTitle').textContent = 'Gửi thông báo cho Carepartner';
                 document.getElementById('pageSubtitle').textContent = 'Gửi thông báo cho 1 hoặc tất cả Carepartner';
@@ -1483,7 +1511,7 @@
                 openNotifModal();
                 return;
             } else if (tab === 'profile_changes') {
-                navItems[5].classList.add('active');
+                navItems[6].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Yêu cầu thay đổi hồ sơ';
                 document.getElementById('pageTitle').textContent = 'Duyệt yêu cầu thay đổi hồ sơ';
                 document.getElementById('pageSubtitle').textContent = 'Xem và duyệt yêu cầu thay đổi thông tin từ Carepartner';
@@ -1494,7 +1522,7 @@
                 loadProfileChangeRequests();
                 return;
             } else if (tab === 'ai_chat') {
-                navItems[6].classList.add('active');
+                navItems[7].classList.add('active');
                 document.getElementById('pageTitle').textContent = 'AI Trợ lý';
                 document.getElementById('pageSubtitle').textContent = 'Hỗ trợ quản lý nền tảng bằng trí tuệ nhân tạo';
                 document.querySelector('.stats-row').style.display = 'none';
@@ -1510,6 +1538,146 @@
             document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
             loadData();
             if (window.innerWidth < 1024) closeSidebar();
+        }
+
+        // ===== ALL TASKS MODERATION =====
+        let allTasksFilter = 'all'; // all | pending | approved | rejected | needs_review
+
+        async function loadAllTasks() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-tasks/?moderation_status=${allTasksFilter}`);
+                if (!res.ok) {
+                    document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi tải dữ liệu</div></div>';
+                    return;
+                }
+                const tasks = await res.json();
+
+                // Update badge cho needs_review
+                const badge = document.getElementById('taskPendingBadge');
+                const needsReviewCount = tasks.filter(t => t.moderation_status === 'needs_review').length;
+                if (needsReviewCount > 0) { badge.style.display = ''; badge.textContent = needsReviewCount; }
+                else { badge.style.display = 'none'; }
+
+                // Render filter bar
+                let html = `
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="taskSearchInput" placeholder="Tìm theo tiêu đề, phụ huynh..." 
+                            style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;" 
+                            oninput="filterTasksTable()" />
+                        <select id="taskStatusFilter" onchange="changeTaskFilter(this.value)" 
+                            style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff;">
+                            <option value="all" ${allTasksFilter==='all'?'selected':''}>Tất cả trạng thái</option>
+                            <option value="pending" ${allTasksFilter==='pending'?'selected':''}>⏳ Chờ AI duyệt</option>
+                            <option value="approved" ${allTasksFilter==='approved'?'selected':''}>✅ Đã duyệt</option>
+                            <option value="needs_review" ${allTasksFilter==='needs_review'?'selected':''}>⚠️ Cần admin xem</option>
+                            <option value="rejected" ${allTasksFilter==='rejected'?'selected':''}>❌ Bị từ chối</option>
+                        </select>
+                        <button class="btn" style="padding:8px 14px;background:#F26522;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;" onclick="loadAllTasks()">🔄 Làm mới</button>
+                    </div>
+                `;
+
+                if (tasks.length === 0) {
+                    html += '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Không có công việc nào</div><div class="empty-text">Chưa có phụ huynh nào đăng việc</div></div>';
+                    document.getElementById('tableBody').innerHTML = html;
+                    return;
+                }
+
+                html += `<table id="tasksTable"><thead><tr>
+                    <th>Tiêu đề</th>
+                    <th>Phụ huynh</th>
+                    <th>Danh mục</th>
+                    <th>Giá</th>
+                    <th>Trạng thái task</th>
+                    <th>Kiểm duyệt AI</th>
+                    <th>Hành động</th>
+                </tr></thead><tbody>`;
+
+                for (const t of tasks) {
+                    const modStatus = t.moderation_status || 'pending';
+                    const modVerdict = (t.moderation_verdict || '').substring(0, 80);
+                    const modBadge = {
+                        'approved': '<span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">✅ Đã duyệt</span>',
+                        'rejected': '<span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">❌ Từ chối</span>',
+                        'needs_review': '<span style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">⚠️ Cần xem</span>',
+                        'pending': '<span style="background:#e0e7ff;color:#4f46e5;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">⏳ Chờ AI</span>',
+                    }[modStatus] || modStatus;
+
+                    const taskStatusBadge = {
+                        'open': '<span style="background:#fff7ed;color:#ea580c;padding:3px 8px;border-radius:6px;font-size:11px;">Đang tìm</span>',
+                        'in_progress': '<span style="background:#dbeafe;color:#2563eb;padding:3px 8px;border-radius:6px;font-size:11px;">Đang làm</span>',
+                        'completed': '<span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:6px;font-size:11px;">Hoàn thành</span>',
+                        'cancelled': '<span style="background:#f3f4f6;color:#6b7280;padding:3px 8px;border-radius:6px;font-size:11px;">Đã hủy</span>',
+                    }[t.status] || t.status;
+
+                    const hasGeofence = t.geofence_lat && t.geofence_lng;
+                    const geofenceIcon = hasGeofence ? ' 📍' : '';
+
+                    html += `<tr>
+                        <td>
+                            <div style="font-weight:600;font-size:13px;">${escapeHtml(t.title)}${geofenceIcon}</div>
+                            <div style="font-size:11px;color:#64748b;margin-top:2px;">${escapeHtml((t.description||'').substring(0,80))}${(t.description||'').length>80?'...':''}</div>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleDateString('vi-VN') : '—'} · 📍 ${escapeHtml(t.location||'—')}</div>
+                        </td>
+                        <td><div style="font-size:13px;">${escapeHtml(t.parent_name||'—')}</div><div style="font-size:11px;color:#64748b;">@${escapeHtml(t.parent_username||'')}</div></td>
+                        <td><span style="background:#f1f5f9;padding:3px 8px;border-radius:6px;font-size:11px;">${escapeHtml(t.category_name||'Khác')}</span></td>
+                        <td><div style="font-weight:600;color:#F26522;font-size:13px;">${parseInt(t.price||0).toLocaleString('vi-VN')}đ</div></td>
+                        <td>${taskStatusBadge}</td>
+                        <td>
+                            ${modBadge}
+                            ${modVerdict ? `<div style="font-size:10px;color:#64748b;margin-top:4px;max-width:200px;" title="${escapeHtml(t.moderation_verdict||'')}">${escapeHtml(modVerdict)}...</div>` : ''}
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                <button class="btn btn-approve" data-task-id="${t.id}" data-action="approve_task" title="Duyệt công việc">✅ Duyệt</button>
+                                <button class="btn btn-reject" data-task-id="${t.id}" data-action="reject_task" title="Từ chối & xóa công việc">❌ Xóa</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('tableBody').innerHTML = html;
+            } catch (err) {
+                document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi: ' + escapeHtml(err.message) + '</div></div>';
+            }
+        }
+
+        function changeTaskFilter(value) {
+            allTasksFilter = value;
+            loadAllTasks();
+        }
+
+        function filterTasksTable() {
+            const query = document.getElementById('taskSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#tasksTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        async function adminTaskAction(taskId, action) {
+            const confirmMsg = action === 'approve_task'
+                ? 'Duyệt công việc này? Công việc sẽ được duyệt thủ công bởi admin.'
+                : 'XÓA công việc này? Hành động không thể hoàn tác.';
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-tasks/${taskId}/moderate/`, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: action })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    toast(data.message || 'Đã xử lý', 'success');
+                    loadAllTasks();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    toast(err.detail || err.error || 'Lỗi xử lý', 'error');
+                }
+            } catch (err) {
+                toast('Lỗi mạng: ' + err.message, 'error');
+            }
         }
 
         // ===== CREDENTIAL SUBMISSIONS =====
