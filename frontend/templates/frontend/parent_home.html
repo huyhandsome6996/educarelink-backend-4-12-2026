@@ -381,6 +381,44 @@
             </section>
 
             <!-- =============================== -->
+            <!-- 2b. AI CHATBOT BANNER           -->
+            <!-- =============================== -->
+            <section>
+                <button onclick="location.href='{% url 'frontend:chatbot' %}'"
+                        class="w-full relative overflow-hidden rounded-2xl p-5 lg:p-6 text-left group active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-[0_4px_14px_rgba(99,102,241,0.18)] border border-indigo-100"
+                        style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);">
+
+                    <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-200/30 rounded-full"></div>
+                    <div class="absolute bottom-0 left-1/3 w-20 h-20 bg-purple-200/20 rounded-full"></div>
+
+                    <div class="relative z-10 flex items-center gap-4">
+                        <div class="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+                             style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);">
+                            <span class="material-symbols-outlined filled text-white text-2xl lg:text-3xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-headline font-bold text-base lg:text-lg text-indigo-900">
+                                    Nhờ AI đăng việc hộ
+                                </h3>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wide">
+                                    <span class="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse"></span>
+                                    Mới
+                                </span>
+                            </div>
+                            <p class="text-indigo-700/80 text-xs lg:text-sm mt-1 font-medium leading-relaxed">
+                                Chỉ cần nói "Tôi cần gia sư Toán lớp 5" — AI sẽ tạo việc giúp bạn trong vài giây!
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-1 bg-indigo-500 hover:bg-indigo-600 rounded-xl px-3 lg:px-4 py-2 transition-all duration-200 flex-shrink-0">
+                            <span class="text-white font-bold text-xs lg:text-sm whitespace-nowrap">Chat ngay</span>
+                            <span class="material-symbols-outlined text-white text-base lg:text-lg">arrow_forward</span>
+                        </div>
+                    </div>
+                </button>
+            </section>
+
+            <!-- =============================== -->
             <!-- 3. CÔNG VIỆC GẦN ĐÂY            -->
             <!-- =============================== -->
             <section>

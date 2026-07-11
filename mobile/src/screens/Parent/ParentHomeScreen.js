@@ -145,6 +145,33 @@ export default function ParentHomeScreen() {
           </View>
         </View>
 
+        {/* AI Chatbot Banner — đồng bộ với web parent_home.html */}
+        <TouchableOpacity
+          style={styles.aiBanner}
+          onPress={() => navigation.navigate('Chatbot')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.aiBannerIconWrap}>
+            <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.aiBannerIcon} resizeMode="contain" />
+          </View>
+          <View style={styles.aiBannerContent}>
+            <View style={styles.aiBannerTitleRow}>
+              <Text style={styles.aiBannerTitle}>Nhờ AI đăng việc hộ</Text>
+              <View style={styles.aiBadgeNew}>
+                <View style={styles.aiBadgeDot} />
+                <Text style={styles.aiBadgeText}>MỚI</Text>
+              </View>
+            </View>
+            <Text style={styles.aiBannerSubtitle} numberOfLines={2}>
+              Chỉ cần nói "Tôi cần gia sư Toán lớp 5" — AI sẽ tạo việc giúp bạn trong vài giây!
+            </Text>
+          </View>
+          <View style={styles.aiBannerCta}>
+            <Text style={styles.aiBannerCtaText}>Chat ngay</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </View>
+        </TouchableOpacity>
+
         {/* Section: Việc gần đây */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -337,4 +364,45 @@ const styles = StyleSheet.create({
   upgradeBannerInfo: { flex: 1 },
   upgradeBannerTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   upgradeBannerDesc: { ...TYPO.caption, color: COLORS.textSecondary, marginTop: 2 },
+  // === AI CHATBOT BANNER — đồng bộ web parent_home.html ===
+  aiBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 20, marginTop: SIZES.lg, marginBottom: SIZES.sm,
+    padding: 14, borderRadius: 16,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1, borderColor: '#E0E7FF',
+    ...SHADOWS.card,
+  },
+  aiBannerIconWrap: {
+    width: 48, height: 48, borderRadius: 14,
+    backgroundColor: '#6366F1',
+    justifyContent: 'center', alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  aiBannerIcon: { width: 32, height: 32 },
+  aiBannerContent: { flex: 1, gap: 3 },
+  aiBannerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiBannerTitle: { ...TYPO.h5, color: '#312E81', fontWeight: '700', fontSize: 15 },
+  aiBadgeNew: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#6366F1', borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  aiBadgeDot: {
+    width: 5, height: 5, borderRadius: 3, backgroundColor: '#6EE7B7',
+  },
+  aiBadgeText: {
+    fontSize: 9, color: '#fff', fontWeight: '800', letterSpacing: 0.5,
+  },
+  aiBannerSubtitle: {
+    ...TYPO.caption, color: '#4338CA', lineHeight: 16, fontSize: 11,
+  },
+  aiBannerCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#6366F1', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 8,
+  },
+  aiBannerCtaText: {
+    color: '#fff', fontSize: 11, fontWeight: '700',
+  },
 });
