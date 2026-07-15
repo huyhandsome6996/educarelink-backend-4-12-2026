@@ -308,3 +308,33 @@ TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '6
 # Bật/tắt offline check scheduler (chỉ chạy trên Render)
 TRACKING_OFFLINE_CHECK_ENABLED = os.environ.get('TRACKING_OFFLINE_CHECK_ENABLED', 'true').lower() == 'true'
 TRACKING_OFFLINE_CHECK_INTERVAL = int(os.environ.get('TRACKING_OFFLINE_CHECK_INTERVAL', '1'))  # phút
+
+# ────────────────────────────────────────────────────────────────────
+# CẤU HÌNH PAYOS MODULE (thêm bởi feature/payos-integration)
+# ────────────────────────────────────────────────────────────────────
+# Đăng ký tại https://my.payos.vn/register (cá nhân — chỉ cần CCCD)
+# Lấy 3 keys: Client ID, API Key, Checksum Key
+
+PAYOS_CLIENT_ID = os.environ.get('PAYOS_CLIENT_ID', '')
+PAYOS_API_KEY = os.environ.get('PAYOS_API_KEY', '')
+PAYOS_CHECKSUM_KEY = os.environ.get('PAYOS_CHECKSUM_KEY', '')
+
+# Payout credentials (optional — chỉ cần nếu auto payout cho carepartner)
+PAYOS_PAYOUT_CLIENT_ID = os.environ.get('PAYOS_PAYOUT_CLIENT_ID', '')
+PAYOS_PAYOUT_API_KEY = os.environ.get('PAYOS_PAYOUT_API_KEY', '')
+PAYOS_PAYOUT_CHECKSUM_KEY = os.environ.get('PAYOS_PAYOUT_CHECKSUM_KEY', '')
+
+# Return URLs sau khi parent pay
+PAYOS_RETURN_BASE_URL = os.environ.get(
+    'PAYOS_RETURN_BASE_URL',
+    'https://educarelink-backend.onrender.com'
+)
+
+# Webhook URL — PayOS gọi server-to-server khi parent chuyển khoản
+PAYOS_WEBHOOK_URL = os.environ.get(
+    'PAYOS_WEBHOOK_URL',
+    'https://educarelink-backend.onrender.com/api/payments/payos-webhook/'
+)
+
+# Bật/tắt PayOS (nếu chưa config credentials → fallback MoMo)
+PAYOS_ENABLED = bool(PAYOS_CLIENT_ID and PAYOS_API_KEY and PAYOS_CHECKSUM_KEY)

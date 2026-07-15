@@ -33,17 +33,18 @@ class Payment(models.Model):
 
     METHOD_CHOICES = (
         ('momo_escrow', 'MoMo Escrow — Phụ huynh trả qua MoMo, tiền được giữ'),
+        ('payos', 'PayOS — Phụ huynh quét QR VietQR qua app ngân hàng, tiền được giữ'),
         ('cash', 'Tiền mặt — Phụ huynh trả trực tiếp cho Carepartner'),
     )
 
     STATUS_CHOICES = (
         # Trạng thái chung
-        ('pending', 'Chờ thanh toán — Phụ huynh chưa hoàn tất bước pay (momo) hoặc chưa chốt phương thức (cash)'),
-        ('held', 'Đang giữ tiền — MoMo đã nhận tiền, chờ Task hoàn thành để giải ngân'),
+        ('pending', 'Chờ thanh toán — Phụ huynh chưa hoàn tất bước pay (momo/payos) hoặc chưa chốt phương thức (cash)'),
+        ('held', 'Đang giữ tiền — MoMo/PayOS đã nhận tiền, chờ Task hoàn thành để giải ngân'),
         ('completed', 'Đã hoàn tất — Đã giải ngân cho Carepartner và giữ hoa hồng'),
         ('cancelled', 'Đã huỷ — Task bị huỷ trước khi thanh toán'),
         ('refunded', 'Đã hoàn tiền — Hoàn 100% cho phụ huynh do Task bị huỷ'),
-        ('payout_failed', 'Giải ngân thất bại — Tiền vẫn nằm trong MoMo, cần Admin xử lý'),
+        ('payout_failed', 'Giải ngân thất bại — Tiền vẫn nằm trong MoMo/PayOS, cần Admin xử lý'),
     )
 
     # ── Liên kết ────────────────────────────────────────────────
@@ -103,6 +104,28 @@ class Payment(models.Model):
                                         help_text="qrCodeUrl từ MoMo — phụ huynh có thể quét")
     momo_result_code = models.IntegerField(blank=True, null=True)
     momo_message = models.CharField(max_length=255, blank=True, null=True)
+
+    # ── PayOS fields (VietQR bank transfer) ─────────────────────
+    payos_order_code = models.BigIntegerField(
+        blank=True, null=True,
+        help_text="orderCode PayOS — thường là task.id hoặc timestamp"
+    )
+    payos_checkout_url = models.URLField(
+        max_length=2000, blank=True, null=True,
+        help_text="checkoutUrl PayOS — phụ huynh mở link này để quét QR"
+    )
+    payos_payment_link_id = models.CharField(
+        max_length=255, blank=True, null=True,
+        help_text="ID của payment link PayOS"
+    )
+    payos_status = models.CharField(
+        max_length=50, blank=True, null=True,
+        help_text="Trạng thái từ PayOS: PENDING, PAID, CANCELLED, EXPIRED"
+    )
+    payos_account_reference = models.CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Mã tham chiếu tài khoản — thường là STK phụ huynh dùng để chuyển"
+    )
 
     # ── Giải ngân (chỉ dùng cho momo_escrow) ───────────────────
     payout_request_id = models.CharField(max_length=100, blank=True, null=True)
