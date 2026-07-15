@@ -276,7 +276,9 @@ export default function RegisterScreen() {
         </TouchableOpacity>
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <View style={styles.logoWrap}>
+            <Ionicons name="heart" size={48} color="#fff" />
+          </View>
           <Text style={styles.title}>Tạo tài khoản mới</Text>
           <Text style={styles.subtitle}>Chọn vai trò của bạn để bắt đầu</Text>
         </Animated.View>
@@ -515,6 +517,16 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 16,
     marginBottom: 12,
+  },
+  logoWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    ...SHADOWS.large,
   },
   title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 8 },
   subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 28 },

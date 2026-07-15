@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Animated } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -8,16 +7,18 @@ import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { getWorkerRecommendations } from '../../api/ai_recommendations';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { CATEGORY_ICONS, renderCategoryIcon } from '../../theme/categoryIcons';
 
+// Sync 100% với web task_create_1.html (Material Symbols → Ionicons)
 const CATEGORY_MAP = [
-  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
-  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: COLORS.primary },
-  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: COLORS.primary },
-  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: COLORS.primary },
-  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm', color: COLORS.primary },
-  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: COLORS.primary },
-  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: COLORS.primary },
-  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: COLORS.primary },
+  { id: 1, name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 2, name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 3, name: 'Dọn dẹp', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 4, name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 5, name: 'Mua sắm', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 6, name: 'Nấu ăn', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 7, name: 'Chuyển đồ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 8, name: 'Khác', color: COLORS.primary, bg: COLORS.primaryLight },
 ];
 
 export default function WorkerFeedScreen() {
@@ -142,7 +143,7 @@ export default function WorkerFeedScreen() {
         <View style={styles.cardHeader}>
           <View style={styles.categoryPill}>
             <View style={styles.catIconCircle}>
-              <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
+              {renderCategoryIcon(cat.id, 16, COLORS.primary)}
             </View>
             <Text style={styles.categoryPillText}>{cat.name}</Text>
           </View>

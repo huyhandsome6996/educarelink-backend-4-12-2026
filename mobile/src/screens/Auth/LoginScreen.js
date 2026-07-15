@@ -93,7 +93,9 @@ export default function LoginScreen() {
 
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <View style={styles.logoWrap}>
+            <Ionicons name="heart" size={48} color="#fff" />
+          </View>
           <Text style={styles.title}>Chào mừng trở lại!</Text>
           <Text style={styles.subtitle}>Đăng nhập để tiếp tục sử dụng Educarelink</Text>
         </Animated.View>
@@ -293,6 +295,16 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 16,
     marginBottom: 12,
+  },
+  logoWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    ...SHADOWS.large,
   },
   title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
   subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },

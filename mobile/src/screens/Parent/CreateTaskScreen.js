@@ -3,7 +3,6 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
@@ -14,15 +13,16 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
+// Sync 100% với web task_create_1.html (Material Symbols → Ionicons)
 const CATEGORIES = [
-  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
-  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
-  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
-  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
-  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
-  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
-  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
-  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', hint: 'Thoả thuận' },
+  { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
+  { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
+  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
+  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
+  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
+  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
+  { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
+  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận' },
 ];
 
 export default function CreateTaskScreen() {
@@ -179,7 +179,7 @@ export default function CreateTaskScreen() {
           {CATEGORIES.map((c) => (
             <TouchableOpacity key={c.id} style={[styles.catBtn, selectedCat === c.id && styles.catBtnActive]}
               onPress={() => setSelectedCat(c.id)} activeOpacity={0.8}>
-              <Image source={c.icon} style={styles.catImage} resizeMode="contain" />
+              <Ionicons name={c.iconName} size={28} color={selectedCat === c.id ? '#fff' : COLORS.primary} />
               <Text style={[styles.catName, selectedCat === c.id && styles.catNameActive]}>{c.name}</Text>
             </TouchableOpacity>
           ))}

@@ -207,7 +207,7 @@ export default function WorkerProfileScreen() {
           <View style={styles.aiCard}>
             <View style={styles.aiHeader}>
               <View style={styles.aiIconCircle}>
-                <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.aiImage} resizeMode="contain" />
+                <Ionicons name="sparkles" size={20} color={COLORS.primary} />
               </View>
               <Text style={styles.aiTitle}>Nhận xét từ AI</Text>
             </View>

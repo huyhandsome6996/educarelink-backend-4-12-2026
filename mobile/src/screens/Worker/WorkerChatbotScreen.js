@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Animated
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { sendWorkerChatMessage } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
@@ -30,7 +29,7 @@ const renderMessage = ({ item }) => {
     <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
       {!isUser && (
         <View style={styles.botAvatar}>
-          <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
         </View>
       )}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
@@ -134,7 +133,7 @@ export default function WorkerChatbotScreen() {
       <View style={styles.header}>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
-            <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
+            <Ionicons name="sparkles" size={22} color={COLORS.primary} />
           </View>
           <View>
             <Text style={styles.headerName}>AI Trợ lý Carepartner</Text>
@@ -162,7 +161,7 @@ export default function WorkerChatbotScreen() {
         ListFooterComponent={React.useMemo(() => isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
-              <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.typingBubble}>
               <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />

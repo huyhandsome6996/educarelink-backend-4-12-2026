@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, StatusBar, Animated,
   ScrollView, TouchableOpacity, Dimensions, Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -12,33 +11,30 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
+// Sync 100% với web onboarding_parent.html — dùng Material Symbols → Ionicons
 const SLIDES = [
   {
-    icon: '📝',
-    image: require('../../../assets/images/icon_tutoring.png'),
+    iconName: 'create-outline',
     title: 'Đăng việc dễ dàng',
     desc: 'Chỉ cần vài bước — miêu tả nhu cầu, chọn danh mục, đặt giá. EduCareLink sẽ tìm Carepartner phù hợp cho bạn.',
     color: COLORS.primary,
   },
   {
-    icon: '👥',
-    image: require('../../../assets/images/icon_babysitting.png'),
+    iconName: 'people-outline',
     title: 'Duyệt ứng viên',
     desc: 'Xem hồ sơ chi tiết, đánh giá từ phụ huynh khác, tóm tắt AI. Chọn người phù hợp nhất cho bé nhà bạn.',
     color: COLORS.secondary,
   },
   {
-    icon: '⭐',
-    image: require('../../../assets/images/icon_pickup.png'),
+    iconName: 'star-outline',
     title: 'Đánh giá sau việc',
     desc: 'Sau khi hoàn thành, hãy để lại nhận xét để giúp cộng đồng phụ huynh chọn được Carepartner tốt.',
     color: COLORS.warning,
   },
   {
-    icon: '💳',
-    image: require('../../../assets/images/icon_shopping.png'),
+    iconName: 'card-outline',
     title: 'Thanh toán an toàn',
-    desc: 'MoMo giữ tiền giúp bạn — chỉ chuyển cho Carepartner khi công việc đã hoàn thành. Hoa hồng 20% tự động trừ.',
+    desc: 'Hệ thống giữ tiền giúp bạn — chỉ chuyển cho Carepartner khi công việc đã hoàn thành. Hoa hồng 20% tự động trừ.',
     color: COLORS.info,
   },
 ];
@@ -113,7 +109,7 @@ export default function ParentOnboardingScreen() {
         {SLIDES.map((slide, idx) => (
           <View key={idx} style={styles.slide}>
             <Animated.View style={[styles.iconCircle, { backgroundColor: slide.color + '20', opacity: fadeAnim }]}>
-              <Image source={slide.image} style={styles.iconImage} resizeMode="contain" />
+              <Ionicons name={slide.iconName} size={56} color={slide.color} />
             </Animated.View>
             <Text style={styles.slideTitle}>{slide.title}</Text>
             <Text style={styles.slideDesc}>{slide.desc}</Text>
