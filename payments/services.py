@@ -106,8 +106,8 @@ def setup_payment(*, task: Task, method: str, actor: User) -> Payment:
     if task.status not in ('open', 'in_progress'):
         raise ValueError(f"Task ở trạng thái '{task.status}' không thể thiết lập thanh toán.")
 
-    if method not in ('momo_escrow', 'cash'):
-        raise ValueError("method phải là 'momo_escrow' hoặc 'cash'.")
+    if method not in ('momo_escrow', 'payos', 'cash'):
+        raise ValueError("method phải là 'momo_escrow', 'payos' hoặc 'cash'.")
 
     worker = _get_accepted_worker(task)
 
@@ -299,15 +299,17 @@ def _handle_settlement_ipn(settlement: CommissionSettlement, payload: dict) -> b
 def release_escrow(payment: Payment) -> Payment:
     """
     Giải ngân escrow khi task hoàn thành:
-      - Gọi MoMo Transfer API gửi 80% cho worker
-      - 20% giữ lại trong tài khoản đối tác (hoa hồng nền tảng)
-      - Nếu Transfer thất bại → status='payout_failed', notify Admin
-
-    Trường hợp method='cash': không gọi MoMo, chỉ ghi nhận công nợ
-    hoa hồng để tổng hợp cuối tháng.
+      - method='momo_escrow': Gọi MoMo Transfer API gửi 80% cho worker
+      - method='payos': Đánh dấu completed — admin manual transfer cho worker
+        (PayOS Payout API cần KYC doanh nghiệp, chưa support auto)
+      - method='cash': Ghi nhận công nợ hoa hồng để tổng hợp cuối tháng
     """
     if payment.method == 'cash':
         return _record_cash_completion(payment)
+
+    # PayOS: không auto payout (cần KYC DN) — mark completed, notify admin
+    if payment.method == 'payos':
+        return _record_payos_completion(payment)
 
     if payment.status != 'held':
         logger.warning(f"[payments] release_escrow — payment#{payment.id} status={payment.status}, skip.")
@@ -423,6 +425,61 @@ def _record_cash_completion(payment: Payment) -> Payment:
     return payment
 
 
+def _record_payos_completion(payment: Payment) -> Payment:
+    """
+    Với PayOS payment: đánh dấu completed, ghi log.
+    Admin sẽ manual transfer cho carepartner (PayOS Payout API cần KYC DN).
+    """
+    if payment.status not in ('held', 'pending'):
+        logger.warning(f"[payments] _record_payos_completion — payment#{payment.id} status={payment.status}, skip.")
+        return payment
+
+    payment.status = 'completed'
+    payment.completed_at = timezone.now()
+    payment.save()
+
+    payout_amount = int(payment.worker_payout_amount) if payment.worker_payout_amount else 0
+    _log(payment=payment, event_type='payos_completed',
+         message=f"PayOS task completed — admin cần transfer {payout_amount}đ "
+                 f"cho worker#{payment.worker_id if payment.worker else 'N/A'} "
+                 f"(commission={payment.commission_amount}đ)")
+
+    # Notify worker
+    if payment.worker:
+        _notify_user(
+            payment.worker,
+            title="💰 Công việc hoàn thành",
+            message=f"Công việc '{payment.task.title}' đã hoàn thành. "
+                    f"Bạn sẽ nhận {payout_amount:,.0f}đ "
+                    f"(sau trừ hoa hồng {payment.commission_amount:,.0f}đ) "
+                    f"trong vòng 24h qua STK ngân hàng của bạn.",
+            data={'type': 'payos_payout_pending', 'task_id': payment.task_id,
+                  'amount': str(payout_amount)}
+        )
+
+    # Notify parent
+    _notify_user(
+        payment.parent,
+        title="✅ Đã thanh toán cho Carepartner",
+        message=f"Công việc '{payment.task.title}' đã hoàn thành. "
+                f"{payout_amount:,.0f}đ sẽ được chuyển cho Carepartner.",
+        data={'type': 'payos_completed', 'task_id': payment.task_id}
+    )
+
+    # Notify admin to manual transfer
+    admins = User.objects.filter(is_superuser=True, is_active=True)
+    for admin in admins:
+        _notify_user(
+            admin,
+            title="💰 Cần chuyển tiền cho Carepartner",
+            message=f"Payment#{payment.id} (Task#{payment.task_id}) completed via PayOS. "
+                    f"Transfer {payout_amount:,.0f}đ cho worker#{payment.worker_id}.",
+            data={'type': 'payos_manual_payout', 'payment_id': payment.id}
+        )
+
+    return payment
+
+
 def _notify_admin_payout_failed(payment: Payment, reason: str):
     """Thông báo Admin khi giải ngân thất bại — gửi cho tất cả superuser."""
     admins = User.objects.filter(is_superuser=True, is_active=True)
@@ -442,6 +499,33 @@ def _notify_admin_payout_failed(payment: Payment, reason: str):
 
 def refund_escrow(payment: Payment) -> Payment:
     """Hoàn 100% tiền về ví MoMo phụ huynh khi task bị huỷ."""
+    if payment.method == 'payos':
+        # PayOS: admin manual refund (chuyển khoản ngược lại parent)
+        payment.status = 'refunded'
+        payment.refunded_at = timezone.now()
+        payment.save()
+        _log(payment=payment, event_type='payos_refund_pending',
+             message=f"PayOS refund pending — admin cần transfer {payment.amount}đ "
+                     f"cho parent#{payment.parent_id}")
+        # Notify admin
+        admins = User.objects.filter(is_superuser=True, is_active=True)
+        for admin in admins:
+            _notify_user(
+                admin,
+                title="💸 Cần hoàn tiền PayOS",
+                message=f"Payment#{payment.id} (Task#{payment.task_id}) bị hủy. "
+                        f"Hoàn {payment.amount:,.0f}đ cho parent#{payment.parent_id}.",
+                data={'type': 'payos_manual_refund', 'payment_id': payment.id}
+            )
+        _notify_user(
+            payment.parent,
+            title="💸 Hoàn tiền đang xử lý",
+            message=f"Công việc '{payment.task.title}' bị huỷ. "
+                    f"{payment.amount:,.0f}đ sẽ được hoàn trong vòng 24h.",
+            data={'type': 'payos_refund_pending', 'task_id': payment.task_id}
+        )
+        return payment
+
     if payment.method != 'momo_escrow':
         # Cash: không có gì để hoàn
         payment.status = 'cancelled'
@@ -505,7 +589,7 @@ def refund_escrow(payment: Payment) -> Payment:
 def on_task_status_changed(task: Task, old_status: str, new_status: str):
     """
     Được gọi từ signal post_save của core.Task.
-    - new_status='completed' → release_escrow (momo) hoặc record_cash_completion (cash)
+    - new_status='completed' → release_escrow (momo/payos) hoặc record_cash_completion (cash)
     - new_status='cancelled' → refund_escrow (nếu đang held)
     """
     payment = getattr(task, 'payment', None)
@@ -515,11 +599,15 @@ def on_task_status_changed(task: Task, old_status: str, new_status: str):
     if new_status == 'completed' and old_status != 'completed':
         if payment.method == 'cash':
             _record_cash_completion(payment)
+        elif payment.method == 'payos':
+            _record_payos_completion(payment)
         elif payment.method == 'momo_escrow' and payment.status == 'held':
             release_escrow(payment)
 
     elif new_status == 'cancelled' and old_status != 'cancelled':
         if payment.method == 'momo_escrow' and payment.status == 'held':
+            refund_escrow(payment)
+        elif payment.method == 'payos' and payment.status == 'held':
             refund_escrow(payment)
         elif payment.method == 'cash' and payment.status == 'pending':
             payment.status = 'cancelled'
