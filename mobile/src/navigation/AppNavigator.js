@@ -151,7 +151,9 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Image source={require('../../assets/logo.png')} style={styles.loadingLogo} resizeMode="contain" />
+        <View style={styles.loadingLogoWrap}>
+          <Ionicons name="heart" size={56} color={COLORS.primary} />
+        </View>
         <View style={styles.loadingDot} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
@@ -235,6 +237,15 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 12,
+    marginBottom: 20,
+  },
+  loadingLogoWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
   },
   loadingDot: {

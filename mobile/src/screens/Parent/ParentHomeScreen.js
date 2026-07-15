@@ -21,15 +21,16 @@ const STATUS_MAPPING = {
   cancelled:   { label: 'Đã huỷ',   color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
+// Sync 100% với web parent_home.html (Material Symbols → Ionicons)
 const CATEGORIES = [
-  { icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: COLORS.primary },
-  { icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: COLORS.primary },
+  { id: 1, iconName: 'book', name: 'Gia sư', color: COLORS.primary },
+  { id: 2, iconName: 'happy', name: 'Đón trẻ', color: COLORS.primary },
+  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', color: COLORS.primary },
+  { id: 4, iconName: 'people', name: 'Trông trẻ', color: COLORS.primary },
+  { id: 5, iconName: 'bag', name: 'Mua sắm', color: COLORS.primary },
+  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', color: COLORS.primary },
+  { id: 7, iconName: 'cube', name: 'Chuyển đồ', color: COLORS.primary },
+  { id: 8, iconName: 'apps', name: 'Khác', color: COLORS.primary },
 ];
 
 export default function ParentHomeScreen() {
@@ -137,7 +138,7 @@ export default function ParentHomeScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.catIconBg, { backgroundColor: cat.color + '15' }]}>
-                  <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
+                  <Ionicons name={cat.iconName} size={28} color={cat.color} />
                 </View>
                 <Text style={styles.catName}>{cat.name}</Text>
               </TouchableOpacity>
@@ -152,7 +153,7 @@ export default function ParentHomeScreen() {
           activeOpacity={0.9}
         >
           <View style={styles.aiBannerIconWrap}>
-            <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.aiBannerIcon} resizeMode="contain" />
+            <Ionicons name="sparkles" size={26} color="#fff" />
           </View>
           <View style={styles.aiBannerContent}>
             <View style={styles.aiBannerTitleRow}>

@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, StatusBar, Animated,
   ScrollView, TouchableOpacity, Dimensions,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { completeOnboarding } from '../../api/onboarding';
@@ -11,27 +10,28 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
+// Sync 100% với web onboarding_worker.html — Material Symbols → Ionicons
 const SLIDES = [
   {
-    image: require('../../../assets/images/icon_pickup.png'),
+    iconName: 'search-outline',
     title: 'Tìm việc linh hoạt',
     desc: 'Xem hàng trăm việc làm phù hợp với lịch học của bạn. Lọc theo danh mục, địa điểm, mức lương.',
     color: COLORS.primary,
   },
   {
-    image: require('../../../assets/images/icon_tutoring.png'),
+    iconName: 'flash-outline',
     title: 'Ứng tuyển 1 chạm',
     desc: 'Thấy việc hợp → bấm "Ứng tuyển". Phụ huynh sẽ duyệt hồ sơ của bạn trong vài giờ.',
     color: COLORS.secondary,
   },
   {
-    image: require('../../../assets/images/icon_cleaning.png'),
+    iconName: 'checkmark-done-outline',
     title: 'Hoàn thành & đánh giá',
     desc: 'Làm việc xong — phụ huynh xác nhận hoàn thành. Nhận đánh giá 5 sao để tăng cơ hội được chọn.',
     color: COLORS.warning,
   },
   {
-    image: require('../../../assets/images/icon_shopping.png'),
+    iconName: 'wallet-outline',
     title: 'Nhận tiền MoMo',
     desc: '80% tiền tự động chuyển vào ví MoMo của bạn khi hoàn thành. 20% hoa hồng nền tảng.',
     color: COLORS.info,
@@ -99,7 +99,7 @@ export default function WorkerOnboardingScreen() {
         {SLIDES.map((slide, idx) => (
           <View key={idx} style={styles.slide}>
             <Animated.View style={[styles.iconCircle, { backgroundColor: slide.color + '20', opacity: fadeAnim }]}>
-              <Image source={slide.image} style={styles.iconImage} resizeMode="contain" />
+              <Ionicons name={slide.iconName} size={56} color={slide.color} />
             </Animated.View>
             <Text style={styles.slideTitle}>{slide.title}</Text>
             <Text style={styles.slideDesc}>{slide.desc}</Text>

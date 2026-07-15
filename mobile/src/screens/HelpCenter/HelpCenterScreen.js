@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, ScrollView
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { sendHelpCenterMessage } from '../../api/tasks';
@@ -33,7 +32,7 @@ const renderMessage = ({ item }) => {
     <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
       {!isUser && (
         <View style={styles.botAvatar}>
-          <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+          <Ionicons name="help-circle" size={18} color={COLORS.info} />
         </View>
       )}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
@@ -141,7 +140,7 @@ export default function HelpCenterScreen() {
         </TouchableOpacity>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
-            <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.headerImage} resizeMode="contain" />
+            <Ionicons name="help-circle" size={22} color={COLORS.info} />
           </View>
           <View>
             <Text style={styles.headerName}>Trung tâm hỗ trợ</Text>
@@ -172,7 +171,7 @@ export default function HelpCenterScreen() {
         ListFooterComponent={React.useMemo(() => isTyping ? (
           <View style={styles.typingRow}>
             <View style={styles.botAvatar}>
-              <Image source={require('../../../assets/images/icon_ai_bot.png')} style={styles.botImage} resizeMode="contain" />
+              <Ionicons name="help-circle" size={18} color={COLORS.info} />
             </View>
             <View style={styles.typingBubble}>
               <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />

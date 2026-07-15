@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Animated } from 'react-native';
-import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES, TYPO } from '../../theme/colors';
@@ -53,7 +53,7 @@ export default function SplashScreen() {
 
       <Animated.View style={[styles.logoContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.logoCircle}>
-          <Image source={require('../../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Ionicons name="heart" size={56} color="#fff" />
         </View>
         <Text style={styles.appName}>Educarelink</Text>
         <Text style={styles.tagline}>Trợ lý gia đình · Việc làm linh hoạt</Text>

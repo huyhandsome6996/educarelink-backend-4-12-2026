@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Modal } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getTaskDetail, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { CATEGORY_ICONS, renderCategoryIcon, getCategoryIconByName } from '../../theme/categoryIcons';
 
+// Sync 100% với web task_create_1.html
 const CATEGORIES = [
-  { id: 1, icon: require('../../../assets/images/icon_tutoring.png'), name: 'Gia sư', color: COLORS.primary },
-  { id: 2, icon: require('../../../assets/images/icon_pickup.png'), name: 'Đón trẻ', color: COLORS.primary },
-  { id: 3, icon: require('../../../assets/images/icon_cleaning.png'), name: 'Dọn dẹp', color: COLORS.primary },
-  { id: 4, icon: require('../../../assets/images/icon_babysitting.png'), name: 'Trông trẻ', color: COLORS.primary },
-  { id: 5, icon: require('../../../assets/images/icon_shopping.png'), name: 'Mua sắm hộ', color: COLORS.primary },
-  { id: 6, icon: require('../../../assets/images/icon_cooking.png'), name: 'Nấu ăn', color: COLORS.primary },
-  { id: 7, icon: require('../../../assets/images/icon_moving.png'), name: 'Chuyển đồ', color: COLORS.primary },
-  { id: 8, icon: require('../../../assets/images/icon_other.png'), name: 'Khác', color: COLORS.primary },
+  { id: 1, name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 2, name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 3, name: 'Dọn dẹp', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 4, name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 5, name: 'Mua sắm hộ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 6, name: 'Nấu ăn', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 7, name: 'Chuyển đồ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 8, name: 'Khác', color: COLORS.primary, bg: COLORS.primaryLight },
 ];
 
 export default function TaskDetailScreen() {
@@ -137,7 +138,7 @@ export default function TaskDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.categoryTag}>
-            <Image source={cat.icon} style={styles.catImage} resizeMode="contain" />
+            {renderCategoryIcon(cat.id, 18, '#fff')}
             <Text style={styles.categoryTagText}>{cat.name}</Text>
           </View>
           <Text style={styles.title}>{task.title}</Text>
