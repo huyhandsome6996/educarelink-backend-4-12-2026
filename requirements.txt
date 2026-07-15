@@ -60,3 +60,6 @@ urllib3==2.6.3
 whitenoise==6.12.0
 # ── MoMo Payment module ──
 # (chỉ dùng requests đã có sẵn; không cần thêm dependency)
+
+# ── PayOS Payment module (VietQR bank transfer) ──
+payos==1.1.0

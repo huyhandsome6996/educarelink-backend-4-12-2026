@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { setupPayment } from '../../api/payments';
+import { setupPayment, setupPayOS } from '../../api/payments';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 export default function PaymentSetupScreen() {
@@ -26,36 +26,56 @@ export default function PaymentSetupScreen() {
     }
     setIsLoading(true);
     try {
-      const res = await setupPayment(taskId, selectedMethod);
-      const payment = res.data;
-
-      if (selectedMethod === 'momo_escrow') {
-        if (!payment.momo_configured) {
-          Alert.alert(
-            'MoMo chưa sẵn sàng',
-            'Hệ thống chưa cấu hình MoMo. Vui lòng chọn "Tiền mặt" hoặc thử lại sau.',
-            [{ text: 'OK' }]
-          );
-        } else if (payment.momo_pay_url) {
-          // Mở MoMo app hoặc web MoMo
+      if (selectedMethod === 'payos') {
+        // PayOS flow — tạo payment link, mở checkout URL
+        const res = await setupPayOS(taskId);
+        const data = res.data;
+        if (data.checkout_url) {
           if (Platform.OS === 'web') {
-            window.open(payment.momo_pay_url, '_blank');
+            window.open(data.checkout_url, '_blank');
           } else {
-            await Linking.openURL(payment.momo_pay_url);
+            await Linking.openURL(data.checkout_url);
           }
           Alert.alert(
-            'Đã tạo giao dịch',
-            'Đang chuyển bạn tới MoMo. Sau khi thanh toán, tiền sẽ được giữ đến khi Carepartner hoàn thành.',
+            '🔗 Đang chuyển tới PayOS',
+            `Quét QR VietQR bằng app ngân hàng để chuyển khoản ${price.toLocaleString('vi-VN')}đ.\n\nTiền sẽ được GIỮ đến khi Carepartner hoàn thành công việc.`,
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          Alert.alert('Lỗi', 'Không tạo được payment link PayOS.');
+        }
+      } else {
+        // MoMo / Cash flow
+        const res = await setupPayment(taskId, selectedMethod);
+        const payment = res.data;
+
+        if (selectedMethod === 'momo_escrow') {
+          if (!payment.momo_configured) {
+            Alert.alert(
+              'MoMo chưa sẵn sàng',
+              'Hệ thống chưa cấu hình MoMo. Vui lòng chọn "PayOS" hoặc "Tiền mặt".',
+              [{ text: 'OK' }]
+            );
+          } else if (payment.momo_pay_url) {
+            if (Platform.OS === 'web') {
+              window.open(payment.momo_pay_url, '_blank');
+            } else {
+              await Linking.openURL(payment.momo_pay_url);
+            }
+            Alert.alert(
+              'Đã tạo giao dịch',
+              'Đang chuyển bạn tới MoMo. Sau khi thanh toán, tiền sẽ được giữ đến khi Carepartner hoàn thành.',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          }
+        } else {
+          // cash
+          Alert.alert(
+            '✅ Đã ghi nhận',
+            'Công việc sẽ thanh toán tiền mặt. Sau khi hoàn thành, hoa hồng 20% sẽ được tổng hợp và gửi QR cho bạn vào cuối tháng.',
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
         }
-      } else {
-        // cash
-        Alert.alert(
-          '✅ Đã ghi nhận',
-          'Công việc sẽ thanh toán tiền mặt. Sau khi hoàn thành, hoa hồng 20% sẽ được tổng hợp và gửi QR cho bạn vào cuối tháng.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
       }
     } catch (e) {
       const msg = e.response?.data?.error || 'Không thể thiết lập thanh toán.';
@@ -73,6 +93,15 @@ export default function PaymentSetupScreen() {
       desc: 'Phụ huynh trả qua MoMo — tiền được GIỮ. Carepartner xong việc → tự động chuyển 80% cho Carepartner, 20% hoa hồng cho nền tảng.',
       color: COLORS.primary,
       recommended: true,
+    },
+    {
+      id: 'payos',
+      icon: 'qr-code',
+      label: 'PayOS VietQR',
+      desc: 'Phụ huynh quét QR bằng app ngân hàng (BIDV, VCB, MB...) — MIỄN PHÍ 100%. Tiền được GIỮ. Carepartner xong việc → admin chuyển 80% cho Carepartner.',
+      color: COLORS.info,
+      recommended: false,
+      badge: 'MIỄN PHÍ',
     },
     {
       id: 'cash',
@@ -148,6 +177,11 @@ export default function PaymentSetupScreen() {
                   {method.recommended && (
                     <View style={styles.recommendedBadge}>
                       <Text style={styles.recommendedText}>Khuyên dùng</Text>
+                    </View>
+                  )}
+                  {method.badge && (
+                    <View style={[styles.recommendedBadge, { backgroundColor: COLORS.success }]}>
+                      <Text style={styles.recommendedText}>{method.badge}</Text>
                     </View>
                   )}
                 </View>
