@@ -1,574 +1,907 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduCareLink - Mô phỏng giao diện Mobile App</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Plus Jakarta Sans',sans-serif;background:#0f172a;color:#fff;min-height:100vh}
-        .page-header{background:linear-gradient(135deg,#F26522 0%,#D4541E 100%);padding:20px 24px;text-align:center;position:sticky;top:0;z-index:100}
-        .page-header h1{font-family:'Manrope';font-size:24px;font-weight:900;margin-bottom:2px}
-        .page-header p{opacity:.8;font-size:13px}
-        .screen-nav{background:#1e293b;padding:10px 12px;position:sticky;top:62px;z-index:99;overflow-x:auto;white-space:nowrap}
-        .screen-nav::-webkit-scrollbar{height:3px}
-        .screen-nav::-webkit-scrollbar-thumb{background:#F26522;border-radius:3px}
-        .screen-nav-inner{display:flex;gap:5px;min-width:max-content}
-        .nav-btn{padding:7px 14px;border-radius:18px;font-size:11px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
-        .nav-btn.ph{background:rgba(242,101,34,.15);color:#F26522}.nav-btn.ph:hover,.nav-btn.ph.on{background:#F26522;color:#fff}
-        .nav-btn.cp{background:rgba(45,184,75,.15);color:#2DB84B}.nav-btn.cp:hover,.nav-btn.cp.on{background:#2DB84B;color:#fff}
-        .nav-btn.au{background:rgba(59,130,246,.15);color:#3B82F6}.nav-btn.au:hover,.nav-btn.au.on{background:#3B82F6;color:#fff}
-        .phone-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:36px;padding:32px 16px}
-        .phone-wrapper{display:flex;flex-direction:column;align-items:center}
-        .phone-label{font-family:'Manrope';font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px}
-        .phone-frame{width:375px;height:812px;border-radius:50px;border:8px solid #2a2a3a;background:#000;position:relative;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.5),0 0 0 2px #1a1a2e,inset 0 0 0 2px #3a3a4a}
-        .phone-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:30px;background:#000;border-radius:0 0 20px 20px;z-index:10}
-        .phone-notch::after{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:60px;height:6px;background:#1a1a2e;border-radius:3px}
-        .phone-screen{width:100%;height:100%;overflow-y:auto;overflow-x:hidden;background:#F7F7F7}
-        .phone-screen::-webkit-scrollbar{width:0}
-        .sb{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font-size:12px;font-weight:700}
-        .sb-d{color:#fff}.sb-l{color:#1A1A2E}
-        .si{display:flex;gap:4px;align-items:center}.si span{font-size:14px}
-        .ho{background:#F26522;padding:16px 20px 24px;border-radius:0 0 24px 24px;position:relative;overflow:hidden}
-        .ho::before{content:'';position:absolute;top:-40px;right:-40px;width:150px;height:150px;border:1.5px solid rgba(255,255,255,.08);border-radius:50%}
-        .ho::after{content:'';position:absolute;bottom:-60px;left:-30px;width:180px;height:180px;border:1.5px solid rgba(255,255,255,.06);border-radius:50%}
-        .gr{color:rgba(255,255,255,.8);font-size:13px;font-weight:600}
-        .tt{color:#fff;font-family:'Manrope';font-size:22px;font-weight:800;margin-top:2px}
-        .ol{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
-        .ib{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);color:#fff;border:none;cursor:pointer}
-        .cd{background:#fff;border-radius:16px;padding:14px;margin:8px 16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-        .cb{border-left:4px solid #F26522}
-        .bt{padding:12px 20px;border-radius:14px;font-size:14px;font-weight:800;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-        .bp{background:#F26522;color:#fff;box-shadow:0 4px 15px rgba(242,101,34,.3)}
-        .bs{background:#10B981;color:#fff}
-        .bo{background:#FFF4ED;color:#F26522}
-        .bd{background:#E5E7EB;color:#9CA3AF;opacity:.7}
-        .ip{width:100%;height:52px;border:1.5px solid #E5E7EB;border-radius:16px;padding:0 16px;font-size:14px;background:#fff;display:flex;align-items:center;gap:10px}
-        .ii{width:40px;height:34px;border-radius:8px;background:#F7F7F7;display:flex;align-items:center;justify-content:center;color:#9CA3AF}
-        .bg{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-        .av{width:44px;height:44px;border-radius:50%;background:#F26522;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px}
-        .st{font-family:'Manrope';font-size:16px;font-weight:800;color:#1A1A2E;padding:12px 20px 8px}
-        .ci{display:flex;flex-direction:column;align-items:center;gap:6px;width:25%}
-        .cc{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center}
-        .cl{font-size:11px;font-weight:600;color:#6B7280;text-align:center}
-        .bn{position:absolute;bottom:0;left:0;right:0;height:70px;background:#fff;border-top:1px solid #F0F0F0;display:flex;align-items:center;justify-content:space-around;padding-bottom:10px}
-        .tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:700;color:#9CA3AF}
-        .tb.on{color:#F26522}.tb .material-symbols-outlined{font-size:24px}
-        .tb.cw.on{color:#2DB84B}
-        .msg{padding:10px 14px;border-radius:18px;font-size:13px;line-height:1.5;max-width:80%}
-        .mu{background:#F26522;color:#fff;border-bottom-right-radius:4px;margin-left:auto;box-shadow:0 2px 8px rgba(242,101,34,.2)}
-        .mb{background:#fff;color:#1A1A2E;border-bottom-left-radius:4px;border:1px solid #F0F0F0}
-        .sr{color:#F59E0B;font-size:20px}
-        .ic{background:#FFF9F5;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px}
-        .icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
-        .logo-svg{display:inline-block}
-        @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
-        .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
-        .material-symbols-outlined.filled{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
-        @media(max-width:768px){.phone-frame{width:320px;height:693px;border-radius:40px;border-width:6px}.phone-grid{gap:24px;padding:24px 12px}}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduCareLink Mobile Preview — Sync 100% với Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,1,0&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN SYSTEM — SYNC 100% VỚI WEB ============ */
+:root {
+  --primary: #F26522;
+  --primary-dark: #D4541E;
+  --primary-light: #FFF4ED;
+  --primary-soft: #FFCFB3;
+  --secondary: #2DB84B;
+  --secondary-dark: #239A3C;
+  --secondary-light: #EDFBF0;
+  --bg: #F7F7F7;
+  --surface: #FFFFFF;
+  --text-primary: #1A1A2E;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-on-primary: #FFFFFF;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+  --border: #F0F0F0;
+  --divider: #E5E7EB;
+  --indigo: #6366F1;
+  --indigo-light: #EEF2FF;
+  --indigo-dark: #312E81;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--text-primary);
+}
+.material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+.material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400; }
+
+/* ============ IPHONE FRAME ============ */
+.stage { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.phone {
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  border-radius: 54px;
+  box-shadow: 0 0 0 12px #1a1a1a, 0 0 0 14px #2a2a2a, 0 30px 80px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.phone::before {
+  content: '';
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 32px;
+  background: #1a1a1a;
+  border-radius: 20px;
+  z-index: 100;
+}
+.screen-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 42px;
+}
+.status-bar {
+  height: 50px;
+  padding: 16px 32px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 10;
+}
+.status-bar.dark { color: #fff; }
+.status-bar .icons { display: flex; gap: 6px; align-items: center; }
+.status-bar .icons .material-symbols-outlined { font-size: 16px; }
+
+.screen { display: none; height: calc(100% - 50px); overflow-y: auto; }
+.screen.active { display: block; }
+.screen::-webkit-scrollbar { display: none; }
+
+/* ============ SPLASH SCREEN ============ */
+.splash {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.splash::before, .splash::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+}
+.splash::before { width: 300px; height: 300px; top: -100px; right: -100px; }
+.splash::after { width: 200px; height: 200px; bottom: -50px; left: -50px; background: rgba(255,255,255,0.05); }
+.splash-logo {
+  width: 100px; height: 100px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 28px;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(10px);
+  margin-bottom: 24px;
+  animation: pulse 2s ease-in-out infinite;
+}
+.splash-logo .material-symbols-outlined { font-size: 56px; color: #fff; }
+.splash h1 { font-family: 'Manrope', sans-serif; font-size: 36px; font-weight: 900; letter-spacing: -1px; }
+.splash p { font-size: 14px; opacity: 0.9; margin-top: 8px; }
+.splash-dots { display: flex; gap: 8px; margin-top: 40px; }
+.splash-dots span { width: 8px; height: 8px; background: rgba(255,255,255,0.5); border-radius: 50%; animation: dotPulse 1.4s infinite; }
+.splash-dots span:nth-child(2) { animation-delay: 0.2s; }
+.splash-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes dotPulse { 0%,80%,100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+/* ============ LOGIN SCREEN ============ */
+.login { padding: 0 28px 40px; }
+.login-header { text-align: center; padding: 20px 0 36px; }
+.login-logo {
+  width: 80px; height: 80px;
+  background: var(--primary);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 8px 24px rgba(242,101,34,0.3);
+}
+.login-logo .material-symbols-outlined { font-size: 44px; color: #fff; }
+.login h2 { font-family: 'Manrope', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-primary); }
+.login .sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+.input-group { margin-bottom: 16px; }
+.input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: 0.3px; }
+.input-wrap {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  transition: all 0.2s;
+}
+.input-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(242,101,34,0.1); }
+.input-wrap .material-symbols-outlined { font-size: 20px; color: var(--text-muted); }
+.input-wrap input { flex: 1; border: none; outline: none; font-size: 15px; font-family: inherit; color: var(--text-primary); background: transparent; }
+.btn-primary {
+  width: 100%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 4px 14px rgba(242,101,34,0.3);
+  transition: transform 0.1s;
+}
+.btn-primary:active { transform: scale(0.98); }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; color: var(--text-muted); font-size: 12px; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--divider); }
+.social-row { display: flex; gap: 12px; }
+.social-btn {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-primary);
+}
+.social-btn .material-symbols-outlined { font-size: 18px; }
+.social-btn.google .material-symbols-outlined { color: #EA4335; }
+.social-btn.facebook .material-symbols-outlined { color: #1877F2; }
+
+/* ============ PARENT HOME ============ */
+.parent-home { padding-bottom: 100px; }
+.home-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: 12px 20px 24px;
+  border-radius: 0 0 28px 28px;
+  color: #fff;
+}
+.home-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.home-greeting { font-size: 13px; opacity: 0.9; }
+.home-name { font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 800; }
+.home-icons { display: flex; gap: 8px; }
+.home-icon-btn {
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.home-icon-btn .material-symbols-outlined { font-size: 22px; color: #fff; }
+.search-bar {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+}
+.search-bar .material-symbols-outlined { font-size: 24px; color: #fff; }
+.search-bar-text { flex: 1; }
+.search-bar-text .t1 { font-size: 14px; font-weight: 700; color: #fff; }
+.search-bar-text .t2 { font-size: 11px; color: rgba(255,255,255,0.8); }
+
+.section { padding: 20px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.section-title { font-family: 'Manrope', sans-serif; font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.section-link { font-size: 12px; color: var(--primary); font-weight: 700; cursor: pointer; }
+.categories-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cat-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.cat-icon-bg {
+  width: 56px; height: 56px;
+  background: var(--primary-light);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cat-icon-bg .material-symbols-outlined { font-size: 28px; color: var(--primary); }
+.cat-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+
+/* AI Banner — sync 100% với web */
+.ai-banner {
+  margin: 0 20px 16px;
+  background: linear-gradient(135deg, var(--indigo-light) 0%, #E0E7FF 100%);
+  border: 1px solid #E0E7FF;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.18);
+}
+.ai-banner-icon {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, var(--indigo) 0%, #8B5CF6 100%);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ai-banner-icon .material-symbols-outlined { font-size: 26px; color: #fff; }
+.ai-banner-content { flex: 1; }
+.ai-banner-title-row { display: flex; align-items: center; gap: 8px; }
+.ai-banner-title { font-size: 15px; font-weight: 700; color: var(--indigo-dark); }
+.ai-badge-new {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--indigo); color: #fff;
+  padding: 2px 8px; border-radius: 8px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
+}
+.ai-badge-new::before {
+  content: ''; width: 5px; height: 5px; background: #6EE7B7; border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+.ai-banner-sub { font-size: 11px; color: #4338CA; margin-top: 3px; line-height: 1.4; }
+.ai-banner-cta {
+  background: var(--indigo); color: #fff;
+  padding: 8px 12px; border-radius: 10px;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; gap: 3px;
+}
+
+/* Task cards */
+.task-card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+}
+.task-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.task-cat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary-light);
+  padding: 4px 10px; border-radius: 20px;
+}
+.task-cat-pill .material-symbols-outlined { font-size: 14px; color: var(--primary); }
+.task-cat-pill span:last-child { font-size: 11px; font-weight: 600; color: var(--primary); }
+.task-price { font-size: 15px; font-weight: 800; color: var(--primary); }
+.task-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.task-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-secondary); }
+
+/* ============ WORKER FEED ============ */
+.worker-feed { padding-bottom: 100px; }
+.feed-header {
+  background: var(--surface);
+  padding: 12px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.feed-title { font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 900; color: var(--text-primary); }
+.feed-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.ai-rec-card {
+  margin: 16px 20px;
+  background: linear-gradient(135deg, #FFF4ED 0%, #FFE4D1 100%);
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid var(--primary-soft);
+}
+.ai-rec-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ai-rec-header .material-symbols-outlined { font-size: 18px; color: var(--primary); }
+.ai-rec-header span:last-child { font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-rec-item { background: rgba(255,255,255,0.7); border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
+.ai-rec-item:last-child { margin-bottom: 0; }
+.ai-rec-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ai-rec-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.ai-rec-score { background: var(--success); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.ai-rec-meta { font-size: 11px; color: var(--text-secondary); }
+
+/* ============ CHATBOT ============ */
+.chatbot { display: flex; flex-direction: column; height: 100%; padding-bottom: 0; }
+.chat-header {
+  background: var(--surface);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.chat-bot-avatar {
+  width: 44px; height: 44px;
+  background: var(--primary-light);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-bot-avatar .material-symbols-outlined { font-size: 24px; color: var(--primary); }
+.chat-header-info h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.chat-status { display: flex; align-items: center; gap: 4px; }
+.chat-status .dot { width: 7px; height: 7px; background: var(--success); border-radius: 50%; }
+.chat-status span { font-size: 11px; color: var(--success); font-weight: 600; }
+.chat-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.msg-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: flex-end; }
+.msg-row.user { justify-content: flex-end; }
+.msg-bot-avatar { width: 32px; height: 32px; background: var(--primary-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.msg-bot-avatar .material-symbols-outlined { font-size: 18px; color: var(--primary); }
+.bubble { max-width: 75%; padding: 12px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+.bubble.bot { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4; color: var(--text-primary); }
+.bubble.user { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.bot strong { font-weight: 700; }
+.bubble.bot ul { padding-left: 16px; margin: 6px 0; }
+.bubble.bot li { margin-bottom: 4px; }
+.bubble.bot .safety-q { background: #FFF4ED; border-left: 3px solid var(--primary); padding: 8px 10px; border-radius: 8px; margin-top: 8px; }
+.chat-input-bar {
+  background: var(--surface);
+  padding: 12px 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.chat-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--primary); background: var(--surface); }
+.chat-send {
+  width: 44px; height: 44px;
+  background: var(--primary);
+  border-radius: 22px;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.chat-send .material-symbols-outlined { font-size: 20px; color: #fff; }
+
+/* ============ BOTTOM NAV ============ */
+.bottom-nav {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 10px 0 24px;
+  z-index: 50;
+}
+.nav-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.nav-item.active { color: var(--primary); }
+.nav-item .material-symbols-outlined { font-size: 24px; }
+.nav-item .label { font-size: 10px; font-weight: 600; }
+
+/* ============ CONTROL PANEL ============ */
+.controls {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  width: 280px;
+  flex-shrink: 0;
+}
+.controls h2 { font-family: 'Manrope', sans-serif; font-size: 18px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+.controls .sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+.control-group { margin-bottom: 16px; }
+.control-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.btn-group { display: flex; flex-direction: column; gap: 6px; }
+.btn-screen {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s;
+}
+.btn-screen:hover { border-color: var(--primary); background: var(--primary-light); }
+.btn-screen.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-screen .material-symbols-outlined { font-size: 18px; }
+.info-box {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.info-box strong { color: var(--primary); }
+</style>
 </head>
 <body>
-<div class="page-header">
-    <h1>
-        <svg class="logo-svg" width="28" height="28" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:6px;margin-top:-2px;">
-            <circle cx="50" cy="50" r="48" fill="#fff" opacity=".25"/>
-            <circle cx="50" cy="50" r="38" fill="#fff" opacity=".15"/>
-            <path d="M35 62 C35 48 42 38 50 38 C58 38 65 48 65 62 C65 68 58 72 50 72 C42 72 35 68 35 62Z" fill="#fff" opacity=".9"/>
-            <circle cx="43" cy="52" r="3" fill="#F26522"/>
-            <circle cx="57" cy="52" r="3" fill="#F26522"/>
-            <path d="M46 60 Q50 64 54 60" stroke="#F26522" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <path d="M30 40 C20 30 25 18 38 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
-            <path d="M70 40 C80 30 75 18 62 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
-        </svg>
-        EduCareLink Mobile
-    </h1>
-    <p>Mô phỏng giao diện ứng dụng di động — 16 màn hình &bull; File standalone</p>
-</div>
 
-<div class="screen-nav">
-    <div class="screen-nav-inner">
-        <button class="nav-btn au" onclick="go('s1')">Splash</button>
-        <button class="nav-btn au" onclick="go('s2')">Đăng nhập</button>
-        <button class="nav-btn au" onclick="go('s3')">Đăng ký</button>
-        <button class="nav-btn ph" onclick="go('s4')">Trang chủ PH</button>
-        <button class="nav-btn ph" onclick="go('s5')">Tạo việc</button>
-        <button class="nav-btn ph" onclick="go('s6')">Việc của tôi</button>
-        <button class="nav-btn ph" onclick="go('s7')">Ứng viên</button>
-        <button class="nav-btn ph" onclick="go('s8')">Hồ sơ UV</button>
-        <button class="nav-btn ph" onclick="go('s9')">Đánh giá</button>
-        <button class="nav-btn ph" onclick="go('s10')">AI Chatbot</button>
-        <button class="nav-btn cp" onclick="go('s11')">Bảng tin CP</button>
-        <button class="nav-btn cp" onclick="go('s12')">Chi tiết việc</button>
-        <button class="nav-btn cp" onclick="go('s13')">Việc CP</button>
-        <button class="nav-btn cp" onclick="go('s14')">Hồ sơ CP</button>
-        <button class="nav-btn cp" onclick="go('s15')">AI Chat CP</button>
-        <button class="nav-btn au" onclick="go('s16')">Trợ giúp</button>
+<div class="stage">
+  <!-- Control Panel -->
+  <div class="controls">
+    <h2>📱 Mobile Preview</h2>
+    <p class="sub">EduCareLink Mobile App — Sync 100% với Web</p>
+    
+    <div class="control-group">
+      <label>Chọn màn hình</label>
+      <div class="btn-group">
+        <button class="btn-screen active" onclick="showScreen('splash')">
+          <span class="material-symbols-outlined">rocket_launch</span>
+          Splash
+        </button>
+        <button class="btn-screen" onclick="showScreen('login')">
+          <span class="material-symbols-outlined">login</span>
+          Login
+        </button>
+        <button class="btn-screen" onclick="showScreen('parent-home')">
+          <span class="material-symbols-outlined">home</span>
+          Parent Home
+        </button>
+        <button class="btn-screen" onclick="showScreen('worker-feed')">
+          <span class="material-symbols-outlined">search</span>
+          Worker Feed
+        </button>
+        <button class="btn-screen" onclick="showScreen('chatbot')">
+          <span class="material-symbols-outlined">smart_toy</span>
+          AI Chatbot
+        </button>
+      </div>
     </div>
-</div>
+    
+    <div class="info-box">
+      <strong>✅ Đã sync 100% với web:</strong><br>
+      • Colors: #F26522 primary<br>
+      • Icons: Material Symbols<br>
+      • Typography: Manrope + Plus Jakarta Sans<br>
+      • Layout: cùng spacing, border radius<br>
+      • AI Banner mới có badge "MỚI"<br>
+      • Category icons: book, happy, sparkles...
+    </div>
+  </div>
 
-<div class="phone-grid">
+  <!-- iPhone Frame -->
+  <div class="phone">
+    <div class="screen-wrap">
+      <!-- Status Bar -->
+      <div class="status-bar" id="statusBar">
+        <span id="clock">9:41</span>
+        <div class="icons">
+          <span class="material-symbols-outlined">signal_cellular_alt</span>
+          <span class="material-symbols-outlined">wifi</span>
+          <span class="material-symbols-outlined">battery_full</span>
+        </div>
+      </div>
 
-<!-- ===== 1. SPLASH ===== -->
-<div class="phone-wrapper" id="s1">
-<div class="phone-label">1 &bull; Splash Screen</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F26522;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
-<div style="position:absolute;top:60px;right:-30px;width:160px;height:160px;border:1.5px solid rgba(255,255,255,.06);border-radius:50%"></div>
-<div style="position:absolute;bottom:120px;left:-50px;width:200px;height:200px;border:1.5px solid rgba(255,255,255,.08);border-radius:50%"></div>
-<div style="position:absolute;top:200px;left:30px;width:80px;height:80px;border:1.5px solid rgba(255,255,255,.1);border-radius:50%"></div>
-<div style="width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(0,0,0,.15)">
-<svg width="80" height="80" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="rgba(255,255,255,.2)"/><circle cx="50" cy="50" r="36" fill="rgba(255,255,255,.15)"/><path d="M35 62 C35 48 42 38 50 38 C58 38 65 48 65 62 C65 68 58 72 50 72 C42 72 35 68 35 62Z" fill="#fff" opacity=".9"/><circle cx="43" cy="52" r="3" fill="#F26522"/><circle cx="57" cy="52" r="3" fill="#F26522"/><path d="M46 60 Q50 64 54 60" stroke="#F26522" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M30 40 C20 30 25 18 38 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/><path d="M70 40 C80 30 75 18 62 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/></svg>
-</div>
-<h1 style="font-family:'Manrope';font-size:38px;font-weight:900;color:#fff;margin-top:20px;letter-spacing:-.5px">EducareLink</h1>
-<p style="font-size:15px;color:rgba(255,255,255,.8);margin-top:6px">Trợ lý gia đình &middot; Việc làm linh hoạt</p>
-<div style="position:absolute;bottom:80px;display:flex;gap:8px">
-<div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.8);animation:pulse 1.4s infinite"></div>
-<div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.5);animation:pulse 1.4s infinite .2s"></div>
-<div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3);animation:pulse 1.4s infinite .4s"></div>
-</div>
-</div></div></div>
+      <!-- SPLASH SCREEN -->
+      <div class="screen active" id="screen-splash">
+        <div class="splash">
+          <div class="splash-logo">
+            <span class="material-symbols-outlined">favorite</span>
+          </div>
+          <h1>Educarelink</h1>
+          <p>Trợ lý gia đình · Việc làm linh hoạt</p>
+          <div class="splash-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
 
-<!-- ===== 2. LOGIN ===== -->
-<div class="phone-wrapper" id="s2">
-<div class="phone-label">2 &bull; Đăng nhập</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="padding:20px">
-<div style="text-align:center;margin-bottom:24px">
-<div style="width:80px;height:80px;border-radius:20px;background:#FFF4ED;margin:0 auto 12px;display:flex;align-items:center;justify-content:center">
-<svg width="56" height="56" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#FFF4ED"/><circle cx="50" cy="50" r="36" fill="#FFCFB3"/><path d="M35 62 C35 48 42 38 50 38 C58 38 65 48 65 62 C65 68 58 72 50 72 C42 72 35 68 35 62Z" fill="#F26522" opacity=".9"/><circle cx="43" cy="52" r="3" fill="#fff"/><circle cx="57" cy="52" r="3" fill="#fff"/><path d="M46 60 Q50 64 54 60" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-</div>
-<h2 style="font-family:'Manrope';font-size:24px;font-weight:900;color:#1A1A2E">Chào mừng trở lại!</h2>
-<p style="font-size:14px;color:#6B7280;margin-top:4px">Đăng nhập để tiếp tục</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:14px">
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:18px">person</span></div><span style="color:#9CA3AF;font-size:14px">Tên tài khoản</span></div>
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:18px">lock</span></div><span style="color:#9CA3AF;font-size:14px">Mật khẩu</span></div>
-<div style="text-align:right"><span style="font-size:13px;color:#F26522;font-weight:600">Quên mật khẩu?</span></div>
-<button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:16px;justify-content:center">Đăng nhập <span class="material-symbols-outlined" style="font-size:20px">arrow_forward</span></button>
-</div>
-<div style="text-align:center;margin-top:24px"><span style="font-size:13px;color:#6B7280">Chưa có tài khoản? </span><span style="font-size:13px;color:#F26522;font-weight:700">Đăng ký ngay</span></div>
-<div style="margin-top:20px;background:#FFF4ED;border-radius:14px;padding:12px;border:1px dashed #FFCFB3">
-<p style="font-size:11px;font-weight:700;color:#F26522;margin-bottom:6px">&#x1f527; Tài khoản demo:</p>
-<p style="font-size:11px;color:#6B7280">PH: phuhuynh_test / Demo@2026</p>
-<p style="font-size:11px;color:#6B7280">CP: sinhvien_test / Demo@2026</p>
-</div>
-</div></div></div></div>
+      <!-- LOGIN SCREEN -->
+      <div class="screen" id="screen-login">
+        <div class="login">
+          <div class="login-header">
+            <div class="login-logo">
+              <span class="material-symbols-outlined">favorite</span>
+            </div>
+            <h2>Chào mừng trở lại!</h2>
+            <p class="sub">Đăng nhập để tiếp tục sử dụng Educarelink</p>
+          </div>
+          
+          <div class="input-group">
+            <label>Tên tài khoản</label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">person</span>
+              <input type="text" placeholder="Nhập tên tài khoản" value="phuhuynh_test">
+            </div>
+          </div>
+          
+          <div class="input-group">
+            <label>Mật khẩu</label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock</span>
+              <input type="password" placeholder="Nhập mật khẩu" value="••••••••">
+              <span class="material-symbols-outlined">visibility</span>
+            </div>
+          </div>
+          
+          <button class="btn-primary" onclick="showScreen('parent-home')">Đăng nhập</button>
+          
+          <div class="login-divider">hoặc</div>
+          
+          <div class="social-row">
+            <div class="social-btn google">
+              <span class="material-symbols-outlined">g_mobiledata</span>
+              Google
+            </div>
+            <div class="social-btn facebook">
+              <span class="material-symbols-outlined">facebook</span>
+              Facebook
+            </div>
+          </div>
+        </div>
+      </div>
 
-<!-- ===== 3. REGISTER ===== -->
-<div class="phone-wrapper" id="s3">
-<div class="phone-label">3 &bull; Đăng ký</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="padding:16px 20px">
-<div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)"><span class="material-symbols-outlined" style="color:#1A1A2E">arrow_back</span></div>
-<h2 style="font-family:'Manrope';font-size:22px;font-weight:800;color:#1A1A2E">Tạo tài khoản</h2>
-<p style="font-size:13px;color:#6B7280;margin:4px 0 16px">Chọn vai trò và điền thông tin</p>
-<div style="display:flex;gap:10px;margin-bottom:18px">
-<div style="flex:1;padding:14px;border-radius:14px;border:2px solid #F26522;background:#FFF4ED;text-align:center;position:relative">
-<span class="material-symbols-outlined filled" style="font-size:28px;color:#F26522">people</span>
-<p style="font-size:13px;font-weight:700;color:#F26522;margin-top:4px">Phụ Huynh</p>
-<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:#F26522;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:14px;color:#fff">check</span></div>
-</div>
-<div style="flex:1;padding:14px;border-radius:14px;border:2px solid #E5E7EB;background:#fff;text-align:center">
-<span class="material-symbols-outlined" style="font-size:28px;color:#9CA3AF">school</span>
-<p style="font-size:13px;font-weight:700;color:#9CA3AF;margin-top:4px">Sinh Viên</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<div style="display:flex;gap:8px"><div class="ip" style="flex:1"><span style="color:#9CA3AF;font-size:13px">Họ</span></div><div class="ip" style="flex:1"><span style="color:#1A1A2E;font-size:13px;font-weight:600">Minh*</span></div></div>
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:16px">person</span></div><span style="color:#1A1A2E;font-size:13px;font-weight:600">phuhuynh_minh</span></div>
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:16px">email</span></div><span style="color:#1A1A2E;font-size:13px">minh@email.com</span></div>
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:16px">phone</span></div><span style="color:#1A1A2E;font-size:13px">0912345678</span></div>
-<div class="ip"><div class="ii"><span class="material-symbols-outlined" style="font-size:16px">lock</span></div><span style="color:#9CA3AF;font-size:13px">Mật khẩu*</span></div>
-</div>
-<button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:16px;justify-content:center;margin-top:16px">Đăng ký <span class="material-symbols-outlined" style="font-size:20px">arrow_forward</span></button>
-</div></div></div></div>
+      <!-- PARENT HOME -->
+      <div class="screen" id="screen-parent-home">
+        <div class="parent-home">
+          <div class="home-header">
+            <div class="home-header-top">
+              <div>
+                <div class="home-greeting">Xin chào 👋</div>
+                <div class="home-name">Phụ huynh Test</div>
+              </div>
+              <div class="home-icons">
+                <div class="home-icon-btn"><span class="material-symbols-outlined">notifications</span></div>
+                <div class="home-icon-btn"><span class="material-symbols-outlined">logout</span></div>
+              </div>
+            </div>
+            <div class="search-bar" onclick="showScreen('chatbot')">
+              <span class="material-symbols-outlined">add_circle</span>
+              <div class="search-bar-text">
+                <div class="t1">Bạn cần tìm dịch vụ gì?</div>
+                <div class="t2">Đăng việc ngay để tìm Carepartner</div>
+              </div>
+              <span class="material-symbols-outlined">chevron_forward</span>
+            </div>
+          </div>
 
-<!-- ===== 4. PARENT HOME ===== -->
-<div class="phone-wrapper" id="s4">
-<div class="phone-label">4 &bull; Trang chủ Phụ huynh</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;padding-bottom:70px">
-<div class="sb sb-d"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div class="ho" style="padding-top:4px">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-<div><p class="gr">Xin chào &#x1f44b;</p><p class="tt">Phụ huynh Minh</p></div>
-<div style="display:flex;gap:8px"><div class="ib"><span class="material-symbols-outlined" style="font-size:20px">notifications</span></div><div class="ib"><span class="material-symbols-outlined" style="font-size:20px">logout</span></div></div>
-</div>
-<div style="background:rgba(255,255,255,.2);border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px">
-<div style="width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined filled" style="font-size:20px;color:#F26522">add</span></div>
-<div><p style="font-size:13px;font-weight:700;color:#fff">Bạn cần tìm dịch vụ gì?</p><p style="font-size:11px;color:rgba(255,255,255,.7)">Đăng việc ngay để tìm Carepartner</p></div>
-</div>
-</div>
-<div style="padding:16px 16px 8px;display:flex;flex-wrap:wrap;gap:4px 0">
-<div class="ci"><div class="cc" style="background:#FFF4ED"><span class="material-symbols-outlined filled" style="font-size:22px;color:#F26522">menu_book</span></div><span class="cl">Gia sư</span></div>
-<div class="ci"><div class="cc" style="background:#EAFBEF"><span class="material-symbols-outlined filled" style="font-size:22px;color:#2DB84B">directions_car</span></div><span class="cl">Đón trẻ</span></div>
-<div class="ci"><div class="cc" style="background:#EFF6FF"><span class="material-symbols-outlined filled" style="font-size:22px;color:#3B82F6">cleaning_services</span></div><span class="cl">Dọn dẹp</span></div>
-<div class="ci"><div class="cc" style="background:#FEF2F2"><span class="material-symbols-outlined filled" style="font-size:22px;color:#EF4444">child_care</span></div><span class="cl">Trông trẻ</span></div>
-<div class="ci"><div class="cc" style="background:#FFFBEB"><span class="material-symbols-outlined filled" style="font-size:22px;color:#F59E0B">shopping_cart</span></div><span class="cl">Mua sắm</span></div>
-<div class="ci"><div class="cc" style="background:#FFF4ED"><span class="material-symbols-outlined filled" style="font-size:22px;color:#F26522">restaurant</span></div><span class="cl">Nấu ăn</span></div>
-<div class="ci"><div class="cc" style="background:#ECFDF5"><span class="material-symbols-outlined filled" style="font-size:22px;color:#10B981">local_shipping</span></div><span class="cl">Chuyển đồ</span></div>
-<div class="ci"><div class="cc" style="background:#F3F4F6"><span class="material-symbols-outlined filled" style="font-size:22px;color:#6B7280">more_horiz</span></div><span class="cl">Khác</span></div>
-</div>
-<p class="st">Việc gần đây</p>
-<div class="cd cb" style="border-left-color:#F59E0B">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#FFFBEB;color:#F59E0B"><span style="width:6px;height:6px;border-radius:50%;background:#F59E0B;display:inline-block"></span> Đang tìm</div><span style="font-size:15px;font-weight:800;color:#F26522">150,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:8px 0 4px">Gia sư Toán lớp 5</p>
-<div style="display:flex;align-items:center;gap:4px"><span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">location_on</span><span style="font-size:12px;color:#9CA3AF">Quận 1, TP.HCM</span></div>
-</div>
-<div class="cd cb" style="border-left-color:#10B981">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#ECFDF5;color:#10B981"><span style="width:6px;height:6px;border-radius:50%;background:#10B981;display:inline-block"></span> Hoàn thành</div><span style="font-size:15px;font-weight:800;color:#F26522">200,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:8px 0 4px">Trông trẻ tối thứ 6</p>
-<div style="display:flex;align-items:center;gap:4px"><span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">location_on</span><span style="font-size:12px;color:#9CA3AF">Quận 7, TP.HCM</span></div>
-</div>
-<div class="bn"><div class="tb on"><span class="material-symbols-outlined filled">home</span>Trang chủ</div><div class="tb"><span class="material-symbols-outlined">list_alt</span>Hoạt động</div><div class="tb"><span class="material-symbols-outlined">smart_toy</span>AI Trợ lý</div></div>
-</div></div></div>
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Dịch vụ</div>
+              <div class="section-link">Xem tất cả</div>
+            </div>
+            <div class="categories-grid">
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">menu_book</span></div><div class="cat-name">Gia sư</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">child_care</span></div><div class="cat-name">Đón trẻ</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">cleaning_services</span></div><div class="cat-name">Dọn dẹp</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">stroller</span></div><div class="cat-name">Trông trẻ</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">shopping_bag</span></div><div class="cat-name">Mua sắm</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">restaurant</span></div><div class="cat-name">Nấu ăn</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">local_shipping</span></div><div class="cat-name">Chuyển đồ</div></div>
+              <div class="cat-item"><div class="cat-icon-bg"><span class="material-symbols-outlined">more_horiz</span></div><div class="cat-name">Khác</div></div>
+            </div>
+          </div>
 
-<!-- ===== 5. CREATE TASK ===== -->
-<div class="phone-wrapper" id="s5">
-<div class="phone-label">5 &bull; Tạo việc mới</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F0F0F0">
-<span class="material-symbols-outlined" style="font-size:24px;color:#1A1A2E">close</span>
-<h3 style="font-family:'Manrope';font-size:18px;font-weight:800;color:#1A1A2E">Đăng việc mới</h3>
-</div>
-<div style="padding:16px">
-<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px">
-<div style="padding:8px 14px;border-radius:20px;background:#FFF4ED;border:1.5px solid #F26522;font-size:12px;font-weight:700;color:#F26522;white-space:nowrap;display:flex;align-items:center;gap:4px"><span class="material-symbols-outlined filled" style="font-size:14px">menu_book</span> Gia sư</div>
-<div style="padding:8px 14px;border-radius:20px;background:#fff;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280;white-space:nowrap">Đón trẻ</div>
-<div style="padding:8px 14px;border-radius:20px;background:#fff;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280;white-space:nowrap">Trông trẻ</div>
-</div>
-<div style="background:#FFF4ED;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="material-symbols-outlined" style="font-size:18px;color:#F26522">lightbulb</span><span style="font-size:12px;color:#D4541E">Giá tham khảo: 100,000 - 200,000đ/buổi</span></div>
-<div style="display:flex;flex-direction:column;gap:12px">
-<div><label style="font-size:12px;font-weight:700;color:#1A1A2E">Tiêu đề *</label><div class="ip" style="margin-top:4px"><span style="color:#1A1A2E;font-size:13px">Gia sư Toán lớp 5 cho bé</span></div></div>
-<div><label style="font-size:12px;font-weight:700;color:#1A1A2E">Mô tả *</label><div style="margin-top:4px;min-height:100px;border:1.5px solid #E5E7EB;border-radius:16px;padding:12px;font-size:13px;color:#6B7280;background:#fff">Cần gia sư dạy Toán cho bé lớp 5, 3 buổi/tuần...</div></div>
-<div><label style="font-size:12px;font-weight:700;color:#1A1A2E">Địa điểm *</label><div class="ip" style="margin-top:4px"><span class="material-symbols-outlined" style="font-size:16px;color:#F26522">location_on</span><span style="color:#1A1A2E;font-size:13px">Quận 1, TP.HCM</span></div></div>
-<div style="display:flex;gap:8px">
-<div style="flex:1"><label style="font-size:12px;font-weight:700;color:#1A1A2E">Ngày</label><div class="ip" style="margin-top:4px;height:46px"><span class="material-symbols-outlined" style="font-size:16px;color:#F26522">calendar_today</span><span style="color:#1A1A2E;font-size:12px">15/03/2026</span></div></div>
-<div style="flex:1"><label style="font-size:12px;font-weight:700;color:#1A1A2E">Giờ</label><div class="ip" style="margin-top:4px;height:46px"><span class="material-symbols-outlined" style="font-size:16px;color:#F26522">schedule</span><span style="color:#1A1A2E;font-size:12px">14:00</span></div></div>
-</div>
-<div><label style="font-size:12px;font-weight:700;color:#1A1A2E">Giá (VNĐ/buổi)</label>
-<div style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:12px 16px;background:#fff;border:1.5px solid #F26522;border-radius:16px"><span style="font-size:28px;font-weight:900;color:#F26522">150,000</span><span style="font-size:13px;color:#9CA3AF">VNĐ/buổi</span></div></div>
-</div></div>
-<div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:#fff;border-top:1px solid #F0F0F0"><button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:15px;justify-content:center">Đăng lên cộng đồng <span class="material-symbols-outlined" style="font-size:20px">send</span></button></div>
-</div></div></div>
+          <!-- AI Banner mới — sync web -->
+          <div class="ai-banner" onclick="showScreen('chatbot')">
+            <div class="ai-banner-icon">
+              <span class="material-symbols-outlined">smart_toy</span>
+            </div>
+            <div class="ai-banner-content">
+              <div class="ai-banner-title-row">
+                <div class="ai-banner-title">Nhờ AI đăng việc hộ</div>
+                <div class="ai-badge-new">MỚI</div>
+              </div>
+              <div class="ai-banner-sub">Chỉ cần nói "Tôi cần gia sư Toán lớp 5" — AI sẽ tạo việc giúp bạn trong vài giây!</div>
+            </div>
+            <div class="ai-banner-cta">
+              Chat ngay
+              <span class="material-symbols-outlined" style="font-size:14px">arrow_forward</span>
+            </div>
+          </div>
 
-<!-- ===== 6. MY TASKS ===== -->
-<div class="phone-wrapper" id="s6">
-<div class="phone-label">6 &bull; Việc của tôi (PH)</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;padding-bottom:70px">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center"><h3 style="font-family:'Manrope';font-size:20px;font-weight:800;color:#1A1A2E">Việc của tôi</h3><div style="width:38px;height:38px;border-radius:12px;background:#FFF4ED;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#F26522">add</span></div></div>
-<div style="display:flex;background:#fff;border-bottom:1px solid #F0F0F0">
-<div style="flex:1;text-align:center;padding:10px;font-size:13px;font-weight:700;color:#F26522;border-bottom:2.5px solid #F26522;background:#FFF4ED">Đang tìm</div>
-<div style="flex:1;text-align:center;padding:10px;font-size:13px;font-weight:600;color:#9CA3AF">Đang làm</div>
-<div style="flex:1;text-align:center;padding:10px;font-size:13px;font-weight:600;color:#9CA3AF">Lịch sử</div>
-</div>
-<div class="cd cb" style="border-left-color:#F59E0B">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#FFFBEB;color:#F59E0B">Đang tìm người</div><span style="font-size:15px;font-weight:800;color:#F26522">150,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:8px 0 6px">Gia sư Toán lớp 5</p>
-<div style="display:flex;gap:12px;font-size:12px;color:#9CA3AF;margin-bottom:10px"><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:14px">location_on</span>Quận 1</span><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:14px">schedule</span>15/03 14:00</span></div>
-<button class="bt bp" style="width:100%;height:40px;border-radius:10px;font-size:13px;justify-content:center">Xem ứng viên</button>
-</div>
-<div class="cd cb" style="border-left-color:#F26522">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#FFF4ED;color:#F26522">Đang thực hiện</div><span style="font-size:15px;font-weight:800;color:#F26522">200,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:8px 0 6px">Trông trẻ tối thứ 6</p>
-<div style="display:flex;gap:12px;font-size:12px;color:#9CA3AF;margin-bottom:10px"><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:14px">location_on</span>Quận 7</span><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:14px">schedule</span>21/03 18:00</span></div>
-<button class="bt bo" style="width:100%;height:40px;border-radius:10px;font-size:13px;justify-content:center">Xem người làm</button>
-</div>
-<div class="bn"><div class="tb"><span class="material-symbols-outlined">home</span>Trang chủ</div><div class="tb on"><span class="material-symbols-outlined filled">list_alt</span>Hoạt động</div><div class="tb"><span class="material-symbols-outlined">smart_toy</span>AI Trợ lý</div></div>
-</div></div></div>
+          <div class="section" style="padding-top: 0;">
+            <div class="section-header">
+              <div class="section-title">Việc gần đây</div>
+              <div class="section-link">Xem tất cả</div>
+            </div>
+            
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-cat-pill">
+                  <span class="material-symbols-outlined">menu_book</span>
+                  <span>Gia sư</span>
+                </div>
+                <div class="task-price">150.000đ</div>
+              </div>
+              <div class="task-title">Gia sư Toán lớp 5 cho bé Minh</div>
+              <div class="task-meta">
+                <span>📍 Quận 1, TP.HCM</span>
+                <span>📅 25/07/2026</span>
+              </div>
+            </div>
+            
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-cat-pill">
+                  <span class="material-symbols-outlined">stroller</span>
+                  <span>Trông trẻ</span>
+                </div>
+                <div class="task-price">200.000đ</div>
+              </div>
+              <div class="task-title">Trông trẻ cuối tuần</div>
+              <div class="task-meta">
+                <span>📍 Quận 7, TP.HCM</span>
+                <span>📅 27/07/2026</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bottom Nav -->
+        <div class="bottom-nav">
+          <div class="nav-item active">
+            <span class="material-symbols-outlined">home</span>
+            <div class="label">Trang chủ</div>
+          </div>
+          <div class="nav-item" onclick="alert('Màn hình Việc của tôi')">
+            <span class="material-symbols-outlined">list_alt</span>
+            <div class="label">Hoạt động</div>
+          </div>
+          <div class="nav-item" onclick="showScreen('chatbot')">
+            <span class="material-symbols-outlined">smart_toy</span>
+            <div class="label">AI Trợ lý</div>
+          </div>
+        </div>
+      </div>
 
-<!-- ===== 7. CANDIDATES ===== -->
-<div class="phone-wrapper" id="s7">
-<div class="phone-label">7 &bull; Danh sách ứng viên</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F0F0F0"><span class="material-symbols-outlined" style="font-size:24px;color:#1A1A2E">arrow_back</span><div><h3 style="font-family:'Manrope';font-size:17px;font-weight:800;color:#1A1A2E">Danh sách ứng viên</h3><p style="font-size:12px;color:#9CA3AF">Gia sư Toán lớp 5</p></div></div>
-<div style="padding:12px 16px"><p style="font-size:12px;font-weight:700;color:#6B7280">3 Carepartner đã ứng tuyển</p></div>
-<div class="cd" style="display:flex;align-items:center;gap:12px"><div class="av" style="background:#2DB84B">A</div><div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:700;color:#1A1A2E">Nguyễn Văn An</p><div style="display:flex;align-items:center;gap:2px;margin:2px 0"><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span style="font-size:11px;color:#9CA3AF;margin-left:2px">4.8</span></div><div class="bg" style="background:#ECFDF5;color:#10B981;font-size:10px;padding:2px 6px"><span class="material-symbols-outlined filled" style="font-size:10px">verified</span> Đã xác thực</div></div><button class="bt bp" style="font-size:12px;padding:8px 14px;border-radius:10px">Chọn</button></div>
-<div class="cd" style="display:flex;align-items:center;gap:12px"><div class="av" style="background:#3B82F6">L</div><div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:700;color:#1A1A2E">Trần Thị Linh</p><div style="display:flex;align-items:center;gap:2px;margin:2px 0"><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span style="font-size:13px;color:#E5E7EB">&#9733;</span><span style="font-size:11px;color:#9CA3AF;margin-left:2px">4.2</span></div><div class="bg" style="background:#ECFDF5;color:#10B981;font-size:10px;padding:2px 6px"><span class="material-symbols-outlined filled" style="font-size:10px">verified</span> Đã xác thực</div></div><button class="bt bp" style="font-size:12px;padding:8px 14px;border-radius:10px">Chọn</button></div>
-<div class="cd" style="display:flex;align-items:center;gap:12px"><div class="av" style="background:#F59E0B">D</div><div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:700;color:#1A1A2E">Phạm Đức</p><div style="display:flex;align-items:center;gap:2px;margin:2px 0"><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span class="sr" style="font-size:13px">&#9733;</span><span style="font-size:13px;color:#E5E7EB">&#9733;</span><span style="font-size:11px;color:#9CA3AF;margin-left:2px">4.5</span></div><div class="bg" style="background:#FEF2F2;color:#EF4444;font-size:10px;padding:2px 6px">Chờ xác thực</div></div><button class="bt bp" style="font-size:12px;padding:8px 14px;border-radius:10px">Chọn</button></div>
-</div></div></div>
+      <!-- WORKER FEED -->
+      <div class="screen" id="screen-worker-feed">
+        <div class="worker-feed">
+          <div class="feed-header">
+            <div class="feed-title">Tìm việc</div>
+            <div class="feed-sub">17 việc làm phù hợp đang chờ bạn</div>
+          </div>
 
-<!-- ===== 8. CANDIDATE PROFILE ===== -->
-<div class="phone-wrapper" id="s8">
-<div class="phone-label">8 &bull; Hồ sơ ứng viên</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="padding:12px 16px;background:#fff;display:flex;align-items:center;gap:12px"><span class="material-symbols-outlined" style="font-size:24px;color:#1A1A2E">arrow_back</span><h3 style="font-family:'Manrope';font-size:17px;font-weight:800;color:#1A1A2E">Hồ sơ ứng viên</h3></div>
-<div style="margin:0 16px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.04)">
-<div style="height:70px;background:linear-gradient(135deg,#FFF4ED,#FFCFB3)"></div>
-<div style="text-align:center;margin-top:-42px;padding-bottom:16px">
-<div style="width:84px;height:84px;border-radius:50%;background:#F26522;border:4px solid #fff;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;box-shadow:0 4px 15px rgba(242,101,34,.3)">A</div>
-<p style="font-size:18px;font-weight:800;color:#1A1A2E;margin-top:8px">Nguyễn Văn An</p>
-<p style="font-size:12px;color:#6B7280">Carepartner (Sinh viên)</p>
-</div>
-<div style="display:flex;justify-content:center;gap:20px;padding:0 16px 14px;border-bottom:1px solid #F0F0F0">
-<div style="text-align:center"><span style="font-size:16px">&#11088;</span><span style="font-size:14px;font-weight:800;color:#1A1A2E;margin-left:4px">4.8</span><p style="font-size:10px;color:#9CA3AF">12 đánh giá</p></div>
-<div style="width:1px;background:#E5E7EB"></div>
-<div style="text-align:center"><span class="material-symbols-outlined filled" style="font-size:16px;color:#10B981;vertical-align:middle">verified</span><span style="font-size:12px;font-weight:700;color:#10B981;margin-left:4px">Đã xác thực</span><p style="font-size:10px;color:#9CA3AF">CCCD & Thẻ SV</p></div>
-</div></div>
-<div style="padding:14px 16px"><p style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:8px">Bằng cấp & Kỹ năng</p>
-<div style="display:flex;flex-wrap:wrap;gap:6px">
-<span class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined" style="font-size:12px">workspace_premium</span> SV Năm 3 CNTT</span>
-<span class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined" style="font-size:12px">workspace_premium</span> IELTS 6.5</span>
-<span class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined" style="font-size:12px">workspace_premium</span> Sơ cấp cứu</span>
-</div></div>
-<div style="margin:0 16px;background:#f5f3ff;border-radius:14px;padding:12px;border-left:3px solid #7c3aed">
-<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span class="material-symbols-outlined filled" style="font-size:16px;color:#7c3aed">smart_toy</span><span style="font-size:12px;font-weight:700;color:#7c3aed">AI Tóm tắt hồ sơ</span></div>
-<p style="font-size:12px;color:#1A1A2E;line-height:1.5">Sinh viên năm 3 CNTT, có kỹ năng gia sư Toán-Lý, IELTS 6.5, được đánh giá cao về sự tận tâm và trách nhiệm.</p>
-</div>
-<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:#fff;border-top:1px solid #F0F0F0"><button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:14px;justify-content:center">CHẤP NHẬN BẠN NÀY LÀM VIỆC</button></div>
-</div></div></div>
+          <div class="ai-rec-card">
+            <div class="ai-rec-header">
+              <span class="material-symbols-outlined">auto_awesome</span>
+              <span>AI gợi ý cho bạn</span>
+            </div>
+            <div class="ai-rec-item">
+              <div class="ai-rec-top">
+                <div class="ai-rec-title">Gia sư Toán lớp 5 cho bé Minh</div>
+                <div class="ai-rec-score">95/100</div>
+              </div>
+              <div class="ai-rec-meta">⭐ Rất phù hợp · 150.000đ · Quận 1</div>
+            </div>
+            <div class="ai-rec-item">
+              <div class="ai-rec-top">
+                <div class="ai-rec-title">Trông trẻ cuối tuần</div>
+                <div class="ai-rec-score">82/100</div>
+              </div>
+              <div class="ai-rec-meta">✓ Phù hợp · 200.000đ · Quận 7</div>
+            </div>
+          </div>
 
-<!-- ===== 9. REVIEW ===== -->
-<div class="phone-wrapper" id="s9">
-<div class="phone-label">9 &bull; Đánh giá Carepartner</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px"><span class="material-symbols-outlined" style="font-size:24px;color:#1A1A2E">close</span><h3 style="font-family:'Manrope';font-size:17px;font-weight:800;color:#1A1A2E">Đánh giá Carepartner</h3></div>
-<div style="margin:16px;background:#FFF4ED;border-radius:18px;padding:24px;text-align:center"><div style="font-size:48px">&#11088;</div><p style="font-family:'Manrope';font-size:18px;font-weight:800;color:#1A1A2E;margin-top:8px">Công việc hoàn thành!</p><p style="font-size:13px;color:#6B7280;margin-top:4px">Đánh giá trải nghiệm của bạn</p></div>
-<div style="text-align:center;padding:0 16px"><div style="display:flex;justify-content:center;gap:8px;margin-bottom:8px"><span style="font-size:40px;color:#F59E0B;cursor:pointer">&#9733;</span><span style="font-size:40px;color:#F59E0B;cursor:pointer">&#9733;</span><span style="font-size:40px;color:#F59E0B;cursor:pointer">&#9733;</span><span style="font-size:40px;color:#F59E0B;cursor:pointer">&#9733;</span><span style="font-size:40px;color:#E5E7EB;cursor:pointer">&#9733;</span></div><p style="font-size:14px;font-weight:700;color:#F26522">Rất tốt</p></div>
-<div style="padding:16px"><div style="min-height:100px;border:1.5px solid #E5E7EB;border-radius:16px;padding:12px;font-size:13px;color:#9CA3AF;background:#fff">Nhận xét về carepartner...</div></div>
-<div style="padding:0 16px"><button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:15px;justify-content:center">Gửi đánh giá <span class="material-symbols-outlined" style="font-size:20px">send</span></button></div>
-</div></div></div>
+          <div class="section" style="padding-top: 0;">
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-cat-pill">
+                  <span class="material-symbols-outlined">menu_book</span>
+                  <span>Gia sư</span>
+                </div>
+                <div class="task-price">150.000đ</div>
+              </div>
+              <div class="task-title">Gia sư Toán lớp 5 cho bé Minh</div>
+              <div class="task-meta">
+                <span>📍 Quận 1</span>
+                <span>📅 Tối thứ 3, 18:00</span>
+                <span>📍 Vùng an toàn</span>
+              </div>
+            </div>
+            
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-cat-pill">
+                  <span class="material-symbols-outlined">cleaning_services</span>
+                  <span>Dọn dẹp</span>
+                </div>
+                <div class="task-price">200.000đ</div>
+              </div>
+              <div class="task-title">Dọn dẹp nhà 2 phòng ngủ</div>
+              <div class="task-meta">
+                <span>📍 Quận 3</span>
+                <span>📅 Thứ 7, 09:00</span>
+              </div>
+            </div>
+            
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-cat-pill">
+                  <span class="material-symbols-outlined">shopping_bag</span>
+                  <span>Mua sắm hộ</span>
+                </div>
+                <div class="task-price">80.000đ</div>
+              </div>
+              <div class="task-title">Đi chợ mua thực phẩm tuần</div>
+              <div class="task-meta">
+                <span>📍 Quận 5</span>
+                <span>📅 Chủ nhật, 07:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bottom-nav">
+          <div class="nav-item active">
+            <span class="material-symbols-outlined">search</span>
+            <div class="label">Tìm việc</div>
+          </div>
+          <div class="nav-item">
+            <span class="material-symbols-outlined">work</span>
+            <div class="label">Việc của tôi</div>
+          </div>
+          <div class="nav-item" onclick="showScreen('chatbot')">
+            <span class="material-symbols-outlined">smart_toy</span>
+            <div class="label">AI Trợ lý</div>
+          </div>
+          <div class="nav-item">
+            <span class="material-symbols-outlined">person</span>
+            <div class="label">Tài khoản</div>
+          </div>
+        </div>
+      </div>
 
-<!-- ===== 10. CHATBOT ===== -->
-<div class="phone-wrapper" id="s10">
-<div class="phone-label">10 &bull; AI Chatbot</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;display:flex;flex-direction:column">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F0F0F0">
-<div style="width:44px;height:44px;border-radius:50%;background:#FFF4ED;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined filled" style="font-size:22px;color:#F26522">smart_toy</span></div>
-<div style="flex:1"><p style="font-size:14px;font-weight:700;color:#1A1A2E">AI Trợ lý EduCareLink</p><div style="display:flex;align-items:center;gap:4px"><div style="width:7px;height:7px;border-radius:50%;background:#10B981"></div><span style="font-size:11px;color:#10B981">Đang hoạt động</span></div></div>
-</div>
-<div style="flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;gap:8px;align-items:flex-end"><div style="width:32px;height:32px;border-radius:50%;background:#FFF4ED;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined filled" style="font-size:16px;color:#F26522">smart_toy</span></div><div class="msg mb">Xin chào! Tôi là AI Trợ lý EduCareLink. Tôi có thể giúp bạn:<br>&bull; Tạo công việc mới<br>&bull; Tìm carepartner phù hợp<br>&bull; Giải đáp thắc mắc</div></div>
-<div class="msg mu" style="align-self:flex-end">Tôi cần tìm gia sư Toán cho con học lớp 5</div>
-<div style="display:flex;gap:8px;align-items:flex-end"><div style="width:32px;height:32px;border-radius:50%;background:#FFF4ED;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined filled" style="font-size:16px;color:#F26522">smart_toy</span></div><div class="msg mb">Tuyệt vời! Tôi sẽ giúp bạn tạo công việc gia sư Toán. Bạn muốn học ở đâu và thời gian nào?</div></div>
-</div>
-<div style="padding:10px 16px 24px;background:#fff;border-top:1px solid #F0F0F0;display:flex;align-items:center;gap:8px">
-<div style="flex:1;height:44px;border-radius:22px;background:#F7F7F7;border:1.5px solid #E5E7EB;padding:0 16px;display:flex;align-items:center"><span style="font-size:13px;color:#9CA3AF">Nhập tin nhắn...</span></div>
-<div style="width:44px;height:44px;border-radius:50%;background:#F26522;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#fff">send</span></div>
-</div></div></div></div>
+      <!-- CHATBOT -->
+      <div class="screen" id="screen-chatbot">
+        <div class="chatbot">
+          <div class="chat-header">
+            <div class="chat-bot-avatar">
+              <span class="material-symbols-outlined">smart_toy</span>
+            </div>
+            <div class="chat-header-info">
+              <h3>AI Trợ lý Educarelink</h3>
+              <div class="chat-status">
+                <div class="dot"></div>
+                <span>Đang hoạt động</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="chat-body">
+            <div class="msg-row">
+              <div class="msg-bot-avatar">
+                <span class="material-symbols-outlined">smart_toy</span>
+              </div>
+              <div class="bubble bot">
+                👋 Xin chào! Tôi là trợ lý AI của EduCareLink. Bạn có thể mô tả công việc cần tìm Carepartner, tôi sẽ giúp bạn tạo việc ngay!
+              </div>
+            </div>
+            
+            <div class="msg-row user">
+              <div class="bubble user">
+                Tôi cần gia sư Toán lớp 5 cho bé ở Quận 1, tối thứ 3 18h, 150000đ
+              </div>
+            </div>
+            
+            <div class="msg-row">
+              <div class="msg-bot-avatar">
+                <span class="material-symbols-outlined">smart_toy</span>
+              </div>
+              <div class="bubble bot">
+                Chào anh/chị! Em đã ghi nhận yêu cầu tìm gia sư Toán lớp 5 cho bé nhà mình.<br><br>
+                <strong>Thông tin ban đầu:</strong>
+                <ul>
+                  <li><strong>Dịch vụ:</strong> Gia sư Toán lớp 5</li>
+                  <li><strong>Địa điểm:</strong> Quận 1</li>
+                  <li><strong>Thời gian:</strong> Tối thứ 3 lúc 18h</li>
+                  <li><strong>Mức giá:</strong> 150.000đ/buổi</li>
+                </ul>
+                <div class="safety-q">
+                  🔒 <strong>Để bảo vệ an toàn cho bé, anh/chị có muốn kích hoạt CHẾ ĐỘ BẢO ĐẢM AN TOÀN không?</strong><br><br>
+                  Chế độ này sẽ:
+                  <ul>
+                    <li>Vẽ vùng an toàn quanh nơi làm việc (500m)</li>
+                    <li>Cảnh báo ngay nếu Carepartner rời vùng an toàn</li>
+                    <li>Chuông kêu + thông báo khẩn cấp nếu tắt máy > 90 giây</li>
+                    <li>Nút SOS khẩn cấp cho cả phụ huynh và Carepartner</li>
+                    <li>Theo dõi vị trí real-time khi Carepartner đang làm việc</li>
+                  </ul>
+                  👉 Trả lời <strong>"có"</strong> để bật, hoặc <strong>"không"</strong> để bỏ qua.
+                </div>
+              </div>
+            </div>
+            
+            <div class="msg-row user">
+              <div class="bubble user">có</div>
+            </div>
+            
+            <div class="msg-row">
+              <div class="msg-bot-avatar">
+                <span class="material-symbols-outlined">smart_toy</span>
+              </div>
+              <div class="bubble bot">
+                Tuyệt vời! Em đã ghi nhận anh/chị muốn bật Chế độ bảo đảm an toàn.<br><br>
+                ✅ <strong>Đã tạo công việc thành công!</strong><br><br>
+                🔒 <strong>Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!</strong>
+                <ul>
+                  <li>Vùng an toàn: 500m quanh địa điểm làm việc</li>
+                  <li>Cảnh báo nếu Carepartner rời vùng</li>
+                  <li>Chuông khẩn cấp nếu tắt máy > 90s</li>
+                  <li>Nút SOS sẵn sàng cho cả 2 bên</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div class="chat-input-bar">
+            <input type="text" class="chat-input" placeholder="Nhắn tin cho AI...">
+            <button class="chat-send">
+              <span class="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-<!-- ===== 11. WORKER FEED ===== -->
-<div class="phone-wrapper" id="s11">
-<div class="phone-label">11 &bull; Bảng tin Carepartner</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;padding-bottom:70px">
-<div class="sb sb-d"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div class="ho" style="padding-top:4px">
-<div style="display:flex;justify-content:space-between;align-items:center"><div><p class="ol" style="color:rgba(255,255,255,.7)">Carepartner</p><p class="tt">Chào, Văn An!</p></div><div class="ib"><span class="material-symbols-outlined" style="font-size:20px">notifications</span></div></div>
-<div style="margin-top:12px;background:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:8px"><span class="material-symbols-outlined" style="font-size:18px;color:#9CA3AF">search</span><span style="font-size:13px;color:#9CA3AF">Tìm kiếm việc làm...</span></div>
+    </div>
+  </div>
 </div>
-<p style="padding:14px 16px 6px;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#9CA3AF">8 việc làm mới nhất</p>
-<div class="cd">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined filled" style="font-size:12px">menu_book</span> Gia sư</div><span style="font-size:15px;font-weight:800;color:#F26522">150,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin-bottom:8px">Gia sư Toán lớp 5 cho bé</p>
-<div style="display:flex;gap:8px;font-size:12px;color:#9CA3AF;margin-bottom:10px"><span style="display:flex;align-items:center;gap:3px"><div class="icon" style="width:24px;height:24px;border-radius:50%;background:#FFF9F5"><span class="material-symbols-outlined" style="font-size:12px">schedule</span></div>15/03 14:00</span><span style="display:flex;align-items:center;gap:3px"><div class="icon" style="width:24px;height:24px;border-radius:50%;background:#FFF9F5"><span class="material-symbols-outlined" style="font-size:12px">location_on</span></div>Quận 1</span></div>
-<div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:6px"><div style="width:30px;height:30px;border-radius:50%;background:#FFCFB3;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#F26522">M</div><span style="font-size:12px;color:#6B7280">PH Minh</span></div><button class="bt bp" style="font-size:12px;padding:8px 14px;border-radius:10px">Ứng tuyển</button></div>
-</div>
-<div class="cd">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="bg" style="background:#FEF2F2;color:#EF4444"><span class="material-symbols-outlined filled" style="font-size:12px">child_care</span> Trông trẻ</div><span style="font-size:15px;font-weight:800;color:#F26522">200,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin-bottom:8px">Trông trẻ tối thứ 6</p>
-<div style="display:flex;gap:8px;font-size:12px;color:#9CA3AF;margin-bottom:10px"><span style="display:flex;align-items:center;gap:3px"><div class="icon" style="width:24px;height:24px;border-radius:50%;background:#FFF9F5"><span class="material-symbols-outlined" style="font-size:12px">schedule</span></div>21/03 18:00</span><span style="display:flex;align-items:center;gap:3px"><div class="icon" style="width:24px;height:24px;border-radius:50%;background:#FFF9F5"><span class="material-symbols-outlined" style="font-size:12px">location_on</span></div>Quận 7</span></div>
-<div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:6px"><div style="width:30px;height:30px;border-radius:50%;background:#FFCFB3;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#F26522">L</div><span style="font-size:12px;color:#6B7280">PH Lan</span></div><button class="bt bd" style="font-size:12px;padding:8px 14px;border-radius:10px;cursor:default">Đã ứng tuyển</button></div>
-</div>
-<div class="bn"><div class="tb cw on"><span class="material-symbols-outlined filled" style="color:#2DB84B">search</span>Tìm việc</div><div class="tb cw"><span class="material-symbols-outlined">briefcase</span>Việc của tôi</div><div class="tb cw"><span class="material-symbols-outlined">person</span>Tài khoản</div></div>
-</div></div></div>
-
-<!-- ===== 12. TASK DETAIL ===== -->
-<div class="phone-wrapper" id="s12">
-<div class="phone-label">12 &bull; Chi tiết công việc</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="padding:12px 16px;display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#FFF9F5;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#1A1A2E">arrow_back</span></div><h3 style="font-family:'Manrope';font-size:17px;font-weight:800;color:#1A1A2E">Chi tiết công việc</h3></div>
-<div style="margin:0 16px;background:#FFF9F5;border-radius:18px;padding:18px">
-<div class="bg" style="background:#FFF4ED;color:#F26522;margin-bottom:8px"><span class="material-symbols-outlined filled" style="font-size:12px">menu_book</span> Gia sư</div>
-<p style="font-family:'Manrope';font-size:20px;font-weight:800;color:#1A1A2E">Gia sư Toán lớp 5 cho bé</p>
-<p style="font-size:28px;font-weight:900;color:#F26522;margin-top:4px">150,000<span style="font-size:14px;font-weight:600;color:#9CA3AF">đ/buổi</span></p>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px">
-<div class="ic"><div class="icon" style="background:#FFF4ED"><span class="material-symbols-outlined" style="font-size:18px;color:#F26522">calendar_today</span></div><div><p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase">Thời gian</p><p style="font-size:12px;font-weight:700;color:#1A1A2E">15/03 14:00</p></div></div>
-<div class="ic"><div class="icon" style="background:#EAFBEF"><span class="material-symbols-outlined" style="font-size:18px;color:#2DB84B">location_on</span></div><div><p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase">Địa điểm</p><p style="font-size:12px;font-weight:700;color:#1A1A2E">Quận 1</p></div></div>
-<div class="ic"><div class="icon" style="background:#EFF6FF"><span class="material-symbols-outlined" style="font-size:18px;color:#3B82F6">person</span></div><div><p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase">Phụ huynh</p><p style="font-size:12px;font-weight:700;color:#1A1A2E">PH Minh</p></div></div>
-<div class="ic"><div class="icon" style="background:#FFFBEB"><span class="material-symbols-outlined" style="font-size:18px;color:#F59E0B">payments</span></div><div><p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase">Lương</p><p style="font-size:12px;font-weight:700;color:#1A1A2E">150,000đ</p></div></div>
-</div>
-<div style="margin:0 16px;background:#fff;border-radius:14px;padding:14px;border-left:3px solid #F26522">
-<p style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:6px">Yêu cầu chi tiết</p>
-<p style="font-size:12px;color:#6B7280;line-height:1.6">Cần gia sư dạy Toán cho bé lớp 5, 3 buổi/tuần vào T2-T4-T6, từ 14:00-16:00. Yêu cầu sinh viên năm 2 trở lên, có kinh nghiệm gia sư.</p>
-</div>
-<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:#fff;border-top:1px solid #F0F0F0"><button class="bt bp" style="width:100%;height:54px;border-radius:16px;font-size:15px;justify-content:center">ỨNG TUYỂN NGAY <span class="material-symbols-outlined" style="font-size:20px">send</span></button></div>
-</div></div></div>
-
-<!-- ===== 13. MY JOBS (Worker) ===== -->
-<div class="phone-wrapper" id="s13">
-<div class="phone-label">13 &bull; Việc của tôi (CP)</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;padding-bottom:70px">
-<div class="sb sb-l"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center"><h3 style="font-family:'Manrope';font-size:20px;font-weight:800;color:#1A1A2E">Việc của tôi</h3><div class="bg" style="background:#EAFBEF;color:#2DB84B"><span class="material-symbols-outlined" style="font-size:14px">account_balance_wallet</span> 1,200,000đ</div></div>
-<div style="display:flex;background:#fff;border-bottom:1px solid #F0F0F0">
-<div style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:700;color:#F26522;border-bottom:2.5px solid #F26522;background:#FFF4ED">Chờ duyệt</div>
-<div style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;color:#9CA3AF">Sắp làm</div>
-<div style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;color:#9CA3AF">Lịch sử</div>
-</div>
-<div class="cd">
-<div style="display:flex;gap:12px;align-items:start">
-<div style="width:44px;height:44px;border-radius:50%;background:#FFFBEB;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined" style="font-size:22px;color:#F59E0B">schedule</span></div>
-<div style="flex:1">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#FFFBEB;color:#F59E0B;font-size:10px;padding:2px 8px">Chờ duyệt</div><span style="font-size:14px;font-weight:800;color:#F26522">150,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:6px 0 4px">Gia sư Toán lớp 5</p>
-<div style="display:flex;gap:12px;font-size:11px;color:#9CA3AF;margin-bottom:8px"><span>&#x1f4c5; 15/03 14:00</span><span>&#x1f4cd; Quận 1</span></div>
-<div style="display:flex;align-items:center;gap:6px;background:#FFF4ED;padding:6px 10px;border-radius:10px;border:1px solid #FFCFB3"><div style="width:26px;height:26px;border-radius:50%;background:#FFCFB3;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#F26522">M</div><span style="font-size:12px;color:#6B7280">PH Minh</span></div>
-</div></div></div>
-<div class="cd">
-<div style="display:flex;gap:12px;align-items:start">
-<div style="width:44px;height:44px;border-radius:50%;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined filled" style="font-size:22px;color:#10B981">check_circle</span></div>
-<div style="flex:1">
-<div style="display:flex;justify-content:space-between;align-items:start"><div class="bg" style="background:#ECFDF5;color:#10B981;font-size:10px;padding:2px 8px">Được chọn</div><span style="font-size:14px;font-weight:800;color:#F26522">200,000đ</span></div>
-<p style="font-size:14px;font-weight:700;color:#1A1A2E;margin:6px 0 4px">Trông trẻ tối thứ 6</p>
-<div style="display:flex;gap:12px;font-size:11px;color:#9CA3AF;margin-bottom:8px"><span>&#x1f4c5; 21/03 18:00</span><span>&#x1f4cd; Quận 7</span></div>
-<div style="display:flex;align-items:center;gap:6px;background:#FFF4ED;padding:6px 10px;border-radius:10px;border:1px solid #FFCFB3"><div style="width:26px;height:26px;border-radius:50%;background:#FFCFB3;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#F26522">L</div><span style="font-size:12px;color:#6B7280">PH Lan</span></div>
-</div></div></div>
-<div class="bn"><div class="tb cw"><span class="material-symbols-outlined">search</span>Tìm việc</div><div class="tb cw on"><span class="material-symbols-outlined filled" style="color:#2DB84B">briefcase</span>Việc của tôi</div><div class="tb cw"><span class="material-symbols-outlined">person</span>Tài khoản</div></div>
-</div></div></div>
-
-<!-- ===== 14. WORKER PROFILE ===== -->
-<div class="phone-wrapper" id="s14">
-<div class="phone-label">14 &bull; Hồ sơ Carepartner</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-d"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div class="ho" style="padding-top:4px;border-radius:0 0 28px 28px;text-align:center">
-<div style="width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.2);border:4px solid rgba(255,255,255,.5);margin:0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(255,255,255,.3)">
-<div style="width:82px;height:82px;border-radius:50%;background:#F26522;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff">A</div>
-</div>
-<p style="font-size:20px;font-weight:800;color:#fff;margin-top:8px">Nguyễn Văn An</p>
-<p style="font-size:13px;color:rgba(255,255,255,.7)">@sinhvien_test</p>
-<div style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2)"><span class="material-symbols-outlined filled" style="font-size:12px;color:#fff">verified</span><span style="font-size:11px;font-weight:700;color:#fff">Đã xác thực</span></div>
-</div>
-<div style="margin:14px 16px;background:#FFF4ED;border-radius:14px;padding:12px;border-left:3px solid #F26522">
-<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span class="material-symbols-outlined filled" style="font-size:16px;color:#F26522">smart_toy</span><span style="font-size:12px;font-weight:700;color:#F26522">AI Tóm tắt</span></div>
-<p style="font-size:12px;color:#1A1A2E;line-height:1.5">Sinh viên năm 3 CNTT, có kỹ năng gia sư Toán-Lý, IELTS 6.5, được đánh giá cao về sự tận tâm.</p>
-</div>
-<div style="margin:0 16px;background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)">
-<p style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:10px">Thông tin cá nhân</p>
-<div style="display:flex;flex-direction:column;gap:10px">
-<div style="display:flex;align-items:center;gap:10px"><div class="icon" style="background:#EFF6FF"><span class="material-symbols-outlined" style="font-size:16px;color:#3B82F6">email</span></div><div><p style="font-size:10px;color:#9CA3AF;font-weight:600">Email</p><p style="font-size:13px;color:#1A1A2E;font-weight:600">an@email.com</p></div></div>
-<div style="display:flex;align-items:center;gap:10px"><div class="icon" style="background:#EAFBEF"><span class="material-symbols-outlined" style="font-size:16px;color:#2DB84B">phone</span></div><div><p style="font-size:10px;color:#9CA3AF;font-weight:600">Số điện thoại</p><p style="font-size:13px;color:#1A1A2E;font-weight:600">0912345678</p></div></div>
-<div style="display:flex;align-items:center;gap:10px"><div class="icon" style="background:#FFF4ED"><span class="material-symbols-outlined" style="font-size:16px;color:#F26522">location_on</span></div><div><p style="font-size:10px;color:#9CA3AF;font-weight:600">Địa chỉ</p><p style="font-size:13px;color:#1A1A2E;font-weight:600">Ký túc xá ĐH Bách Khoa</p></div></div>
-</div></div>
-<div style="margin:14px 16px;background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)">
-<p style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:8px">Bằng cấp</p>
-<div style="display:flex;flex-wrap:wrap;gap:6px">
-<span class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined" style="font-size:12px">workspace_premium</span> SV Năm 3 CNTT</span>
-<span class="bg" style="background:#FFF4ED;color:#F26522"><span class="material-symbols-outlined" style="font-size:12px">workspace_premium</span> IELTS 6.5</span>
-</div></div>
-<div style="margin:0 16px">
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F0F0F0"><div class="icon" style="background:#FFFBEB"><span class="material-symbols-outlined" style="font-size:16px;color:#F59E0B">star</span></div><span style="font-size:13px;font-weight:600;color:#1A1A2E;flex:1">Đánh giá của tôi</span><span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span></div>
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F0F0F0"><div class="icon" style="background:#FFF4ED"><span class="material-symbols-outlined" style="font-size:16px;color:#F26522">edit</span></div><span style="font-size:13px;font-weight:600;color:#1A1A2E;flex:1">Chỉnh sửa hồ sơ</span><div class="bg" style="background:#FFFBEB;color:#F59E0B;font-size:9px;padding:2px 6px">Chờ duyệt</div><span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span></div>
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F0F0F0"><div class="icon" style="background:#EFF6FF"><span class="material-symbols-outlined" style="font-size:16px;color:#3B82F6">upload_file</span></div><span style="font-size:13px;font-weight:600;color:#1A1A2E;flex:1">Tải chứng chỉ</span><span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span></div>
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F0F0F0"><div class="icon" style="background:#F3E8FF"><span class="material-symbols-outlined" style="font-size:16px;color:#7C3AED">smart_toy</span></div><span style="font-size:13px;font-weight:600;color:#1A1A2E;flex:1">AI Trợ lý</span><span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span></div>
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F0F0F0"><div class="icon" style="background:#EAFBEF"><span class="material-symbols-outlined" style="font-size:16px;color:#2DB84B">help</span></div><span style="font-size:13px;font-weight:600;color:#1A1A2E;flex:1">Trung tâm trợ giúp</span><span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span></div>
-<div style="display:flex;align-items:center;gap:10px;padding:12px 0"><div class="icon" style="background:#FEF2F2"><span class="material-symbols-outlined" style="font-size:16px;color:#EF4444">logout</span></div><span style="font-size:13px;font-weight:600;color:#EF4444;flex:1">Đăng xuất</span></div>
-</div>
-<div class="bn"><div class="tb cw"><span class="material-symbols-outlined">search</span>Tìm việc</div><div class="tb cw"><span class="material-symbols-outlined">briefcase</span>Việc của tôi</div><div class="tb cw on"><span class="material-symbols-outlined filled" style="color:#2DB84B">person</span>Tài khoản</div></div>
-</div></div></div>
-
-<!-- ===== 15. AI CHATBOT CAREPARTNER ===== -->
-<div class="phone-wrapper" id="s15">
-<div class="phone-label">15 &bull; AI Chatbot Carepartner</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7;display:flex;flex-direction:column">
-<div class="sb sb-d"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:#2DB84B;padding:12px 20px;display:flex;align-items:center;gap:12px">
-<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#fff">arrow_back</span></div>
-<div style="flex:1"><p style="font-size:15px;font-weight:800;color:#fff">AI Trợ lý Carepartner</p><p style="font-size:11px;color:rgba(255,255,255,.7)">Hỗ trợ tư vấn & Kỹ năng</p></div>
-<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#fff">smart_toy</span></div>
-</div>
-<div style="flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;gap:8px;align-items:flex-start">
-<div style="width:32px;height:32px;border-radius:50%;background:#EAFBEF;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined filled" style="font-size:16px;color:#2DB84B">smart_toy</span></div>
-<div class="msg mb">Chào bạn! Tôi là AI Trợ lý Carepartner. Tôi có thể giúp bạn tư vấn kỹ năng làm việc, cách tăng đánh giá sao, hoặc giải đáp thắc mắc về nền tảng. Bạn cần hỗ trợ gì?</div>
-</div>
-<div style="display:flex;justify-content:flex-end"><div class="msg mu">Làm sao để tăng đánh giá sao trên nền tảng?</div></div>
-<div style="display:flex;gap:8px;align-items:flex-start">
-<div style="width:32px;height:32px;border-radius:50%;background:#EAFBEF;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined filled" style="font-size:16px;color:#2DB84B">smart_toy</span></div>
-<div class="msg mb">Để tăng đánh giá sao, bạn có thể:<br><br>1. <b>Giao tiếp chuyên nghiệp</b>: Luôn phản hồi tin nhắn từ phụ huynh nhanh chóng và lịch sự.<br>2. <b>Đúng giờ</b>: Đến đúng thời gian đã hẹn, không trễ hẹn.<br>3. <b>Chủ động cập nhật</b>: Thông báo tiến độ cho phụ huynh trong quá trình làm việc.<br>4. <b>Thể hiện kỹ năng</b>: Tải lên bằng cấp và chứng chỉ để tăng uy tín.</div>
-</div>
-</div>
-<div style="padding:12px 16px;background:#fff;border-top:1px solid #F0F0F0;display:flex;gap:8px;align-items:center">
-<div style="flex:1;height:44px;border:1.5px solid #E5E7EB;border-radius:22px;padding:0 16px;display:flex;align-items:center"><span style="color:#9CA3AF;font-size:13px">Nhập câu hỏi...</span></div>
-<div style="width:44px;height:44px;border-radius:50%;background:#2DB84B;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#fff">send</span></div>
-</div>
-</div></div></div>
-
-<!-- ===== 16. HELP CENTER ===== -->
-<div class="phone-wrapper" id="s16">
-<div class="phone-label">16 &bull; Trung tâm trợ giúp</div>
-<div class="phone-frame"><div class="phone-notch"></div>
-<div class="phone-screen" style="background:#F7F7F7">
-<div class="sb sb-d"><span>9:41</span><div class="si"><span class="material-symbols-outlined" style="font-size:16px">signal_cellular_alt</span><span class="material-symbols-outlined" style="font-size:16px">wifi</span><span class="material-symbols-outlined" style="font-size:16px">battery_full</span></div></div>
-<div style="background:linear-gradient(135deg,#3B82F6 0%,#1D4ED8 100%);padding:16px 20px 24px;text-align:center">
-<div style="width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.2);margin:0 auto 10px;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined filled" style="font-size:30px;color:#fff">help</span></div>
-<p style="font-size:20px;font-weight:800;color:#fff;font-family:'Manrope'">Trung tâm trợ giúp</p>
-<p style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px">AI hỗ trợ 24/7</p>
-</div>
-<div style="padding:16px">
-<div class="cd" style="padding:0;overflow:hidden">
-<div style="padding:14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F0F0F0">
-<div style="width:40px;height:40px;border-radius:12px;background:#EFF6FF;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:20px;color:#3B82F6">smart_toy</span></div>
-<div style="flex:1"><p style="font-size:13px;font-weight:700;color:#1A1A2E">Hỏi AI Trợ lý</p><p style="font-size:11px;color:#6B7280">Giải đáp mọi câu hỏi về EduCareLink</p></div>
-<span class="material-symbols-outlined" style="font-size:16px;color:#9CA3AF">chevron_right</span>
-</div>
-</div>
-<p style="font-size:12px;font-weight:700;color:#6B7280;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px">Chủ đề phổ biến</p>
-<div style="display:flex;flex-direction:column;gap:8px">
-<div class="cd" style="display:flex;align-items:center;gap:10px;padding:12px">
-<div style="width:36px;height:36px;border-radius:10px;background:#FFF4ED;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:18px;color:#F26522">how_to_reg</span></div>
-<div style="flex:1"><p style="font-size:13px;font-weight:600;color:#1A1A2E">Đăng ký Carepartner</p></div>
-<span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">chevron_right</span>
-</div>
-<div class="cd" style="display:flex;align-items:center;gap:10px;padding:12px">
-<div style="width:36px;height:36px;border-radius:10px;background:#EAFBEF;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:18px;color:#2DB84B">work</span></div>
-<div style="flex:1"><p style="font-size:13px;font-weight:600;color:#1A1A2E">Cách ứng tuyển việc</p></div>
-<span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">chevron_right</span>
-</div>
-<div class="cd" style="display:flex;align-items:center;gap:10px;padding:12px">
-<div style="width:36px;height:36px;border-radius:10px;background:#F3E8FF;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:18px;color:#7C3AED">edit_note</span></div>
-<div style="flex:1"><p style="font-size:13px;font-weight:600;color:#1A1A2E">Thay đổi hồ sơ</p></div>
-<span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">chevron_right</span>
-</div>
-<div class="cd" style="display:flex;align-items:center;gap:10px;padding:12px">
-<div style="width:36px;height:36px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center"><span class="material-symbols-outlined" style="font-size:18px;color:#EF4444">workspace_premium</span></div>
-<div style="flex:1"><p style="font-size:13px;font-weight:600;color:#1A1A2E">Gửi bằng cấp</p></div>
-<span class="material-symbols-outlined" style="font-size:14px;color:#9CA3AF">chevron_right</span>
-</div>
-</div>
-</div>
-</div></div></div>
-
-</div><!-- end phone-grid -->
 
 <script>
-function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth',block:'center'})}
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  
+  document.querySelectorAll('.btn-screen').forEach(b => b.classList.remove('active'));
+  event && event.target && event.target.closest('.btn-screen') && event.target.closest('.btn-screen').classList.add('active');
+  
+  // Update status bar style
+  const sb = document.getElementById('statusBar');
+  if (name === 'splash') {
+    sb.classList.add('dark');
+  } else {
+    sb.classList.remove('dark');
+  }
+  
+  // Scroll to top
+  const active = document.getElementById('screen-' + name);
+  if (active) active.scrollTop = 0;
+}
+
+// Update clock
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m;
+}
+updateClock();
+setInterval(updateClock, 60000);
 </script>
+
 </body>
 </html>
