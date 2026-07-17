@@ -23,6 +23,7 @@ from rest_framework import generics, status, serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 
 from core.models import Task
 from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert, DeviceHeartbeat, DeviceOfflineAlert
@@ -253,6 +254,9 @@ class SOSCreateAPIView(APIView):
     Carepartner hoặc parent bấm SOS khẩn cấp.
     """
     permission_classes = [IsAuthenticated]
+    # ⚡ Security: Rate limit SOS — 5/phút (chống spam khẩn cấp)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'sos'
 
     def post(self, request):
         serializer = SOSSerializer(data=request.data)

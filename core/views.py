@@ -149,6 +149,9 @@ class RegisterAPIView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    # ⚡ Security: Rate limit register — 3/giờ per IP (chống spam account)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'register'
 
     def create(self, request, *args, **kwargs):
         role = request.data.get('role', 'parent')
@@ -274,9 +277,14 @@ class UserProfileAPIView(APIView):
 class TaskListCreateAPIView(generics.ListCreateAPIView):
     # ⚡ TỐI ƯU: select_related → giảm N+1 queries (parent + category load chung 1 query)
     # ⚡ FILTER: exclude tasks có moderation status='rejected' (không hiển thị trên feed)
-    queryset = Task.objects.select_related('parent', 'category').all().order_by('-created_at')
+    # ⚡ SECURITY: limit queryset to 200 records (chống DoS khi DB lớn)
+    queryset = Task.objects.select_related('parent', 'category').all().order_by('-created_at')[:200]
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+    # ⚡ Security: Rate limit task creation — 10/giờ (chống spam việc ảo)
+    # Chỉ áp dụng cho POST (create), GET dùng default user throttle
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'task_create'
 
     def get_queryset(self):
         # ⚡ Filter out rejected tasks — không hiển thị trên worker feed
@@ -529,6 +537,9 @@ class ReviewCreateAPIView(generics.CreateAPIView):
 # --- PHẦN 4: LUỒNG DÀNH CHO SINH VIÊN ---
 class ApplyTaskAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    # ⚡ Security: Rate limit apply — 20/giờ (chống spam ứng tuyển)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'apply'
     def post(self, request, task_id):
         # Phục vụ Màn 9: Nút bấm [Ứng tuyển ngay]
         if request.user.role != 'worker':
