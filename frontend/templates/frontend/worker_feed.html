@@ -506,7 +506,7 @@
             document.getElementById('stat-total').textContent = tasks.length;
 
             if (tasks.length > 0) {
-                const avg = tasks.reduce((sum, t) => sum + (t.price || 0), 0) / tasks.length;
+                const avg = tasks.reduce((sum, t) => sum + (parseFloat(t.price) || 0), 0) / tasks.length;
                 document.getElementById('stat-avg').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(avg)) + 'đ';
             } else {
                 document.getElementById('stat-avg').textContent = '0đ';
@@ -570,7 +570,7 @@
                             <span class="material-symbols-outlined text-sm">category</span>
                             ${catLabel}
                         </span>
-                        <span class="font-manrope text-xl font-extrabold text-primary">${new Intl.NumberFormat('vi-VN').format(t.price)}đ</span>
+                        <span class="font-manrope text-xl font-extrabold text-primary">${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
                     </div>
 
                     <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${t.title}</h3>

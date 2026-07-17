@@ -502,7 +502,7 @@ function getStatusConfig(status) {
 }
 
 function formatPrice(price) {
-  return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+  return new Intl.NumberFormat('vi-VN').format(parseInt(price) || 0) + 'đ';
 }
 
 function formatDate(dateStr) {
