@@ -41,7 +41,12 @@ services:
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL
-      # Value: connection string từ Neon (postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require)
+      # Value: connection string từ Supabase (KHUYẾN NGHỊ — free 500MB + Storage 1GB)
+      #   Dashboard Supabase > Project Settings > Database > Connection string
+      #   Chọn "Session pooler" URI:
+      #   postgresql://postgres.xxxx:pass@aws-0-region.pooler.supabase.com:5432/postgres
+      #
+      # (CŨ — Neon): postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require
       # ── MoMo Payment (escrow + cash settlement) ──
       # Đăng ký đối tác tại https://business.momo.vn/ để lấy Partner Code / Access Key / Secret Key
       # Sandbox test credentials có sẵn trong docs https://developers.momo.vn/v3/vi/docs/payment/app/app-in-app/payment-link

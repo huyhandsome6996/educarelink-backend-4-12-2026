@@ -89,14 +89,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 # --- CẤU HÌNH DATABASE ---
-# Ưu tiên DATABASE_URL từ biến môi trường (PostgreSQL trên Neon/Render/Supabase)
+# Ưu tiên DATABASE_URL từ biến môi trường (PostgreSQL trên Supabase/Neon/Render)
 # Nếu không có → fallback về SQLite cho development local
-# Neon:   postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require
-# Supabase: postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres
+#
+# Supabase (khuyến nghị): postgresql://postgres.xxxx:pass@db.xxxx.supabase.co:5432/postgres
+#   → Dashboard > Project Settings > Database > Connection string > "Session pooler" URI
+# Neon (cũ):              postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 if DATABASE_URL and DATABASE_URL.startswith('postgres'):
-    # Production: PostgreSQL (Neon / Supabase / Render)
+    # Production: PostgreSQL (Supabase / Neon / Render)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -104,12 +106,22 @@ if DATABASE_URL and DATABASE_URL.startswith('postgres'):
             conn_health_checks=True,
         )
     }
+
+    # ⚠️ Supabase (và một số pooler khác) chạy PgBouncer ở chế độ transaction-pooling,
+    #    không hỗ trợ prepared statements 2-phase. Django 5.2 mặc định bật prepared
+    #    statements → phải tắt để tránh lỗi "prepared statement does not exist".
+    #    Neon không qua pooler nên không bị ảnh hưởng.
+    if 'supabase' in DATABASE_URL or 'pooler' in DATABASE_URL:
+        DATABASES['default']['OPTIONS'] = {
+            **DATABASES['default'].get('OPTIONS', {}),
+            'prepare_threshold': None,
+        }
 else:
     if not DEBUG:
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured(
             "DATABASE_URL environment variable is required in production. "
-            "Set it to your Neon/Render PostgreSQL connection string."
+            "Set it to your Supabase (hoặc Neon) PostgreSQL connection string."
         )
     # Development local: SQLite (không cần cài gì thêm)
     DATABASES = {
