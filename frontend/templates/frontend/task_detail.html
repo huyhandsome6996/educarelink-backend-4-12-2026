@@ -682,7 +682,7 @@
             document.getElementById('task-title').textContent = task.title;
 
             // Price
-            document.getElementById('task-price').textContent = new Intl.NumberFormat('vi-VN').format(task.price) + 'đ';
+            document.getElementById('task-price').textContent = new Intl.NumberFormat('vi-VN').format(parseInt(task.price)) + 'đ';
 
             // Time
             document.getElementById('task-time').textContent = formatDateTime(task.scheduled_time);
