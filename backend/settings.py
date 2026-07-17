@@ -172,6 +172,10 @@ REST_FRAMEWORK = {
         'user': '600/min',  # authenticated: 600 req/phút (10 req/s — đủ cho mobile polling)
         'ai': '20/min',  # AI endpoints: 20 req/phút (tránh spam Gemini)
         'login': '5/min',  # ⚡ BUG-005 fix: login endpoint — 5 attempts/phút (chống brute-force)
+        'register': '3/hour',  # ⚡ Security: register — 3/giờ (chống spam account)
+        'sos': '5/min',  # ⚡ Security: SOS — 5/phút (chống spam khẩn cấp)
+        'task_create': '10/hour',  # ⚡ Security: tạo task — 10/giờ (chống spam việc ảo)
+        'apply': '20/hour',  # ⚡ Security: ứng tuyển — 20/giờ
     },
 }
 

@@ -269,7 +269,7 @@ class AdminAllPaymentsAPIView(generics.ListAPIView):
         method_filter = self.request.query_params.get('method')
         if method_filter:
             qs = qs.filter(method=method_filter)
-        return qs
+        return qs[:500]  # ⚡ Security: cap 500 records (chống DoS)
 
 
 class AdminRetryPayoutAPIView(APIView):
