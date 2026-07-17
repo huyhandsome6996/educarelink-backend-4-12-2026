@@ -41,7 +41,9 @@ services:
       # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
       # Vào Settings → Environment → Add Environment Variable
       # Key: DATABASE_URL
-      # Value: connection string từ Neon (postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require)
+      # Neon:     postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require
+      # Supabase: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?sslmode=require
+      # ⚠️ Khi migrate sang DB mới, chỉ cần đổi giá trị DATABASE_URL trên Render Dashboard.
       # ── MoMo Payment (escrow + cash settlement) ──
       # Đăng ký đối tác tại https://business.momo.vn/ để lấy Partner Code / Access Key / Secret Key
       # Sandbox test credentials có sẵn trong docs https://developers.momo.vn/v3/vi/docs/payment/app/app-in-app/payment-link

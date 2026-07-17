@@ -36,6 +36,8 @@ _stats = {
 
 def _run_offline_check():
     """Job chạy mỗi 1 phút — check offline devices."""
+    from django.db import close_old_connections
+    close_old_connections()  # Tránh stale connection sau khi migrate DB
     from .services import check_offline_devices
     try:
         stats = check_offline_devices()

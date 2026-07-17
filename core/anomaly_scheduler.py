@@ -91,6 +91,8 @@ def _send_admin_notification(title, message):
 def _run_anomaly_checks():
     """Chạy tất cả kiểm tra bất thường."""
     try:
+        from django.db import close_old_connections
+        close_old_connections()  # Tránh stale connection sau khi migrate DB
         from core.models import User, Task, TaskApplication, CredentialSubmission, Review
         from django.utils import timezone
 

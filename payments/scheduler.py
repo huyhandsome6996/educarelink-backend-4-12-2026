@@ -41,6 +41,8 @@ _stats = {
 
 def _run_monthly_settlement():
     """Job chạy ngày 1 hàng tháng — sinh QR cho kỳ thanh toán tháng trước."""
+    from django.db import close_old_connections
+    close_old_connections()  # Tránh stale connection sau khi migrate DB
     from .services import generate_monthly_settlements
     try:
         stats = generate_monthly_settlements()
@@ -53,6 +55,8 @@ def _run_monthly_settlement():
 
 def _run_reminders():
     """Job chạy mỗi ngày — nhắc overdue settlements."""
+    from django.db import close_old_connections
+    close_old_connections()  # Tránh stale connection sau khi migrate DB
     from .services import send_settlement_reminders
     try:
         stats = send_settlement_reminders()
