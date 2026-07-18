@@ -369,6 +369,241 @@ class Command(BaseCommand):
         self.stdout.write(f"   + Tao {len(notifs)} thong bao mau")
 
         # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 8: TRACKING (LocationConsent + LiveLocation + History + Heartbeat + SOS + OfflineAlert)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[8/10] Dang tao du lieu Tracking (geofence, heartbeat, SOS)...")
+
+        try:
+            from tracking.models import (
+                LocationConsent, LiveLocation, LocationHistory,
+                DeviceHeartbeat, DeviceOfflineAlert, SOSAlert,
+            )
+            from decimal import Decimal
+
+            tracking_count = 0
+            # Gán geofence cho open + in_progress tasks (parent vẽ vùng an toàn khi đăng việc)
+            geofence_tasks = [t for t in task_objects if t.status in ("open", "in_progress")]
+            for i, t in enumerate(geofence_tasks):
+                t.geofence_lat = 10.7897 + (i * 0.005)
+                t.geofence_lng = 106.6883 + (i * 0.005)
+                t.geofence_radius = 500
+                t.save()
+                tracking_count += 1
+            self.stdout.write(f"   + Gan geofence cho {tracking_count} task (open + in_progress)")
+
+            # LocationConsent + LiveLocation cho in_progress tasks (carepartner đang làm)
+            for t in in_progress_tasks:
+                # Tìm worker đã accept task này
+                accepted_app = TaskApplication.objects.filter(task=t, status="accepted").first()
+                if not accepted_app:
+                    continue
+                w = accepted_app.worker
+                # Consent granted
+                LocationConsent.objects.create(
+                    task=t, worker=w, consent="granted",
+                    granted_at=now - timedelta(hours=1),
+                )
+                # LiveLocation (đang ở trong vùng an toàn)
+                LiveLocation.objects.create(
+                    task=t, worker=w,
+                    latitude=Decimal("10.7897"), longitude=Decimal("106.6883"),
+                    accuracy=5.0, speed=0.0, heading=0.0,
+                    is_outside_geofence=False,
+                )
+                # 5 điểm LocationHistory (route carepartner đã đi)
+                for j in range(5):
+                    LocationHistory.objects.create(
+                        task=t, worker=w,
+                        latitude=Decimal(str(10.7897 + j * 0.0002)),
+                        longitude=Decimal(str(106.6883 + j * 0.0002)),
+                        accuracy=5.0, speed=1.2,
+                    )
+                # Heartbeat online
+                DeviceHeartbeat.objects.create(
+                    task=t, worker=w, last_seen=now - timedelta(seconds=15),
+                    last_location_lat=Decimal("10.7897"),
+                    last_location_lng=Decimal("106.6883"),
+                    device_status="online",
+                    battery_level=85, app_state="foreground", network_type="wifi",
+                )
+            self.stdout.write(f"   + Tao consent + livelocation + history + heartbeat cho {len(in_progress_tasks)} in_progress task")
+
+            # 1 SOS alert active (test nút SOS)
+            if len(in_progress_tasks) > 0:
+                t0 = in_progress_tasks[0]
+                acc = TaskApplication.objects.filter(task=t0, status="accepted").first()
+                if acc:
+                    SOSAlert.objects.create(
+                        task=t0, sender="worker", sender_user=acc.worker,
+                        latitude=Decimal("10.7897"), longitude=Decimal("106.6883"),
+                        message="Be bi ngã, can ho tro khẩn cap!",
+                        status="active",
+                    )
+                    self.stdout.write("   + Tao 1 SOS alert ACTIVE (test nut SOS)")
+
+            # 1 DeviceOfflineAlert đã recovered (test luồng offline)
+            if len(in_progress_tasks) > 1:
+                t1 = in_progress_tasks[1]
+                acc = TaskApplication.objects.filter(task=t1, status="accepted").first()
+                if acc:
+                    DeviceOfflineAlert.objects.create(
+                        task=t1, worker=acc.worker,
+                        last_seen=now - timedelta(minutes=10),
+                        last_location_lat=Decimal("10.7897"),
+                        last_location_lng=Decimal("106.6883"),
+                        status="recovered",
+                        push_sent=True, push_sent_at=now - timedelta(minutes=9),
+                        recovered_at=now - timedelta(minutes=8),
+                        recovery_duration_seconds=120,
+                    )
+                    self.stdout.write("   + Tao 1 DeviceOfflineAlert RECOVERED (test luong offline)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! Tracking seed loi: {e}"))
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 9: PAYMENTS (Escrow + Cash + Settlement + Log)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[9/10] Dang tao du lieu Payments (escrow, cash, settlement)...")
+
+        try:
+            from payments.models import Payment, CommissionSettlement, PaymentLog
+            from decimal import Decimal as D
+
+            payment_count = 0
+            # COMPLETED tasks → đã thanh toán (cash + momo_escrow)
+            for idx, t in enumerate(completed_tasks):
+                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
+                if not acc:
+                    continue
+                method = "cash" if idx % 2 == 0 else "momo_escrow"
+                amt = D(str(t.price))
+                commission = (amt * D("0.20")).quantize(D("1"))
+                payout = amt - commission
+                p = Payment.objects.create(
+                    task=t, parent=t.parent, worker=acc.worker,
+                    amount=amt, commission_rate=D("0.2000"),
+                    commission_amount=commission, worker_payout_amount=payout,
+                    method=method, status="completed",
+                    momo_order_id=f"EduCareLink_{t.id}_{int(now.timestamp())}" if method == "momo_escrow" else None,
+                    momo_trans_id=f"405{t.id:08d}" if method == "momo_escrow" else None,
+                    held_at=now - timedelta(days=5) if method == "momo_escrow" else None,
+                    completed_at=now - timedelta(days=3),
+                )
+                PaymentLog.objects.create(
+                    payment=p, event_type="payment_created",
+                    message=f"Tao thanh toan {method}",
+                )
+                if method == "momo_escrow":
+                    PaymentLog.objects.create(payment=p, event_type="momo_ipn_held", message="MoMo da giu tien")
+                    PaymentLog.objects.create(payment=p, event_type="escrow_released", message="Giai ngan cho carepartner")
+                else:
+                    PaymentLog.objects.create(payment=p, event_type="cash_recorded", message="Ghi nhan hoa hong tien mat")
+                payment_count += 1
+
+            # 1 Payment held (escrow đang chờ)
+            if len(in_progress_tasks) > 0:
+                t0 = in_progress_tasks[0]
+                acc = TaskApplication.objects.filter(task=t0, status="accepted").first()
+                if acc:
+                    amt = D(str(t0.price))
+                    commission = (amt * D("0.20")).quantize(D("1"))
+                    p = Payment.objects.create(
+                        task=t0, parent=t0.parent, worker=acc.worker,
+                        amount=amt, commission_rate=D("0.20"),
+                        commission_amount=commission, worker_payout_amount=amt - commission,
+                        method="momo_escrow", status="held",
+                        momo_order_id=f"EduCareLink_{t0.id}_held",
+                        momo_trans_id=f"405{t0.id:08d}",
+                        momo_pay_url="https://testing.momo.vn/v2/gateway/pay?t=T",
+                        held_at=now - timedelta(hours=2),
+                    )
+                    PaymentLog.objects.create(payment=p, event_type="momo_ipn_held", message="Tien dang giu, cho task hoan thanh")
+                    payment_count += 1
+
+            # CommissionSettlement: kỳ thanh toán tháng trước (đã paid)
+            if worker_ref:
+                CommissionSettlement.objects.create(
+                    worker=worker_ref,
+                    period_year=now.year, period_month=now.month - 1 if now.month > 1 else 12,
+                    total_tasks=2, total_amount=D("96000"),
+                    task_ids=[1, 2], status="paid",
+                    momo_order_id="settle_demo_001",
+                    momo_pay_url="https://testing.momo.vn/v2/gateway/pay?t=S",
+                    generated_at=now - timedelta(days=10),
+                    paid_at=now - timedelta(days=5),
+                )
+                payment_count += 1
+            self.stdout.write(f"   + Tao {payment_count} ban ghi payment (escrow + cash + settlement)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! Payments seed loi: {e}"))
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 10: CREDENTIALS + PROFILE CHANGE REQUESTS + COMPLAINTS
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[10/10] Dang tao Credentials + ProfileChange + Complaints...")
+
+        # CredentialSubmission: 1 pending (chờ admin duyệt) + 1 approved
+        try:
+            if w3:
+                CredentialSubmission.objects.create(
+                    worker=w3, description="Chung chi nau an Viet - Asia cap 2",
+                    status="pending",
+                )
+            if w1:
+                CredentialSubmission.objects.create(
+                    worker=w1,
+                    description="Chung chi IELTS 7.0 + Bang tot nghiep Su Pham Toan",
+                    status="approved", admin_review="Bằng cấp hợp lệ, đã xác thực.",
+                    reviewed_at=now - timedelta(days=2),
+                )
+            self.stdout.write("   + Tao 2 CredentialSubmission (1 pending + 1 approved)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! Credential seed loi: {e}"))
+
+        # ProfileChangeRequest: 1 pending (worker yêu cầu sửa hồ sơ)
+        try:
+            if w2:
+                ProfileChangeRequest.objects.create(
+                    worker=w2,
+                    proposed_changes={"phone_number": "0987001999", "address": "So 5 Duong Le Loi, Q1, TP.HCM"},
+                    status="pending",
+                )
+            self.stdout.write("   + Tao 1 ProfileChangeRequest (pending)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! ProfileChange seed loi: {e}"))
+
+        # Complaints: 1 pending + 1 investigating (AI đã phân tích)
+        try:
+            from moderation.models import Complaint
+            if len(completed_tasks) > 0 and w1:
+                Complaint.objects.create(
+                    complainant=w1, reported_user=completed_tasks[0].parent,
+                    task=completed_tasks[0],
+                    complaint_type="non_payment",
+                    title="Tre hen thanh toan hon 7 ngay",
+                    description="Toi da hoan thanh cong viec don dep nha nhung phu huynh chua thanh toan day du, hen nhieu lan ma khong giu loi hua.",
+                    status="pending", priority="high",
+                    ai_analyzed=True,
+                    ai_analysis="AI phan tich: co ban co task completed nhung chua co ban ghi Payment completed. De xuat uu tien HIGH.",
+                    ai_priority="high",
+                )
+            if len(completed_tasks) > 1 and w4:
+                Complaint.objects.create(
+                    complainant=w4, reported_user=completed_tasks[1].parent,
+                    task=completed_tasks[1],
+                    complaint_type="harassment",
+                    title="Co bat dac di khi dang lam viec",
+                    description="Phu huynh co nhung loi noi khong phu hop, bat toi lam ngoai thoa thuan.",
+                    status="investigating", priority="urgent",
+                    ai_analyzed=True,
+                    ai_analysis="AI phan tich: co dau hieu quay roi, de xuat URGENT, can dieu tra ngay.",
+                    ai_priority="urgent",
+                )
+            self.stdout.write("   + Tao 2 Complaint (1 pending + 1 investigating)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! Complaint seed loi: {e}"))
+
+        # ═══════════════════════════════════════════════════════════════
         #  TỔNG KẾT
         # ═══════════════════════════════════════════════════════════════
         self.stdout.write("\n" + "=" * 64)
