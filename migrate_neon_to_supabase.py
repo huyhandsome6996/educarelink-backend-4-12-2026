@@ -115,6 +115,11 @@ def cmd_load():
         print(f"\n❌ Không tìm thấy {DUMP_FILE}. Chạy 'dump' trước.\n")
         sys.exit(1)
 
+    # contenttypes + auth.permission + auth.group tự sinh khi migrate → SKIP
+    # Chỉ load data business thực sự
+    SKIP_APPS = {'contenttypes'}
+    SKIP_MODELS = {'auth.permission', 'auth.group'}
+
     db_url = os.environ.get('DATABASE_URL', '')
     if not db_url or 'supabase' not in db_url:
         print(f"\n⚠️  CẢNH BÁO: DATABASE_URL hiện tại không chứa 'supabase'.")
@@ -138,26 +143,41 @@ def cmd_load():
     for model_label, c in sorted(counts.items()):
         print(f"  • {model_label:40s} {c:>6}")
 
-    # Load bằng serializers.deserialize + transaction.atomic
-    # Dùng ignorenonexistent để bỏ qua field không tồn tại (phòng migration lệch)
+    # Lọc bỏ contenttypes + auth.permission + auth.group (Django tự sinh khi migrate)
+    filtered_data = []
+    skipped = 0
+    for obj in all_data:
+        model_label = obj.get('model', '')
+        app = model_label.split('.')[0] if '.' in model_label else ''
+        if app in SKIP_APPS or model_label in SKIP_MODELS:
+            skipped += 1
+            continue
+        filtered_data.append(obj)
+
+    print(f"  (Bỏ qua {skipped} object contenttypes/permission/group — Django tự sinh)")
+
+    # Load từng object dùng savepoint để 1 object lỗi không phá cả batch
     loaded = 0
     errors = 0
-    try:
-        with transaction.atomic():
-            for obj in serializers.deserialize('json', json.dumps(all_data), ignorenonexistent=True):
-                try:
-                    obj.save()
-                    loaded += 1
-                except Exception as e:
-                    errors += 1
-                    if errors <= 5:
-                        print(f"  ⚠️  Lỗi save {obj.object._meta.label} pk={obj.object.pk}: {e}")
-    except Exception as e:
-        print(f"\n❌ Transaction rollback: {e}")
-        sys.exit(1)
+    error_details = []
+    for obj in serializers.deserialize('json', json.dumps(filtered_data), ignorenonexistent=True):
+        try:
+            with transaction.atomic():
+                obj.save()
+                loaded += 1
+        except Exception as e:
+            errors += 1
+            err_msg = str(e).split('\n')[0][:80]
+            error_details.append((obj.object._meta.label, obj.object.pk, err_msg))
+            if errors <= 10:
+                print(f"  ⚠️  Lỗi save {obj.object._meta.label} pk={obj.object.pk}: {err_msg}")
 
     print(f"\n{'='*60}")
-    print(f"  ✅ Load xong: {loaded} object(s), {errors} lỗi")
+    print(f"  ✅ Load xong: {loaded} object(s) thành công, {errors} lỗi")
+    if error_details:
+        from collections import Counter
+        err_types = Counter(d[0] for d in error_details)
+        print(f"  Lỗi theo model: {dict(err_types)}")
     print(f"{'='*60}\n")
 
 

@@ -34,3 +34,4 @@ package.json
 secrets.env
 *.local.env
 .env.local
+backup_neon_dump.json
