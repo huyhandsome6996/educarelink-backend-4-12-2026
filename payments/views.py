@@ -690,12 +690,18 @@ class PayOSConfirmWebhookAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        from .payos_client import confirm_webhook
+        from .payos_client import confirm_webhook, is_payos_enabled
         webhook_url = request.data.get('webhook_url') or getattr(settings, 'PAYOS_WEBHOOK_URL', '')
 
         if not webhook_url:
             return Response({'error': 'webhook_url is required'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+        # Trả 503 nếu PayOS chưa config credentials (tránh 500 confusing)
+        if not is_payos_enabled():
+            return Response({
+                'error': 'PayOS chưa được cấu hình. Vui lòng set PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY trước.',
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         success = confirm_webhook(webhook_url)
         if success:
