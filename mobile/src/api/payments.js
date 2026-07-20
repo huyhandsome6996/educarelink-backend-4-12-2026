@@ -45,3 +45,13 @@ export const getPaymentLogs = (params = {}) =>
 
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkPaymentHealth = () => apiClient.get('/payments/health/');
+
+// ── PAYOS (VietQR bank transfer — miễn phí 100%) ───────────────────
+// Tạo PayOS payment link cho task — phụ huynh quét QR VietQR để chuyển khoản
+// Trả về: { checkout_url, payment_link_id, order_code, amount, description, payment_id, status }
+export const setupPayOS = (taskId) =>
+  apiClient.post('/payments/payos-setup/', { task_id: taskId });
+
+// Admin confirm webhook URL với PayOS (gọi 1 lần khi setup)
+export const confirmPayOSWebhook = (webhookUrl) =>
+  apiClient.post('/payments/payos-confirm-webhook/', { webhook_url: webhookUrl });

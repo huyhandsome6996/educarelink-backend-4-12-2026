@@ -11,10 +11,14 @@ from .views import (
     AdminRunMonthlySettlementAPIView, AdminPaymentLogsAPIView,
     MomoIPNAPIView, MomoReturnAPIView, SettlementReturnAPIView,
     PaymentHealthCheckAPIView,
+    # PayOS
+    PayOSSetupAPIView, PayOSWebhookAPIView,
+    PayOSReturnAPIView, PayOSCancelAPIView,
+    PayOSConfirmWebhookAPIView,
 )
 
 urlpatterns = [
-    # Health check (debug MoMo config)
+    # Health check (debug MoMo + PayOS config)
     path('payments/health/', PaymentHealthCheckAPIView.as_view(), name='payment-health'),
 
     # Parent
@@ -39,4 +43,11 @@ urlpatterns = [
     path('payments/momo-ipn/', MomoIPNAPIView.as_view(), name='momo-ipn'),
     path('payments/momo-return/', MomoReturnAPIView.as_view(), name='momo-return'),
     path('payments/settlement-return/', SettlementReturnAPIView.as_view(), name='settlement-return'),
+
+    # PayOS (VietQR bank transfer — miễn phí 100%)
+    path('payments/payos-setup/', PayOSSetupAPIView.as_view(), name='payos-setup'),
+    path('payments/payos-webhook/', PayOSWebhookAPIView.as_view(), name='payos-webhook'),
+    path('payments/payos-return/', PayOSReturnAPIView.as_view(), name='payos-return'),
+    path('payments/payos-cancel/', PayOSCancelAPIView.as_view(), name='payos-cancel'),
+    path('payments/payos-confirm-webhook/', PayOSConfirmWebhookAPIView.as_view(), name='payos-confirm-webhook'),
 ]
