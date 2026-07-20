@@ -243,11 +243,15 @@ class Command(BaseCommand):
         p2 = parent_users["phuhuynh_minhkhoi"]
         p3 = parent_users["phuhuynh_yenchi"]
         p4 = parent_users["phuhuynh_congvinh"]
+        # ⚡ p_test = phuhuynh_test (tài khoản bảo vệ — thêm tasks để demo)
+        p_test = parent_ref  # Already fetched at line 144
 
         w1 = worker_users["carepartner_tuankiet"]
         w2 = worker_users["carepartner_hoango"]
         w3 = worker_users["carepartner_mylinh"]
         w4 = worker_users["carepartner_phuoc"]
+        # ⚡ w_test = sinhvien_test (tài khoản bảo vệ — gán làm worker cho tasks của p_test)
+        w_test = worker_ref  # Already fetched at line 145
 
         tasks_data = [
             # OPEN (4)
@@ -265,6 +269,21 @@ class Command(BaseCommand):
             # CANCELLED (1)
             {"title": "Ho tro AI hoc tap cho be lop 4", "description": "Tim nguoi biet dung ChatGPT/cac app AI de ho tro be hoc tap. Day be cach dung AI an toan, hieu qua.", "price": 240000, "category": cat_hotroAI, "location": "Duong Truong Chinh, Quan Tan Binh, TP.HCM", "scheduled_time": now - timedelta(days=2), "status": "cancelled", "parent": p4},
         ]
+
+        # ⚡ THÊM 2026-07-21: Tasks cho phuhuynh_test (trước đây 0 tasks)
+        # Giúp phụ huynh test có dữ liệu demo ngay khi đăng nhập
+        if p_test:
+            tasks_data.extend([
+                # OPEN (2) — phuhuynh_test đăng 2 việc đang tìm người
+                {"title": "Gia su Tieng Anh lop 6 - 3 buoi/tuan", "description": "Be trai lop 6 can phu dao Tieng Anh, phat am. Day thu 2, 4, 6 toi 19h-20h30. Yeu cau sinh vien CĐ Su Pham Ngoai Ngu hoac IELTS 6.5+.", "price": 250000, "category": cat_giasu, "location": "Duong Le Loi, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=2), "status": "open", "parent": p_test},
+                {"title": "Don dep can ho cuoi tuan - 3 tieng", "description": "Can ho 60m2 can lau san, ve sinh bep, 1 phong tam. Lam sang thu 7 tu 8h-11h. Toi chuan bi dung cu ve sinh.", "price": 200000, "category": cat_dondep, "location": "Chung cu Sunview Town, Quan 9, TP.HCM", "scheduled_time": now + timedelta(days=5), "status": "open", "parent": p_test},
+                # IN_PROGRESS (1) — phuhuynh_test có 1 việc đang làm (để test live tracking + geofence)
+                {"title": "Trong be 5 tuoi chieu thu 7", "description": "Can nguoi trong be trai 5 tuoi tu 14h-18h thu 7. Be ngoan, thich choi xep hinh Lego. Co do an va nuoc uong san. Nha co camera an ninh.", "price": 240000, "category": cat_trongtre, "location": "Duong Nguyen Huu Tho, Quan 7, TP.HCM", "scheduled_time": now + timedelta(days=1), "status": "in_progress", "parent": p_test, "geofence_lat": 10.7338, "geofence_lng": 106.7197, "geofence_radius": 500},
+                # COMPLETED (2) — phuhuynh_test có 2 việc đã xong (để test review + history)
+                {"title": "Di cho mua do tuan - sieu thi Coopmart", "description": "Can nguoi den Coopmart Nguyen Kiem mua do tuan: gao, rau, thit, sua. Giao tan nha. Chi phi toi chuan bi truoc.", "price": 150000, "category": cat_muasam, "location": "Coopmart Nguyen Kiem, Phu Nhuan, TP.HCM", "scheduled_time": now - timedelta(days=7), "status": "completed", "parent": p_test},
+                {"title": "Don be lop 3 ra khoi truong thu 5", "description": "Don be trai lop 3 ra khoi truong luc 16h30 thu 5. Nha cach truong 1km. Be tu di xe buyt ve nha voi carepartner.", "price": 100000, "category": cat_dontre, "location": "Truong Pho Thong Nguyen Du, Quan 1, TP.HCM", "scheduled_time": now - timedelta(days=14), "status": "completed", "parent": p_test},
+            ])
+            self.stdout.write(f"   + Them 5 cong viec cho phuhuynh_test (OPEN=2, IN_PROGRESS=1, COMPLETED=2)")
 
         task_objects = []
         for td in tasks_data:
@@ -328,6 +347,24 @@ class Command(BaseCommand):
             apps.append({"task": completed_tasks[2], "worker": w2, "status": "accepted"})
             reviews.append({"task": completed_tasks[2], "reviewer": p1, "reviewee": w2, "rating": 4, "comment": "Biet cham soc tre, ru be ngu ngon. Be lon rat thich chi. Nen chu y them ve gio ngu."})
 
+        # ⚡ THÊM 2026-07-21: Gán sinhvien_test (w_test) làm worker cho tasks của phuhuynh_test
+        # Mục đích: khi login bằng 2 tài khoản test, có thể demo live tracking + geofence + review
+        if p_test and w_test:
+            p_test_in_progress = [t for t in in_progress_tasks if t.parent_id == p_test.id]
+            p_test_completed = [t for t in completed_tasks if t.parent_id == p_test.id]
+
+            # IN_PROGRESS: sinhvien_test là worker đang làm (để test live tracking + geofence)
+            for t in p_test_in_progress:
+                apps.append({"task": t, "worker": w_test, "status": "accepted"})
+                self.stdout.write(f"   + sinhvien_test → Task#{t.id} '{t.title}' (in_progress, geofence)")
+
+            # COMPLETED: sinhvien_test đã làm xong (để test review + history)
+            for idx, t in enumerate(p_test_completed):
+                apps.append({"task": t, "worker": w_test, "status": "accepted"})
+                rating = 5 if idx == 0 else 4
+                comment = "Lam viec chu dao, be rat thich. Se lien lac lai tuan sau!" if idx == 0 else "Don be dung gio, giao tiep thich. Nen nac nhe them ve an toan giao thong."
+                reviews.append({"task": t, "reviewer": p_test, "reviewee": w_test, "rating": rating, "comment": comment})
+
         created_apps = 0
         for a in apps:
             TaskApplication.objects.create(task=a["task"], worker=a["worker"], status=a["status"])
@@ -339,6 +376,25 @@ class Command(BaseCommand):
             created_reviews += 1
 
         self.stdout.write(f"   + Tao {created_apps} ung tuyen & {created_reviews} danh gia")
+
+        # ⚡ THÊM 2026-07-21: Tạo LocationConsent 'granted' cho task in_progress của phuhuynh_test
+        # Mục đích: khi login 2 tài khoản test, parent có thể xem live tracking ngay
+        # không cần worker phải đồng ý trên mobile trước.
+        if p_test and w_test:
+            try:
+                from tracking.models import LocationConsent
+                for t in [t for t in in_progress_tasks if t.parent_id == p_test.id]:
+                    LocationConsent.objects.update_or_create(
+                        task=t,
+                        defaults={
+                            'worker': w_test,
+                            'consent': 'granted',
+                            'granted_at': now - timedelta(hours=1),
+                        }
+                    )
+                    self.stdout.write(f"   + LocationConsent GRANTED cho Task#{t.id} (sinhvien_test → phuhuynh_test)")
+            except ImportError:
+                self.stdout.write("   ⚠️  tracking module chưa sẵn sàng — skip LocationConsent")
 
         # ═══════════════════════════════════════════════════════════════
         #  PHẦN 7: TẠO MỘT SỐ THÔNG BÁO MẪU

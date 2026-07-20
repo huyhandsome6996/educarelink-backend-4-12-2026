@@ -20,6 +20,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             'method', 'status',
             'momo_order_id', 'momo_pay_url', 'momo_qr_code_url',
             'momo_result_code', 'momo_message',
+            # PayOS fields
+            'payos_order_code', 'payos_checkout_url', 'payos_payment_link_id',
+            'payos_status', 'payos_account_reference',
             'initiated_at', 'held_at', 'completed_at', 'refunded_at',
         ]
         read_only_fields = [
@@ -27,6 +30,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'worker_payout_amount', 'status',
             'momo_order_id', 'momo_pay_url', 'momo_qr_code_url',
             'momo_result_code', 'momo_message',
+            'payos_order_code', 'payos_checkout_url', 'payos_payment_link_id',
+            'payos_status', 'payos_account_reference',
             'initiated_at', 'held_at', 'completed_at', 'refunded_at',
         ]
 
@@ -48,7 +53,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 class SetupPaymentSerializer(serializers.Serializer):
     """Input cho API setup payment (POST /api/payments/setup/)."""
     task_id = serializers.IntegerField()
-    method = serializers.ChoiceField(choices=['momo_escrow', 'cash'])
+    method = serializers.ChoiceField(choices=['momo_escrow', 'payos', 'cash'])
 
 
 class CommissionSettlementSerializer(serializers.ModelSerializer):

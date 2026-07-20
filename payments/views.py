@@ -28,6 +28,7 @@
 """
 
 import logging
+import time
 from decimal import Decimal
 from datetime import timedelta
 
@@ -417,13 +418,288 @@ class SettlementReturnAPIView(APIView):
 
 
 class PaymentHealthCheckAPIView(APIView):
-    """GET /api/payments/health/ — kiểm tra MoMo config (debug)."""
+    """GET /api/payments/health/ — kiểm tra MoMo + PayOS config (debug)."""
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def get(self, request):
+        from .payos_client import is_payos_enabled
         return Response({
             'momo_configured': is_configured(),
             'momo_sandbox': is_sandbox(),
+            'payos_enabled': is_payos_enabled(),
             'commission_rate': str(getattr(settings, 'PAYMENT_COMMISSION_RATE', 0.20)),
         })
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PAYOS ENDPOINTS (VietQR bank transfer — miễn phí 100%)
+# ═══════════════════════════════════════════════════════════════════
+
+class PayOSSetupAPIView(APIView):
+    """
+    POST /api/payments/payos-setup/
+    Body: { task_id }
+
+    Tạo PayOS payment link cho task — phụ huynh quét QR VietQR để chuyển khoản.
+    Tiền được giữ trong tài khoản PayOS (escrow) cho đến khi task hoàn thành.
+
+    Returns:
+        {
+            "checkout_url": "https://payos.vn/...",
+            "payment_link_id": "...",
+            "order_code": 12345,
+            "amount": 200000,
+            "qr_code_url": "..."
+        }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .payos_client import create_payment_link, is_payos_enabled
+
+        if not is_payos_enabled():
+            return Response({
+                'error': 'PayOS chưa được cấu hình. Vui lòng liên hệ admin.',
+                'fallback': 'Sử dụng MoMo hoặc Tiền mặt.',
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        task_id = request.data.get('task_id')
+        if not task_id:
+            return Response({'error': 'task_id là bắt buộc.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if task.parent_id != request.user.id:
+            return Response({'error': 'Bạn không sở hữu công việc này.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if task.status != 'in_progress':
+            return Response({'error': 'Công việc phải đang ở trạng thái "Đang làm" để thanh toán.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Tạo hoặc update Payment record
+        payment, created = Payment.objects.get_or_create(
+            task=task,
+            defaults={
+                'parent': task.parent,
+                'worker': task.applications.filter(status='accepted').first().worker if task.applications.filter(status='accepted').exists() else None,
+                'amount': task.price,
+                'method': 'payos',
+                'status': 'pending',
+            }
+        )
+
+        if payment.method != 'payos' and payment.status not in ('cancelled', 'pending'):
+            return Response({
+                'error': 'Công việc này đã được thiết lập thanh toán với phương thức khác.',
+                'existing_method': payment.method,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Tạo PayOS payment link
+        order_code = int(f"{task.id}{int(time.time())}"[:15])  # max 15 digits
+        description = f"ECL task {task.id} - {task.title[:30]}"
+
+        result = create_payment_link(
+            order_code=order_code,
+            amount=int(task.price),
+            description=description,
+            buyer_name=f"{task.parent.last_name} {task.parent.first_name}".strip()[:50],
+            buyer_email=task.parent.email[:100] if task.parent.email else None,
+            buyer_phone=task.parent.phone_number[:20] if task.parent.phone_number else None,
+        )
+
+        if not result:
+            return Response({
+                'error': 'Không thể tạo payment link PayOS. Vui lòng thử lại hoặc dùng MoMo.',
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Update payment record
+        payment.method = 'payos'
+        payment.payos_order_code = result['order_code']
+        payment.payos_checkout_url = result['checkout_url']
+        payment.payos_payment_link_id = result.get('payment_link_id')
+        payment.payos_status = 'PENDING'
+        payment.save()
+
+        # Log
+        PaymentLog.objects.create(
+            payment=payment,
+            event_type='payos_link_created',
+            message=f'PayOS payment link created: order_code={result["order_code"]}',
+            payload=result,
+            actor=request.user,
+        )
+
+        return Response({
+            'checkout_url': result['checkout_url'],
+            'payment_link_id': result.get('payment_link_id'),
+            'order_code': result['order_code'],
+            'amount': int(task.price),
+            'description': description,
+            'payment_id': payment.id,
+            'status': 'pending',
+        }, status=status.HTTP_200_OK)
+
+
+class PayOSWebhookAPIView(APIView):
+    """
+    POST /api/payments/payos-webhook/
+
+    PayOS gọi webhook này khi:
+    - Parent chuyển khoản thành công → status=PAID → escrow
+    - Parent hủy → status=CANCELLED
+
+    ⚠️ Endpoint này KHÔNG cần auth (PayOS gọi server-to-server).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        from .payos_client import verify_webhook
+
+        webhook_body = request.data if isinstance(request.data, dict) else {}
+
+        result = verify_webhook(webhook_body)
+        if not result:
+            logger.warning('[PayOS Webhook] Verification failed')
+            return Response({'error': 'Webhook verification failed'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        order_code = result.get('order_code')
+        payos_status = result.get('status')
+        amount = result.get('amount')
+
+        if not order_code:
+            logger.warning(f'[PayOS Webhook] No order_code in webhook: {result}')
+            return Response({'error': 'No order_code'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Find payment by payos_order_code
+        try:
+            payment = Payment.objects.get(payos_order_code=order_code)
+        except Payment.DoesNotExist:
+            logger.warning(f'[PayOS Webhook] Payment not found for order_code={order_code}')
+            return Response({'error': 'Payment not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Update payment status
+        payment.payos_status = payos_status
+
+        if payos_status == 'PAID':
+            # Parent đã chuyển khoản → escrow
+            payment.status = 'held'
+            payment.held_at = timezone.now()
+            payment.payos_account_reference = result.get('account_reference')
+
+            PaymentLog.objects.create(
+                payment=payment,
+                event_type='payos_payment_held',
+                message=f'PayOS payment held: {amount} VNĐ from {result.get("account_reference")}',
+                payload=result,
+            )
+
+            # Notify parent + worker
+            try:
+                from core.models import Notification
+                from core.views import send_expo_push_notification
+
+                Notification.objects.create(
+                    recipient=payment.parent,
+                    title="✅ Đã nhận thanh toán",
+                    message=f'Phụ huynh đã thanh toán {int(amount):,}đ cho công việc "{payment.task.title}". Tiền đang được giữ.',
+                )
+                if payment.parent.expo_push_token:
+                    send_expo_push_notification(
+                        token=payment.parent.expo_push_token,
+                        title="✅ Đã nhận thanh toán",
+                        body=f'{int(amount):,}đ đã được giữ cho công việc "{payment.task.title}"',
+                        data={'type': 'payment_held', 'task_id': payment.task.id}
+                    )
+
+                if payment.worker:
+                    Notification.objects.create(
+                        recipient=payment.worker,
+                        title="💰 Tiền đã được giữ",
+                        message=f'Công việc "{payment.task.title}" đã được thanh toán. Hãy yên tâm làm việc!',
+                    )
+                    if payment.worker.expo_push_token:
+                        send_expo_push_notification(
+                            token=payment.worker.expo_push_token,
+                            title="💰 Tiền đã được giữ",
+                            body=f'Công việc "{payment.task.title}" đã có tiền. Yên tâm làm việc nhé!',
+                            data={'type': 'payment_held', 'task_id': payment.task.id}
+                        )
+            except Exception as e:
+                logger.warning(f'[PayOS Webhook] Notify failed: {e}')
+
+        elif payos_status == 'CANCELLED':
+            payment.status = 'cancelled'
+            PaymentLog.objects.create(
+                payment=payment,
+                event_type='payos_payment_cancelled',
+                message='Parent cancelled PayOS payment',
+                payload=result,
+            )
+
+        payment.save()
+
+        logger.info(f'[PayOS Webhook] Processed: order_code={order_code} status={payos_status}')
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+
+
+class PayOSReturnAPIView(APIView):
+    """GET /api/payments/payos-return/ — Redirect parent sau khi pay thành công."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        order_code = request.query_params.get('orderCode')
+        status_param = request.query_params.get('status', 'PAID')
+        frontend_url = getattr(settings, 'PAYOS_RETURN_BASE_URL',
+                               'https://educarelink-backend.onrender.com')
+        return redirect(
+            f"{frontend_url.rstrip('/')}/parent/tasks/?payment=payos_success&order={order_code}"
+        )
+
+
+class PayOSCancelAPIView(APIView):
+    """GET /api/payments/payos-cancel/ — Redirect parent khi hủy payment."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        order_code = request.query_params.get('orderCode')
+        frontend_url = getattr(settings, 'PAYOS_RETURN_BASE_URL',
+                               'https://educarelink-backend.onrender.com')
+        return redirect(
+            f"{frontend_url.rstrip('/')}/parent/tasks/?payment=payos_cancelled&order={order_code}"
+        )
+
+
+class PayOSConfirmWebhookAPIView(APIView):
+    """
+    POST /api/payments/payos-confirm-webhook/
+    Admin gọi 1 lần để register webhook URL với PayOS.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        from .payos_client import confirm_webhook
+        webhook_url = request.data.get('webhook_url') or getattr(settings, 'PAYOS_WEBHOOK_URL', '')
+
+        if not webhook_url:
+            return Response({'error': 'webhook_url is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        success = confirm_webhook(webhook_url)
+        if success:
+            return Response({'message': f'Webhook confirmed: {webhook_url}'})
+        else:
+            return Response({'error': 'Failed to confirm webhook'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
