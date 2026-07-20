@@ -591,3 +591,115 @@ Hãy phân tích và gợi ý hành động."""
     complaint.ai_analyzed = True
     complaint.save(update_fields=['ai_analysis', 'ai_priority', 'ai_suggestion', 'ai_analyzed'])
     return parsed
+
+
+# ════════════════════════════════════════════════════════════════════
+#  ASYNC MODERATION (tối ưu 2026-07-21)
+# ════════════════════════════════════════════════════════════════════
+# Trước đây: moderate_task chạy ĐỒNG BỘ trong perform_create → user chờ 18s
+# Giờ: moderate_task_async tạo TaskModeration 'pending' ngay lập tức,
+#       sau đó chạy Gemini trong background thread. Task xuất hiện ngay
+#       trên feed (status='open', moderation='pending'). Khi AI xong:
+#       - approved → update TaskModeration
+#       - rejected → notify parent + xóa task
+#       - fail → needs_review (admin duyệt thủ công)
+#
+# An toàn trên Render/gunicorn vì:
+#  - Daemon thread nhẹ, không block response
+#  - Django DB transaction đã commit task trước khi spawn thread
+#  - Nếu thread bị kill → TaskModeration stuck 'pending' → admin review
+#  - Task vẫn hiển thị trên feed (chỉ rejected mới bị ẩn)
+# ════════════════════════════════════════════════════════════════════
+
+
+def moderate_task_async(task):
+    """
+    Tạo TaskModeration 'pending' NGAY LẬP TỨC + chạy AI moderation trong
+    background thread. Non-blocking — trả về moderation record pending.
+
+    Flow:
+        1. Sync: tạo TaskModeration(status='pending')
+        2. Spawn daemon thread → gọi moderate_task(task)
+        3. Trong thread:
+           - approved → update TaskModeration
+           - rejected → notify parent + xóa task
+           - exception → needs_review
+        4. Thread tự đóng DB connection khi xong
+
+    Returns: TaskModeration (status='pending') — để caller biết moderation
+    đang chạy ngầm.
+    """
+    import threading
+    from django.db import connections
+    from .models import TaskModeration
+
+    # Bước 1: Tạo pending moderation record NGAY LẬP TỨC (sync, < 5ms)
+    moderation, _ = TaskModeration.objects.update_or_create(
+        task=task,
+        defaults={
+            'status': 'pending',
+            'ai_verdict': 'Đang kiểm duyệt AI... (vài giây)',
+            'ai_confidence': 0.0,
+        }
+    )
+
+    task_id = task.id
+    parent_id = task.parent_id if task.parent else None
+
+    # Bước 2: Handler chạy trong background thread
+    def _run_in_thread():
+        try:
+            # Re-fetch task (object trong memory có thể stale)
+            from core.models import Task, Notification
+            task_obj = Task.objects.select_related('parent', 'category').get(id=task_id)
+
+            # Gọi moderate_task (sẽ tự update TaskModeration)
+            result = moderate_task(task_obj)
+
+            if result and result.status == 'rejected':
+                # Notify parent + xóa task (cùng logic với bản sync cũ)
+                parent = task_obj.parent
+                reason = (result.ai_verdict or 'Vi phạm tiêu chuẩn cộng đồng')[:300]
+                Notification.objects.create(
+                    recipient=parent,
+                    title="🚫 Công việc đã bị xóa",
+                    message=f'Công việc "{task_obj.title}" đã bị AI xóa vì: {reason[:150]}. Vui lòng đăng lại nội dung phù hợp.',
+                )
+                # Push notification (best-effort)
+                if parent and parent.expo_push_token:
+                    try:
+                        from core.views import send_expo_push_notification
+                        send_expo_push_notification(
+                            token=parent.expo_push_token,
+                            title="🚫 Công việc bị xóa",
+                            body=f'"{task_obj.title}" bị AI xóa: {reason[:100]}',
+                            data={'type': 'task_rejected', 'task_id': task_id}
+                        )
+                    except Exception as push_err:
+                        logger.warning(f"[async moderation] Push notif failed: {push_err}")
+                # Xóa task
+                task_obj.delete()
+                logger.info(f"[async moderation] Task#{task_id} DELETED (rejected by AI)")
+            else:
+                logger.info(f"[async moderation] Task#{task_id} done → status={result.status if result else 'unknown'}")
+
+        except Exception as e:
+            logger.exception(f"[async moderation] Task#{task_id} FAILED: {e}")
+            # Fallback: needs_review để admin duyệt thủ công
+            try:
+                TaskModeration.objects.filter(task_id=task_id, status='pending').update(
+                    status='needs_review',
+                    ai_verdict='AI kiểm duyệt thất bại — chuyển admin duyệt.',
+                )
+            except Exception:
+                pass
+        finally:
+            # Đóng DB connections để tránh leak trên gunicorn
+            connections.close_all()
+
+    # Bước 3: Spawn thread (daemon=True → không block process shutdown)
+    thread = threading.Thread(target=_run_in_thread, daemon=True, name=f"moderate-task-{task_id}")
+    thread.start()
+    logger.info(f"[async moderation] Thread spawned for Task#{task_id}")
+
+    return moderation
