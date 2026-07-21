@@ -479,37 +479,81 @@ class ApproveCandidateAPIView(APIView):
             return Response({"error": "Không tìm thấy yêu cầu."}, status=status.HTTP_404_NOT_FOUND)
 
 class ReviewCreateAPIView(generics.CreateAPIView):
+    """
+    API tạo hoặc cập nhật đánh giá (upsert).
+
+    Behaviour:
+    - Nếu task CHƯA có review → CREATE review mới (status HTTP 201).
+    - Nếu task ĐÃ có review (do cùng parent gửi trước đó) → UPDATE rating + comment
+      (status HTTP 200, trả về review đã update).
+    - Lý do: OneToOneField(Task) khiến DRF auto-sinh UniqueValidator chặn request
+      trước khi perform_create chạy, gây lỗi "review có task đã tồn tại." khó hiểu.
+      Cho phép parent sửa đánh giá là UX hợp lý và không phá structure (model không đổi,
+      AI recommendation / anomaly scheduler vẫn đọc Review bình thường).
+    """
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
-    def perform_create(self, serializer):
+
+    def create(self, request, *args, **kwargs):
         # Phục vụ Màn 7: Đánh giá
-        task_id = self.request.data.get('task')
-        # Validate: chỉ review task đã hoàn thành
-        if task_id:
-            try:
-                task_id = int(task_id)
-            except (TypeError, ValueError):
-                raise drf_serializers.ValidationError({'task': 'ID công việc không hợp lệ.'})
-            try:
-                task = Task.objects.get(id=task_id)
-                if task.status != 'completed':
-                    raise drf_serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
-                if task.parent != self.request.user:
-                    raise drf_serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
-                # Kiểm tra đã review chưa
-                if hasattr(task, 'review'):
-                    raise drf_serializers.ValidationError({'task': 'Công việc này đã được đánh giá.'})
-                # Tự động xác định reviewee là worker được accept
-                accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
-                if accepted_app:
-                    serializer.save(reviewer=self.request.user, reviewee=accepted_app.worker)
-                else:
-                    raise drf_serializers.ValidationError({'task': 'Không tìm thấy người thực hiện công việc này.'})
-            except Task.DoesNotExist:
-                raise drf_serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
-        else:
+        task_id = request.data.get('task')
+
+        # Validate task_id có gửi không
+        if task_id in (None, '', []):
             raise drf_serializers.ValidationError({'task': 'Vui lòng chọn công việc cần đánh giá.'})
+
+        try:
+            task_id = int(task_id)
+        except (TypeError, ValueError):
+            raise drf_serializers.ValidationError({'task': 'ID công việc không hợp lệ.'})
+
+        # Lấy task + validate business rules
+        try:
+            task = Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            raise drf_serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
+
+        if task.status != 'completed':
+            raise drf_serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
+        if task.parent != request.user:
+            raise drf_serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
+
+        # Tìm worker được accept để làm reviewee
+        accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
+        if not accepted_app:
+            raise drf_serializers.ValidationError({'task': 'Không tìm thấy người thực hiện công việc này.'})
+
+        # Validate rating + comment qua serializer (nhưng KHÔNG trigger UniqueValidator)
+        # Ta truyền task_id vào data để serializer validate field-level,
+        # nhưng sẽ tự xử lý save() bên dưới.
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        rating = serializer.validated_data['rating']
+        comment = serializer.validated_data.get('comment', '') or ''
+
+        # ===== UPSERT LOGIC =====
+        existing_review = Review.objects.filter(task=task).first()
+        if existing_review:
+            # Parent đang sửa đánh giá đã gửi → update rating + comment
+            existing_review.rating = rating
+            existing_review.comment = comment
+            existing_review.save(update_fields=['rating', 'comment'])
+            serializer.instance = existing_review
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK, headers=headers)
+        else:
+            # Chưa có review → create mới
+            review = Review.objects.create(
+                task=task,
+                reviewer=request.user,
+                reviewee=accepted_app.worker,
+                rating=rating,
+                comment=comment,
+            )
+            serializer.instance = review
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 # --- PHẦN 4: LUỒNG DÀNH CHO SINH VIÊN ---
 class ApplyTaskAPIView(APIView):

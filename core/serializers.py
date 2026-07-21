@@ -99,7 +99,31 @@ class ReviewSerializer(serializers.ModelSerializer):
     reviewer_name = serializers.CharField(source='reviewer.username', read_only=True)
     reviewee_name = serializers.CharField(source='reviewee.username', read_only=True)
 
+    # KHÔNG để DRF tự sinh UniqueValidator trên `task` (vì OneToOneField).
+    # Lý do: endpoint /parent/review/ dùng logic upsert (xem ReviewCreateAPIView) —
+    # nếu đã có review cho task thì UPDATE thay vì reject.
+    # UniqueValidator auto của DRF sẽ chặn request trước khi perform_create chạy,
+    # gây ra thông báo lỗi auto-dịch khó hiểu: "review có task đã tồn tại."
+    # Unique-check logic nằm trong view (với thông báo tiếng Việt thân thiện).
+    task = serializers.PrimaryKeyRelatedField(
+        queryset=Task.objects.all(),
+        error_messages={
+            'required': 'Vui lòng chọn công việc cần đánh giá.',
+            'does_not_exist': 'Không tìm thấy công việc.',
+            'incorrect_type': 'ID công việc không hợp lệ.',
+        },
+    )
+    rating = serializers.IntegerField(
+        min_value=1,
+        max_value=5,
+        error_messages={
+            'required': 'Vui lòng chọn số sao đánh giá.',
+            'min_value': 'Số sao phải từ 1 đến 5.',
+            'max_value': 'Số sao phải từ 1 đến 5.',
+        },
+    )
+
     class Meta:
         model = Review
         fields = '__all__'
-        read_only_fields = ['reviewer', 'reviewee']
+        read_only_fields = ['reviewer', 'reviewee', 'created_at']
