@@ -84,6 +84,12 @@ def start_settlement_scheduler():
         logger.info("[Payments Scheduler] SKIPPED — local dev (not Render)")
         return
 
+    # ⚡ Cross-process lock — chống 2 gunicorn worker cùng start scheduler
+    from core.scheduler_lock import acquire_scheduler_lock
+    if acquire_scheduler_lock('payments_settlement') is None:
+        logger.info("[Payments Scheduler] Lock bị worker khác giữ → skip start trên process này.")
+        return
+
     with _lock:
         if _scheduler is not None and _scheduler.running:
             logger.info("[Payments Scheduler] Already running, skip.")

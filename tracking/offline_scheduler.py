@@ -68,6 +68,12 @@ def start_offline_scheduler():
         logger.info("[Offline Scheduler] SKIPPED — local dev (not Render)")
         return
 
+    # ⚡ Cross-process lock — chống 2 gunicorn worker cùng start scheduler
+    from core.scheduler_lock import acquire_scheduler_lock
+    if acquire_scheduler_lock('tracking_offline') is None:
+        logger.info("[Offline Scheduler] Lock bị worker khác giữ → skip start trên process này.")
+        return
+
     with _lock:
         if _scheduler is not None and _scheduler.running:
             logger.info("[Offline Scheduler] Already running, skip.")
