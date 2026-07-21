@@ -235,3 +235,99 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 5. **WebSocket**: thay polling bằng realtime push (Channels)
 6. **Database connection pooling**: PgBouncer
 7. **APM**: Sentry Performance / New Relic
+
+---
+
+## ⚠️ Giới hạn đã biết: LocMemCache không nhất quán giữa các gunicorn worker
+
+> Phát hiện bởi audit ngày 2026-07-21 (xem `PHAN_TICH_REPO_EDUCARELINK.md`, mục L6).
+
+### Vấn đề
+
+`backend/settings.py` cấu hình:
+
+```python
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'educarelink-cache',
+        'TIMEOUT': 300,
+    }
+}
+```
+
+Trong khi `render.yaml` đặt `WEB_CONCURRENCY=2` → gunicorn spawn **2 worker process**.
+`LocMemCache` là cache **in-process** → mỗi worker có 1 cache riêng, **không chia sẻ**.
+
+### Hệ quả thực tế
+
+| Module | Vấn đề |
+|---|---|
+| `performance/lru_cache.py` | Cache hit rate thực tế thấp hơn báo cáo — mỗi worker cache riêng, request đến worker khác phải tính lại |
+| `performance/request_dedup.py` | Dedup không hiệu quả — 2 request giống nhau đến 2 worker khác nhau vẫn gọi DB/Gemini 2 lần |
+| Throttling (DRF) | Throttle counter chia per-worker → giới hạn rate không chính xác (thực tế = 2× configured rate) |
+| AI prompt cache (Gemini) | Quota Gemini tiêu hao gấp đôi kỳ vọng khi cache miss ở worker thứ 2 |
+
+### Tại sao chưa fix ngay
+
+1. **Chi phí**: Render free tier không có Redis miễn phí. Redis Cloud free tier (30MB) có thể dùng được nhưng cần setup.
+2. **Trade-off**: LocMemCache nhanh nhất cho single-instance (no network hop). Nếu traffic thấp + 2 worker, độ trễ cache miss vẫn chấp nhận được.
+3. **Workaround hiện tại**: TTL cache ngắn (300s) → staleness tự khắc phục sau 5 phút. Không gây lỗi logic, chỉ giảm hiệu quả cache.
+
+### Khi nào cần upgrade lên Redis
+
+Các dấu hiệu nên chuyển sang Redis:
+
+- Traffic tăng → cache hit rate thấp → Gemini API quota tiêu hao nhanh.
+- Quan sát log thấy `cache miss` nhiều bất thường (so với kỳ vọng).
+- Cần throttle chính xác (vd: giới hạn 5 SOS/phút thật sự = 5, không phải 10).
+- Cần share session state giữa worker (cho future WebSocket / Channels).
+
+### Cách chuyển sang Redis (khi có ngân sách)
+
+1. **Provision Redis**: dùng Redis Cloud (free 30MB) hoặc Upstash (free tier).
+2. **Add dependency**: `pip install django-redis` (cập nhật `requirements.txt`).
+3. **Update settings**:
+
+```python
+# backend/settings.py
+REDIS_URL = os.environ.get('REDIS_URL', '')
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {'max_connections': 20},
+            },
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    # Fallback LocMem cho local dev / CI
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'educarelink-cache',
+            'TIMEOUT': 300,
+        }
+    }
+```
+
+4. **Add env var**: `REDIS_URL` vào `render.yaml` và `.env.example`.
+5. **Test**: chạy `python manage.py test` — DRF throttle test cần verify rate chính xác.
+6. **Monitor**: theo dõi `performance/stats/` endpoint để so sánh cache hit rate trước/sau.
+
+### Lưu ý khi debug
+
+Khi gặp các vấn đề "cache không nhất quán" (vd: AI trả kết quả khác nhau cho cùng prompt trong 5 phút), nguyên nhân nhiều khả năng là cache split giữa 2 worker, **không phải bug code**. Kiểm tra bằng cách:
+
+```bash
+# Xem log mỗi worker
+render logs --service=educarelink-backend | grep "cache miss"
+# Đếm số lần miss trên mỗi worker ID
+```
+
+Nếu 2 worker đều log miss cho cùng prompt → đúng là vấn đề cache split.
