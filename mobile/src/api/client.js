@@ -15,19 +15,20 @@ const DEV_URL = `http://${DEV_IP}:${DEV_PORT}/api`;
 const PROD_URL = 'https://educarelink-backend.onrender.com/api';
 
 // ====================================================================
-// Chọn backend theo môi trường (BUG-05: trước đây BASE_URL luôn = PROD_URL,
-// DEV_IP là dead code — dev không thể trỏ app tới backend local dù có sửa IP).
+// Chọn backend theo môi trường.
 //
-// Cách bật dev backend (chọn 1):
-//   1. Chạy Expo ở dev mode (default): `__DEV__` global = true → tự dùng DEV_URL.
-//   2. Set env var EXPO_PUBLIC_USE_DEV_BACKEND=1 trong .env (env-cmd / expo-cli
-//      đọc EXPO_PUBLIC_* tự động — không cần react-native-dotenv).
-//      Dùng khi muốn ép dùng DEV_URL trên release build để QA local.
+// REGRESSION FIX (BUG-05 round 2): phiên bản trước đây bật DEV_URL tự động
+// khi `__DEV__ === true` — nhưng `__DEV__` true cho MỌI người chạy `npx expo
+// start`, không chỉ người đang ở LAN 192.168.1.31. App silent break cho mọi
+// tester/dev khác vì họ không có backend local ở IP đó.
 //
-// Khi release build (production APK), `__DEV__` = false → tự dùng PROD_URL.
+// Quy tắc mới: PROD_URL là default trong MỌI trường hợp (cả dev lẫn release).
+// DEV_URL chỉ được dùng khi dev EXPLICITLY opt-in qua env var
+// `EXPO_PUBLIC_USE_DEV_BACKEND=1` (set trong .env hoặc shell). Như vậy chỉ
+// người thực sự muốn test local backend mới cần config, mặc định app luôn
+// nói chuyện với Render production — đúng behavior cho tester/dev thông thường.
 // ====================================================================
 const useDevBackend =
-  (typeof __DEV__ !== 'undefined' && __DEV__) ||
   (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_USE_DEV_BACKEND === '1');
 
 const BASE_URL = useDevBackend ? DEV_URL : PROD_URL;
@@ -35,7 +36,7 @@ const BASE_URL = useDevBackend ? DEV_URL : PROD_URL;
 // Log 1 lần khi khởi động để dev biết app đang nói chuyện với backend nào
 if (useDevBackend) {
   // eslint-disable-next-line no-console
-  console.log(`[api/client] DEV mode → BASE_URL = ${BASE_URL}`);
+  console.log(`[api/client] DEV backend opted-in → BASE_URL = ${BASE_URL}`);
 }
 
 const apiClient = axios.create({
