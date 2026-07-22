@@ -3,16 +3,40 @@ import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 
 // ====================================================================
-// ⚠️  CẬP NHẬT IP NÀY MỖI KHI ĐỔI MẠNG WI-FI!
+// ⚠️  CẬP NHẬT IP NÀY MỖI KHI ĐỔI MẠNG WI-FI (chỉ áp dụng khi chạy dev)!
 //  Cách lấy IP: Mở PowerShell → gõ `ipconfig` → tìm "IPv4 Address"
 //  Hoặc dùng: npx expo start --tunnel (không cần cập nhật IP)
 // ====================================================================
 const DEV_IP = '192.168.1.31'; // <-- ĐỔI IP CỦA MÁY TÍNH BẠN VÀO ĐÂY
+const DEV_PORT = '8000';       // <-- Port Django dev server (manage.py runserver)
+const DEV_URL = `http://${DEV_IP}:${DEV_PORT}/api`;
 
 // Production URL cho Render deployment
 const PROD_URL = 'https://educarelink-backend.onrender.com/api';
 
-const BASE_URL = PROD_URL; // Ép dùng Render backend cho mọi môi trường (Web, Expo Go, APK)
+// ====================================================================
+// Chọn backend theo môi trường (BUG-05: trước đây BASE_URL luôn = PROD_URL,
+// DEV_IP là dead code — dev không thể trỏ app tới backend local dù có sửa IP).
+//
+// Cách bật dev backend (chọn 1):
+//   1. Chạy Expo ở dev mode (default): `__DEV__` global = true → tự dùng DEV_URL.
+//   2. Set env var EXPO_PUBLIC_USE_DEV_BACKEND=1 trong .env (env-cmd / expo-cli
+//      đọc EXPO_PUBLIC_* tự động — không cần react-native-dotenv).
+//      Dùng khi muốn ép dùng DEV_URL trên release build để QA local.
+//
+// Khi release build (production APK), `__DEV__` = false → tự dùng PROD_URL.
+// ====================================================================
+const useDevBackend =
+  (typeof __DEV__ !== 'undefined' && __DEV__) ||
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_USE_DEV_BACKEND === '1');
+
+const BASE_URL = useDevBackend ? DEV_URL : PROD_URL;
+
+// Log 1 lần khi khởi động để dev biết app đang nói chuyện với backend nào
+if (useDevBackend) {
+  // eslint-disable-next-line no-console
+  console.log(`[api/client] DEV mode → BASE_URL = ${BASE_URL}`);
+}
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
