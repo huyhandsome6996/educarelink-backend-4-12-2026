@@ -1,8 +1,10 @@
 # QA Bug Report — EduCareLink (2026-07-23)
 
 **Tester:** Claude (Anthropic)
-**Scope:** Backend (Django), Web frontend (Django templates), Mobile app (React Native/Expo)
+**Scope:** Backend (Django), Web frontend (Django templates), Mobile app (React Native/Expo). **Payments module excluded at the repo owner's request** — see note below.
 **Method:** See "Testing methodology & limitations" below — this was **static/code-level QA plus a fully isolated local run**, not manual clicking on the live Render deployment.
+
+> **Payments (MoMo/PayOS) is intentionally out of scope for this pass.** The repo owner is actively finishing PayOS account setup and considering dropping MoMo entirely (its merchant registration process is too tedious), so the payments module was left untouched — not tested, not fixed. The previous pass's payments finding has been moved to "Deferred — payments module" below rather than treated as an open bug.
 
 ---
 
@@ -16,7 +18,8 @@ To avoid any risk to the live Render service or its database, I did **not** run 
 - Started the Django dev server locally (`127.0.0.1`, not Render) and hit every URL pattern (all web pages + all `{% url %}` template tags) to confirm they resolve without server errors.
 - Syntax-checked all 59 mobile `.js` files with `node --check`.
 - Cross-referenced every `fetch()`/`apiFetch()` call in the admin dashboard template, and the mobile app's API client, against the real Django URL patterns to find dead links.
-- Read through `core/views.py`, `moderation/services.py`, `payments/`, and `mobile/src/api/client.js` for logic issues.
+- Read through `core/views.py`, `moderation/services.py`, and `mobile/src/api/client.js` for logic issues.
+- **Second pass:** ran `pyflakes` across every non-payments app (`core`, `moderation`, `tracking`, `ai_recommendations`, `performance`, `frontend`, `backend`) to catch unused/dead code and undefined names, then manually reviewed each hit that looked like it could be a real functional bug (most were harmless unused imports — those are omitted below since they're not worth anyone's time).
 
 **What I could not do**, and want to be upfront about:
 - I have no phone/emulator or Expo runtime here, so I could not literally launch the mobile app and tap through every screen.
@@ -33,7 +36,8 @@ If you want true click-through UI/mobile QA, that needs either a human tester or
 |---|---|
 | High | 1 |
 | Medium | 3 |
-| Low | 1 |
+| Low | 2 |
+| Deferred (payments, not tested) | 1 |
 
 No crashes, no 500 errors, no broken page routes were found. All 4 previously-reported "web page 404" and "send-notification 400" issues (from `TEST_REPORT_2026_07_21.md`) were re-verified and confirmed to be **test-script mistakes, not real bugs** (the real routes are `/parent/` and `/worker/`, not `/parent/home/` / `/worker/feed/`; the real param is `send_to_all`, not `recipient_type`) — nothing in the actual code references the wrong paths.
 
@@ -61,21 +65,21 @@ No crashes, no 500 errors, no broken page routes were found. All 4 previously-re
 
 ---
 
-## BUG-03 (Medium): `payments/tests/` package has no `__init__.py` — its entire test suite silently never runs
-
-- **Component:** `payments/tests/test_integration.py` (205 lines)
-- **Finding:** The directory `payments/tests/` is missing `__init__.py`, so Django's test runner doesn't discover it as a package. Confirmed: `manage.py test` reports **"Found 0 test(s)"** across the whole project, even though this file exists with real integration tests.
-- **Why it matters:** Whoever wrote those 205 lines of payment-flow tests believes they're providing safety-net coverage for the payments module (MoMo/PayOS — real money flows). They are not running at all, in CI or locally.
-- **Fix:** Add an empty `payments/tests/__init__.py`, then run `manage.py test` again and fix whatever it turns up (there may be failures once it actually executes for the first time).
-
----
-
-## BUG-04 (Medium): Missing migration in `moderation` app
+## BUG-03 (Medium): Missing migration in `moderation` app
 
 - **Component:** `moderation` app
 - **Finding:** `manage.py makemigrations --check --dry-run` reports pending model changes (Meta `options`/index renames and several field alterations on `Complaint` and `TaskModeration`) that have no corresponding migration file yet.
 - **Why it matters:** This means the models in code and the latest migration are out of sync. It works today only because SQLite/Postgres tolerate the drift, but it will bite the next time someone runs a strict migration check in CI, or when the schema actually needs the change enforced (e.g. new DB, or `--check` in a pre-commit hook).
 - **Fix:** Run `python manage.py makemigrations moderation`, review the generated migration, and commit it.
+
+---
+
+## BUG-04 (Medium): Admin "clear recommendations cache" endpoint is a no-op
+
+- **Component:** `ai_recommendations/views.py`, `ClearRecommendationsCacheAPIView`
+- **Finding:** `POST /api/ai/recommendations/clear-cache/` accepts `worker_id`/`task_id` params, but the handler's actual clearing logic is `if worker_id: pass` — it does nothing, then unconditionally returns a `200` with the message "Cache clear request received. Cache sẽ tự expire sau TTL." The endpoint always reports success without ever deleting a cache key.
+- **Why it matters:** Anyone calling this (an admin fixing a bad recommendation, or another part of the app after data changes) is told the cache was cleared when it wasn't — it silently relies on the 3–5 minute TTL to eventually catch up. If there's a UI button for this, it's misleading the person who clicks it into thinking their action had an immediate effect.
+- **Fix:** Either implement real key deletion (e.g. build the same cache key the recommendation views use, from `worker_id`/`task_id`, and call `cache.delete()` on it), or be honest in the response that no immediate action was taken and the TTL is the only mechanism — don't imply the clear happened.
 
 ---
 
@@ -85,6 +89,22 @@ No crashes, no 500 errors, no broken page routes were found. All 4 previously-re
 - **Finding:** The file defines `const DEV_IP = '192.168.1.31'` with a comment instructing developers to update it for local testing, but `BASE_URL` is hardcoded to `PROD_URL` (`const BASE_URL = PROD_URL;`), so `DEV_IP` is never actually used.
 - **Why it matters:** Minor, but it's misleading — a new developer following the comment to "update your IP" will do so and nothing will change, because the app always talks to the live Render backend regardless of environment. This also means there's no easy way to point the mobile app at a local backend for testing without editing this file directly.
 - **Fix:** Either remove the dead `DEV_IP` constant, or wire it up properly behind an env flag (e.g. `if (__DEV__) BASE_URL = DEV_URL`) so local development is actually possible.
+
+---
+
+## BUG-06 (Low): Dead `geofence_warned` flag in tracking service
+
+- **Component:** `tracking/services.py`, geofence-exit handling
+- **Finding:** When a Carepartner leaves the safe zone, the code sets a local variable `geofence_warned = True` that is never read again anywhere. The actual push notification still fires correctly via `_notify_user(...)` right below it, so this doesn't cause any missed alerts — it's just leftover/incomplete code, possibly a half-finished attempt to deduplicate repeated warnings.
+- **Why it matters:** Not user-facing today, but it's a landmine for a future refactor: someone could reasonably assume `geofence_warned` is doing something (like suppressing duplicate alerts) and build on that false assumption.
+- **Fix:** Either remove the unused variable, or finish the intended logic (e.g. store it on the `LiveLocation` row like `geofence_warned_at` already does, and use it to avoid re-notifying every poll cycle while still outside the zone).
+
+---
+
+## Deferred — payments module (not tested this pass, per repo owner's request)
+
+- **Status:** Out of scope. The repo owner is finishing PayOS account setup and considering dropping MoMo, so the payments module (`payments/` app, `payments/tests/`, MoMo/PayOS client code) was **not tested and not fixed** in this pass.
+- **Carried over from the previous report, for when this is back in scope:** `payments/tests/test_integration.py` (205 lines) sits in a `payments/tests/` directory with no `__init__.py`, so Django's test runner doesn't discover it — `manage.py test` finds 0 tests project-wide. Once the PayOS/MoMo decision is finalized, this is worth revisiting: add the missing `__init__.py`, run the suite for the first time, and see what it turns up.
 
 ---
 
