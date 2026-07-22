@@ -27,6 +27,36 @@ logger = logging.getLogger('educarelink.ai_recommendations')
 CACHE_TTL_WORKER = 300  # 5 phút
 CACHE_TTL_PARENT = 180  # 3 phút
 
+# Cache key prefixes — dùng cho clear-cache endpoint
+WORKER_CACHE_PREFIX = 'ai_rec_worker_'
+PARENT_CACHE_PREFIX = 'ai_rec_parent_'
+
+
+def build_worker_cache_key(worker_id, task_ids):
+    """
+    Build cache key cho worker recommendations — phải khớp đúng logic
+    trong get_worker_recommendations() để clear-cache có thể xoá đúng key.
+
+    Args:
+        worker_id: int
+        task_ids: iterable of int (sẽ được sort + hash)
+    """
+    sorted_ids = sorted(int(tid) for tid in task_ids)
+    return f'{WORKER_CACHE_PREFIX}{worker_id}_{hash(tuple(sorted_ids))}'
+
+
+def build_parent_cache_key(task_id, app_ids):
+    """
+    Build cache key cho parent candidate recommendations — phải khớp đúng logic
+    trong get_candidate_recommendations() để clear-cache có thể xoá đúng key.
+
+    Args:
+        task_id: int
+        app_ids: iterable of int (sẽ được sort + hash)
+    """
+    sorted_ids = sorted(int(aid) for aid in app_ids)
+    return f'{PARENT_CACHE_PREFIX}{task_id}_{hash(tuple(sorted_ids))}'
+
 
 def _get_gemini_client():
     """⚡ TỐI ƯU: dùng pooled singleton client thay vì init mỗi call."""
@@ -132,8 +162,8 @@ def get_worker_recommendations(worker, tasks_qs):
         return {'has_ai': False, 'recommendations': [], 'cached': False, 'message': 'Không có việc nào để gợi ý.'}
 
     # Check cache
-    task_ids = sorted([t.id for t in tasks])
-    cache_key = f'ai_rec_worker_{worker.id}_{hash(tuple(task_ids))}'
+    task_ids = [t.id for t in tasks]
+    cache_key = build_worker_cache_key(worker.id, task_ids)
     cached = cache.get(cache_key)
     if cached:
         cached['cached'] = True
@@ -333,8 +363,8 @@ def get_candidate_recommendations(task, applications):
         }
 
     # Check cache
-    app_ids = sorted([a.id for a in applications])
-    cache_key = f'ai_rec_parent_{task.id}_{hash(tuple(app_ids))}'
+    app_ids = [a.id for a in applications]
+    cache_key = build_parent_cache_key(task.id, app_ids)
     cached = cache.get(cache_key)
     if cached:
         cached['cached'] = True
