@@ -154,8 +154,10 @@ def update_worker_location(*, task: Task, worker: User,
             accuracy=accuracy, speed=speed, heading=heading,
         )
 
-        # Geofence check (nếu task có geofence tùy chỉnh HOẶC lat/lng mặc định)
-        geofence_warned = False
+        # Geofence check (nếu task có geofence tùy chỉnh HOẶC lat/lng mặc định).
+        # Dedup đã được handle qua live.is_outside_geofence flag trên model:
+        # notify chỉ fire khi `outside and not live.is_outside_geofence` (lần đầu
+        # rời vùng), các poll tiếp theo khi vẫn outside sẽ thấy flag đã True → skip.
         # Ưu tiên dùng geofence_lat/lng/radius từ task (parent vẽ trên map)
         geofence_lat = task.geofence_lat if (task.geofence_lat is not None) else task.latitude
         geofence_lng = task.geofence_lng if (task.geofence_lng is not None) else task.longitude
@@ -191,11 +193,11 @@ def update_worker_location(*, task: Task, worker: User,
                     )
 
             if outside and not live.is_outside_geofence:
-                # Vừa rời vùng → push cảnh báo
+                # Vừa rời vùng → push cảnh báo (chỉ fire lần đầu; các poll
+                # tiếp theo khi vẫn ngoài vùng sẽ thấy flag đã True → skip).
                 live.is_outside_geofence = True
                 live.geofence_warned_at = timezone.now()
                 live.save(update_fields=['is_outside_geofence', 'geofence_warned_at'])
-                geofence_warned = True
                 _notify_user(
                     task.parent,
                     title="🚨🚨🚨 CẢNH BÁO: Carepartner rời vùng an toàn!",
