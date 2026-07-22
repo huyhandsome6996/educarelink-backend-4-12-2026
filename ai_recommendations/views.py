@@ -10,11 +10,19 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework import status
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 
 from core.models import Task, TaskApplication
-from .services import get_worker_recommendations, get_candidate_recommendations
+from .services import (
+    get_worker_recommendations,
+    get_candidate_recommendations,
+    build_worker_cache_key,
+    build_parent_cache_key,
+    WORKER_CACHE_PREFIX,
+    PARENT_CACHE_PREFIX,
+)
 
 logger = logging.getLogger('educarelink.ai_recommendations.api')
 
@@ -129,25 +137,139 @@ class CandidateRecommendationsAPIView(APIView):
 
 
 class ClearRecommendationsCacheAPIView(APIView):
-    """POST /api/ai/recommendations/clear-cache/ — Admin only."""
+    """
+    POST /api/ai/recommendations/clear-cache/ — Admin only.
+
+    Body (chọn 1 trong 3):
+      - {worker_id: <int>}      — xoá cache recommendation của carepartner đó
+      - {task_id: <int>}        — xoá cache candidate recommendation của task đó
+      - {all: true}             — xoá toàn bộ cache có prefix ai_rec_worker_ /
+                                  ai_rec_parent_ (best-effort, vì LocMemCache
+                                  không hỗ trợ SCAN; production nên dùng Redis)
+
+    Trả về số key thực sự bị xoá (cleared) + danh sách key đã xoá (deleted_keys).
+    Nếu không có key nào khớp (cache miss hoặc data đã thay đổi), cleared = 0
+    và response nói rõ — không báo 'thành công' khi không làm gì.
+    """
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        # Xóa tất cả cache keys có prefix 'ai_rec_'
-        # Note: django.core.cache không có iterate, nên dùng pattern
-        # Cách đơn giản: xóa theo worker_id / task_id cụ thể
         worker_id = request.data.get('worker_id')
         task_id = request.data.get('task_id')
+        clear_all = request.data.get('all') is True
 
-        cleared = 0
+        if not (worker_id or task_id or clear_all):
+            return Response(
+                {
+                    'error': "Cần cung cấp 'worker_id', 'task_id', hoặc {'all': true}.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        deleted_keys = []
+
+        # ── Case 1: clear theo worker_id ──────────────────────────────
+        # Build lại đúng cache key mà WorkerRecommendationsAPIView đã set,
+        # bằng cách lặp lại cùng query (open tasks mà worker chưa apply).
         if worker_id:
-            # Xóa cache của worker cụ thể — cần biết task_ids nhưng không có
-            # Fallback: xóa hết cache keys có pattern
-            pass
+            try:
+                wid = int(worker_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {'error': f'worker_id phải là int, nhận được {worker_id!r}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                applied_task_ids = TaskApplication.objects.filter(
+                    worker_id=wid
+                ).values_list('task_id', flat=True)
+                task_ids = list(
+                    Task.objects.filter(status='open')
+                    .exclude(id__in=applied_task_ids)
+                    .values_list('id', flat=True)[:20]
+                )
+                cache_key = build_worker_cache_key(wid, task_ids)
+                if cache.has_key(cache_key):
+                    cache.delete(cache_key)
+                    deleted_keys.append(cache_key)
+            except Exception as e:
+                logger.warning(f"[clear-cache] Worker {wid} rebuild key failed: {e}")
 
-        # Cách tiếp cận đơn giản: delete keys đã biết
-        # (Production nên dùng Redis SCAN)
+        # ── Case 2: clear theo task_id ────────────────────────────────
+        # Build lại đúng cache key mà CandidateRecommendationsAPIView đã set,
+        # bằng cách lặp lại cùng query (pending applications của task).
+        if task_id:
+            try:
+                tid = int(task_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {'error': f'task_id phải là int, nhận được {task_id!r}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                app_ids = list(
+                    TaskApplication.objects.filter(
+                        task_id=tid, status='pending'
+                    ).values_list('id', flat=True)
+                )
+                cache_key = build_parent_cache_key(tid, app_ids)
+                if cache.has_key(cache_key):
+                    cache.delete(cache_key)
+                    deleted_keys.append(cache_key)
+            except Exception as e:
+                logger.warning(f"[clear-cache] Task {tid} rebuild key failed: {e}")
+
+        # ── Case 3: clear all (best-effort) ───────────────────────────
+        # LocMemCache lưu entry trong OrderedDict _cache (private API), với key
+        # được encode dạng "{key_prefix}:{version}:{key}" (mặc định ":1:key").
+        # cache.delete(user_key) sẽ re-apply prefix+version → match raw key và
+        # đồng bộ xoá cả _cache + _expire_info. Production nên dùng Redis SCAN.
+        if clear_all:
+            try:
+                locmem = getattr(cache, '_cache', None)
+                if hasattr(locmem, 'keys'):
+                    for raw_key in list(locmem.keys()):
+                        if not (
+                            WORKER_CACHE_PREFIX in raw_key
+                            or PARENT_CACHE_PREFIX in raw_key
+                        ):
+                            continue
+                        # Strip prefix "{key_prefix}:{version}:" — mặc định ":1:".
+                        # Dùng rsplit để tách phần user_key (phần sau 2 dấu ':').
+                        # An toàn kể cả khi key_prefix chứa ':' (rare).
+                        parts = raw_key.split(':', 2)
+                        user_key = parts[2] if len(parts) == 3 else raw_key
+                        # Tìm lại key để xoá (idempotent — đã xoá thì no-op)
+                        if cache.has_key(user_key):
+                            cache.delete(user_key)
+                            if user_key not in deleted_keys:
+                                deleted_keys.append(user_key)
+                else:
+                    logger.info(
+                        "[clear-cache] Cache backend không có _cache dict — "
+                        "skip 'all' branch. Production nên dùng Redis SCAN."
+                    )
+            except Exception as e:
+                logger.warning(f"[clear-cache] 'all' branch failed: {e}")
+
+        cleared = len(deleted_keys)
+        if cleared > 0:
+            return Response({
+                'message': f'Đã xoá {cleared} cache key(s).',
+                'cleared': cleared,
+                'deleted_keys': deleted_keys,
+                'note': 'Cache sẽ được build lại lần tới khi AI recommendation view được gọi.',
+            })
+        # Honest response: không xoá được key nào (cache miss, hoặc data đã
+        # thay đổi khiến key rebuild không khớp key đã set).
         return Response({
-            'message': 'Cache clear request received. Cache sẽ tự expire sau TTL.',
-            'note': 'Worker cache TTL: 5 phút, Parent cache TTL: 3 phút.',
-        })
+            'message': 'Không tìm thấy cache key nào khớp để xoá.',
+            'cleared': 0,
+            'deleted_keys': [],
+            'note': (
+                'Có thể cache đã expire (TTL worker=5 phút, parent=3 phút), '
+                'hoặc tập task_ids / app_ids hiện tại khác với lúc cache được set '
+                '(làm cache_key hash khác nhau). Recommendation sẽ được tính lại '
+                'lần gọi tiếp theo.'
+            ),
+        }, status=status.HTTP_200_OK)
