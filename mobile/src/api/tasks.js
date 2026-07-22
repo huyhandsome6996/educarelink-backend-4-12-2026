@@ -83,9 +83,17 @@ export const getMyCredentials = () => apiClient.get('/worker/submit-credential/'
 
 // === WORKER: PROFILE CHANGE REQUEST — đồng bộ với web (worker_profile.html) ===
 // Carepartner yêu cầu sửa hồ sơ (email, phone, address, first/last name...)
-// Body: { proposed_changes: { first_name?, last_name?, phone_number?, email?, address? } }
+//
+// BUG FIX (QA pass 2026-07-23): phiên bản trước đây gửi body dạng
+//   { proposed_changes: { first_name?, ... } }
+// nhưng backend (WorkerProfileChangeRequestAPIView) đọc FLAT fields:
+//   { first_name?, last_name?, phone_number?, email?, address? }
+// → mobile luôn nhận 400 "Không có thay đổi nào để gửi." kể cả khi user
+// đã sửa thông tin. Web đã gửi flat đúng, mobile lệch format.
+// Fix: spread proposedChanges thành top-level fields để match backend +
+// đồng bộ với web (worker_profile.html:1685-1693).
 export const requestProfileChange = (proposedChanges) =>
-  apiClient.post('/worker/profile-change-request/', { proposed_changes: proposedChanges });
+  apiClient.post('/worker/profile-change-request/', { ...(proposedChanges || {}) });
 
 // LỊCH SỬ yêu cầu sửa hồ sơ đã gửi
 export const getMyProfileChangeRequests = () =>
