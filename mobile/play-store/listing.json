@@ -1,0 +1,85 @@
+{
+  "package_name": "com.educarelink.app",
+  "version": "1.2.0",
+  "versionCode": 3,
+  "minSdkVersion": 24,
+  "targetSdkVersion": 35,
+  "compileSdkVersion": 35,
+
+  "play_store": {
+    "title": "EduCareLink — Kết nối Phụ huynh & Carepartner",
+    "short_description": "Nền tảng kết nối phụ huynh với carepartner (sinh viên) đáng tin cậy.",
+    "long_description": "EduCareLink là nền tảng kết nối trực tiếp giữa phụ huynh cần người chăm sóc, dạy kèm, đưa đón con em mình và carepartner là sinh viên năng động, đáng tin cậy.\n\nVới EduCareLink, phụ huynh có thể:\n  • Đăng công việc (chăm sóc, dạy kèm, đưa đón...) chỉ trong vài bước\n  • Duyệt hồ sơ carepartner: bằng cấp, đánh giá, khoảng cách\n  • Theo dõi vị trí real-time khi carepartner đang làm việc\n  • Nhận cảnh báo SOS và geofence (vùng an toàn) tức thì\n  • Đánh giá và viết nhận xét sau khi hoàn thành\n\nVới carepartner (sinh viên), app cho phép:\n  • Tìm việc làm linh hoạt theo lịch học\n  • Quản lý hồ sơ và bằng cấp trong một nơi\n  • Nhận thông báo việc làm phù hợp\n  • Chat với AI trợ giúp khi cần\n\nTính năng nổi bật:\n  ✓ Theo dõi vị trí real-time + cảnh báo geofence\n  ✓ SOS một chạm cho tình huống khẩn cấp\n  ✓ AI gợi ý carepartner phù hợp cho từng công việc\n  ✓ Kiểm duyệt nội dung bằng AI (an toàn cho trẻ em)\n  ✓ Hệ thống đánh giá uy tín\n\nEduCareLink — Kết nối yêu thương, xây dựng tương lai.",
+    "category": "EDUCATION",
+
+    "tags": [
+      "Education",
+      "Lifestyle",
+      "Social"
+    ],
+
+    "keywords": "educarelink, carepartner, người chăm sóc, dạy kèm, sinh viên, phụ huynh, theo dõi vị trí, sos, geofence",
+
+    "content_rating": {
+      "rating": "EVERYONE",
+      "no_ads": true,
+      "no_in_app_purchases": false,
+      "no_user_generated_content": false,
+      "shares_location": true,
+      "shares_user_info": true,
+      "users_can_interact": true,
+      "unrestricted_web_access": false
+    },
+
+    "target_audience": {
+      "min_age": 18,
+      "max_age": 65,
+      "demographics": ["parents", "students"]
+    },
+
+    "privacy_policy_url": "https://educarelink.github.io/privacy-policy",
+    "support_email": "support@educarelink.app",
+    "support_url": "https://educarelink.github.io/support",
+    "marketing_url": "https://educarelink.github.io",
+    "website_url": "https://educarelink.github.io",
+
+    "icons": {
+      "icon_512": "./assets/icon.png",
+      "feature_graphic": "./play-store/feature-graphic.png"
+    },
+
+    "screenshots_required": {
+      "phone_1080x1920_min_320x480_max": {
+        "min_count": 2,
+        "max_count": 8,
+        "paths": [
+          "./play-store/screenshots/phone-1.png",
+          "./play-store/screenshots/phone-2.png",
+          "./play-store/screenshots/phone-3.png",
+          "./play-store/screenshots/phone-4.png"
+        ]
+      },
+      "tablet_1080x1920_min_320x480_max": {
+        "min_count": 0,
+        "max_count": 8,
+        "paths": []
+      }
+    },
+
+    "release_notes_v1_2_0": [
+      "Bản vá lỗi + cải thiện hiệu suất",
+      "Sửa lỗi crash do type annotation trong LocationService",
+      "Thêm ErrorBoundary toàn app — tránh white screen khi có lỗi",
+      "Loại bỏ console.log trong production build",
+      "Cấu hình sẵn Play Store (AAB, versionCode 3)"
+    ],
+
+    "release_notes_v1_1_0": [
+      "Thêm AI Recommendations cho Carepartner & Parent",
+      "Thêm module Moderation (kiểm duyệt + khiếu nại)",
+      "Thêm theo dõi vị trí real-time + geofence",
+      "Thêm SOS một chạm",
+      "Tích hợp payment MoMo + PayOS"
+    ]
+  }
+}

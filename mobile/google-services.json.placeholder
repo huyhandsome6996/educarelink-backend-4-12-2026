@@ -1,0 +1,31 @@
+{
+  "_comment": "PLACEHOLDER FILE — replace with the real google-services.json downloaded from Firebase Console (https://console.firebase.google.com/). Steps: 1) Create Firebase project 'EduCareLink' 2) Add Android app with package 'com.educarelink.app' 3) Download google-services.json 4) Overwrite this file. This file is in .gitignore — do NOT commit the real one.",
+  "_warning": "If this placeholder is still here when you run `eas build -p android`, the build WILL FAIL. Replace it before building.",
+  "project_info": {
+    "project_number": "REPLACE_WITH_YOUR_PROJECT_NUMBER",
+    "project_id": "REPLACE_WITH_YOUR_PROJECT_ID",
+    "storage_bucket": "REPLACE_WITH_YOUR_STORAGE_BUCKET"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REPLACE_WITH_YOUR_MOBILE_APP_ID",
+        "android_client_info": {
+          "package_name": "com.educarelink.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

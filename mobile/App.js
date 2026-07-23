@@ -6,6 +6,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { storage } from './src/utils/storage';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 // ====================================================================
 // App — EduCareLink
@@ -213,8 +214,10 @@ export default function App() {
   useBackgroundFetch();
 
   return (
-    <AuthProvider>
-      <AppNavigator />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

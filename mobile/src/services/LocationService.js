@@ -357,10 +357,10 @@ export async function hasPendingResumeTask(): Promise<boolean> {
 // ====================================================================
 // FOREGROUND INTERVALS — backup khi app mở
 // ====================================================================
-let locationIntervalId: any = null;
-let heartbeatIntervalId: any = null;
+let locationIntervalId = null;
+let heartbeatIntervalId = null;
 
-function startForegroundLocationInterval(taskId: number) {
+function startForegroundLocationInterval(taskId) {
   if (locationIntervalId) clearInterval(locationIntervalId);
   sendCurrentLocation(taskId);
   locationIntervalId = setInterval(() => {
@@ -375,7 +375,7 @@ function stopForegroundLocationInterval() {
   }
 }
 
-function startForegroundHeartbeatInterval(taskId: number) {
+function startForegroundHeartbeatInterval(taskId) {
   if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
   // Heartbeat interval = 30s (foreground backup)
   heartbeatIntervalId = setInterval(() => {
@@ -390,7 +390,7 @@ function stopForegroundHeartbeatInterval() {
   }
 }
 
-async function sendCurrentLocation(taskId: number) {
+async function sendCurrentLocation(taskId) {
   try {
     if (Platform.OS === 'web') return;
 
@@ -412,7 +412,7 @@ async function sendCurrentLocation(taskId: number) {
   }
 }
 
-async function sendHeartbeatNow(taskId: number) {
+async function sendHeartbeatNow(taskId) {
   try {
     let batteryLevel = null;
     try {

@@ -1,2 +1,28 @@
-node_modules/
-.expo/
+# Files excluded from EAS production build uploads
+# (in addition to .gitignore)
+
+# Documentation
+*.md
+DEPLOY_GUIDE.md
+README_PLAY_STORE.md
+
+# Play Store assets (uploaded separately to Play Console)
+play-store/
+
+# Build scripts
+build-apk-eas.sh
+
+# EAS config (keep eas.json, ignore lockfile)
+eas.json*.local
+
+# Doctor / inspect
+doctor.config.json
+
+# Templates
+google-services.json.placeholder
+
+# Tests / fixtures
+__tests__/
+__mocks__/
+*.test.js
+*.spec.js

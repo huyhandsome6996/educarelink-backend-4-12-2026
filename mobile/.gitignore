@@ -39,3 +39,21 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# ====================================================================
+# Sensitive — DO NOT COMMIT
+# Required for Play Store / Firebase / EAS submit
+# ====================================================================
+google-services.json
+GoogleService-Info.plist
+google-service-account-key.json
+*.keystore
+*.jks
+keystore.properties
+
+# Local EAS credentials (downloaded on demand)
+.easlocal/
+
+# Local env (per-developer opt-in for dev backend)
+.env
+.env.local
