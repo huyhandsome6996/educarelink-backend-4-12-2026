@@ -100,7 +100,7 @@ TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
  * Xin quyền location từ user.
  * Trả về true nếu đã được cấp.
  */
-export async function requestLocationPermissions(): Promise<boolean> {
+export async function requestLocationPermissions() {
   try {
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
     if (foregroundStatus !== 'granted') {
@@ -128,7 +128,7 @@ export async function requestLocationPermissions(): Promise<boolean> {
  * - Start background heartbeat task (mỗi 30s — chống tắt máy)
  * - Start foreground interval (backup)
  */
-export async function startTracking(taskId: number): Promise<boolean> {
+export async function startTracking(taskId) {
   if (isStarted && currentTaskId === taskId) {
     console.log('[LocationService] Already tracking this task');
     return true;
@@ -210,7 +210,7 @@ export async function startTracking(taskId: number): Promise<boolean> {
 /**
  * Dừng tracking + heartbeat.
  */
-export async function stopTracking(): Promise<void> {
+export async function stopTracking() {
   if (!isStarted) return;
 
   try {
@@ -251,11 +251,11 @@ export async function stopTracking(): Promise<void> {
   }
 }
 
-export function isTracking(): boolean {
+export function isTracking() {
   return isStarted;
 }
 
-export function getCurrentTaskId(): number | null {
+export function getCurrentTaskId() {
   return currentTaskId;
 }
 
@@ -279,7 +279,7 @@ export function getCurrentLocation() {
  *
  * @returns {Promise<number|null>} taskId đang resume, hoặc null
  */
-export async function autoResumeTracking(): Promise<number | null> {
+export async function autoResumeTracking() {
   try {
     const savedTaskId = await storage.getItem('tracking_task_id');
     if (!savedTaskId) {
@@ -345,7 +345,7 @@ export async function autoResumeTracking(): Promise<number | null> {
 /**
  * Check xem có task pending resume không (không start, chỉ check).
  */
-export async function hasPendingResumeTask(): Promise<boolean> {
+export async function hasPendingResumeTask() {
   try {
     const savedTaskId = await storage.getItem('tracking_task_id');
     return !!savedTaskId;

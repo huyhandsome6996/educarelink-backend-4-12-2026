@@ -26,7 +26,7 @@ export default function TrackingConsentModal({
 }) {
   const [submitting, setSubmitting] = useState(false);
 
-  const handleChoice = async (granted: boolean) => {
+  const handleChoice = async (granted) => {
     setSubmitting(true);
     try {
       await grantConsent(taskId, granted);
