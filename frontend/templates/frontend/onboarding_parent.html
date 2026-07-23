@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,44 +7,13 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>EduCareLink - Hướng dẫn sử dụng</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#F26522',
-                        primaryDark: '#D4541E',
-                        primaryLight: '#FFF4ED',
-                        primarySoft: '#FFCFB3',
-                        secondary: '#2DB84B',
-                        secondaryDark: '#1E9439',
-                        secondaryLight: '#EAFBEF',
-                        background: '#F7F7F7',
-                        surface: '#FFFFFF',
-                        surfaceAlt: '#FFF9F5',
-                        textPrimary: '#1A1A2E',
-                        textSecondary: '#6B7280',
-                        textMuted: '#9CA3AF',
-                        success: '#10B981',
-                        info: '#3B82F6',
-                        border: '#F0F0F0',
-                        divider: '#E5E7EB',
-                    },
-                    fontFamily: {
-                        headline: ['Manrope', 'sans-serif'],
-                        body: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                },
-            },
-        }
-    </script>
 
     <style>
         html { scroll-behavior: smooth; }

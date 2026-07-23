@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,58 +7,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>Đăng ký - EduCareLink</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="{% static 'css/tailwind-radius-b.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <!-- Leaflet.js Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary:        '#F26522',
-                        primaryDark:    '#D4541E',
-                        primaryLight:   '#FFF4ED',
-                        primarySoft:    '#FFCFB3',
-                        secondary:      '#2DB84B',
-                        secondaryDark:  '#1E9439',
-                        secondaryLight: '#EAFBEF',
-                        surface:        '#FFFFFF',
-                        surfaceAlt:     '#FFF9F5',
-                        bgMain:         '#F7F7F7',
-                        textPrimary:    '#1A1A2E',
-                        textSecondary:  '#6B7280',
-                        textMuted:      '#9CA3AF',
-                        textOnPrimary:  '#FFFFFF',
-                        successMain:    '#10B981',
-                        successBg:      '#ECFDF5',
-                        errorMain:      '#EF4444',
-                        errorBg:        '#FEF2F2',
-                        warningMain:    '#F59E0B',
-                        warningBg:      '#FFFBEB',
-                        infoMain:       '#3B82F6',
-                        infoBg:         '#EFF6FF',
-                        borderMain:     '#F0F0F0',
-                        dividerMain:    '#E5E7EB',
-                    },
-                    fontFamily: {
-                        headline: ['Manrope', 'sans-serif'],
-                        body:     ['Plus Jakarta Sans', 'sans-serif'],
-                        label:    ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                    borderRadius: {
-                        DEFAULT: '0.75rem',
-                        md:      '0.875rem',
-                        lg:      '1.25rem',
-                        xl:      '1.75rem',
-                        '2xl':   '2rem',
-                    },
-                },
-            },
-        }
-    </script>
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
