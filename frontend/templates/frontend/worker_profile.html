@@ -7,38 +7,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>Hồ sơ - EduCareLink</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- Leaflet.js Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#F26522',
-                        primaryDark: '#D4541E',
-                        primaryLight: '#FFF4ED',
-                        primarySoft: '#FFCFB3',
-                        secondary: '#2DB84B',
-                        bg: '#F7F7F7',
-                        surface: '#FFFFFF',
-                        textPrimary: '#1A1A2E',
-                        textSecondary: '#6B7280',
-                        textOnPrimary: '#FFFFFF',
-                        success: '#10B981',
-                        error: '#EF4444',
-                    },
-                    fontFamily: {
-                        manrope: ['Manrope', 'sans-serif'],
-                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
