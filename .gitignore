@@ -27,3 +27,8 @@ mobile/web-build/
 node_modules/
 bun.lock
 package.json
+
+# Local QA dev artifacts (not for repo)
+backend/settings_iso.py
+run_dev_server.py
+sitecustomize.py
