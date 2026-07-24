@@ -599,6 +599,18 @@
             return new Intl.NumberFormat('vi-VN').format(parseInt(price) || 0) + 'đ';
         }
 
+        // Fix C6: escape HTML cho mọi data inject qua innerHTML (task title,
+        // location, price) để chống stored XSS.
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // ---- Render task card ----
         function renderTaskCard(task) {
             const statusLabel = getStatusLabel(task.status);
@@ -642,13 +654,13 @@
                     </div>
 
                     <!-- Title -->
-                    <h3 class="font-bold text-textPrimary text-base leading-snug mb-3 line-clamp-2">${task.title}</h3>
+                    <h3 class="font-bold text-textPrimary text-base leading-snug mb-3 line-clamp-2">${escapeHtml(task.title)}</h3>
 
                     <!-- Details -->
                     <div class="space-y-2 mb-4">
                         <div class="flex items-center gap-2 text-textSecondary text-sm">
                             <span class="material-symbols-outlined text-lg text-textMuted">location_on</span>
-                            <span class="truncate">${task.location || 'Chưa cập nhật'}</span>
+                            <span class="truncate">${escapeHtml(task.location || 'Chưa cập nhật')}</span>
                         </div>
                         <div class="flex items-center gap-2 text-textSecondary text-sm">
                             <span class="material-symbols-outlined text-lg text-textMuted">schedule</span>

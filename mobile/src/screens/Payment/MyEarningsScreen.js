@@ -109,7 +109,12 @@ export default function MyEarningsScreen() {
         {owed > 0 && (
           <TouchableOpacity
             style={styles.owedCard}
-            onPress={() => navigation.navigate('SettlementList')}
+            // Fix C2: screen 'SettlementList' không được đăng ký trong AppNavigator.
+            // Tên đúng là 'SettlementDetail'. Khi không có settlementId cụ thể,
+            // SettlementDetailScreen sẽ tự fetch & hiển thị kỳ gần nhất.
+            // Trước đây bấm "Xem chi tiết" sẽ crash/silent fail vì navigate
+            // tới screen không tồn tại.
+            onPress={() => navigation.navigate('SettlementDetail')}
             activeOpacity={0.85}
           >
             <View style={styles.owedIconCircle}>

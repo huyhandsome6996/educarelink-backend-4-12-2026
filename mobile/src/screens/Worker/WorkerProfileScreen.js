@@ -22,6 +22,9 @@ export default function WorkerProfileScreen() {
   const [credSubmitting, setCredSubmitting] = React.useState(false);
 
   // Modal states cho Profile Change Request
+  // Fix H13: useState initializer chỉ chạy 1 lần — nếu user null khi mount
+  // thì changeForm sẽ init với empty strings. Khi user load xong, changeForm
+  // vẫn giữ empty. Dùng useEffect để sync changeForm khi user thay đổi.
   const [changeModalVisible, setChangeModalVisible] = React.useState(false);
   const [changeForm, setChangeForm] = React.useState({
     first_name: user?.first_name || '',
@@ -31,6 +34,19 @@ export default function WorkerProfileScreen() {
     address: user?.address || '',
   });
   const [changeSubmitting, setChangeSubmitting] = React.useState(false);
+
+  // Sync changeForm khi user thay đổi (vd: user load xong sau khi mount).
+  React.useEffect(() => {
+    if (user) {
+      setChangeForm({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone_number: user.phone_number || '',
+        email: user.email || '',
+        address: user.address || '',
+      });
+    }
+  }, [user]);
 
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()

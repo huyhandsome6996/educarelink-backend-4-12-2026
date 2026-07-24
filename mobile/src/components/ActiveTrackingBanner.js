@@ -105,7 +105,9 @@ export default function ActiveTrackingBanner({ taskId, taskTitle, onStopped }) {
 const styles = StyleSheet.create({
   banner: {
     margin: 12,
-    backgroundColor: '#fff',
+    // Fix M12: xoá duplicate `backgroundColor: '#fff'` — dòng dưới (#ecfdf5)
+    // là màu nền đúng cho banner tracking active (xanh nhạt).
+    backgroundColor: '#ecfdf5',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -113,7 +115,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1.5,
     borderColor: '#a7f3d0',
-    backgroundColor: '#ecfdf5',
     ...SHADOWS.cardHover,
   },
   iconCircle: {

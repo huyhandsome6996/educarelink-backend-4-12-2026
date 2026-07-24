@@ -41,17 +41,26 @@ export default function ParentHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Pulse animation for empty state icon
+  // Fix H12: store animation ref và stop() trong cleanup để tránh memory leak.
+  const pulseAnimRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!isLoading && tasks.length === 0) {
-      Animated.loop(
+      pulseAnimRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.08, duration: ANIM.timingSlow, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: ANIM.timingSlow, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      pulseAnimRef.current.start();
+      return () => {
+        if (pulseAnimRef.current) {
+          pulseAnimRef.current.stop();
+          pulseAnimRef.current = null;
+        }
+      };
     }
-  }, [isLoading, tasks.length]);
+  }, [isLoading, tasks.length, pulseAnim]);
 
   const fetchTasks = async () => {
     try {
