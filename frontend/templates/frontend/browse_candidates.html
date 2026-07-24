@@ -478,6 +478,18 @@ let confirmCallback = null;
 let currentTask = null;
 let candidatesList = [];
 
+// Fix H8: escape HTML cho mọi data inject qua innerHTML (worker_name,
+// toast message) để chống stored XSS.
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ==================== TOAST SYSTEM ====================
 function showToast(message, type = 'info', duration = 3500) {
     const container = document.getElementById('toast-container');
@@ -494,7 +506,7 @@ function showToast(message, type = 'info', duration = 3500) {
     toast.className = `toast-in pointer-events-auto flex items-start gap-3 ${cfg.bg} border ${cfg.border} rounded-xl px-4 py-3 shadow-lg`;
     toast.innerHTML = `
         <span class="material-symbols-outlined ${cfg.color} text-xl flex-shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${cfg.icon}</span>
-        <p class="text-sm font-medium text-textPrimary flex-1">${message}</p>
+        <p class="text-sm font-medium text-textPrimary flex-1">${escapeHtml(message)}</p>
         <button onclick="this.closest('.toast-in, .toast-out').classList.add('toast-out'); setTimeout(() => this.closest('.toast-in, .toast-out').remove(), 300);"
                 class="text-textSecondary hover:text-textPrimary flex-shrink-0">
             <span class="material-symbols-outlined text-lg">close</span>
@@ -703,6 +715,10 @@ function renderCandidates(candidates) {
                 </div>
             `;
         } else if (isPending) {
+            // Fix H8: dùng data attribute + event delegation thay vì inline onclick
+            // với worker_name escape single-quote (không đủ — vẫn có thể break).
+            const reviewData = JSON.stringify({ id: c.id, worker_name: c.worker_name || '' })
+                .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;');
             actionButtons = `
                 <div class="flex gap-3">
                     <a href="{% url 'frontend:worker_profile' %}?worker_id=${c.worker_id || c.worker}"
@@ -710,7 +726,7 @@ function renderCandidates(candidates) {
                         <span class="material-symbols-outlined text-lg">person</span>
                         Xem hồ sơ
                     </a>
-                    <button onclick="approve(${c.id}, '${c.worker_name.replace(/'/g, "\\'")}')"
+                    <button data-approve="${reviewData}"
                             class="flex-[1.3] py-2.5 px-4 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-lg">check</span>
                         Chấp nhận
@@ -734,7 +750,7 @@ function renderCandidates(candidates) {
                     <!-- Header: Avatar + Info -->
                     <div class="flex items-start gap-4 mb-4">
                         <div class="relative flex-shrink-0">
-                            <img alt="${c.worker_name}"
+                            <img alt="${escapeHtml(c.worker_name)}"
                                  class="w-14 h-14 rounded-full object-cover ring-2 ring-primary/10"
                                  src="${avatarUrl}"
                                  onerror="this.src='https://ui-avatars.com/api/?name=U&background=F26522&color=fff'"/>
@@ -744,7 +760,7 @@ function renderCandidates(candidates) {
                             </div>` : ''}
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="font-headline font-bold text-base text-textPrimary leading-tight truncate">${c.worker_name}</h4>
+                            <h4 class="font-headline font-bold text-base text-textPrimary leading-tight truncate">${escapeHtml(c.worker_name)}</h4>
                             <p class="text-textSecondary text-xs mt-0.5">Carepartner tiềm năng</p>
                             <!-- Status badge -->
                             <div class="inline-flex items-center gap-1 ${st.color} px-2 py-0.5 rounded-full text-[10px] font-bold mt-2 border ${isPending ? 'pending-pulse' : ''}">
@@ -753,25 +769,29 @@ function renderCandidates(candidates) {
                             </div>
                         </div>
                     </div>
-
                     <!-- Applied date -->
                     <div class="flex items-center gap-2 text-textMuted text-xs mb-4">
                         <span class="material-symbols-outlined text-sm">schedule</span>
                         <span>Ứng tuyển ${c.applied_at || c.created_at ? formatAppliedDate(c.applied_at || c.created_at) : 'gần đây'}</span>
                     </div>
-
                     <!-- Distance badge (if available) -->
                     <div id="distance-badge-${c.worker_id || c.worker}" class="hidden items-center gap-1.5 text-xs mb-3 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">
                         <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">straight</span>
                         <span class="font-semibold" id="distance-text-${c.worker_id || c.worker}">Đang tính...</span>
                     </div>
-
                     <!-- Action buttons -->
                     ${actionButtons}
                 </div>
             </article>
         `;
     }).join('');
+    // Fix H8: gắn event delegation cho nút Chấp nhận
+    container.querySelectorAll('[data-approve]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const data = JSON.parse(this.getAttribute('data-approve'));
+            approve(data.id, data.worker_name);
+        });
+    });
 }
 
 // ==================== DISTANCE FETCHING ====================

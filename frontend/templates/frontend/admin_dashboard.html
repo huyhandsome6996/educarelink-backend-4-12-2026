@@ -1669,14 +1669,14 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    toast(data.message || 'Đã xử lý', 'success');
+                    showToast(data.message || 'Đã xử lý', 'success');
                     loadAllTasks();
                 } else {
                     const err = await res.json().catch(() => ({}));
-                    toast(err.detail || err.error || 'Lỗi xử lý', 'error');
+                    showToast(err.detail || err.error || 'Lỗi xử lý', 'error');
                 }
             } catch (err) {
-                toast('Lỗi mạng: ' + err.message, 'error');
+                showToast('Lỗi mạng: ' + err.message, 'error');
             }
         }
 
@@ -1700,35 +1700,69 @@
                 
                 let html = '<table><thead><tr><th>Carepartner</th><th>Ảnh minh chứng</th><th>Mô tả</th><th>Ngày gửi</th><th>Hành động</th></tr></thead><tbody>';
                 for (const s of submissions) {
+                    // Fix H6: thay inline onclick (dễ XSS qua photo URL) bằng
+                    // data attribute + event delegation. Photo URL có thể chứa
+                    // single quote → break JS string → injection.
+                    const photoData = s.certificate_photo ? escapeHtml(s.certificate_photo) : '';
+                    const reviewData = JSON.stringify({
+                        id: s.id,
+                        name: s.worker_name || '',
+                        username: s.worker_username || '',
+                        photo: s.certificate_photo || '',
+                        desc: s.description || '',
+                        worker_id: s.worker_id,
+                    }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;');
                     html += `<tr>
                         <td><div class="user-cell"><div class="user-avatar"><div class="user-avatar-placeholder">${(s.worker_username||'?')[0].toUpperCase()}</div></div><div><div class="user-name">${escapeHtml(s.worker_name)}</div><div class="user-username">@${escapeHtml(s.worker_username)}</div></div></div></td>
-                        <td>${s.certificate_photo ? `<img src="${s.certificate_photo}" class="photo-thumb" onclick="openModal('${s.certificate_photo}', 'Bằng cấp - ${escapeHtml(s.worker_username)}')" alt="Bằng cấp"/>` : '<span style="color:#64748b">Không có ảnh</span>'}</td>
+                        <td>${s.certificate_photo ? `<img src="${photoData}" class="photo-thumb" data-photo-src="${photoData}" data-photo-label="Bằng cấp - ${escapeHtml(s.worker_username)}" alt="Bằng cấp"/>` : '<span style="color:#64748b">Không có ảnh</span>'}</td>
                         <td style="max-width:250px;color:#94a3b8;font-size:13px;">${escapeHtml(s.description) || '<span style="color:#64748b">Không có mô tả</span>'}</td>
                         <td style="color:#94a3b8;font-size:13px;">${s.created_at}</td>
                         <td><div class="action-btns">
                             <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${s.worker_id}','_blank')">&#128065; Xem hồ sơ</button>
-                            <button class="btn btn-approve btn-sm" onclick="openCredentialReview(${s.id}, '${escapeHtml(s.worker_name)}', '${escapeHtml(s.worker_username)}', '${s.certificate_photo || ''}', '${escapeHtml(s.description || '')}', ${s.worker_id})">Duyệt & Đánh giá</button>
+                            <button class="btn btn-approve btn-sm" data-credential-review="${reviewData}">Duyệt & Đánh giá</button>
                         </div></td>
                     </tr>`;
                 }
                 html += '</tbody></table>';
                 document.getElementById('tableBody').innerHTML = html;
+                // Fix H6: gắn event delegation cho photo thumb và credential review button
+                document.querySelectorAll('#tableBody [data-photo-src]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        openModal(this.getAttribute('data-photo-src'), this.getAttribute('data-photo-label'));
+                    });
+                });
+                document.querySelectorAll('#tableBody [data-credential-review]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const data = JSON.parse(this.getAttribute('data-credential-review'));
+                        openCredentialReview(data.id, data.name, data.username, data.photo, data.desc, data.worker_id);
+                    });
+                });
             } catch (e) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi kết nối</div></div>'; }
         }
 
         function openCredentialReview(id, name, username, photo, desc, workerId) {
             currentCredSubmissionId = id;
             document.getElementById('credentialModalTitle').textContent = `Duyệt bằng cấp - ${name}`;
+            // Fix H6: escape photo URL và desc trước khi inject vào innerHTML.
+            const safePhoto = escapeHtml(photo);
+            const safeDesc = escapeHtml(desc);
+            const safeUsername = escapeHtml(username);
             document.getElementById('credentialModalBody').innerHTML = `
-                <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">@${username}</div>
-                ${photo ? `<img src="${photo}" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #334155;margin-bottom:12px;cursor:pointer;" onclick="openModal('${photo}', 'Bằng cấp - ${username}')"/>` : ''}
-                ${desc ? `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;color:#94a3b8;">${desc}</div>` : ''}
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">@${safeUsername}</div>
+                ${photo ? `<img src="${safePhoto}" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #334155;margin-bottom:12px;cursor:pointer;" data-modal-src="${safePhoto}" data-modal-label="Bằng cấp - ${safeUsername}" alt="Bằng cấp"/>` : ''}
+                ${desc ? `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;color:#94a3b8;">${safeDesc}</div>` : ''}
                 <a href="/worker/profile/?worker_id=${workerId}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#6366f1;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:12px;">&#128065; Xem hồ sơ đầy đủ</a>
                 <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">Đánh giá bằng cấp (Admin viết):</div>
                 <textarea id="credAdminReview" class="edit-modal-textarea" placeholder="Ví dụ: Bằng cử nhân Sư phạm Toán đã được xác minh." style="height:100px;"></textarea>
                 <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;margin-top:12px;">Cập nhật bằng cấp cho Carepartner (cách nhau bởi dấu phẩy):</div>
                 <input type="text" id="credQualifications" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;" placeholder="VD: Cử nhân Sư phạm, Chứng chỉ IELTS 7.0"/>
             `;
+            // Fix H6: gắn event delegation cho ảnh trong modal (sau khi innerHTML set)
+            document.querySelectorAll('#credentialModalBody [data-modal-src]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openModal(this.getAttribute('data-modal-src'), this.getAttribute('data-modal-label'));
+                });
+            });
             document.getElementById('credentialModal').classList.add('show');
         }
 

@@ -437,6 +437,16 @@ class ParentTasksAPIView(generics.ListAPIView):
              pass
          return qs
 
+    # Fix H1: thêm role check — chỉ parent mới được truy cập /api/parent/my-tasks/.
+    # Trước đây worker gọi endpoint này trả 200 với array rỗng thay vì 403.
+    def list(self, request, *args, **kwargs):
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Endpoint này chỉ dành cho phụ huynh.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
+
 class TaskCandidatesAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer
     permission_classes = [IsAuthenticated]
@@ -445,6 +455,26 @@ class TaskCandidatesAPIView(generics.ListAPIView):
         return TaskApplication.objects.select_related(
             'worker', 'task', 'task__parent', 'task__category'
         ).filter(task_id=self.kwargs['task_id'], task__parent=self.request.user)
+
+    # Fix H3: thêm ownership check rõ ràng — chỉ parent sở hữu task mới xem
+    # được candidates. Trước đây worker/parent khác gọi endpoint trả 200 với
+    # array rỗng (filter im lặng) thay vì 403. Worker còn có thể thấy data
+    # nếu parse task_id đúng — nên phải check quyền trước khi list.
+    def list(self, request, *args, **kwargs):
+        task_id = self.kwargs.get('task_id')
+        try:
+            task = Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            return Response(
+                {'error': 'Không tìm thấy công việc.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if task.parent_id != request.user.id:
+            return Response(
+                {'error': 'Bạn không sở hữu công việc này.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
 
 class ApproveCandidateAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -588,6 +618,16 @@ class WorkerJobsAPIView(generics.ListAPIView):
         return TaskApplication.objects.select_related(
             'worker', 'task', 'task__parent', 'task__category'
         ).filter(worker=self.request.user).order_by('-applied_at')
+
+    # Fix H2: thêm role check — chỉ worker mới được truy cập /api/worker/my-jobs/.
+    # Trước đây parent gọi endpoint này trả 200 với array rỗng thay vì 403.
+    def list(self, request, *args, **kwargs):
+        if request.user.role != 'worker':
+            return Response(
+                {'error': 'Endpoint này chỉ dành cho carepartner.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
 
 class WorkerProfileDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
