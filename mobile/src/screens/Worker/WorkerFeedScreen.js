@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,23 +77,37 @@ export default function WorkerFeedScreen() {
   }, []);
 
   // Empty state bounce animation
+  // Fix H12: store animation ref và stop() trong cleanup để tránh memory leak.
+  // Trước đây Animated.loop start nhưng không có cleanup → animation tiếp
+  // tục chạy ngay cả khi component unmount.
+  const bounceAnimRef = useRef(null);
   useEffect(() => {
     if (!isLoading && tasks.length === 0) {
-      Animated.loop(
+      bounceAnimRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(bounceAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
           Animated.timing(bounceAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      bounceAnimRef.current.start();
+      return () => {
+        if (bounceAnimRef.current) {
+          bounceAnimRef.current.stop();
+          bounceAnimRef.current = null;
+        }
+      };
     }
-  }, [isLoading, tasks.length]);
+  }, [isLoading, tasks.length, bounceAnim]);
 
   const bounceTransform = bounceAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -8],
   });
 
-  const handleApply = (taskId) => {
+  // Fix H16: wrap handleApply trong useCallback để function reference ổn
+  // định giữa các render → renderItem không nhận function mới mỗi render
+  // (tránh re-render không cần thiết của tất cả items trong FlatList).
+  const handleApply = useCallback((taskId) => {
     const startApply = async () => {
       try {
         const res = await applyTask(taskId);
@@ -123,12 +137,14 @@ export default function WorkerFeedScreen() {
         { text: 'Ứng tuyển', onPress: startApply },
       ]);
     }
-  };
+  }, []);
 
 
+  // Fix M11: thêm null check cho task.title và task.location — nếu task
+  // từ API thiếu field sẽ crash khi gọi .toLowerCase().
   const filtered = tasks.filter(t =>
-    t.title.toLowerCase().includes(search.toLowerCase()) ||
-    t.location.toLowerCase().includes(search.toLowerCase())
+    (t.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    (t.location || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const displayName = user?.first_name || user?.username || 'Bạn';

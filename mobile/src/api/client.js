@@ -137,6 +137,14 @@ apiClient.interceptors.response.use(
       // Cập nhật header cho request gốc
       originalRequest.headers.Authorization = `Bearer ${access}`;
 
+      // Fix H10: reset isRefreshing TRƯỚC khi processQueue để tránh race.
+      // Trước đây isRefreshing được reset trong finally (sau processQueue) →
+      // khi queued promises resolve và retry ngay, nếu retry 401 thì chúng
+      // thấy isRefreshing vẫn true → bị queue lại nhưng không bao giờ được
+      // process (vì processQueue đã chạy xong) → hang forever. Reset sớm
+      // để retry mới có thể start fresh refresh attempt nếu cần.
+      isRefreshing = false;
+
       // Xử lý hàng đợi
       processQueue(null, access);
 
@@ -148,10 +156,10 @@ apiClient.interceptors.response.use(
       await storage.deleteItem('refresh_token');
       await storage.deleteItem('user_role');
       await storage.deleteItem('is_staff');
+      // Fix H10: reset isRefreshing TRƯỚC khi processQueue (xem comment trên).
+      isRefreshing = false;
       processQueue(refreshError, null);
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   }
 );

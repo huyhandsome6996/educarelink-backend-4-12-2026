@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar,
   Alert, ActivityIndicator, Platform, ScrollView, Image,
@@ -27,7 +27,10 @@ export default function ComplaintScreen() {
   const [complaintType, setComplaintType] = useState('non_payment');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  // Fix H15: gán unique ID cho mỗi evidence item để dùng làm React key thay
+  // cho array index (index sai khi item bị remove giữa danh sách).
   const [evidence, setEvidence] = useState([]);
+  const evidenceIdRef = useRef(0);
   const [submitting, setSubmitting] = useState(false);
 
   const pickImage = async () => {
@@ -41,7 +44,9 @@ export default function ComplaintScreen() {
       allowsEditing: true, quality: 0.7,
     });
     if (!result.canceled && result.assets?.[0]) {
-      setEvidence([...evidence, result.assets[0]]);
+      // Fix H15: gán unique ID cho evidence mới
+      const newEv = { ...result.assets[0], _id: ++evidenceIdRef.current };
+      setEvidence([...evidence, newEv]);
     }
   };
 
@@ -55,7 +60,9 @@ export default function ComplaintScreen() {
       allowsEditing: true, quality: 0.7,
     });
     if (!result.canceled && result.assets?.[0]) {
-      setEvidence([...evidence, result.assets[0]]);
+      // Fix H15: gán unique ID cho evidence mới
+      const newEv = { ...result.assets[0], _id: ++evidenceIdRef.current };
+      setEvidence([...evidence, newEv]);
     }
   };
 
@@ -150,7 +157,9 @@ export default function ComplaintScreen() {
         {evidence.length > 0 && (
           <View style={styles.evidenceList}>
             {evidence.map((ev, idx) => (
-              <View key={idx} style={styles.evidenceItem}>
+              // Fix H15: dùng ev._id (unique) làm key thay vì idx (array index).
+              // Array index làm key gây issue khi remove item giữa danh sách.
+              <View key={ev._id} style={styles.evidenceItem}>
                 <Image source={{ uri: ev.uri }} style={styles.evidencePreview} />
                 <TouchableOpacity style={styles.evidenceRemove} onPress={() => setEvidence(evidence.filter((_, i) => i !== idx))}>
                   <Ionicons name="close-circle" size={20} color={COLORS.error} />
