@@ -42,8 +42,10 @@ export async function registerForPushNotificationsAsync() {
     }
     
     try {
+      // Fix C1: projectId phải là EAS project ID (UUID), không phải slug.
+      // Nếu dùng slug ('educarelink') → Expo Push API trả token invalid → push silent fail.
       token = (await Notifications.getExpoPushTokenAsync({
-        projectId: 'educarelink', 
+        projectId: '3e841ddf-23c3-42ce-a2e1-8827c06311a2',
       })).data;
       console.log('Push token:', token);
     } catch (e) {

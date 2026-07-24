@@ -418,7 +418,7 @@
             toast.className = `pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-white text-sm font-medium toast-enter ${colors[type] || colors.info}`;
             toast.innerHTML = `
                 <span class="material-symbols-outlined text-xl filled" style="font-variation-settings: 'FILL' 1;">${icons[type] || icons.info}</span>
-                <span class="flex-1">${message}</span>
+                <span class="flex-1">${escapeHtml(message)}</span>
                 <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
                     <span class="material-symbols-outlined text-lg">close</span>
                 </button>
@@ -431,6 +431,19 @@
                 toast.classList.add('toast-exit');
                 setTimeout(() => toast.remove(), 300);
             }, 4000);
+        }
+
+        // Fix C5 + H5: escape HTML cho mọi data inject qua innerHTML.
+        // Áp dụng cho task title, location, parent_name, AI reason, và toast
+        // message để chống stored XSS.
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // ===== CONFIRM MODAL =====
@@ -549,12 +562,12 @@
                         <span class="font-manrope text-xl font-extrabold text-primary">${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
                     </div>
 
-                    <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${t.title}</h3>
+                    <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${escapeHtml(t.title)}</h3>
 
                     <div class="space-y-2 text-sm text-textSecondary">
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-base text-primary/60">location_on</span>
-                            <span class="line-clamp-1">${t.location}</span>
+                            <span class="line-clamp-1">${escapeHtml(t.location)}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-base text-primary/60">schedule</span>
@@ -562,13 +575,13 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="material-symbols-outlined text-base text-primary/60">person</span>
-                            <span>${t.parent_name || 'Phụ huynh'}</span>
+                            <span>${escapeHtml(t.parent_name || 'Phụ huynh')}</span>
                         </div>
                     </div>
 
                     <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                        <span class="text-xs text-textSecondary font-medium">Đăng bởi ${t.parent_name || 'Hệ thống'}</span>
-                        <button onclick="event.stopPropagation(); apply(${t.id}, ${JSON.stringify(t).replace(/"/g, '&quot;')})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                        <span class="text-xs text-textSecondary font-medium">Đăng bởi ${escapeHtml(t.parent_name || 'Hệ thống')}</span>
+                        <button onclick="event.stopPropagation(); apply(${t.id}, ${JSON.stringify(t).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;')})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
                             ${t.geofence_lat ? '📍 Ứng tuyển' : 'Ứng tuyển'}
                         </button>
                     </div>
@@ -816,10 +829,10 @@
                                     <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor}">${scoreLabel} ${score}/100</span>
                                     ${t.has_geofence ? '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">📍 Tracking</span>' : ''}
                                 </div>
-                                <h4 class="font-bold text-sm text-textPrimary line-clamp-1">${t.title}</h4>
-                                <p class="text-xs text-textSecondary line-clamp-2 mt-1">${rec.reason}</p>
+                                <h4 class="font-bold text-sm text-textPrimary line-clamp-1">${escapeHtml(t.title)}</h4>
+                                <p class="text-xs text-textSecondary line-clamp-2 mt-1">${escapeHtml(rec.reason)}</p>
                                 <div class="flex items-center gap-3 mt-2 text-xs text-textMuted">
-                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${t.location}</span>
+                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${escapeHtml(t.location)}</span>
                                     <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">payments</span>${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
                                 </div>
                             </div>

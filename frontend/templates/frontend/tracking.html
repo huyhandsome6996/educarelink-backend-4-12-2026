@@ -203,7 +203,10 @@ let alarmInterval = null;
 // AUTHENTICATION
 // ====================================================================
 function getAuthToken() {
-  return localStorage.getItem('access_token');
+  // Fix C3: dùng key 'token' cho đồng bộ với login.html.
+  // Trước đây dùng 'access_token' → token luôn null → user bị redirect
+  // về /login/ ngay khi vào trang tracking.
+  return localStorage.getItem('token');
 }
 
 async function authFetch(url, options = {}) {
@@ -239,7 +242,8 @@ async function tryRefreshToken() {
     });
     if (!r.ok) return false;
     const data = await r.json();
-    localStorage.setItem('access_token', data.access);
+    // Fix C3: đồng bộ key với login.html ('token' thay vì 'access_token')
+    localStorage.setItem('token', data.access);
     if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
     return true;
   } catch (e) { return false; }
