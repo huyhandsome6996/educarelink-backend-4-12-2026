@@ -1559,8 +1559,8 @@
                             <span class="material-symbols-outlined text-primary text-lg">${icon}</span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-semibold text-sm text-textPrimary">${n.title}</p>
-                            <p class="text-xs text-textSecondary mt-1 leading-relaxed">${n.message}</p>
+                            <p class="font-semibold text-sm text-textPrimary">${escapeHtml(n.title)}</p>
+                            <p class="text-xs text-textSecondary mt-1 leading-relaxed">${escapeHtml(n.message)}</p>
                             <p class="text-[10px] text-textMuted mt-2">${n.created_at}</p>
                         </div>
                         ${unreadDot}
@@ -1753,9 +1753,9 @@
                                 </span>
                                 <span class="text-[10px] text-textMuted">${c.created_at}</span>
                             </div>
-                            ${c.certificate_photo ? `<img src="${c.certificate_photo}" class="w-full h-32 object-cover rounded-lg mb-2 border border-gray-200" alt="Bằng cấp"/>` : ''}
-                            ${c.description ? `<p class="text-sm text-textPrimary">${c.description}</p>` : ''}
-                            ${c.admin_review ? `<div class="mt-2 p-2 bg-white rounded-lg border border-gray-100"><p class="text-xs text-textSecondary font-medium">Đánh giá từ Admin:</p><p class="text-sm text-textPrimary mt-1">${c.admin_review}</p></div>` : ''}
+                            ${c.certificate_photo ? `<img src="${escapeHtml(c.certificate_photo)}" class="w-full h-32 object-cover rounded-lg mb-2 border border-gray-200" alt="Bằng cấp"/>` : ''}
+                            ${c.description ? `<p class="text-sm text-textPrimary">${escapeHtml(c.description)}</p>` : ''}
+                            ${c.admin_review ? `<div class="mt-2 p-2 bg-white rounded-lg border border-gray-100"><p class="text-xs text-textSecondary font-medium">Đánh giá từ Admin:</p><p class="text-sm text-textPrimary mt-1">${escapeHtml(c.admin_review)}</p></div>` : ''}
                         </div>`;
                     }).join('');
                 }

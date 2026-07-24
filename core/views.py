@@ -257,12 +257,23 @@ class UserProfileAPIView(APIView):
     def patch(self, request):
         # Ngăn chặn role escalation — loại role, is_staff, is_superuser khỏi data
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        for forbidden_field in ['role', 'is_staff', 'is_superuser', 'is_approved', 'is_verified', 'qualifications', 'auth_provider', 'avatar_url']:
-            data.pop(forbidden_field, None)
-        
+
+        # Fix M1: trước đây silently ignore các read-only fields (role,
+        # auth_provider, is_approved, ...) → trả 200 cho client mà không báo.
+        # Per bug report, phải trả 400 để client biết field không được phép sửa.
+        forbidden_fields = ['role', 'is_staff', 'is_superuser', 'is_approved',
+                            'is_verified', 'qualifications', 'auth_provider',
+                            'avatar_url']
+        attempted = [f for f in forbidden_fields if f in data]
+        if attempted:
+            return Response(
+                {'error': f'Không thể sửa các trường chỉ đọc: {", ".join(attempted)}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Nếu có password mới → hash đúng cách
         password = data.pop('password', None)
-        
+
         serializer = UserSerializer(request.user, data=data, partial=True)
         if serializer.is_valid():
             user = serializer.save()
@@ -299,8 +310,20 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             pass  # moderation module chưa sẵn sàng → không filter
         return qs
 
+    # Fix M2: kiểm tra role TRƯỚC khi validate serializer. Trước đây check
+    # nằm trong perform_create (sau validation) → worker tạo task với data
+    # không hợp lệ sẽ nhận 400 thay vì 403 (permission phải ưu tiên trước).
+    def create(self, request, *args, **kwargs):
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Chỉ phụ huynh mới được đăng việc.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
-        # Chỉ phụ huynh mới được đăng việc
+        # Chỉ phụ huynh mới được đăng việc (đã check ở create(), giữ lại làm
+        # safety net trong trường hợp có code path khác gọi perform_create).
         if self.request.user.role != 'parent':
             raise drf_serializers.ValidationError({'detail': 'Chỉ phụ huynh mới được đăng việc.'})
 
@@ -437,6 +460,16 @@ class ParentTasksAPIView(generics.ListAPIView):
              pass
          return qs
 
+    # Fix H1: thêm role check — chỉ parent mới được truy cập /api/parent/my-tasks/.
+    # Trước đây worker gọi endpoint này trả 200 với array rỗng thay vì 403.
+    def list(self, request, *args, **kwargs):
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Endpoint này chỉ dành cho phụ huynh.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
+
 class TaskCandidatesAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer
     permission_classes = [IsAuthenticated]
@@ -445,6 +478,26 @@ class TaskCandidatesAPIView(generics.ListAPIView):
         return TaskApplication.objects.select_related(
             'worker', 'task', 'task__parent', 'task__category'
         ).filter(task_id=self.kwargs['task_id'], task__parent=self.request.user)
+
+    # Fix H3: thêm ownership check rõ ràng — chỉ parent sở hữu task mới xem
+    # được candidates. Trước đây worker/parent khác gọi endpoint trả 200 với
+    # array rỗng (filter im lặng) thay vì 403. Worker còn có thể thấy data
+    # nếu parse task_id đúng — nên phải check quyền trước khi list.
+    def list(self, request, *args, **kwargs):
+        task_id = self.kwargs.get('task_id')
+        try:
+            task = Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            return Response(
+                {'error': 'Không tìm thấy công việc.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if task.parent_id != request.user.id:
+            return Response(
+                {'error': 'Bạn không sở hữu công việc này.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
 
 class ApproveCandidateAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -588,6 +641,16 @@ class WorkerJobsAPIView(generics.ListAPIView):
         return TaskApplication.objects.select_related(
             'worker', 'task', 'task__parent', 'task__category'
         ).filter(worker=self.request.user).order_by('-applied_at')
+
+    # Fix H2: thêm role check — chỉ worker mới được truy cập /api/worker/my-jobs/.
+    # Trước đây parent gọi endpoint này trả 200 với array rỗng thay vì 403.
+    def list(self, request, *args, **kwargs):
+        if request.user.role != 'worker':
+            return Response(
+                {'error': 'Endpoint này chỉ dành cho carepartner.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
 
 class WorkerProfileDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]

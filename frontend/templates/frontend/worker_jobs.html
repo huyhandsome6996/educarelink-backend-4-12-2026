@@ -507,6 +507,18 @@
             }
         }
 
+        // Fix C4: escape HTML để chống stored XSS khi task data chứa HTML/script.
+        // Áp dụng cho mọi user-controllable data inject qua innerHTML.
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // ===== UPDATE BADGES & STATS =====
         function updateBadges() {
             const pendingCount = allApps.filter(a => a.status === 'pending').length;
@@ -601,7 +613,7 @@
                         <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
                             Xem chi tiết
                         </button>
-                        <button onclick="contactParent('${a.parent_username}')" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
+                        <button data-parent-username="${escapeHtml(a.parent_username)}" class="contact-parent-btn px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
                             Nhắn tin
                         </button>
                     `;
@@ -632,7 +644,7 @@
                         </div>
 
                         <!-- Task title -->
-                        <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${a.task_title}</h3>
+                        <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${escapeHtml(a.task_title)}</h3>
 
                         <!-- Details -->
                         <div class="space-y-2 text-sm text-textSecondary mb-4">
@@ -642,20 +654,20 @@
                             </div>
                             <div class="flex items-start gap-2">
                                 <span class="material-symbols-outlined text-base text-primary/60 mt-0.5">location_on</span>
-                                <span class="line-clamp-1">${a.task_location}</span>
+                                <span class="line-clamp-1">${escapeHtml(a.task_location)}</span>
                             </div>
                         </div>
 
                         <!-- Parent info -->
                         <div class="bg-bg rounded-xl p-3 flex items-center justify-between mb-4">
                             <div class="flex items-center gap-3">
-                                <img class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" src="https://ui-avatars.com/api/?name=${encodeURIComponent(a.parent_username || 'P')}&background=F26522&color=fff&size=36" alt="${a.parent_username}"/>
+                                <img class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" src="https://ui-avatars.com/api/?name=${encodeURIComponent(a.parent_username || 'P')}&background=F26522&color=fff&size=36" alt="${escapeHtml(a.parent_username)}"/>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wider font-bold text-textSecondary/60">Phụ huynh</p>
-                                    <p class="font-semibold text-sm text-textPrimary">${a.parent_username || 'Phụ huynh'}</p>
+                                    <p class="font-semibold text-sm text-textPrimary">${escapeHtml(a.parent_username || 'Phụ huynh')}</p>
                                 </div>
                             </div>
-                            <button onclick="contactParent('${a.parent_username}')" class="w-9 h-9 rounded-full bg-primaryLight flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all duration-200" title="Nhắn tin">
+                            <button data-parent-username="${escapeHtml(a.parent_username)}" class="contact-parent-btn w-9 h-9 rounded-full bg-primaryLight flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all duration-200" title="Nhắn tin">
                                 <span class="material-symbols-outlined text-lg">chat_bubble</span>
                             </button>
                         </div>
@@ -673,9 +685,18 @@
 
 
         // ===== CONTACT PARENT =====
+        // Fix C4: thay inline onclick (dễ bị XSS qua JS string) bằng event
+        // delegation đọc data-parent-username attribute.
         function contactParent(username) {
             showToast('Tính năng nhắn tin đang phát triển', 'info');
         }
+
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.contact-parent-btn');
+            if (!btn) return;
+            const username = btn.getAttribute('data-parent-username');
+            contactParent(username);
+        });
 
         // ===== LOGOUT =====
         function handleLogout() {
