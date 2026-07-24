@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Animated
 } from 'react-native';
-import { Image } from 'expo-image';
+// Fix M8: xoá import Image không dùng tới (expo-image) — dead import.
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
