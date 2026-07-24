@@ -1100,6 +1100,30 @@
             return true;
         }
 
+        // Fix M21: kiểm tra is_staff client-side để redirect user không phải
+        // admin về login ngay, thay vì để user thấy page skeleton rồi bị 403.
+        // Backend đã bảo vệ API (IsAdminUser) — đây chỉ là UX improvement.
+        async function checkAdminRole() {
+            try {
+                const res = await apiFetch(`${API_BASE}/profile/`);
+                if (!res.ok) { window.location.href = '/login/?next=/admin-dashboard/'; return false; }
+                const user = await res.json();
+                if (!user.is_staff && !user.is_superuser) {
+                    document.getElementById('tableBody').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">&#128683;</div>
+                            <div class="empty-title">Không có quyền truy cập</div>
+                            <div class="empty-text">Tài khoản của bạn không phải Admin.<br><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập bằng tài khoản Admin</a></div>
+                        </div>`;
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.error('Admin role check failed:', e);
+                return false;
+            }
+        }
+
         // ===== LOAD DATA =====
         async function loadData() {
             if (!checkAdminAuth()) return;
@@ -2407,14 +2431,20 @@
 
         // ===== INIT =====
         displayAdminName();
-        loadData();
-        loadCredentialBadgeCount();
-        loadProfileChangeBadgeCount();
-        loadAdminUnreadCount();
-        setInterval(loadData, 30000);
-        setInterval(loadCredentialBadgeCount, 30000);
-        setInterval(loadProfileChangeBadgeCount, 30000);
-        setInterval(loadAdminUnreadCount, 30000);  // Poll notification badge every 30s
+        // Fix M21: kiểm tra admin role client-side trước khi load data — nếu user
+        // không phải admin, hiển thị thông báo lỗi thay vì để API 403 tràn về.
+        (async () => {
+            if (await checkAdminRole()) {
+                loadData();
+                loadCredentialBadgeCount();
+                loadProfileChangeBadgeCount();
+                loadAdminUnreadCount();
+                setInterval(loadData, 30000);
+                setInterval(loadCredentialBadgeCount, 30000);
+                setInterval(loadProfileChangeBadgeCount, 30000);
+                setInterval(loadAdminUnreadCount, 30000);  // Poll notification badge every 30s
+            }
+        })();
 
         async function loadCredentialBadgeCount() {
             try {

@@ -130,12 +130,14 @@ export default function CreateTaskScreen() {
             taskData.geofence_lng = loc.coords.longitude;
             taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
           } else {
+            // Fix M9: trước đây có 2 button mà cả 2 đều dẫn tới return —
+            // "double-return" gây nhầm lẫn. Gom còn 1 button "Bỏ qua geofence"
+            // (tắt toggle và return để user submit lại không có geofence).
             Alert.alert(
               'Cần quyền vị trí',
-              'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bạn có thể bỏ qua hoặc thử lại.',
+              'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bấm bỏ qua để đăng việc không có geofence.',
               [
                 { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
-                { text: 'Tiếp tục không có geofence' },
               ]
             );
             setIsLoading(false);

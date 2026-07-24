@@ -36,7 +36,10 @@ export function renderCategoryIcon(categoryId, size = 28, color = null) {
 // Helper lấy icon name theo category name (Vietnamese)
 export function getCategoryIconByName(categoryName) {
   const name = (categoryName || '').toLowerCase();
-  if (name.includes('gia') && name.includes('s') || name.includes('tutor')) return 'book';
+  // Fix M13: thêm parentheses cho `(gia && s)` — trước đây `&&` có precedence
+  // cao hơn `||` nên logic đúng, nhưng rõ ràng hơn khi có parentheses để tránh
+  // nhầm lẫn khi maintain sau này.
+  if ((name.includes('gia') && name.includes('s')) || name.includes('tutor')) return 'book';
   if (name.includes('đón') || name.includes('don') || name.includes('pickup')) return 'happy';
   if (name.includes('dọn') || name.includes('don') || name.includes('clean')) return 'sparkles';
   if (name.includes('trông') || name.includes('trong') || name.includes('baby')) return 'people';

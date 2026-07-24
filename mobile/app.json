@@ -79,6 +79,12 @@
             "buildToolsVersion": "35.0.0"
           }
         }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "EduCareLink sử dụng Face ID để bảo vệ thông tin đăng nhập của bạn."
+        }
       ]
     ],
     "extra": {
