@@ -19,35 +19,22 @@ const DEVICE_STATUS_POLL_MS = 10000; // Parent poll device status mỗi 10s
 const GEOFENCE_RADIUS = 500; // mét
 
 // ====================================================================
-// Cấu hình notification handler — chuông kêu khi nhận alert khẩn cấp
+// Fix C8: KHÔNG gọi setNotificationHandler ở đây nữa.
+// Handler global duy nhất được set trong utils/notifications.js (import
+// sớm ở App.js). Priority cho alert khẩn cấp được xử lý trong listener
+// callback (Notifications.addNotificationReceivedListener) bên dưới +
+// qua priority của scheduleNotificationAsync.
+// Trước đây file này cũng gọi setNotificationHandler → override handler
+// global → behavior không predict được tùy screen đang mount.
 // ====================================================================
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const data = notification.request.content.data || {};
-    // Các alert khẩn cấp → high priority, chuông kêu
-    const critical_types = ['device_offline', 'geofence_exit', 'geofence_warning', 'sos_alert'];
-    if (critical_types.includes(data.type)) {
-      return {
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-      };
-    }
-    // Alert recovery → priority thấp
-    return {
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      priority: Notifications.AndroidNotificationPriority.DEFAULT,
-    };
-  },
-});
 
 export default function LiveTrackingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { taskId, taskTitle, taskLatitude, taskLongitude } = route.params || {};
+  const { taskId, taskTitle, taskLatitude, taskLongitude, workerPhone } = route.params || {};
+  // Fix H14: lưu workerPhone truyền qua navigation param để gọi điện.
+  // Trước đây các nút "Gọi Carepartner" gọi Linking.openURL('tel:')
+  // không có số → không gọi được ai (có thể crash trên Android).
 
   const [liveData, setLiveData] = useState(null);
   const [deviceStatus, setDeviceStatus] = useState(null);
@@ -109,7 +96,11 @@ export default function LiveTrackingScreen() {
       if (pollRef.current) clearInterval(pollRef.current);
       if (deviceStatusPollRef.current) clearInterval(deviceStatusPollRef.current);
     };
-  }, [fetchLive, fetchDeviceStatus]);
+    // Fix H11: thêm taskId trực tiếp vào deps để khi taskId đổi (vd: từ
+    // navigation param), fetchLive/fetchDeviceStatus được re-bind và poll
+    // lại data của task mới. Trước đây deps chỉ có callback refs → stale
+    // callback khi taskId undefined lúc mount.
+  }, [fetchLive, fetchDeviceStatus, taskId]);
 
   // Trigger alarm sound + vibration khi có offline alert
   const triggerAlarmSound = async () => {
@@ -153,7 +144,8 @@ export default function LiveTrackingScreen() {
           [
             { text: 'Đã biết', style: 'destructive' },
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
-            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            // Fix H14: chỉ mở dialer khi có số carepartner
+            ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
           ]
         );
       }
@@ -165,7 +157,7 @@ export default function LiveTrackingScreen() {
           body || 'Carepartner đang di chuyển gần ranh giới vùng an toàn. Vui lòng để ý!',
           [
             { text: 'Đã biết', style: 'default' },
-            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
           ]
         );
       }
@@ -178,7 +170,7 @@ export default function LiveTrackingScreen() {
           body || 'Carepartner đã rời khỏi vùng an toàn. Vui lòng kiểm tra ngay!',
           [
             { text: 'Đã biết', style: 'default' },
-            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
           ]
         );
@@ -191,7 +183,7 @@ export default function LiveTrackingScreen() {
           body || 'Carepartner vừa gửi SOS khẩn cấp!',
           [
             { text: 'Đã biết', style: 'default' },
-            { text: 'Gọi Carepartner', onPress: () => Linking.openURL('tel:') },
+            ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
           ]
         );

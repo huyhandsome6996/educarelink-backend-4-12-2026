@@ -184,8 +184,9 @@ export default function LoginScreen() {
                 <Ionicons name="flask-outline" size={16} color={COLORS.primary} />
                 <Text style={styles.testAccountTitle}>Tài khoản thử nghiệm (DEV)</Text>
               </View>
-              <Text style={styles.testAccountText}>Phụ huynh: phuhuynh_test / password123</Text>
-              <Text style={styles.testAccountText}>Sinh viên: sinhvien_test / password123</Text>
+              {/* Fix C7: test password hiển thị sai — Demo@2026 mới đúng theo AGENTS.md */}
+              <Text style={styles.testAccountText}>Phụ huynh: phuhuynh_test / Demo@2026</Text>
+              <Text style={styles.testAccountText}>Sinh viên: sinhvien_test / Demo@2026</Text>
             </View>
           </Animated.View>
         )}

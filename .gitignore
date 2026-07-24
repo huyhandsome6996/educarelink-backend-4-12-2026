@@ -36,3 +36,5 @@ package.json
 backend/settings_iso.py
 run_dev_server.py
 sitecustomize.py
+.venv/
+db.sqlite3
