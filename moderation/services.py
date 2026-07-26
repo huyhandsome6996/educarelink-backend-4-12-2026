@@ -6,6 +6,7 @@ AI Moderation Service — dùng Gemini để:
 
 import logging
 import json
+import re
 from django.conf import settings
 from django.core.cache import cache
 
@@ -226,6 +227,17 @@ _LEET_TABLE = {ord(k): v for k, v in _LEET_MAP.items()}
 
 # Ký tự phân cách hay bị chèn giữa các chữ để né filter
 _SEPARATOR_CHARS = r' .-_*/\|~^+=,;:•●○◦'
+_SEPARATOR_CHARS_ESC = re.escape(_SEPARATOR_CHARS)
+# "Chữ" = bất kỳ ký tự nào không phải separator/whitespace
+_LETTER_CLASS = rf'[^\s{_SEPARATOR_CHARS_ESC}]'
+# Chỉ nén separator khi nó nằm giữa 2 TOKEN 1-KÝ-TỰ (kiểu viết tách từng chữ
+# để né filter: "đ.ị.t", "d_i_t", "d i t") — KHÔNG nén khi giữa 2 từ nhiều
+# ký tự thật (vd "di trong", "su ngoai" phải giữ nguyên, không được gộp
+# thành "ditrong"/"sungoai" vì sẽ trùng với banned keyword ngắn như "dit"/"sung").
+_SPELLED_OUT_PATTERN = re.compile(
+    rf'(?<![^\s{_SEPARATOR_CHARS_ESC}])({_LETTER_CLASS})[{_SEPARATOR_CHARS_ESC}]+'
+    rf'(?={_LETTER_CLASS}(?:[\s{_SEPARATOR_CHARS_ESC}]|$))'
+)
 
 
 def _normalize_text(text: str) -> str:
@@ -239,9 +251,18 @@ def _normalize_text(text: str) -> str:
 
 
 def _compact_text(text: str) -> str:
-    """Xoá toàn bộ ký tự phân cách (dấu chấm, gạch, khoảng trắng...) để bắt
-    kiểu né filter chèn ký tự giữa các chữ cái (vd 'đ.ị.t' → 'địt')."""
-    return ''.join(ch for ch in text if ch not in _SEPARATOR_CHARS)
+    """Nén ký tự phân cách CHỈ khi bị chèn giữa các chữ cái viết tách rời
+    (spelled-out obfuscation: 'đ.ị.t' → 'địt', 'd_i_t' → 'dit', 'd i t' →
+    'dit'). KHÔNG nén khoảng trắng/ký tự phân cách giữa 2 từ nhiều ký tự
+    thật — vd 'di trong' phải giữ nguyên 'di trong', không gộp thành
+    'ditrong' (tránh trùng banned keyword ngắn như 'dit' một cách giả)."""
+    if not text:
+        return text
+    prev = None
+    while prev != text:
+        prev = text
+        text = _SPELLED_OUT_PATTERN.sub(r'\1', text)
+    return text
 
 
 def _leet_normalize(text: str) -> str:
