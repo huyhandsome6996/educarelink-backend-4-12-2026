@@ -6,6 +6,7 @@ AI Moderation Service — dùng Gemini để:
 
 import logging
 import json
+import re
 from django.conf import settings
 from django.core.cache import cache
 
@@ -186,23 +187,129 @@ BANNED_KEYWORDS = [k for k in BANNED_KEYWORDS if k]
 EXPLOITATION_PRICE_THRESHOLD = 20000  # VNĐ/giờ
 
 
+# ─────────────────────────────────────────────────────────────────
+#  ANTI-BYPASS NORMALIZATION
+#  Người đăng có thể cố lách bộ lọc bằng cách:
+#   - Chèn ký tự phân cách giữa các chữ cái: "đ.ị.t", "d_i_t", "d i t"
+#   - Ký tự Unicode giống nhau (homoglyph): Cyrillic а/е/о/р/с/х trông
+#     giống Latin a/e/o/p/c/x
+#   - Ký tự vô hình (zero-width space/joiner) chèn giữa các chữ cái
+#   - Leetspeak: "d1t", "vl", "đjt", "@", "$", "!" thay cho chữ cái
+#  → Chuẩn hoá text theo nhiều "góc nhìn" rồi match TẤT CẢ, thay vì chỉ
+#    match nguyên văn.
+# ─────────────────────────────────────────────────────────────────
+
+import unicodedata
+
+_ZERO_WIDTH_CHARS = ''.join([
+    '\u200b', '\u200c', '\u200d', '\u2060', '\ufeff', '\u00ad',
+])
+_ZERO_WIDTH_TABLE = {ord(c): None for c in _ZERO_WIDTH_CHARS}
+
+# Homoglyph — ký tự nhìn giống Latin nhưng thuộc bảng mã khác
+_HOMOGLYPH_MAP = {
+    # Cyrillic → Latin
+    'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x',
+    'у': 'y', 'і': 'i', 'ѕ': 's', 'һ': 'h', 'ԁ': 'd', 'ⅰ': 'i',
+    'к': 'k', 'м': 'm', 'т': 't', 'В': 'b', 'Н': 'h', 'А': 'a',
+    # Fullwidth Latin → normal
+    **{chr(0xFF41 + i): chr(0x61 + i) for i in range(26)},  # ａ-ｚ
+    **{chr(0xFF21 + i): chr(0x41 + i) for i in range(26)},  # Ａ-Ｚ
+}
+_HOMOGLYPH_TABLE = {ord(k): v for k, v in _HOMOGLYPH_MAP.items()}
+
+# Leetspeak — chỉ dùng cho bản "leet" riêng, không áp cho category match
+_LEET_MAP = {
+    '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's',
+    '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i', '|': 'i',
+}
+_LEET_TABLE = {ord(k): v for k, v in _LEET_MAP.items()}
+
+# Ký tự phân cách hay bị chèn giữa các chữ để né filter
+_SEPARATOR_CHARS = r' .-_*/\|~^+=,;:•●○◦'
+_SEPARATOR_CHARS_ESC = re.escape(_SEPARATOR_CHARS)
+# "Chữ" = bất kỳ ký tự nào không phải separator/whitespace
+_LETTER_CLASS = rf'[^\s{_SEPARATOR_CHARS_ESC}]'
+# Chỉ nén separator khi nó nằm giữa 2 TOKEN 1-KÝ-TỰ (kiểu viết tách từng chữ
+# để né filter: "đ.ị.t", "d_i_t", "d i t") — KHÔNG nén khi giữa 2 từ nhiều
+# ký tự thật (vd "di trong", "su ngoai" phải giữ nguyên, không được gộp
+# thành "ditrong"/"sungoai" vì sẽ trùng với banned keyword ngắn như "dit"/"sung").
+_SPELLED_OUT_PATTERN = re.compile(
+    rf'(?<![^\s{_SEPARATOR_CHARS_ESC}])({_LETTER_CLASS})[{_SEPARATOR_CHARS_ESC}]+'
+    rf'(?={_LETTER_CLASS}(?:[\s{_SEPARATOR_CHARS_ESC}]|$))'
+)
+
+
+def _normalize_text(text: str) -> str:
+    """NFKC normalize + xoá ký tự vô hình + quy đổi homoglyph. Vẫn giữ dấu tiếng Việt."""
+    if not text:
+        return ''
+    text = unicodedata.normalize('NFKC', text)
+    text = text.translate(_ZERO_WIDTH_TABLE)
+    text = text.translate(_HOMOGLYPH_TABLE)
+    return text.lower()
+
+
+def _compact_text(text: str) -> str:
+    """Nén ký tự phân cách CHỈ khi bị chèn giữa các chữ cái viết tách rời
+    (spelled-out obfuscation: 'đ.ị.t' → 'địt', 'd_i_t' → 'dit', 'd i t' →
+    'dit'). KHÔNG nén khoảng trắng/ký tự phân cách giữa 2 từ nhiều ký tự
+    thật — vd 'di trong' phải giữ nguyên 'di trong', không gộp thành
+    'ditrong' (tránh trùng banned keyword ngắn như 'dit' một cách giả)."""
+    if not text:
+        return text
+    prev = None
+    while prev != text:
+        prev = text
+        text = _SPELLED_OUT_PATTERN.sub(r'\1', text)
+    return text
+
+
+def _leet_normalize(text: str) -> str:
+    """Quy đổi leetspeak (0→o, 1→i, @→a...) sau khi đã normalize + compact."""
+    return text.translate(_LEET_TABLE)
+
+
+def _all_text_variants(raw_text: str) -> list:
+    """Trả về danh sách các biến thể text để match banned keyword —
+    nguyên văn, đã chuẩn hoá, đã nén ký tự phân cách, và leet-normalized."""
+    normalized = _normalize_text(raw_text)
+    compact = _compact_text(normalized)
+    leet_compact = _leet_normalize(compact)
+    variants = {raw_text.lower(), normalized, compact, leet_compact}
+    return [v for v in variants if v]
+
+
 def _check_banned_keywords(title: str, description: str, price) -> dict:
     """
     Check keyword blacklist đồng bộ — chặn NGAY LẬP TỨC không cần AI.
+    Match trên nhiều biến thể chuẩn hoá để chống né filter bằng ký tự
+    phân cách, homoglyph, ký tự vô hình, leetspeak.
     Trả về {'banned': True/False, 'reason': '...', 'flags': [...]}
     """
-    text = f"{title} {description}".lower()
+    raw_text = f"{title} {description}"
+    text_variants = _all_text_variants(raw_text)
     flags = []
 
     for keyword in BANNED_KEYWORDS:
-        if keyword in text:
-            flags.append(f'banned_keyword:{keyword}')
-            return {
-                'banned': True,
-                'reason': f'Công việc chứa từ khóa bị cấm: "{keyword}". Nội dung vi phạm pháp luật Việt Nam hoặc tiêu chuẩn cộng đồng.',
-                'flags': flags,
-                'confidence': 1.0,
-            }
+        keyword_compact = _compact_text(keyword)
+        for variant in text_variants:
+            if keyword in variant or keyword_compact in variant:
+                flags.append(f'banned_keyword:{keyword}')
+                return {
+                    'banned': True,
+                    'reason': f'Công việc chứa từ khóa bị cấm: "{keyword}". Nội dung vi phạm pháp luật Việt Nam hoặc tiêu chuẩn cộng đồng.',
+                    'flags': flags,
+                    'confidence': 1.0,
+                }
+
+    # Giữ biến `text` cho phần check phía dưới (giá) — bản gốc lowercase
+    text = raw_text.lower()
+    # Bản chuẩn hoá (homoglyph + zero-width) nhưng GIỮ khoảng trắng, để
+    # category keywords nhiều từ (vd "gia sư") vẫn match được
+    text_normalized = _normalize_text(raw_text)
+    # Bản đã nén ký tự phân cách — dùng làm fallback cho category compact
+    text_compact = _compact_text(text_normalized)
 
     # Check giá bóc lột (nếu price < 20.000 VNĐ → nghi ngờ bóc lột)
     try:
@@ -248,7 +355,10 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
         'mua tạp hóa', 'mua tap hoa', 'đi siêu thị', 'di sieu thi', 'mua đồ hộ', 'mua do ho',
     ]
 
-    has_category_keyword = any(kw in text for kw in CATEGORY_KEYWORDS)
+    has_category_keyword = any(
+        kw in text_normalized or _compact_text(kw) in text_compact
+        for kw in CATEGORY_KEYWORDS
+    )
     if not has_category_keyword:
         flags.append('khong_lien_quan_danh_muc')
         return {
@@ -282,6 +392,14 @@ REJECTED nếu:
 - Spam, quảng cáo, link đáng ngờ, tin nhắn vô nghĩa
 
 APPROVED nếu: thuộc 1 trong 5 danh mục trên + hợp pháp + đạo đức.
+
+⚠️ CHỐNG NÉ FILTER: Người đăng có thể cố tình viết sai chính tả, chèn dấu
+chấm/gạch/khoảng trắng giữa các chữ cái (vd "đ.ị.t", "d_i_t"), dùng ký tự
+Unicode nhìn giống chữ cái thường (Cyrillic, fullwidth), số thay chữ
+(1337speak: "d1t", "vl"), hoặc viết tắt/teencode để né bộ lọc từ khóa.
+LUÔN đọc hiểu Ý NGHĨA THỰC SỰ đằng sau cách viết, không chỉ so khớp chữ
+nguyên văn — nếu nội dung thực chất vi phạm dù được viết lách bằng ký tự
+lạ, vẫn REJECTED.
 
 OUTPUT BẮT BUỘC: chỉ trả JSON thuần, không markdown fence, không text thừa.
 {"verdict": "APPROVED", "confidence": 0.95, "flags": [], "explanation": "tiếng Việt", "suggestion": ""}
