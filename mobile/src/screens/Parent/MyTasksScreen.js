@@ -76,10 +76,8 @@ export default function MyTasksScreen() {
   };
 
   const handleSetupPayment = async (task) => {
-    // Lấy worker được accept (nếu có)
     try {
-      const candRes = await getCandidates(task.id);
-      const accepted = candRes.data.find(c => c.status === 'accepted');
+      await getCandidates(task.id);
       navigation.navigate('PaymentSetup', {
         taskId: task.id,
         taskTitle: task.title,
@@ -124,7 +122,6 @@ export default function MyTasksScreen() {
           </Text>
         </View>
 
-        {/* Action buttons theo trạng thái */}
         {task.status === 'open' && (
           <View style={styles.btnRow}>
             <TouchableOpacity style={[styles.btn, styles.btnPrimary]}
@@ -169,15 +166,13 @@ export default function MyTasksScreen() {
           </View>
         )}
 
-        {/* Setup payment button — chỉ hiện cho in_progress chưa có payment */}
         {task.status === 'in_progress' && (
           <TouchableOpacity style={styles.paymentBtn} onPress={() => handleSetupPayment(task)} activeOpacity={0.85}>
             <Ionicons name="wallet-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.paymentBtnText}>Thiết lập thanh toán (MoMo/Tiền mặt)</Text>
+            <Text style={styles.paymentBtnText}>Thiết lập thanh toán (MoMo / PayOS / Tiền mặt)</Text>
           </TouchableOpacity>
         )}
 
-        {/* Live tracking button — chỉ hiện cho in_progress */}
         {task.status === 'in_progress' && (
           <TouchableOpacity
             style={styles.trackBtn}
@@ -248,7 +243,6 @@ export default function MyTasksScreen() {
         </View>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         {TABS.map(tab => (
           <TouchableOpacity key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]}
