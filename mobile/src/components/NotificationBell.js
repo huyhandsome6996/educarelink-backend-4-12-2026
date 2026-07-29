@@ -1,23 +1,19 @@
 // ====================================================================
 // NotificationBell — icon chuông thông báo hiển thị trên header
-// • Hiện badge đỏ với số lượng chưa đọc khi > 0
-// • Khi nhấn → mở slide-down panel (Modal) hiện danh sách thông báo
-// • Poll /api/notifications/unread-count/ mỗi 30 giây
-// • Gọi markNotificationsRead khi user mở panel
-// • Nút "Xem tất cả" mở NotificationsScreen (full-screen)
+// • Badge đỏ + poll 30s (fallback)
+// • WebSocket realtime: tăng badge ngay khi nhận event "notification"
 // ====================================================================
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, FlatList,
   ActivityIndicator, RefreshControl, Animated, Platform
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getNotifications, getUnreadCount, markNotificationsRead } from '../api/notifications';
+import RealtimeService from '../services/RealtimeService';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
-// Helper: quy đổi timestamp sang "x phút trước" tiếng Việt
 function relativeTime(iso) {
   if (!iso) return '';
   const now = new Date();
@@ -43,41 +39,52 @@ export default function NotificationBell({ dark = false, size = 22, color, style
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Resolve icon color: explicit color prop > dark mode > default white
   const iconColor = color || (dark ? COLORS.textPrimary : 'rgba(255,255,255,0.95)');
-
-  // Animation: badge pop khi có thông báo mới
   const badgeScale = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
-  // Lấy số lượng thông báo chưa đọc
+  const bumpBadge = useCallback(() => {
+    Animated.sequence([
+      Animated.spring(badgeScale, { toValue: 1.2, tension: 80, friction: 4, useNativeDriver: true }),
+      Animated.spring(badgeScale, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
+    ]).start();
+  }, [badgeScale]);
+
   const fetchUnread = useCallback(async () => {
     try {
       const res = await getUnreadCount();
       const count = res.data?.unread_count ?? res.data?.count ?? 0;
       setUnread((prev) => {
-        if (count !== prev) {
-          // Hiệu ứng pop khi số lượng thay đổi
-          Animated.sequence([
-            Animated.spring(badgeScale, { toValue: 1.2, tension: 80, friction: 4, useNativeDriver: true }),
-            Animated.spring(badgeScale, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
-          ]).start();
-        }
+        if (count !== prev) bumpBadge();
         return count;
       });
-    } catch (e) {
-      // Lỗi âm thầm — không phá vỡ UX
-    }
-  }, []);
+    } catch (e) {}
+  }, [bumpBadge]);
 
-  // Poll mỗi 30 giây
+  // Poll 30s (fallback khi WS offline)
   useEffect(() => {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, [fetchUnread]);
 
-  // Mở panel + load danh sách + đánh dấu đã đọc
+  // WebSocket realtime — badge + prepend list khi panel mở
+  useEffect(() => {
+    const unsub = RealtimeService.on('notification', (payload) => {
+      setUnread((prev) => {
+        bumpBadge();
+        return prev + 1;
+      });
+      if (payload?.id) {
+        setNotifications((prev) => {
+          if (prev.some((n) => n.id === payload.id)) return prev;
+          return [{ ...payload, is_read: false }, ...prev].slice(0, 20);
+        });
+      }
+    });
+    return unsub;
+  }, [bumpBadge]);
+
   const openPanel = async () => {
     setPanelVisible(true);
     Animated.timing(slideAnim, {
@@ -86,7 +93,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
       useNativeDriver: true,
     }).start();
     await fetchNotifications();
-    // Đánh dấu đã đọc tất cả (nếu có thông báo chưa đọc)
     if (unread > 0) {
       try {
         await markNotificationsRead({ mark_all: true });
@@ -107,13 +113,11 @@ export default function NotificationBell({ dark = false, size = 22, color, style
     setIsLoading(true);
     try {
       const res = await getNotifications();
-      // Sắp xếp mới nhất lên đầu + giới hạn 20 để perf tốt hơn
       const list = (res.data || []).slice().sort((a, b) =>
         new Date(b.created_at) - new Date(a.created_at)
       ).slice(0, 20);
       setNotifications(list);
     } catch (e) {
-      // Bỏ qua lỗi
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -125,7 +129,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
     fetchNotifications();
   };
 
-  // Đánh dấu 1 thông báo đã đọc khi tap vào
   const handleTapNotif = async (item) => {
     if (!item.is_read) {
       try {
@@ -174,7 +177,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
         )}
       </TouchableOpacity>
 
-      {/* Slide-down panel */}
       <Modal visible={panelVisible} transparent animationType="none" onRequestClose={closePanel}>
         <View style={styles.overlay}>
           <TouchableOpacity style={styles.overlayTouchable} onPress={closePanel} activeOpacity={1} />
@@ -272,7 +274,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  // === PANEL ===
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

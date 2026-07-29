@@ -4,28 +4,28 @@ import { login as loginApi, register as registerApi, getProfile } from '../api/a
 import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import apiClient from '../api/client';
+import RealtimeService from '../services/RealtimeService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);      // Thông tin user đang đăng nhập
-  const [isLoading, setIsLoading] = useState(true); // Kiểm tra token lúc app khởi động
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Khi app mở lại — kiểm tra xem đã có token chưa
   useEffect(() => {
     const checkToken = async () => {
       try {
         const token = await storage.getItem('access_token');
         if (token) {
-          // Lấy profile từ server để đảm bảo token còn hợp lệ
           const response = await getProfile();
           setUser(response.data);
+          RealtimeService.connect();
         }
       } catch (error) {
-        // Token hết hạn hoặc lỗi — xoá hết
         await storage.deleteItem('access_token');
         await storage.deleteItem('user_role');
         setUser(null);
+        RealtimeService.disconnect();
       } finally {
         setIsLoading(false);
       }
@@ -37,17 +37,14 @@ export function AuthProvider({ children }) {
     const response = await loginApi(username, password);
     const { tokens, role, is_staff } = response.data;
 
-    // Lưu token và role vào SecureStore hoặc localStorage
     await storage.setItem('access_token', tokens.access);
     await storage.setItem('refresh_token', tokens.refresh);
     await storage.setItem('user_role', role);
     if (is_staff) await storage.setItem('is_staff', 'true');
 
-    // Lấy full profile
     const profileResp = await getProfile();
     setUser(profileResp.data);
 
-    // Register push token
     try {
       const pushToken = await registerForPushNotificationsAsync();
       if (pushToken) {
@@ -58,22 +55,20 @@ export function AuthProvider({ children }) {
       console.log('Failed to send push token to backend', e);
     }
 
+    RealtimeService.connect();
     return profileResp.data;
   };
 
   const register = async (username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto) => {
     const response = await registerApi(username, password, role, firstName, lastName, email, phone, idCardFront, idCardBack, selfiePhoto, certificatePhoto);
 
-    // Carepartner không auto-login (chờ admin duyệt)
     if (role === 'worker') {
       return { status: 'pending_approval' };
     }
 
-    // Phụ huynh: đăng ký xong auto đăng nhập luôn
     return await login(username, password);
   };
 
-  // OAuth login — nhận access token từ Google/Facebook
   const loginWithOAuth = async (provider, accessToken, role = 'parent') => {
     const apiFn = provider === 'google'
       ? (await import('../api/auth')).loginWithGoogle
@@ -98,10 +93,12 @@ export function AuthProvider({ children }) {
       console.log('Failed to send push token', e);
     }
 
+    RealtimeService.connect();
     return profileResp.data;
   };
 
   const logout = async () => {
+    RealtimeService.disconnect();
     await storage.deleteItem('access_token');
     await storage.deleteItem('refresh_token');
     await storage.deleteItem('user_role');
@@ -109,7 +106,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Refresh user profile từ server (dùng sau khi update profile, complete onboarding, ...)
   const refreshUser = async () => {
     try {
       const response = await getProfile();
@@ -120,15 +116,12 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Đánh dấu đã hoàn thành onboarding — gọi API + cập nhật state
   const completeOnboardingInContext = async () => {
     try {
       await completeOnboardingApi();
-      // Cập nhật user.first_login = false trong state (không cần fetch lại)
       setUser(prev => prev ? { ...prev, first_login: false } : prev);
     } catch (e) {
       console.warn('completeOnboardingInContext failed:', e);
-      // Vẫn đánh dấu first_login = false trong state để user đi tiếp
       setUser(prev => prev ? { ...prev, first_login: false } : prev);
     }
   };
@@ -146,6 +139,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-
-// Hook tiện lợi để dùng trong mọi màn hình
 export const useAuth = () => useContext(AuthContext);

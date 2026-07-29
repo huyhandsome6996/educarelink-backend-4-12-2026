@@ -32,19 +32,21 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'educarelink-backend.onrender.co
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',  # ASGI server — phải đứng trước django.contrib.staticfiles
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # --- CÁC THƯ VIỆN CÀI THÊM ---
     'rest_framework',
     'rest_framework_simplejwt', # Thêm thư viện JWT cho Mobile App
     'rest_framework_simplejwt.token_blacklist', # Hỗ trợ blacklist refresh token cũ
     'corsheaders',
-    
+    'channels',  # WebSocket realtime
+
     # --- APP CỦA CHÚNG TA ---
     'core',
     'frontend',
@@ -53,6 +55,7 @@ INSTALLED_APPS = [
     'ai_recommendations',  # AI gợi ý việc + đánh giá ứng viên (Gemini)
     'moderation',  # Kiểm duyệt công việc + Khiếu nại (AI)
     'performance',  # ⚡ Tối ưu hiệu năng (LRU cache, connection pool, spatial index)
+    'realtime',  # WebSocket broadcast notifications / task updates
 ]
 
 MIDDLEWARE = [
@@ -88,6 +91,27 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# ── Channel layers (WebSocket) ──────────────────────────────────────
+# REDIS_URL set → RedisChannelLayer (multi-process / multi-instance)
+# Không có Redis → InMemoryChannelLayer (OK cho 1 process / free tier)
+REDIS_URL = os.environ.get('REDIS_URL', '')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # --- CẤU HÌNH DATABASE ---
 # Ưu tiên DATABASE_URL từ biến môi trường (PostgreSQL trên Neon/Render/Supabase)
@@ -245,6 +269,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'realtime': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
@@ -297,7 +326,7 @@ TRACKING_GEOFENCE_RADIUS = int(os.environ.get('TRACKING_GEOFENCE_RADIUS', '500')
 # Tần suất carepartner app gửi vị trí (giây) — dùng cho frontend biết
 TRACKING_UPDATE_INTERVAL = int(os.environ.get('TRACKING_UPDATE_INTERVAL', '10'))
 
-# ── DEVICE OFFLINE ALERT (chống tắt máy/đập máy để phạm tội) ──
+# ── DEVICE OFFLINE ALERT (chống tắt máy/đập máy) ──
 # Carepartner app gửi heartbeat mỗi 30s
 TRACKING_HEARTBEAT_INTERVAL = int(os.environ.get('TRACKING_HEARTBEAT_INTERVAL', '30'))
 

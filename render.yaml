@@ -4,7 +4,7 @@ services:
     plan: free
     env: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT"
+    startCommand: "daphne -b 0.0.0.0 -p $PORT backend.asgi:application"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -18,35 +18,24 @@ services:
         value: "true"
       - key: GEMINI_API_KEY
         sync: false
-      # Keep-Alive Scheduler (tự ping mỗi 3 phút để Render free không sleep)
       - key: KEEPALIVE_ENABLED
         value: "true"
       - key: KEEPALIVE_INTERVAL
         value: "3"
       - key: RENDER_URL
         value: "https://educarelink-backend.onrender.com"
-      # AI Anomaly Detection (tự quét bất thường mỗi 10 phút → thông báo Admin)
       - key: ANOMALY_ENABLED
         value: "true"
       - key: ANOMALY_CHECK_INTERVAL
         value: "10"
-      # Social OAuth (Google + Facebook đăng nhập cho Phụ huynh)
-      # Đặt giá trị thực trên Render Dashboard → Settings → Environment Variables
       - key: GOOGLE_OAUTH_CLIENT_ID
         sync: false
       - key: FACEBOOK_APP_ID
         sync: false
       - key: FACEBOOK_APP_SECRET
         sync: false
-      # DATABASE_URL: Bắt buộc đặt thủ công trên Render Dashboard
-      # Vào Settings → Environment → Add Environment Variable
-      # Key: DATABASE_URL
-      # Value: connection string từ Neon (postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require)
-      # ── MoMo Payment (escrow + cash settlement) ──
-      # Đăng ký đối tác tại https://business.momo.vn/ để lấy Partner Code / Access Key / Secret Key
-      # Sandbox test credentials có sẵn trong docs https://developers.momo.vn/v3/vi/docs/payment/app/app-in-app/payment-link
       - key: MOMO_ENVIRONMENT
-        value: "sandbox"     # chuyển sang "production" khi go-live
+        value: "sandbox"
       - key: MOMO_PARTNER_CODE
         sync: false
       - key: MOMO_ACCESS_KEY
@@ -65,9 +54,6 @@ services:
         value: "7"
       - key: PAYMENT_SCHEDULER_ENABLED
         value: "true"
-      # ── Device Offline Alert (chống tắt máy/đập máy) ──
-      # Carepartner app gửi heartbeat mỗi 30s
-      # Backend scheduler quét mỗi 1 phút — nếu last_seen > 60s → push chuông cho phụ huynh
       - key: TRACKING_HEARTBEAT_INTERVAL
         value: "30"
       - key: TRACKING_OFFLINE_THRESHOLD
@@ -76,3 +62,6 @@ services:
         value: "true"
       - key: TRACKING_OFFLINE_CHECK_INTERVAL
         value: "1"
+      # Optional: Redis URL for multi-process WebSocket fan-out
+      # - key: REDIS_URL
+      #   sync: false

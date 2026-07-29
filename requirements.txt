@@ -63,3 +63,8 @@ whitenoise==6.12.0
 
 # ── PayOS Payment module (VietQR bank transfer) ──
 payos==1.1.0
+
+# ── WebSocket Realtime (Django Channels) ──
+channels==4.2.2
+daphne==4.2.1
+channels-redis==4.2.1
