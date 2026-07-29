@@ -6,7 +6,8 @@ import apiClient from './client';
 
 // ── PARENT ────────────────────────────────────────────────────────
 // Thiết lập thanh toán cho task
-// Body: { task_id, method: 'momo_escrow' | 'cash' }
+// Body: { task_id, method: 'momo_escrow' | 'payos' | 'cash' }
+// Với payos: response có payos_checkout_url (nếu credentials OK)
 export const setupPayment = (taskId, method) =>
   apiClient.post('/payments/setup/', { task_id: taskId, method });
 
