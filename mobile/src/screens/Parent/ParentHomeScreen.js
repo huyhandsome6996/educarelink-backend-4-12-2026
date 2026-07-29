@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
   StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -12,7 +11,7 @@ import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4; // 4 columns with gaps
+const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4;
 
 const STATUS_MAPPING = {
   open: { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
@@ -37,10 +36,10 @@ export default function ParentHomeScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Pulse animation for empty state icon
   // Fix H12: store animation ref và stop() trong cleanup để tránh memory leak.
   const pulseAnimRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -65,7 +64,9 @@ export default function ParentHomeScreen() {
   const fetchTasks = async () => {
     try {
       const res = await getMyTasksAsParent();
-      setTasks(res.data.slice(0, 3)); // Hiển thị 3 việc gần nhất trên trang chủ
+      const list = Array.isArray(res.data) ? res.data : [];
+      setAllTasks(list);
+      setTasks(list.slice(0, 3));
     } catch (e) {
       console.error('Lỗi tải danh sách việc:', e);
     } finally {
@@ -78,6 +79,13 @@ export default function ParentHomeScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchTasks(); };
 
+  // Stats đồng bộ web parent_home.html: Tổng / Đang tìm / Đang thực hiện
+  const stats = {
+    total: allTasks.length,
+    open: allTasks.filter((t) => t.status === 'open').length,
+    inProgress: allTasks.filter((t) => t.status === 'in_progress').length,
+  };
+
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
@@ -86,9 +94,7 @@ export default function ParentHomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      {/* Header gradient cam */}
       <View style={styles.header}>
-        {/* Subtle gradient overlay for depth */}
         <View style={styles.headerGradientOverlay} />
         <View style={styles.headerTop}>
           <View>
@@ -114,7 +120,6 @@ export default function ParentHomeScreen() {
           </View>
         </View>
 
-        {/* Thanh tìm kiếm / Nút đăng việc */}
         <TouchableOpacity style={styles.searchBar} onPress={() => navigation.navigate('CreateTask')} activeOpacity={0.9}>
           <View style={styles.searchIconCircle}>
             <Ionicons name="add" size={24} color={COLORS.primary} />
@@ -132,6 +137,52 @@ export default function ParentHomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
+        {/* Stats row — đồng bộ web parent_home.html */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: COLORS.primaryLight }]}>
+              <Ionicons name="checkmark-done" size={18} color={COLORS.primary} />
+            </View>
+            <Text style={styles.statValue}>{isLoading ? '—' : stats.total}</Text>
+            <Text style={styles.statLabel}>Tổng việc đã đăng</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: COLORS.warningBg }]}>
+              <Ionicons name="search" size={18} color={COLORS.warning} />
+            </View>
+            <Text style={styles.statValue}>{isLoading ? '—' : stats.open}</Text>
+            <Text style={styles.statLabel}>Đang tìm Carepartner</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: COLORS.infoBg }]}>
+              <Ionicons name="time" size={18} color={COLORS.info} />
+            </View>
+            <Text style={styles.statValue}>{isLoading ? '—' : stats.inProgress}</Text>
+            <Text style={styles.statLabel}>Đang thực hiện</Text>
+          </View>
+        </View>
+
+        {/* CTA ĐĂNG VIỆC NGAY — đồng bộ web */}
+        <TouchableOpacity
+          style={styles.ctaCard}
+          onPress={() => navigation.navigate('CreateTask')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.ctaIconCircle}>
+            <Ionicons name="add-circle" size={28} color="#fff" />
+          </View>
+          <View style={styles.ctaContent}>
+            <Text style={styles.ctaTitle}>ĐĂNG VIỆC NGAY</Text>
+            <Text style={styles.ctaSubtitle}>
+              Tìm Carepartner nhanh chóng & tin cậy cho bé yêu của bạn
+            </Text>
+          </View>
+          <View style={styles.ctaBtn}>
+            <Text style={styles.ctaBtnText}>Bắt đầu</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </View>
+        </TouchableOpacity>
+
         {/* Section: Danh mục dịch vụ */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -191,7 +242,6 @@ export default function ParentHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* === Upgrade to Carepartner banner (only if user is parent + not yet a carepartner) === */}
           {user?.role === 'parent' && !user?.is_staff && (
             <TouchableOpacity
               style={styles.upgradeBanner}
@@ -265,7 +315,6 @@ export default function ParentHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  // === HEADER ===
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
@@ -281,7 +330,7 @@ const styles = StyleSheet.create({
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   greetSmall: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
-  greetName: { color: '#fff', ...TYPO.h2, color: '#fff' },
+  greetName: { color: '#fff', ...TYPO.h2 },
   headerRight: { flexDirection: 'row', gap: SIZES.sm },
   headerIconBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -298,15 +347,51 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   searchTextGroup: { flex: 1 },
-  searchTitle: { color: '#fff', ...TYPO.bodyLarge, color: '#fff' },
+  searchTitle: { color: '#fff', ...TYPO.bodyLarge },
   searchSub: { color: 'rgba(255,255,255,0.7)', ...TYPO.bodySmall, marginTop: 2 },
-  // === BODY ===
   body: { flex: 1, marginTop: -4 },
+  // Stats — match web parent_home
+  statsRow: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, marginTop: SIZES.lg,
+  },
+  statCard: {
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    padding: 12, alignItems: 'center', gap: 4,
+    ...SHADOWS.cardHover,
+  },
+  statIconWrap: {
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 2,
+  },
+  statValue: { ...TYPO.h3, color: COLORS.textPrimary, fontWeight: '900' },
+  statLabel: { ...TYPO.caption, color: COLORS.textSecondary, textAlign: 'center', fontSize: 10 },
+  // CTA card
+  ctaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 20, marginTop: SIZES.md,
+    padding: 16, borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.large,
+  },
+  ctaIconCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  ctaContent: { flex: 1, gap: 2 },
+  ctaTitle: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 },
+  ctaSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 11, lineHeight: 16 },
+  ctaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 8,
+  },
+  ctaBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   section: { paddingHorizontal: 20, marginTop: SIZES.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.md },
   sectionTitle: { ...TYPO.h3, color: COLORS.textPrimary },
-  seeAll: { color: COLORS.primary, ...TYPO.buttonSmall, color: COLORS.primary },
-  // === CATEGORIES ===
+  seeAll: { color: COLORS.primary, ...TYPO.buttonSmall },
   categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   catItem: {
     width: CATEGORY_SIZE, alignItems: 'center', gap: SIZES.sm,
@@ -317,9 +402,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.cardHover,
     backgroundColor: COLORS.surface,
   },
-  catImage: { width: 34, height: 34 },
   catName: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  // === TASK CARDS ===
   taskCard: {
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: SIZES.md,
     marginBottom: 10, borderLeftWidth: 4, borderLeftColor: COLORS.primary,
@@ -341,7 +424,6 @@ const styles = StyleSheet.create({
   taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: SIZES.xs },
   taskMeta: { ...TYPO.bodySmall, color: COLORS.textMuted, flex: 1 },
   taskPrice: { ...TYPO.bodyLarge, fontWeight: '900', color: COLORS.primary },
-  // === EMPTY STATE ===
   emptyBox: { alignItems: 'center', paddingVertical: 36, gap: 12 },
   emptyIconCircle: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight,
@@ -358,7 +440,6 @@ const styles = StyleSheet.create({
     marginTop: SIZES.xs,
   },
   emptyBtnText: { color: '#fff', ...TYPO.button },
-  // === UPGRADE BANNER ===
   upgradeBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
@@ -374,7 +455,6 @@ const styles = StyleSheet.create({
   upgradeBannerInfo: { flex: 1 },
   upgradeBannerTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   upgradeBannerDesc: { ...TYPO.caption, color: COLORS.textSecondary, marginTop: 2 },
-  // === AI CHATBOT BANNER — đồng bộ web parent_home.html ===
   aiBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     marginHorizontal: 20, marginTop: SIZES.lg, marginBottom: SIZES.sm,
@@ -389,7 +469,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.small,
   },
-  aiBannerIcon: { width: 32, height: 32 },
   aiBannerContent: { flex: 1, gap: 3 },
   aiBannerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   aiBannerTitle: { ...TYPO.h5, color: '#312E81', fontWeight: '700', fontSize: 15 },
