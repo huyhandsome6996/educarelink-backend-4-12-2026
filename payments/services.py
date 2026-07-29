@@ -2,9 +2,8 @@
 ╔══════════════════════════════════════════════════════════════════╗
 ║   Payment Service Layer — Business Logic                          ║
 ║                                                                   ║
-║   Tách logic nghiệp vụ khỏi views & MoMo client:                  ║
-║     - setup_payment()          : tạo Payment + (tuỳ chọn) sinh    ║
-║                                    payUrl MoMo cho phụ huynh      ║
+║   Tách logic nghiệp vụ khỏi views & payment clients:              ║
+║     - setup_payment()          : tạo Payment + MoMo/PayOS link    ║
 ║     - handle_momo_ipn()        : xử lý webhook MoMo (capture)     ║
 ║     - release_escrow()         : giải ngân 80% cho Carepartner    ║
 ║     - refund_escrow()          : hoàn 100% cho phụ huynh          ║
@@ -17,6 +16,7 @@
 """
 
 import logging
+import time
 from datetime import timedelta
 from decimal import Decimal
 from django.db import transaction
@@ -88,7 +88,7 @@ def _get_accepted_worker(task: Task) -> User | None:
 
 
 # ────────────────────────────────────────────────────────────────────
-#  1. SETUP PAYMENT  (Parent chọn momo_escrow | cash trước khi task running)
+#  1. SETUP PAYMENT  (Parent chọn momo_escrow | payos | cash)
 # ────────────────────────────────────────────────────────────────────
 
 def setup_payment(*, task: Task, method: str, actor: User) -> Payment:
@@ -96,9 +96,8 @@ def setup_payment(*, task: Task, method: str, actor: User) -> Payment:
     Tạo / cập nhật Payment cho task.
 
     - method='momo_escrow': gọi MoMo Pay App v2 sinh payUrl cho phụ huynh.
-      Trả về Payment với payUrl lưu sẵn — frontend redirect phụ huynh tới.
-    - method='cash': chỉ tạo bản ghi, không gọi MoMo.
-      Hoa hồng sẽ được tính khi task completed.
+    - method='payos': tạo PayOS VietQR payment link (miễn phí).
+    - method='cash': chỉ tạo bản ghi, không gọi cổng thanh toán.
     """
     if task.parent_id != actor.id:
         raise PermissionError("Chỉ phụ huynh sở hữu task mới được thiết lập thanh toán.")
@@ -178,8 +177,53 @@ def setup_payment(*, task: Task, method: str, actor: User) -> Payment:
         except (MomoAPIError, MomoConfigError) as e:
             _log(payment=payment, event_type='momo_pay_url_failed',
                  message=str(e), payload=getattr(e, 'raw', {}), actor=actor)
-            # Không raise — frontend vẫn nhận được payment record;
-            # sẽ hiển thị "MoMo chưa sẵn sàng, vui lòng thử lại sau".
+            # Không raise — frontend vẫn nhận được payment record
+
+    # ── PayOS VietQR: tạo payment link ─────────────────────────────
+    elif method == 'payos':
+        from .payos_client import create_payment_link, is_payos_enabled
+
+        if not is_payos_enabled():
+            _log(payment=payment, event_type='payos_link_failed',
+                 message='PayOS chưa được cấu hình credentials',
+                 actor=actor)
+            # Không raise — frontend nhận payment + next_action fallback
+            return payment
+
+        try:
+            order_code = int(f"{task.id}{int(time.time())}"[:15])
+            description = f"ECL task {task.id} - {task.title[:30]}"
+            buyer_name = f"{task.parent.last_name} {task.parent.first_name}".strip()[:50] or None
+            buyer_email = (task.parent.email or '')[:100] or None
+            buyer_phone = (getattr(task.parent, 'phone_number', None) or '')[:20] or None
+
+            result = create_payment_link(
+                order_code=order_code,
+                amount=int(payment.amount),
+                description=description,
+                buyer_name=buyer_name,
+                buyer_email=buyer_email,
+                buyer_phone=buyer_phone,
+            )
+
+            if result:
+                payment.payos_order_code = result['order_code']
+                payment.payos_checkout_url = result['checkout_url']
+                payment.payos_payment_link_id = result.get('payment_link_id')
+                payment.payos_status = 'PENDING'
+                payment.save()
+
+                _log(payment=payment, event_type='payos_link_created',
+                     message=f"PayOS link created: order_code={result['order_code']}",
+                     payload=result, actor=actor)
+            else:
+                _log(payment=payment, event_type='payos_link_failed',
+                     message='create_payment_link returned None',
+                     actor=actor)
+        except Exception as e:
+            logger.exception(f'[payments] PayOS setup failed: {e}')
+            _log(payment=payment, event_type='payos_link_failed',
+                 message=str(e), actor=actor)
 
     return payment
 
@@ -301,7 +345,6 @@ def release_escrow(payment: Payment) -> Payment:
     Giải ngân escrow khi task hoàn thành:
       - method='momo_escrow': Gọi MoMo Transfer API gửi 80% cho worker
       - method='payos': Đánh dấu completed — admin manual transfer cho worker
-        (PayOS Payout API cần KYC doanh nghiệp, chưa support auto)
       - method='cash': Ghi nhận công nợ hoa hồng để tổng hợp cuối tháng
     """
     if payment.method == 'cash':
@@ -373,7 +416,6 @@ def release_escrow(payment: Payment) -> Payment:
                     data={'type': 'payout_released', 'task_id': payment.task_id}
                 )
             else:
-                # Transfer API trả về lỗi (thường do chưa đăng ký Payout service)
                 payment.payout_request_id = request_id
                 payment.payout_response = resp
                 payment.status = 'payout_failed'
@@ -444,7 +486,6 @@ def _record_payos_completion(payment: Payment) -> Payment:
                  f"cho worker#{payment.worker_id if payment.worker else 'N/A'} "
                  f"(commission={payment.commission_amount}đ)")
 
-    # Notify worker
     if payment.worker:
         _notify_user(
             payment.worker,
@@ -457,7 +498,6 @@ def _record_payos_completion(payment: Payment) -> Payment:
                   'amount': str(payout_amount)}
         )
 
-    # Notify parent
     _notify_user(
         payment.parent,
         title="✅ Đã thanh toán cho Carepartner",
@@ -466,7 +506,6 @@ def _record_payos_completion(payment: Payment) -> Payment:
         data={'type': 'payos_completed', 'task_id': payment.task_id}
     )
 
-    # Notify admin to manual transfer
     admins = User.objects.filter(is_superuser=True, is_active=True)
     for admin in admins:
         _notify_user(
@@ -507,7 +546,6 @@ def refund_escrow(payment: Payment) -> Payment:
         _log(payment=payment, event_type='payos_refund_pending',
              message=f"PayOS refund pending — admin cần transfer {payment.amount}đ "
                      f"cho parent#{payment.parent_id}")
-        # Notify admin
         admins = User.objects.filter(is_superuser=True, is_active=True)
         for admin in admins:
             _notify_user(
@@ -527,7 +565,6 @@ def refund_escrow(payment: Payment) -> Payment:
         return payment
 
     if payment.method != 'momo_escrow':
-        # Cash: không có gì để hoàn
         payment.status = 'cancelled'
         payment.save()
         return payment
@@ -594,7 +631,7 @@ def on_task_status_changed(task: Task, old_status: str, new_status: str):
     """
     payment = getattr(task, 'payment', None)
     if not payment:
-        return  # Task chưa có Payment setup — không phải việc cần thanh toán qua hệ thống
+        return
 
     if new_status == 'completed' and old_status != 'completed':
         if payment.method == 'cash':
@@ -619,24 +656,14 @@ def on_task_status_changed(task: Task, old_status: str, new_status: str):
 # ────────────────────────────────────────────────────────────────────
 
 def generate_monthly_settlements(*, year: int = None, month: int = None) -> dict:
-    """
-    Tổng hợp & sinh QR cho hoa hồng tiền mặt của tháng trước.
-
-    Args:
-        year, month: kỳ cần tổng hợp (mặc định = tháng trước thời điểm chạy)
-
-    Returns:
-        {"settlements_created": N, "settlements_failed": M, "total_amount": X}
-    """
+    """Tổng hợp & sinh QR cho hoa hồng tiền mặt của tháng trước."""
     now = timezone.now()
     if year is None or month is None:
-        # Mặc định: tổng hợp tháng trước
         if now.month == 1:
             year, month = now.year - 1, 12
         else:
             year, month = now.year, now.month - 1
 
-    # Tìm tất cả Payment cash đã completed trong kỳ
     start = timezone.make_aware(
         timezone.datetime(year, month, 1)
     )
@@ -653,7 +680,6 @@ def generate_monthly_settlements(*, year: int = None, month: int = None) -> dict
         worker__isnull=False,
     )
 
-    # Group theo worker
     stats = {'settlements_created': 0, 'settlements_failed': 0,
              'total_amount': Decimal('0'), 'skipped_existing': 0}
 
@@ -669,7 +695,6 @@ def generate_monthly_settlements(*, year: int = None, month: int = None) -> dict
         if total_amount <= 0:
             continue
 
-        # Idempotent: nếu đã có settlement cho (worker, year, month) → skip
         _, created_flag = CommissionSettlement.objects.get_or_create(
             worker=worker, period_year=year, period_month=month,
             defaults={
@@ -691,7 +716,6 @@ def generate_monthly_settlements(*, year: int = None, month: int = None) -> dict
                      f"{total_tasks} task, {total_amount}đ",
              payload={'task_ids': settlement.task_ids})
 
-        # Sinh MoMo QR cho worker quét
         ok = _generate_settlement_qr(settlement)
         if ok:
             stats['settlements_created'] += 1
@@ -737,7 +761,6 @@ def _generate_settlement_qr(settlement: CommissionSettlement) -> bool:
              message=f"Sinh QR thành công | orderId={order_id}",
              payload=data)
 
-        # Gửi push + in-app notification cho worker
         _notify_user(
             settlement.worker,
             title="📊 Kỳ thanh toán hoa hồng đã sẵn sàng",
@@ -758,7 +781,6 @@ def _generate_settlement_qr(settlement: CommissionSettlement) -> bool:
     except (MomoAPIError, MomoConfigError) as e:
         _log(settlement=settlement, event_type='settlement_qr_failed',
              message=str(e), payload=getattr(e, 'raw', {}))
-        # Vẫn notify worker — biết là có kỳ cần thanh toán, sẽ liên hệ Admin
         _notify_user(
             settlement.worker,
             title="⚠️ Chưa sinh được QR hoa hồng",
@@ -771,10 +793,7 @@ def _generate_settlement_qr(settlement: CommissionSettlement) -> bool:
 
 
 def send_settlement_reminders() -> dict:
-    """
-    Gửi nhắc nhở cho các settlement quá hạn (chưa paid sau due_at).
-    Cron chạy mỗi ngày lúc 9h sáng.
-    """
+    """Gửi nhắc nhở cho các settlement quá hạn (chưa paid sau due_at)."""
     now = timezone.now()
     overdue_qs = CommissionSettlement.objects.filter(
         status='qr_generated',
