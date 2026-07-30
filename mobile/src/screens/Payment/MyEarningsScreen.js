@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
-  ActivityIndicator, RefreshControl, Platform,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,8 +17,10 @@ const STATUS_STYLE = {
   payout_failed: { color: COLORS.error,   bg: COLORS.errorBg,   label: 'Giải ngân thất bại' },
 };
 
+// Đồng bộ nhãn method với web + backend (momo_escrow | payos | cash)
 const METHOD_LABEL = {
   momo_escrow: 'MoMo',
+  payos: 'PayOS VietQR',
   cash: 'Tiền mặt',
 };
 
@@ -68,7 +70,6 @@ export default function MyEarningsScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
@@ -82,7 +83,6 @@ export default function MyEarningsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
-        {/* Stats Cards */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: COLORS.successBg, borderColor: '#bbf7d0' }]}>
             <View style={[styles.statIconCircle, { backgroundColor: COLORS.success }]}>
@@ -105,15 +105,9 @@ export default function MyEarningsScreen() {
           </View>
         </View>
 
-        {/* Cash commission owed */}
         {owed > 0 && (
           <TouchableOpacity
             style={styles.owedCard}
-            // Fix C2: screen 'SettlementList' không được đăng ký trong AppNavigator.
-            // Tên đúng là 'SettlementDetail'. Khi không có settlementId cụ thể,
-            // SettlementDetailScreen sẽ tự fetch & hiển thị kỳ gần nhất.
-            // Trước đây bấm "Xem chi tiết" sẽ crash/silent fail vì navigate
-            // tới screen không tồn tại.
             onPress={() => navigation.navigate('SettlementDetail')}
             activeOpacity={0.85}
           >
@@ -129,7 +123,6 @@ export default function MyEarningsScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Recent payments */}
         <Text style={styles.sectionTitle}>Giao dịch gần đây</Text>
         {recentPayments.length === 0 ? (
           <View style={styles.emptyState}>
