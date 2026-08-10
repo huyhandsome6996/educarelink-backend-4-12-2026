@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Play Store / Firebase secrets — NEVER commit these
+google-services.json
+google-service-account-key.json
+GoogleService-Info.plist
+*.keystore
+
 # Metro
 .metro-health-check*
 
