@@ -156,6 +156,15 @@ class LiveLocationAPIView(APIView):
     GET /api/tracking/<task_id>/live/
 
     Parent lấy vị trí hiện tại của carepartner (poll mỗi 5s).
+
+    QA-FIX-2 / B3: trả thêm thông tin stale/offline cho UI Parent:
+      - last_seen: thời điểm GPS cuối cùng
+      - seconds_since_last_seen: số giây đã qua
+      - is_offline: True nếu > TRACKING_OFFLINE_THRESHOLD
+      - is_stale: True nếu vị trí cũ hơn 30s (location có thể không còn live)
+      - offline_threshold_seconds: ngưỡng cấu hình (không hardcode 60/90s)
+    UI Parent dùng các field này để hiển thị rõ "vị trí cuối cùng lúc X"
+    thay vì giả như vị trí live khi carepartner mất mạng.
     """
     permission_classes = [IsAuthenticated]
 
@@ -177,9 +186,25 @@ class LiveLocationAPIView(APIView):
                 'message': 'Carepartner chưa bật chia sẻ vị trí hoặc task không ở trạng thái in_progress.',
             })
 
+        # QA-FIX-2 / B3: tính stale/offline status cho UI
+        from django.utils import timezone as _tz
+        from tracking.services import OFFLINE_THRESHOLD_SECONDS
+        now = _tz.now()
+        seconds_since = (now - live.last_seen).total_seconds() if live.last_seen else None
+        # Stale = vị trí cũ hơn 30s (location có thể không còn live, nhưng
+        # chưa đến ngưỡng offline). is_offline = vượt ngưỡng cấu hình.
+        is_stale = seconds_since is not None and seconds_since > 30
+        is_offline = seconds_since is not None and seconds_since > OFFLINE_THRESHOLD_SECONDS
+
         return Response({
             'is_tracking': True,
             'location': LiveLocationSerializer(live).data,
+            # QA-FIX-2 / B3: thông tin stale/offline cho UI Parent
+            'last_seen': live.last_seen.isoformat() if live.last_seen else None,
+            'seconds_since_last_seen': int(seconds_since) if seconds_since is not None else None,
+            'is_stale': is_stale,
+            'is_offline': is_offline,
+            'offline_threshold_seconds': OFFLINE_THRESHOLD_SECONDS,
         })
 
 
@@ -478,7 +503,7 @@ class AdminTrackingOverviewAPIView(APIView):
                 'recovered': DeviceOfflineAlert.objects.filter(status='recovered').count(),
                 'task_ended': DeviceOfflineAlert.objects.filter(status='task_ended').count(),
             },
-            'offline_threshold_seconds': getattr(dj_settings, 'TRACKING_OFFLINE_THRESHOLD', 90),
+            'offline_threshold_seconds': getattr(dj_settings, 'TRACKING_OFFLINE_THRESHOLD', 60),
             'heartbeat_interval_seconds': getattr(dj_settings, 'TRACKING_HEARTBEAT_INTERVAL', 30),
         })
 
@@ -844,11 +869,27 @@ class BatchLocationAPIView(APIView):
     POST /api/tracking/location/batch/
 
     CarePartner gửi batch các điểm vị trí đã lưu offline khi mất mạng.
-    Body: { task_id, points: [{ latitude, longitude, accuracy?, speed?,
-                                heading?, recorded_at }, ...] }
+    Body: {
+      task_id: 123,
+      points: [
+        {
+          client_point_id: "uuid-optional",  # QA-FIX-2/B1: idempotent
+          latitude: 10.123,
+          longitude: 106.123,
+          accuracy?: 10,
+          speed?: 0,
+          heading?: 0,
+          recorded_at: "2026-08-13T10:00:00Z"
+        },
+        ...
+      ]
+    }
     - Mỗi điểm ghi vào LocationHistory với đúng recorded_at gửi lên.
     - Chỉ điểm cuối (mới nhất theo recorded_at) mới update LiveLocation.
     - Tối đa 500 điểm/lần gọi (trả 413 nếu vượt).
+    - QA-FIX-2 / B1: nếu client_point_id đã tồn tại → skip (đã insert rồi),
+      không tạo duplicate. Trả về inserted/already_exists/rejected per-point
+      để mobile biết điểm nào cần xoá khỏi queue cục bộ.
 
     QA-FIX-1 / Bug 1.2: wrap toàn bộ insert + LiveLocation update trong
     transaction.atomic() — nếu LiveLocation update fail thì rollback
@@ -861,6 +902,16 @@ class BatchLocationAPIView(APIView):
     - Validate recorded_at: không vượt quá ±5 phút so với now (future
       skew) và không cũ quá 7 ngày (dữ liệu mốc). Điểm không hợp lệ
       bị SKIP riêng (không làm hỏng cả batch) — trả về skip_count.
+
+    QA-FIX-2 / B1 (idempotent):
+    - Mobile sinh UUID cho mỗi điểm GPS → gửi kèm client_point_id.
+    - Nếu network timeout sau khi backend đã commit → mobile retry →
+      unique constraint (task, worker, client_point_id) reject duplicate.
+    - Response trả về list inserted_ids + already_exists_ids + rejected
+      list (lý do reject per-point) → mobile chỉ xoá row có
+      client_point_id thuộc inserted HOẶC already_exists khỏi queue
+      cục bộ. Trước đây mobile xoá cả chunk → mất dữ liệu khi 1 điểm
+      hỏng, hoặc duplicate khi retry thành công.
     """
     permission_classes = [IsAuthenticated]
 
@@ -915,41 +966,92 @@ class BatchLocationAPIView(APIView):
         from django.utils import timezone as _tz
         from django.utils.dateparse import parse_datetime
         from decimal import Decimal as _Decimal
+        import uuid as _uuid
 
         points = data['points']
         parsed = []
-        skipped = []  # QA-FIX-1 / Spec 2.5: list điểm bị skip (idx + lý do)
+        # QA-FIX-2 / B1: per-point result lists cho mobile.
+        # - inserted_ids: client_point_id mới insert thành công (mobile xoá khỏi queue).
+        # - already_exists_ids: client_point_id đã tồn tại từ trước (mobile cũng xoá —
+        #   đã sync rồi, retry là do mobile không nhận response trước).
+        # - rejected: list {client_point_id, reason} — mobile tăng sync_attempts
+        #   và skip riêng (không drop cả chunk).
+        inserted_ids = []
+        already_exists_ids = []
+        rejected = []
+        skipped = []  # legacy field cho test cũ (point invalid format)
+
         now = _tz.now()
         future_tol = timedelta(seconds=self.RECORDED_AT_FUTURE_TOLERANCE_SECONDS)
         max_age = timedelta(days=self.RECORDED_AT_MAX_AGE_DAYS)
 
+        # Pre-fetch existing client_point_ids để check idempotent trong 1 query
+        # (tránh N+1 queries cho N points).
+        all_client_point_ids = [
+            p.get('client_point_id') for p in points
+            if p.get('client_point_id')
+        ]
+        existing_ids_set = set()
+        if all_client_point_ids:
+            existing_qs = LocationHistory.objects.filter(
+                task=task,
+                worker=request.user,
+                client_point_id__in=all_client_point_ids,
+            ).values_list('client_point_id', flat=True)
+            existing_ids_set = set(existing_qs)
+
         for idx, p in enumerate(points):
+            # QA-FIX-2 / B1: parse client_point_id (optional). Nếu có,
+            # validate UUID format. Nếu không có → realtime point (cho phép).
+            client_point_id = p.get('client_point_id')
+            if client_point_id is not None:
+                if not isinstance(client_point_id, str) or len(client_point_id) > 36:
+                    rejected.append({
+                        'index': idx,
+                        'client_point_id': client_point_id,
+                        'reason': 'client_point_id không hợp lệ (phải là UUID string ≤ 36 ký tự)',
+                    })
+                    continue
+                # Check idempotent: nếu đã tồn tại → skip (đã insert rồi)
+                if client_point_id in existing_ids_set:
+                    already_exists_ids.append(client_point_id)
+                    continue
+
             dt = parse_datetime(p['recorded_at'])
             if dt is None:
-                skipped.append({'index': idx, 'reason': 'recorded_at không parse được'})
+                reason = 'recorded_at không parse được'
+                if client_point_id:
+                    rejected.append({'index': idx, 'client_point_id': client_point_id, 'reason': reason})
+                else:
+                    skipped.append({'index': idx, 'reason': reason})
                 continue
             if _tz.is_naive(dt):
                 dt = _tz.make_aware(dt, _tz.utc)
 
             # QA-FIX-1 / Spec 2.5: validate timestamp
-            # - Không vượt quá now + 5 phút (future skew do đồng hồ lệch)
-            # - Không cũ quá 7 ngày (dữ liệu mốc — có thể là cache cũ bị kẹt)
             if dt > now + future_tol:
-                skipped.append({
-                    'index': idx,
-                    'reason': f'recorded_at vượt quá {self.RECORDED_AT_FUTURE_TOLERANCE_SECONDS}s trong tươngng lai',
-                    'recorded_at': dt.isoformat(),
-                })
+                reason = f'recorded_at vượt quá {self.RECORDED_AT_FUTURE_TOLERANCE_SECONDS}s trong tươngng lai'
+                if client_point_id:
+                    rejected.append({
+                        'index': idx, 'client_point_id': client_point_id,
+                        'reason': reason, 'recorded_at': dt.isoformat(),
+                    })
+                else:
+                    skipped.append({'index': idx, 'reason': reason, 'recorded_at': dt.isoformat()})
                 continue
             if dt < now - max_age:
-                skipped.append({
-                    'index': idx,
-                    'reason': f'recorded_at cũ quá {self.RECORDED_AT_MAX_AGE_DAYS} ngày',
-                    'recorded_at': dt.isoformat(),
-                })
+                reason = f'recorded_at cũ quá {self.RECORDED_AT_MAX_AGE_DAYS} ngày'
+                if client_point_id:
+                    rejected.append({
+                        'index': idx, 'client_point_id': client_point_id,
+                        'reason': reason, 'recorded_at': dt.isoformat(),
+                    })
+                else:
+                    skipped.append({'index': idx, 'reason': reason, 'recorded_at': dt.isoformat()})
                 continue
 
             parsed.append({
+                'client_point_id': client_point_id,
                 'latitude': _Decimal(str(p['latitude'])),
                 'longitude': _Decimal(str(p['longitude'])),
                 'accuracy': p.get('accuracy'),
@@ -958,66 +1060,112 @@ class BatchLocationAPIView(APIView):
                 'recorded_at': dt,
             })
 
-        if not parsed:
+        if not parsed and not already_exists_ids:
             return Response({
                 'error': 'Không có điểm hợp lệ nào.',
                 'skipped': skipped,
+                'rejected': rejected,
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Sắp xếp theo recorded_at tăng dần (cũ → mới)
         parsed.sort(key=lambda x: x['recorded_at'])
 
         saved = 0
-        last_point = parsed[-1]  # điểm mới nhất
+        # QA-FIX-2 / B1: nếu tất cả điểm đều đã tồn tại (already_exists), không
+        # cần update LiveLocation (giữ nguyên vị trí cuối đã update từ trước).
+        if parsed:
+            last_point = parsed[-1]  # điểm mới nhất
 
-        # QA-FIX-1 / Bug 1.2: wrap trong transaction.atomic — nếu LiveLocation
-        # update fail → rollback LocationHistory inserts (trước đây chỉ catch
-        # + log → dữ liệu lệch: history có nhưng live không update).
-        try:
-            with transaction.atomic():
-                # Insert LocationHistory với bulk_create.
-                objs_to_create = [
-                    LocationHistory(
-                        task=task,
-                        worker=request.user,
-                        latitude=p['latitude'],
-                        longitude=p['longitude'],
-                        accuracy=p['accuracy'],
-                        speed=p['speed'],
-                        heading=p['heading'],
-                        client_recorded_at=p['recorded_at'],
-                    )
-                    for p in parsed
-                ]
-                LocationHistory.objects.bulk_create(objs_to_create)
-                saved = len(objs_to_create)
+            # QA-FIX-1 / Bug 1.2: wrap trong transaction.atomic — nếu LiveLocation
+            # update fail → rollback LocationHistory inserts.
+            # QA-FIX-2 / B1: dùng ignore_conflicts=False + catch IntegrityError
+            # cho trường hợp race condition (2 request đồng thời cùng client_point_id).
+            from django.db import IntegrityError
+            try:
+                with transaction.atomic():
+                    # Insert LocationHistory với bulk_create.
+                    # QA-FIX-2 / B1: nếu 1 point bị unique constraint violation
+                    # (race condition), bulk_create rollback cả batch. Do đó ta
+                    # insert per-point cho an toàn — điểm nào fail thì add vào
+                    # already_exists_ids, điểm nào OK thì add vào inserted_ids.
+                    objs_to_create = [
+                        LocationHistory(
+                            task=task,
+                            worker=request.user,
+                            latitude=p['latitude'],
+                            longitude=p['longitude'],
+                            accuracy=p['accuracy'],
+                            speed=p['speed'],
+                            heading=p['heading'],
+                            client_recorded_at=p['recorded_at'],
+                            client_point_id=p['client_point_id'],
+                        )
+                        for p in parsed
+                    ]
+                    try:
+                        LocationHistory.objects.bulk_create(objs_to_create)
+                        saved = len(objs_to_create)
+                        inserted_ids = [p['client_point_id'] for p in parsed if p['client_point_id']]
+                    except IntegrityError:
+                        # Race condition: 1 trong các point đã bị insert bởi
+                        # request khác giữa lúc ta check existing_ids_set và
+                        # bulk_create. Fallback per-point insert.
+                        logger.warning(
+                            "[tracking] Batch bulk_create IntegrityError — fallback per-point"
+                        )
+                        for p in parsed:
+                            try:
+                                LocationHistory.objects.create(
+                                    task=task,
+                                    worker=request.user,
+                                    latitude=p['latitude'],
+                                    longitude=p['longitude'],
+                                    accuracy=p['accuracy'],
+                                    speed=p['speed'],
+                                    heading=p['heading'],
+                                    client_recorded_at=p['recorded_at'],
+                                    client_point_id=p['client_point_id'],
+                                )
+                                saved += 1
+                                if p['client_point_id']:
+                                    inserted_ids.append(p['client_point_id'])
+                            except IntegrityError:
+                                # Point đã tồn tại (race) → already_exists
+                                if p['client_point_id']:
+                                    already_exists_ids.append(p['client_point_id'])
 
-                # Update LiveLocation với điểm mới nhất
-                LiveLocation.objects.update_or_create(
-                    task=task,
-                    defaults={
-                        'worker': request.user,
-                        'latitude': last_point['latitude'],
-                        'longitude': last_point['longitude'],
-                        'accuracy': last_point['accuracy'],
-                        'speed': last_point['speed'],
-                        'heading': last_point['heading'],
-                    },
-                )
-        except Exception as e:
-            logger.error(f"[tracking] Batch insert/LiveLocation failed: {e}")
-            return Response({
-                'error': 'Batch insert thất bại.',
-                'detail': str(e),
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    # Update LiveLocation với điểm mới nhất (chỉ khi có insert mới)
+                    if saved > 0:
+                        LiveLocation.objects.update_or_create(
+                            task=task,
+                            defaults={
+                                'worker': request.user,
+                                'latitude': last_point['latitude'],
+                                'longitude': last_point['longitude'],
+                                'accuracy': last_point['accuracy'],
+                                'speed': last_point['speed'],
+                                'heading': last_point['heading'],
+                            },
+                        )
+            except Exception as e:
+                logger.error(f"[tracking] Batch insert/LiveLocation failed: {e}")
+                # QA-FIX-2 / B1: không透露 exception detail nội bộ cho client.
+                return Response({
+                    'error': 'Batch insert thất bại. Vui lòng thử lại.',
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # QA-FIX-1 / Spec 2.5: trả 201 Created (không phải 200 OK)
+        # QA-FIX-2 / B1: trả per-point result để mobile xử lý queue cục bộ.
         return Response({
             'status': 'ok',
             'saved': saved,
+            'inserted_ids': inserted_ids,
+            'already_exists_ids': already_exists_ids,
+            'rejected': rejected,
+            'rejected_count': len(rejected),
             'skipped': skipped,
             'skipped_count': len(skipped),
-            'last_recorded_at': last_point['recorded_at'].isoformat(),
+            'last_recorded_at': parsed[-1]['recorded_at'].isoformat() if parsed else None,
         }, status=status.HTTP_201_CREATED)
 
 

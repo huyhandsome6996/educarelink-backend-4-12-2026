@@ -50,7 +50,6 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "useNextNotificationsApi": true,
       "versionCode": 2,
       "googleServicesFile": "./google-services.json"
     },

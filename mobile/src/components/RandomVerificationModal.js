@@ -2,7 +2,7 @@
 // RandomVerificationModal — Modal full-screen bắt buộc nhập mã PIN
 // ====================================================================
 // - Hiện khi hệ thống bất ngờ yêu cầu xác minh (push type=random_verification)
-// - Đếm ngược 90s (từ backend respond_deadline)
+// - Đếm ngược từ backend respond_deadline
 // - Lặp lại còi báo động (channel emergency-alerts đã setup ở App.js)
 // - Gọi API respond/ khi user bấm xác nhận
 // - Hiện được trên mọi screen (đặt ở App root qua useRandomVerificationCheck)
@@ -14,6 +14,11 @@
 //   phụ thuộc native notification). Nhưng còi to sẽ KHÔNG kêu — chỉ có
 //   vibration + Alert.alert.
 // - Để test còi to thật + push khi app đóng, phải build EAS Development Build.
+//
+// QA-FIX-2 / A1 + F: chỉ poll khi AuthContext đã load, user là worker
+// và có session hợp lệ. Trước đây modal poll ngay khi mở app ở login
+// screen → gọi API mà không có token → 401 spam + crash.
+// QA-FIX-2 / G: dừng poll/listener khi logout/unmount.
 // ====================================================================
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -27,12 +32,17 @@ import * as Location from 'expo-location';
 import {
   getPendingVerificationCheck, respondVerificationCheck,
 } from '../api/tracking';
+import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme/colors';
 
 const POLL_INTERVAL_MS = 5000; // Poll pending check mỗi 5s
 const VIBRATION_PATTERN = [1000, 500, 1000, 500, 1000, 500, 1000];
 
 export default function RandomVerificationModal() {
+  // QA-FIX-2 / A1 + F: chỉ poll khi user là worker đã đăng nhập
+  const { user, isLoading: authLoading } = useAuth();
+  const isWorker = user?.role === 'worker';
+
   const [check, setCheck] = useState(null); // { check_id, task_id, respond_deadline, seconds_remaining }
   const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +52,10 @@ export default function RandomVerificationModal() {
   const lastCheckIdRef = useRef(null);
 
   // Poll pending check từ backend
+  // QA-FIX-2 / A1 + F: chỉ poll khi isWorker=true và authLoading=false.
+  // Trước đây modal poll ngay khi mở app → gọi API không có token → 401.
   const fetchPendingCheck = useCallback(async () => {
+    if (!isWorker) return;  // parent/admin không có check
     try {
       const res = await getPendingVerificationCheck();
       if (res.data?.has_pending) {
@@ -86,16 +99,39 @@ export default function RandomVerificationModal() {
     } catch (e) {
       // Silent fail — không log (tránh spam khi offline)
     }
-  }, []);
+  }, [isWorker]);
 
   // Poll pending check mỗi 5s
+  // QA-FIX-2 / A1 + F: chỉ start poll khi isWorker + authLoading=false.
+  // Khi logout (user=null, isWorker=false) → cleanup interval.
   useEffect(() => {
+    if (authLoading || !isWorker) {
+      // Không phải worker hoặc đang load → không poll
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      // Reset state khi không còn worker (logout)
+      if (lastCheckIdRef.current !== null) {
+        lastCheckIdRef.current = null;
+        setCheck(null);
+        setPin('');
+        Vibration.cancel();
+      }
+      return;
+    }
+
     fetchPendingCheck();
     pollRef.current = setInterval(fetchPendingCheck, POLL_INTERVAL_MS);
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      // QA-FIX-2 / G: dừng vibration khi unmount/logout
+      Vibration.cancel();
     };
-  }, [fetchPendingCheck]);
+  }, [fetchPendingCheck, isWorker, authLoading]);
 
   // Countdown mỗi 1s
   useEffect(() => {
@@ -142,8 +178,9 @@ export default function RandomVerificationModal() {
       const location = await getCurrentLocation();
       await respondVerificationCheck(check.check_id, {
         pin,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
+        // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
       });
 
       // Thành công → ẩn modal + dừng rung
