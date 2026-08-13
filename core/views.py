@@ -96,6 +96,23 @@ def send_expo_push_notification(token, title, body, data=None):
             'priority': 'high',
             'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
         },
+        # === Phan 2 — Bao dong that su to (channel rieng emergency-alerts) ===
+        # Dung cho alert retry loop: push còi to, lap lai toi khi parent acknowledge.
+        # Khac 'device_offline' (channel critical_alerts cu): channel moi co
+        # sound=emergency_alarm.wav + bypassDnd + lockscreenVisibility=PUBLIC.
+        'device_offline_critical': {
+            'android_channel_id': 'emergency-alerts',
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
+        # === Phan 3 — Xac minh ngau nhien ===
+        # Carepartner phai nhap ma PIN — cung channel emergency-alerts de bao
+        # to + bat chu y ngay lap tuc.
+        'random_verification': {
+            'android_channel_id': 'emergency-alerts',
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
         'geofence_exit': {
             'android_channel_id': 'geofence_alerts',
             'priority': 'high',

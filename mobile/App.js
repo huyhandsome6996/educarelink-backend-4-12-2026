@@ -58,6 +58,35 @@ function useNotificationChannels() {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
 
+      // === PHẦN 2 & 3 — Channel emergency-alerts (còi to, bypass DnD) ===
+      // Dùng chung cho:
+      //   - DeviceOfflineAlert retry push (type=device_offline_critical)
+      //   - RandomVerificationCheck push (type=random_verification)
+      //
+      // ⚠️ QUAN TRỌNG: Channel này dùng file sound 'emergency_alarm.wav' —
+      // KHÔNG hoạt động trên Expo Go (Expo Go chỉ hỗ trợ 'default').
+      // Phải build bằng EAS Development Build hoặc production build mới test
+      // được sound custom + bypassDnd + full-screen intent thật.
+      //
+      // File sound phải đặt tại: mobile/assets/sounds/emergency_alarm.wav
+      // (Xem README của folder sounds/ — hiện là placeholder, cần bổ sung file
+      //  âm thanh còi thật, định dạng WAV, độ dài 3-5s, sample rate 44100Hz.)
+      //
+      // Trường hợp file chưa có, expo-notifications sẽ fallback về 'default'
+      // sound — push vẫn hoạt động nhưng không có còi to riêng.
+      Notifications.setNotificationChannelAsync('emergency-alerts', {
+        name: '🚨🚨 Cảnh báo khẩn cấp (còi to)',
+        description: 'Còi báo động liên tục khi Carepartner mất kết nối / yêu cầu xác minh',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+        lightColor: '#EF4444',
+        sound: 'emergency_alarm.wav',   // ← file custom, xem note bên trên
+        enableVibrate: true,
+        showBadge: true,
+        bypassDnd: true,                // bỏ qua chế độ Không làm phiền
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+
       // Channel SOS
       Notifications.setNotificationChannelAsync('sos_alerts', {
         name: '🆘 SOS',

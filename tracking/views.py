@@ -38,7 +38,7 @@ from .services import (
     get_live_location, get_location_history, trigger_sos,
     get_accepted_worker,
     update_heartbeat, get_device_status, get_offline_alerts_for_task,
-    check_offline_devices,
+    check_offline_devices, retry_offline_alert_pushes, acknowledge_offline_alert,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -485,6 +485,43 @@ class AdminRunOfflineCheckAPIView(APIView):
 
     def post(self, request):
         stats = check_offline_devices()
+        return Response(stats)
+
+
+class AcknowledgeOfflineAlertAPIView(APIView):
+    """
+    POST /api/tracking/<task_id>/offline-alerts/<alert_id>/acknowledge/
+
+    Parent mở app và xem cảnh báo → gọi endpoint này để acknowledge,
+    dừng retry push loop (Phần 2).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, task_id, alert_id):
+        try:
+            alert = acknowledge_offline_alert(alert_id=alert_id, requester=request.user)
+            return Response({
+                'status': 'acknowledged',
+                'alert_id': alert.id,
+                'acknowledged_at': alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+                'push_retry_count': alert.push_retry_count,
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class AdminRunRetryPushAPIView(APIView):
+    """
+    POST /api/tracking/admin/run-retry-push/
+
+    Admin trigger manual retry push cho alert active chưa acknowledged (debug).
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        stats = retry_offline_alert_pushes()
         return Response(stats)
 
 

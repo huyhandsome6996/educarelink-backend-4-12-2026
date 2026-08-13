@@ -35,14 +35,22 @@ _stats = {
 
 
 def _run_offline_check():
-    """Job chạy mỗi 1 phút — check offline devices."""
-    from .services import check_offline_devices
+    """Job chạy mỗi 1 phút — check offline devices + retry push cho alert chưa acknowledge."""
+    from .services import check_offline_devices, retry_offline_alert_pushes
     try:
         stats = check_offline_devices()
         _stats['last_run'] = datetime.now().isoformat()
         _stats['last_result'] = stats
         if stats.get('new_alerts', 0) > 0 or stats.get('already_alerted', 0) > 0:
             logger.info(f"[Offline Scheduler] Check: {stats}")
+
+        # Phan 2 — Retry push cho alert active chưa acknowledged
+        try:
+            retry_stats = retry_offline_alert_pushes()
+            _stats['last_retry_result'] = retry_stats
+        except Exception as e:
+            logger.exception(f"[Offline Scheduler] Retry push FAILED: {e}")
+
     except Exception as e:
         logger.exception(f"[Offline Scheduler] Check FAILED: {e}")
 
