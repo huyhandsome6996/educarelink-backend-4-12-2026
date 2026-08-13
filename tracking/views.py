@@ -32,6 +32,8 @@ from .serializers import (
     LocationHistorySerializer, SOSAlertSerializer,
     GrantConsentSerializer, UpdateLocationSerializer, SOSSerializer,
     HeartbeatSerializer,
+    RandomVerificationCheckSerializer, SetVerificationPinSerializer,
+    RespondVerificationCheckSerializer, BatchLocationSerializer,
 )
 from .services import (
     grant_consent, revoke_consent, update_worker_location,
@@ -39,6 +41,7 @@ from .services import (
     get_accepted_worker,
     update_heartbeat, get_device_status, get_offline_alerts_for_task,
     check_offline_devices, retry_offline_alert_pushes, acknowledge_offline_alert,
+    set_verification_pin, respond_verification_check,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -523,6 +526,343 @@ class AdminRunRetryPushAPIView(APIView):
     def post(self, request):
         stats = retry_offline_alert_pushes()
         return Response(stats)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 3 — RANDOM VERIFICATION CHECK (CarePartner nhập mã PIN)
+# ═══════════════════════════════════════════════════════════════════
+
+from .models import RandomVerificationCheck  # noqa: E402
+
+
+class SetVerificationPinAPIView(APIView):
+    """
+    POST /api/tracking/verification-pin/set/
+
+    CarePartner đặt/đổi mã cá nhân (PIN 4-6 số).
+    Body: { pin, current_password }
+    - current_password: mật khẩu tài khoản — xác thực lại tránh ai cầm máy đổi PIN.
+    - Hash bằng make_password — KHÔNG lưu plaintext.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SetVerificationPinSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            user = set_verification_pin(
+                user=request.user,
+                pin=serializer.validated_data['pin'],
+                current_password=serializer.validated_data['current_password'],
+            )
+            return Response({
+                'status': 'ok',
+                'pin_set_at': user.verification_pin_set_at.isoformat() if user.verification_pin_set_at else None,
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PendingVerificationCheckAPIView(APIView):
+    """
+    GET /api/tracking/verification-checks/pending/
+
+    CarePartner poll (hoặc dùng ngay khi nhận push) để lấy check đang chờ của mình.
+    Trả về check_id, respond_deadline — KHÔNG tiết lộ trước sắp có check.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Chỉ worker mới có check
+        if request.user.role != 'worker':
+            return Response({'has_pending': False})
+
+        check = RandomVerificationCheck.objects.filter(
+            worker=request.user,
+            status='pending',
+        ).order_by('respond_deadline').first()
+
+        if not check:
+            return Response({'has_pending': False})
+
+        # Trả về kèm seconds_remaining để mobile hiển thị đếm ngược
+        from django.utils import timezone as _tz
+        now = _tz.now()
+        seconds_remaining = max(0, int((check.respond_deadline - now).total_seconds()))
+
+        return Response({
+            'has_pending': True,
+            'check_id': check.id,
+            'task_id': check.task_id,
+            'triggered_at': check.triggered_at.isoformat(),
+            'respond_deadline': check.respond_deadline.isoformat(),
+            'seconds_remaining': seconds_remaining,
+            'attempts': check.attempts,
+        })
+
+
+class RespondVerificationCheckAPIView(APIView):
+    """
+    POST /api/tracking/verification-checks/<check_id>/respond/
+
+    CarePartner phản hồi check — nhập mã PIN.
+    Body: { pin, latitude?, longitude? }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, check_id):
+        serializer = RespondVerificationCheckSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            check = respond_verification_check(
+                check_id=check_id,
+                requester=request.user,
+                pin=serializer.validated_data['pin'],
+                latitude=serializer.validated_data.get('latitude'),
+                longitude=serializer.validated_data.get('longitude'),
+            )
+            return Response({
+                'status': 'confirmed',
+                'check_id': check.id,
+                'responded_at': check.responded_at.isoformat(),
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            # Có thể là "hết thời gian" hoặc "sai mã" — trả 400 để mobile hiển thị message
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminListVerificationChecksAPIView(APIView):
+    """
+    GET /api/tracking/admin/verification-checks/?worker=&task=&status=
+
+    Admin xem lịch sử toàn bộ check (lọc theo worker/task/status).
+    Phục vụ đánh giá tin cậy CarePartner.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from django.db.models import Q as _Q
+        qs = RandomVerificationCheck.objects.all().order_by('-triggered_at')
+
+        worker_id = request.query_params.get('worker')
+        if worker_id:
+            qs = qs.filter(worker_id=worker_id)
+
+        task_id = request.query_params.get('task')
+        if task_id:
+            qs = qs.filter(task_id=task_id)
+
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        limit = int(request.query_params.get('limit', 100))
+        qs = qs[:limit]
+
+        return Response({
+            'count': len(qs),
+            'checks': RandomVerificationCheckSerializer(qs, many=True).data,
+        })
+
+
+class AdminTriggerVerificationCheckAPIView(APIView):
+    """
+    POST /api/tracking/admin/trigger-verification-check/
+
+    Admin trigger manual tạo verification check cho 1 task (debug).
+    Body: { task_id }
+    Chỉ hoạt động khi DEBUG=True.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        from django.conf import settings as dj_settings
+        if not getattr(dj_settings, 'DEBUG', False):
+            return Response(
+                {'error': 'Endpoint chỉ hoạt động khi DEBUG=True.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        task_id = request.data.get('task_id')
+        if not task_id:
+            return Response({'error': 'task_id là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .verification_scheduler import trigger_verification_check_now
+        try:
+            check = trigger_verification_check_now(task_id)
+            return Response({
+                'status': 'created',
+                'check_id': check.id,
+                'task_id': check.task_id,
+                'respond_deadline': check.respond_deadline.isoformat(),
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminRunVerificationCheckAPIView(APIView):
+    """
+    POST /api/tracking/admin/run-verification-check/
+
+    Admin trigger manual chạy full verification check job (debug).
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        from .verification_scheduler import run_verification_check
+        stats = run_verification_check()
+        return Response(stats)
+
+
+class AdminVerificationSchedulerStatsAPIView(APIView):
+    """GET /api/tracking/admin/verification-scheduler/stats/"""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from .verification_scheduler import get_stats
+        return Response(get_stats())
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 1 — BATCH LOCATION (cache offline + sync khi có mạng lại)
+# ═══════════════════════════════════════════════════════════════════
+
+class BatchLocationAPIView(APIView):
+    """
+    POST /api/tracking/location/batch/
+
+    CarePartner gửi batch các điểm vị trí đã lưu offline khi mất mạng.
+    Body: { task_id, points: [{ latitude, longitude, accuracy?, speed?,
+                                heading?, recorded_at }, ...] }
+    - Mỗi điểm ghi vào LocationHistory với đúng recorded_at gửi lên.
+    - Chỉ điểm cuối (mới nhất theo recorded_at) mới update LiveLocation.
+    - Tối đa 500 điểm/lần gọi.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = BatchLocationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            task = Task.objects.get(pk=data['task_id'])
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Verify worker là người được accept (tái sử dụng logic UpdateLocationAPIView)
+        accepted = get_accepted_worker(task)
+        if not accepted or accepted.id != request.user.id:
+            return Response({'error': 'Bạn không phải là carepartner được chọn cho task này.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # Verify task đang in_progress + consent granted (gọi service có sẵn)
+        try:
+            consent = LocationConsent.objects.get(task=task, worker=request.user)
+            if consent.consent != 'granted':
+                return Response({'error': f"Consent hiện tại: {consent.consent} — không thể update vị trí."},
+                                status=status.HTTP_403_FORBIDDEN)
+        except LocationConsent.DoesNotExist:
+            return Response({'error': 'Carepartner chưa đồng ý chia sẻ vị trí cho task này.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if task.status != 'in_progress':
+            return Response({'error': f"Task status='{task.status}' — chỉ track khi in_progress."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse + sắp xếp points theo recorded_at
+        from django.utils import timezone as _tz
+        from django.utils.dateparse import parse_datetime
+        from decimal import Decimal as _Decimal
+
+        points = data['points']
+        parsed = []
+        for p in points:
+            dt = parse_datetime(p['recorded_at'])
+            if dt is None:
+                continue
+            if _tz.is_naive(dt):
+                dt = _tz.make_aware(dt, _tz.utc)
+            parsed.append({
+                'latitude': _Decimal(str(p['latitude'])),
+                'longitude': _Decimal(str(p['longitude'])),
+                'accuracy': p.get('accuracy'),
+                'speed': p.get('speed'),
+                'heading': p.get('heading'),
+                'recorded_at': dt,
+            })
+
+        if not parsed:
+            return Response({'error': 'Không có điểm hợp lệ nào.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Sắp xếp theo recorded_at tăng dần (cũ → mới)
+        parsed.sort(key=lambda x: x['recorded_at'])
+
+        saved = 0
+        errors = []
+        last_point = parsed[-1]  # điểm mới nhất
+
+        # Insert LocationHistory với bulk_create.
+        # Lưu ý về LocationHistory.recorded_at (auto_now_add=True):
+        #   - bulk_create KHÔNG gọi .save() → auto_now_add KHÔNG tự set.
+        #   - Khi ta set obj.recorded_at = parsed value trước bulk_create,
+        #     value đó được dùng trong INSERT — đúng như mong muốn.
+        #   - Nếu để field trống, INSERT sẽ fail (NOT NULL constraint).
+        # → Đây là behavior phù hợp cho batch insert với recorded_at quá khứ.
+        objs_to_create = []
+        for p in parsed:
+            obj = LocationHistory(
+                task=task,
+                worker=request.user,
+                latitude=p['latitude'],
+                longitude=p['longitude'],
+                accuracy=p['accuracy'],
+                speed=p['speed'],
+                heading=p['heading'],
+            )
+            # Override recorded_at trực tiếp (bulk_create tôn trọng value này)
+            obj.recorded_at = p['recorded_at']
+            objs_to_create.append(obj)
+
+        try:
+            LocationHistory.objects.bulk_create(objs_to_create)
+            saved = len(objs_to_create)
+        except Exception as e:
+            logger.error(f"[tracking] Batch insert failed: {e}")
+            errors.append(str(e))
+
+        # Update LiveLocation với điểm mới nhất
+        if saved > 0:
+            try:
+                LiveLocation.objects.update_or_create(
+                    task=task,
+                    defaults={
+                        'worker': request.user,
+                        'latitude': last_point['latitude'],
+                        'longitude': last_point['longitude'],
+                        'accuracy': last_point['accuracy'],
+                        'speed': last_point['speed'],
+                        'heading': last_point['heading'],
+                    },
+                )
+            except Exception as e:
+                logger.error(f"[tracking] Batch LiveLocation update failed: {e}")
+                errors.append(f"LiveLocation update failed: {e}")
+
+        return Response({
+            'status': 'ok',
+            'saved': saved,
+            'errors': errors,
+            'last_recorded_at': last_point['recorded_at'].isoformat() if saved > 0 else None,
+        })
 
 
 class TrackingHealthCheckAPIView(APIView):

@@ -6,6 +6,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { storage } from './src/utils/storage';
+import RandomVerificationModal from './src/components/RandomVerificationModal';
 
 // ====================================================================
 // App — EduCareLink
@@ -244,6 +245,13 @@ export default function App() {
   return (
     <AuthProvider>
       <AppNavigator />
+      {/*
+        Phan 3 — RandomVerificationModal (full-screen, dùng chung cho mọi screen).
+        Render ở App root để modal có thể hiện trên mọi screen khi có push
+        type='random_verification'. Modal tự poll API mỗi 5s để phát hiện
+        check pending (không phụ thuộc push tới được — đề phòng push fail).
+      */}
+      <RandomVerificationModal />
     </AuthProvider>
   );
 }
