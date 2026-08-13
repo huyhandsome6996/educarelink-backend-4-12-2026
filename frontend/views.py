@@ -1,6 +1,23 @@
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.views import View
+from core.middleware import SiteAccessGateMiddleware
+
+
+class SiteGateView(View):
+    """Trang nhập mật khẩu bảo vệ toàn site (frontend + admin)."""
+
+    def get(self, request):
+        return render(request, "frontend/site_gate.html")
+
+    def post(self, request):
+        password = request.POST.get("password", "")
+        if password == SiteAccessGateMiddleware.get_gate_password():
+            request.session[SiteAccessGateMiddleware.SESSION_KEY] = True
+            next_url = request.GET.get("next") or "/"
+            return redirect(next_url)
+        return render(request, "frontend/site_gate.html", {"error": True})
+
 
 class SplashView(TemplateView):
     template_name = "frontend/splash.html"
