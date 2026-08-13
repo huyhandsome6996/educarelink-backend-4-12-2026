@@ -504,3 +504,121 @@ class RandomVerificationCheck(models.Model):
 
     def __str__(self):
         return f"VerifyCheck Task#{self.task_id} | {self.get_status_display()} | {self.triggered_at:%H:%M:%S}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  SCHEDULER HEALTH — QA-FIX-5 / M2
+# ═══════════════════════════════════════════════════════════════════
+# Vấn đề QA phát hiện: render.yaml có Cron Job 'educarelink-tracking-scheduler'
+# chạy mỗi 1 phút. Cron ghi /tmp/tracking_scheduler_health.json. Web service
+# đọc cùng path qua API /api/tracking/scheduler-health/. Trên Render, Cron
+# Job và web service là 2 container độc lập, không chia sẻ /tmp → endpoint
+# luôn trả 'no_data' dù cron đã chạy.
+#
+# Giải pháp: persist health vào DB (SchedulerHealth model). Cron + web
+# service dùng chung DB nên endpoint thấy được lần chạy gần nhất của cron.
+# Vẫn giữ /tmp file như fallback (cho dev local + log).
+# ═══════════════════════════════════════════════════════════════════
+
+
+class SchedulerHealth(models.Model):
+    """
+    Lưu trạng thái scheduler lần chạy gần nhất — DB-based thay vì /tmp file
+    (QA-FIX-5 / M2: /tmp không chia sẻ giữa Cron container và web container).
+
+    Schema: chỉ 1 row duy nhất (singleton — được update thay vì insert mới).
+    Trường `source` cho biết process nào ghi (cron/daemon/web_worker/test).
+
+    Endpoint /api/tracking/scheduler-health/ đọc row này thay vì /tmp file.
+    Monitoring ngoài (UptimeRobot, Render Stats, ...) poll endpoint:
+      - 200 + last_run_at gần đây (< 3 phút) → scheduler đang chạy.
+      - 200 + last_run_at cũ (> 3 phút) → scheduler KHÔNG chạy (cron die,
+        env var sai, exception). Cần alert admin.
+      - 200 + null (chưa có row) → scheduler chưa chạy lần nào sau deploy.
+    """
+    # Singleton — chỉ 1 row, dùng id=1 cố định.
+    SCHEDULER_CHOICES = (
+        ('both', 'Cả offline + verification'),
+        ('offline', 'Chỉ offline check'),
+        ('verification', 'Chỉ verification check'),
+        ('unknown', 'Không xác định'),
+    )
+
+    last_run_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Thời điểm scheduler chạy lần gần nhất (UTC). NULL nếu scheduler chưa chạy lần nào."
+    )
+    started_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Thời điểm bắt đầu lần chạy (UTC)."
+    )
+    finished_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Thời điểm kết thúc lần chạy (UTC)."
+    )
+    source = models.CharField(
+        max_length=20, default='cron',
+        help_text="Process nào ghi: cron/daemon/web_worker/test."
+    )
+    scheduler_kind = models.CharField(
+        max_length=20, choices=SCHEDULER_CHOICES, default='both',
+        help_text="Scheduler nào chạy: both/offline/verification."
+    )
+    success = models.BooleanField(
+        default=True,
+        help_text="True nếu chạy không exception. False nếu có error."
+    )
+    error_message = models.TextField(
+        blank=True, default='',
+        help_text="Exception message nếu success=False."
+    )
+    stats = models.JSONField(
+        default=dict, blank=True,
+        help_text="Stats dict trả về từ offline_scheduler/verification_scheduler."
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'Scheduler health'
+        ordering = ['-last_run_at']
+
+    def __str__(self):
+        return f"SchedulerHealth | last_run={self.last_run_at:%Y-%m-%d %H:%M:%S} | source={self.source}"
+
+    @classmethod
+    def get_singleton(cls):
+        """Trả về singleton row (id=1). Tạo nếu chưa có."""
+        obj, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'last_run_at': None,
+                'source': 'unknown',
+                'scheduler_kind': 'unknown',
+            }
+        )
+        return obj
+
+    @classmethod
+    def record_run(cls, *, last_run_at, source='cron', scheduler_kind='both',
+                   success=True, error_message='', stats=None,
+                   started_at=None, finished_at=None):
+        """
+        Cập nhật singleton row với lần chạy gần nhất.
+        Atomic update để tránh race khi 2 scheduler chạy đồng thời.
+        """
+        from django.db import transaction
+        with transaction.atomic():
+            obj = cls.get_singleton()
+            obj.last_run_at = last_run_at
+            obj.source = source
+            obj.scheduler_kind = scheduler_kind
+            obj.success = success
+            obj.error_message = error_message[:2000] if error_message else ''
+            obj.stats = stats or {}
+            obj.started_at = started_at
+            obj.finished_at = finished_at
+            obj.save()
+        return obj
+
