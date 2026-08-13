@@ -427,3 +427,90 @@ Branch: `feature/module-an-toan-carepartner`
 - Push/background location khi app killed (cần device thật).
 - DB health trên Render production (cần deploy + check endpoint thật).
 - Cron fail-fast behavior trên Render (cần deploy với env var thiếu để verify log).
+
+---
+
+## QA-FIX-6 (14-08-2026) — Fix 4 vấn đề QA vòng 2 báo cáo
+
+**Agent**: Super Z (main agent)
+**Branch**: `feature/module-an-toan-carepartner`
+**Commit**: `<TBD>` — QA-FIX-6
+
+### Bối cảnh
+
+QA vòng 2 (sau commit `4a4f97f` QA-FIX-5) xác nhận: migration an toàn, 169 test
+pass, kiến trúc offline-cache/idempotent-batch/DB-constraint đều đã đúng. Nhưng
+vẫn còn 4 vấn đề cần xử lý trước khi merge:
+
+- **BẮT BUỘC 1**: Worker chưa đặt PIN vẫn nhận việc → miễn trừ vĩnh viễn khỏi
+  xác minh ngẫu nhiên (lỗ hổng lớn).
+- **BẮT BUỘC 2**: User đăng ký qua Google/Facebook không đặt được PIN do
+  `set_unusable_password()` → `authenticate()` luôn fail.
+- **NÊN LÀM 1**: Push type đổi từ `device_offline` sang `device_offline_critical`
+  không giữ tương thích ngược → app cũ mất cảnh báo offline.
+- **NÊN LÀM 2**: Batch offline flush ghi đè LiveLocation bằng điểm cũ → "nhảy lùi"
+  vị trí tạm thời.
+- **BONUS**: `pyyaml` thiếu trong `requirements.txt` → 5 test fail.
+
+### Work Log
+
+- Đọc lại state 4 vùng cần fix: `core/views.py:ApplyTaskAPIView` (line 662-728),
+  `tracking/services.py:set_verification_pin` (line 765-795), push call sites
+  (line 535-571, 681-698), `tracking/views.py:BatchLocationAPIView` (line 1139),
+  `tracking/models.py:LiveLocation` (line 76-124).
+- Thêm `PyYAML==6.0.2` vào `requirements.txt` (BONUS).
+- BẮT BUỘC 1: Thêm PIN check ở `ApplyTaskAPIView.post()` TRƯỚC consent check,
+  trả 403 `PIN_REQUIRED` với message tiếng Việt rõ ràng.
+- BẮT BUỘC 2: Rewrite `set_verification_pin()` để phân loại user theo
+  `has_usable_password()`. User email/password vẫn cần current_password đúng
+  (giữ hành vi cũ). User OAuth (Google/Facebook) bỏ qua current_password, dựa
+  vào JWT IsAuthenticated của endpoint. Cập nhật `SetVerificationPinSerializer`
+  (current_password optional) và `SetVerificationPinAPIView.post()` (dùng `.get()`).
+- NÊN LÀM 1: Thêm `legacy_type='device_offline'` vào payload push ở 2 chỗ
+  (`check_offline_devices` + `retry_offline_alert_pushes`). Comment rõ ràng:
+  field tạm thời, target xoá sau 2-3 tháng (~2026-11) khi 100% user đã update.
+- NÊN LÀM 2: Thêm `LiveLocation.client_recorded_at` field + migration `0009`
+  (nullable, an toàn cho Postgres). Cập nhật `update_worker_location` set
+  `client_recorded_at = now()` cho real-time. Cập nhật `BatchLocationAPIView`
+  so sánh `existing.client_recorded_at >= batch_last_recorded_at` trước khi
+  update_or_create → skip nếu existing mới hơn (chống "nhảy lùi"). Backward
+  compat: nếu `existing.client_recorded_at IS NULL` → luôn update (giữ behaviour
+  cũ cho row cũ chưa populate field mới).
+- Viết `tracking/tests_qa_fix_6.py` với 20 tests cover cả 4 fix:
+  - `QAFix6B1PinRequiredToApplyTestCase` (5 tests).
+  - `QAFix6B2OAuthSetPinTestCase` (8 tests).
+  - `QAFix6N1LegacyPushTypeTestCase` (2 tests).
+  - `QAFix6N2LiveLocationNoStaleOverwriteTestCase` (5 tests).
+- Fix 1 bug phát hiện khi chạy test: `SetVerificationPinAPIView.post()` dùng
+  `serializer.validated_data['current_password']` (KeyError khi field optional)
+  → đổi sang `.get('current_password')`.
+- Chạy test: 20/20 QA-FIX-6 PASS, 147/147 full tracking suite PASS.
+- Verify `manage.py check` 0 lỗi, `makemigrations --check` "No changes detected".
+- Viết `QA_FIX_6_HANDOFF.md` (handoff document).
+
+### Stage Summary
+
+- **4 vấn đề + 1 bonus**: TẤT CẢ đã fix + test PASS.
+- **Test results**: 147 tests PASS (127 cũ + 20 mới QA-FIX-6), 0 fail.
+- **Migration safety**: `0009` chỉ AddField nullable → an toàn cho Postgres/Render.
+- **Files changed**:
+  - `requirements.txt` (+PyYAML).
+  - `core/views.py` (ApplyTaskAPIView PIN check).
+  - `tracking/services.py` (set_verification_pin rewrite + legacy_type x2).
+  - `tracking/serializers.py` (current_password optional).
+  - `tracking/views.py` (SetVerificationPinAPIView .get() + BatchLocationAPIView skip logic).
+  - `tracking/models.py` (LiveLocation.client_recorded_at).
+  - `tracking/migrations/0009_qa_fix_6_livelocation_client_recorded_at.py` (NEW).
+  - `tracking/tests_qa_fix_6.py` (NEW, 20 tests).
+  - `QA_FIX_6_HANDOFF.md` (NEW).
+- **Lựa chọn thiết kế**:
+  - B2: chọn JWT IsAuthenticated (không token freshness) cho user OAuth — đơn
+    giản, không tăng security mà chỉ block tính năng.
+  - N1: `legacy_type` giữ 2-3 tháng (~2026-11) theo dõi analytics trước khi xoá.
+- **UNTESTABLE (giữ nguyên)**: EAS Android build, custom sound device thật,
+  iOS critical alert entitlement, scheduler production Render, push khi app killed.
+- **Rủi ro deploy cao nhất (không phải bug code)**: kiến trúc scheduler đổi sang
+  Render Cron Job — cần cấu hình tay copy `SECRET_KEY` + `DATABASE_URL` từ web
+  service sang Cron Job, nếu không scheduler sẽ không chạy → tính năng offline
+  detection đang chạy tốt sẽ bị gãy. Xem `QA_FIX_6_HANDOFF.md` phần "Quy trình
+  deploy an toàn 5 bước".

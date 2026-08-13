@@ -63,3 +63,10 @@ whitenoise==6.12.0
 
 # ── PayOS Payment module (VietQR bank transfer) ──
 payos==1.1.0
+
+# ── QA-FIX-6 / BONUS: pyyaml cho test parse render.yaml ──
+# tracking/tests_qa_fix_3.py và tracking/tests_qa_fix_5.py tự parse
+# render.yaml để verify cấu hình cron job → cần pyyaml. Trước đây thiếu
+# dependency này → 5 test fail với ModuleNotFoundError trên môi trường
+# mới clone repo dù code hoàn toàn đúng.
+PyYAML==6.0.2

@@ -105,9 +105,21 @@ class RandomVerificationCheckSerializer(serializers.ModelSerializer):
 
 
 class SetVerificationPinSerializer(serializers.Serializer):
-    """Input cho API set/đổi mã PIN cá nhân."""
+    """Input cho API set/đổi mã PIN cá nhân.
+
+    QA-FIX-6 / BẮT BUỘC 2: current_password KHÔNG còn bắt buộc ở cấp
+    serializer nữa. Service layer set_verification_pin() sẽ tự quyết định:
+      - User đăng ký qua email/password (has_usable_password=True) →
+        bắt buộc current_password đúng.
+      - User đăng ký qua Google/Facebook (has_usable_password=False) →
+        bỏ qua current_password.
+    Mobile app nên ẩn trường current_password khi user.auth_provider
+    != 'email' (xem services.py docstring để hiểu lý do security).
+    """
     pin = serializers.CharField(min_length=4, max_length=6)
-    current_password = serializers.CharField(write_only=True)
+    current_password = serializers.CharField(
+        write_only=True, required=False, allow_null=True, allow_blank=True,
+    )
 
 
 class RespondVerificationCheckSerializer(serializers.Serializer):
