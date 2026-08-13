@@ -17,19 +17,62 @@ Khi chạy --once: chạy scheduler 1 lần rồi exit (cho cron job).
 Khi chạy daemon: khởi động APScheduler chạy mỗi 1 phút (cho worker dyno).
 
 DB unique constraint (unique_active_alert_per_task và
-unique_pending_check_per_task) đảm bảo即使 có 2 scheduler chạy đồng thời,
+unique_pending_check_per_task_worker) đảm bảo即使 có 2 scheduler chạy đồng thời,
 không tạo duplicate record.
+
+QA-FIX-3 / C: health logging — mỗi lần chạy, ghi file
+/tmp/tracking_scheduler_health.json với timestamp + stats. Monitoring outside
+đọc file này để phát hiện scheduler không chạy (file cũ quá → scheduler die).
 """
 
 import os
 import time
 import logging
 import signal
+import json
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 logger = logging.getLogger('educarelink.tracking.run_schedulers')
+
+# File ghi trạng thái scheduler lần chạy gần nhất — monitoring đọc file này
+# để phát hiện scheduler không chạy (file cũ quá → scheduler die).
+HEALTH_FILE = '/tmp/tracking_scheduler_health.json'
+
+
+def _write_health_file(stats):
+    """Ghi file health cho monitoring outside process.
+
+    QA-FIX-3 / C: file có cấu trúc:
+      {
+        'last_run_at': ISO timestamp (lần chạy gần nhất),
+        'stats': <input stats dict>
+      }
+
+    Nếu stats có 'last_run_at' riêng (cho test), ưu tiên dùng giá trị đó.
+    """
+    try:
+        # Nếu stats có 'last_run_at' (cho test stale), dùng giá trị đó.
+        last_run = stats.get('last_run_at') if isinstance(stats, dict) else None
+        if last_run is None:
+            last_run = timezone.now().isoformat()
+        with open(HEALTH_FILE, 'w') as f:
+            json.dump({
+                'last_run_at': last_run,
+                'stats': stats,
+            }, f)
+    except Exception as e:
+        logger.warning(f'[run_tracking_schedulers] write health file failed: {e}')
+
+
+def _read_health_file():
+    """Đọc file health (cho monitoring endpoint)."""
+    try:
+        with open(HEALTH_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 class Command(BaseCommand):
@@ -72,6 +115,12 @@ class Command(BaseCommand):
 
     def _run_once(self, only):
         """Chạy schedulers 1 lần rồi exit."""
+        overall_stats = {
+            'started_at': timezone.now().isoformat(),
+            'offline': None,
+            'verification': None,
+            'errors': [],
+        }
         if only in ('offline', 'both'):
             from tracking.services import check_offline_devices, retry_offline_alert_pushes
             try:
@@ -79,18 +128,26 @@ class Command(BaseCommand):
                 self.stdout.write(f'[offline] check_offline_devices: {stats}')
                 retry_stats = retry_offline_alert_pushes()
                 self.stdout.write(f'[offline] retry_offline_alert_pushes: {retry_stats}')
+                overall_stats['offline'] = {'check': stats, 'retry': retry_stats}
             except Exception as e:
                 logger.exception(f'[offline] scheduler failed: {e}')
                 self.stderr.write(self.style.ERROR(f'[offline] failed: {e}'))
+                overall_stats['errors'].append(f'offline: {e}')
 
         if only in ('verification', 'both'):
             from tracking.verification_scheduler import run_verification_check
             try:
                 stats = run_verification_check()
                 self.stdout.write(f'[verification] run_verification_check: {stats}')
+                overall_stats['verification'] = stats
             except Exception as e:
                 logger.exception(f'[verification] scheduler failed: {e}')
                 self.stderr.write(self.style.ERROR(f'[verification] failed: {e}'))
+                overall_stats['errors'].append(f'verification: {e}')
+
+        overall_stats['finished_at'] = timezone.now().isoformat()
+        # QA-FIX-3 / C: ghi health file để monitoring phát hiện scheduler die.
+        _write_health_file(overall_stats)
 
     def _run_daemon(self, only):
         """Daemon mode — khởi động APScheduler chạy mỗi 1 phút."""
@@ -102,46 +159,75 @@ class Command(BaseCommand):
             job_defaults={'coalesce': True, 'max_instances': 1},
         )
 
+        # QA-FIX-3 / C: biến đếm lần chạy cho health logging định kỳ.
+        run_counter = {'n': 0}
+        health_log_every = int(os.environ.get('TRACKING_SCHEDULER_HEALTH_LOG_EVERY', '5'))
+
+        def _run_once_internal():
+            """Wrapper cho daemon — đếm lần chạy + health log."""
+            run_counter['n'] += 1
+            try:
+                overall_stats = {
+                    'started_at': timezone.now().isoformat(),
+                    'run_number': run_counter['n'],
+                    'offline': None,
+                    'verification': None,
+                    'errors': [],
+                }
+                if only in ('offline', 'both'):
+                    from tracking.services import check_offline_devices, retry_offline_alert_pushes
+                    try:
+                        stats = check_offline_devices()
+                        retry_stats = retry_offline_alert_pushes()
+                        overall_stats['offline'] = {'check': stats, 'retry': retry_stats}
+                    except Exception as e:
+                        logger.exception(f'[offline] job failed: {e}')
+                        overall_stats['errors'].append(f'offline: {e}')
+
+                if only in ('verification', 'both'):
+                    from tracking.verification_scheduler import run_verification_check
+                    try:
+                        stats = run_verification_check()
+                        overall_stats['verification'] = stats
+                    except Exception as e:
+                        logger.exception(f'[verification] job failed: {e}')
+                        overall_stats['errors'].append(f'verification: {e}')
+
+                overall_stats['finished_at'] = timezone.now().isoformat()
+                _write_health_file(overall_stats)
+
+                # QA-FIX-3 / C: log heartbeat định kỳ để monitoring phát hiện
+                # scheduler đang chạy (mặc định mỗi 5 lần = 5 phút nếu cron 1 phút).
+                if run_counter['n'] % health_log_every == 0:
+                    logger.info(
+                        f'[run_tracking_schedulers] heartbeat run #{run_counter["n"]} '
+                        f'— stats: {overall_stats}'
+                    )
+            except Exception as e:
+                logger.exception(f'[run_tracking_schedulers] job failed: {e}')
+
         if only in ('offline', 'both'):
-            from tracking.services import check_offline_devices, retry_offline_alert_pushes
-
-            def _offline_job():
-                try:
-                    stats = check_offline_devices()
-                    if stats.get('new_alerts', 0) > 0 or stats.get('already_alerted', 0) > 0:
-                        logger.info(f'[offline] {stats}')
-                    retry_offline_alert_pushes()
-                except Exception as e:
-                    logger.exception(f'[offline] job failed: {e}')
-
             scheduler.add_job(
-                _offline_job,
+                _run_once_internal,
                 trigger=IntervalTrigger(minutes=1),
-                id='offline_check',
-                name='EduCareLink Device Offline Check',
+                id='tracking_schedulers',
+                name='EduCareLink Tracking Schedulers (offline + verification)',
                 replace_existing=True,
             )
 
-        if only in ('verification', 'both'):
-            from tracking.verification_scheduler import run_verification_check
-
-            def _verification_job():
-                try:
-                    run_verification_check()
-                except Exception as e:
-                    logger.exception(f'[verification] job failed: {e}')
-
+        if only == 'verification':
             scheduler.add_job(
-                _verification_job,
+                _run_once_internal,
                 trigger=IntervalTrigger(minutes=1),
-                id='verification_check',
-                name='EduCareLink Random Verification Check',
+                id='tracking_schedulers',
+                name='EduCareLink Tracking Schedulers (verification only)',
                 replace_existing=True,
             )
 
         scheduler.start()
         self.stdout.write(self.style.SUCCESS(
-            '[run_tracking_schedulers] Daemon started — press Ctrl+C to stop.'
+            f'[run_tracking_schedulers] Daemon started — health log every {health_log_every} runs. '
+            'Press Ctrl+C to stop.'
         ))
 
         # Handle SIGTERM (Render dyno shutdown) + SIGINT (Ctrl+C)

@@ -1,38 +1,38 @@
 // ====================================================================
-// EmergencyAlarmService — Chuông báo động khẩn cấp (Vibration + optional Audio)
+// EmergencyAlarmService — Chuông báo động khẩn cấp (Vibration + Audio)
 // ====================================================================
 // QA-FIX-1 / Spec 2.6: trước đây chỉ dùng Vibration + local notification
 // khi offline alert foreground — không có audio alarm thực sự. Parent
 // trong môi trường ồn (đường phố, quán café) có thể không nghe thấy
 // vibration → bỏ lỡ cảnh báo quan trọng.
 //
+// QA-FIX-3 / D: asset emergency_alarm.wav đã được bổ sung (3s, 44100Hz,
+// 16-bit mono PCM, generated sine siren 800Hz/1000Hz xen kẽ). License:
+// generated procedurally — không có vấn đề bản quyền.
+//
 // Flow:
 //   - playEmergencyAlarm(): Vibration pattern dài (loop liên tục) +
-//     optional audio alarm nếu có asset emergency_alarm.wav.
+//     audio alarm loop (3s asset, isLooping=true).
 //   - stopEmergencyAlarm(): dừng audio + vibration.
 //   - unloadEmergencyAlarm(): giải phóng resource (gọi khi unmount).
 //
 // Tolerance:
-//   - Nếu asset emergency_alarm.wav KHÔNG tồn tại (hiện tại chưa có —
-//     xem mobile/assets/sounds/README.md) → chỉ dùng Vibration pattern.
 //   - Nếu expo-av không available (web platform) → fallback Vibration.
 //   - Nếu Vibration cũng không available → chỉ log warning (không crash).
 //
-// Khi project owner bổ sung file emergency_alarm.wav:
-//   1. Đặt file tại mobile/assets/sounds/emergency_alarm.wav
-//   2. Uncomment dòng `const ALARM_SOUND_FILE = require(...)` bên dưới
-//   3. Audio sẽ tự động load khi playEmergencyAlarm() được gọi.
+// Lưu ý quan trọng về nền tảng:
+//   - Audio loop CHỈ chạy khi app ở foreground (JS thread chạy).
+//   - Khi app background/killed: JS không chạy → audio loop dừng.
+//     Remote push do OS xử lý (channel emergency-alerts, sound custom
+//     nếu có file + EAS build).
+//   - iOS critical alert cần entitlement Apple (chưa có → UNTESTABLE).
 // ====================================================================
 
 import { Vibration, Platform } from 'react-native';
 
-// Audio import — lazy loaded để tránh crash bundle khi asset chưa tồn tại.
-// Sử dụng dynamic import trong playEmergencyAlarm() nếu cần.
-let Audio = null;
-let ALARM_SOUND_FILE = null;
-
-// Uncomment dòng dưới khi đã có file mobile/assets/sounds/emergency_alarm.wav
-// const ALARM_SOUND_FILE = require('../../assets/sounds/emergency_alarm.wav');
+// QA-FIX-3 / D: bật static require cho asset âm thanh thực sự.
+// File mobile/assets/sounds/emergency_alarm.wav đã được bổ sung.
+const ALARM_SOUND_FILE = require('../../assets/sounds/emergency_alarm.wav');
 
 let soundObject = null;
 let isPlaying = false;
@@ -46,11 +46,9 @@ const VIBRATION_REPEAT = true;
  * Lazy load expo-av Audio module (tránh crash bundle nếu expo-av chưa install).
  */
 async function _loadAudioModule() {
-  if (Audio) return Audio;
   try {
     const mod = await import('expo-av');
-    Audio = mod.Audio || mod;
-    return Audio;
+    return mod.Audio || mod;
   } catch (e) {
     console.warn('[EmergencyAlarm] expo-av không khả dụng:', e.message);
     return null;
@@ -80,14 +78,31 @@ export async function playEmergencyAlarm(options = {}) {
       if (AudioModule) {
         await unloadEmergencyAlarm(); // cleanup instance cũ nếu có
 
+        // QA-FIX-3 / D: set Audio mode cho Android + iOS để audio play được
+        // khi app foreground + silence switch (iOS) không chặn.
+        try {
+          await AudioModule.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            staysActiveInBackground: false,
+            interruptionModeIOS: AudioModule.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+            playsInSilentModeIOS: true,  // iOS: phát ngay cả khi switch im lặng
+            shouldDuckAndroid: true,
+            interruptionModeAndroid: AudioModule.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+            playThroughEarpieceAndroid: false,
+          });
+        } catch (modeErr) {
+          console.warn('[EmergencyAlarm] setAudioModeAsync failed (non-fatal):', modeErr.message);
+        }
+
         soundObject = new AudioModule.Sound();
         await soundObject.loadAsync(ALARM_SOUND_FILE, {
           shouldPlay: true,
           isLooping: true,
           volume: 1.0,
+          progressUpdateIntervalMillis: 1000,
         });
         await soundObject.playAsync();
-        console.log('[EmergencyAlarm] Audio alarm started (looping)');
+        console.log('[EmergencyAlarm] Audio alarm started (looping, asset=emergency_alarm.wav)');
         audioPlayed = true;
       }
     } catch (e) {
@@ -118,6 +133,9 @@ export async function playEmergencyAlarm(options = {}) {
 /**
  * Dừng chuông báo động + vibration.
  * Idempotent: nếu chưa play thì skip.
+ *
+ * QA-FIX-3 / D: unload audio object sau khi stop để giải phóng memory
+ * và tránh leak khi gọi play lại nhiều lần.
  */
 export async function stopEmergencyAlarm() {
   if (!isPlaying) {
@@ -133,6 +151,15 @@ export async function stopEmergencyAlarm() {
     } catch (e) {
       console.warn('[EmergencyAlarm] stopAsync failed:', e.message);
     }
+    // Unload để giải phóng resource — tránh leak khi component unmount
+    // hoặc khi parent acknowledge alert.
+    try {
+      await soundObject.unloadAsync();
+    } catch (e) {
+      // unload fail không fatal — sound object sẽ được replace lần play sau.
+      console.warn('[EmergencyAlarm] unloadAsync after stop failed:', e.message);
+    }
+    soundObject = null;
   }
 
   // Stop vibration
@@ -146,16 +173,30 @@ export async function stopEmergencyAlarm() {
 /**
  * Giải phóng resource (gọi khi unmount component).
  * Unload sound object khỏi memory — tránh leak.
+ *
+ * QA-FIX-3 / D: nếu đang play thì cũng stop luôn (không để audio
+ * tiếp tục loop sau khi component unmount).
  */
 export async function unloadEmergencyAlarm() {
   if (soundObject) {
     try {
+      // Nếu đang play thì stop trước khi unload.
+      try {
+        await soundObject.stopAsync();
+      } catch (_e) { /* ignore stop error — có thể đã stopped */ }
       await soundObject.unloadAsync();
+      console.log('[EmergencyAlarm] Audio alarm unloaded');
     } catch (e) {
       console.warn('[EmergencyAlarm] unloadAsync failed:', e.message);
     }
     soundObject = null;
   }
+  // Reset isPlaying để lần sau play lại được
+  isPlaying = false;
+  // Cancel vibration nếu đang chạy
+  try {
+    Vibration.cancel();
+  } catch (_e) { /* ignore */ }
 }
 
 /**

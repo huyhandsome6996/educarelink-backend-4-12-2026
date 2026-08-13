@@ -418,10 +418,38 @@ export async function flushOfflineQueue(userId) {
           }
         }
 
-        // Nếu backend trả 0 saved + 0 inserted + 0 already_exists → không
-        // có điểm nào hợp lệ → break để tránh loop vô hạn.
-        if (savedCount === 0 && insertedIds.length === 0 && alreadyExistsIds === 0) {
-          console.warn('[LocationService] Flush returned 0 saved + 0 already_exists — break');
+        // QA-FIX-3 / Bug A: trước đây so sánh `alreadyExistsIds === 0` (array
+        // với số 0) — luôn false → break không bao giờ xảy ra khi chunk toàn
+        // already_exists → vòng while lặp lại cùng chunk (đã xoá) → fetch chunk
+        // mới (rỗng) → break tự nhiên sau 50 loops (~50 lần gọi API vô ích).
+        //
+        // Sửa: dùng `.length` cho cả 3 mảng. Logic break:
+        //   - Không có điểm nào được inserted/already_exists/saved
+        //   - VÀ chunk hiện tại không có rejected nào được giữ lại để retry
+        //     (rejected-only response → chỉ tăng retry 1 lần rồi dừng lần
+        //      flush đó, không lặp lại chunk với cùng rejected points).
+        const chunkHasRejectedOnly = (
+          rejectedList.length > 0
+          && rowIdsToDelete.length === 0
+          && insertedIds.length === 0
+          && alreadyExistsIds.length === 0
+        );
+        if (chunkHasRejectedOnly) {
+          console.warn(
+            `[LocationService] Chunk ${loopCount}: ${rejectedList.length} điểm rejected-only ` +
+            `— đã tăng sync_attempts, dừng lần flush này (sẽ retry ở flush sau)`
+          );
+          break;
+        }
+        // Nếu backend trả 0 saved + 0 inserted + 0 already_exists + 0 rejected
+        // → không có điểm nào hợp lệ → break để tránh loop vô hạn.
+        if (
+          savedCount === 0
+          && insertedIds.length === 0
+          && alreadyExistsIds.length === 0
+          && rejectedList.length === 0
+        ) {
+          console.warn('[LocationService] Flush returned 0 saved + 0 inserted + 0 already_exists + 0 rejected — break');
           break;
         }
       } catch (e) {
