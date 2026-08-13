@@ -382,3 +382,48 @@ Branch: `feature/module-an-toan-carepartner`
 - Branch: `feature/module-an-toan-carepartner`
 - Commit message: `QA-FIX-3: scheduler Render Cron Job + emergency_alarm.wav asset + bug alreadyExistsIds + 26 regression tests`
 - Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+## QA-FIX-5 (14-08-2026) — fix 3 bug QA phát hiện sau commit 9747188
+
+### Bug High — trộn vị trí giữa 2 task
+
+- **Vấn đề**: `flushOfflineQueue(userId)` dùng `getChunk(userId)` lấy 200 điểm của *mọi task* theo thời gian, rồi dùng `chunk[0].task_id` làm `task_id` của cả request. Điểm của task B (cùng user) có thể bị gửi nhầm vào task A.
+- **Fix**: thêm `getDistinctTaskIds(userId)` + `getChunkByTask(userId, taskId, size)` trong `OfflineLocationQueue.js`. Rewrite `flushOfflineQueue` để duyệt qua từng task_id riêng, mỗi task = 1 hoặc nhiều request batch riêng (không trộn).
+- **Behavior**: 5xx dừng cả flush; 4xx chỉ break task đó, thử task tiếp.
+- **Files**: `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/services/LocationService.js`.
+- **Tests**: `mobile/scripts/test_qa5_mobile_flush_isolation.test.js` (6 JS tests PASS), `tracking/tests_qa_fix_5.py::QAFix5H1TestCase` (3 backend tests PASS).
+
+### Bug Medium — health endpoint sai kiến trúc
+
+- **Vấn đề**: `/api/tracking/scheduler-health/` đọc `/tmp/tracking_scheduler_health.json` — nhưng Render Cron container và web container không chia sẻ `/tmp` → endpoint luôn trả `no_data` dù cron đã chạy.
+- **Fix**: thêm `SchedulerHealth` model (DB-based, singleton row). Cron ghi DB qua `record_run()`, endpoint đọc DB trước (`_read_health_db()`), fallback `/tmp` file cho dev local.
+- **Migration**: `0008_qa_fix_5_scheduler_health.py` — tạo bảng `SchedulerHealth`.
+- **Files**: `tracking/models.py`, `tracking/management/commands/run_tracking_schedulers.py`, `tracking/views.py`, `tracking/migrations/0008_qa_fix_5_scheduler_health.py`.
+- **Tests**: `tracking/tests_qa_fix_5.py::QAFix5M2SchedulerHealthDBTestCase` (8 tests PASS).
+
+### Bug Medium — cron thiếu SECRET_KEY/DATABASE_URL
+
+- **Vấn đề**: `render.yaml` cron không khai báo tường minh `SECRET_KEY` + `DATABASE_URL`. Nếu deploy-er import Blueprint mà quên copy thủ công → cron fail silently với lỗi cryptic.
+- **Fix**: thêm management command `check_scheduler_env` fail-fast với checklist deploy rõ ràng. Cron `startCommand` chạy `check_scheduler_env && run_tracking_schedulers`. Khai báo `SECRET_KEY` + `DATABASE_URL` + `GEMINI_API_KEY` với `sync: false` trong render.yaml.
+- **Files**: `tracking/management/commands/check_scheduler_env.py` (NEW), `render.yaml`.
+- **Tests**: `tracking/tests_qa_fix_5.py::QAFix5M3CheckSchedulerEnvTestCase` (5 tests PASS).
+
+### Test Results
+
+- 127 backend tests PASS (111 cũ + 16 mới QA-FIX-5).
+- 6 mobile JS tests PASS (mock SQLite + apiClient).
+- `npx expo-doctor` 18/18 PASS.
+- `npx expo prebuild --platform android` PASS + sound file copy OK.
+- `npx expo export --platform android` PASS (3.88 MB JS bundle).
+
+### UNTESTABLE (giữ nguyên từ QA-FIX-3/4)
+
+- Native EAS Android build (cần eas build cloud).
+- Custom sound + full-screen intent trên device thật (cần EAS Build).
+- iOS critical alert (cần entitlement Apple).
+- Scheduler production trên Render (chưa deploy).
+- Push/background location khi app killed (cần device thật).
+- DB health trên Render production (cần deploy + check endpoint thật).
+- Cron fail-fast behavior trên Render (cần deploy với env var thiếu để verify log).

@@ -178,6 +178,10 @@ export async function getQueueSize(userId = null) {
  * QA-FIX-2 / B2: chỉ lấy row có user_id khớp — không flush queue của user khác.
  * Trả về list of rows + task_id dominant (giả định 1 queue chỉ cho 1 task
  * đang in_progress — đúng với logic tracking hiện tại).
+ *
+ * QA-FIX-5 / H1: KHÔNG dùng hàm này cho flushOfflineQueue nữa — có thể
+ * trộn điểm của 2 task vào cùng 1 batch request. Dùng getDistinctTaskIds
+ * + getChunkByTask thay thế. Hàm này giữ lại cho backward compat + debug.
  */
 export async function getChunk(userId, size = CHUNK_SIZE) {
   if (!db) await initOfflineQueue();
@@ -193,6 +197,70 @@ export async function getChunk(userId, size = CHUNK_SIZE) {
     );
   } catch (e) {
     console.error('[OfflineQueue] getChunk failed:', e);
+    return [];
+  }
+}
+
+/**
+ * QA-FIX-5 / H1 (FIX High bug): Lấy danh sách task_id có điểm đang chờ
+ * trong queue của user, sắp xếp theo created_at tăng dần (FIFO theo task
+ * cũ nhất trước — ưu tiên sync task A trước task B để không giữ queue cũ
+ * quá lâu nếu task A đã completed/cancelled).
+ *
+ * Trả về list of { task_id, count, min_created_at }.
+ *
+ * @param {number} userId
+ * @returns {Promise<Array<{task_id: number, count: number, min_created_at: number}>>}
+ */
+export async function getDistinctTaskIds(userId) {
+  if (!db) await initOfflineQueue();
+  if (!db) return [];
+  if (!userId) {
+    console.warn('[OfflineQueue] getDistinctTaskIds: userId bắt buộc — return empty');
+    return [];
+  }
+  try {
+    return await db.getAllAsync(
+      `SELECT task_id, COUNT(*) as count, MIN(created_at) as min_created_at
+       FROM ${TABLE_NAME}
+       WHERE user_id = ?
+       GROUP BY task_id
+       ORDER BY min_created_at ASC`,
+      [userId]
+    );
+  } catch (e) {
+    console.error('[OfflineQueue] getDistinctTaskIds failed:', e);
+    return [];
+  }
+}
+
+/**
+ * QA-FIX-5 / H1 (FIX High bug): Lấy 1 chunk của (user_id, task_id) cụ thể.
+ * Sử dụng trong flushOfflineQueue — mỗi batch chỉ chứa điểm của 1 task,
+ * tránh gửi nhầm điểm task B vào request của task A.
+ *
+ * @param {number} userId
+ * @param {number} taskId
+ * @param {number} size
+ * @returns {Promise<Array>} list of rows thuộc (user_id, task_id)
+ */
+export async function getChunkByTask(userId, taskId, size = CHUNK_SIZE) {
+  if (!db) await initOfflineQueue();
+  if (!db) return [];
+  if (!userId || !taskId) {
+    console.warn('[OfflineQueue] getChunkByTask: userId + taskId bắt buộc — return empty');
+    return [];
+  }
+  try {
+    return await db.getAllAsync(
+      `SELECT * FROM ${TABLE_NAME}
+       WHERE user_id = ? AND task_id = ?
+       ORDER BY created_at ASC
+       LIMIT ?`,
+      [userId, taskId, size]
+    );
+  } catch (e) {
+    console.error('[OfflineQueue] getChunkByTask failed:', e);
     return [];
   }
 }

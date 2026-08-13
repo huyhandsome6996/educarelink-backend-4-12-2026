@@ -1189,11 +1189,15 @@ class SchedulerHealthAPIView(APIView):
     QA-FIX-3 / C: trả về trạng thái scheduler lần chạy gần nhất (đọc từ
     file /tmp/tracking_scheduler_health.json do management command ghi).
 
+    QA-FIX-5 / M2: căn chỉnh kiến trúc — /tmp không chia sẻ giữa Cron container
+    và web container trên Render. Endpoint đọc từ DB (SchedulerHealth model)
+    trước, fallback về /tmp file cho dev local + test.
+
     Monitoring ngoài (UptimeRobot, Render Stats, ...) poll endpoint này:
       - 200 + last_run_at gần đây (< 3 phút) → scheduler đang chạy.
       - 200 + last_run_at cũ (> 5 phút) → scheduler KHÔNG chạy (cron die,
         env var sai, exception). Cần alert admin.
-      - 200 + null (chưa có file) → scheduler chưa chạy lần nào sau deploy.
+      - 200 + null (chưa có data) → scheduler chưa chạy lần nào sau deploy.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -1202,23 +1206,35 @@ class SchedulerHealthAPIView(APIView):
         from django.utils import timezone as _tz
         from django.utils.dateparse import parse_datetime as _parse_dt
         from django.conf import settings as _dj_settings
+
+        # QA-FIX-5 / M2: ưu tiên đọc DB (chia sẻ giữa Cron và web service).
+        health = None
+        health_source = None
         try:
-            from .management.commands.run_tracking_schedulers import _read_health_file
-            health = _read_health_file()
+            from .management.commands.run_tracking_schedulers import _read_health_db
+            health = _read_health_db()
+            if health:
+                health_source = 'db'
         except Exception as e:
-            return Response({
-                'status': 'error',
-                'message': f'Cannot read health file: {e}',
-                'scheduler_in_web_worker': getattr(
-                    _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False
-                ),
-            }, status=status.HTTP_200_OK)
+            # Không fail cứng — fallback /tmp file bên dưới.
+            pass
+
+        # Fallback /tmp file (cho dev local + test chưa migrate SchedulerHealth).
+        if not health:
+            try:
+                from .management.commands.run_tracking_schedulers import _read_health_file
+                health = _read_health_file()
+                if health:
+                    health_source = 'file'
+            except Exception:
+                pass
 
         if not health:
             return Response({
                 'status': 'no_data',
-                'message': 'Scheduler chưa chạy lần nào sau deploy (health file chưa tồn tại).',
-                'hint': 'Kiểm tra Render Cron Job "educarelink-tracking-scheduler" đã tạo chưa.',
+                'message': 'Scheduler chưa chạy lần nào sau deploy (chưa có DB row + chưa có /tmp file).',
+                'hint': 'Kiểm tra Render Cron Job "educarelink-tracking-scheduler" đã tạo chưa + đã migrate 0008 chưa.',
+                'health_source': 'none',
                 'scheduler_in_web_worker': getattr(
                     _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False
                 ),
@@ -1243,6 +1259,7 @@ class SchedulerHealthAPIView(APIView):
             'seconds_since_last_run': seconds_since,
             'is_stale': is_stale,
             'stale_threshold_seconds': 180,
+            'health_source': health_source,
             'health_data': health,
             'scheduler_in_web_worker': getattr(
                 _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False

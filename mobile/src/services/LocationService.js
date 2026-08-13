@@ -33,6 +33,7 @@ import apiClient from '../api/client';
 import {
   initOfflineQueue, enqueueLocation, getQueueSize, getChunk,
   deleteByIds, incrementAttempts, clearByUser,
+  getDistinctTaskIds, getChunkByTask,
   CHUNK_SIZE_EXPORT,
 } from './OfflineLocationQueue';
 
@@ -328,6 +329,19 @@ export async function startTracking(taskId, userId = null) {
  * QA-FIX-2 / B1: parse response inserted_ids/already_exists_ids/rejected
  * → mobile chỉ xoá row có client_point_id thuộc inserted HOẶC already_exists.
  *
+ * QA-FIX-5 / H1 (FIX High bug QA phát hiện): flush THEO TỪNG TASK riêng biệt.
+ * Trước đây getChunk(userId) lấy 200 điểm của *mọi task* → dùng chunk[0].task_id
+ * làm task_id của cả request → điểm của task B bị gửi nhầm vào task A nếu
+ * queue còn dữ liệu chưa sync từ task cũ. Trên server không có thông tin
+ * task gốc của từng point để từ chối → sai lịch sử/tọa độ của cả 2 task.
+ *
+ * Sửa:
+ *   1. Lấy danh sách task_id có điểm chờ (getDistinctTaskIds).
+ *   2. Với mỗi task_id → getChunkByTask(userId, taskId) để lấy chunk chỉ
+ *      thuộc task đó → gửi 1 request riêng. Mỗi batch chỉ chứa điểm của 1 task.
+ *   3. Loop chunk cho từng task cho đến khi hết hoặc gặp lỗi network/5xx
+ *      (khi đó dừng cả flush để retry lần sau — không thử task khác nữa).
+ *
  * @param {number} userId - ID của user hiện tại (bắt buộc)
  * @returns {Promise<number>} số điểm flush thành công
  */
@@ -344,132 +358,132 @@ export async function flushOfflineQueue(userId) {
   try {
     await initOfflineQueue();
     let totalFlushed = 0;
-    let loopCount = 0;
-    const MAX_LOOPS = 50; // giới hạn 50 * 200 = 10.000 điểm/lần flush
 
-    while (loopCount < MAX_LOOPS) {
-      loopCount++;
-      // QA-FIX-2 / B2: chỉ lấy row của user hiện tại
-      const chunk = await getChunk(userId, CHUNK_SIZE_EXPORT);
-      if (!chunk || chunk.length === 0) break;
+    // QA-FIX-5 / H1: lấy danh sách task_id có điểm chờ, sắp xếp theo
+    // created_at tăng dần (FIFO — task cũ flush trước).
+    const taskEntries = await getDistinctTaskIds(userId);
+    if (!taskEntries || taskEntries.length === 0) {
+      return 0;
+    }
+    console.log(`[LocationService] flushOfflineQueue: ${taskEntries.length} task(s) pending — ` +
+                taskEntries.map((t) => `task#${t.task_id}(${t.count})`).join(', '));
 
-      // Lấy task_id từ điểm đầu chunk (giả định 1 queue cho 1 task đang in_progress)
-      const taskId = chunk[0].task_id;
+    // Khi gặp lỗi network/5xx trên 1 task → dừng cả flush để retry lần sau
+    // (tránh thử task khác khi mạng đang yếu — sẽ fail y hệt).
+    let stopAll = false;
 
-      // Format points cho API — gửi kèm client_point_id
-      const points = chunk.map((row) => ({
-        client_point_id: row.client_point_id,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        // QA-FIX-2 / E: dùng ?? null — tọa độ 0 hợp lệ
-        accuracy: row.accuracy ?? null,
-        speed: row.speed ?? null,
-        heading: row.heading ?? null,
-        recorded_at: row.recorded_at,
-      }));
+    for (const entry of taskEntries) {
+      if (stopAll) break;
+      const taskId = entry.task_id;
+      let taskLoopCount = 0;
+      const MAX_TASK_LOOPS = 50; // giới hạn 50 * 200 = 10.000 điểm/task/lần flush
 
-      try {
-        const resp = await apiClient.post('/tracking/location/batch/', {
-          task_id: taskId,
-          points,
-        });
-        // QA-FIX-2 / B1: parse per-point result để xoá đúng row.
-        // - inserted_ids: mới insert thành công → xoá khỏi queue.
-        // - already_exists_ids: đã tồn tại từ trước (retry do mobile không
-        //   nhận response trước) → cũng xoá khỏi queue.
-        // - rejected: điểm invalid → tăng sync_attempts, drop riêng nếu đạt max.
-        // - saved: số điểm thực sự insert (legacy — cho backward compat).
-        const insertedIds = resp.data?.inserted_ids || [];
-        const alreadyExistsIds = resp.data?.already_exists_ids || [];
-        const rejectedList = resp.data?.rejected || [];
-        const savedCount = resp.data?.saved || 0;
+      while (taskLoopCount < MAX_TASK_LOOPS && !stopAll) {
+        taskLoopCount++;
+        // QA-FIX-5 / H1: chỉ lấy row của (user, task) hiện tại
+        const chunk = await getChunkByTask(userId, taskId, CHUNK_SIZE_EXPORT);
+        if (!chunk || chunk.length === 0) break;
 
-        // Tập hợp các client_point_id cần xoá (inserted + already_exists)
-        const idsToDelete = new Set([...insertedIds, ...alreadyExistsIds]);
+        // Format points cho API — gửi kèm client_point_id
+        const points = chunk.map((row) => ({
+          client_point_id: row.client_point_id,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          // QA-FIX-2 / E: dùng ?? null — tọa độ 0 hợp lệ
+          accuracy: row.accuracy ?? null,
+          speed: row.speed ?? null,
+          heading: row.heading ?? null,
+          recorded_at: row.recorded_at,
+        }));
 
-        // Map client_point_id → row id (SQLite) để xoá theo row id
-        const rowsToDelete = chunk.filter((r) =>
-          r.client_point_id && idsToDelete.has(r.client_point_id)
-        );
-        const rowIdsToDelete = rowsToDelete.map((r) => r.id);
+        try {
+          const resp = await apiClient.post('/tracking/location/batch/', {
+            task_id: taskId,
+            points,
+          });
+          // QA-FIX-2 / B1: parse per-point result để xoá đúng row.
+          const insertedIds = resp.data?.inserted_ids || [];
+          const alreadyExistsIds = resp.data?.already_exists_ids || [];
+          const rejectedList = resp.data?.rejected || [];
+          const savedCount = resp.data?.saved || 0;
 
-        if (rowIdsToDelete.length > 0) {
-          await deleteByIds(rowIdsToDelete);
-          totalFlushed += rowIdsToDelete.length;
-          console.log(`[LocationService] Flushed ${rowIdsToDelete.length} points (loop ${loopCount})`);
-        }
-
-        // Xử lý rejected: tăng sync_attempts, drop riêng nếu đạt max
-        if (rejectedList.length > 0) {
-          const rejectedClientIds = rejectedList
-            .map((r) => r.client_point_id)
-            .filter((c) => c);
-          const rejectedRows = chunk.filter((r) =>
-            r.client_point_id && rejectedClientIds.includes(r.client_point_id)
+          // Tập hợp các client_point_id cần xoá (inserted + already_exists)
+          const idsToDelete = new Set([...insertedIds, ...alreadyExistsIds]);
+          const rowsToDelete = chunk.filter((r) =>
+            r.client_point_id && idsToDelete.has(r.client_point_id)
           );
-          const rejectedRowIds = rejectedRows.map((r) => r.id);
-          if (rejectedRowIds.length > 0) {
-            const maxedIds = await incrementAttempts(rejectedRowIds);
+          const rowIdsToDelete = rowsToDelete.map((r) => r.id);
+
+          if (rowIdsToDelete.length > 0) {
+            await deleteByIds(rowIdsToDelete);
+            totalFlushed += rowIdsToDelete.length;
+            console.log(`[LocationService] Flushed ${rowIdsToDelete.length} points for task#${taskId} (loop ${taskLoopCount})`);
+          }
+
+          // Xử lý rejected: tăng sync_attempts, drop riêng nếu đạt max
+          if (rejectedList.length > 0) {
+            const rejectedClientIds = rejectedList
+              .map((r) => r.client_point_id)
+              .filter((c) => c);
+            const rejectedRows = chunk.filter((r) =>
+              r.client_point_id && rejectedClientIds.includes(r.client_point_id)
+            );
+            const rejectedRowIds = rejectedRows.map((r) => r.id);
+            if (rejectedRowIds.length > 0) {
+              const maxedIds = await incrementAttempts(rejectedRowIds);
+              if (maxedIds.length > 0) {
+                console.warn(`[LocationService] Bỏ qua ${maxedIds.length} điểm vị trí do lỗi liên tục (>= 5 attempts)`);
+                await deleteByIds(maxedIds);
+              }
+              console.warn(`[LocationService] ${rejectedList.length} điểm bị reject — giữ ${rejectedRowIds.length - maxedIds.length} để retry`);
+            }
+          }
+
+          // QA-FIX-3 / Bug A: nếu chunk toàn rejected-only → tăng retry 1 lần
+          // rồi break lần flush cho task này (sẽ retry ở flush sau).
+          const chunkHasRejectedOnly = (
+            rejectedList.length > 0
+            && rowIdsToDelete.length === 0
+            && insertedIds.length === 0
+            && alreadyExistsIds.length === 0
+          );
+          if (chunkHasRejectedOnly) {
+            console.warn(
+              `[LocationService] Task#${taskId} loop ${taskLoopCount}: ${rejectedList.length} điểm rejected-only ` +
+              `— dừng flush task này (sẽ retry ở flush sau)`
+            );
+            break;
+          }
+          // Nếu backend trả 0 saved + 0 inserted + 0 already_exists + 0 rejected
+          // → không có điểm nào hợp lệ → break để tránh loop vô hạn.
+          if (
+            savedCount === 0
+            && insertedIds.length === 0
+            && alreadyExistsIds.length === 0
+            && rejectedList.length === 0
+          ) {
+            console.warn(`[LocationService] Task#${taskId}: flush returned 0 saved/inserted/already_exists/rejected — break`);
+            break;
+          }
+        } catch (e) {
+          const status = e?.response?.status;
+          if (status && status < 500) {
+            // QA-FIX-1 / Bug 1.1: 4xx — KHÔNG xoá cả chunk.
+            const ids = chunk.map((r) => r.id);
+            const maxedIds = await incrementAttempts(ids);
             if (maxedIds.length > 0) {
               console.warn(`[LocationService] Bỏ qua ${maxedIds.length} điểm vị trí do lỗi liên tục (>= 5 attempts)`);
               await deleteByIds(maxedIds);
             }
-            console.warn(`[LocationService] ${rejectedList.length} điểm bị reject — giữ ${rejectedRowIds.length - maxedIds.length} để retry`);
+            console.warn(`[LocationService] Flush task#${taskId} failed (4xx ${status}) — kept ${ids.length - maxedIds.length} points for retry`);
+            // Break vòng while của task này — thử task tiếp theo.
+            break;
+          } else {
+            // Network / 5xx — dừng cả flush, thử lại sau
+            console.warn(`[LocationService] Flush task#${taskId} failed (network/5xx) — will retry later, skip remaining tasks`);
+            stopAll = true;
+            break;
           }
-        }
-
-        // QA-FIX-3 / Bug A: trước đây so sánh `alreadyExistsIds === 0` (array
-        // với số 0) — luôn false → break không bao giờ xảy ra khi chunk toàn
-        // already_exists → vòng while lặp lại cùng chunk (đã xoá) → fetch chunk
-        // mới (rỗng) → break tự nhiên sau 50 loops (~50 lần gọi API vô ích).
-        //
-        // Sửa: dùng `.length` cho cả 3 mảng. Logic break:
-        //   - Không có điểm nào được inserted/already_exists/saved
-        //   - VÀ chunk hiện tại không có rejected nào được giữ lại để retry
-        //     (rejected-only response → chỉ tăng retry 1 lần rồi dừng lần
-        //      flush đó, không lặp lại chunk với cùng rejected points).
-        const chunkHasRejectedOnly = (
-          rejectedList.length > 0
-          && rowIdsToDelete.length === 0
-          && insertedIds.length === 0
-          && alreadyExistsIds.length === 0
-        );
-        if (chunkHasRejectedOnly) {
-          console.warn(
-            `[LocationService] Chunk ${loopCount}: ${rejectedList.length} điểm rejected-only ` +
-            `— đã tăng sync_attempts, dừng lần flush này (sẽ retry ở flush sau)`
-          );
-          break;
-        }
-        // Nếu backend trả 0 saved + 0 inserted + 0 already_exists + 0 rejected
-        // → không có điểm nào hợp lệ → break để tránh loop vô hạn.
-        if (
-          savedCount === 0
-          && insertedIds.length === 0
-          && alreadyExistsIds.length === 0
-          && rejectedList.length === 0
-        ) {
-          console.warn('[LocationService] Flush returned 0 saved + 0 inserted + 0 already_exists + 0 rejected — break');
-          break;
-        }
-      } catch (e) {
-        const status = e?.response?.status;
-        if (status && status < 500) {
-          // QA-FIX-1 / Bug 1.1: 4xx — KHÔNG xoá cả chunk.
-          // Tăng sync_attempts từng điểm, drop riêng điểm đã đạt MAX (5).
-          const ids = chunk.map((r) => r.id);
-          const maxedIds = await incrementAttempts(ids);
-          if (maxedIds.length > 0) {
-            console.warn(`[LocationService] Bỏ qua ${maxedIds.length} điểm vị trí do lỗi liên tục (>= 5 attempts)`);
-            await deleteByIds(maxedIds);
-          }
-          console.warn(`[LocationService] Flush failed (4xx ${status}) — kept ${ids.length - maxedIds.length} points for retry`);
-          // Break vòng while để tránh spin — chunk còn lại sẽ retry ở lần flush sau.
-          break;
-        } else {
-          // Network / 5xx — dừng flush, thử lại sau
-          console.warn(`[LocationService] Flush failed (network/5xx) — will retry later`);
-          break;
         }
       }
     }

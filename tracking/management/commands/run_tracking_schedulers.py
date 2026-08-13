@@ -23,6 +23,11 @@ không tạo duplicate record.
 QA-FIX-3 / C: health logging — mỗi lần chạy, ghi file
 /tmp/tracking_scheduler_health.json với timestamp + stats. Monitoring outside
 đọc file này để phát hiện scheduler không chạy (file cũ quá → scheduler die).
+
+QA-FIX-5 / M2: căn chỉnh kiến trúc health endpoint — Render Cron Job và web
+service là 2 container độc lập, không chia sẻ /tmp. Bổ sung ghi health vào DB
+qua SchedulerHealth model.record_run(). Endpoint /api/tracking/scheduler-health/
+đọc từ DB thay vì /tmp file. Vẫn giữ /tmp file như fallback (cho dev local).
 """
 
 import os
@@ -38,19 +43,16 @@ logger = logging.getLogger('educarelink.tracking.run_schedulers')
 
 # File ghi trạng thái scheduler lần chạy gần nhất — monitoring đọc file này
 # để phát hiện scheduler không chạy (file cũ quá → scheduler die).
+# QA-FIX-5 / M2: chỉ dùng cho dev local + log; production đọc DB.
 HEALTH_FILE = '/tmp/tracking_scheduler_health.json'
 
 
 def _write_health_file(stats):
-    """Ghi file health cho monitoring outside process.
+    """Ghi file health cho monitoring outside process (legacy, dev local).
 
-    QA-FIX-3 / C: file có cấu trúc:
-      {
-        'last_run_at': ISO timestamp (lần chạy gần nhất),
-        'stats': <input stats dict>
-      }
-
-    Nếu stats có 'last_run_at' riêng (cho test), ưu tiên dùng giá trị đó.
+    QA-FIX-5 / M2: production dùng DB (SchedulerHealth.record_run) thay vì
+    file vì Render Cron Job và web service không chia sẻ /tmp. File này vẫn
+    giữ cho dev local + log + test.
     """
     try:
         # Nếu stats có 'last_run_at' (cho test stale), dùng giá trị đó.
@@ -67,11 +69,81 @@ def _write_health_file(stats):
 
 
 def _read_health_file():
-    """Đọc file health (cho monitoring endpoint)."""
+    """Đọc file health (cho monitoring endpoint) — legacy fallback."""
     try:
         with open(HEALTH_FILE, 'r') as f:
             return json.load(f)
     except Exception:
+        return None
+
+
+def _record_health_db(stats, only='both', started_at=None, finished_at=None,
+                      source='cron'):
+    """QA-FIX-5 / M2: ghi health vào DB — chia sẻ giữa Cron và web service.
+
+    stats có thể chứa 'errors' list → success=False nếu có errors.
+    """
+    try:
+        from tracking.models import SchedulerHealth
+        # Parse started_at/finished_at từ stats nếu có (ISO string)
+        from django.utils.dateparse import parse_datetime
+
+        started_dt = None
+        finished_dt = None
+        last_run_dt = None
+
+        if started_at:
+            started_dt = parse_datetime(started_at) if isinstance(started_at, str) else started_at
+        if finished_at:
+            finished_dt = parse_datetime(finished_at) if isinstance(finished_at, str) else finished_at
+        # last_run_at ưu tiên finished_at, fallback now()
+        if finished_dt:
+            last_run_dt = finished_dt
+        elif started_dt:
+            last_run_dt = started_dt
+        else:
+            last_run_dt = timezone.now()
+
+        errors = stats.get('errors', []) if isinstance(stats, dict) else []
+        success = len(errors) == 0
+        error_message = '; '.join(str(e) for e in errors) if errors else ''
+
+        SchedulerHealth.record_run(
+            last_run_at=last_run_dt,
+            source=source,
+            scheduler_kind=only,
+            success=success,
+            error_message=error_message,
+            stats=stats if isinstance(stats, dict) else {},
+            started_at=started_dt,
+            finished_at=finished_dt,
+        )
+    except Exception as e:
+        logger.warning(f'[run_tracking_schedulers] write DB health failed: {e}')
+
+
+def _read_health_db():
+    """QA-FIX-5 / M2: đọc health từ DB — trả về dict hoặc None.
+
+    Trả về None nếu chưa có row hoặc DB chưa migrate.
+    """
+    try:
+        from tracking.models import SchedulerHealth
+        obj = SchedulerHealth.get_singleton()
+        if obj.last_run_at is None:
+            return None
+        return {
+            'last_run_at': obj.last_run_at.isoformat() if obj.last_run_at else None,
+            'started_at': obj.started_at.isoformat() if obj.started_at else None,
+            'finished_at': obj.finished_at.isoformat() if obj.finished_at else None,
+            'source': obj.source,
+            'scheduler_kind': obj.scheduler_kind,
+            'success': obj.success,
+            'error_message': obj.error_message,
+            'stats': obj.stats,
+        }
+    except Exception as e:
+        logger.warning(f'[run_tracking_schedulers] read DB health failed: {e}')
         return None
 
 
@@ -115,8 +187,9 @@ class Command(BaseCommand):
 
     def _run_once(self, only):
         """Chạy schedulers 1 lần rồi exit."""
+        started_at = timezone.now()
         overall_stats = {
-            'started_at': timezone.now().isoformat(),
+            'started_at': started_at.isoformat(),
             'offline': None,
             'verification': None,
             'errors': [],
@@ -145,9 +218,17 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f'[verification] failed: {e}'))
                 overall_stats['errors'].append(f'verification: {e}')
 
-        overall_stats['finished_at'] = timezone.now().isoformat()
+        finished_at = timezone.now()
+        overall_stats['finished_at'] = finished_at.isoformat()
         # QA-FIX-3 / C: ghi health file để monitoring phát hiện scheduler die.
         _write_health_file(overall_stats)
+        # QA-FIX-5 / M2: ghi DB health — production endpoint đọc từ đây.
+        _record_health_db(
+            overall_stats, only=only,
+            started_at=started_at.isoformat(),
+            finished_at=finished_at.isoformat(),
+            source='cron',
+        )
 
     def _run_daemon(self, only):
         """Daemon mode — khởi động APScheduler chạy mỗi 1 phút."""
@@ -166,9 +247,10 @@ class Command(BaseCommand):
         def _run_once_internal():
             """Wrapper cho daemon — đếm lần chạy + health log."""
             run_counter['n'] += 1
+            started_at = timezone.now()
             try:
                 overall_stats = {
-                    'started_at': timezone.now().isoformat(),
+                    'started_at': started_at.isoformat(),
                     'run_number': run_counter['n'],
                     'offline': None,
                     'verification': None,
@@ -193,8 +275,16 @@ class Command(BaseCommand):
                         logger.exception(f'[verification] job failed: {e}')
                         overall_stats['errors'].append(f'verification: {e}')
 
-                overall_stats['finished_at'] = timezone.now().isoformat()
+                finished_at = timezone.now()
+                overall_stats['finished_at'] = finished_at.isoformat()
                 _write_health_file(overall_stats)
+                # QA-FIX-5 / M2: ghi DB health cho daemon mode.
+                _record_health_db(
+                    overall_stats, only=only,
+                    started_at=started_at.isoformat(),
+                    finished_at=finished_at.isoformat(),
+                    source='daemon',
+                )
 
                 # QA-FIX-3 / C: log heartbeat định kỳ để monitoring phát hiện
                 # scheduler đang chạy (mặc định mỗi 5 lần = 5 phút nếu cron 1 phút).
