@@ -670,6 +670,26 @@ class ApplyTaskAPIView(APIView):
             return Response({"error": "Chỉ Carepartner mới được nhận việc!"}, status=status.HTTP_403_FORBIDDEN)
         if not request.user.is_approved:
             return Response({"error": "Tài khoản của bạn chưa được Admin duyệt. Vui lòng đợi."}, status=status.HTTP_403_FORBIDDEN)
+
+        # ================================================================
+        # QA-FIX-6 / BẮT BUỘC 1 — Chặn worker chưa đặt PIN nhận việc
+        # --------------------------------------------------------------
+        # Vấn đề: verification_scheduler.py có dòng
+        #   `if not worker.verification_pin_hash: continue`
+        # nghĩa là worker chưa đặt PIN sẽ được miễn trừ VĨNH VIỄN khỏi
+        # tính năng xác minh ngẫu nhiên. Nếu không chặn ở bước nhận việc,
+        # worker (cố ý hoặc vô ý) không đặt PIN vẫn nhận việc bình thường
+        # → vô hiệu hoá toàn bộ mục đích của module xác minh ngẫu nhiên.
+        #
+        # Fix: chặn ngay ở bước apply (điểm sớm nhất trong luồng nhận việc)
+        # để worker nhận feedback rõ ràng trước khi đầu tư thời gian, và
+        # parent không thấy candidates không thể thực sự làm việc.
+        # ================================================================
+        if not request.user.verification_pin_hash:
+            return Response({
+                "error": "PIN_REQUIRED",
+                "message": "Bạn cần đặt mã cá nhân xác minh trước khi nhận việc. Vào Hồ sơ > Đặt mã cá nhân.",
+            }, status=status.HTTP_403_FORBIDDEN)
         try:
             task = Task.objects.get(id=task_id)
             if task.parent == request.user:

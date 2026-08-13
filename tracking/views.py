@@ -599,7 +599,10 @@ class SetVerificationPinAPIView(APIView):
             user = set_verification_pin(
                 user=request.user,
                 pin=serializer.validated_data['pin'],
-                current_password=serializer.validated_data['current_password'],
+                # QA-FIX-6 / BẮT BUỘC 2: current_password optional — user
+                # OAuth (Google/Facebook) không cần, user email/password cần.
+                # Service layer tự quyết định dựa trên user.has_usable_password().
+                current_password=serializer.validated_data.get('current_password'),
             )
             return Response({
                 'status': 'ok',
@@ -1135,18 +1138,61 @@ class BatchLocationAPIView(APIView):
                                     already_exists_ids.append(p['client_point_id'])
 
                     # Update LiveLocation với điểm mới nhất (chỉ khi có insert mới)
+                    #
+                    # QA-FIX-6 / NÊN LÀM 2 — Chống "nhảy lùi" vị trí khi
+                    # batch offline flush chạy sau real-time update.
+                    #
+                    # Kịch bản lỗi:
+                    #   1. CarePartner mất mạng → queue offline chứa điểm cũ.
+                    #   2. CarePartner có mạng lại → real-time gửi điểm MỚI
+                    #      trước (qua UpdateLocationAPIView) → LiveLocation
+                    #      cập nhật đúng, client_recorded_at = now().
+                    #   3. Ngay sau đó flushOfflineQueue chạy xong, gửi batch
+                    #      chứa điểm CŨ (recorded_at trong quá khứ) qua
+                    #      endpoint này.
+                    #   4. update_or_create ghi đè LiveLocation bằng toạ độ
+                    #      CŨ → parent thấy vị trí "nhảy lùi" tạm thời (~10s
+                    #      cho tới real-time tiếp theo update lại).
+                    #
+                    # Fix: trước khi update, query LiveLocation hiện có.
+                    # Nếu existing.client_recorded_at != None VÀ
+                    # existing.client_recorded_at >= last_point['recorded_at']
+                    # → SKIP update (giữ nguyên dữ liệu mới hơn). Vẫn insert
+                    # LocationHistory bình thường (history là append-only).
+                    #
+                    # Nếu existing.client_recorded_at == None (row cũ chưa
+                    # được populate field mới, hoặc mới tạo) → luôn update
+                    # (giữ behaviour cũ cho backward compat).
                     if saved > 0:
-                        LiveLocation.objects.update_or_create(
-                            task=task,
-                            defaults={
-                                'worker': request.user,
-                                'latitude': last_point['latitude'],
-                                'longitude': last_point['longitude'],
-                                'accuracy': last_point['accuracy'],
-                                'speed': last_point['speed'],
-                                'heading': last_point['heading'],
-                            },
-                        )
+                        batch_last_recorded_at = last_point['recorded_at']
+                        existing = LiveLocation.objects.filter(task=task).first()
+                        skip_live_update = False
+                        if existing and existing.client_recorded_at is not None:
+                            if existing.client_recorded_at >= batch_last_recorded_at:
+                                # Existing mới hơn → skip update, giữ nguyên
+                                skip_live_update = True
+                                logger.info(
+                                    f"[tracking] Batch skip LiveLocation update for Task#{task.id}: "
+                                    f"existing.client_recorded_at={existing.client_recorded_at.isoformat()} "
+                                    f">= batch last_point.recorded_at={batch_last_recorded_at.isoformat()} "
+                                    f"(chống nhảy lùi vị trí)."
+                                )
+                        if not skip_live_update:
+                            LiveLocation.objects.update_or_create(
+                                task=task,
+                                defaults={
+                                    'worker': request.user,
+                                    'latitude': last_point['latitude'],
+                                    'longitude': last_point['longitude'],
+                                    'accuracy': last_point['accuracy'],
+                                    'speed': last_point['speed'],
+                                    'heading': last_point['heading'],
+                                    # QA-FIX-6 / NÊN LÀM 2: set client_recorded_at
+                                    # = timestamp client capture GPS (có thể trong
+                                    # quá khứ do offline queue).
+                                    'client_recorded_at': batch_last_recorded_at,
+                                },
+                            )
             except Exception as e:
                 logger.error(f"[tracking] Batch insert/LiveLocation failed: {e}")
                 # QA-FIX-2 / B1: không透露 exception detail nội bộ cho client.

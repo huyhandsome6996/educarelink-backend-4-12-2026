@@ -98,6 +98,35 @@ class LiveLocation(models.Model):
     last_seen = models.DateTimeField(auto_now=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # QA-FIX-6 / NÊN LÀM 2 — Timestamp client ghi nhận GPS, dùng để chống
+    # ghi đè LiveLocation bằng điểm cũ (race condition giữa real-time và
+    # batch offline flush).
+    #
+    # Trước đây LiveLocation chỉ có last_seen (auto_now=True, set bằng
+    # thời điểm server nhận request). Khi carepartner mất mạng → batch
+    # queue chứa điểm CŨ → real-time gửi điểm MỚI trước → LiveLocation
+    # đúng. Sau đó batch flush chạy xong, gửi điểm CŨ qua BatchLocationAPIView
+    # → update_or_create ghi đè → LiveLocation "nhảy lùi" tạm thời (~10s
+    # cho tới khi real-time tiếp theo update lại).
+    #
+    # Fix: lưu client_recorded_at (timestamp client thật sự capture GPS).
+    # Trước khi update_or_create, so sánh với existing.client_recorded_at:
+    # nếu existing mới hơn → skip update, giữ nguyên dữ liệu mới hơn.
+    #
+    # - Real-time (UpdateLocationAPIView): client_recorded_at = now() (server
+    #   time, vì client không gửi timestamp cho real-time).
+    # - Batch (BatchLocationAPIView): client_recorded_at = last_point['recorded_at']
+    #   (timestamp client capture GPS, có thể trong quá khứ do offline queue).
+    #
+    # Field nullable (null=True) để migration an toàn cho data cũ — mọi row
+    # cũ sẽ có client_recorded_at=NULL. Logic so sánh handle NULL: nếu
+    # existing.client_recorded_at IS NULL → luôn update (giữ behaviour cũ
+    # cho row chưa được populate field mới).
+    client_recorded_at = models.DateTimeField(
+        blank=True, null=True, db_index=True,
+        help_text="Timestamp client capture GPS. Dùng chống ghi đè LiveLocation bằng điểm cũ."
+    )
+
     # Cờ cảnh báo geofence
     is_outside_geofence = models.BooleanField(default=False)
     geofence_warned_at = models.DateTimeField(blank=True, null=True)

@@ -141,6 +141,13 @@ def update_worker_location(*, task: Task, worker: User,
 
     with transaction.atomic():
         # Update LiveLocation (OneToOne với task — update-in-place)
+        #
+        # QA-FIX-6 / NÊN LÀM 2 — set client_recorded_at = now() (server
+        # time) cho real-time. Dùng để BatchLocationAPIView so sánh khi
+        # flush offline queue: nếu existing.client_recorded_at mới hơn
+        # batch.last_point['recorded_at'] → skip update, tránh ghi đè
+        # LiveLocation bằng điểm cũ (race condition "nhảy lùi").
+        _now = timezone.now()
         live, created = LiveLocation.objects.update_or_create(
             task=task,
             defaults={
@@ -150,6 +157,7 @@ def update_worker_location(*, task: Task, worker: User,
                 'accuracy': accuracy,
                 'speed': speed,
                 'heading': heading,
+                'client_recorded_at': _now,
             }
         )
 
@@ -531,6 +539,26 @@ def check_offline_devices():
         # sound=emergency_alarm.wav) thay vi 'device_offline' cu.
         #
         # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True.
+        #
+        # QA-FIX-6 / NÊN LÀM 1 — Tương thích ngược với app mobile cũ:
+        # Trước đây PR này đổi data.type từ 'device_offline' (cũ) sang
+        # 'device_offline_critical' (mới, channel riêng emergency-alerts
+        # + sound emergency_alarm.wav). App mobile cũ chưa cập nhật chỉ
+        # nhận diện 'device_offline' → mất hoàn toàn cảnh báo khi
+        # CarePartner offline. Để tránh khoảng trống này, thêm field
+        # 'legacy_type' = 'device_offline' trong cùng payload (KHÔNG tốn
+        # thêm 1 lần gửi push, chỉ thêm 1 field trong data).
+        #
+        # Mobile mới sẽ ưu tiên data.type='device_offline_critical' và
+        # hiển thị đúng channel + sound. Mobile cũ fallback về
+        # data.legacy_type='device_offline' và vẫn báo động được (channel
+        # critical_alerts cũ + sound mặc định).
+        #
+        # ⚠️ FIELD NÀY LÀ TẠM THỜI — có thể xoá sau khi xác nhận 100%
+        # người dùng đã cập nhật app mới (target: 2-3 tháng sau release
+        # QA-FIX-6, tức ~2026-11). Theo dõi analytics/version distribution
+        # trước khi xoá. Khi xoá, cũng cần dọn dẹp code mobile cũ nhận
+        # diện 'device_offline' (chuyển hoàn toàn sang 'device_offline_critical').
         try:
             push_result = _notify_user(
                 hb.task.parent,
@@ -541,6 +569,7 @@ def check_offline_devices():
                         f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
                 data={
                     'type': 'device_offline_critical',
+                    'legacy_type': 'device_offline',  # QA-FIX-6 / NÊN LÀM 1: tương thích ngược app cũ
                     'task_id': hb.task.id,
                     'alert_id': alert.id,
                     'priority': 'high',  # expo: high priority = chuông kêu
@@ -666,6 +695,7 @@ def retry_offline_alert_pushes():
                         f"Vui lòng kiểm tra NGAY!",
                 data={
                     'type': 'device_offline_critical',
+                    'legacy_type': 'device_offline',  # QA-FIX-6 / NÊN LÀM 1: tương thích ngược app cũ
                     'task_id': alert.task.id,
                     'alert_id': alert.id,
                     'retry': alert.push_retry_count + 1,
@@ -772,6 +802,26 @@ def set_verification_pin(*, user: User, pin: str, current_password: str = None) 
 
     QA-FIX-1 / Spec 2.3: refactor để gọi user.set_verification_pin()
     (trước đây gọi make_password trực tiếp → lặp logic).
+
+    QA-FIX-6 / BẮT BUỘC 2 — Hỗ trợ user đăng ký qua Google/Facebook:
+    Trước đây hàm này LUÔN gọi authenticate(username, password=current_password)
+    để xác thực lại trước khi cho đổi PIN. Nhưng user đăng ký qua Google/Facebook
+    được gọi set_unusable_password() (xem core/oauth_views.py:212, :342) →
+    họ KHÔNG có mật khẩu thật → authenticate() luôn trả None → họ KHÔNG BAO GIỜ
+    đặt được PIN → bị miễn trừ vĩnh viễn khỏi xác minh ngẫu nhiên (giống hệt
+    hệ quả của việc không đặt PIN, xem BẮT BUỘC 1).
+
+    Fix: phân biệt 2 trường hợp:
+      - user.has_usable_password() == True (đăng ký email/password) →
+        giữ nguyên luồng cũ: bắt buộc current_password đúng.
+      - user.has_usable_password() == False (đăng ký Google/Facebook) →
+        bỏ qua current_password. Lý do: user này đã đăng nhập hợp lệ qua
+        JWT access token (endpoint SetVerificationPinAPIView yêu cầu
+        IsAuthenticated), nếu attacker có access token thì họ đã có khả
+        năng làm mọi việc user làm được (đổi email, password, ...). Buộc
+        thêm current_password cho user OAuth không tăng security mà chỉ
+        block tính năng. Mobile app được thiết kế để ẩn trường
+        current_password khi user.auth_provider != 'email'.
     """
     import re
     from django.contrib.auth import authenticate
@@ -780,14 +830,30 @@ def set_verification_pin(*, user: User, pin: str, current_password: str = None) 
     if not re.match(r'^\d{4,6}$', pin):
         raise ValueError("Mã cá nhân phải là 4-6 chữ số.")
 
-    # Validate current_password (xác thực lại mật khẩu tài khoản)
-    if not current_password:
-        raise PermissionError("Vui lòng nhập mật khẩu tài khoản để xác nhận.")
+    # ================================================================
+    # QA-FIX-6 / BẮT BUỘC 2 — Re-auth theo loại user
+    # ================================================================
+    if user.has_usable_password():
+        # User đăng ký qua email/password → bắt buộc xác thực lại mật khẩu
+        # tài khoản để chống ai cầm máy đổi PIN.
+        if not current_password:
+            raise PermissionError("Vui lòng nhập mật khẩu tài khoản để xác nhận.")
 
-    # Check mật khẩu tài khoản (username + password)
-    user_auth = authenticate(username=user.username, password=current_password)
-    if not user_auth or user_auth.id != user.id:
-        raise PermissionError("Mật khẩu tài khoản không đúng.")
+        user_auth = authenticate(username=user.username, password=current_password)
+        if not user_auth or user_auth.id != user.id:
+            raise PermissionError("Mật khẩu tài khoản không đúng.")
+    else:
+        # User đăng ký qua Google/Facebook (set_unusable_password) → không
+        # có mật khẩu để xác thực lại. Dựa vào JWT IsAuthenticated của
+        # endpoint để bảo vệ. current_password (nếu client gửi) bị bỏ qua.
+        # Log để audit: ai đó cố gửi current_password cho user OAuth sẽ
+        # bị ignore — không phải lỗi, chỉ là không cần thiết.
+        if current_password:
+            logger.info(
+                f"[tracking] set_verification_pin: User#{user.id} "
+                f"(auth_provider={user.auth_provider}) gửi current_password "
+                f"nhưng has_usable_password=False → bỏ qua re-auth password."
+            )
 
     # QA-FIX-1 / Spec 2.3: dùng helper method của User model.
     user.set_verification_pin(pin)
