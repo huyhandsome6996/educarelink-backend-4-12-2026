@@ -176,16 +176,43 @@ class SafetyModuleTestCase(TestCase):
         self.assertEqual(check.status, 'timeout')
 
     def test_trigger_verification_check_now_creates_check(self):
-        """Admin trigger → tạo check + push (mocked)."""
+        """Admin trigger → tạo check + push (mocked).
+
+        QA-FIX-1 / Bug 1.4: test trước đây không set expo_push_token +
+        không mock requests.post → send_expo_push_notification trả None
+        (không gọi Expo) nhưng check.push_sent vẫn True (vì code cũ
+        fire-and-forget set True sai). Sau khi fix Bug 1.4, push_sent
+        chỉ True khi _notify_user trả True → cần set token + mock Expo
+        response để test chạy đúng.
+        """
+        from unittest.mock import patch, MagicMock
+
+        # Set expo_push_token cho worker — không thì _notify_user trả None.
+        self.worker.expo_push_token = 'ExponentPushToken[fake-token-for-test]'
+        self.worker.save(update_fields=['expo_push_token'])
+
+        # Mock requests.post để send_expo_push_notification trả True
+        # (giả lập Expo trả { data: { status: 'ok', id: 'receipt-xxx' } }).
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'data': {'status': 'ok', 'id': 'fake-receipt-id'}
+        }
+        mock_response.status_code = 200
+        mock_response.text = ''
+
         set_verification_pin(
             user=self.worker, pin='1234',
             current_password='worker_pass_123',
         )
-        check = trigger_verification_check_now(self.task.id)
+
+        with patch('core.views.requests.post', return_value=mock_response):
+            check = trigger_verification_check_now(self.task.id)
+
         self.assertIsNotNone(check)
         self.assertEqual(check.task_id, self.task.id)
         self.assertEqual(check.worker_id, self.worker.id)
         self.assertEqual(check.status, 'pending')
+        # QA-FIX-1 / Bug 1.4: push_sent=True chỉ khi _notify_user trả True.
         self.assertTrue(check.push_sent)
 
     def test_run_verification_check_marks_timeouts(self):
@@ -282,7 +309,10 @@ class SafetyModuleTestCase(TestCase):
         self.assertFalse(s.is_valid())
 
     def test_batch_location_view_creates_history_with_past_recorded_at(self):
-        """POST /tracking/location/batch/ → insert LocationHistory với client_recorded_at quá khứ."""
+        """POST /tracking/location/batch/ → insert LocationHistory với client_recorded_at quá khứ.
+
+        QA-FIX-1 / Spec 2.5: response status giờ là 201 (không phải 200).
+        """
         from tracking.views import BatchLocationAPIView
         from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -300,7 +330,8 @@ class SafetyModuleTestCase(TestCase):
         force_authenticate(request, user=self.worker)
         view = BatchLocationAPIView.as_view()
         response = view(request)
-        self.assertEqual(response.status_code, 200, response.data)
+        # QA-FIX-1 / Spec 2.5: trả 201 Created (không phải 200 OK)
+        self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data['saved'], 2)
 
         # Verify LocationHistory có đúng 2 row với client_recorded_at ~ 10 phút trước

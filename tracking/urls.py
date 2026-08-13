@@ -14,6 +14,8 @@ from .views import (
     RespondVerificationCheckAPIView, AdminListVerificationChecksAPIView,
     AdminTriggerVerificationCheckAPIView, AdminRunVerificationCheckAPIView,
     AdminVerificationSchedulerStatsAPIView,
+    # QA-FIX-1 / Spec 2.4 — Parent verification history + Cancel check
+    ParentVerificationHistoryAPIView, CancelVerificationCheckAPIView,
     # Phan 1 — Batch location (offline cache sync)
     BatchLocationAPIView,
 )
@@ -54,6 +56,10 @@ urlpatterns = [
     path('tracking/verification-checks/pending/', PendingVerificationCheckAPIView.as_view(), name='tracking-pending-verification-check'),
     # Carepartner phản hồi check
     path('tracking/verification-checks/<int:check_id>/respond/', RespondVerificationCheckAPIView.as_view(), name='tracking-respond-verification-check'),
+    # QA-FIX-1 / Spec 2.4 — Parent huỷ check pending (admin cũng được)
+    path('tracking/verification-checks/<int:check_id>/cancel/', CancelVerificationCheckAPIView.as_view(), name='tracking-cancel-verification-check'),
+    # QA-FIX-1 / Spec 2.4 — Parent xem lịch sử verification checks của task
+    path('tracking/<int:task_id>/verification-checks/history/', ParentVerificationHistoryAPIView.as_view(), name='tracking-parent-verification-history'),
     # Admin — list all checks (filter worker/task/status)
     path('tracking/admin/verification-checks/', AdminListVerificationChecksAPIView.as_view(), name='tracking-admin-verification-checks'),
     # Admin — trigger check thủ công cho 1 task (debug, chỉ khi DEBUG=True)

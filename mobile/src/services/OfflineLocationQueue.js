@@ -3,10 +3,17 @@
 // ====================================================================
 // - Dùng expo-sqlite (v15+ — async API)
 // - Bảng: pending_location_queue (id, task_id, latitude, longitude,
-//   accuracy, speed, heading, recorded_at, created_at)
+//   accuracy, speed, heading, recorded_at, created_at, sync_attempts)
 // - Khi apiClient.post('/tracking/location/') fail do mạng → lưu vào queue
 // - Khi NetInfo báo có mạng lại → flush queue qua /tracking/location/batch/
 // - Chunk 200 điểm/lần gọi để tránh payload quá lớn
+//
+// QA-FIX-1 / Bug 1.1:
+// - Thêm cột sync_attempts (default 0) — đếm số lần attempt sync thất bại.
+// - Khi flush chunk fail 4xx: KHÔNG xoá cả chunk — chỉ tăng sync_attempts
+//   từng điểm, skip riêng điểm đã retry > MAX_SYNC_ATTEMPTS (5). Trước đây
+//   xoá cả chunk → mất dữ liệu vị trí thật của CarePartner (1 điểm hỏng
+//   kéo theo cả chunk 200 điểm bị drop).
 // ====================================================================
 
 import * as SQLite from 'expo-sqlite';
@@ -34,11 +41,22 @@ export async function initOfflineQueue() {
         speed REAL,
         heading REAL,
         recorded_at TEXT NOT NULL,  -- ISO 8601 string
-        created_at INTEGER NOT NULL  -- unix ms (để sắp xếp theo thứ tự insert)
+        created_at INTEGER NOT NULL,  -- unix ms (để sắp xếp theo thứ tự insert)
+        sync_attempts INTEGER NOT NULL DEFAULT 0  -- QA-FIX-1/Bug 1.1: số lần retry fail
       );
       CREATE INDEX IF NOT EXISTS idx_${TABLE_NAME}_task_id ON ${TABLE_NAME}(task_id);
       CREATE INDEX IF NOT EXISTS idx_${TABLE_NAME}_created_at ON ${TABLE_NAME}(created_at);
     `);
+
+    // QA-FIX-1 / Bug 1.1: migration cho DB cũ thiếu cột sync_attempts.
+    // ALTER TABLE không raise error nếu cột đã tồn tại trên SQLite mới, nhưng
+    // bản cũ có thể raise → wrap try/catch để idempotent.
+    try {
+      await db.execAsync(`ALTER TABLE ${TABLE_NAME} ADD COLUMN sync_attempts INTEGER NOT NULL DEFAULT 0;`);
+    } catch (_e) {
+      // Cột đã tồn tại — bỏ qua.
+    }
+
     console.log('[OfflineQueue] DB initialized');
     return db;
   } catch (e) {
@@ -139,4 +157,34 @@ export async function clearAll() {
   }
 }
 
+// QA-FIX-1 / Bug 1.1: số lần retry tối đa cho 1 điểm trước khi bỏ qua.
+// Tránh 1 điểm hỏng (vd: timestamp sai format) làm spam mãi.
+const MAX_SYNC_ATTEMPTS = 5;
+
+/**
+ * Tăng sync_attempts cho từng điểm (theo list of ids).
+ * Trả về list of ids đã đạt MAX_SYNC_ATTEMPTS (cần drop hẳn để tránh spam).
+ */
+export async function incrementAttempts(ids) {
+  if (!db || !ids || ids.length === 0) return [];
+  try {
+    const placeholders = ids.map(() => '?').join(',');
+    // Tăng counter cho từng điểm.
+    await db.runAsync(
+      `UPDATE ${TABLE_NAME} SET sync_attempts = sync_attempts + 1 WHERE id IN (${placeholders})`,
+      ids
+    );
+    // Lọc ra điểm đã đạt max → caller sẽ drop riêng.
+    const maxedRows = await db.getAllAsync(
+      `SELECT id FROM ${TABLE_NAME} WHERE id IN (${placeholders}) AND sync_attempts >= ?`,
+      [...ids, MAX_SYNC_ATTEMPTS]
+    );
+    return maxedRows.map((r) => r.id);
+  } catch (e) {
+    console.error('[OfflineQueue] incrementAttempts failed:', e);
+    return [];
+  }
+}
+
 export const CHUNK_SIZE_EXPORT = CHUNK_SIZE;
+export const MAX_SYNC_ATTEMPTS_EXPORT = MAX_SYNC_ATTEMPTS;

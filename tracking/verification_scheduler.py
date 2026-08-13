@@ -133,17 +133,27 @@ def _should_create_check(task, worker):
 
 
 def _notify_user(user, title, message, data=None):
-    """Helper — tái sử dụng từ tracking.services (gửi Notification + Expo push)."""
+    """Helper — tái sử dụng từ tracking.services (gửi Notification + Expo push).
+
+    QA-FIX-1 / Bug 1.4: phải trả về push_result (True/False/None) để caller
+    quyết định set push_sent. Trước đây wrapper nuốt return value → caller
+    luôn thấy None → push_sent luôn False.
+    """
     try:
         from tracking.services import _notify_user as _notify
-        _notify(user, title=title, message=message, data=data)
+        return _notify(user, title=title, message=message, data=data)
     except Exception as e:
         logger.warning(f"[Verification] _notify_user failed: {e}")
+        return None
 
 
 @transaction.atomic
 def _create_check(task, worker):
-    """Tạo RandomVerificationCheck mới + push yêu cầu nhập mã cho worker."""
+    """Tạo RandomVerificationCheck mới + push yêu cầu nhập mã cho worker.
+
+    QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True
+    (trước đây fire-and-forget → set True sai khi Expo reject).
+    """
     now = timezone.now()
     deadline = now + timedelta(seconds=RESPOND_TIMEOUT_SECONDS)
 
@@ -155,7 +165,7 @@ def _create_check(task, worker):
     )
 
     # Push yêu cầu nhập mã cho CarePartner — channel emergency-alerts (còi to)
-    _notify_user(
+    push_result = _notify_user(
         worker,
         title="🔐 Xác minh bảo mật",
         message="Vui lòng nhập mã cá nhân để xác nhận",
@@ -168,11 +178,13 @@ def _create_check(task, worker):
             'android_channel_id': 'emergency-alerts',
         }
     )
-    check.push_sent = True
-    check.push_retry_count = 1
+    # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi push thực sự thành công.
+    if push_result is True:
+        check.push_sent = True
+    check.push_retry_count = 1 if push_result is True else 0
     check.save(update_fields=['push_sent', 'push_retry_count'])
 
-    logger.info(f"[Verification] Created check #{check.id} for Task#{task.id} (deadline={deadline:%H:%M:%S})")
+    logger.info(f"[Verification] Created check #{check.id} for Task#{task.id} (deadline={deadline:%H:%M:%S}, push_sent={check.push_sent})")
     return check
 
 
@@ -206,7 +218,8 @@ def run_verification_check():
             continue
 
         # Worker chưa đặt PIN → không tạo check (sẽ chặn nhận task ở phần mobile)
-        if not worker.verification_pin_hash:
+        # QA-FIX-1 / Spec 2.3: dùng property has_verification_pin_set của User.
+        if not worker.has_verification_pin_set:
             continue
 
         if _should_create_check(task, worker):
@@ -217,6 +230,20 @@ def run_verification_check():
                 logger.exception(f"[Verification] Create check failed for Task#{task.id}: {e}")
 
     # === (3) Quét check pending quá deadline → 'timeout' ===
+    # QA-FIX-1 / Bug 1.3: chỉ gửi parent alert MỘT LẦN/streak timeout.
+    # Trước đây mỗi lần timeout ≥ CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+    # đều gửi push cho parent → spam nếu carepartner timeout 5 lần liên tiếp
+    # (parent nhận 4 push giống hệt nhau).
+    #
+    # Cách fix:
+    #   - Mỗi check khi timeout → tăng consecutive_timeouts_count của chính nó
+    #     (giá trị = số timeout liên tiếp tính đến thời điểm này).
+    #   - Nếu consecutive_timeouts_count == CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+    #     AND check.parent_alert_sent=False → gửi push 1 lần + set flag.
+    #   - Các timeout sau (3, 4, 5, ...) → flag đã True → skip push.
+    #   - Khi status chuyển sang confirmed/wrong_code/cancelled → reset
+    #     parent_alert_sent=False + consecutive_timeouts_count=0 (chấm dứt streak).
+    #     (xử lý trong services.respond_verification_check + cancel_verification_check)
     expired_checks = RandomVerificationCheck.objects.filter(
         status='pending',
         respond_deadline__lt=now,
@@ -224,9 +251,53 @@ def run_verification_check():
 
     for check in expired_checks:
         check.status = 'timeout'
-        check.save(update_fields=['status'])
 
-        # Notify admin (luôn)
+        # Tính consecutive_timeouts_count của check này.
+        # Logic: tìm check gần nhất (mọi status) trước check hiện tại:
+        #   - Nếu không có → streak = 1 (timeout đầu tiên của task)
+        #   - Nếu check trước là 'timeout' → streak = prev.streak + 1 (tiếp tục streak)
+        #   - Nếu check trước là 'confirmed'/'wrong_code'/'cancelled' → streak = 1
+        #     (chấm dứt streak cũ, bắt đầu streak mới)
+        #
+        # QA-FIX-1 / Bug 1.3 fix: trước đây chỉ query status='timeout' → bỏ sót
+        # confirmed/cancelled ở giữa → streak kế thừa từ streak cũ đã reset.
+        prev_check = RandomVerificationCheck.objects.filter(
+            task=check.task,
+        ).exclude(pk=check.pk).order_by('-triggered_at').first()
+
+        already_alerted_in_streak = False
+        if prev_check is None:
+            check.consecutive_timeouts_count = 1
+        elif prev_check.status == 'timeout':
+            # Tiếp tục streak — kế thừa counter + flag từ timeout trước
+            check.consecutive_timeouts_count = prev_check.consecutive_timeouts_count + 1
+            already_alerted_in_streak = prev_check.parent_alert_sent
+        else:
+            # prev_check là confirmed/wrong_code/cancelled → bắt đầu streak mới
+            check.consecutive_timeouts_count = 1
+            already_alerted_in_streak = False
+
+        # Chỉ gửi parent alert KHI:
+        #   - consecutive_timeouts_count >= CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT (đạt ngưỡng)
+        #   - chưa từng gửi alert trong streak này (already_alerted_in_streak=False)
+        # Nếu carepartner tiếp tục timeout (lần 3, 4, 5...) → flag đã True trên timeout
+        # trước đó → skip push.
+        should_alert_parent = (
+            check.consecutive_timeouts_count >= CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+            and not already_alerted_in_streak
+        )
+
+        if should_alert_parent:
+            check.parent_alert_sent = True
+        elif already_alerted_in_streak:
+            # Kế thừa flag từ timeout trước (để nếu có timeout thứ 4, 5... vẫn skip)
+            check.parent_alert_sent = True
+
+        check.save(update_fields=[
+            'status', 'consecutive_timeouts_count', 'parent_alert_sent',
+        ])
+
+        # Notify admin (luôn — admin cần biết mỗi lần timeout để đánh giá tin cậy)
         try:
             admin_users = User.objects.filter(is_staff=True, is_active=True)
             for admin in admin_users:
@@ -235,42 +306,37 @@ def run_verification_check():
                     title="⏰ CarePartner không phản hồi xác minh",
                     message=f"Task '{check.task.title}' (#{check.task.id}) — carepartner "
                             f"{check.worker.username} không nhập mã xác minh trong vòng "
-                            f"{RESPOND_TIMEOUT_SECONDS}s. Hệ thống đã chuyển trạng thái timeout.",
+                            f"{RESPOND_TIMEOUT_SECONDS}s. Hệ thống đã chuyển trạng thái timeout. "
+                            f"Streak hiện tại: {check.consecutive_timeouts_count}/{CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT}.",
                 )
         except Exception:
             pass
 
-        # Notify parent nếu ≥ CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT timeout liên tiếp
-        consecutive_timeouts = RandomVerificationCheck.objects.filter(
-            task=check.task,
-            status='timeout',
-        ).order_by('-triggered_at')[:CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT]
-
-        if consecutive_timeouts.count() >= CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT:
-            # Kiểm tra xem các timeout có liên tiếp không (không có confirmed/wrong_code ở giữa)
-            timeout_ids = list(consecutive_timeouts.values_list('id', flat=True))
-            recent_checks = RandomVerificationCheck.objects.filter(
-                task=check.task,
-            ).order_by('-triggered_at')[:CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT]
-            all_timeouts = all(c.status == 'timeout' for c in recent_checks)
-
-            if all_timeouts:
-                _notify_user(
-                    check.task.parent,
-                    title="⚠️ CarePartner liên tục không phản hồi xác minh",
-                    message=f"CarePartner đã bỏ qua {CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT} lần xác minh "
-                            f"liên tiếp cho công việc '{check.task.title}'. Vui lòng liên hệ ngay!",
-                    data={
-                        'type': 'verification_timeout_critical',
-                        'task_id': check.task.id,
-                        'priority': 'high',
-                        'android_channel_id': 'emergency-alerts',
-                    }
-                )
-                stats['parent_alerts_sent'] += 1
+        # Notify parent CHỈ 1 LẦN/streak (Bug 1.3)
+        if should_alert_parent:
+            _notify_user(
+                check.task.parent,
+                title="⚠️ CarePartner liên tục không phản hồi xác minh",
+                message=f"CarePartner đã bỏ qua {CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT} lần xác minh "
+                        f"liên tiếp cho công việc '{check.task.title}'. Vui lòng liên hệ ngay!",
+                data={
+                    'type': 'verification_timeout_critical',
+                    'task_id': check.task.id,
+                    'priority': 'high',
+                    'android_channel_id': 'emergency-alerts',
+                }
+            )
+            stats['parent_alerts_sent'] += 1
+            logger.warning(
+                f"[Verification] Parent alert sent for Task#{check.task_id} "
+                f"(streak={check.consecutive_timeouts_count}) — sẽ không gửi lại cho streak này."
+            )
 
         stats['timeouts_marked'] += 1
-        logger.info(f"[Verification] Check #{check.id} timed out (Task#{check.task_id})")
+        logger.info(
+            f"[Verification] Check #{check.id} timed out "
+            f"(Task#{check.task_id}, streak={check.consecutive_timeouts_count})"
+        )
 
     # === (4) Retry push cho check pending chưa phản hồi (giống offline Alert) ===
     # Mỗi 30s gửi lại push cho check pending (max 5 lần).
@@ -335,7 +401,7 @@ def trigger_verification_check_now(task_id):
     if not worker:
         raise ValueError("Task chưa có carepartner được accept.")
 
-    if not worker.verification_pin_hash:
+    if not worker.has_verification_pin_set:
         raise ValueError("CarePartner chưa đặt mã cá nhân — không thể tạo check.")
 
     # Skip pending check nếu đã có
