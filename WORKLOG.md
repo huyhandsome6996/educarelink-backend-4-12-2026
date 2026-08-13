@@ -319,3 +319,66 @@ Running 18 checks on your project...
 - Branch: `feature/module-an-toan-carepartner`
 - Commit message: `QA-FIX-2: bổ sung an toàn CarePartner toàn diện (offline idempotent, scheduler production-safe, geofence persist, tọa độ 0, logout cleanup)`
 - Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+# QA-FIX-3 — Hoàn thiện an toàn CarePartner (2026-08-14)
+
+Branch: `feature/module-an-toan-carepartner`
+
+## Mục lục fix
+
+### A. Sửa bug mobile nghiêm trọng
+
+| # | Bug | File(s) | Mô tả |
+|---|-----|---------|-------|
+| A1 | `alreadyExistsIds === 0` so sánh array với số 0 | `mobile/src/services/LocationService.js` | **SỬA BUG NGHIÊM TRỌNG**: `alreadyExistsIds` là array, `=== 0` luôn false → break không bao giờ xảy ra → vòng while lặp 50 lần gọi API vô ích. Sửa thành `.length === 0`. Thêm logic break khi chunk toàn rejected-only — chỉ tăng sync_attempts 1 lần rồi dừng lần flush đó. |
+
+### B. Scheduler production deployment thật sự chạy
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| B1 | Render Cron Job cho scheduler | `render.yaml` | Bổ sung Cron Job service `educarelink-tracking-scheduler` chạy mỗi 1 phút: `python manage.py run_tracking_schedulers --once --only both`. Có đủ env vars cần thiết. Trước đây `TRACKING_SCHEDULER_IN_WEB_WORKER=false` nhưng không có process nào chạy scheduler → alert không bao giờ được tạo. |
+| B2 | Health logging + monitoring endpoint | `tracking/management/commands/run_tracking_schedulers.py`, `tracking/views.py`, `tracking/urls.py` | Mỗi lần chạy, ghi file `/tmp/tracking_scheduler_health.json` với timestamp + stats. Thêm endpoint `/api/tracking/scheduler-health/` (public, no auth) để monitoring outside phát hiện scheduler die (file cũ quá 3 phút → stale). |
+| B3 | Expose TRACKING_SCHEDULER_IN_WEB_WORKER qua settings | `backend/settings.py` | Monitoring endpoint đọc Django settings thay vì os.environ trực tiếp. |
+
+### C. Firebase config + native build
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| C1 | Bỏ google-services.json reference | `mobile/app.json`, `mobile/GOOGLE_SERVICES_SETUP.md` (NEW) | `app.json` trước đây reference `./google-services.json` nhưng file không commit (secret) → `expo prebuild` fail ENOENT. Bỏ reference — Expo Push Notifications dùng Expo Push Service (không cần Firebase trực tiếp). Document cách cung cấp file khi cần (EAS credentials). |
+
+### D. Emergency alarm audio thật
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| D1 | Asset emergency_alarm.wav thật | `mobile/assets/sounds/emergency_alarm.wav` (NEW), `mobile/assets/sounds/README.md` | Generate file WAV 3s, 44100Hz, 16-bit mono PCM, sine siren 800Hz/1000Hz xen kẽ. Generated procedurally bằng Python — không vấn đề bản quyền. Trước đây chỉ có README placeholder. |
+| D2 | Bật static require + audio mode | `mobile/src/services/EmergencyAlarmService.js` | Uncomment `require('../../assets/sounds/emergency_alarm.wav')`. Thêm `setAudioModeAsync` với `playsInSilentModeIOS: true`. `stopEmergencyAlarm()` unload audio object. `unloadEmergencyAlarm()` cũng stop + cancel vibration. |
+
+### E. Regression tests
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| E1 | 26 regression tests mới | `tracking/tests_qa_fix_3.py` (NEW) | Cover: A (rejected-only), B (scheduler deployment + health endpoint + render.yaml), C (authorization worker khác), D (last-known location trong alert), E (duplicate client_point_id), F (PIN hash + sai PIN + timeout + reset streak), G (scheduler concurrent no duplicate), H (render.yaml structure). |
+
+## Test Suite
+
+- 111 tests PASS (85 cũ QA-FIX-1+2 + 26 mới QA-FIX-3).
+- `npm ci` + `npx expo-doctor` 18/18 PASS.
+- `npx expo prebuild --platform android` PASS (không còn ENOENT).
+- `npx expo export --platform android` PASS (3.88 MB JS bundle).
+- 7 file mobile `node --check` PASS.
+
+## UNTESTABLE
+
+- Native EAS Android build (cần `eas build` cloud).
+- Custom sound + full-screen intent trên device thật (cần EAS Build).
+- iOS critical alert (cần entitlement Apple).
+- Scheduler production trên Render (chưa deploy).
+- Push/background location khi app killed (cần device thật).
+
+## Commit Strategy
+
+- Branch: `feature/module-an-toan-carepartner`
+- Commit message: `QA-FIX-3: scheduler Render Cron Job + emergency_alarm.wav asset + bug alreadyExistsIds + 26 regression tests`
+- Push: `git push origin feature/module-an-toan-carepartner`

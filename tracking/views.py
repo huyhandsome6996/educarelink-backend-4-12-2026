@@ -1180,3 +1180,71 @@ class TrackingHealthCheckAPIView(APIView):
             'module': 'tracking',
             'version': '1.0.0',
         })
+
+
+class SchedulerHealthAPIView(APIView):
+    """
+    GET /api/tracking/scheduler-health/ — monitoring endpoint.
+
+    QA-FIX-3 / C: trả về trạng thái scheduler lần chạy gần nhất (đọc từ
+    file /tmp/tracking_scheduler_health.json do management command ghi).
+
+    Monitoring ngoài (UptimeRobot, Render Stats, ...) poll endpoint này:
+      - 200 + last_run_at gần đây (< 3 phút) → scheduler đang chạy.
+      - 200 + last_run_at cũ (> 5 phút) → scheduler KHÔNG chạy (cron die,
+        env var sai, exception). Cần alert admin.
+      - 200 + null (chưa có file) → scheduler chưa chạy lần nào sau deploy.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        from django.utils import timezone as _tz
+        from django.utils.dateparse import parse_datetime as _parse_dt
+        from django.conf import settings as _dj_settings
+        try:
+            from .management.commands.run_tracking_schedulers import _read_health_file
+            health = _read_health_file()
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f'Cannot read health file: {e}',
+                'scheduler_in_web_worker': getattr(
+                    _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False
+                ),
+            }, status=status.HTTP_200_OK)
+
+        if not health:
+            return Response({
+                'status': 'no_data',
+                'message': 'Scheduler chưa chạy lần nào sau deploy (health file chưa tồn tại).',
+                'hint': 'Kiểm tra Render Cron Job "educarelink-tracking-scheduler" đã tạo chưa.',
+                'scheduler_in_web_worker': getattr(
+                    _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False
+                ),
+            })
+
+        last_run_str = health.get('last_run_at')
+        try:
+            last_run_dt = _parse_dt(last_run_str) if last_run_str else None
+        except Exception:
+            last_run_dt = None
+
+        seconds_since = None
+        is_stale = False
+        if last_run_dt:
+            seconds_since = int((_tz.now() - last_run_dt).total_seconds())
+            # Stale nếu > 3 phút (cron 1 phút → miss 3 lần liên tiếp = đáng lo)
+            is_stale = seconds_since > 180
+
+        return Response({
+            'status': 'stale' if is_stale else 'ok',
+            'last_run_at': last_run_str,
+            'seconds_since_last_run': seconds_since,
+            'is_stale': is_stale,
+            'stale_threshold_seconds': 180,
+            'health_data': health,
+            'scheduler_in_web_worker': getattr(
+                _dj_settings, 'TRACKING_SCHEDULER_IN_WEB_WORKER', False
+            ),
+        })

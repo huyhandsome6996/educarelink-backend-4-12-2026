@@ -18,11 +18,15 @@ from .views import (
     ParentVerificationHistoryAPIView, CancelVerificationCheckAPIView,
     # Phan 1 — Batch location (offline cache sync)
     BatchLocationAPIView,
+    # QA-FIX-3 / C — Scheduler health monitoring endpoint
+    SchedulerHealthAPIView,
 )
 
 urlpatterns = [
     # Health check
     path('tracking/health/', TrackingHealthCheckAPIView.as_view(), name='tracking-health'),
+    # QA-FIX-3 / C — Scheduler health monitoring (public, no auth)
+    path('tracking/scheduler-health/', SchedulerHealthAPIView.as_view(), name='tracking-scheduler-health'),
 
     # Carepartner
     path('tracking/consent/', GrantConsentAPIView.as_view(), name='tracking-grant-consent'),
