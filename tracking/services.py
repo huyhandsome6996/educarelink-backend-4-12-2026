@@ -482,6 +482,8 @@ def check_offline_devices():
         )
 
         # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
+        # Phan 2: dung type='device_offline_critical' (channel emergency-alerts,
+        # sound=emergency_alarm.wav) thay vi 'device_offline' cu.
         try:
             _notify_user(
                 hb.task.parent,
@@ -491,17 +493,18 @@ def check_offline_devices():
                         f"Lần cuối online: {hb.last_seen:%H:%M:%S}. "
                         f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
                 data={
-                    'type': 'device_offline',
+                    'type': 'device_offline_critical',
                     'task_id': hb.task.id,
                     'alert_id': alert.id,
                     'priority': 'high',  # expo: high priority = chuông kêu
                     'sound': 'critical',  # iOS critical alert
-                    'android_channel_id': 'critical_alerts',
+                    'android_channel_id': 'emergency-alerts',
                 }
             )
             alert.push_sent = True
             alert.push_sent_at = now
-            alert.save(update_fields=['push_sent', 'push_sent_at'])
+            alert.push_retry_count = 1
+            alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
             stats['new_alerts'] += 1
 
             # Notify admin cũng
@@ -525,6 +528,109 @@ def check_offline_devices():
         logger.info(f"[tracking] Offline check: {stats}")
 
     return stats
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 2 — RETRY PUSH cho DeviceOfflineAlert
+#  Mô phỏng kiểu "gọi điện đến" liên tục cho tới khi parent phản hồi:
+#    - Mỗi 30s gửi lại push cho alert active chưa acknowledged
+#    - Tối đa 5 lần (OFFLINE_PUSH_MAX_RETRIES)
+#  Sau 5 lần vẫn không acknowledge → vẫn giữ alert active (để parent xem
+#  khi mở app), nhưng không push nữa (tránh spam).
+# ═══════════════════════════════════════════════════════════════════
+
+OFFLINE_PUSH_MAX_RETRIES = getattr(settings, 'TRACKING_OFFLINE_PUSH_MAX_RETRIES', 5)
+OFFLINE_PUSH_RETRY_INTERVAL_SECONDS = getattr(
+    settings, 'TRACKING_OFFLINE_PUSH_RETRY_INTERVAL', 30
+)
+
+
+def retry_offline_alert_pushes():
+    """
+    Scheduler chạy mỗi 1 phút — gửi lại push cho các DeviceOfflineAlert:
+      - status='active' (chưa recovered)
+      - acknowledged_at IS NULL (parent chưa xem)
+      - push_retry_count < OFFLINE_PUSH_MAX_RETRIES (chưa vượt số lần tối đa)
+      - push_sent_at < now - OFFLINE_PUSH_RETRY_INTERVAL_SECONDS (đủ khoảng cách giữa 2 lần retry)
+
+    Trả về dict thống kê.
+    """
+    now = timezone.now()
+    retry_threshold = now - timedelta(seconds=OFFLINE_PUSH_RETRY_INTERVAL_SECONDS)
+
+    pending_alerts = DeviceOfflineAlert.objects.filter(
+        status='active',
+        acknowledged_at__isnull=True,
+        push_retry_count__lt=OFFLINE_PUSH_MAX_RETRIES,
+    ).filter(
+        Q(push_sent_at__isnull=True) | Q(push_sent_at__lt=retry_threshold)
+    ).select_related('task', 'task__parent', 'worker')
+
+    stats = {
+        'checked_at': now.isoformat(),
+        'retried_count': 0,
+        'max_reached_count': 0,
+        'push_failed': 0,
+    }
+
+    for alert in pending_alerts:
+        # Nếu đã đạt max retry → skip (không push nữa)
+        if alert.push_retry_count >= OFFLINE_PUSH_MAX_RETRIES:
+            stats['max_reached_count'] += 1
+            continue
+
+        try:
+            _notify_user(
+                alert.task.parent,
+                title=f"🚨🚨🚨 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}/{OFFLINE_PUSH_MAX_RETRIES})",
+                message=f"⚠️ Thiết bị carepartner VẪN mất kết nối cho công việc "
+                        f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
+                        f"Vui lòng kiểm tra NGAY!",
+                data={
+                    'type': 'device_offline_critical',
+                    'task_id': alert.task.id,
+                    'alert_id': alert.id,
+                    'retry': alert.push_retry_count + 1,
+                    'priority': 'high',
+                    'sound': 'critical',
+                    'android_channel_id': 'emergency-alerts',
+                }
+            )
+            alert.push_sent = True
+            alert.push_sent_at = now
+            alert.push_retry_count += 1
+            alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+            stats['retried_count'] += 1
+        except Exception as e:
+            logger.error(f"[tracking] Retry push failed for Alert#{alert.id}: {e}")
+            stats['push_failed'] += 1
+
+    if stats['retried_count'] > 0:
+        logger.info(f"[tracking] Offline retry push: {stats}")
+
+    return stats
+
+
+def acknowledge_offline_alert(*, alert_id: int, requester: User) -> DeviceOfflineAlert:
+    """
+    Parent mở app và xem cảnh báo → acknowledge → dừng retry loop.
+    - Verify requester là parent sở hữu task
+    - Set acknowledged_at = now
+    - KHÔNG đổi status (vẫn 'active' cho tới khi thiết bị recovered)
+    """
+    try:
+        alert = DeviceOfflineAlert.objects.get(pk=alert_id)
+    except DeviceOfflineAlert.DoesNotExist:
+        raise ValueError("Không tìm thấy alert.")
+
+    if alert.task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    if alert.acknowledged_at is None:
+        alert.acknowledged_at = timezone.now()
+        alert.save(update_fields=['acknowledged_at'])
+
+    return alert
 
 
 def clear_task_heartbeat(task: Task):

@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
-  getDeviceStatus, getOfflineAlerts,
+  getDeviceStatus, getOfflineAlerts, acknowledgeOfflineAlert,
 } from '../../api/tracking';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
@@ -78,7 +78,9 @@ export default function LiveTrackingScreen() {
       if (activeAlert && activeAlert.id !== lastAlertIdRef.current) {
         lastAlertIdRef.current = activeAlert.id;
         setOfflineAlertActive(true);
-        triggerAlarmSound();
+        // Phan 2: truyền alertId để khi user bấm "Đã biết" có thể gọi
+        // API acknowledge → backend dừng retry push.
+        triggerAlarmSound(activeAlert.id);
       } else if (!activeAlert) {
         setOfflineAlertActive(false);
       }
@@ -103,7 +105,10 @@ export default function LiveTrackingScreen() {
   }, [fetchLive, fetchDeviceStatus, taskId]);
 
   // Trigger alarm sound + vibration khi có offline alert
-  const triggerAlarmSound = async () => {
+  // Phan 2: nhận thêm type 'device_offline_critical' (channel emergency-alerts,
+  // còi to + retry liên tục tới khi acknowledge). Khi user bấm "Đã biết" →
+  // gọi API acknowledge để backend dừng retry push.
+  const triggerAlarmSound = async (alertIdFromData) => {
     try {
       // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần
       Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
@@ -116,8 +121,9 @@ export default function LiveTrackingScreen() {
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: {
-            type: 'device_offline',
+            type: 'device_offline_critical',
             task_id: taskId,
+            alert_id: alertIdFromData,
             priority: 'high',
           },
         },
@@ -128,21 +134,40 @@ export default function LiveTrackingScreen() {
     }
   };
 
+  // Phan 2 — gọi API acknowledge để dừng retry push ở backend
+  const handleAcknowledgeAlert = async (alertId) => {
+    if (!alertId || !taskId) return;
+    try {
+      await acknowledgeOfflineAlert(taskId, alertId);
+      console.log(`[LiveTracking] Acknowledged alert #${alertId} — backend sẽ dừng retry push`);
+    } catch (e) {
+      console.warn(`[LiveTracking] Acknowledge alert #${alertId} failed:`, e?.response?.status || e.message);
+    }
+  };
+
   // Listen notification khi app đang mở
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const data = notification.request.content.data || {};
       const body = notification.request.content.body || '';
 
-      // === DEVICE OFFLINE alert ===
-      if (data.type === 'device_offline') {
+      // === DEVICE OFFLINE alert (cũ — vẫn giữ backward compat) ===
+      // === DEVICE OFFLINE CRITICAL alert (Phan 2 — còi to + retry) ===
+      // Cả 2 type đều xử lý giống nhau (còi + acknowledge)
+      if (data.type === 'device_offline' || data.type === 'device_offline_critical') {
+        const alertId = data.alert_id;
         // Vibration pattern khẩn cấp
         Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000], false);
         Alert.alert(
           "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
           body || 'Thiết bị Carepartner mất kết nối!',
           [
-            { text: 'Đã biết', style: 'destructive' },
+            // Phan 2: bấm "Đã biết" → acknowledge → backend dừng retry push
+            {
+              text: 'Đã biết',
+              style: 'destructive',
+              onPress: () => handleAcknowledgeAlert(alertId),
+            },
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
             // Fix H14: chỉ mở dialer khi có số carepartner
             ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
