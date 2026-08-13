@@ -75,16 +75,16 @@ function useNotificationChannels() {
       // Phải build bằng EAS Development Build hoặc production build mới test
       // được sound custom + bypassDnd + full-screen intent thật.
       //
-      // File sound phải đặt tại: mobile/assets/sounds/emergency_alarm.wav
-      // (Xem README của folder sounds/ — hiện là placeholder, cần bổ sung file
-      //  âm thanh còi thật, định dạng WAV, độ dài 3-5s, sample rate 44100Hz.)
+      // QA-FIX-3 / D: file sound đã được bổ sung tại
+      // mobile/assets/sounds/emergency_alarm.wav (3s, 44100Hz, 16-bit mono
+      // PCM, sine siren 800Hz/1000Hz xen kẽ — license-free).
       //
-      // Trường hợp file chưa có, expo-notifications sẽ fallback về 'default'
-      // sound — push vẫn hoạt động nhưng không có còi to riêng.
+      // Trường hợp file không load được (dev build thiếu asset),
+      // expo-notifications sẽ fallback về 'default' sound — push vẫn hoạt
+      // động nhưng không có còi to.
       //
-      // TODO(project owner): bổ sung mobile/assets/sounds/emergency_alarm.wav.
-      // Hiện tại UNTESTABLE trên Expo Go; cần EAS dev build + asset thật để
-      // kiểm tra sound custom + bypass DnD + full-screen intent.
+      // ⚠️ UNTESTABLE trên Expo Go; cần EAS dev build + native sound để
+      // kiểm tra sound custom + bypass DnD + full-screen intent thật.
       Notifications.setNotificationChannelAsync('emergency-alerts', {
         name: '🚨🚨 Cảnh báo khẩn cấp (còi to)',
         description: 'Còi báo động liên tục khi Carepartner mất kết nối / yêu cầu xác minh',

@@ -84,7 +84,8 @@
         {
           "faceIDPermission": "EduCareLink sử dụng Face ID để bảo vệ thông tin đăng nhập của bạn."
         }
-      ]
+      ],
+      "./plugins/withEmergencyAlarmSound"
     ],
     "extra": {
       "eas": {
