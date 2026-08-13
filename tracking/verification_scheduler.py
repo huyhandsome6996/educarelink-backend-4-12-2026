@@ -272,18 +272,27 @@ def run_verification_check():
         stats['timeouts_marked'] += 1
         logger.info(f"[Verification] Check #{check.id} timed out (Task#{check.task_id})")
 
-    # === (4) Retry push cho check pending chưa phản hồi (giống offline alert) ===
-    # Mỗi 30s gửi lại push cho check pending (max 5 lần)
+    # === (4) Retry push cho check pending chưa phản hồi (giống offline Alert) ===
+    # Mỗi 30s gửi lại push cho check pending (max 5 lần).
+    # RandomVerificationCheck không có field push_sent_at riêng — dùng
+    # triggered_at + push_retry_count * 30s để ước tính lần push gần nhất.
     retry_threshold = now - timedelta(seconds=30)
     pending_for_retry = RandomVerificationCheck.objects.filter(
         status='pending',
         push_retry_count__lt=5,
         respond_deadline__gte=now,  # chưa hết hạn
-    ).filter(
-        Q(push_sent_at__isnull=True) | Q(push_sent_at__lt=retry_threshold)
+        triggered_at__lt=retry_threshold,  # đã qua ít nhất 30s từ lần tạo
     ).select_related('task', 'worker')
 
-    for check in pending_for_retry:
+    # Nếu push_retry_count > 0, cần thêm khoảng cách 30s kể từ lần push cuối.
+    # Vì không có push_sent_at, ta tính: trigger_time + retry_count * 30s phải < now
+    for check in list(pending_for_retry):
+        if check.push_retry_count > 0:
+            estimated_last_push = check.triggered_at + timedelta(
+                seconds=30 * check.push_retry_count
+            )
+            if estimated_last_push > now:
+                continue  # chưa đủ 30s từ lần push cuối
         try:
             _notify_user(
                 check.worker,

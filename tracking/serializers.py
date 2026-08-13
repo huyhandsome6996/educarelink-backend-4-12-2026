@@ -120,8 +120,10 @@ class RespondVerificationCheckSerializer(serializers.Serializer):
 class BatchLocationSerializer(serializers.Serializer):
     """Input cho API batch location (Phần 1 — cache offline)."""
     task_id = serializers.IntegerField()
+    # Dùng DictField(child=...) KHÔNG ép kiểu — ta validate thủ công trong validate_points
+    # vì points chứa cả số (lat/lng/accuracy) VÀ string (recorded_at).
     points = serializers.ListField(
-        child=serializers.DictField(child=serializers.FloatField(allow_null=True)),
+        child=serializers.DictField(),
         min_length=1,
         max_length=500,
     )
@@ -137,4 +139,9 @@ class BatchLocationSerializer(serializers.Serializer):
             # recorded_at: string ISO 8601
             if not isinstance(p['recorded_at'], str):
                 raise serializers.ValidationError(f"Điểm #{i} có recorded_at không phải chuỗi ISO.")
+            # accuracy/speed/heading nếu có phải là số hoặc null
+            for opt_field in ('accuracy', 'speed', 'heading'):
+                if opt_field in p and p[opt_field] is not None:
+                    if not isinstance(p[opt_field], (int, float)):
+                        raise serializers.ValidationError(f"Điểm #{i} có {opt_field} không phải số.")
         return value
