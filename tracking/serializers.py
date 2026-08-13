@@ -118,7 +118,13 @@ class RespondVerificationCheckSerializer(serializers.Serializer):
 
 
 class BatchLocationSerializer(serializers.Serializer):
-    """Input cho API batch location (Phần 1 — cache offline)."""
+    """Input cho API batch location (Phần 1 — cache offline).
+
+    QA-FIX-2 / B1: thêm field client_point_id (optional UUID string)
+    cho idempotent retry. Nếu mobile gửi cùng client_point_id 2 lần
+    (do network timeout giữa commit và response), backend sẽ skip
+    point đã tồn tại thay vì tạo duplicate.
+    """
     task_id = serializers.IntegerField()
     # Dùng DictField(child=...) KHÔNG ép kiểu — ta validate thủ công trong validate_points
     # vì points chứa cả số (lat/lng/accuracy) VÀ string (recorded_at).
@@ -144,4 +150,13 @@ class BatchLocationSerializer(serializers.Serializer):
                 if opt_field in p and p[opt_field] is not None:
                     if not isinstance(p[opt_field], (int, float)):
                         raise serializers.ValidationError(f"Điểm #{i} có {opt_field} không phải số.")
+            # QA-FIX-2 / B1: client_point_id chỉ validate kiểu string — length
+            # check để view xử lý (cho phép batch partial success: điểm hỏng
+            # bị rejected, điểm OK vẫn insert). Trước đây serializer reject
+            # cả batch → mobile không biết điểm nào hỏng.
+            if 'client_point_id' in p and p['client_point_id'] is not None:
+                if not isinstance(p['client_point_id'], str):
+                    raise serializers.ValidationError(
+                        f"Điểm #{i} có client_point_id không phải chuỗi."
+                    )
         return value

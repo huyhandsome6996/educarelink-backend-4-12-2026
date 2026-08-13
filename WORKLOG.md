@@ -181,3 +181,141 @@ node --check mobile/src/screens/Parent/LiveTrackingScreen.js # OK
 - Branch: `feature/module-an-toan-carepartner` (KHÔNG merge main)
 - Commit message: `QA-FIX-1: 5 critical bugs + 6 spec gaps (offline cache, push, verification PIN)`
 - Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+# QA-FIX-2 — Bổ sung an toàn CarePartner toàn diện (2026-08-14)
+
+Branch: `feature/module-an-toan-carepartner`
+
+## Mục lục fix
+
+### A. Mobile Blockers
+
+| # | Bug | File(s) | Mô tả |
+|---|-----|---------|-------|
+| A1 | App crash do AuthProvider | `mobile/App.js` | Tách `AppContent` ra khỏi `<AuthProvider>`. Các hook dùng `useAuth()` (auto resume, background fetch, RandomVerificationModal) chỉ gọi BÊN TRONG AuthProvider. Trước đây hook gọi ở ngoài → `useAuth()` trả null → destructuring crash. |
+| A2 | expo-sqlite 15.0.13 không tồn tại | `mobile/package.json`, `mobile/package-lock.json` | Đổi sang `expo-sqlite@~16.0.10` (tương thích SDK 54). Chạy `npx expo install --fix` để fix thêm 4 package khác (expo-av, expo-battery, netinfo, react-native-webview). Fix `app.json` bỏ `useNextNotificationsApi` (deprecated). Convert `assets/logo.png` + `assets/icon.png` từ JPEG sang PNG thật. |
+
+### B. Offline tracking + last-known location
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| B1 | Batch location idempotent | `tracking/models.py`, `tracking/views.py`, `tracking/serializers.py`, `tracking/migrations/0006_*.py` | Thêm field `LocationHistory.client_point_id` (UUID). Partial unique constraint `(task, worker, client_point_id) WHERE client_point_id IS NOT NULL`. View trả `inserted_ids` / `already_exists_ids` / `rejected` per-point. Mobile retry cùng point → backend skip, không tạo duplicate route. |
+| B2 | SQLite queue isolation | `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/services/LocationService.js`, `mobile/src/context/AuthContext.js` | Schema queue thêm `user_id` + `client_point_id`. `enqueueLocation(userId, taskId, point)` yêu cầu userId. `getChunk(userId)` chỉ lấy row của user hiện tại. `clearByUser(userId)` khi logout. AuthContext lưu `user_id` vào storage. Queue của user A không bao giờ flush bằng token user B. |
+| B3 | Last-known location + UI Parent | `tracking/views.py` (LiveLocationAPIView, DeviceStatusAPIView), `mobile/src/screens/Parent/LiveTrackingScreen.js` | API live location trả thêm `last_seen`, `seconds_since_last_seen`, `is_stale`, `is_offline`, `offline_threshold_seconds`. UI Parent hiển thị 3 trạng thái rõ: LIVE / STALE (vị trí cuối) / OFFLINE (mất tín hiệu). Không hardcode 60/90s — dùng `offline_threshold_seconds` từ API. |
+
+### C. Scheduler production-safe
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| C1 | Scheduler không chạy trong web worker | `tracking/apps.py`, `render.yaml`, `tracking/management/commands/run_tracking_schedulers.py` (NEW) | `apps.py` skip scheduler mặc định khi `TRACKING_SCHEDULER_IN_WEB_WORKER=false`. Management command `run_tracking_schedulers` chạy standalone (`--once` cho cron job, daemon cho worker dyno). render.yaml document pattern mới. |
+| C2 | DB constraint chống duplicate | `tracking/models.py`, `tracking/migrations/0006_*.py` | `UniqueConstraint(task) WHERE status='active'` trên DeviceOfflineAlert. `UniqueConstraint(task, worker) WHERE status='pending'` trên RandomVerificationCheck. Defense-in-depth dưới scheduler logic. |
+
+### D. Emergency notifications
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| D1 | Backend push parse + retry | `core/views.py` (đã có QA-FIX-1), `tracking/services.py` | Verify `send_expo_push_notification` trả True/False/None. `channelId` top-level + `android_channel_id` backward compat. Retry max 5 lần cách 30s. |
+| D2 | Mobile Android channel + alarm | `mobile/App.js`, `mobile/src/services/EmergencyAlarmService.js` | Channel `emergency-alerts` importance MAX, bypassDnd, sound `emergency_alarm.wav` (TODO: file chưa có — ghi rõ trong README/comment). EmergencyAlarmService loop audio + Vibration khi foreground. Stop khi parent acknowledge. Document: Expo Go không đủ, cần EAS dev build. iOS critical alert UNTESTABLE (cần entitlement Apple). |
+
+### E. Geofence + tọa độ 0
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| E1 | Predictive warning persist | `tracking/models.py`, `tracking/services.py`, `tracking/migrations/0006_*.py` | Thêm field `LiveLocation.predictive_warned` (BooleanField, default=False). Thay thế thuộc tính tạm `_predictive_warned` → persist DB → chỉ push 1 lần khi vào vùng 80-100%, clear khi về vùng < 80% hoặc rời vùng > 100%. |
+| E2 | Tọa độ 0 hợp lệ | `tracking/services.py`, `mobile/src/services/LocationService.js`, `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/components/RandomVerificationModal.js` | Python: `if geofence_lat is not None` thay `if geofence_lat`. JS: `?? null` thay `|| null` cho accuracy/speed/heading/latitude/longitude (tọa độ 0 là hợp lệ). |
+
+### F. Random PIN verification
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| F1 | Backend scheduler + constants | `tracking/verification_scheduler.py` (đã có QA-FIX-1) | Constants: TARGET_CHECKS_PER_SHIFT, ESTIMATED_SHIFT_MINUTES, MIN_MINUTES_BETWEEN_CHECKS, RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS, CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT. Scheduler skip worker chưa set PIN. Timeout lần đầu → notify admin. Streak ≥ 2 → notify parent 1 lần. |
+| F2 | Mobile modal chỉ poll khi worker | `mobile/src/components/RandomVerificationModal.js` | `useAuth()` check `user?.role === 'worker'` + `authLoading=false` trước khi poll. Logout → cleanup interval + Vibration.cancel(). Trước đây poll ngay khi mở app ở login screen → 401 spam. |
+
+### G. Logout cleanup
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| G1 | Logout dừng background + xóa queue | `mobile/src/context/AuthContext.js`, `mobile/src/services/LocationService.js` (NEW `cleanupOnLogout`), `mobile/App.js` (useBackgroundFetch cleanup) | `logout()` gọi `cleanupOnLogout(userId)` → stopTracking + clearByUser + clear storage. `useBackgroundFetch` unregister BackgroundFetch khi user=null. `useTaskEndedListener` chỉ đăng ký khi có user. Không để worker cũ tiếp tục heartbeat sau logout. |
+
+## Migration
+
+`tracking/migrations/0006_qa_fix_2_idempotent_batch_and_constraints.py`:
+- AddField `LocationHistory.client_point_id` (CharField max_length=36, null=True)
+- AddConstraint `unique_task_worker_client_point_id` (partial WHERE client_point_id IS NOT NULL)
+- AddField `LiveLocation.predictive_warned` (BooleanField default=False)
+- AddConstraint `unique_active_alert_per_task` (partial WHERE status='active')
+- AddConstraint `unique_pending_check_per_task_worker` (partial WHERE status='pending')
+
+`tracking/migrations/0007_alter_deviceheartbeat_device_status_and_more.py`:
+- AlterField `DeviceHeartbeat.device_status` (choices help text — không đổi DB schema)
+- AlterField `RandomVerificationCheck.respond_deadline` (help text — không đổi DB schema)
+
+Backward compatible (tất cả fields có default, constraints dùng partial index).
+
+## Test Suite
+
+- `tracking/tests_qa_fix_2.py` (NEW, 33 tests):
+  - B1: 5 tests (idempotent, mixed, no client_point_id, rejected, no leak)
+  - C: 5 tests (unique alert, alert after recovered, unique check, check after timeout, scheduler no duplicate, DB constraint)
+  - B3: 3 tests (device-status fields, live stale/offline, live fresh)
+  - E: 3 tests (predictive_warned field, no duplicate warning, tọa độ 0)
+  - F: 7 tests (PIN hash, check, has_pin, correct PIN reset, wrong PIN max, cancel by parent, cancel by worker denied, timeout, streak)
+  - D: 3 tests (acknowledge sets by, twice raises, task mismatch 404)
+  - C: 2 tests (management command, apps.py module)
+  - Ownership: 2 tests (parent history, parent ack other parent)
+
+Total: 33 (QA-FIX-2) + 52 (QA-FIX-1) + 0 (safety_module, đã merge vào qa_fixes) = 85 tests. All PASS.
+
+## Mobile Lint + Build
+
+```
+node --check App.js                                              # OK
+node --check src/context/AuthContext.js                          # OK
+node --check src/services/LocationService.js                     # OK
+node --check src/services/OfflineLocationQueue.js                # OK
+node --check src/services/EmergencyAlarmService.js               # OK
+node --check src/components/RandomVerificationModal.js           # OK
+node --check src/screens/Parent/LiveTrackingScreen.js            # OK
+npm ci                                                           # OK (734 packages)
+npx expo-doctor                                                  # 18/18 checks passed
+```
+
+## Kết quả test nguyên văn
+
+```
+$ python manage.py migrate
+[TrackingConfig] Local dev — schedulers SKIPPED.
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, core, moderation, payments, sessions, token_blacklist, tracking
+Running migrations:
+  Applying tracking.0006_qa_fix_2_idempotent_batch_and_constraints... OK
+  Applying tracking.0007_alter_deviceheartbeat_device_status_and_more... OK
+
+$ python manage.py check
+[Payments Scheduler] DISABLED (PAYMENT_SCHEDULER_ENABLED != true)
+[TrackingConfig] Local dev — schedulers SKIPPED.
+System check identified no issues (0 silenced).
+
+$ python manage.py test
+[TrackingConfig] Local dev — schedulers SKIPPED.
+System check identified no issues (0 silenced).
+... (test output) ...
+----------------------------------------------------------------------
+Ran 85 tests in 30.309s
+OK
+
+$ npm ci
+added 734 packages in 13s
+
+$ npx expo-doctor
+Running 18 checks on your project...
+18/18 checks passed. No issues detected!
+```
+
+## Commit Strategy
+
+- Branch: `feature/module-an-toan-carepartner`
+- Commit message: `QA-FIX-2: bổ sung an toàn CarePartner toàn diện (offline idempotent, scheduler production-safe, geofence persist, tọa độ 0, logout cleanup)`
+- Push: `git push origin feature/module-an-toan-carepartner`

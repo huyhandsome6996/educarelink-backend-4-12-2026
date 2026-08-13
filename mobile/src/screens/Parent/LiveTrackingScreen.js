@@ -46,11 +46,18 @@ export default function LiveTrackingScreen() {
   const [sosLoading, setSosLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [offlineAlertActive, setOfflineAlertActive] = useState(false);
+  // QA-FIX-2 / B3: track trạng thái offline/stale từ API để hiển thị rõ
+  // "vị trí cuối cùng lúc X" thay vì giả như vị trí live khi carepartner mất mạng.
+  const [isLocationStale, setIsLocationStale] = useState(false);
+  const [isLocationOffline, setIsLocationOffline] = useState(false);
+  const [offlineThresholdSeconds, setOfflineThresholdSeconds] = useState(null);
   const pollRef = useRef(null);
   const deviceStatusPollRef = useRef(null);
   const lastAlertIdRef = useRef(null);
 
   // Poll live location
+  // QA-FIX-2 / B3: parse thêm is_stale/is_offline/last_seen từ response
+  // để UI hiển thị rõ vị trí cuối vs vị trí live.
   const fetchLive = useCallback(async () => {
     if (!taskId) return;
     try {
@@ -58,6 +65,12 @@ export default function LiveTrackingScreen() {
       setLiveData(res.data);
       setLastUpdate(new Date());
       setError(null);
+      // QA-FIX-2 / B3: cập nhật stale/offline status từ API response
+      setIsLocationStale(res.data?.is_stale || false);
+      setIsLocationOffline(res.data?.is_offline || false);
+      if (res.data?.offline_threshold_seconds) {
+        setOfflineThresholdSeconds(res.data.offline_threshold_seconds);
+      }
     } catch (e) {
       console.warn('fetchLive error:', e?.response?.status);
       if (e?.response?.status === 403) {
@@ -398,13 +411,32 @@ export default function LiveTrackingScreen() {
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle} numberOfLines={1}>{taskTitle || `Task #${taskId}`}</Text>
+          {/*
+            QA-FIX-2 / B3: hiển thị trạng thái rõ ràng cho phụ huynh:
+              - LIVE (online, cập nhật < 30s): "● LIVE · cập nhật HH:MM:SS"
+              - STALE (online nhưng vị trí cũ > 30s): "● VỊ TRÍ CUỐI · cập nhật HH:MM:SS"
+              - OFFLINE (vượt ngưỡng cấu hình): "● MẤT TÍN HIỆU · lần cuối HH:MM:SS"
+            Trước đây chỉ hiển thị LIVE/OFF — phụ huynh không phân biệt được
+            vị trí live vs vị trí cuối cùng khi carepartner mất mạng.
+          */}
           <Text style={styles.headerSub}>
-            {isTracking ? '● LIVE · cập nhật ' + (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '') : 'Không có dữ liệu'}
+            {isLocationOffline
+              ? `● MẤT TÍN HIỆU · lần cuối ${liveData?.last_seen ? new Date(liveData.last_seen).toLocaleTimeString('vi-VN') : ''}`
+              : isLocationStale
+                ? `● VỊ TRÍ CUỐI · cập nhật ${liveData?.last_seen ? new Date(liveData.last_seen).toLocaleTimeString('vi-VN') : (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '')}`
+                : isTracking
+                  ? '● LIVE · cập nhật ' + (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '')
+                  : 'Không có dữ liệu'}
           </Text>
         </View>
-        <View style={[styles.liveBadge, !isTracking && { backgroundColor: COLORS.divider }]}>
+        <View style={[
+          styles.liveBadge,
+          !isTracking && { backgroundColor: COLORS.divider },
+          isLocationOffline && { backgroundColor: COLORS.error },
+          isLocationStale && !isLocationOffline && { backgroundColor: '#F59E0B' },
+        ]}>
           <Text style={[styles.liveText, !isTracking && { color: COLORS.textMuted }]}>
-            {isTracking ? 'LIVE' : 'OFF'}
+            {isLocationOffline ? 'OFFLINE' : isLocationStale ? 'STALE' : isTracking ? 'LIVE' : 'OFF'}
           </Text>
         </View>
       </View>

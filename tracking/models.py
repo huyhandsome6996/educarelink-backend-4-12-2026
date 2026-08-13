@@ -19,7 +19,7 @@
 ║   DEVICE OFFLINE ALERT (an toàn chống tắt máy):                   ║
 ║     - Carepartner app gửi heartbeat mỗi 30s                       ║
 ║     - Backend scheduler chạy mỗi 1 phút quét                      ║
-║     - Nếu last_seen > 90s → tạo DeviceOfflineAlert                ║
+║     - Nếu last_seen > TRACKING_OFFLINE_THRESHOLD → tạo alert       ║
 ║       + push notification (priority=high) cho phụ huynh            ║
 ║       + chuông kêu trên thiết bị parent                           ║
 ║                                                                   ║
@@ -102,6 +102,17 @@ class LiveLocation(models.Model):
     is_outside_geofence = models.BooleanField(default=False)
     geofence_warned_at = models.DateTimeField(blank=True, null=True)
 
+    # QA-FIX-2 / E: persist trạng thái "đã cảnh báo predictive" (sắp rời
+    # vùng 80-100% radius). Trước đây dùng thuộc tính tạm `_predictive_warned`
+    # trên instance → mỗi GPS update tạo instance mới → flag luôn reset →
+    # push lặp vô hạn "sắp rời vùng an toàn" cho cùng 1 task.
+    # Giờ persist vào DB: chỉ set 1 lần khi进入 vùng 80-100%, clear khi
+    # carepartner về vùng an toàn (< 80%) hoặc rời vùng (> 100%).
+    predictive_warned = models.BooleanField(
+        default=False,
+        help_text="Đã gửi cảnh báo predictive (80-100% radius). Reset khi về vùng an toàn."
+    )
+
     class Meta:
         ordering = ['-last_seen']
         indexes = [
@@ -127,6 +138,15 @@ class LocationHistory(models.Model):
         có recorded_at).
       - Parent view history sẽ ưu tiên client_recorded_at nếu có, fallback
         về recorded_at.
+
+    QA-FIX-2 / B1 — Idempotent batch:
+      - `client_point_id`: UUID do mobile sinh cho mỗi điểm GPS. Khi retry
+        batch do network timeout/5xx, điểm đã insert rồi sẽ bị từ chối
+        (unique constraint) thay vì tạo duplicate. Trước đây retry tạo
+        route bị trùng lặp → parent nhìn thấy "carepartner đi đi lại lại".
+      - Unique constraint: (task, worker, client_point_id) khi
+        client_point_id IS NOT NULL (partial unique index — cho phép
+        realtime points có client_point_id=NULL không bị constraint).
     """
     task = models.ForeignKey(
         'core.Task',
@@ -153,12 +173,33 @@ class LocationHistory(models.Model):
                   "NULL nếu gửi real-time."
     )
 
+    # QA-FIX-2 / B1 — Idempotent batch: UUID do mobile sinh cho mỗi điểm.
+    # Khi retry batch do network timeout/5xx, điểm đã insert rồi sẽ bị
+    # từ chối (unique constraint) thay vì tạo duplicate. NULL cho realtime
+    # points (không cần idempotent vì realtime không retry).
+    client_point_id = models.CharField(
+        max_length=36, null=True, blank=True, db_index=True,
+        help_text="UUID do mobile sinh cho mỗi điểm GPS (idempotent batch). "
+                  "NULL cho realtime points."
+    )
+
     class Meta:
         ordering = ['recorded_at']   # chronological
         indexes = [
             models.Index(fields=['task', 'recorded_at']),
             models.Index(fields=['task', 'client_recorded_at']),
             models.Index(fields=['worker', '-recorded_at']),
+        ]
+        # QA-FIX-2 / B1: partial unique index — chỉ áp dụng khi
+        # client_point_id IS NOT NULL (cho phép realtime points có
+        # client_point_id=NULL không bị constraint). Tránh duplicate
+        # khi mobile retry batch do network timeout/5xx.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['task', 'worker', 'client_point_id'],
+                name='unique_task_worker_client_point_id',
+                condition=models.Q(client_point_id__isnull=False),
+            ),
         ]
 
     def __str__(self):
@@ -226,7 +267,7 @@ class SOSAlert(models.Model):
 #   1. Carepartner app gửi heartbeat mỗi 30s khi đang tracking
 #   2. Backend scheduler chạy mỗi 1 phút — quét tất cả heartbeat có
 #      task.status='in_progress' + consent='granted'
-#   3. Nếu last_seen > 90s (3 lần miss) → tạo DeviceOfflineAlert
+#   3. Nếu last_seen > TRACKING_OFFLINE_THRESHOLD (mặc định 60s)
 #      + push notification priority=high cho phụ huynh (chuông kêu)
 #      + notify admin
 #   4. Khi carepartner app gửi heartbeat lại → tự resolve alert
@@ -263,7 +304,7 @@ class DeviceHeartbeat(models.Model):
     # Trạng thái thiết bị
     DEVICE_STATUS_CHOICES = (
         ('online', 'Trực tuyến — đang gửi heartbeat'),
-        ('offline', 'Ngoại tuyến — không nhận heartbeat > 90s'),
+        ('offline', 'Ngoại tuyến — không nhận heartbeat > TRACKING_OFFLINE_THRESHOLD'),
         ('stopped', 'Đã dừng — task hoàn thành/huỷ'),
     )
     device_status = models.CharField(
@@ -294,7 +335,7 @@ class DeviceHeartbeat(models.Model):
 
 class DeviceOfflineAlert(models.Model):
     """
-    Alert khi thiết bị carepartner ngoại tuyến quá lâu (> 90s).
+    Alert khi thiết bị carepartner ngoại tuyến quá lâu (> TRACKING_OFFLINE_THRESHOLD).
     Đẩy chuông kêu (priority=high) cho phụ huynh.
     """
     ALERT_STATUS_CHOICES = (
@@ -366,6 +407,18 @@ class DeviceOfflineAlert(models.Model):
             # Index cho scheduler retry — tìm alert active chưa acknowledged
             models.Index(fields=['status', 'acknowledged_at', 'push_sent_at']),
         ]
+        # QA-FIX-2 / C: partial unique index — mỗi task chỉ có 1 alert
+        # active tại 1 thời điểm. Chống scheduler chạy 2 instance song
+        # song cùng tạo 2 alert cho cùng task.
+        # Condition: status='active' → các alert recovered/task_ended/
+        # false không bị constraint.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['task'],
+                name='unique_active_alert_per_task',
+                condition=models.Q(status='active'),
+            ),
+        ]
 
     def __str__(self):
         return f"OfflineAlert Task#{self.task_id} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
@@ -403,7 +456,7 @@ class RandomVerificationCheck(models.Model):
     worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='verification_checks')
 
     triggered_at = models.DateTimeField(auto_now_add=True, help_text="Thời điểm hệ thống bất ngờ chọn để yêu cầu xác minh")
-    respond_deadline = models.DateTimeField(help_text="Hạn chót phản hồi, ví dụ triggered_at + 90s")
+    respond_deadline = models.DateTimeField(help_text="Hạn chót phản hồi, ví dụ triggered_at + RESPOND_TIMEOUT_SECONDS")
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     attempts = models.IntegerField(default=0, help_text="Số lần nhập sai")
@@ -437,6 +490,16 @@ class RandomVerificationCheck(models.Model):
             models.Index(fields=['task', 'status']),
             models.Index(fields=['worker', 'status']),
             models.Index(fields=['status', 'respond_deadline']),
+        ]
+        # QA-FIX-2 / C: partial unique index — mỗi (task, worker) chỉ có
+        # 1 check pending tại 1 thời điểm. Chống scheduler chạy 2 instance
+        # song song cùng tạo 2 check cho cùng task.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['task', 'worker'],
+                name='unique_pending_check_per_task_worker',
+                condition=models.Q(status='pending'),
+            ),
         ]
 
     def __str__(self):

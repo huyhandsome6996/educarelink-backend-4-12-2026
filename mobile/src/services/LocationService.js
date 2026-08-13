@@ -4,7 +4,7 @@
 //   - Khi task in_progress + consent granted → start tracking
 //   - Gửi vị trí mỗi 10s tới backend /api/tracking/location/
 //   - Gửi heartbeat mỗi 30s tới backend /api/tracking/heartbeat/
-//     (chống tắt máy — nếu backend không nhận heartbeat > 90s
+//     (chống tắt máy — nếu backend không nhận heartbeat > threshold
 //      sẽ tự push chuông cho phụ huynh)
 //   - Khi task completed/cancelled → stop tracking
 // ====================================================================
@@ -14,6 +14,14 @@
 //   - NetInfo listener: khi mạng có lại → flush queue qua
 //     /tracking/location/batch/ (chunk 200 điểm/lần)
 //   - Cũng thử flush mỗi khi app start + mỗi lần heartbeat task chạy
+//
+// QA-FIX-2 / B1 + B2 + G:
+//   - enqueueLocation(userId, taskId, point) — yêu cầu userId để isolate queue.
+//   - Mỗi point sinh client_point_id (UUID) cho idempotent retry.
+//   - flushOfflineQueue(userId) — chỉ flush queue của user hiện tại.
+//   - Khi logout: stopTracking() + clearByUser(userId) để xóa queue cũ.
+//   - Response backend: inserted_ids/already_exists_ids/rejected → mobile
+//     chỉ xoá row có client_point_id thuộc inserted HOẶC already_exists.
 // ====================================================================
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
@@ -24,7 +32,8 @@ import { storage } from '../utils/storage';
 import apiClient from '../api/client';
 import {
   initOfflineQueue, enqueueLocation, getQueueSize, getChunk,
-  deleteByIds, incrementAttempts, CHUNK_SIZE_EXPORT,
+  deleteByIds, incrementAttempts, clearByUser,
+  CHUNK_SIZE_EXPORT,
 } from './OfflineLocationQueue';
 
 const LOCATION_TASK_NAME = 'educarelink-location-tracking';
@@ -34,6 +43,7 @@ const HEARTBEAT_INTERVAL_MS = 30000;    // 30 giây — gửi heartbeat (chống
 
 let isStarted = false;
 let currentTaskId = null;
+let currentUserId = null;  // QA-FIX-2 / B2: track user đang tracking để isolate queue
 let lastKnownLocation = null;  // cache vị trí cuối để gửi kèm heartbeat
 let appStateSubscription = null;
 let netInfoSubscription = null;
@@ -49,6 +59,10 @@ let isFlushing = false;        // cờ chống flush chạy chồng lên nhau
 //   - error.message chứa 'Network' = network error
 //   - status >= 500 = server error (vẫn queue để retry)
 //   - 4xx = client error (không queue — sẽ fail mãi)
+//
+// QA-FIX-2 / B2: enqueueLocation yêu cầu userId — đọc từ storage
+// 'user_id' (set bởi AuthContext.login). Nếu không có userId → skip enqueue
+// (không cho phép queue vô danh).
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
     console.error('[LocationService] Background task error:', error);
@@ -61,13 +75,17 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (!taskId) {
     return;
   }
+  // QA-FIX-2 / B2: đọc userId từ storage để isolate queue
+  const userIdStr = await storage.getItem('user_id');
+  const userId = userIdStr ? parseInt(userIdStr, 10) : null;
 
   const point = {
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,
-    accuracy: location.coords.accuracy,
-    speed: location.coords.speed,
-    heading: location.coords.heading,
+    // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
+    accuracy: location.coords.accuracy ?? null,
+    speed: location.coords.speed ?? null,
+    heading: location.coords.heading ?? null,
     recorded_at: new Date().toISOString(),
   };
 
@@ -90,10 +108,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     if (isNetworkError || isServerError) {
       // Phần 1 — Lưu vào queue để flush khi có mạng lại
-      const ok = await enqueueLocation(parseInt(taskId, 10), point);
-      const size = await getQueueSize();
-      if (ok) {
-        console.log(`[LocationService] Queued point (offline). Queue size: ${size}`);
+      // QA-FIX-2 / B2: chỉ enqueue nếu có userId (isolate queue)
+      if (userId) {
+        const ok = await enqueueLocation(userId, parseInt(taskId, 10), point);
+        if (ok) {
+          const size = await getQueueSize(userId);
+          console.log(`[LocationService] Queued point (offline). Queue size: ${size}`);
+        }
+      } else {
+        console.warn('[LocationService] Cannot enqueue — no userId (skip offline cache)');
       }
     } else {
       // 4xx error — không queue (sẽ fail mãi)
@@ -104,7 +127,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
 // ====================================================================
 // BACKGROUND TASK — heartbeat (chống tắt máy)
-// Gửi mỗi 30s — nếu backend không nhận > 90s sẽ báo chuông cho parent
+// Gửi mỗi 30s — nếu backend không nhận > threshold sẽ báo chuông cho parent
 // ====================================================================
 TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
   if (error) {
@@ -125,8 +148,9 @@ TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
 
     await apiClient.post('/tracking/heartbeat/', {
       task_id: parseInt(taskId, 10),
-      latitude: lastKnownLocation?.latitude || null,
-      longitude: lastKnownLocation?.longitude || null,
+      // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
+      latitude: lastKnownLocation?.latitude ?? null,
+      longitude: lastKnownLocation?.longitude ?? null,
       battery_level: batteryLevel,
       app_state: AppState.currentState || 'background',
       network_type: '',  // không có API native trong Expo
@@ -145,7 +169,7 @@ TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
  * Xin quyền location từ user.
  * Trả về true nếu đã được cấp.
  */
-export async function requestLocationPermissions(): Promise<boolean> {
+export async function requestLocationPermissions() {
   try {
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
     if (foregroundStatus !== 'granted') {
@@ -173,15 +197,29 @@ export async function requestLocationPermissions(): Promise<boolean> {
  * - Start background heartbeat task (mỗi 30s — chống tắt máy)
  * - Start foreground interval (backup)
  * - Phần 1: init offline queue + register NetInfo listener để flush
+ *
+ * QA-FIX-2 / B2: yêu cầu userId để isolate queue. Nếu không có userId
+ * → không start tracking (tránh queue vô danh).
  */
-export async function startTracking(taskId: number): Promise<boolean> {
-  if (isStarted && currentTaskId === taskId) {
+export async function startTracking(taskId, userId = null) {
+  if (isStarted && currentTaskId === taskId && currentUserId === userId) {
     console.log('[LocationService] Already tracking this task');
     return true;
   }
 
   if (isStarted) {
     await stopTracking();
+  }
+
+  // QA-FIX-2 / B2: resolve userId — ưu tiên param, fallback storage
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const userIdStr = await storage.getItem('user_id');
+    resolvedUserId = userIdStr ? parseInt(userIdStr, 10) : null;
+  }
+  if (!resolvedUserId) {
+    console.error('[LocationService] startTracking: không có userId — không thể track');
+    return false;
   }
 
   const hasPermission = await requestLocationPermissions();
@@ -195,6 +233,7 @@ export async function startTracking(taskId: number): Promise<boolean> {
 
     await storage.setItem('tracking_task_id', String(taskId));
     currentTaskId = taskId;
+    currentUserId = resolvedUserId;
 
     // Start background location task
     if (Platform.OS !== 'web') {
@@ -230,14 +269,15 @@ export async function startTracking(taskId: number): Promise<boolean> {
     }
 
     // Start foreground intervals
-    startForegroundLocationInterval(taskId);
+    startForegroundLocationInterval(taskId, resolvedUserId);
     startForegroundHeartbeatInterval(taskId);
 
     // Gửi heartbeat ngay lần đầu
     sendHeartbeatNow(taskId);
 
     // Phần 1 — Thử flush queue ngay (đề phòng có điểm chờ từ lần trước)
-    flushOfflineQueue();
+    // QA-FIX-2 / B2: chỉ flush queue của user hiện tại
+    flushOfflineQueue(resolvedUserId);
 
     // Lắng nghe AppState change để gửi heartbeat khi app vào nền
     if (!appStateSubscription && Platform.OS !== 'web') {
@@ -251,17 +291,20 @@ export async function startTracking(taskId: number): Promise<boolean> {
     }
 
     // Phần 1 — Register NetInfo listener: khi mạng có lại → flush queue
+    // QA-FIX-2 / B2: chỉ flush queue của user hiện tại (currentUserId)
     if (!netInfoSubscription && Platform.OS !== 'web') {
       netInfoSubscription = NetInfo.addEventListener((state) => {
         if (state.isConnected && state.isInternetReachable) {
           console.log('[LocationService] Network restored → flush offline queue');
-          flushOfflineQueue();
+          if (currentUserId) {
+            flushOfflineQueue(currentUserId);
+          }
         }
       });
     }
 
     isStarted = true;
-    console.log(`[LocationService] Started tracking + heartbeat for task #${taskId}`);
+    console.log(`[LocationService] Started tracking + heartbeat for task #${taskId} (user #${resolvedUserId})`);
     return true;
   } catch (e) {
     console.error('[LocationService] startTracking error:', e);
@@ -279,11 +322,23 @@ export async function startTracking(taskId: number): Promise<boolean> {
  *   - NetInfo listener (khi mạng có lại)
  *   - startTracking() (đề phòng có điểm chờ từ lần trước)
  *   - autoResumeTracking() (khi app mở lại)
+ *
+ * QA-FIX-2 / B1: gửi client_point_id kèm mỗi point → backend idempotent.
+ * QA-FIX-2 / B2: chỉ flush queue của userId chỉ định (isolation).
+ * QA-FIX-2 / B1: parse response inserted_ids/already_exists_ids/rejected
+ * → mobile chỉ xoá row có client_point_id thuộc inserted HOẶC already_exists.
+ *
+ * @param {number} userId - ID của user hiện tại (bắt buộc)
+ * @returns {Promise<number>} số điểm flush thành công
  */
-export async function flushOfflineQueue() {
+export async function flushOfflineQueue(userId) {
+  if (!userId) {
+    console.warn('[LocationService] flushOfflineQueue: userId bắt buộc — skip');
+    return 0;
+  }
   if (isFlushing) {
     console.log('[LocationService] flushOfflineQueue already running — skip');
-    return;
+    return 0;
   }
   isFlushing = true;
   try {
@@ -294,19 +349,22 @@ export async function flushOfflineQueue() {
 
     while (loopCount < MAX_LOOPS) {
       loopCount++;
-      const chunk = await getChunk(CHUNK_SIZE_EXPORT);
+      // QA-FIX-2 / B2: chỉ lấy row của user hiện tại
+      const chunk = await getChunk(userId, CHUNK_SIZE_EXPORT);
       if (!chunk || chunk.length === 0) break;
 
       // Lấy task_id từ điểm đầu chunk (giả định 1 queue cho 1 task đang in_progress)
       const taskId = chunk[0].task_id;
 
-      // Format points cho API
+      // Format points cho API — gửi kèm client_point_id
       const points = chunk.map((row) => ({
+        client_point_id: row.client_point_id,
         latitude: row.latitude,
         longitude: row.longitude,
-        accuracy: row.accuracy,
-        speed: row.speed,
-        heading: row.heading,
+        // QA-FIX-2 / E: dùng ?? null — tọa độ 0 hợp lệ
+        accuracy: row.accuracy ?? null,
+        speed: row.speed ?? null,
+        heading: row.heading ?? null,
         recorded_at: row.recorded_at,
       }));
 
@@ -315,26 +373,62 @@ export async function flushOfflineQueue() {
           task_id: taskId,
           points,
         });
-        const saved = resp.data?.saved || 0;
-        if (saved > 0) {
-          // Xoá các điểm đã gửi thành công khỏi queue
-          const ids = chunk.map((r) => r.id);
-          await deleteByIds(ids);
-          totalFlushed += saved;
-          console.log(`[LocationService] Flushed ${saved} points (loop ${loopCount})`);
-        } else {
-          // Backend báo 0 saved — có lỗi validation, skip chunk này để không loop vô hạn
-          console.warn('[LocationService] Flush returned 0 saved — skip chunk');
-          const ids = chunk.map((r) => r.id);
-          await deleteByIds(ids);
+        // QA-FIX-2 / B1: parse per-point result để xoá đúng row.
+        // - inserted_ids: mới insert thành công → xoá khỏi queue.
+        // - already_exists_ids: đã tồn tại từ trước (retry do mobile không
+        //   nhận response trước) → cũng xoá khỏi queue.
+        // - rejected: điểm invalid → tăng sync_attempts, drop riêng nếu đạt max.
+        // - saved: số điểm thực sự insert (legacy — cho backward compat).
+        const insertedIds = resp.data?.inserted_ids || [];
+        const alreadyExistsIds = resp.data?.already_exists_ids || [];
+        const rejectedList = resp.data?.rejected || [];
+        const savedCount = resp.data?.saved || 0;
+
+        // Tập hợp các client_point_id cần xoá (inserted + already_exists)
+        const idsToDelete = new Set([...insertedIds, ...alreadyExistsIds]);
+
+        // Map client_point_id → row id (SQLite) để xoá theo row id
+        const rowsToDelete = chunk.filter((r) =>
+          r.client_point_id && idsToDelete.has(r.client_point_id)
+        );
+        const rowIdsToDelete = rowsToDelete.map((r) => r.id);
+
+        if (rowIdsToDelete.length > 0) {
+          await deleteByIds(rowIdsToDelete);
+          totalFlushed += rowIdsToDelete.length;
+          console.log(`[LocationService] Flushed ${rowIdsToDelete.length} points (loop ${loopCount})`);
+        }
+
+        // Xử lý rejected: tăng sync_attempts, drop riêng nếu đạt max
+        if (rejectedList.length > 0) {
+          const rejectedClientIds = rejectedList
+            .map((r) => r.client_point_id)
+            .filter((c) => c);
+          const rejectedRows = chunk.filter((r) =>
+            r.client_point_id && rejectedClientIds.includes(r.client_point_id)
+          );
+          const rejectedRowIds = rejectedRows.map((r) => r.id);
+          if (rejectedRowIds.length > 0) {
+            const maxedIds = await incrementAttempts(rejectedRowIds);
+            if (maxedIds.length > 0) {
+              console.warn(`[LocationService] Bỏ qua ${maxedIds.length} điểm vị trí do lỗi liên tục (>= 5 attempts)`);
+              await deleteByIds(maxedIds);
+            }
+            console.warn(`[LocationService] ${rejectedList.length} điểm bị reject — giữ ${rejectedRowIds.length - maxedIds.length} để retry`);
+          }
+        }
+
+        // Nếu backend trả 0 saved + 0 inserted + 0 already_exists → không
+        // có điểm nào hợp lệ → break để tránh loop vô hạn.
+        if (savedCount === 0 && insertedIds.length === 0 && alreadyExistsIds === 0) {
+          console.warn('[LocationService] Flush returned 0 saved + 0 already_exists — break');
+          break;
         }
       } catch (e) {
         const status = e?.response?.status;
         if (status && status < 500) {
           // QA-FIX-1 / Bug 1.1: 4xx — KHÔNG xoá cả chunk.
           // Tăng sync_attempts từng điểm, drop riêng điểm đã đạt MAX (5).
-          // Trước đây xoá cả chunk → mất dữ liệu vị trí thật (1 điểm hỏng
-          // kéo theo cả chunk 200 điểm bị drop).
           const ids = chunk.map((r) => r.id);
           const maxedIds = await incrementAttempts(ids);
           if (maxedIds.length > 0) {
@@ -352,7 +446,7 @@ export async function flushOfflineQueue() {
       }
     }
 
-    const remaining = await getQueueSize();
+    const remaining = await getQueueSize(userId);
     if (totalFlushed > 0) {
       console.log(`[LocationService] ✅ Flushed total ${totalFlushed} points. Remaining in queue: ${remaining}`);
     }
@@ -367,8 +461,12 @@ export async function flushOfflineQueue() {
 
 /**
  * Dừng tracking + heartbeat.
+ *
+ * QA-FIX-2 / G: clear tất cả subscriptions + storage để logout sạch.
+ * Không xóa queue SQLite ở đây — caller quyết định (logout mới xóa queue,
+ * stop tracking do task completed thì giữ queue để flush sau nếu còn điểm).
  */
-export async function stopTracking(): Promise<void> {
+export async function stopTracking() {
   if (!isStarted) return;
 
   try {
@@ -407,6 +505,7 @@ export async function stopTracking(): Promise<void> {
 
     await storage.deleteItem('tracking_task_id');
     currentTaskId = null;
+    currentUserId = null;
     lastKnownLocation = null;
     isStarted = false;
     console.log('[LocationService] Stopped tracking + heartbeat');
@@ -415,12 +514,35 @@ export async function stopTracking(): Promise<void> {
   }
 }
 
-export function isTracking(): boolean {
+/**
+ * QA-FIX-2 / G: cleanup toàn bộ khi logout — stop tracking + xóa queue
+ * của user hiện tại + clear storage. Tránh worker cũ tiếp tục gửi
+ * heartbeat/location sau logout, tránh user mới auto-resume task của user cũ.
+ *
+ * @param {number} userId - ID của user đang logout
+ */
+export async function cleanupOnLogout(userId) {
+  console.log(`[LocationService] cleanupOnLogout for user #${userId}`);
+  await stopTracking();
+  if (userId) {
+    // Xóa queue SQLite của user cũ — không để user mới flush nhầm
+    await clearByUser(userId);
+  }
+  // Clear mọi storage tracking khác để user mới bắt đầu sạch
+  await storage.deleteItem('tracking_task_id');
+  // (Không xóa access_token/refresh_token — AuthContext.logout đã làm)
+}
+
+export function isTracking() {
   return isStarted;
 }
 
-export function getCurrentTaskId(): number | null {
+export function getCurrentTaskId() {
   return currentTaskId;
+}
+
+export function getCurrentUserId() {
+  return currentUserId;
 }
 
 export function getCurrentLocation() {
@@ -438,12 +560,16 @@ export function getCurrentLocation() {
  * Flow:
  * 1. Đọc tracking_task_id từ storage
  * 2. Nếu có → check task còn in_progress không (gọi API)
- * 3. Nếu còn → startTracking(taskId)
+ * 3. Nếu còn → startTracking(taskId, userId)
  * 4. Nếu task đã completed/cancelled → clear storage (không resume)
+ *
+ * QA-FIX-2 / B2: đọc user_id từ storage để truyền vào startTracking.
+ * QA-FIX-2 / G: nếu user_id không khớp user hiện tại → không resume
+ * (tránh user mới auto-resume task của user cũ).
  *
  * @returns {Promise<number|null>} taskId đang resume, hoặc null
  */
-export async function autoResumeTracking(): Promise<number | null> {
+export async function autoResumeTracking() {
   try {
     const savedTaskId = await storage.getItem('tracking_task_id');
     if (!savedTaskId) {
@@ -454,6 +580,15 @@ export async function autoResumeTracking(): Promise<number | null> {
     const taskId = parseInt(savedTaskId, 10);
     if (isNaN(taskId)) {
       console.warn('[LocationService] autoResume: invalid task_id:', savedTaskId);
+      await storage.deleteItem('tracking_task_id');
+      return null;
+    }
+
+    // QA-FIX-2 / B2: đọc userId từ storage
+    const userIdStr = await storage.getItem('user_id');
+    const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    if (!userId) {
+      console.warn('[LocationService] autoResume: no user_id — clear storage');
       await storage.deleteItem('tracking_task_id');
       return null;
     }
@@ -480,14 +615,14 @@ export async function autoResumeTracking(): Promise<number | null> {
         }
 
         // Resume tracking
-        const ok = await startTracking(taskId);
+        const ok = await startTracking(taskId, userId);
         if (ok) {
           console.log(`[LocationService] autoResume: ✅ tracking resumed for task #${taskId}`);
           // Phần 1 — Flush queue ngay khi resume (đề phòng có điểm chờ từ
           // lần chạy trước khi app bị kill). NetInfo listener có thể đã miss
           // sự kiện mạng có lại trong lúc app đóng.
           try {
-            await flushOfflineQueue();
+            await flushOfflineQueue(userId);
           } catch (e) {
             console.warn('[LocationService] autoResume: initial flush failed:', e.message);
           }
@@ -505,7 +640,7 @@ export async function autoResumeTracking(): Promise<number | null> {
     } catch (e) {
       // API error (network/404) → thử resume anyway (có thể offline)
       console.warn('[LocationService] autoResume: check task failed → resume anyway:', e.message);
-      const ok = await startTracking(taskId);
+      const ok = await startTracking(taskId, userId);
       return ok ? taskId : null;
     }
   } catch (e) {
@@ -517,7 +652,7 @@ export async function autoResumeTracking(): Promise<number | null> {
 /**
  * Check xem có task pending resume không (không start, chỉ check).
  */
-export async function hasPendingResumeTask(): Promise<boolean> {
+export async function hasPendingResumeTask() {
   try {
     const savedTaskId = await storage.getItem('tracking_task_id');
     return !!savedTaskId;
@@ -529,14 +664,14 @@ export async function hasPendingResumeTask(): Promise<boolean> {
 // ====================================================================
 // FOREGROUND INTERVALS — backup khi app mở
 // ====================================================================
-let locationIntervalId: any = null;
-let heartbeatIntervalId: any = null;
+let locationIntervalId = null;
+let heartbeatIntervalId = null;
 
-function startForegroundLocationInterval(taskId: number) {
+function startForegroundLocationInterval(taskId, userId) {
   if (locationIntervalId) clearInterval(locationIntervalId);
-  sendCurrentLocation(taskId);
+  sendCurrentLocation(taskId, userId);
   locationIntervalId = setInterval(() => {
-    sendCurrentLocation(taskId);
+    sendCurrentLocation(taskId, userId);
   }, UPDATE_INTERVAL_MS);
 }
 
@@ -547,7 +682,7 @@ function stopForegroundLocationInterval() {
   }
 }
 
-function startForegroundHeartbeatInterval(taskId: number) {
+function startForegroundHeartbeatInterval(taskId) {
   if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
   // Heartbeat interval = 30s (foreground backup)
   heartbeatIntervalId = setInterval(() => {
@@ -562,7 +697,7 @@ function stopForegroundHeartbeatInterval() {
   }
 }
 
-async function sendCurrentLocation(taskId: number) {
+async function sendCurrentLocation(taskId, userId) {
   try {
     if (Platform.OS === 'web') return;
 
@@ -573,9 +708,10 @@ async function sendCurrentLocation(taskId: number) {
     const point = {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
-      accuracy: location.coords.accuracy,
-      speed: location.coords.speed,
-      heading: location.coords.heading,
+      // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
+      accuracy: location.coords.accuracy ?? null,
+      speed: location.coords.speed ?? null,
+      heading: location.coords.heading ?? null,
       recorded_at: new Date().toISOString(),
     };
 
@@ -596,17 +732,20 @@ async function sendCurrentLocation(taskId: number) {
 
     if (isNetworkError || isServerError) {
       // Phần 1 — Lưu vào queue để flush khi có mạng lại
-      const ok = await enqueueLocation(taskId, {
-        latitude: location?.coords?.latitude,
-        longitude: location?.coords?.longitude,
-        accuracy: location?.coords?.accuracy,
-        speed: location?.coords?.speed,
-        heading: location?.coords?.heading,
-        recorded_at: new Date().toISOString(),
-      });
-      if (ok) {
-        const size = await getQueueSize();
-        console.log(`[LocationService] FG location queued (offline). Size: ${size}`);
+      // QA-FIX-2 / B2: chỉ enqueue nếu có userId
+      if (userId) {
+        const ok = await enqueueLocation(userId, taskId, {
+          latitude: location?.coords?.latitude ?? null,
+          longitude: location?.coords?.longitude ?? null,
+          accuracy: location?.coords?.accuracy ?? null,
+          speed: location?.coords?.speed ?? null,
+          heading: location?.coords?.heading ?? null,
+          recorded_at: new Date().toISOString(),
+        });
+        if (ok) {
+          const size = await getQueueSize(userId);
+          console.log(`[LocationService] FG location queued (offline). Size: ${size}`);
+        }
       }
     } else {
       console.warn('[LocationService] Foreground location failed (4xx):', status);
@@ -614,7 +753,7 @@ async function sendCurrentLocation(taskId: number) {
   }
 }
 
-async function sendHeartbeatNow(taskId: number) {
+async function sendHeartbeatNow(taskId) {
   try {
     let batteryLevel = null;
     try {
@@ -624,8 +763,9 @@ async function sendHeartbeatNow(taskId: number) {
 
     await apiClient.post('/tracking/heartbeat/', {
       task_id: taskId,
-      latitude: lastKnownLocation?.latitude || null,
-      longitude: lastKnownLocation?.longitude || null,
+      // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
+      latitude: lastKnownLocation?.latitude ?? null,
+      longitude: lastKnownLocation?.longitude ?? null,
       battery_level: batteryLevel,
       app_state: AppState.currentState || 'active',
       network_type: '',

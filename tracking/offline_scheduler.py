@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
 ║   Device Offline Check Scheduler                                   ║
-║   Chạy mỗi 1 phút — quét heartbeat có last_seen > 90s              ║
+║   Chạy mỗi 1 phút — quét heartbeat quá TRACKING_OFFLINE_THRESHOLD ║
 ║   → tạo DeviceOfflineAlert + push priority=high cho phụ huynh       ║
 ║                                                                    ║
 ║   Chỉ chạy trên Render (production) — local dev không chạy.       ║
@@ -17,6 +17,10 @@ from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+
+# QA-FIX-2 / C: import OFFLINE_THRESHOLD_SECONDS để log đúng threshold
+# (trước đây hardcode "90s" trong log message).
+from tracking.services import OFFLINE_THRESHOLD_SECONDS
 
 logger = logging.getLogger('educarelink.tracking.offline_scheduler')
 
@@ -101,7 +105,7 @@ def start_offline_scheduler():
         logger.info(
             f"[Offline Scheduler] STARTED | "
             f"Interval: every {CHECK_INTERVAL_MINUTES} min | "
-            f"Threshold: 90s"
+            f"Threshold: {OFFLINE_THRESHOLD_SECONDS}s"
         )
 
         # Chạy lần đầu sau 30 giây (để server sẵn sàng)

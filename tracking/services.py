@@ -170,7 +170,11 @@ def update_worker_location(*, task: Task, worker: User,
         geofence_lng = task.geofence_lng if (task.geofence_lng is not None) else task.longitude
         geofence_radius = task.geofence_radius if (task.geofence_radius and task.geofence_radius > 0) else GEOFENCE_RADIUS_METERS
 
-        if geofence_lat and geofence_lng:
+        # QA-FIX-2 / E: dùng `is not None` thay vì `if geofence_lat` —
+        # tọa độ 0 là hợp lệ (ví dụ: nhà ở kinh độ 0 đi qua Anh/Pháp),
+        # trước đây `if 0` = False → fallback về task.latitude → bỏ sót
+        # geofence check hoặc dùng sai tâm vùng an toàn.
+        if geofence_lat is not None and geofence_lng is not None:
             distance = haversine_distance(
                 float(latitude), float(longitude),
                 float(geofence_lat), float(geofence_lng)
@@ -179,11 +183,18 @@ def update_worker_location(*, task: Task, worker: User,
 
             # ⚡ AI PREDICTIVE WARNING — báo TRƯỚC khi rời vùng (80% radius)
             # Nếu carepartner đang ở 80-100% bán kính → cảnh báo sớm "sắp rời vùng"
+            #
+            # QA-FIX-2 / E: dùng live.predictive_warned (persist DB) thay vì
+            # thuộc tính tạm `_predictive_warned`. Trước đây mỗi GPS update
+            # tạo instance LiveLocation mới → flag luôn reset → push lặp vô hạn
+            # "sắp rời vùng an toàn" cho cùng 1 task. Giờ flag persist → chỉ
+            # push 1 lần khi vào vùng 80-100%, clear khi về vùng an toàn (< 80%)
+            # hoặc rời vùng (> 100%).
             warning_threshold = geofence_radius * 0.8
             if not outside and distance >= warning_threshold and not live.is_outside_geofence:
-                # Chỉ warning 1 lần (đánh dấu via geofence_warned_at nếu chưa có)
-                if not hasattr(live, '_predictive_warned') or not live._predictive_warned:
-                    live._predictive_warned = True
+                if not live.predictive_warned:
+                    live.predictive_warned = True
+                    live.save(update_fields=['predictive_warned'])
                     _notify_user(
                         task.parent,
                         title="⚠️ AI Cảnh báo: Carepartner sắp rời vùng an toàn!",
@@ -198,13 +209,26 @@ def update_worker_location(*, task: Task, worker: User,
                             'priority': 'high',
                         }
                     )
+            elif not outside and distance < warning_threshold and live.predictive_warned:
+                # QA-FIX-2 / E: carepartner về vùng an toàn (< 80% radius)
+                # → clear predictive_warned để lần tới vào vùng 80-100% sẽ warn lại.
+                # Trước đây chỉ clear khi `is_outside_geofence=True` (về từ ngoài vào)
+                # → nếu carepartner chỉ đi vào vùng 80-100% rồi quay về (không rời hẳn)
+                # thì flag không bao giờ clear → push warning chỉ 1 lần đúng, nhưng
+                # nếu ca làm dài → carepartner ra vào vùng warning nhiều lần → không
+                # warn lại được. Giờ clear ngay khi về < 80%.
+                live.predictive_warned = False
+                live.save(update_fields=['predictive_warned'])
 
             if outside and not live.is_outside_geofence:
                 # Vừa rời vùng → push cảnh báo (chỉ fire lần đầu; các poll
                 # tiếp theo khi vẫn ngoài vùng sẽ thấy flag đã True → skip).
                 live.is_outside_geofence = True
                 live.geofence_warned_at = timezone.now()
-                live.save(update_fields=['is_outside_geofence', 'geofence_warned_at'])
+                # QA-FIX-2 / E: clear predictive_warned khi đã rời vùng (để
+                # lần quay lại vùng 80-100% sẽ warn lại).
+                live.predictive_warned = False
+                live.save(update_fields=['is_outside_geofence', 'geofence_warned_at', 'predictive_warned'])
                 _notify_user(
                     task.parent,
                     title="🚨🚨🚨 CẢNH BÁO: Carepartner rời vùng an toàn!",
@@ -222,7 +246,10 @@ def update_worker_location(*, task: Task, worker: User,
             elif not outside and live.is_outside_geofence:
                 # Vừa quay lại vùng → clear flag + thông báo yên tâm
                 live.is_outside_geofence = False
-                live.save(update_fields=['is_outside_geofence'])
+                # QA-FIX-2 / E: clear predictive_warned khi về vùng an toàn
+                # (< 80% radius) — lần tới vào vùng 80-100% sẽ warn lại.
+                live.predictive_warned = False
+                live.save(update_fields=['is_outside_geofence', 'predictive_warned'])
                 _notify_user(
                     task.parent,
                     title="✅ Carepartner đã quay lại vùng an toàn",
@@ -450,7 +477,7 @@ def check_offline_devices():
       - device_status='online'
       - task.status='in_progress'
       - consent='granted'
-      - last_seen < now - OFFLINE_THRESHOLD_SECONDS (90s)
+      - last_seen < now - OFFLINE_THRESHOLD_SECONDS (mặc định 60s)
 
     Với mỗi heartbeat thỏa mãn → tạo DeviceOfflineAlert + push priority=high cho parent.
 
@@ -1016,7 +1043,7 @@ def cancel_verification_check(*, check_id: int, requester: User,
     Admin HOẶC parent sở hữu task có thể huỷ verification check đang pending.
 
     QA-FIX-1 / Spec 2.4: trước đây check pending chỉ có thể chờ timeout
-    (90s). Nếu parent phát hiện false alarm hoặc task đã completed, không
+    (90s — RESPOND_TIMEOUT_SECONDS). Nếu parent phát hiện false alarm hoặc task đã completed, không
     có cách chủ động dừng check → push vẫn retry 5 lần trong 90s + 30s grace.
 
     Worker (carepartner) KHÔNG được huỷ — phải nhập mã hoặc chờ timeout.

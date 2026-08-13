@@ -753,19 +753,56 @@ class QAFix1TestCase(TestCase):
     # ═══════════════════════════════════════════════════════════════════
 
     def test_sup_1_max_retry_logs_warning_per_alert(self):
-        """Bổ sung 1: alert đạt max retry → logger.warning cho từng alert (không phải chỉ đếm)."""
-        # Tạo 2 alert đạt max retry (=5)
-        hb = DeviceHeartbeat.objects.create(
+        """Bổ sung 1: alert đạt max retry → logger.warning cho từng alert (không phải chỉ đếm).
+
+        QA-FIX-2 / C: sau khi thêm unique constraint (1 active alert per task),
+        không thể tạo 2 active alert cho cùng task. Test này dùng 2 task khác nhau
+        để verify logger.warning vẫn log per-alert.
+        """
+        # Tạo thêm 1 task + worker khác để có 2 alert active (mỗi task 1 alert)
+        parent2 = User.objects.create_user(
+            username='qa_parent2', password='parent_pass_123',
+            role='parent', email='qa_parent2@test.com',
+        )
+        worker2 = User.objects.create_user(
+            username='qa_worker2', password='worker_pass_123',
+            role='worker', email='qa_worker2@test.com',
+        )
+        task2 = Task.objects.create(
+            title='QA Task 2', description='Test', price=100000,
+            status='in_progress', parent=parent2, category=self.cat,
+            location='HCM', latitude=10.1, longitude=106.1,
+            scheduled_time=timezone.now(),
+        )
+        TaskApplication.objects.create(
+            task=task2, worker=worker2, status='accepted'
+        )
+        LocationConsent.objects.create(
+            task=task2, worker=worker2, consent='granted',
+            granted_at=timezone.now(),
+        )
+
+        # Tạo 1 alert active đạt max retry cho mỗi task
+        hb1 = DeviceHeartbeat.objects.create(
             task=self.task, worker=self.worker,
             last_seen=timezone.now() - timedelta(seconds=120),
         )
-        for i in range(2):
-            DeviceOfflineAlert.objects.create(
-                task=self.task, worker=self.worker, heartbeat=hb,
-                last_seen=hb.last_seen, status='active',
-                push_retry_count=5,  # đã đạt max
-                acknowledged_at=None,
-            )
+        DeviceOfflineAlert.objects.create(
+            task=self.task, worker=self.worker, heartbeat=hb1,
+            last_seen=hb1.last_seen, status='active',
+            push_retry_count=5,  # đã đạt max
+            acknowledged_at=None,
+        )
+        hb2 = DeviceHeartbeat.objects.create(
+            task=task2, worker=worker2,
+            last_seen=timezone.now() - timedelta(seconds=120),
+        )
+        DeviceOfflineAlert.objects.create(
+            task=task2, worker=worker2, heartbeat=hb2,
+            last_seen=hb2.last_seen, status='active',
+            push_retry_count=5,  # đã đạt max
+            acknowledged_at=None,
+        )
 
         # Patch logger để capture warnings
         import tracking.services as svc_mod

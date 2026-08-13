@@ -70,9 +70,37 @@ services:
       # Backend scheduler quét mỗi 1 phút — nếu last_seen > 60s → push chuông cho phụ huynh
       - key: TRACKING_HEARTBEAT_INTERVAL
         value: "30"
+      # QA-FIX-2 / C: TRACKING_OFFLINE_THRESHOLD là nguồn cấu hình DUY NHẤT.
+      # Không hardcode 60s hay 90s trong code/UI. API trả về giá trị này.
       - key: TRACKING_OFFLINE_THRESHOLD
         value: "60"
       - key: TRACKING_OFFLINE_CHECK_ENABLED
         value: "true"
       - key: TRACKING_OFFLINE_CHECK_INTERVAL
         value: "1"
+      # QA-FIX-2 / C: schedulers KHÔNG chạy trong web worker mặc định
+      # (tránh duplicate alerts khi WEB_CONCURRENCY=2). Chạy schedulers qua
+      # background worker riêng hoặc Render cron job:
+      #   python manage.py run_tracking_schedulers --once
+      # Set TRACKING_SCHEDULER_IN_WEB_WORKER=true để override (debug only).
+      - key: TRACKING_SCHEDULER_IN_WEB_WORKER
+        value: "false"
+      # ── Random Verification Check (xác minh ngẫu nhiên PIN) ──
+      # Carepartner phải nhập PIN 4-6 số khi hệ thống yêu cầu bất ngờ
+      - key: VERIFICATION_CHECK_ENABLED
+        value: "true"
+      - key: VERIFICATION_TARGET_CHECKS_PER_SHIFT
+        value: "2"
+      - key: VERIFICATION_ESTIMATED_SHIFT_MINUTES
+        value: "180"
+      - key: VERIFICATION_MIN_MINUTES_BETWEEN_CHECKS
+        value: "15"
+      - key: VERIFICATION_RESPOND_TIMEOUT_SECONDS
+        value: "90"
+      - key: VERIFICATION_CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+        value: "2"
+      - key: VERIFICATION_MAX_WRONG_ATTEMPTS
+        value: "3"
+      - key: VERIFICATION_CHECK_INTERVAL_MINUTES
+        value: "1"
+
