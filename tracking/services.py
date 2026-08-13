@@ -633,6 +633,130 @@ def acknowledge_offline_alert(*, alert_id: int, requester: User) -> DeviceOfflin
     return alert
 
 
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 3 — RANDOM VERIFICATION CHECK
+#  Service: respond_verification_check (CarePartner nhập mã PIN)
+# ═══════════════════════════════════════════════════════════════════
+
+from django.contrib.auth.hashers import check_password  # noqa: E402
+
+# Import constants từ verification_scheduler (tránh circular import: dùng lazy import trong hàm)
+def _get_verification_constants():
+    from .verification_scheduler import (
+        RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS,
+    )
+    return RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS
+
+
+def set_verification_pin(*, user: User, pin: str, current_password: str = None) -> User:
+    """
+    CarePartner đặt/đổi mã cá nhân (PIN 4-6 số).
+    - Validate PIN: 4-6 chữ số
+    - Validate current_password: nếu user đã có PIN → bắt buộc xác thực lại mật khẩu tài khoản
+      (tránh ai cầm máy đổi PIN tuỳ tiện)
+    - Hash PIN bằng make_password — KHÔNG lưu plaintext
+    """
+    import re
+    from django.contrib.auth.hashers import make_password
+    from django.contrib.auth import authenticate
+
+    # Validate PIN format: 4-6 chữ số
+    if not re.match(r'^\d{4,6}$', pin):
+        raise ValueError("Mã cá nhân phải là 4-6 chữ số.")
+
+    # Validate current_password (xác thực lại mật khẩu tài khoản)
+    if not current_password:
+        raise PermissionError("Vui lòng nhập mật khẩu tài khoản để xác nhận.")
+
+    # Check mật khẩu tài khoản (username + password)
+    user_auth = authenticate(username=user.username, password=current_password)
+    if not user_auth or user_auth.id != user.id:
+        raise PermissionError("Mật khẩu tài khoản không đúng.")
+
+    user.verification_pin_hash = make_password(pin)
+    user.verification_pin_set_at = timezone.now()
+    user.save(update_fields=['verification_pin_hash', 'verification_pin_set_at'])
+    logger.info(f"[tracking] Verification PIN set for User#{user.id}")
+    return user
+
+
+def respond_verification_check(*, check_id: int, requester: User,
+                                pin: str, latitude: float = None,
+                                longitude: float = None) -> 'RandomVerificationCheck':
+    """
+    CarePartner phản hồi RandomVerificationCheck — nhập mã PIN.
+    Logic:
+      - Nếu quá respond_deadline → trả lỗi, set 'timeout' nếu chưa set
+      - check_password(pin, worker.verification_pin_hash) đúng → 'confirmed'
+      - Sai → tăng attempts; >= MAX_WRONG_ATTEMPTS → 'wrong_code' + báo admin
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    # Verify requester là worker của check
+    if check.worker_id != requester.id:
+        raise PermissionError("Bạn không phải là carepartner được yêu cầu xác minh.")
+
+    now = timezone.now()
+
+    # Nếu check đã xử lý (confirmed/wrong_code/timeout) → không cho phản hồi lại
+    if check.status != 'pending':
+        raise ValueError(f"Yêu cầu xác minh đã kết thúc với trạng thái: {check.get_status_display()}.")
+
+    # Nếu quá deadline → set 'timeout' + trả lỗi
+    if now > check.respond_deadline:
+        check.status = 'timeout'
+        check.save(update_fields=['status'])
+        raise ValueError("Đã hết thời gian phản hồi. Yêu cầu xác minh đã chuyển trạng thái timeout.")
+
+    # Verify worker đã đặt PIN
+    if not requester.verification_pin_hash:
+        raise PermissionError("Bạn chưa đặt mã cá nhân. Vui lòng đặt mã trước khi phản hồi.")
+
+    # Check PIN
+    _, MAX_WRONG_ATTEMPTS = _get_verification_constants()
+    if check_password(pin, requester.verification_pin_hash):
+        # Đúng mã → confirmed
+        check.status = 'confirmed'
+        check.responded_at = now
+        check.response_lat = Decimal(str(latitude)) if latitude else None
+        check.response_lng = Decimal(str(longitude)) if longitude else None
+        check.save(update_fields=['status', 'responded_at', 'response_lat', 'response_lng'])
+        logger.info(f"[tracking] Verification Check#{check.id} confirmed by User#{requester.id}")
+        return check
+    else:
+        # Sai mã → tăng attempts
+        check.attempts += 1
+        if check.attempts >= MAX_WRONG_ATTEMPTS:
+            check.status = 'wrong_code'
+            check.responded_at = now
+            check.save(update_fields=['attempts', 'status', 'responded_at'])
+
+            # Báo admin (nghi ngờ không phải đúng CarePartner đang cầm máy)
+            try:
+                admin_users = User.objects.filter(is_staff=True, is_active=True)
+                for admin in admin_users:
+                    Notification.objects.create(
+                        recipient=admin,
+                        title="🚨 CarePartner nhập sai mã xác minh",
+                        message=f"Task '{check.task.title}' (#{check.task.id}) — carepartner "
+                                f"{check.worker.username} đã nhập sai mã {check.attempts} lần liên tiếp. "
+                                f"Có dấu hiệu không phải đúng người đang cầm máy — kiểm tra ngay!",
+                    )
+            except Exception:
+                pass
+            logger.warning(f"[tracking] Verification Check#{check.id} WRONG_CODE (User#{requester.id})")
+            raise ValueError(f"Bạn đã nhập sai mã {check.attempts} lần. Yêu cầu đã bị khoá — admin đã được báo.")
+        else:
+            check.save(update_fields=['attempts'])
+            remaining = MAX_WRONG_ATTEMPTS - check.attempts
+            raise ValueError(f"Mã không đúng. Còn {remaining} lần thử.")
+
+
 def clear_task_heartbeat(task: Task):
     """
     Được gọi khi task completed/cancelled — clear heartbeat + close active alerts.

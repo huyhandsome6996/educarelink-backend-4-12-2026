@@ -9,6 +9,7 @@ import { updateCertificate } from '../../api/auth';
 import { submitCredential, requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
+import VerificationPinSetupModal from '../../components/VerificationPinSetupModal';
 
 export default function WorkerProfileScreen() {
   const { user, logout } = useAuth();
@@ -34,6 +35,9 @@ export default function WorkerProfileScreen() {
     address: user?.address || '',
   });
   const [changeSubmitting, setChangeSubmitting] = React.useState(false);
+
+  // === Phần 3 — Modal đặt/đổi mã PIN cá nhân ===
+  const [pinModalVisible, setPinModalVisible] = React.useState(false);
 
   // Sync changeForm khi user thay đổi (vd: user load xong sau khi mount).
   React.useEffect(() => {
@@ -290,6 +294,30 @@ export default function WorkerProfileScreen() {
           ))}
         </View>
 
+        {/* === Phần 3 — Mã cá nhân (PIN) cho xác minh ngẫu nhiên === */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setPinModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: (COLORS.primary || '#F26522') + '15' }]}>
+              <Ionicons name="key-outline" size={20} color={COLORS.primary || '#F26522'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionText}>
+                {user?.has_verification_pin ? 'Đổi mã cá nhân' : '🔐 Đặt mã cá nhân (bắt buộc)'}
+              </Text>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted || '#9CA3AF', marginTop: 2 }}>
+                {user?.has_verification_pin
+                  ? 'Đã đặt — hệ thống sẽ yêu cầu nhập mã ngẫu nhiên trong ca làm'
+                  : '⚠️ Chưa đặt mã — không thể nhận việc'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        </View>
+
         {/* Logout */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutRow}
@@ -314,6 +342,18 @@ export default function WorkerProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* === Phần 3 — Modal đặt/đổi mã PIN === */}
+      <VerificationPinSetupModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        isChange={!!user?.has_verification_pin}
+        onSuccess={() => {
+          // Có thể refresh user object ở đây nếu AuthContext có hàm refresh
+          // (tạm thời chỉ đóng modal — user.has_verification_pin sẽ được refresh
+          // khi user đăng nhập lại hoặc khi AuthContext fetch lại)
+        }}
+      />
 
       {/* Modal: Submit Credential */}
       <Modal visible={credModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCredModalVisible(false)}>

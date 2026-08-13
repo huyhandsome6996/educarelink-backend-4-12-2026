@@ -9,6 +9,13 @@ from .views import (
     HeartbeatAPIView, DeviceStatusAPIView, OfflineAlertsListAPIView,
     AdminRunOfflineCheckAPIView, AcknowledgeOfflineAlertAPIView,
     AdminRunRetryPushAPIView,
+    # Phan 3 — Random Verification Check
+    SetVerificationPinAPIView, PendingVerificationCheckAPIView,
+    RespondVerificationCheckAPIView, AdminListVerificationChecksAPIView,
+    AdminTriggerVerificationCheckAPIView, AdminRunVerificationCheckAPIView,
+    AdminVerificationSchedulerStatsAPIView,
+    # Phan 1 — Batch location (offline cache sync)
+    BatchLocationAPIView,
 )
 
 urlpatterns = [
@@ -19,6 +26,8 @@ urlpatterns = [
     path('tracking/consent/', GrantConsentAPIView.as_view(), name='tracking-grant-consent'),
     path('tracking/consent/<int:task_id>/revoke/', RevokeConsentAPIView.as_view(), name='tracking-revoke-consent'),
     path('tracking/location/', UpdateLocationAPIView.as_view(), name='tracking-update-location'),
+    # Phan 1 — Batch location (cache offline + sync khi có mạng lại)
+    path('tracking/location/batch/', BatchLocationAPIView.as_view(), name='tracking-batch-location'),
 
     # Parent
     path('tracking/<int:task_id>/live/', LiveLocationAPIView.as_view(), name='tracking-live'),
@@ -37,6 +46,22 @@ urlpatterns = [
     # Phan 2 — Parent acknowledge offline alert (dừng retry push)
     path('tracking/<int:task_id>/offline-alerts/<int:alert_id>/acknowledge/',
          AcknowledgeOfflineAlertAPIView.as_view(), name='tracking-acknowledge-offline-alert'),
+
+    # === Phan 3 — Random Verification Check ===
+    # Carepartner đặt/đổi mã PIN
+    path('tracking/verification-pin/set/', SetVerificationPinAPIView.as_view(), name='tracking-set-verification-pin'),
+    # Carepartner poll lấy check pending của mình
+    path('tracking/verification-checks/pending/', PendingVerificationCheckAPIView.as_view(), name='tracking-pending-verification-check'),
+    # Carepartner phản hồi check
+    path('tracking/verification-checks/<int:check_id>/respond/', RespondVerificationCheckAPIView.as_view(), name='tracking-respond-verification-check'),
+    # Admin — list all checks (filter worker/task/status)
+    path('tracking/admin/verification-checks/', AdminListVerificationChecksAPIView.as_view(), name='tracking-admin-verification-checks'),
+    # Admin — trigger check thủ công cho 1 task (debug, chỉ khi DEBUG=True)
+    path('tracking/admin/trigger-verification-check/', AdminTriggerVerificationCheckAPIView.as_view(), name='tracking-admin-trigger-verification-check'),
+    # Admin — chạy full verification job (debug)
+    path('tracking/admin/run-verification-check/', AdminRunVerificationCheckAPIView.as_view(), name='tracking-admin-run-verification-check'),
+    # Admin — scheduler stats
+    path('tracking/admin/verification-scheduler/stats/', AdminVerificationSchedulerStatsAPIView.as_view(), name='tracking-admin-verification-scheduler-stats'),
 
     # Admin
     path('tracking/admin/overview/', AdminTrackingOverviewAPIView.as_view(), name='tracking-admin-overview'),
