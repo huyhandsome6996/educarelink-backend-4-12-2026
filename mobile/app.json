@@ -69,6 +69,7 @@
         }
       ],
       "expo-notifications",
+      "expo-sqlite",
       [
         "expo-build-properties",
         {

@@ -253,11 +253,19 @@ def get_location_history(*, task: Task, requester: User, limit: int = 1000):
     """
     Parent lấy lịch sử toàn bộ vị trí (lưu vĩnh viễn).
     Trả về list of dict cho frontend render polyline.
+
+    Phần 1: ưu tiên client_recorded_at nếu có (cho batch offline sync),
+    fallback về recorded_at (server timestamp).
     """
     if task.parent_id != requester.id:
         raise PermissionError("Bạn không sở hữu task này.")
 
-    qs = LocationHistory.objects.filter(task=task).order_by('recorded_at')[:limit]
+    # Sắp xếp theo client_recorded_at nếu có, fallback recorded_at
+    # Dùng Coalesce trong DB để sort đúng thứ tự thời gian thực
+    from django.db.models import F, Func, Value
+    qs = LocationHistory.objects.filter(task=task).order_by(
+        Func(F('client_recorded_at'), F('recorded_at'), function='COALESCE')
+    )[:limit]
     return [
         {
             'id': h.id,
@@ -266,7 +274,10 @@ def get_location_history(*, task: Task, requester: User, limit: int = 1000):
             'accuracy': h.accuracy,
             'speed': h.speed,
             'heading': h.heading,
-            'recorded_at': h.recorded_at.isoformat(),
+            # Trả về client_recorded_at nếu có (đúng thời điểm GPS capture),
+            # fallback recorded_at (thời điểm server nhận)
+            'recorded_at': (h.client_recorded_at or h.recorded_at).isoformat(),
+            'client_recorded_at': h.client_recorded_at.isoformat() if h.client_recorded_at else None,
         }
         for h in qs
     ]

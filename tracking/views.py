@@ -811,12 +811,12 @@ class BatchLocationAPIView(APIView):
         last_point = parsed[-1]  # điểm mới nhất
 
         # Insert LocationHistory với bulk_create.
-        # Lưu ý về LocationHistory.recorded_at (auto_now_add=True):
-        #   - bulk_create KHÔNG gọi .save() → auto_now_add KHÔNG tự set.
-        #   - Khi ta set obj.recorded_at = parsed value trước bulk_create,
-        #     value đó được dùng trong INSERT — đúng như mong muốn.
-        #   - Nếu để field trống, INSERT sẽ fail (NOT NULL constraint).
-        # → Đây là behavior phù hợp cho batch insert với recorded_at quá khứ.
+        # Phần 1: LocationHistory.recorded_at = auto_now_add (server timestamp).
+        # Để lưu timestamp client-side (quá khứ), ta dùng field riêng
+        # `client_recorded_at` — set trực tiếp trên object trước bulk_create.
+        # bulk_create không trigger auto_now_add nhưng cũng không set field
+        # auto → để recorded_at tự set bằng now() (default DB behavior),
+        # còn client_recorded_at = parsed value.
         objs_to_create = []
         for p in parsed:
             obj = LocationHistory(
@@ -827,9 +827,8 @@ class BatchLocationAPIView(APIView):
                 accuracy=p['accuracy'],
                 speed=p['speed'],
                 heading=p['heading'],
+                client_recorded_at=p['recorded_at'],
             )
-            # Override recorded_at trực tiếp (bulk_create tôn trọng value này)
-            obj.recorded_at = p['recorded_at']
             objs_to_create.append(obj)
 
         try:

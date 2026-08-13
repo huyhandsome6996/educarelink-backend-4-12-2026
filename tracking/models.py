@@ -118,6 +118,15 @@ class LocationHistory(models.Model):
     Lịch sử toàn bộ vị trí carepartner đã gửi (lưu vĩnh viễn).
     Dùng để parent xem lại route sau khi task hoàn thành.
     Mỗi lần LiveLocation update → append 1 row vào đây.
+
+    Phần 1 — Offline cache:
+      - `recorded_at`: timestamp server nhận (auto_now_add — không đổi được).
+      - `client_recorded_at`: timestamp client ghi nhận GPS (set tay qua batch).
+        Khi gửi batch (offline sync), field này có giá trị quá khứ (lúc GPS
+        thực sự capture điểm). Khi gửi real-time, field này = NULL (chỉ
+        có recorded_at).
+      - Parent view history sẽ ưu tiên client_recorded_at nếu có, fallback
+        về recorded_at.
     """
     task = models.ForeignKey(
         'core.Task',
@@ -137,16 +146,24 @@ class LocationHistory(models.Model):
     heading = models.FloatField(null=True, blank=True)
 
     recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # Phần 1 — Timestamp client-side (cho batch offline sync)
+    client_recorded_at = models.DateTimeField(
+        null=True, blank=True, db_index=True,
+        help_text="Timestamp client ghi nhận GPS (cho batch offline sync). "
+                  "NULL nếu gửi real-time."
+    )
 
     class Meta:
         ordering = ['recorded_at']   # chronological
         indexes = [
             models.Index(fields=['task', 'recorded_at']),
+            models.Index(fields=['task', 'client_recorded_at']),
             models.Index(fields=['worker', '-recorded_at']),
         ]
 
     def __str__(self):
-        return f"Task#{self.task_id} | ({self.latitude}, {self.longitude}) | {self.recorded_at:%Y-%m-%d %H:%M:%S}"
+        ts = self.client_recorded_at or self.recorded_at
+        return f"Task#{self.task_id} | ({self.latitude}, {self.longitude}) | {ts:%Y-%m-%d %H:%M:%S}"
 
 
 class SOSAlert(models.Model):
