@@ -24,10 +24,12 @@ Các test case cover:
          thành công (như Google).
 
   N1 (NÊN LÀM 1) — Tương thích ngược push type device_offline:
-       - Khi check_offline_devices() tạo alert mới → payload push có
-         CẢ 2 field data.type='device_offline_critical' VÀ
-         data.legacy_type='device_offline'.
-       - Tương tự cho retry push (retry_offline_alert_pushes).
+       - QA-FIX-7: payload push có data.type='device_offline' (giá trị CŨ,
+         giữ cho app cũ match) VÀ data.critical=True (flag MỚI, app mới
+         dùng để bật còi to + channel emergency-alerts).
+       - Test mô phỏng chính xác logic if-check của app cũ
+         (`if (data.type === 'device_offline')`) để xác nhận app cũ THẬT
+         SỰ match điều kiện với payload mới.
 
   N2 (NÊN LÀM 2) — LiveLocation không bị batch cũ ghi đè:
        - Real-time update LiveLocation → client_recorded_at = now().
@@ -296,8 +298,9 @@ class QAFix6B2OAuthSetPinTestCase(TestCase):
 @override_settings(DEBUG=True)
 class QAFix6N1LegacyPushTypeTestCase(TestCase):
     """
-    N1 (NÊN LÀM 1) — Payload push có cả 'type'='device_offline_critical'
-    và 'legacy_type'='device_offline' cho tương thích ngược app cũ.
+    N1 (NÊN LÀM 1) — QA-FIX-7: payload push có data.type='device_offline'
+    (giá trị CŨ, để app cũ match) + data.critical=True (flag MỚI, app mới
+    dùng để bật còi to + channel emergency-alerts).
     """
 
     def setUp(self):
@@ -337,37 +340,43 @@ class QAFix6N1LegacyPushTypeTestCase(TestCase):
             device_status='online',
         )
 
+    def _get_parent_call_data(self, mock_push):
+        """Helper: lấy data dict của push call cho parent (token parent)."""
+        for call in mock_push.call_args_list:
+            if call.kwargs.get('token') == 'ExponentPushToken[qa6_n1_parent]':
+                return call.kwargs.get('data', {})
+        return None
+
     @patch('tracking.services.send_expo_push_notification')
-    def test_n1_initial_alert_has_both_type_and_legacy_type(self, mock_push):
-        """Khi check_offline_devices() tạo alert mới → payload push có cả
-        'type'='device_offline_critical' và 'legacy_type'='device_offline'."""
-        # Mock push trả True (Expo accept)
+    def test_n1_initial_alert_payload_qa_fix_7(self, mock_push):
+        """QA-FIX-7: initial alert payload có type='device_offline' (CŨ)
+        + critical=True (MỚI), KHÔNG còn 'device_offline_critical' hay
+        'legacy_type'."""
         mock_push.return_value = True
 
         from tracking.services import check_offline_devices
         check_offline_devices()
 
-        # Verify send_expo_push_notification được gọi cho parent
         self.assertTrue(mock_push.called)
-        # Tìm call cho parent (token parent)
-        parent_call = None
-        for call in mock_push.call_args_list:
-            if call.kwargs.get('token') == 'ExponentPushToken[qa6_n1_parent]':
-                parent_call = call
-                break
-        self.assertIsNotNone(parent_call, 'Phải có push call cho parent')
+        data = self._get_parent_call_data(mock_push)
+        self.assertIsNotNone(data, 'Phải có push call cho parent')
 
-        data = parent_call.kwargs.get('data', {})
-        self.assertEqual(data.get('type'), 'device_offline_critical')
-        self.assertEqual(data.get('legacy_type'), 'device_offline')
+        # QA-FIX-7 / N1: type đã được đảo lại thành 'device_offline' (giá trị CŨ)
+        self.assertEqual(data.get('type'), 'device_offline')
+        # QA-FIX-7 / N1: flag critical=True thay thế cho 'device_offline_critical'
+        self.assertIs(data.get('critical'), True)
+        # QA-FIX-7 / N1: không còn field legacy_type (đã xoá — field này vô dụng
+        # vì app cũ không đọc nó)
+        self.assertNotIn('legacy_type', data)
+        # Không còn type='device_offline_critical' (đã đảo về 'device_offline')
+        self.assertNotEqual(data.get('type'), 'device_offline_critical')
 
     @patch('tracking.services.send_expo_push_notification')
-    def test_n1_retry_push_has_both_type_and_legacy_type(self, mock_push):
-        """Khi retry_offline_alert_pushes() gửi lại push → payload cũng có
-        cả 'type' và 'legacy_type'."""
+    def test_n1_retry_push_payload_qa_fix_7(self, mock_push):
+        """QA-FIX-7: retry push payload cũng có type='device_offline' +
+        critical=True, giữ retry field."""
         mock_push.return_value = True
 
-        # Tạo alert active nhưng push_sent=False, retry_count=0
         alert = DeviceOfflineAlert.objects.create(
             task=self.task, worker=self.worker, heartbeat=self.hb,
             last_seen=self.hb.last_seen,
@@ -379,17 +388,146 @@ class QAFix6N1LegacyPushTypeTestCase(TestCase):
         retry_offline_alert_pushes()
 
         self.assertTrue(mock_push.called)
-        parent_call = None
-        for call in mock_push.call_args_list:
-            if call.kwargs.get('token') == 'ExponentPushToken[qa6_n1_parent]':
-                parent_call = call
-                break
-        self.assertIsNotNone(parent_call)
+        data = self._get_parent_call_data(mock_push)
+        self.assertIsNotNone(data)
 
-        data = parent_call.kwargs.get('data', {})
-        self.assertEqual(data.get('type'), 'device_offline_critical')
-        self.assertEqual(data.get('legacy_type'), 'device_offline')
+        self.assertEqual(data.get('type'), 'device_offline')
+        self.assertIs(data.get('critical'), True)
+        self.assertNotIn('legacy_type', data)
         self.assertEqual(data.get('retry'), 1)
+
+    @patch('tracking.services.send_expo_push_notification')
+    def test_n1_old_app_logic_matches_new_payload_initial_alert(self, mock_push):
+        """MÔ PHỎNG LOGIC APP CŨ — copy đúng điều kiện if-check từ
+        mobile/src/screens/Parent/LiveTrackingScreen.js trên nhánh main:
+
+            if (data.type === 'device_offline') { ... }
+
+        Test này verify app cũ THẬT SỰ match payload mới (không chỉ check
+        dict có field gì). Đây là cách duy nhất để test có ý nghĩa thật.
+        """
+        mock_push.return_value = True
+
+        from tracking.services import check_offline_devices
+        check_offline_devices()
+
+        data = self._get_parent_call_data(mock_push)
+        self.assertIsNotNone(data)
+
+        # ── MÔ PHỎNG LOGIC APP CŨ (copy y hệt từ LiveTrackingScreen.js main) ──
+        # App cũ KHÔNG biết field critical, KHÔNG check legacy_type, chỉ check:
+        #   if (data.type === 'device_offline') { /* trigger alarm */ }
+        old_app_would_trigger_alarm = (data.get('type') == 'device_offline')
+        # ────────────────────────────────────────────────────────────────────
+
+        self.assertTrue(
+            old_app_would_trigger_alarm,
+            f"App cũ (main) không match payload mới — data.type={data.get('type')!r} "
+            f"thay vì 'device_offline'. App cũ sẽ KHÔNG báo động → mất cảnh báo offline."
+        )
+
+    @patch('tracking.services.send_expo_push_notification')
+    def test_n1_old_app_logic_matches_new_payload_retry_push(self, mock_push):
+        """Mô phỏng logic app cũ cho retry push — cũng phải match."""
+        mock_push.return_value = True
+
+        DeviceOfflineAlert.objects.create(
+            task=self.task, worker=self.worker, heartbeat=self.hb,
+            last_seen=self.hb.last_seen,
+            last_location_lat=10.0, last_location_lng=106.0,
+            status='active', push_sent=False, push_retry_count=0,
+        )
+
+        from tracking.services import retry_offline_alert_pushes
+        retry_offline_alert_pushes()
+
+        data = self._get_parent_call_data(mock_push)
+        self.assertIsNotNone(data)
+
+        # ── MÔ PHỎNG LOGIC APP CŨ ──
+        old_app_would_trigger_alarm = (data.get('type') == 'device_offline')
+        # ────────────────────────────
+
+        self.assertTrue(
+            old_app_would_trigger_alarm,
+            f"App cũ không match retry push — data.type={data.get('type')!r}"
+        )
+
+    @patch('tracking.services.send_expo_push_notification')
+    def test_n1_send_expo_push_notification_resolves_critical_to_emergency_channel(self, mock_push):
+        """QA-FIX-7 / N1: send_expo_push_notification (core/views.py) phải
+        resolve type='device_offline' + critical=True → channel
+        'emergency-alerts' (còi to) thay vì 'critical_alerts' mặc định.
+
+        Test này verify end-to-end: service layer gửi data → core helper
+        resolve ra channel đúng.
+        """
+        # KHÔNG patch core.views.send_expo_push_notification — để nó thật sự
+        # chạy và build payload. Mock ở tầng requests.post để không gọi Expo.
+        # (Đang patch tracking.services.send_expo_push_notification, nhưng
+        # tracking.services._notify_user gọi core.views.send_expo_push_notification
+        # nên cần unpatch để test resolve logic thật.)
+        # → Đổi strategy: gọi trực tiếp core.views.send_expo_push_notification.
+        mock_push.stop()
+
+        with patch('core.views.requests.post') as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = {
+                'data': {'status': 'ok', 'id': 'fake-receipt'}
+            }
+            mock_post.return_value = mock_resp
+
+            from core.views import send_expo_push_notification
+            send_expo_push_notification(
+                token='ExponentPushToken[qa6_n1_parent]',
+                title='Test',
+                body='Test',
+                data={
+                    'type': 'device_offline',
+                    'critical': True,
+                    'task_id': 1,
+                },
+            )
+
+            # Lấy payload thực tế được gửi cho Expo API
+            self.assertTrue(mock_post.called)
+            payload = mock_post.call_args.kwargs.get('json', {})
+
+            # QA-FIX-7 / N1: type='device_offline' + critical=True → channel
+            # phải là 'emergency-alerts' (còi to), KHÔNG phải 'critical_alerts'.
+            self.assertEqual(payload.get('channelId'), 'emergency-alerts')
+            self.assertEqual(payload.get('android_channel_id'), 'emergency-alerts')
+
+    @patch('tracking.services.send_expo_push_notification')
+    def test_n1_send_expo_push_notification_without_critical_uses_basic_channel(self, mock_push):
+        """QA-FIX-7 / N1: nếu backend cũ (không set critical=True) gửi
+        type='device_offline' → vẫn dùng channel 'critical_alerts' (basic)
+        để backward compat với backend cũ hơn nữa."""
+        mock_push.stop()
+
+        with patch('core.views.requests.post') as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = {
+                'data': {'status': 'ok', 'id': 'fake-receipt'}
+            }
+            mock_post.return_value = mock_resp
+
+            from core.views import send_expo_push_notification
+            send_expo_push_notification(
+                token='ExponentPushToken[qa6_n1_parent]',
+                title='Test',
+                body='Test',
+                data={
+                    'type': 'device_offline',
+                    # KHÔNG có critical → fallback basic channel
+                    'task_id': 1,
+                },
+            )
+
+            payload = mock_post.call_args.kwargs.get('json', {})
+            # Không có critical → channel 'critical_alerts' (basic)
+            self.assertEqual(payload.get('channelId'), 'critical_alerts')
+            self.assertEqual(payload.get('android_channel_id'), 'critical_alerts')
 
 
 @override_settings(DEBUG=True)

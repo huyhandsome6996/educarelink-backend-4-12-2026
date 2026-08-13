@@ -67,7 +67,9 @@ function useNotificationChannels() {
 
       // === PHẦN 2 & 3 — Channel emergency-alerts (còi to, bypass DnD) ===
       // Dùng chung cho:
-      //   - DeviceOfflineAlert retry push (type=device_offline_critical)
+      //   - DeviceOfflineAlert push (type=device_offline + critical=True,
+      //     QA-FIX-7 / N1: type đã được đảo lại từ 'device_offline_critical'
+      //     về 'device_offline' để app cũ match, flag critical=True thay thế)
       //   - RandomVerificationCheck push (type=random_verification)
       //
       // ⚠️ QUAN TRỌNG: Channel này dùng file sound 'emergency_alarm.wav' —

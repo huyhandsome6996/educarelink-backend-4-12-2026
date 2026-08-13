@@ -514,3 +514,91 @@ vẫn còn 4 vấn đề cần xử lý trước khi merge:
   service sang Cron Job, nếu không scheduler sẽ không chạy → tính năng offline
   detection đang chạy tốt sẽ bị gãy. Xem `QA_FIX_6_HANDOFF.md` phần "Quy trình
   deploy an toàn 5 bước".
+
+---
+
+## QA-FIX-7 (14-08-2026) — Đảo lại field tương thích ngược push (fix QA-FIX-6 / N1)
+
+**Agent**: Super Z (main agent)
+**Branch**: `feature/module-an-toan-carepartner`
+**Commit**: `<TBD>` — QA-FIX-7
+
+### Bối cảnh
+
+QA vòng 3 phát hiện QA-FIX-6 / N1 (tương thích ngược push type) KHÔNG hoạt động
+thật. Field `legacy_type='device_offline'` vô dụng vì app mobile CŨ (nhánh main)
+chỉ check `if (data.type === 'device_offline')` — nó không biết field
+`legacy_type` tồn tại. Vì `data.type` giờ là `'device_offline_critical'`, app
+cũ KHÔNG match → mất hoàn toàn cảnh báo (y hệt như trước khi "sửa"). Test
+QA-FIX-6 chỉ assert 2 field có mặt trong dict, KHÔNG mô phỏng logic if-check
+thật của app cũ → test PASS nhưng chức năng không hoạt động.
+
+### Work Log
+
+- Đọc state: tracking/services.py (push call sites), core/views.py (ALERT_CONFIG
+  + send_expo_push_notification), mobile/src/screens/Parent/LiveTrackingScreen.js
+  (notification listener + triggerAlarmSound), mobile/App.js (channel setup).
+- Xác nhận app cũ (main) dùng `if (data.type === 'device_offline')` — chỉ check
+  data.type, không check field nào khác.
+- Backend tracking/services.py: đảo payload ở 2 chỗ (check_offline_devices +
+  retry_offline_alert_pushes). Trước: type='device_offline_critical' +
+  legacy_type='device_offline'. Sau: type='device_offline' + critical=True.
+- Backend core/views.py: thêm helper _resolve_alert_type() — khi
+  type='device_offline' VÀ critical=True → trả 'device_offline_critical' để tra
+  ALERT_CONFIG (channel emergency-alerts, còi to). Không có critical → trả
+  nguyên type='device_offline' (channel critical_alerts, basic — backward compat
+  với backend cũ hơn nữa).
+- Mobile LiveTrackingScreen.js: cập nhật notification listener — đổi điều kiện
+  if từ `(data.type === 'device_offline' || data.type === 'device_offline_critical')`
+  về ĐƠN GIẢN `if (data.type === 'device_offline')` (y hệt app cũ). Bên trong,
+  check `data.critical === true` để quyết định: critical=True → playEmergencyAlarm
+  (còi to); critical falsy → chỉ Vibration (fallback basic).
+- Mobile LiveTrackingScreen.js: cập nhật triggerAlarmSound() nhận tham số
+  isCritical, chỉ playEmergencyAlarm nếu critical=True. Local notification data
+  cũng đổi theo: type='device_offline' + critical: isCritical.
+- Mobile App.js: cập nhật comment mô tả channel emergency-alerts (logic channel
+  setup không đổi).
+- Tests tracking/tests_qa_fix_6.py::QAFix6N1LegacyPushTypeTestCase: cập nhật 2
+  test cũ + thêm 4 test mới (tổng 6 tests cho N1):
+  + test_n1_initial_alert_payload_qa_fix_7 — assert type='device_offline' +
+    critical=True, KHÔNG còn legacy_type.
+  + test_n1_retry_push_payload_qa_fix_7 — tương tự cho retry push.
+  + test_n1_old_app_logic_matches_new_payload_initial_alert — MÔ PHỎNG logic
+    app cũ `if (data.type === 'device_offline')` cho initial alert → phải match.
+  + test_n1_old_app_logic_matches_new_payload_retry_push — tương tự cho retry.
+  + test_n1_send_expo_push_notification_resolves_critical_to_emergency_channel —
+    end-to-end: type+critical → channel 'emergency-alerts'.
+  + test_n1_send_expo_push_notification_without_critical_uses_basic_channel —
+    backward compat: không có critical → channel 'critical_alerts' (basic).
+- Chạy test: 24/24 QA-FIX-6 PASS, 151/151 full suite (core+payments+moderation+
+  tracking) PASS.
+- Verify `manage.py check` 0 lỗi, `makemigrations --check` "No changes detected"
+  (không đổi model → không có migration mới).
+- Viết QA_FIX_7_HANDOFF.md.
+
+### Stage Summary
+
+- **Vấn đề duy nhất còn lại**: ĐÃ FIX.
+- **Test results**: 151 tests PASS (147 cũ + 4 mới thêm cho QA-FIX-7), 0 fail.
+- **No migration**: QA-FIX-7 không đổi model → không có migration mới.
+- **Files changed**:
+  - `tracking/services.py` (đảo payload 2 chỗ).
+  - `core/views.py` (thêm _resolve_alert_type + comment).
+  - `mobile/src/screens/Parent/LiveTrackingScreen.js` (notification listener +
+    triggerAlarmSound).
+  - `mobile/App.js` (comment update).
+  - `tracking/tests_qa_fix_6.py` (cập nhật 2 test N1 cũ + thêm 4 test mới).
+  - `QA_FIX_7_HANDOFF.md` (NEW).
+- **Lựa chọn thiết kế**:
+  - Tên field: `critical` (ngắn gọn, semantic rõ, JS convention cho flag trong
+    JSON object).
+  - Backward compat 2 lớp: app cũ match `data.type='device_offline'`; backend
+    cũ không set critical → channel basic (không crash).
+  - Target xoá flag critical: 2-3 tháng sau release (~2026-11), cùng thời điểm
+    kế hoạch dọn dẹp mobile cũ.
+- **UNTESTABLE (giữ nguyên)**: EAS Android build, custom sound device thật,
+  iOS critical alert, scheduler production Render, push khi app killed.
+- **Rủi ro deploy cao nhất (KHÔNG phải bug code, giữ nguyên QA-FIX-6)**:
+  kiến trúc scheduler đổi sang Render Cron Job — cần cấu hình tay copy
+  SECRET_KEY + DATABASE_URL từ web service sang Cron Job. Xem QA_FIX_7_HANDOFF.md
+  phần "Quy trình deploy an toàn 5 bước".
