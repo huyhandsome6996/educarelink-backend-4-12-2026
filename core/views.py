@@ -108,6 +108,14 @@ def send_expo_push_notification(token, title, body, data=None):
     alert_type = data.get('type', '')
 
     # Mapping alert type → Android channel + iOS config
+    #
+    # QA-FIX-7 / N1: sau khi đảo lại field tương thích ngược, payload push
+    # có data.type='device_offline' (giá trị CŨ, để app cũ match) + thêm
+    # data.critical=True (flag MỚI). Khi send_expo_push_notification thấy
+    # type='device_offline' VÀ critical=True → phải dùng channel
+    # 'emergency-alerts' (còi to, sound emergency_alarm.wav, bypass DnD)
+    # thay vì 'critical_alerts' mặc định. Logic này nằm ở
+    # `_resolve_alert_type()` bên dưới.
     ALERT_CONFIG = {
         'device_offline': {
             'android_channel_id': 'critical_alerts',
@@ -116,6 +124,8 @@ def send_expo_push_notification(token, title, body, data=None):
             'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
         },
         # === Phan 2 — Bao dong that su to (channel rieng emergency-alerts) ===
+        # QA-FIX-7 / N1: entry này giờ được dùng khi type='device_offline'
+        # VÀ data.critical=True (xem _resolve_alert_type).
         'device_offline_critical': {
             'android_channel_id': 'emergency-alerts',
             'channel_id': 'emergency-alerts',
@@ -161,6 +171,18 @@ def send_expo_push_notification(token, title, body, data=None):
         },
     }
 
+    def _resolve_alert_type(raw_type, data_dict):
+        """QA-FIX-7 / N1: resolve alert type thực tế để tra ALERT_CONFIG.
+
+        Nếu raw_type='device_offline' VÀ data_dict['critical']=True →
+        trả 'device_offline_critical' (channel emergency-alerts, còi to).
+        Ngược lại → trả raw_type nguyên thuỷ (giữ behaviour cũ cho
+        backward compat với backend cũ không set critical).
+        """
+        if raw_type == 'device_offline' and data_dict.get('critical') is True:
+            return 'device_offline_critical'
+        return raw_type
+
     payload = {
         'to': token,
         'sound': 'default',
@@ -170,7 +192,9 @@ def send_expo_push_notification(token, title, body, data=None):
     }
 
     # Apply alert-specific config
-    config = ALERT_CONFIG.get(alert_type)
+    # QA-FIX-7 / N1: resolve type thực tế trước khi tra ALERT_CONFIG.
+    effective_alert_type = _resolve_alert_type(alert_type, data)
+    config = ALERT_CONFIG.get(effective_alert_type)
     if config:
         payload['android_channel_id'] = config['android_channel_id']  # backward compat
         payload['channelId'] = config['channel_id']  # QA-FIX-1: top-level (Expo spec)

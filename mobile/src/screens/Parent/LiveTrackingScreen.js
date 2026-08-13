@@ -125,22 +125,32 @@ export default function LiveTrackingScreen() {
   }, [fetchLive, fetchDeviceStatus, taskId]);
 
   // Trigger alarm sound + vibration khi có offline alert
-  // Phan 2: nhận thêm type 'device_offline_critical' (channel emergency-alerts,
-  // còi to + retry liên tục tới khi acknowledge). Khi user bấm "Đã biết" →
-  // gọi API acknowledge để backend dừng retry push.
+  // Phan 2: nhận type 'device_offline' + flag data.critical=True (channel
+  // emergency-alerts, còi to + retry liên tục tới khi acknowledge). Khi user
+  // bấm "Đã biết" → gọi API acknowledge để backend dừng retry push.
   //
   // QA-FIX-1 / Spec 2.6: dùng EmergencyAlarmService cho audio alarm loop
   // (trước đây chỉ Vibration + local notification — không có audio thực sự).
-  const triggerAlarmSound = async (alertIdFromData) => {
+  //
+  // QA-FIX-7 / N1: payload đã được đảo lại — data.type luôn là 'device_offline'
+  // (giá trị CŨ, để app cũ tiếp tục match), flag data.critical=True thay thế
+  // cho 'device_offline_critical' cũ. App mới check data.critical để quyết
+  // định dùng EmergencyAlarmService (còi to) hay chỉ Vibration (fallback).
+  const triggerAlarmSound = async (alertIdFromData, isCritical) => {
     try {
-      // QA-FIX-1 / Spec 2.6: phát audio alarm loop liên tục qua EmergencyAlarmService
-      // (expo-av + Vibration fallback). Alarm sẽ loop cho tới khi parent acknowledge
-      // hoặc unmount screen.
-      await playEmergencyAlarm();
+      // QA-FIX-7 / N1: nếu data.critical=True → dùng EmergencyAlarmService
+      // (còi to loop + Vibration pattern dài). Nếu critical=false/missing
+      // (backend cũ hơn hoặc flag không có) → chỉ Vibration (fallback basic).
+      if (isCritical) {
+        // QA-FIX-1 / Spec 2.6: phát audio alarm loop liên tục qua EmergencyAlarmService
+        // (expo-av + Vibration fallback). Alarm sẽ loop cho tới khi parent acknowledge
+        // hoặc unmount screen.
+        await playEmergencyAlarm();
+      }
 
       // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần (cũ — giữ làm
       // burst ban đầu để thu hút chú ý ngay lập tức, sau đó EmergencyAlarmService
-      // sẽ tiếp tục loop Vibration pattern dài).
+      // sẽ tiếp tục loop Vibration pattern dài nếu critical=True).
       Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
 
       // Schedule local notification với sound default (đảm bảo available)
@@ -151,7 +161,9 @@ export default function LiveTrackingScreen() {
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: {
-            type: 'device_offline_critical',
+            // QA-FIX-7 / N1: type='device_offline' (giống backend) + critical flag
+            type: 'device_offline',
+            critical: isCritical,
             task_id: taskId,
             alert_id: alertIdFromData,
             priority: 'high',
@@ -187,15 +199,29 @@ export default function LiveTrackingScreen() {
       const data = notification.request.content.data || {};
       const body = notification.request.content.body || '';
 
-      // === DEVICE OFFLINE alert (cũ — vẫn giữ backward compat) ===
-      // === DEVICE OFFLINE CRITICAL alert (Phan 2 — còi to + retry) ===
-      // Cả 2 type đều xử lý giống nhau (còi + acknowledge)
-      if (data.type === 'device_offline' || data.type === 'device_offline_critical') {
+      // === DEVICE OFFLINE alert ===
+      // QA-FIX-7 / N1: payload giờ luôn có data.type='device_offline' (giá trị
+      // CŨ, để app cũ tiếp tục match). App mới đọc thêm data.critical để quyết
+      // định hành vi:
+      //   - data.critical === true → bản nâng cấp (còi to EmergencyAlarmService,
+      //     channel emergency-alerts, retry push liên tục).
+      //   - data.critical falsy (false/undefined) → fallback basic (chỉ
+      //     Vibration, channel critical_alerts) — tương thích backend cũ hơn
+      //     nữa nếu có.
+      //
+      // Điều kiện if ĐƠN GIẢN: `data.type === 'device_offline'` — y hệt app cũ
+      // trên nhánh main. App cũ không biết field `critical` nên ignore, vẫn
+      // báo động được (channel critical_alerts do backend send_expo_push_notification
+      // resolve type='device_offline' không có critical → dùng config cũ).
+      if (data.type === 'device_offline') {
         const alertId = data.alert_id;
-        // QA-FIX-1 / Spec 2.6: phát audio alarm loop qua EmergencyAlarmService
-        // (trước đây chỉ Vibration không audio). Alarm sẽ loop cho tới khi
-        // parent bấm "Đã biết" hoặc unmount screen.
-        playEmergencyAlarm();
+        const isCritical = data.critical === true;
+        // QA-FIX-1 / Spec 2.6 + QA-FIX-7 / N1: nếu critical=True → phát audio
+        // alarm loop qua EmergencyAlarmService (còi to). Nếu không → chỉ
+        // Vibration (fallback basic, tương thích backend cũ).
+        if (isCritical) {
+          playEmergencyAlarm();
+        }
         // Vibration pattern khẩn cấp (burst ban đầu)
         Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000], false);
         Alert.alert(

@@ -535,30 +535,29 @@ def check_offline_devices():
         )
 
         # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
-        # Phan 2: dung type='device_offline_critical' (channel emergency-alerts,
-        # sound=emergency_alarm.wav) thay vi 'device_offline' cu.
         #
         # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True.
         #
-        # QA-FIX-6 / NÊN LÀM 1 — Tương thích ngược với app mobile cũ:
-        # Trước đây PR này đổi data.type từ 'device_offline' (cũ) sang
-        # 'device_offline_critical' (mới, channel riêng emergency-alerts
-        # + sound emergency_alarm.wav). App mobile cũ chưa cập nhật chỉ
-        # nhận diện 'device_offline' → mất hoàn toàn cảnh báo khi
-        # CarePartner offline. Để tránh khoảng trống này, thêm field
-        # 'legacy_type' = 'device_offline' trong cùng payload (KHÔNG tốn
-        # thêm 1 lần gửi push, chỉ thêm 1 field trong data).
+        # QA-FIX-7 / N1 (sửa lại QA-FIX-6 / NÊN LÀM 1 — field tương thích
+        # ngược bị đảo ngược):
+        # ----------------------------------------------------------------
+        # QA-FIX-6 trước đây đổi data.type='device_offline' → 'device_offline_critical'
+        # và thêm data.legacy_type='device_offline'. NHƯNG app mobile CŨ
+        # (nhánh main) chỉ check `if (data.type === 'device_offline')` —
+        # nó không biết field legacy_type → với data.type='device_offline_critical'
+        # app cũ KHÔNG match → mất hoàn toàn cảnh báo (y hệt như chưa sửa).
         #
-        # Mobile mới sẽ ưu tiên data.type='device_offline_critical' và
-        # hiển thị đúng channel + sound. Mobile cũ fallback về
-        # data.legacy_type='device_offline' và vẫn báo động được (channel
-        # critical_alerts cũ + sound mặc định).
+        # Fix QA-FIX-7: ĐẢO LẠI — giữ data.type='device_offline' (giá trị CŨ)
+        # để app cũ tiếp tục match đúng điều kiện hiện có của nó (KHÔNG cần
+        # sửa gì ở app cũ). Thêm field MỚI data.critical=True để đánh dấu
+        # "bản nâng cấp cần xử lý khẩn cấp hơn — còi to, channel
+        # emergency-alerts". App MỚI đọc data.critical để quyết định hành
+        # vi (channel/sound), app CŨ ignore field này và vẫn báo động được
+        # (channel critical_alerts cũ + sound default).
         #
-        # ⚠️ FIELD NÀY LÀ TẠM THỜI — có thể xoá sau khi xác nhận 100%
-        # người dùng đã cập nhật app mới (target: 2-3 tháng sau release
-        # QA-FIX-6, tức ~2026-11). Theo dõi analytics/version distribution
-        # trước khi xoá. Khi xoá, cũng cần dọn dẹp code mobile cũ nhận
-        # diện 'device_offline' (chuyển hoàn toàn sang 'device_offline_critical').
+        # send_expo_push_notification (core/views.py) cũng đã được cập nhật
+        # để khi type='device_offline' VÀ critical=True → dùng channel
+        # emergency-alerts (còi to) thay vì critical_alerts mặc định.
         try:
             push_result = _notify_user(
                 hb.task.parent,
@@ -568,8 +567,8 @@ def check_offline_devices():
                         f"Lần cuối online: {hb.last_seen:%H:%M:%S}. "
                         f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
                 data={
-                    'type': 'device_offline_critical',
-                    'legacy_type': 'device_offline',  # QA-FIX-6 / NÊN LÀM 1: tương thích ngược app cũ
+                    'type': 'device_offline',  # QA-FIX-7 / N1: GIỮ giá trị CŨ để app cũ match
+                    'critical': True,  # QA-FIX-7 / N1: flag MỚI — app mới dùng để bật còi to + emergency-alerts channel
                     'task_id': hb.task.id,
                     'alert_id': alert.id,
                     'priority': 'high',  # expo: high priority = chuông kêu
@@ -694,8 +693,13 @@ def retry_offline_alert_pushes():
                         f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
                         f"Vui lòng kiểm tra NGAY!",
                 data={
-                    'type': 'device_offline_critical',
-                    'legacy_type': 'device_offline',  # QA-FIX-6 / NÊN LÀM 1: tương thích ngược app cũ
+                    # QA-FIX-7 / N1: giữ type='device_offline' (giá trị CŨ)
+                    # để app cũ match. Thêm critical=True để app mới + backend
+                    # send_expo_push_notification biết đây là bản nâng cấp
+                    # (channel emergency-alerts, còi to). Xem comment đầy đủ
+                    # ở check_offline_devices() bên trên.
+                    'type': 'device_offline',
+                    'critical': True,
                     'task_id': alert.task.id,
                     'alert_id': alert.id,
                     'retry': alert.push_retry_count + 1,
