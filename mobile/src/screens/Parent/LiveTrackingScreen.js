@@ -12,6 +12,9 @@ import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
   getDeviceStatus, getOfflineAlerts, acknowledgeOfflineAlert,
 } from '../../api/tracking';
+import {
+  playEmergencyAlarm, stopEmergencyAlarm, unloadEmergencyAlarm,
+} from '../../services/EmergencyAlarmService';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const POLL_INTERVAL_MS = 5000; // Parent poll location mỗi 5s
@@ -97,6 +100,10 @@ export default function LiveTrackingScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (deviceStatusPollRef.current) clearInterval(deviceStatusPollRef.current);
+      // QA-FIX-1 / Spec 2.6: stop + unload alarm khi unmount screen
+      // (tránh audio loop tiếp tục chạy khi parent đã rời screen).
+      stopEmergencyAlarm();
+      unloadEmergencyAlarm();
     };
     // Fix H11: thêm taskId trực tiếp vào deps để khi taskId đổi (vd: từ
     // navigation param), fetchLive/fetchDeviceStatus được re-bind và poll
@@ -108,9 +115,19 @@ export default function LiveTrackingScreen() {
   // Phan 2: nhận thêm type 'device_offline_critical' (channel emergency-alerts,
   // còi to + retry liên tục tới khi acknowledge). Khi user bấm "Đã biết" →
   // gọi API acknowledge để backend dừng retry push.
+  //
+  // QA-FIX-1 / Spec 2.6: dùng EmergencyAlarmService cho audio alarm loop
+  // (trước đây chỉ Vibration + local notification — không có audio thực sự).
   const triggerAlarmSound = async (alertIdFromData) => {
     try {
-      // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần
+      // QA-FIX-1 / Spec 2.6: phát audio alarm loop liên tục qua EmergencyAlarmService
+      // (expo-av + Vibration fallback). Alarm sẽ loop cho tới khi parent acknowledge
+      // hoặc unmount screen.
+      await playEmergencyAlarm();
+
+      // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần (cũ — giữ làm
+      // burst ban đầu để thu hút chú ý ngay lập tức, sau đó EmergencyAlarmService
+      // sẽ tiếp tục loop Vibration pattern dài).
       Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
 
       // Schedule local notification với sound default (đảm bảo available)
@@ -135,11 +152,17 @@ export default function LiveTrackingScreen() {
   };
 
   // Phan 2 — gọi API acknowledge để dừng retry push ở backend
+  // QA-FIX-1 / Spec 2.6: cũng stop alarm audio khi parent acknowledge
+  // (trước đây audio loop không có cách dừng trừ unmount screen).
   const handleAcknowledgeAlert = async (alertId) => {
     if (!alertId || !taskId) return;
     try {
+      // QA-FIX-1 / Spec 2.6: stop alarm NGAY khi parent bấm "Đã biết"
+      // (trước khi gọi API — giảm độ trễ cảm giác).
+      await stopEmergencyAlarm();
       await acknowledgeOfflineAlert(taskId, alertId);
-      console.log(`[LiveTracking] Acknowledged alert #${alertId} — backend sẽ dừng retry push`);
+      setOfflineAlertActive(false);
+      console.log(`[LiveTracking] Acknowledged alert #${alertId} — backend sẽ dừng retry push + alarm stopped`);
     } catch (e) {
       console.warn(`[LiveTracking] Acknowledge alert #${alertId} failed:`, e?.response?.status || e.message);
     }
@@ -156,13 +179,18 @@ export default function LiveTrackingScreen() {
       // Cả 2 type đều xử lý giống nhau (còi + acknowledge)
       if (data.type === 'device_offline' || data.type === 'device_offline_critical') {
         const alertId = data.alert_id;
-        // Vibration pattern khẩn cấp
+        // QA-FIX-1 / Spec 2.6: phát audio alarm loop qua EmergencyAlarmService
+        // (trước đây chỉ Vibration không audio). Alarm sẽ loop cho tới khi
+        // parent bấm "Đã biết" hoặc unmount screen.
+        playEmergencyAlarm();
+        // Vibration pattern khẩn cấp (burst ban đầu)
         Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000], false);
         Alert.alert(
           "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
           body || 'Thiết bị Carepartner mất kết nối!',
           [
             // Phan 2: bấm "Đã biết" → acknowledge → backend dừng retry push
+            // + QA-FIX-1 / Spec 2.6: stop alarm audio
             {
               text: 'Đã biết',
               style: 'destructive',

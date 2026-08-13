@@ -24,7 +24,7 @@ import { storage } from '../utils/storage';
 import apiClient from '../api/client';
 import {
   initOfflineQueue, enqueueLocation, getQueueSize, getChunk,
-  deleteByIds, CHUNK_SIZE_EXPORT,
+  deleteByIds, incrementAttempts, CHUNK_SIZE_EXPORT,
 } from './OfflineLocationQueue';
 
 const LOCATION_TASK_NAME = 'educarelink-location-tracking';
@@ -331,10 +331,19 @@ export async function flushOfflineQueue() {
       } catch (e) {
         const status = e?.response?.status;
         if (status && status < 500) {
-          // 4xx — skip chunk này (sẽ fail mãi)
-          console.warn(`[LocationService] Flush failed (4xx ${status}) — skip chunk`);
+          // QA-FIX-1 / Bug 1.1: 4xx — KHÔNG xoá cả chunk.
+          // Tăng sync_attempts từng điểm, drop riêng điểm đã đạt MAX (5).
+          // Trước đây xoá cả chunk → mất dữ liệu vị trí thật (1 điểm hỏng
+          // kéo theo cả chunk 200 điểm bị drop).
           const ids = chunk.map((r) => r.id);
-          await deleteByIds(ids);
+          const maxedIds = await incrementAttempts(ids);
+          if (maxedIds.length > 0) {
+            console.warn(`[LocationService] Bỏ qua ${maxedIds.length} điểm vị trí do lỗi liên tục (>= 5 attempts)`);
+            await deleteByIds(maxedIds);
+          }
+          console.warn(`[LocationService] Flush failed (4xx ${status}) — kept ${ids.length - maxedIds.length} points for retry`);
+          // Break vòng while để tránh spin — chunk còn lại sẽ retry ở lần flush sau.
+          break;
         } else {
           // Network / 5xx — dừng flush, thử lại sau
           console.warn(`[LocationService] Flush failed (network/5xx) — will retry later`);

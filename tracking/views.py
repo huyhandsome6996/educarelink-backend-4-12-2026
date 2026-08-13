@@ -19,6 +19,8 @@ Endpoint map:
 """
 
 import logging
+from datetime import timedelta
+from django.db import transaction
 from rest_framework import generics, status, serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -41,7 +43,10 @@ from .services import (
     get_accepted_worker,
     update_heartbeat, get_device_status, get_offline_alerts_for_task,
     check_offline_devices, retry_offline_alert_pushes, acknowledge_offline_alert,
+    AlreadyAcknowledgedError,
     set_verification_pin, respond_verification_check,
+    # QA-FIX-1 / Spec 2.4: parent history + cancel
+    get_verification_history_for_parent, cancel_verification_check,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -497,19 +502,34 @@ class AcknowledgeOfflineAlertAPIView(APIView):
 
     Parent mở app và xem cảnh báo → gọi endpoint này để acknowledge,
     dừng retry push loop (Phần 2).
+
+    QA-FIX-1 / Bug 1.5: map exception → status code đúng:
+      - AlreadyAcknowledgedError → 400 (alert đã được acknowledge rồi)
+      - ValueError (task_id mismatch) → 404 (chống dùng alert_id của task khác)
+      - PermissionError → 403 (parent khác không được ack alert của task không phải mình)
+    Trước đây mọi ValueError đều map → 404, kể cả "đã acknowledged" → không
+    phân biệt được với UI.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, task_id, alert_id):
         try:
-            alert = acknowledge_offline_alert(alert_id=alert_id, requester=request.user)
+            alert = acknowledge_offline_alert(
+                alert_id=alert_id, requester=request.user,
+                task_id=task_id,
+            )
             return Response({
                 'status': 'acknowledged',
                 'alert_id': alert.id,
                 'acknowledged_at': alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+                'acknowledged_by': alert.acknowledged_by_id,
                 'push_retry_count': alert.push_retry_count,
             })
+        except AlreadyAcknowledgedError as e:
+            # QA-FIX-1 / Bug 1.5: alert đã ack → 400 (không phải 404 im lặng)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except ValueError as e:
+            # QA-FIX-1 / Bug 1.5: task_id mismatch → 404 (không透露 alert tồn tại)
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
@@ -730,6 +750,92 @@ class AdminVerificationSchedulerStatsAPIView(APIView):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  QA-FIX-1 / Spec 2.4 — Parent verification history + Cancel check
+# ═══════════════════════════════════════════════════════════════════
+
+class ParentVerificationHistoryAPIView(APIView):
+    """
+    GET /api/tracking/<task_id>/verification-checks/history/?limit=100
+
+    Parent xem lịch sử verification checks của task mình.
+    Trả về list of dict cho frontend render timeline:
+      - triggered_at, status, attempts, responded_at, ...
+      - parent_alert_sent, consecutive_timeouts_count (debug)
+
+    QA-FIX-1 / Spec 2.4: trước đây parent không có endpoint xem lịch sử
+    verification checks — chỉ admin xem được. Parent cần biết carepartner
+    đã xác minh đúng/sai/timeout bao nhiêu lần để đánh giá tin cậy.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        limit = int(request.query_params.get('limit', 100))
+        try:
+            checks = get_verification_history_for_parent(
+                task=task, requester=request.user, limit=limit,
+            )
+            return Response({
+                'count': len(checks),
+                'task_id': task.id,
+                'task_title': task.title,
+                'checks': checks,
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class CancelVerificationCheckAPIView(APIView):
+    """
+    POST /api/tracking/verification-checks/<check_id>/cancel/
+
+    Admin HOẶC parent sở hữu task có thể huỷ verification check đang pending.
+    Body (optional): { reason: str }
+
+    QA-FIX-1 / Spec 2.4: trước đây check pending chỉ có thể chờ timeout
+    (90s). Nếu parent phát hiện false alarm hoặc task đã completed, không
+    có cách chủ động dừng check → push vẫn retry 5 lần trong 90s.
+
+    Worker (carepartner) KHÔNG được huỷ — phải nhập mã hoặc chờ timeout
+    (tránh carepartner huỷ để trốn xác minh).
+
+    Response:
+      - 200: { status: 'cancelled', check_id, responded_at }
+      - 400: check đã kết thúc (confirmed/wrong_code/timeout/cancelled)
+      - 403: worker cố huỷ, hoặc parent khác không sở hữu task
+      - 404: không tìm thấy check
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, check_id):
+        reason = request.data.get('reason', '') if isinstance(request.data, dict) else ''
+        try:
+            check = cancel_verification_check(
+                check_id=check_id, requester=request.user, reason=reason,
+            )
+            return Response({
+                'status': 'cancelled',
+                'check_id': check.id,
+                'task_id': check.task_id,
+                'responded_at': check.responded_at.isoformat() if check.responded_at else None,
+            })
+        except ValueError as e:
+            # ValueError có thể là "Không tìm thấy" hoặc "đã kết thúc".
+            # Cả 2 đều trả 400 (giống RespondVerificationCheckAPIView pattern)
+            # để mobile hiển thị message rõ ràng.
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            # Có thể là worker cố huỷ, hoặc parent khác không sở hữu task.
+            # Trả 403 để mobile hiển thị message rõ ràng.
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  PHẦN 1 — BATCH LOCATION (cache offline + sync khi có mạng lại)
 # ═══════════════════════════════════════════════════════════════════
 
@@ -742,11 +848,39 @@ class BatchLocationAPIView(APIView):
                                 heading?, recorded_at }, ...] }
     - Mỗi điểm ghi vào LocationHistory với đúng recorded_at gửi lên.
     - Chỉ điểm cuối (mới nhất theo recorded_at) mới update LiveLocation.
-    - Tối đa 500 điểm/lần gọi.
+    - Tối đa 500 điểm/lần gọi (trả 413 nếu vượt).
+
+    QA-FIX-1 / Bug 1.2: wrap toàn bộ insert + LiveLocation update trong
+    transaction.atomic() — nếu LiveLocation update fail thì rollback
+    LocationHistory inserts (trước đây chỉ catch + log → dữ liệu lệch).
+
+    QA-FIX-1 / Spec 2.5:
+    - Trả 201 Created (không phải 200) khi insert thành công.
+    - Trả 413 Request Entity Too Large nếu > 500 points (trước đây
+      serializer trả 400 — không phân biệt với validation error khác).
+    - Validate recorded_at: không vượt quá ±5 phút so với now (future
+      skew) và không cũ quá 7 ngày (dữ liệu mốc). Điểm không hợp lệ
+      bị SKIP riêng (không làm hỏng cả batch) — trả về skip_count.
     """
     permission_classes = [IsAuthenticated]
 
+    # QA-FIX-1 / Spec 2.5: hằng số validate recorded_at
+    RECORDED_AT_FUTURE_TOLERANCE_SECONDS = 5 * 60   # ±5 phút
+    RECORDED_AT_MAX_AGE_DAYS = 7                     # không cũ quá 7 ngày
+    MAX_POINTS_PER_BATCH = 500
+
     def post(self, request):
+        # QA-FIX-1 / Spec 2.5: check > 500 points TRƯỚC khi serializer
+        # (serializer cũng có max_length=500 defense-in-depth, nhưng trả 400
+        # thay vì 413 — ta return sớm 413 để mobile phân biệt).
+        raw_points = request.data.get('points') if isinstance(request.data, dict) else None
+        if isinstance(raw_points, list) and len(raw_points) > self.MAX_POINTS_PER_BATCH:
+            return Response({
+                'error': f'Tối đa {self.MAX_POINTS_PER_BATCH} điểm/lần gọi.',
+                'received': len(raw_points),
+                'max': self.MAX_POINTS_PER_BATCH,
+            }, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
         serializer = BatchLocationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -784,12 +918,37 @@ class BatchLocationAPIView(APIView):
 
         points = data['points']
         parsed = []
-        for p in points:
+        skipped = []  # QA-FIX-1 / Spec 2.5: list điểm bị skip (idx + lý do)
+        now = _tz.now()
+        future_tol = timedelta(seconds=self.RECORDED_AT_FUTURE_TOLERANCE_SECONDS)
+        max_age = timedelta(days=self.RECORDED_AT_MAX_AGE_DAYS)
+
+        for idx, p in enumerate(points):
             dt = parse_datetime(p['recorded_at'])
             if dt is None:
+                skipped.append({'index': idx, 'reason': 'recorded_at không parse được'})
                 continue
             if _tz.is_naive(dt):
                 dt = _tz.make_aware(dt, _tz.utc)
+
+            # QA-FIX-1 / Spec 2.5: validate timestamp
+            # - Không vượt quá now + 5 phút (future skew do đồng hồ lệch)
+            # - Không cũ quá 7 ngày (dữ liệu mốc — có thể là cache cũ bị kẹt)
+            if dt > now + future_tol:
+                skipped.append({
+                    'index': idx,
+                    'reason': f'recorded_at vượt quá {self.RECORDED_AT_FUTURE_TOLERANCE_SECONDS}s trong tươngng lai',
+                    'recorded_at': dt.isoformat(),
+                })
+                continue
+            if dt < now - max_age:
+                skipped.append({
+                    'index': idx,
+                    'reason': f'recorded_at cũ quá {self.RECORDED_AT_MAX_AGE_DAYS} ngày',
+                    'recorded_at': dt.isoformat(),
+                })
+                continue
+
             parsed.append({
                 'latitude': _Decimal(str(p['latitude'])),
                 'longitude': _Decimal(str(p['longitude'])),
@@ -800,47 +959,40 @@ class BatchLocationAPIView(APIView):
             })
 
         if not parsed:
-            return Response({'error': 'Không có điểm hợp lệ nào.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'error': 'Không có điểm hợp lệ nào.',
+                'skipped': skipped,
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Sắp xếp theo recorded_at tăng dần (cũ → mới)
         parsed.sort(key=lambda x: x['recorded_at'])
 
         saved = 0
-        errors = []
         last_point = parsed[-1]  # điểm mới nhất
 
-        # Insert LocationHistory với bulk_create.
-        # Phần 1: LocationHistory.recorded_at = auto_now_add (server timestamp).
-        # Để lưu timestamp client-side (quá khứ), ta dùng field riêng
-        # `client_recorded_at` — set trực tiếp trên object trước bulk_create.
-        # bulk_create không trigger auto_now_add nhưng cũng không set field
-        # auto → để recorded_at tự set bằng now() (default DB behavior),
-        # còn client_recorded_at = parsed value.
-        objs_to_create = []
-        for p in parsed:
-            obj = LocationHistory(
-                task=task,
-                worker=request.user,
-                latitude=p['latitude'],
-                longitude=p['longitude'],
-                accuracy=p['accuracy'],
-                speed=p['speed'],
-                heading=p['heading'],
-                client_recorded_at=p['recorded_at'],
-            )
-            objs_to_create.append(obj)
-
+        # QA-FIX-1 / Bug 1.2: wrap trong transaction.atomic — nếu LiveLocation
+        # update fail → rollback LocationHistory inserts (trước đây chỉ catch
+        # + log → dữ liệu lệch: history có nhưng live không update).
         try:
-            LocationHistory.objects.bulk_create(objs_to_create)
-            saved = len(objs_to_create)
-        except Exception as e:
-            logger.error(f"[tracking] Batch insert failed: {e}")
-            errors.append(str(e))
+            with transaction.atomic():
+                # Insert LocationHistory với bulk_create.
+                objs_to_create = [
+                    LocationHistory(
+                        task=task,
+                        worker=request.user,
+                        latitude=p['latitude'],
+                        longitude=p['longitude'],
+                        accuracy=p['accuracy'],
+                        speed=p['speed'],
+                        heading=p['heading'],
+                        client_recorded_at=p['recorded_at'],
+                    )
+                    for p in parsed
+                ]
+                LocationHistory.objects.bulk_create(objs_to_create)
+                saved = len(objs_to_create)
 
-        # Update LiveLocation với điểm mới nhất
-        if saved > 0:
-            try:
+                # Update LiveLocation với điểm mới nhất
                 LiveLocation.objects.update_or_create(
                     task=task,
                     defaults={
@@ -852,16 +1004,21 @@ class BatchLocationAPIView(APIView):
                         'heading': last_point['heading'],
                     },
                 )
-            except Exception as e:
-                logger.error(f"[tracking] Batch LiveLocation update failed: {e}")
-                errors.append(f"LiveLocation update failed: {e}")
+        except Exception as e:
+            logger.error(f"[tracking] Batch insert/LiveLocation failed: {e}")
+            return Response({
+                'error': 'Batch insert thất bại.',
+                'detail': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # QA-FIX-1 / Spec 2.5: trả 201 Created (không phải 200 OK)
         return Response({
             'status': 'ok',
             'saved': saved,
-            'errors': errors,
-            'last_recorded_at': last_point['recorded_at'].isoformat() if saved > 0 else None,
-        })
+            'skipped': skipped,
+            'skipped_count': len(skipped),
+            'last_recorded_at': last_point['recorded_at'].isoformat(),
+        }, status=status.HTTP_201_CREATED)
 
 
 class TrackingHealthCheckAPIView(APIView):

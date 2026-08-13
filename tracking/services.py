@@ -26,14 +26,19 @@ OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 90) 
 
 
 def _notify_user(user: User, title: str, message: str, data: dict = None):
-    """Helper: gửi in-app Notification + Expo push."""
+    """Helper: gửi in-app Notification + Expo push.
+
+    QA-FIX-1 / Bug 1.4: trả về True/False/None theo kết quả push để caller
+    quyết định set push_sent=True (trước đây fire-and-forget → set True sai).
+    """
+    push_result = None
     try:
         Notification.objects.create(recipient=user, title=title, message=message)
     except Exception as e:
         logger.warning(f"[tracking] Notification create thất bại: {e}")
     try:
         if user.expo_push_token:
-            send_expo_push_notification(
+            push_result = send_expo_push_notification(
                 token=user.expo_push_token,
                 title=title,
                 body=message,
@@ -41,6 +46,8 @@ def _notify_user(user: User, title: str, message: str, data: dict = None):
             )
     except Exception as e:
         logger.warning(f"[tracking] Expo push thất bại cho user#{user.id}: {e}")
+        push_result = None
+    return push_result
 
 
 def get_accepted_worker(task: Task) -> User | None:
@@ -495,8 +502,10 @@ def check_offline_devices():
         # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
         # Phan 2: dung type='device_offline_critical' (channel emergency-alerts,
         # sound=emergency_alarm.wav) thay vi 'device_offline' cu.
+        #
+        # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True.
         try:
-            _notify_user(
+            push_result = _notify_user(
                 hb.task.parent,
                 title="🚨🚨🚨 CẢNH BÁO KHẨN CẤP: Thiết bị Carepartner mất kết nối!",
                 message=f"⚠️ Thiết bị của carepartner đã ngừng gửi tín hiệu "
@@ -512,11 +521,19 @@ def check_offline_devices():
                     'android_channel_id': 'emergency-alerts',
                 }
             )
-            alert.push_sent = True
-            alert.push_sent_at = now
-            alert.push_retry_count = 1
-            alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
-            stats['new_alerts'] += 1
+            if push_result is True:
+                alert.push_sent = True
+                alert.push_sent_at = now
+                alert.push_retry_count = 1
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['new_alerts'] += 1
+            else:
+                # Push fail (Expo reject hoặc network error) — vẫn giữ alert
+                # active nhưng push_sent=False để retry scheduler thử lại.
+                logger.warning(
+                    f"[tracking] Offline push FAILED (Expo reject/network) for Task#{hb.task_id}"
+                )
+                stats['push_failed'] += 1
 
             # Notify admin cũng
             try:
@@ -564,6 +581,12 @@ def retry_offline_alert_pushes():
       - push_retry_count < OFFLINE_PUSH_MAX_RETRIES (chưa vượt số lần tối đa)
       - push_sent_at < now - OFFLINE_PUSH_RETRY_INTERVAL_SECONDS (đủ khoảng cách giữa 2 lần retry)
 
+    QA-FIX-1 / Bug 1.4: chỉ set push_sent=True + tăng push_retry_count khi
+    _notify_user trả về True (trước đây fire-and-forget → set True sai).
+
+    QA-FIX-1 / SUP-1: log warning riêng cho từng alert đạt max retry
+    (trước đây chỉ đếm số lượng).
+
     Trả về dict thống kê.
     """
     now = timezone.now()
@@ -577,12 +600,29 @@ def retry_offline_alert_pushes():
         Q(push_sent_at__isnull=True) | Q(push_sent_at__lt=retry_threshold)
     ).select_related('task', 'task__parent', 'worker')
 
+    # QA-FIX-1 / SUP-1: query riêng các alert đã đạt max retry để log warning
+    # chi tiết cho từng alert (trước đây chỉ đếm số lượng).
+    max_reached_alerts = DeviceOfflineAlert.objects.filter(
+        status='active',
+        acknowledged_at__isnull=True,
+        push_retry_count__gte=OFFLINE_PUSH_MAX_RETRIES,
+    ).select_related('task', 'task__parent', 'worker')
+
     stats = {
         'checked_at': now.isoformat(),
         'retried_count': 0,
-        'max_reached_count': 0,
+        'max_reached_count': max_reached_alerts.count(),
         'push_failed': 0,
     }
+
+    # Log warning cho từng alert đạt max retry
+    for alert in max_reached_alerts:
+        logger.warning(
+            f"[tracking] Alert#{alert.id} (Task#{alert.task_id}) đã đạt max retry "
+            f"({OFFLINE_PUSH_MAX_RETRIES}/{OFFLINE_PUSH_MAX_RETRIES}) — parent "
+            f"{alert.task.parent.username} chưa acknowledge. Stopping push loop "
+            f"(alert vẫn active để parent xem khi mở app)."
+        )
 
     for alert in pending_alerts:
         # Nếu đã đạt max retry → skip (không push nữa)
@@ -591,7 +631,7 @@ def retry_offline_alert_pushes():
             continue
 
         try:
-            _notify_user(
+            push_result = _notify_user(
                 alert.task.parent,
                 title=f"🚨🚨🚨 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}/{OFFLINE_PUSH_MAX_RETRIES})",
                 message=f"⚠️ Thiết bị carepartner VẪN mất kết nối cho công việc "
@@ -607,11 +647,18 @@ def retry_offline_alert_pushes():
                     'android_channel_id': 'emergency-alerts',
                 }
             )
-            alert.push_sent = True
-            alert.push_sent_at = now
-            alert.push_retry_count += 1
-            alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
-            stats['retried_count'] += 1
+            if push_result is True:
+                alert.push_sent = True
+                alert.push_sent_at = now
+                alert.push_retry_count += 1
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['retried_count'] += 1
+            else:
+                # Push fail — không tăng retry_count (sẽ thử lại ở lần scheduler sau).
+                logger.warning(
+                    f"[tracking] Retry push FAILED (Expo reject/network) for Alert#{alert.id}"
+                )
+                stats['push_failed'] += 1
         except Exception as e:
             logger.error(f"[tracking] Retry push failed for Alert#{alert.id}: {e}")
             stats['push_failed'] += 1
@@ -622,23 +669,50 @@ def retry_offline_alert_pushes():
     return stats
 
 
-def acknowledge_offline_alert(*, alert_id: int, requester: User) -> DeviceOfflineAlert:
+class AlreadyAcknowledgedError(ValueError):
+    """QA-FIX-1 / Bug 1.5: exception riêng cho alert đã acknowledged."""
+    pass
+
+
+def acknowledge_offline_alert(*, alert_id: int, requester: User,
+                                    task_id: int = None) -> DeviceOfflineAlert:
     """
     Parent mở app và xem cảnh báo → acknowledge → dừng retry loop.
     - Verify requester là parent sở hữu task
-    - Set acknowledged_at = now
+    - Set acknowledged_at = now + acknowledged_by = requester (QA-FIX-1 / Spec 2.2)
     - KHÔNG đổi status (vẫn 'active' cho tới khi thiết bị recovered)
+
+    QA-FIX-1 / Bug 1.5:
+    - Nếu alert đã được acknowledge (acknowledged_at không null) → raise
+      AlreadyAcknowledgedError (view map → 400).
+    - Nếu task_id truyền vào không khớp alert.task_id → raise ValueError
+      (view map → 404 — chống dùng alert_id của task khác).
     """
     try:
         alert = DeviceOfflineAlert.objects.get(pk=alert_id)
     except DeviceOfflineAlert.DoesNotExist:
         raise ValueError("Không tìm thấy alert.")
 
+    # QA-FIX-1 / Bug 1.5: task_id mismatch → 404 (không透露 alert tồn tại)
+    if task_id is not None and alert.task_id != task_id:
+        raise ValueError(f"Alert #{alert_id} không thuộc task #{task_id}.")
+
     if alert.task.parent_id != requester.id and not requester.is_superuser:
         raise PermissionError("Bạn không sở hữu task này.")
 
-    if alert.acknowledged_at is None:
-        alert.acknowledged_at = timezone.now()
+    # QA-FIX-1 / Bug 1.5: alert đã acknowledge → 400 (không phải 200 im lặng)
+    if alert.acknowledged_at is not None:
+        raise AlreadyAcknowledgedError(
+            f"Alert #{alert.id} đã được acknowledge lúc "
+            f"{alert.acknowledged_at.isoformat()}."
+        )
+
+    alert.acknowledged_at = timezone.now()
+    # QA-FIX-1 / Spec 2.2: set acknowledged_by để audit.
+    if hasattr(alert, 'acknowledged_by') and alert.acknowledged_by_id is None:
+        alert.acknowledged_by = requester
+        alert.save(update_fields=['acknowledged_at', 'acknowledged_by'])
+    else:
         alert.save(update_fields=['acknowledged_at'])
 
     return alert
@@ -649,7 +723,9 @@ def acknowledge_offline_alert(*, alert_id: int, requester: User) -> DeviceOfflin
 #  Service: respond_verification_check (CarePartner nhập mã PIN)
 # ═══════════════════════════════════════════════════════════════════
 
-from django.contrib.auth.hashers import check_password  # noqa: E402
+# QA-FIX-1 / Spec 2.3: không cần import check_password/make_password ở đây
+# nữa — User model tự đóng gói logic hash/check qua set_verification_pin() /
+# check_verification_pin() / has_verification_pin_set.
 
 # Import constants từ verification_scheduler (tránh circular import: dùng lazy import trong hàm)
 def _get_verification_constants():
@@ -665,10 +741,12 @@ def set_verification_pin(*, user: User, pin: str, current_password: str = None) 
     - Validate PIN: 4-6 chữ số
     - Validate current_password: nếu user đã có PIN → bắt buộc xác thực lại mật khẩu tài khoản
       (tránh ai cầm máy đổi PIN tuỳ tiện)
-    - Hash PIN bằng make_password — KHÔNG lưu plaintext
+    - Hash PIN + save qua user.set_verification_pin() — KHÔNG lưu plaintext
+
+    QA-FIX-1 / Spec 2.3: refactor để gọi user.set_verification_pin()
+    (trước đây gọi make_password trực tiếp → lặp logic).
     """
     import re
-    from django.contrib.auth.hashers import make_password
     from django.contrib.auth import authenticate
 
     # Validate PIN format: 4-6 chữ số
@@ -684,9 +762,8 @@ def set_verification_pin(*, user: User, pin: str, current_password: str = None) 
     if not user_auth or user_auth.id != user.id:
         raise PermissionError("Mật khẩu tài khoản không đúng.")
 
-    user.verification_pin_hash = make_password(pin)
-    user.verification_pin_set_at = timezone.now()
-    user.save(update_fields=['verification_pin_hash', 'verification_pin_set_at'])
+    # QA-FIX-1 / Spec 2.3: dùng helper method của User model.
+    user.set_verification_pin(pin)
     logger.info(f"[tracking] Verification PIN set for User#{user.id}")
     return user
 
@@ -698,8 +775,16 @@ def respond_verification_check(*, check_id: int, requester: User,
     CarePartner phản hồi RandomVerificationCheck — nhập mã PIN.
     Logic:
       - Nếu quá respond_deadline → trả lỗi, set 'timeout' nếu chưa set
-      - check_password(pin, worker.verification_pin_hash) đúng → 'confirmed'
+      - requester.check_verification_pin(pin) đúng → 'confirmed'
+        + reset parent_alert_sent/consecutive_timeouts_count (chấm dứt streak)
       - Sai → tăng attempts; >= MAX_WRONG_ATTEMPTS → 'wrong_code' + báo admin
+        + reset consecutive_timeouts_count (chấm dứt streak — wrong_code không
+          phải timeout nên không cộng dồn streak)
+
+    QA-FIX-1 / Spec 2.3: dùng user.check_verification_pin() + has_verification_pin_set
+    (trước đây gọi check_password trực tiếp + kiểm tra verification_pin_hash trực tiếp).
+    QA-FIX-1 / Bug 1.3: reset parent_alert_sent + consecutive_timeouts_count
+    khi status chuyển sang 'confirmed'/'wrong_code'.
     """
     from .models import RandomVerificationCheck
 
@@ -714,7 +799,7 @@ def respond_verification_check(*, check_id: int, requester: User,
 
     now = timezone.now()
 
-    # Nếu check đã xử lý (confirmed/wrong_code/timeout) → không cho phản hồi lại
+    # Nếu check đã xử lý (confirmed/wrong_code/timeout/cancelled) → không cho phản hồi lại
     if check.status != 'pending':
         raise ValueError(f"Yêu cầu xác minh đã kết thúc với trạng thái: {check.get_status_display()}.")
 
@@ -724,19 +809,25 @@ def respond_verification_check(*, check_id: int, requester: User,
         check.save(update_fields=['status'])
         raise ValueError("Đã hết thời gian phản hồi. Yêu cầu xác minh đã chuyển trạng thái timeout.")
 
-    # Verify worker đã đặt PIN
-    if not requester.verification_pin_hash:
+    # Verify worker đã đặt PIN (dùng property mới của User model)
+    if not requester.has_verification_pin_set:
         raise PermissionError("Bạn chưa đặt mã cá nhân. Vui lòng đặt mã trước khi phản hồi.")
 
-    # Check PIN
+    # Check PIN — dùng helper method của User model
     _, MAX_WRONG_ATTEMPTS = _get_verification_constants()
-    if check_password(pin, requester.verification_pin_hash):
-        # Đúng mã → confirmed
+    if requester.check_verification_pin(pin):
+        # Đúng mã → confirmed + reset streak (Bug 1.3)
         check.status = 'confirmed'
         check.responded_at = now
         check.response_lat = Decimal(str(latitude)) if latitude else None
         check.response_lng = Decimal(str(longitude)) if longitude else None
-        check.save(update_fields=['status', 'responded_at', 'response_lat', 'response_lng'])
+        # QA-FIX-1 / Bug 1.3: chấm dứt streak timeout
+        check.parent_alert_sent = False
+        check.consecutive_timeouts_count = 0
+        check.save(update_fields=[
+            'status', 'responded_at', 'response_lat', 'response_lng',
+            'parent_alert_sent', 'consecutive_timeouts_count',
+        ])
         logger.info(f"[tracking] Verification Check#{check.id} confirmed by User#{requester.id}")
         return check
     else:
@@ -745,7 +836,13 @@ def respond_verification_check(*, check_id: int, requester: User,
         if check.attempts >= MAX_WRONG_ATTEMPTS:
             check.status = 'wrong_code'
             check.responded_at = now
-            check.save(update_fields=['attempts', 'status', 'responded_at'])
+            # QA-FIX-1 / Bug 1.3: wrong_code chấm dứt streak (không phải timeout)
+            check.parent_alert_sent = False
+            check.consecutive_timeouts_count = 0
+            check.save(update_fields=[
+                'attempts', 'status', 'responded_at',
+                'parent_alert_sent', 'consecutive_timeouts_count',
+            ])
 
             # Báo admin (nghi ngờ không phải đúng CarePartner đang cầm máy)
             try:
@@ -871,3 +968,122 @@ def get_offline_alerts_for_task(*, task: Task, requester: User, limit: int = 50)
         }
         for a in qs
     ]
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  QA-FIX-1 / Spec 2.4 — Verification check history (parent) + cancel
+# ═══════════════════════════════════════════════════════════════════
+
+def get_verification_history_for_parent(*, task: Task, requester: User,
+                                          limit: int = 100) -> list:
+    """
+    Parent xem lịch sử verification checks của task mình.
+    Trả về list of dict cho frontend render timeline.
+
+    QA-FIX-1 / Spec 2.4: trước đây parent không có endpoint xem lịch sử
+    verification checks — chỉ admin xem được. Parent cần biết carepartner
+    đã xác minh đúng/sai/timeout bao nhiêu lần để đánh giá tin cậy.
+    """
+    if task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    from .models import RandomVerificationCheck
+    qs = RandomVerificationCheck.objects.filter(task=task).order_by('-triggered_at')[:limit]
+    return [
+        {
+            'id': c.id,
+            'task_id': c.task_id,
+            'worker_id': c.worker_id,
+            'worker_name': c.worker.username,
+            'triggered_at': c.triggered_at.isoformat(),
+            'respond_deadline': c.respond_deadline.isoformat(),
+            'status': c.status,
+            'status_display': c.get_status_display(),
+            'attempts': c.attempts,
+            'responded_at': c.responded_at.isoformat() if c.responded_at else None,
+            'response_lat': float(c.response_lat) if c.response_lat else None,
+            'response_lng': float(c.response_lng) if c.response_lng else None,
+            'parent_alert_sent': c.parent_alert_sent,
+            'consecutive_timeouts_count': c.consecutive_timeouts_count,
+        }
+        for c in qs
+    ]
+
+
+def cancel_verification_check(*, check_id: int, requester: User,
+                                reason: str = '') -> 'RandomVerificationCheck':
+    """
+    Admin HOẶC parent sở hữu task có thể huỷ verification check đang pending.
+
+    QA-FIX-1 / Spec 2.4: trước đây check pending chỉ có thể chờ timeout
+    (90s). Nếu parent phát hiện false alarm hoặc task đã completed, không
+    có cách chủ động dừng check → push vẫn retry 5 lần trong 90s + 30s grace.
+
+    Worker (carepartner) KHÔNG được huỷ — phải nhập mã hoặc chờ timeout.
+    Điều này tránh carepartner huỷ check để trốn xác minh.
+
+    Logic:
+      - Chỉ cho huỷ nếu status='pending' (đã confirmed/wrong_code/timeout/
+        cancelled thì không huỷ lại được).
+      - Set status='cancelled' + responded_at=now + reset streak counters
+        (cancelled không tính vào streak timeout — nó là hành động chủ động
+        của admin/parent, không phải do carepartner timeout).
+      - Notify worker rằng check đã bị huỷ.
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    # Permission: admin (is_superuser) hoặc parent sở hữu task.
+    # Worker (role='worker') bị từ chối — phải nhập mã hoặc chờ timeout.
+    is_admin = requester.is_superuser
+    is_parent = (check.task.parent_id == requester.id)
+    if not (is_admin or is_parent):
+        raise PermissionError(
+            "Chỉ admin hoặc phụ huynh sở hữu task mới được huỷ yêu cầu xác minh."
+        )
+
+    # Chỉ huỷ được nếu đang pending
+    if check.status != 'pending':
+        raise ValueError(
+            f"Không thể huỷ yêu cầu đã kết thúc (trạng thái: {check.get_status_display()})."
+        )
+
+    now = timezone.now()
+    check.status = 'cancelled'
+    check.responded_at = now
+    # Cancel không tính vào streak timeout → reset counters (giống confirmed/wrong_code).
+    check.parent_alert_sent = False
+    check.consecutive_timeouts_count = 0
+    check.save(update_fields=[
+        'status', 'responded_at',
+        'parent_alert_sent', 'consecutive_timeouts_count',
+    ])
+
+    # Notify worker rằng check đã bị huỷ (không cần nhập mã nữa).
+    try:
+        cancelled_by_role = 'admin' if is_admin else 'parent'
+        _notify_user(
+            check.worker,
+            title="✅ Yêu cầu xác minh đã được huỷ",
+            message=f"Yêu cầu xác minh cho công việc '{check.task.title}' đã bị "
+                    f"{cancelled_by_role} huỷ. Bạn không cần nhập mã nữa.",
+            data={
+                'type': 'verification_cancelled',
+                'task_id': check.task.id,
+                'check_id': check.id,
+            }
+        )
+    except Exception as e:
+        logger.warning(
+            f"[tracking] cancel_verification_check: notify worker failed: {e}"
+        )
+
+    logger.info(
+        f"[tracking] Verification Check#{check.id} cancelled by "
+        f"User#{requester.id} (reason={reason!r})"
+    )
+    return check

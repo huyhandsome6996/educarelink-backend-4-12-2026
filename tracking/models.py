@@ -342,6 +342,15 @@ class DeviceOfflineAlert(models.Model):
     # Khi parent đã mở app và xem cảnh báo → set trường này để dừng retry loop
     acknowledged_at = models.DateTimeField(null=True, blank=True, help_text="Parent đã xem/acknowledge alert")
 
+    # QA-FIX-1 / Spec 2.2: ai đã acknowledge (audit). SET_NULL để không mất
+    # audit trail khi user bị xoá.
+    acknowledged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='acknowledged_offline_alerts',
+        help_text="User đã acknowledge alert (audit)"
+    )
+
     # Khi thiết bị online trở lại
     recovered_at = models.DateTimeField(null=True, blank=True)
     recovery_duration_seconds = models.IntegerField(null=True, blank=True, help_text="Thời gian offline (giây)")
@@ -372,12 +381,23 @@ class RandomVerificationCheck(models.Model):
     """
     Xác minh ngẫu nhiên trong ca làm — hệ thống bất ngờ yêu cầu CarePartner
     nhập mã cá nhân để chứng minh vẫn đang cầm máy, không báo trước lịch.
+
+    QA-FIX-1 / Bug 1.3: thêm 2 field để chống spam push phụ huynh khi
+    CarePartner liên tục timeout:
+      - parent_alert_sent: đã gửi alert cho phụ huynh chưa (1 lần/streak).
+        Reset về False khi check kết thúc (confirmed/wrong_code/cancelled).
+      - consecutive_timeouts_count: số lần timeout liên tiếp hiện tại.
+        Reset về 0 khi check kết thúc (confirmed/wrong_code/cancelled).
     """
     STATUS_CHOICES = (
         ('pending',    'Đang chờ CarePartner phản hồi'),
         ('confirmed',  'CarePartner nhập đúng mã trong thời hạn'),
         ('wrong_code', 'CarePartner nhập sai mã'),
         ('timeout',    'Hết thời gian, CarePartner không phản hồi'),
+        # QA-FIX-1 / Spec 2.4: admin/parent có thể huỷ check khi đang pending
+        # (vd: phát hiện false alarm, task đã completed, ...). Trước đây
+        # check pending chỉ có thể chờ timeout → không có cách chủ động dừng.
+        ('cancelled',  'Đã bị huỷ bởi admin/parent (không tính vào streak)'),
     )
     task = models.ForeignKey('core.Task', on_delete=models.CASCADE, related_name='verification_checks')
     worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='verification_checks')
@@ -396,6 +416,20 @@ class RandomVerificationCheck(models.Model):
     # Push retry tracking (giống DeviceOfflineAlert — gửi lại nếu chưa phản hồi)
     push_sent = models.BooleanField(default=False, help_text="Đã gửi push yêu cầu xác minh")
     push_retry_count = models.IntegerField(default=0, help_text="Số lần đã retry push")
+
+    # QA-FIX-1 / Bug 1.3: chống spam push phụ huynh khi CarePartner liên tục timeout.
+    # - parent_alert_sent: đã gửi alert cho phụ huynh trong streak này chưa.
+    #   Chỉ gửi 1 lần/streak (reset khi confirmed/wrong_code/cancelled).
+    # - consecutive_timeouts_count: số timeout liên tiếp cho task này.
+    #   Mỗi timeout tăng +1; reset về 0 khi confirmed/wrong_code/cancelled.
+    parent_alert_sent = models.BooleanField(
+        default=False,
+        help_text="Đã gửi alert cho phụ huynh trong streak timeout hiện tại (chỉ 1 lần/streak)."
+    )
+    consecutive_timeouts_count = models.IntegerField(
+        default=0,
+        help_text="Số timeout liên tiếp hiện tại. Reset khi confirmed/wrong_code/cancelled."
+    )
 
     class Meta:
         ordering = ['-triggered_at']
