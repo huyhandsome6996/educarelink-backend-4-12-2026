@@ -50,6 +50,17 @@ class User(AbstractUser):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
 
+    # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
+    # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác
+    # minh trong lúc task in_progress, carepartner phải nhập đúng mã này để
+    # chứng minh vẫn đang cầm máy (chống để máy lại rồi bỏ đi).
+    # Hash bằng django.contrib.auth.hashers.make_password — KHÔNG lưu plaintext.
+    verification_pin_hash = models.CharField(
+        max_length=128, blank=True, null=True,
+        help_text="Hash mã cá nhân xác minh — KHÔNG lưu plaintext"
+    )
+    verification_pin_set_at = models.DateTimeField(blank=True, null=True)
+
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
 
