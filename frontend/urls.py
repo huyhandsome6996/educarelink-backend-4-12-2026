@@ -4,6 +4,7 @@ from .views import *
 app_name = 'frontend'
 
 urlpatterns = [
+    path('site-gate/', SiteGateView.as_view(), name='site_gate'),
     path('', SplashView.as_view(), name='splash'),
     path('login/', LoginView.as_view(), name='login'),
     path('register/', RegisterView.as_view(), name='register'),

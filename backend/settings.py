@@ -67,6 +67,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Lớp chặn tạm thời: yêu cầu nhập mật khẩu trước khi xem site/admin.
+    # Không áp dụng cho /api/ (mobile app vẫn gọi API bình thường).
+    # Đổi mật khẩu qua biến môi trường SITE_GATE_PASSWORD trên Render.
+    'core.middleware.SiteAccessGateMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls' # Lưu ý: folder gốc của bạn tên là backend
