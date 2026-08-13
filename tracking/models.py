@@ -320,6 +320,11 @@ class DeviceOfflineAlert(models.Model):
     push_sent = models.BooleanField(default=False, help_text="Đã gửi push cho phụ huynh")
     push_sent_at = models.DateTimeField(null=True, blank=True)
 
+    # Số lần retry push đã thực hiện (Phần 2 — báo động liên tục tới khi acknowledge)
+    push_retry_count = models.IntegerField(default=0, help_text="Số lần đã retry push")
+    # Khi parent đã mở app và xem cảnh báo → set trường này để dừng retry loop
+    acknowledged_at = models.DateTimeField(null=True, blank=True, help_text="Parent đã xem/acknowledge alert")
+
     # Khi thiết bị online trở lại
     recovered_at = models.DateTimeField(null=True, blank=True)
     recovery_duration_seconds = models.IntegerField(null=True, blank=True, help_text="Thời gian offline (giây)")
@@ -332,7 +337,56 @@ class DeviceOfflineAlert(models.Model):
             models.Index(fields=['task', 'status']),
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['worker', 'status']),
+            # Index cho scheduler retry — tìm alert active chưa acknowledged
+            models.Index(fields=['status', 'acknowledged_at', 'push_sent_at']),
         ]
 
     def __str__(self):
         return f"OfflineAlert Task#{self.task_id} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  RANDOM VERIFICATION CHECK — xác minh ngẫu nhiên trong ca làm
+#  Chống carepartner để máy lại rồi bỏ đi: hệ thống bất ngờ yêu cầu
+#  carepartner nhập đúng mã cá nhân để chứng minh vẫn đang cầm máy.
+# ═══════════════════════════════════════════════════════════════════
+
+class RandomVerificationCheck(models.Model):
+    """
+    Xác minh ngẫu nhiên trong ca làm — hệ thống bất ngờ yêu cầu CarePartner
+    nhập mã cá nhân để chứng minh vẫn đang cầm máy, không báo trước lịch.
+    """
+    STATUS_CHOICES = (
+        ('pending',    'Đang chờ CarePartner phản hồi'),
+        ('confirmed',  'CarePartner nhập đúng mã trong thời hạn'),
+        ('wrong_code', 'CarePartner nhập sai mã'),
+        ('timeout',    'Hết thời gian, CarePartner không phản hồi'),
+    )
+    task = models.ForeignKey('core.Task', on_delete=models.CASCADE, related_name='verification_checks')
+    worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='verification_checks')
+
+    triggered_at = models.DateTimeField(auto_now_add=True, help_text="Thời điểm hệ thống bất ngờ chọn để yêu cầu xác minh")
+    respond_deadline = models.DateTimeField(help_text="Hạn chót phản hồi, ví dụ triggered_at + 90s")
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    attempts = models.IntegerField(default=0, help_text="Số lần nhập sai")
+    responded_at = models.DateTimeField(blank=True, null=True)
+
+    # Vị trí lúc phản hồi (đối chiếu chéo với LiveLocation, tận dụng lại logic phần 1)
+    response_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    response_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+
+    # Push retry tracking (giống DeviceOfflineAlert — gửi lại nếu chưa phản hồi)
+    push_sent = models.BooleanField(default=False, help_text="Đã gửi push yêu cầu xác minh")
+    push_retry_count = models.IntegerField(default=0, help_text="Số lần đã retry push")
+
+    class Meta:
+        ordering = ['-triggered_at']
+        indexes = [
+            models.Index(fields=['task', 'status']),
+            models.Index(fields=['worker', 'status']),
+            models.Index(fields=['status', 'respond_deadline']),
+        ]
+
+    def __str__(self):
+        return f"VerifyCheck Task#{self.task_id} | {self.get_status_display()} | {self.triggered_at:%H:%M:%S}"
