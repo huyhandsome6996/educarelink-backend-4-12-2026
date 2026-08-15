@@ -1,3 +1,19 @@
+// ============================================================
+// CreateTaskScreen — Redesign theo Warm Professionalism (Stitch AI)
+// Thay đổi:
+// - Top App Bar: trắng, back arrow + 'Tạo yêu cầu mới' + spacer
+// - Progress stepper (cosmetic): 3 bước, bước 1 active primary-container
+// - Service chips: pill style (active = primary-container bg, trắng text)
+// - Form: bọc trong các section với caption label trên input
+// - Input: border outline-variant, radius 14, focus ring primary-container
+// - Geofence section: card với border, toggle checkmark
+// - Sticky footer: price hint card + 'Đăng lên cộng đồng' button
+//   (shadow cam đậm)
+// - Background: surfaceWarm
+// Giữ nguyên: logic submit, validation, date/time pickers, geofence
+// permission flow, 8 categories, AI moderation message
+// ============================================================
+
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
@@ -13,7 +29,6 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-// Sync 100% với web task_create_1.html (Material Symbols → Ionicons)
 const CATEGORIES = [
   { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
   { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
@@ -41,11 +56,13 @@ export default function CreateTaskScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  // Focus state tracking for inputs (taste-skill: visible focus rings)
   const [titleFocused, setTitleFocused] = useState(false);
   const [descFocused, setDescFocused] = useState(false);
   const [locationFocused, setLocationFocused] = useState(false);
   const [priceFocused, setPriceFocused] = useState(false);
+
+  const [enableGeofence, setEnableGeofence] = useState(false);
+  const [geofenceRadius, setGeofenceRadius] = useState('500');
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -88,15 +105,11 @@ export default function CreateTaskScreen() {
 
   const cat = CATEGORIES.find(c => c.id === selectedCat);
 
-  const [enableGeofence, setEnableGeofence] = useState(false);
-  const [geofenceRadius, setGeofenceRadius] = useState('500');
-
   const handleSubmit = async () => {
     if (!title || !description || !location || !date || !time || !price) {
       Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ tất cả các trường.');
       return;
     }
-    // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     const timeRegex = /^\d{2}:\d{2}$/;
     if (!dateRegex.test(date) || !timeRegex.test(time)) {
@@ -115,13 +128,8 @@ export default function CreateTaskScreen() {
         price: parseInt(price),
       };
 
-      // ===== GEOFENCE (nếu parent bật) =====
-      // Mobile chưa có map picker nên dùng location mặc định null
-      // Parent có thể set geofence sau khi tạo task trên web
-      // Hoặc nếu parent dùng app có GPS, ta xin quyền location và dùng làm tâm vùng
       if (enableGeofence) {
         try {
-          // Xin quyền location
           const LocationModule = await import('expo-location');
           const { status } = await LocationModule.requestForegroundPermissionsAsync();
           if (status === 'granted') {
@@ -130,27 +138,21 @@ export default function CreateTaskScreen() {
             taskData.geofence_lng = loc.coords.longitude;
             taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
           } else {
-            // Fix M9: trước đây có 2 button mà cả 2 đều dẫn tới return —
-            // "double-return" gây nhầm lẫn. Gom còn 1 button "Bỏ qua geofence"
-            // (tắt toggle và return để user submit lại không có geofence).
             Alert.alert(
               'Cần quyền vị trí',
               'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bấm bỏ qua để đăng việc không có geofence.',
-              [
-                { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
-              ]
+              [{ text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } }]
             );
             setIsLoading(false);
             return;
           }
         } catch (e) {
           console.warn('Location permission error:', e);
-          // Vẫn tiếp tục submit không có geofence
         }
       }
 
       await createTask(taskData);
-      Alert.alert('✅ Thành công!', 'Đã đăng việc lên cộng đồng.', [
+      Alert.alert('Thành công!', 'Đã đăng việc lên cộng đồng.', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
@@ -164,64 +166,159 @@ export default function CreateTaskScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar barStyle="dark-content" />
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
+
+      {/* Top App Bar — trắng, back + title + spacer */}
+      <View style={styles.appBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.appBarBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đăng việc mới</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.appBarTitle}>Tạo yêu cầu mới</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {/* Chọn danh mục */}
-        <Text style={styles.label}>Chọn loại dịch vụ</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catsScroll}>
-          {CATEGORIES.map((c) => (
-            <TouchableOpacity key={c.id} style={[styles.catBtn, selectedCat === c.id && styles.catBtnActive]}
-              onPress={() => setSelectedCat(c.id)} activeOpacity={0.8}>
-              <Ionicons name={c.iconName} size={28} color={selectedCat === c.id ? '#fff' : COLORS.primary} />
-              <Text style={[styles.catName, selectedCat === c.id && styles.catNameActive]}>{c.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Gợi ý giá */}
-        <View style={styles.priceHint}>
-          <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
-          <Text style={styles.priceHintText}>Gợi ý mức giá cho {cat?.name}: {cat?.hint}</Text>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Progress Stepper — cosmetic, 3 bước */}
+        <View style={styles.stepperRow}>
+          <View style={[styles.stepCircle, styles.stepCircleActive]}>
+            <Text style={styles.stepTextActive}>1</Text>
+          </View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepCircle}>
+            <Text style={styles.stepText}>2</Text>
+          </View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepCircle}>
+            <Text style={styles.stepText}>3</Text>
+          </View>
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <TextInput style={[styles.input, titleFocused && styles.inputFocused]}
-            placeholder="Tiêu đề công việc *" placeholderTextColor={COLORS.textMuted}
-            value={title} onChangeText={setTitle}
-            onFocus={() => setTitleFocused(true)} onBlur={() => setTitleFocused(false)} />
-          <TextInput style={[styles.input, styles.textarea, descFocused && styles.inputFocused]}
-            placeholder="Mô tả chi tiết yêu cầu *"
-            placeholderTextColor={COLORS.textMuted} value={description} onChangeText={setDescription}
-            multiline numberOfLines={4} textAlignVertical="top"
-            onFocus={() => setDescFocused(true)} onBlur={() => setDescFocused(false)} />
-          <View style={[styles.inputRow, locationFocused && styles.inputRowFocused]}>
-            <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput style={styles.inputInline}
-              placeholder="Địa điểm thực hiện *" placeholderTextColor={COLORS.textMuted}
-              value={location} onChangeText={setLocation}
-              onFocus={() => setLocationFocused(true)} onBlur={() => setLocationFocused(false)} />
+        {/* Section: Loại dịch vụ — chips pill style */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Loại dịch vụ</Text>
+          <View style={styles.chipRow}>
+            {CATEGORIES.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.chip, selectedCat === c.id && styles.chipActive]}
+                onPress={() => setSelectedCat(c.id)}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name={c.iconName}
+                  size={16}
+                  color={selectedCat === c.id ? '#ffffff' : COLORS.onSurface}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.chipText, selectedCat === c.id && styles.chipTextActive]}>
+                  {c.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.twoCol}>
-            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenDatePicker}>
-              <Text style={{ ...TYPO.body, color: date ? COLORS.textPrimary : COLORS.textMuted }}>
-                {date ? date : 'Chọn ngày'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenTimePicker}>
-              <Text style={{ ...TYPO.body, color: time ? COLORS.textPrimary : COLORS.textMuted }}>
-                {time ? time : 'Chọn giờ'}
-              </Text>
-            </TouchableOpacity>
+
+          {/* Gợi ý giá */}
+          <View style={styles.priceHintBox}>
+            <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.priceHintText}>
+              Gợi ý mức giá cho {cat?.name}: {cat?.hint}
+            </Text>
+          </View>
+        </View>
+
+        {/* Section: Thông tin chi tiết */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thông tin chi tiết</Text>
+
+          {/* Title */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Tiêu đề công việc *</Text>
+            <View style={[styles.inputWrapper, titleFocused && styles.inputWrapperFocused]}>
+              <TextInput
+                style={styles.input}
+                placeholder="VD: Gia sư Toán lớp 5 mỗi tối 7h"
+                placeholderTextColor={COLORS.outline}
+                value={title}
+                onChangeText={setTitle}
+                onFocus={() => setTitleFocused(true)}
+                onBlur={() => setTitleFocused(false)}
+              />
+            </View>
+          </View>
+
+          {/* Description */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Mô tả chi tiết *</Text>
+            <View style={[styles.inputWrapper, styles.textareaWrapper, descFocused && styles.inputWrapperFocused]}>
+              <TextInput
+                style={[styles.input, styles.textarea]}
+                placeholder="Mô tả nhu cầu, yêu cầu cụ thể, thời lượng..."
+                placeholderTextColor={COLORS.outline}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                onFocus={() => setDescFocused(true)}
+                onBlur={() => setDescFocused(false)}
+              />
+            </View>
+          </View>
+
+          {/* Location */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Địa điểm *</Text>
+            <View style={[styles.inputWrapper, locationFocused && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color={locationFocused ? COLORS.primary : COLORS.outlineVariant}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="VD: 123 Lê Lợi, Q1, TP.HCM"
+                placeholderTextColor={COLORS.outline}
+                value={location}
+                onChangeText={setLocation}
+                onFocus={() => setLocationFocused(true)}
+                onBlur={() => setLocationFocused(false)}
+              />
+            </View>
+          </View>
+
+          {/* Date & Time — 2 columns */}
+          <View style={styles.twoColRow}>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Ngày</Text>
+              <TouchableOpacity
+                style={styles.inputWrapper}
+                onPress={handleOpenDatePicker}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="calendar-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+                <Text style={[styles.inputText, !date && styles.inputPlaceholder]}>
+                  {date || 'Chọn ngày'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Giờ</Text>
+              <TouchableOpacity
+                style={styles.inputWrapper}
+                onPress={handleOpenTimePicker}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="time-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+                <Text style={[styles.inputText, !time && styles.inputPlaceholder]}>
+                  {time || 'Chọn giờ'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {showDatePicker && DateTimePicker && (
@@ -233,7 +330,6 @@ export default function CreateTaskScreen() {
               minimumDate={new Date()}
             />
           )}
-
           {showTimePicker && DateTimePicker && (
             <DateTimePicker
               value={timeValue}
@@ -243,15 +339,29 @@ export default function CreateTaskScreen() {
               onChange={onTimeChange}
             />
           )}
-          <View style={[styles.inputRow, priceFocused && styles.inputRowFocused]}>
-            <TextInput style={styles.priceInput}
-              placeholder="0" placeholderTextColor={COLORS.textMuted} value={price} onChangeText={setPrice}
-              keyboardType="numeric"
-              onFocus={() => setPriceFocused(true)} onBlur={() => setPriceFocused(false)} />
-            <Text style={styles.currency}>VNĐ/buổi</Text>
-          </View>
 
-          {/* ===== GEOFENCE TOGGLE (VÙNG AN TOÀN) ===== */}
+          {/* Price */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Giá thỏa thuận (VNĐ)</Text>
+            <View style={[styles.inputWrapper, priceFocused && styles.inputWrapperFocused]}>
+              <TextInput
+                style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
+                placeholder="0"
+                placeholderTextColor={COLORS.outline}
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="numeric"
+                onFocus={() => setPriceFocused(true)}
+                onBlur={() => setPriceFocused(false)}
+              />
+              <Text style={styles.currencyUnit}>VNĐ</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Section: Vùng an toàn (Geofence) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Vùng an toàn (tuỳ chọn)</Text>
           <TouchableOpacity
             style={[styles.geofenceToggle, enableGeofence && styles.geofenceToggleActive]}
             onPress={() => setEnableGeofence(!enableGeofence)}
@@ -262,7 +372,7 @@ export default function CreateTaskScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.geofenceToggleTitle}>
-                <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} /> Yêu cầu theo dõi vị trí Carepartner
+                Yêu cầu theo dõi vị trí Carepartner
               </Text>
               <Text style={styles.geofenceToggleDesc}>
                 Carepartner phải đồng ý chia sẻ vị trí mới được nhận việc. Bạn sẽ nhận chuông cảnh báo khi họ rời vùng an toàn.
@@ -272,29 +382,41 @@ export default function CreateTaskScreen() {
 
           {enableGeofence && (
             <View style={styles.geofenceSettings}>
-              <Text style={styles.geofenceLabel}>Bán kính vùng an toàn (mét):</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="map-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput style={styles.priceInput}
-                  placeholder="500" placeholderTextColor={COLORS.textMuted}
-                  value={geofenceRadius} onChangeText={setGeofenceRadius}
-                  keyboardType="numeric" />
-                <Text style={styles.currency}>mét</Text>
+              <Text style={styles.fieldLabel}>Bán kính vùng an toàn (mét)</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="map-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
+                  placeholder="500"
+                  placeholderTextColor={COLORS.outline}
+                  value={geofenceRadius}
+                  onChangeText={setGeofenceRadius}
+                  keyboardType="numeric"
+                />
+                <Text style={styles.currencyUnit}>mét</Text>
               </View>
               <Text style={styles.geofenceHint}>Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng vị trí hiện tại của bạn.</Text>
             </View>
           )}
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Submit button */}
+      {/* Sticky footer — submit button */}
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitBtn, isLoading && { opacity: 0.7 }]}
-          onPress={handleSubmit} disabled={isLoading} activeOpacity={0.85}>
-          {isLoading ? <ActivityIndicator color="#fff" /> : (
+        <TouchableOpacity
+          style={[styles.submitBtn, isLoading && { opacity: 0.7 }]}
+          onPress={handleSubmit}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
             <>
-              <Ionicons name="send" size={18} color="#fff" />
               <Text style={styles.submitText}>Đăng lên cộng đồng</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
             </>
           )}
         </TouchableOpacity>
@@ -304,67 +426,256 @@ export default function CreateTaskScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
-  body: { flex: 1, padding: 20 },
-  label: { ...TYPO.overline, color: COLORS.textSecondary, marginBottom: 10 },
-  catsScroll: { marginBottom: 12 },
-  catBtn: { alignItems: 'center', padding: 12, borderRadius: SIZES.radiusMd, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, marginRight: 10, minWidth: 76 },
-  catBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15', ...SHADOWS.cardHover, transform: [{ scale: 1.03 }] },
-  catImage: { width: 32, height: 32, marginBottom: 6 },
-  catName: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  catNameActive: { color: COLORS.primary, fontWeight: '700' },
-  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm, padding: 10, marginBottom: 20, borderWidth: 1, borderColor: COLORS.primarySoft },
-  priceHintText: { flex: 1, ...TYPO.bodySmall, color: COLORS.primaryDark, fontWeight: '500' },
-  form: { gap: 12 },
-  input: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, ...TYPO.body, color: COLORS.textPrimary, marginBottom: 0 },
-  inputFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
-  textarea: { minHeight: 100, paddingTop: 14 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, minHeight: 54 },
-  inputRowFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
-  inputInline: { flex: 1, ...TYPO.body, color: COLORS.textPrimary, paddingVertical: 0 },
-  priceInput: { flex: 1, ...TYPO.h3, color: COLORS.primary, fontWeight: '700', paddingVertical: 0 },
-  inputIcon: { marginRight: 8 },
-  twoCol: { flexDirection: 'row', gap: 12 },
-  currency: { ...TYPO.h5, color: COLORS.textSecondary, marginLeft: 8 },
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
-  submitBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large },
-  submitText: { color: '#fff', ...TYPO.button },
-
-  // === GEOFENCE TOGGLE ===
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  // === APP BAR ===
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 56,
+    paddingBottom: 12,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.outlineVariant,
+  },
+  appBarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appBarTitle: {
+    ...TYPO.h3,
+    color: COLORS.onSurface,
+  },
+  // === SCROLL ===
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  // === STEPPER ===
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 40,
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.surfaceContainer, // surface-variant
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepCircleActive: {
+    backgroundColor: COLORS.primary, // primary-container
+    borderWidth: 0,
+    ...SHADOWS.medium,
+  },
+  stepText: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+  },
+  stepTextActive: {
+    ...TYPO.caption,
+    color: '#ffffff',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: COLORS.outlineVariant,
+    marginHorizontal: -4,
+    zIndex: -1,
+  },
+  // === SECTIONS ===
+  section: {
+    marginBottom: 24,
+    gap: 12,
+  },
+  sectionTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+  },
+  // === CHIPS ===
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999, // rounded-full
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    ...SHADOWS.small,
+  },
+  chipText: {
+    ...TYPO.body,
+    fontSize: 14,
+    color: COLORS.onSurface,
+  },
+  chipTextActive: {
+    color: '#ffffff',
+  },
+  priceHintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
+  },
+  priceHintText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.primaryDark,
+    fontWeight: '500',
+  },
+  // === FIELD GROUP ===
+  fieldGroup: {
+    gap: 8,
+  },
+  fieldLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+  },
+  // === INPUT WRAPPER ===
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant, // outline-variant
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  inputWrapperFocused: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+    paddingHorizontal: 13, // adjust for thicker border
+    ...SHADOWS.inputFocus,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    ...TYPO.body,
+    color: COLORS.onSurface,
+    paddingVertical: 0,
+  },
+  inputText: {
+    ...TYPO.body,
+    color: COLORS.onSurface,
+  },
+  inputPlaceholder: {
+    color: COLORS.outline,
+  },
+  currencyUnit: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  textareaWrapper: {
+    height: undefined,
+    minHeight: 110,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
+  textarea: {
+    minHeight: 86,
+    lineHeight: 22,
+  },
+  // === TWO COLUMN ===
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  // === GEOFENCE ===
   geofenceToggle: {
-    flexDirection: 'row', gap: 12, alignItems: 'flex-start',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm,
-    borderWidth: 1.5, borderColor: COLORS.border, padding: 14,
-    marginTop: 8,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    padding: 14,
   },
   geofenceToggleActive: {
-    borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
   },
   geofenceCheckbox: {
-    width: 22, height: 22, borderRadius: 6,
-    borderWidth: 2, borderColor: COLORS.border,
-    justifyContent: 'center', alignItems: 'center',
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 2,
   },
   geofenceCheckboxActive: {
-    backgroundColor: COLORS.primary, borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   geofenceToggleTitle: {
-    ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4,
+    ...TYPO.body,
+    fontSize: 14,
+    color: COLORS.onSurface,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   geofenceToggleDesc: {
-    ...TYPO.caption, color: COLORS.textSecondary, lineHeight: 18,
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    lineHeight: 18,
   },
   geofenceSettings: {
-    marginTop: 10, gap: 8,
-  },
-  geofenceLabel: {
-    ...TYPO.overline, color: COLORS.textMuted, fontWeight: '700',
+    gap: 8,
   },
   geofenceHint: {
-    ...TYPO.caption, color: COLORS.textMuted, fontStyle: 'italic',
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    fontStyle: 'italic',
+  },
+  // === FOOTER ===
+  footer: {
+    padding: 20,
+    paddingBottom: 36,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.outlineVariant,
+  },
+  submitBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    height: 52,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    ...SHADOWS.large,
+  },
+  submitText: {
+    ...TYPO.h4,
+    color: '#ffffff',
   },
 });
