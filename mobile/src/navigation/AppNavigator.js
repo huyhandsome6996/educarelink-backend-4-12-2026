@@ -89,6 +89,8 @@ function TabIcon({ name, focused, color }) {
 }
 
 // === Tab Navigator dành cho PHỤ HUYNH ===
+// QA-FIX-GAP-3: thêm tab thứ 4 'Tài khoản' → ParentProfileScreen
+// (trước chỉ có 3 tab Home/MyTasks/Chatbot — thiếu sót có sẵn)
 function ParentTabs() {
   return (
     <Tab.Navigator
@@ -98,6 +100,7 @@ function ParentTabs() {
           if (route.name === 'ParentHome') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'MyTasks') iconName = focused ? 'list' : 'list-outline';
           else if (route.name === 'Chatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
+          else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
         tabBarActiveTintColor: COLORS.primary,
@@ -113,6 +116,7 @@ function ParentTabs() {
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
       <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Hoạt động' }} />
       <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
+      <Tab.Screen name="ParentProfile" component={ParentProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
     </Tab.Navigator>
   );
 }
@@ -209,7 +213,7 @@ export default function AppNavigator() {
             <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
-            <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
+            {/* ParentProfile giờ là tab trong ParentTabs — không cần Stack.Screen riêng */}
             <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
             <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
             <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
