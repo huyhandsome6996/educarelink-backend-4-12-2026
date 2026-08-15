@@ -1,38 +1,36 @@
 // ============================================================
-// ParentProfileScreen — MỚI (Nhóm B, mock data)
+// ParentProfileScreen — MỚI (Nhóm B)
 // Hồ sơ cá nhân của phụ huynh + menu cài đặt.
-// Dùng dữ liệu thật từ useAuth() cho phần profile, mock cho phần còn lại.
+// Dùng dữ liệu thật từ useAuth() (được populate từ API GET /profile/)
+// cho phần thông tin cá nhân + nút "Yêu cầu sửa hồ sơ" gọi requestProfileChange.
+// Phần thống kê (số việc đã đăng/hoàn thành/đánh giá) dùng mock
+// vì chưa có API stats cho parent — sẽ nối khi backend có endpoint.
 //
 // Layout theo design HTML parent_profile/code.html:
 // - Top App Bar: surface bg, avatar nhỏ + 'EduCareLink' + bell
 // - Profile card: surface bg, avatar 96px + name h2 + role +
 //   2 badges (Đã xác thực + Thành viên)
-// - Stats row: 3 cột (việc đã đăng /已完成 / đánh giá)
+// - Stats row: 3 cột (việc đã đăng / hoàn thành / đánh giá)
+// - Info section: email/phone/address rows (real data từ useAuth)
 // - Menu list: surface card với các rows (icon circle + label + chevron)
-//   * Thông tin cá nhân
-//   * Điểm thưởng & Voucher
-//   * Quản lý bé
-//   * Phương thức thanh toán
-//   * Thông báo
-//   * Bảo mật & Quyền riêng tư
-//   * Trợ giúp & Hỗ trợ
 // - Logout button (text màu errorDeep)
 // ============================================================
 
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Platform,
+  StatusBar, Alert, Platform, Modal, TextInput,
+  KeyboardAvoidingView, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 
 // Menu items — những mục chưa có screen → showComingSoon
 const MENU_ITEMS = [
-  { id: 'personal', icon: 'person', label: 'Thông tin cá nhân', target: null },
   { id: 'rewards', icon: 'gift', label: 'Điểm thưởng & Voucher', target: 'RewardPoints' },
   { id: 'children', icon: 'people', label: 'Quản lý bé', target: null },
   { id: 'payment', icon: 'card', label: 'Phương thức thanh toán', target: 'PaymentSetup' },
@@ -46,6 +44,30 @@ export default function ParentProfileScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
 
+  // Modal state cho "Yêu cầu sửa hồ sơ" — pattern giống WorkerProfileScreen
+  const [changeModalVisible, setChangeModalVisible] = React.useState(false);
+  const [changeForm, setChangeForm] = React.useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    phone_number: user?.phone_number || '',
+    email: user?.email || '',
+    address: user?.address || '',
+  });
+  const [changeSubmitting, setChangeSubmitting] = React.useState(false);
+
+  // Sync form khi user thay đổi (vd: user load xong sau khi mount)
+  React.useEffect(() => {
+    if (user) {
+      setChangeForm({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone_number: user.phone_number || '',
+        email: user.email || '',
+        address: user.address || '',
+      });
+    }
+  }, [user]);
+
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
@@ -55,6 +77,31 @@ export default function ParentProfileScreen() {
       navigation.navigate(item.target);
     } else {
       showComingSoon(item.label);
+    }
+  };
+
+  const handleRequestChange = async () => {
+    setChangeSubmitting(true);
+    try {
+      const changes = {};
+      Object.keys(changeForm).forEach(key => {
+        const newVal = (changeForm[key] || '').trim();
+        const oldVal = (user?.[key] || '').trim();
+        if (newVal && newVal !== oldVal) changes[key] = newVal;
+      });
+      if (Object.keys(changes).length === 0) {
+        Alert.alert('Không có thay đổi', 'Bạn chưa sửa thông tin nào.');
+        setChangeSubmitting(false);
+        return;
+      }
+      await requestProfileChange(changes);
+      Alert.alert('✅ Đã gửi', 'Yêu cầu thay đổi hồ sơ đã gửi. Admin sẽ duyệt trong 1-2 ngày.');
+      setChangeModalVisible(false);
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Gửi yêu cầu thất bại.';
+      Alert.alert('Lỗi', typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setChangeSubmitting(false);
     }
   };
 
@@ -112,7 +159,7 @@ export default function ParentProfileScreen() {
           </View>
         </View>
 
-        {/* Stats row — 3 cột */}
+        {/* Stats row — 3 cột (mock stats, chưa có API parent stats) */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>12</Text>
@@ -127,6 +174,62 @@ export default function ParentProfileScreen() {
           <View style={styles.statItem}>
             <Text style={styles.statValue}>4.8</Text>
             <Text style={styles.statLabel}>Đánh giá</Text>
+          </View>
+        </View>
+
+        {/* Thông tin cá nhân — real data từ useAuth() (được populate từ API GET /profile/) */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <Text style={styles.infoTitle}>Thông tin cá nhân</Text>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => {
+                setChangeForm({
+                  first_name: user?.first_name || '',
+                  last_name: user?.last_name || '',
+                  phone_number: user?.phone_number || '',
+                  email: user?.email || '',
+                  address: user?.address || '',
+                });
+                setChangeModalVisible(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.editBtnText}>Sửa</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.infoList}>
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIconBox, { backgroundColor: COLORS.primaryLight }]}>
+                <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoValue}>{user?.email || 'Chưa cập nhật'}</Text>
+              </View>
+            </View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIconBox, { backgroundColor: COLORS.primaryLight }]}>
+                <Ionicons name="call-outline" size={18} color={COLORS.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Số điện thoại</Text>
+                <Text style={styles.infoValue}>{user?.phone_number || 'Chưa cập nhật'}</Text>
+              </View>
+            </View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIconBox, { backgroundColor: COLORS.primaryLight }]}>
+                <Ionicons name="location-outline" size={18} color={COLORS.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Địa chỉ</Text>
+                <Text style={styles.infoValue} numberOfLines={2}>
+                  {user?.address || 'Chưa cập nhật'}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -179,10 +282,69 @@ export default function ParentProfileScreen() {
         </TouchableOpacity>
 
         {/* App version */}
-        <Text style={styles.versionText}>EduCareLink v1.0.0</Text>
+        <Text style={styles.versionText}>EduCareLink v1.1.0</Text>
 
         <View style={{ height: 60 }} />
       </ScrollView>
+
+      {/* Modal: Yêu cầu sửa hồ sơ — pattern giống WorkerProfileScreen */}
+      <Modal visible={changeModalVisible} animationType="slide" transparent={true} onRequestClose={() => setChangeModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Yêu cầu sửa hồ sơ</Text>
+              <TouchableOpacity onPress={() => setChangeModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Họ</Text>
+            <TextInput style={styles.modalInput} value={changeForm.last_name}
+              onChangeText={(v) => setChangeForm({...changeForm, last_name: v})}
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Tên</Text>
+            <TextInput style={styles.modalInput} value={changeForm.first_name}
+              onChangeText={(v) => setChangeForm({...changeForm, first_name: v})}
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Số điện thoại</Text>
+            <TextInput style={styles.modalInput} value={changeForm.phone_number}
+              onChangeText={(v) => setChangeForm({...changeForm, phone_number: v})}
+              keyboardType="phone-pad" placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Email</Text>
+            <TextInput style={styles.modalInput} value={changeForm.email}
+              onChangeText={(v) => setChangeForm({...changeForm, email: v})}
+              keyboardType="email-address" autoCapitalize="none"
+              placeholderTextColor={COLORS.textMuted} />
+
+            <Text style={styles.modalLabel}>Địa chỉ</Text>
+            <TextInput style={styles.modalInput} value={changeForm.address}
+              onChangeText={(v) => setChangeForm({...changeForm, address: v})}
+              multiline placeholderTextColor={COLORS.textMuted} />
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.infoBoxText}>Yêu cầu sẽ được Admin duyệt trong 1-2 ngày. Bạn vẫn dùng thông tin cũ cho đến khi được duyệt.</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, changeSubmitting && { opacity: 0.7 }]}
+              onPress={handleRequestChange}
+              disabled={changeSubmitting}
+              activeOpacity={0.85}
+            >
+              {changeSubmitting ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Ionicons name="send" size={18} color="#fff" />
+                  <Text style={styles.modalSubmitText}>Gửi yêu cầu</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -305,6 +467,106 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outlineVariant,
     ...SHADOWS.small,
   },
+  // === INFO CARD (email/phone/address) ===
+  infoCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    ...SHADOWS.small,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  infoTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: COLORS.primaryLight,
+  },
+  editBtnText: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  infoList: { gap: 0 },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  infoIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoContent: { flex: 1 },
+  infoLabel: {
+    ...TYPO.overline,
+    color: COLORS.onSurfaceVariant,
+    marginBottom: 2,
+  },
+  infoValue: {
+    ...TYPO.body,
+    color: COLORS.onSurface,
+    fontWeight: '600',
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: COLORS.outlineVariant,
+    opacity: 0.5,
+  },
+  // === MODAL (Yêu cầu sửa hồ sơ) ===
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface, borderTopLeftRadius: SIZES.radiusXl, borderTopRightRadius: SIZES.radiusXl,
+    padding: 20, paddingBottom: 36, maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: { ...TYPO.h4, color: COLORS.onSurface, fontWeight: '800' },
+  modalCloseBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: COLORS.surfaceWarm, justifyContent: 'center', alignItems: 'center',
+  },
+  modalLabel: { ...TYPO.overline, color: COLORS.onSurfaceVariant, marginBottom: 6, marginTop: 12 },
+  modalInput: {
+    backgroundColor: COLORS.surfaceWarm, borderRadius: SIZES.radiusSm, borderWidth: 1.5,
+    borderColor: COLORS.outlineVariant, paddingHorizontal: 14, paddingVertical: 10,
+    ...TYPO.body, color: COLORS.onSurface,
+  },
+  infoBox: {
+    flexDirection: 'row', gap: 6, alignItems: 'flex-start',
+    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm, padding: 10,
+    marginTop: 12, borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  infoBoxText: { flex: 1, ...TYPO.caption, color: COLORS.primaryDark, lineHeight: 18 },
+  modalSubmitBtn: {
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 50,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
+    marginTop: 20,
+    ...SHADOWS.large,
+  },
+  modalSubmitText: { color: '#fff', ...TYPO.button, fontSize: 15 },
   statItem: {
     flex: 1,
     alignItems: 'center',
