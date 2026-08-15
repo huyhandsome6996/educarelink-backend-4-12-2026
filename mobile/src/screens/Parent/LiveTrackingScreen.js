@@ -304,7 +304,7 @@ export default function LiveTrackingScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
         <ActivityIndicator color={COLORS.primary} size="large" />
         <Text style={styles.loadingText}>Đang tải vị trí...</Text>
       </View>
@@ -314,13 +314,13 @@ export default function LiveTrackingScreen() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
+            <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Theo dõi Carepartner</Text>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle}>Theo dõi CarePartner</Text>
+          <View style={{ width: 44 }} />
         </View>
         <View style={styles.errorBox}>
           <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
@@ -336,12 +336,12 @@ export default function LiveTrackingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      {/* Top Bar */}
+      {/* Top App Bar — trắng theo Warm Professionalism */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle} numberOfLines={1}>{taskTitle || `Task #${taskId}`}</Text>
@@ -349,8 +349,8 @@ export default function LiveTrackingScreen() {
             {isTracking ? '● LIVE · cập nhật ' + (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '') : 'Không có dữ liệu'}
           </Text>
         </View>
-        <View style={[styles.liveBadge, !isTracking && { backgroundColor: COLORS.divider }]}>
-          <Text style={[styles.liveText, !isTracking && { color: COLORS.textMuted }]}>
+        <View style={[styles.liveBadge, !isTracking && { backgroundColor: COLORS.outlineVariant }]}>
+          <Text style={[styles.liveText, !isTracking && { color: COLORS.onSurfaceVariant }]}>
             {isTracking ? 'LIVE' : 'OFF'}
           </Text>
         </View>
@@ -553,43 +553,45 @@ export default function LiveTrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, gap: 12 },
-  loadingText: { ...TYPO.body, color: COLORS.textSecondary },
-  errorContainer: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.surfaceWarm, gap: 12 },
+  loadingText: { ...TYPO.body, color: COLORS.onSurfaceVariant },
+  errorContainer: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  // Header — trắng theo Warm Professionalism
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 12, paddingTop: 56, paddingBottom: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surface, // trắng thay vì cam
+    borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.surfaceContainer,
     justifyContent: 'center', alignItems: 'center',
   },
   headerInfo: { flex: 1 },
-  headerTitle: { ...TYPO.h5, color: '#fff', fontWeight: '700' },
-  headerSub: { ...TYPO.caption, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  headerTitle: { ...TYPO.h4, color: COLORS.onSurface, fontWeight: '700' },
+  headerSub: { ...TYPO.caption, color: COLORS.onSurfaceVariant, marginTop: 2 },
   liveBadge: {
-    backgroundColor: '#10B981', borderRadius: 6,
+    backgroundColor: COLORS.secondary, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 4,
   },
   liveText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
 
   mapArea: { flex: 1 },
-  mapPlaceholder: { flex: 1, backgroundColor: '#e8eaed' },
+  mapPlaceholder: { flex: 1, backgroundColor: COLORS.surfaceContainerLow },
   mapTopBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 10,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
+    backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant,
     ...SHADOWS.small,
   },
   mapTopInfo: { flex: 1 },
-  mapTopTitle: { ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700' },
-  mapTopCoords: { ...TYPO.caption, color: COLORS.textMuted, marginTop: 2 },
+  mapTopTitle: { ...TYPO.bodySmall, color: COLORS.onSurface, fontWeight: '700' },
+  mapTopCoords: { ...TYPO.caption, color: COLORS.onSurfaceVariant, marginTop: 2 },
   geofenceBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: COLORS.error, borderRadius: 6,
+    backgroundColor: COLORS.errorDeep, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 4,
   },
   geofenceText: { color: '#fff', fontSize: 10, fontWeight: '700' },
@@ -661,72 +663,82 @@ const styles = StyleSheet.create({
   },
   notTrackingIcon: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceContainer,
     justifyContent: 'center', alignItems: 'center',
   },
-  notTrackingTitle: { ...TYPO.h5, color: COLORS.textPrimary },
-  notTrackingText: { ...TYPO.bodySmall, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
+  notTrackingTitle: { ...TYPO.h5, color: COLORS.onSurface },
+  notTrackingText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, textAlign: 'center', lineHeight: 18 },
 
   errorBox: {
     flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 32,
   },
-  errorTitle: { ...TYPO.h5, color: COLORS.error },
-  errorText: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
+  errorTitle: { ...TYPO.h5, color: COLORS.errorDeep },
+  errorText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, textAlign: 'center' },
 
+  // Bottom sheet — glass-like (surface + shadow + radius 24)
   bottomSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 16, paddingBottom: 28,
+    padding: 20, paddingBottom: 32,
     ...SHADOWS.large,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderColor: COLORS.outlineVariant,
   },
   sheetHandle: {
     width: 40, height: 4, borderRadius: 2,
-    backgroundColor: COLORS.divider,
-    alignSelf: 'center', marginBottom: 14,
+    backgroundColor: COLORS.outlineVariant,
+    alignSelf: 'center', marginBottom: 16,
   },
   sheetHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12,
   },
   sheetAvatar: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 48, height: 48, borderRadius: 24,
     backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: COLORS.surface,
     ...SHADOWS.small,
   },
-  sheetAvatarText: { color: '#fff', ...TYPO.h5, fontWeight: '800' },
+  sheetAvatarText: { color: '#fff', ...TYPO.h4, fontWeight: '800' },
   sheetInfo: { flex: 1 },
-  sheetName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
-  sheetStatus: { ...TYPO.caption, color: COLORS.success, marginTop: 2 },
+  sheetName: { ...TYPO.h4, color: COLORS.onSurface, fontWeight: '700' },
+  sheetStatus: { ...TYPO.caption, color: COLORS.secondaryDark, marginTop: 2 },
   sheetStats: { alignItems: 'flex-end' },
   sheetSpeed: { ...TYPO.h5, color: COLORS.primary, fontWeight: '900' },
-  sheetAccuracy: { ...TYPO.caption, color: COLORS.textMuted, marginTop: 2 },
+  sheetAccuracy: { ...TYPO.caption, color: COLORS.onSurfaceVariant, marginTop: 2 },
 
   sheetTimeRow: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    marginBottom: 12, paddingHorizontal: 4,
+    marginBottom: 14, paddingHorizontal: 4,
   },
-  sheetTimeText: { ...TYPO.caption, color: COLORS.textMuted },
+  sheetTimeText: { ...TYPO.caption, color: COLORS.onSurfaceVariant },
 
+  // Actions — pill style, SOS nổi bật hơn (errorDeep bg, trắng text)
   sheetActions: { flexDirection: 'row', gap: 8 },
   actionBtn: {
-    flex: 1, height: 44, borderRadius: 10,
+    flex: 1, height: 48, borderRadius: 14,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    ...SHADOWS.small,
   },
-  actionCall: { backgroundColor: COLORS.success },
-  actionMsg: { backgroundColor: COLORS.info },
+  actionCall: { backgroundColor: COLORS.secondary }, // xanh lá (CarePartner identity)
+  actionMsg: { backgroundColor: COLORS.surfaceContainer, borderWidth: 1, borderColor: COLORS.outlineVariant },
   actionSos: {
-    backgroundColor: COLORS.errorBg,
-    borderWidth: 1.5, borderColor: '#fecaca',
+    backgroundColor: COLORS.errorDeep,
+    // bỏ border, dùng shadow đỏ đậm
   },
-  actionBtnTextWhite: { color: '#fff', ...TYPO.buttonSmall },
-  actionBtnTextSos: { color: COLORS.error, ...TYPO.buttonSmall, fontWeight: '800' },
+  actionBtnTextWhite: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '700' },
+  actionBtnTextSos: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '800', letterSpacing: 1 },
 
-  // === OFFLINE ALERT BANNER ===
+  // === OFFLINE ALERT BANNER — errorDeep bg theo DESIGN.md ===
   offlineAlertBanner: {
-    backgroundColor: COLORS.error,
+    backgroundColor: COLORS.errorDeep, // #ba1a1a — đậm hơn error hiện tại
     padding: 16, gap: 8,
-    borderBottomWidth: 2, borderBottomColor: '#991B1B',
+    borderBottomWidth: 2, borderBottomColor: '#93000a', // on-error-container
     ...SHADOWS.large,
   },
   offlineAlertHeader: {
@@ -761,10 +773,11 @@ const styles = StyleSheet.create({
   },
 
   // === DEVICE STATUS BAR ===
+  // Device status bar — surface bg, outline-variant border
   deviceStatusBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant,
   },
   deviceStatusLeft: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -773,14 +786,14 @@ const styles = StyleSheet.create({
     width: 8, height: 8, borderRadius: 4,
   },
   deviceStatusText: {
-    ...TYPO.caption, color: COLORS.textSecondary, fontWeight: '600',
+    ...TYPO.caption, color: COLORS.onSurfaceVariant, fontWeight: '600',
   },
   batteryBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: COLORS.background, borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainer, borderRadius: 10,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   batteryText: {
-    ...TYPO.caption, color: COLORS.textSecondary, fontWeight: '700', fontSize: 11,
+    ...TYPO.caption, color: COLORS.onSurfaceVariant, fontWeight: '700', fontSize: 11,
   },
 });
