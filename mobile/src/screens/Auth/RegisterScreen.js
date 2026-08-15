@@ -1,3 +1,21 @@
+// ============================================================
+// RegisterScreen — Redesign theo Warm Professionalism (Stitch AI)
+// Thay đổi:
+// - Background: surfaceWarm (#fff8f6) với subtle glow
+// - Header: brand row (school icon + 'EduCareLink') + title 'Bắt đầu
+//   hành trình' + subtitle 'Chọn vai trò của bạn để chúng tôi cá nhân
+//   hóa trải nghiệm'
+// - Role cards: stacked vertically (full-width), icon container 56px,
+//   title + description + radio indicator (theo design HTML)
+//   * Parent card: primary-fixed bg icon, primary-container border khi active
+//   * CarePartner card: secondary-fixed bg icon, secondary border khi active
+// - Form: bọc trong card trắng, field labels kiểu caption trên input
+// - Input wrapper: border #F0F0F0, focus ring 2px primary-container
+// - Button 'Tạo tài khoản': primary-container bg, shadow cam
+// - Photo section (CarePartner): card trắng với primary tint header
+// Giữ nguyên: logic register (validation, image upload, pending_approval)
+// ============================================================
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
@@ -10,35 +28,30 @@ import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
 
-// ====================================================================
-// ⚠️  OAuth (Google / Facebook) TẠM THỜI VÔ HIỆU HOÁ
-//  Lý do: gây crash APK khi build (theo handoff file)
-//  Sẽ bật lại sau khi release APK cơ bản hoàn tất
-// ====================================================================
-// import { getOAuthConfig, loginWithGoogle, loginWithFacebook } from '../../api/auth';
-// let Google = null, Facebook = null, WebBrowser = null;
-// if (Platform.OS !== 'web') {
-//   try { Google = require('expo-auth-session/providers/google'); } catch (e) {}
-//   try { Facebook = require('expo-facebook'); } catch (e) {}
-//   try { WebBrowser = require('expo-web-browser'); } catch (e) {}
-// }
-
 const ROLES = [
   {
     id: 'parent',
-    label: 'Phụ Huynh',
+    label: 'Tôi là Phụ huynh',
     icon: 'people',
-    description: 'Đăng việc, tìm người chăm sóc cho bé',
-    color: COLORS.primary,
-    bg: COLORS.primaryLight,
+    description: 'Tìm kiếm người đồng hành uy tín cho con.',
+    // Parent dùng primary palette (cam)
+    iconBg: COLORS.primaryLight,       // primary-fixed
+    iconBgActive: COLORS.primary,      // primary-container
+    iconColor: COLORS.primaryDeep,     // on-primary-fixed
+    iconColorActive: '#ffffff',        // on-primary
+    borderColorActive: COLORS.primary, // primary-container
   },
   {
     id: 'worker',
-    label: 'Sinh Viên',
+    label: 'Tôi là CarePartner',
     icon: 'school',
-    description: 'Tìm việc, kiếm thêm thu nhập',
-    color: COLORS.primary,
-    bg: COLORS.primaryLight,
+    description: 'Hỗ trợ học tập và đồng hành cùng trẻ.',
+    // Worker dùng secondary palette (xanh) — theo DESIGN.md
+    iconBg: COLORS.secondaryLight,     // secondary-fixed
+    iconBgActive: COLORS.secondary,    // secondary
+    iconColor: COLORS.secondaryDark,   // on-secondary-fixed
+    iconColorActive: '#ffffff',        // on-secondary
+    borderColorActive: COLORS.secondary,
   },
 ];
 
@@ -83,7 +96,7 @@ const takePhoto = async (setter) => {
   }
 };
 
-const renderImagePicker = (label, image, setter, icon) => (
+const renderImagePicker = (label, image, setter) => (
   <View style={styles.imagePicker}>
     <Text style={styles.imageLabel}>{label}</Text>
     {image ? (
@@ -124,20 +137,13 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ⚠️ OAuth disabled — xem comment đầu file để khôi phục
-  // const [oauthLoading, setOauthLoading] = useState(null);
-  // const [oauthConfig, setOauthConfig] = useState(null);
-  // useEffect(() => {
-  //   getOAuthConfig().then(res => setOauthConfig(res.data)).catch(() => {});
-  // }, []);
-
   // Ảnh cho Carepartner
   const [idCardFront, setIdCardFront] = useState(null);
   const [idCardBack, setIdCardBack] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);
   const [certificatePhoto, setCertificatePhoto] = useState(null);
 
-  // Focus state tracking for input wrappers
+  // Focus state tracking
   const [lastNameFocused, setLastNameFocused] = useState(false);
   const [firstNameFocused, setFirstNameFocused] = useState(false);
   const [usernameFocused, setUsernameFocused] = useState(false);
@@ -146,14 +152,10 @@ export default function RegisterScreen() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
-  // Entrance & button animation
+  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const btnScale = useRef(new Animated.Value(1)).current;
-
-  // Role card scale animations
-  const roleScaleParent = useRef(new Animated.Value(1)).current;
-  const roleScaleWorker = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -167,15 +169,6 @@ export default function RegisterScreen() {
   };
   const handlePressOut = () => {
     Animated.spring(btnScale, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-
-  const handleRolePressIn = (roleId) => {
-    const scaleRef = roleId === 'parent' ? roleScaleParent : roleScaleWorker;
-    Animated.spring(scaleRef, { toValue: 0.96, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-  const handleRolePressOut = (roleId) => {
-    const scaleRef = roleId === 'parent' ? roleScaleParent : roleScaleWorker;
-    Animated.spring(scaleRef, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
   };
 
   const handleRegister = async () => {
@@ -192,7 +185,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Validate phụ huynh
     if (selectedRole === 'parent') {
       if (!email.trim()) {
         showAlert('Lỗi', 'Phụ huynh phải cung cấp email.');
@@ -204,7 +196,6 @@ export default function RegisterScreen() {
       }
     }
 
-    // Validate carepartner
     if (selectedRole === 'worker') {
       if (!email.trim()) {
         showAlert('Lỗi', 'Carepartner phải cung cấp email để liên hệ.');
@@ -235,10 +226,10 @@ export default function RegisterScreen() {
         email.trim(), phone.trim(),
         idCardFront, idCardBack, selfiePhoto, certificatePhoto
       );
-      
+
       if (result?.status === 'pending_approval') {
         showAlert(
-          '✅ Đăng ký thành công!', 
+          'Đăng ký thành công!',
           'Tài khoản của bạn đang chờ Admin xét duyệt. Bạn sẽ được thông báo khi tài khoản được kích hoạt.'
         );
         navigation.navigate('Login');
@@ -257,179 +248,215 @@ export default function RegisterScreen() {
     }
   };
 
-  // ⚠️ OAuth disabled — xem comment đầu file để khôi phục
-  // const handleGoogleRegister = async () => { ... };
-  // const handleFacebookRegister = async () => { ... };
-  // const finishOAuth = async (resp) => { ... };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Back button */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
 
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          <View style={styles.logoWrap}>
-            <Ionicons name="heart" size={48} color="#fff" />
+        {/* Header — brand row + title + subtitle */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.brandRow}>
+            <Ionicons name="school" size={32} color={COLORS.primary} />
+            <Text style={styles.brandName}>EduCareLink</Text>
           </View>
-          <Text style={styles.title}>Tạo tài khoản mới</Text>
-          <Text style={styles.subtitle}>Chọn vai trò của bạn để bắt đầu</Text>
+          <Text style={styles.title}>Bắt đầu hành trình</Text>
+          <Text style={styles.subtitle}>Chọn vai trò của bạn để chúng tôi cá nhân hóa trải nghiệm.</Text>
         </Animated.View>
 
-        {/* Chọn vai trò */}
-        <View style={styles.rolesRow}>
+        {/* Role selection — stacked vertically (theo design HTML) */}
+        <View style={styles.roleGroup}>
           {ROLES.map((role) => {
             const isSelected = selectedRole === role.id;
-            const scaleRef = role.id === 'parent' ? roleScaleParent : roleScaleWorker;
             return (
-              <Animated.View key={role.id} style={{ flex: 1, transform: [{ scale: scaleRef }] }}>
-                <TouchableOpacity
+              <TouchableOpacity
+                key={role.id}
+                style={[
+                  styles.roleCard,
+                  isSelected && {
+                    borderColor: role.borderColorActive,
+                    backgroundColor: role.id === 'parent' ? COLORS.primaryLight : COLORS.secondaryLight,
+                    ...SHADOWS.cardHover,
+                  },
+                ]}
+                onPress={() => setSelectedRole(role.id)}
+                activeOpacity={0.85}
+              >
+                {/* Icon container */}
+                <View
                   style={[
-                    styles.roleCard,
-                    isSelected && {
-                      borderColor: role.color,
-                      backgroundColor: role.bg,
-                      ...SHADOWS.cardHover,
+                    styles.roleIconBox,
+                    {
+                      backgroundColor: isSelected ? role.iconBgActive : role.iconBg,
                     },
                   ]}
-                  onPress={() => setSelectedRole(role.id)}
-                  onPressIn={() => handleRolePressIn(role.id)}
-                  onPressOut={() => handleRolePressOut(role.id)}
-                  activeOpacity={0.8}
                 >
-                  <View style={[styles.roleIconCircle, { backgroundColor: isSelected ? role.color : '#E5E7EB' }]}>
-                    <Ionicons name={role.icon} size={22} color={isSelected ? '#fff' : '#9ca3af'} />
-                  </View>
-                  <Text style={[styles.roleLabel, isSelected && { color: role.color }]}>{role.label}</Text>
+                  <Ionicons
+                    name={role.icon}
+                    size={28}
+                    color={isSelected ? role.iconColorActive : role.iconColor}
+                  />
+                </View>
+
+                {/* Content */}
+                <View style={styles.roleContent}>
+                  <Text style={[styles.roleLabel, isSelected && { color: role.borderColorActive }]}>
+                    {role.label}
+                  </Text>
                   <Text style={styles.roleDesc}>{role.description}</Text>
-                  {isSelected && (
-                    <View style={[styles.checkMark, { backgroundColor: role.color }]}>
-                      <Ionicons name="checkmark" size={12} color="#fff" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+                </View>
+
+                {/* Radio indicator */}
+                <View
+                  style={[
+                    styles.radioOuter,
+                    isSelected && {
+                      borderColor: role.borderColorActive,
+                      backgroundColor: role.borderColorActive,
+                    },
+                  ]}
+                >
+                  {isSelected && <View style={styles.radioInner} />}
+                </View>
+              </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Form fields */}
-        <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.nameRow}>
-            <View style={[
-              styles.inputWrapper, { flex: 1 },
-              lastNameFocused && styles.inputWrapperFocused,
-            ]}>
-              <TextInput
-                style={styles.input}
-                placeholder="Họ"
-                placeholderTextColor={COLORS.textMuted}
-                value={lastName}
-                onChangeText={setLastName}
-                onFocus={() => setLastNameFocused(true)}
-                onBlur={() => setLastNameFocused(false)}
-              />
-            </View>
-            <View style={[
-              styles.inputWrapper, { flex: 1.5 },
-              firstNameFocused && styles.inputWrapperFocused,
-            ]}>
-              <TextInput
-                style={styles.input}
-                placeholder="Tên *"
-                placeholderTextColor={COLORS.textMuted}
-                value={firstName}
-                onChangeText={setFirstName}
-                onFocus={() => setFirstNameFocused(true)}
-                onBlur={() => setFirstNameFocused(false)}
-              />
+        {/* Form Card — bọc toàn bộ inputs trong card trắng */}
+        <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {/* Name row — Họ + Tên */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Họ và tên</Text>
+            <View style={styles.nameRow}>
+              <View style={[styles.inputWrapper, { flex: 1 }, lastNameFocused && styles.inputWrapperFocused]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Họ"
+                  placeholderTextColor={COLORS.outline}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  onFocus={() => setLastNameFocused(true)}
+                  onBlur={() => setLastNameFocused(false)}
+                />
+              </View>
+              <View style={[styles.inputWrapper, { flex: 1.5 }, firstNameFocused && styles.inputWrapperFocused]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Tên *"
+                  placeholderTextColor={COLORS.outline}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  onFocus={() => setFirstNameFocused(true)}
+                  onBlur={() => setFirstNameFocused(false)}
+                />
+              </View>
             </View>
           </View>
 
-          <View style={[styles.inputWrapper, usernameFocused && styles.inputWrapperFocused]}>
-            <Ionicons name="person-outline" size={20} color={usernameFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Tên tài khoản *"
-              placeholderTextColor={COLORS.textMuted}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => setUsernameFocused(true)}
-              onBlur={() => setUsernameFocused(false)}
-            />
+          {/* Username */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Tên tài khoản</Text>
+            <View style={[styles.inputWrapper, usernameFocused && styles.inputWrapperFocused]}>
+              <Ionicons name="person-outline" size={20} color={usernameFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Chọn tên tài khoản"
+                placeholderTextColor={COLORS.outline}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setUsernameFocused(true)}
+                onBlur={() => setUsernameFocused(false)}
+              />
+            </View>
           </View>
 
-          {/* Email & Phone - Phụ huynh bắt buộc, Worker tuỳ chọn */}
-          <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused]}>
-            <Ionicons name="mail-outline" size={20} color={emailFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder={selectedRole === 'parent' ? 'Email *' : 'Email *'}
-              placeholderTextColor={COLORS.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              onFocus={() => setEmailFocused(true)}
-              onBlur={() => setEmailFocused(false)}
-            />
+          {/* Email */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Email</Text>
+            <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused]}>
+              <Ionicons name="mail-outline" size={20} color={emailFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="email@example.com"
+                placeholderTextColor={COLORS.outline}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+              />
+            </View>
           </View>
 
-          <View style={[styles.inputWrapper, phoneFocused && styles.inputWrapperFocused]}>
-            <Ionicons name="call-outline" size={20} color={phoneFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder={selectedRole === 'parent' ? 'Số điện thoại *' : 'Số điện thoại *'}
-              placeholderTextColor={COLORS.textMuted}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              onFocus={() => setPhoneFocused(true)}
-              onBlur={() => setPhoneFocused(false)}
-            />
+          {/* Phone */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Số điện thoại</Text>
+            <View style={[styles.inputWrapper, phoneFocused && styles.inputWrapperFocused]}>
+              <Ionicons name="call-outline" size={20} color={phoneFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="09xx xxx xxx"
+                placeholderTextColor={COLORS.outline}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                onFocus={() => setPhoneFocused(true)}
+                onBlur={() => setPhoneFocused(false)}
+              />
+            </View>
           </View>
 
-          <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
-            <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Mật khẩu * (tối thiểu 6 ký tự)"
-              placeholderTextColor={COLORS.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon}>
-              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
+          {/* Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Mật khẩu (tối thiểu 6 ký tự)</Text>
+            <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
+              <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.outline}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+              />
+              <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.outlineVariant} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={[styles.inputWrapper, confirmPasswordFocused && styles.inputWrapperFocused]}>
-            <Ionicons name="lock-closed-outline" size={20} color={confirmPasswordFocused ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Xác nhận mật khẩu *"
-              placeholderTextColor={COLORS.textMuted}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showPass}
-              onFocus={() => setConfirmPasswordFocused(true)}
-              onBlur={() => setConfirmPasswordFocused(false)}
-            />
+          {/* Confirm password */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Xác nhận mật khẩu</Text>
+            <View style={[styles.inputWrapper, confirmPasswordFocused && styles.inputWrapperFocused]}>
+              <Ionicons name="lock-closed-outline" size={20} color={confirmPasswordFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.outline}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPass}
+                onFocus={() => setConfirmPasswordFocused(true)}
+                onBlur={() => setConfirmPasswordFocused(false)}
+              />
+            </View>
           </View>
 
-          {/* Section upload ảnh cho Carepartner */}
+          {/* Photo upload section — chỉ hiện khi chọn CarePartner */}
           {selectedRole === 'worker' && (
             <View style={styles.photoSection}>
               <View style={styles.photoSectionHeader}>
@@ -439,14 +466,14 @@ export default function RegisterScreen() {
               <Text style={styles.photoSectionDesc}>
                 Vui lòng cung cấp ảnh CCCD và ảnh chân dung để Admin xét duyệt tài khoản.
               </Text>
-              {renderImagePicker('📋 Mặt trước CCCD *', idCardFront, setIdCardFront, 'card-outline')}
-              {renderImagePicker('📋 Mặt sau CCCD *', idCardBack, setIdCardBack, 'card-outline')}
-              {renderImagePicker('📸 Ảnh chân dung *', selfiePhoto, setSelfiePhoto, 'person-circle-outline')}
-              {renderImagePicker('🎓 Bằng cấp/Chứng chỉ (tuỳ chọn)', certificatePhoto, setCertificatePhoto, 'ribbon-outline')}
+              {renderImagePicker('Mặt trước CCCD *', idCardFront, setIdCardFront)}
+              {renderImagePicker('Mặt sau CCCD *', idCardBack, setIdCardBack)}
+              {renderImagePicker('Ảnh chân dung *', selfiePhoto, setSelfiePhoto)}
+              {renderImagePicker('Bằng cấp/Chứng chỉ (tuỳ chọn)', certificatePhoto, setCertificatePhoto)}
             </View>
           )}
 
-          {/* Thông báo cho carepartner */}
+          {/* Info box cho carepartner */}
           {selectedRole === 'worker' && (
             <View style={styles.infoBox}>
               <View style={styles.infoAccentBar} />
@@ -457,6 +484,7 @@ export default function RegisterScreen() {
             </View>
           )}
 
+          {/* Submit button */}
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
               style={[styles.registerBtn, isLoading && styles.btnDisabled]}
@@ -469,35 +497,21 @@ export default function RegisterScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
+                <>
+                  <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </>
               )}
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Login link */}
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Đã có tài khoản? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Đăng nhập</Text>
+            <Text style={styles.loginText}>Đã có tài khoản?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+              <Text style={styles.loginLink}> Đăng nhập</Text>
             </TouchableOpacity>
           </View>
-
-          {/* === OAuth buttons DISABLED (comment lại để khôi phục sau) ===
-          <View style={styles.oauthSection}>
-            <View style={styles.oauthDivider}>
-              <View style={styles.oauthDividerLine} />
-              <Text style={styles.oauthDividerText}>hoặc đăng ký nhanh với</Text>
-              <View style={styles.oauthDividerLine} />
-            </View>
-            <TouchableOpacity style={[styles.oauthBtn, styles.oauthBtnGoogle]} onPress={handleGoogleRegister}>
-              <GoogleLogo size={22} />
-              <Text style={styles.oauthBtnTextDark}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.oauthBtn, styles.oauthBtnFacebook]} onPress={handleFacebookRegister}>
-              <FacebookLogo size={22} />
-              <Text style={styles.oauthBtnTextLight}>Facebook</Text>
-            </TouchableOpacity>
-          </View>
-          */}
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -505,132 +519,279 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 56, paddingBottom: 44 },
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 20, // margin-mobile
+    paddingTop: 56,
+    paddingBottom: 44,
+  },
+  // Back button
   backBtn: {
-    width: 46, height: 46, borderRadius: 23, backgroundColor: COLORS.surface,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 28,
-    ...SHADOWS.small,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  logoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-    ...SHADOWS.large,
+    marginBottom: 24,
+    ...SHADOWS.small,
   },
-  title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 8 },
-  subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 28 },
-  rolesRow: { flexDirection: 'row', gap: 14, marginBottom: 28 },
+  // Header
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  brandName: {
+    ...TYPO.h2,
+    color: COLORS.primaryDeep, // primary trong DESIGN.md (cam đất đậm)
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  title: {
+    ...TYPO.h1,
+    color: COLORS.onSurface,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  // Role selection group
+  roleGroup: {
+    gap: 16,
+    marginBottom: 24,
+  },
   roleCard: {
-    flex: 1, borderRadius: SIZES.radiusLg, borderWidth: 2, borderColor: COLORS.border,
-    backgroundColor: COLORS.surface, padding: 18, alignItems: 'center', gap: 10, position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: COLORS.surface, // surface-container-lowest
+    borderWidth: 2,
+    borderColor: COLORS.outlineVariant, // outline-variant
+    borderRadius: 20, // lg radius
+    padding: 16, // p-md
     ...SHADOWS.small,
   },
-  roleIconCircle: {
-    width: 50, height: 50, borderRadius: 25,
-    justifyContent: 'center', alignItems: 'center',
+  roleIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 14, // xl radius
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  roleLabel: { ...TYPO.h5, color: COLORS.textSecondary },
-  roleDesc: { ...TYPO.caption, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16 },
-  checkMark: {
-    position: 'absolute', top: 10, right: 10, width: 24, height: 24,
-    borderRadius: 12, justifyContent: 'center', alignItems: 'center',
+  roleContent: {
+    flex: 1,
+    gap: 4,
   },
-  form: { gap: 16 },
-  nameRow: { flexDirection: 'row', gap: 12 },
+  roleLabel: {
+    ...TYPO.h3,
+    color: COLORS.onSurface,
+  },
+  roleDesc: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  radioOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.outlineVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.surface, // surface-container-lowest
+  },
+  // Form card
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    ...SHADOWS.small,
+    gap: 20,
+  },
+  // Field group
+  fieldGroup: {
+    gap: 8,
+  },
+  fieldLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  // Input wrapper — cùng style với Login
   inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    paddingHorizontal: 16, height: 56,
-    ...SHADOWS.small,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border, // #F0F0F0
+    borderRadius: 14, // md radius
+    paddingHorizontal: 12,
+    height: 48,
   },
   inputWrapperFocused: {
-    ...FRAGMENTS.inputFocus,
+    borderColor: COLORS.primary,
+    borderWidth: 2,
     ...SHADOWS.inputFocus,
   },
-  inputIcon: { marginRight: 12 },
-  input: { flex: 1, ...TYPO.body, color: COLORS.textPrimary },
-  eyeIcon: { padding: 8 },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    ...TYPO.body,
+    color: COLORS.onSurface,
+    paddingVertical: 0,
+  },
+  eyeIcon: {
+    padding: 8,
+  },
   // Photo upload section
   photoSection: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    padding: 18, gap: 14, borderWidth: 1.5, borderColor: COLORS.border,
-    ...SHADOWS.small,
+    backgroundColor: COLORS.surfaceContainerLow, // surface-container-low (ấm hơn)
+    borderRadius: 20,
+    padding: 18,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
   },
-  photoSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  photoSectionTitle: { ...TYPO.h4, color: COLORS.textPrimary },
-  photoSectionDesc: { ...TYPO.bodySmall, color: COLORS.textMuted, lineHeight: 20 },
+  photoSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoSectionTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+  },
+  photoSectionDesc: {
+    ...TYPO.bodySmall,
+    color: COLORS.onSurfaceVariant,
+    lineHeight: 20,
+  },
   imagePicker: { gap: 8 },
-  imageLabel: { ...TYPO.h5, fontSize: 13, color: COLORS.textSecondary },
+  imageLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+  },
   imageActions: { flexDirection: 'row', gap: 12 },
   imageBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd, paddingVertical: 14,
-    borderWidth: 1.5, borderColor: COLORS.primarySoft, borderStyle: 'dashed',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 14,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.primarySoft,
+    borderStyle: 'dashed',
   },
-  imageBtnText: { ...TYPO.buttonSmall, color: COLORS.primary },
+  imageBtnText: {
+    ...TYPO.buttonSmall,
+    color: COLORS.primary,
+  },
   imagePreview: {
-    width: '100%', height: 140, borderRadius: SIZES.radiusMd, backgroundColor: COLORS.background,
+    width: '100%',
+    height: 140,
+    borderRadius: 14,
+    backgroundColor: COLORS.background,
   },
   imageOverlay: {
-    position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  imageOverlayText: { ...TYPO.caption, color: '#fff' },
-  // Info box with left accent border
+  imageOverlayText: {
+    ...TYPO.caption,
+    color: '#fff',
+  },
+  // Info box
   infoBox: {
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd, padding: 16,
-    borderWidth: 1, borderColor: COLORS.primarySoft,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
     overflow: 'hidden',
   },
   infoAccentBar: {
-    position: 'absolute', left: 0, top: 0, bottom: 0,
-    width: 4, backgroundColor: COLORS.primary,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: COLORS.primary,
     borderRadius: 4,
   },
-  infoText: { flex: 1, ...TYPO.bodySmall, color: COLORS.primary, lineHeight: 20, marginLeft: 4 },
-  // Buttons
+  infoText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.primaryDeep,
+    lineHeight: 20,
+    marginLeft: 4,
+  },
+  // Submit button
   registerBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusLg, height: 58,
-    justifyContent: 'center', alignItems: 'center', marginTop: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    height: 48,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
     ...SHADOWS.large,
   },
   btnDisabled: { opacity: 0.7 },
-  registerBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
-  loginText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  loginLink: { ...TYPO.buttonSmall, color: COLORS.primary },
-  // === OAUTH ===
-  oauthSection: { marginTop: 24, gap: 12 },
-  oauthDivider: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4,
+  registerBtnText: {
+    ...TYPO.h4,
+    color: '#ffffff',
   },
-  oauthDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  oauthDividerText: { ...TYPO.bodySmall, color: COLORS.textMuted, fontWeight: '600' },
-  oauthBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    height: 50, borderRadius: SIZES.radiusLg,
-    ...SHADOWS.small,
+  // Login link
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  oauthBtnGoogle: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5, borderColor: COLORS.border,
+  loginText: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant,
   },
-  oauthBtnFacebook: {
-    backgroundColor: '#1877F2',
+  loginLink: {
+    ...TYPO.h4,
+    color: COLORS.primary,
   },
-  oauthBtnTextDark: { ...TYPO.button, color: COLORS.textPrimary, fontSize: 15 },
-  oauthBtnTextLight: { ...TYPO.button, color: '#fff', fontSize: 15 },
 });
