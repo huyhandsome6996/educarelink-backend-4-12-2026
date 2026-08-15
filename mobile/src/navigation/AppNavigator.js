@@ -26,6 +26,9 @@ import CandidatesScreen from '../screens/Parent/CandidatesScreen';
 import ReviewScreen from '../screens/Parent/ReviewScreen';
 import CandidateProfileScreen from '../screens/Parent/CandidateProfileScreen';
 import UpgradeToCarepartnerScreen from '../screens/Parent/UpgradeToCarepartnerScreen';
+import ParentProfileScreen from '../screens/Parent/ParentProfileScreen';
+import CareDiaryDetailScreen from '../screens/Parent/CareDiaryDetailScreen';
+import RewardPointsScreen from '../screens/Parent/RewardPointsScreen';
 
 // Worker Screens
 import WorkerFeedScreen from '../screens/Worker/WorkerFeedScreen';
@@ -33,6 +36,7 @@ import TaskDetailScreen from '../screens/Worker/TaskDetailScreen';
 import MyJobsScreen from '../screens/Worker/MyJobsScreen';
 import WorkerProfileScreen from '../screens/Worker/WorkerProfileScreen';
 import WorkerChatbotScreen from '../screens/Worker/WorkerChatbotScreen';
+import WorkerScreeningStatusScreen from '../screens/Worker/WorkerScreeningStatusScreen';
 
 // Payment Screens
 import PaymentSetupScreen from '../screens/Payment/PaymentSetupScreen';
@@ -41,6 +45,7 @@ import SettlementDetailScreen from '../screens/Payment/SettlementDetailScreen';
 
 // Help Center
 import HelpCenterScreen from '../screens/HelpCenter/HelpCenterScreen';
+import CancellationPolicyScreen from '../screens/HelpCenter/CancellationPolicyScreen';
 
 // Notifications
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -204,6 +209,10 @@ export default function AppNavigator() {
             <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
+            <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
+            <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+            <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
+            <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         ) : (
@@ -218,6 +227,7 @@ export default function AppNavigator() {
             <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
             <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
+            <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         )}
