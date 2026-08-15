@@ -1,11 +1,32 @@
-import { useEffect } from 'react';
-import { Platform, AppState, Alert, Linking, Vibration } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, AppState, Alert, Linking, Vibration, View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { storage } from './src/utils/storage';
+import { COLORS } from './src/theme/colors';
+
+// ============================================================
+// QA-FIX-UI: load Manrope (heading) + Plus Jakarta Sans (body)
+// theo Warm Professionalism design system (DESIGN.md).
+// Font files được ship cùng app (local .ttf qua @expo-google-fonts)
+// — không phụ thuộc network khi load.
+// Khi font chưa load xong, app render 1 màn trắng với spinner
+// (tránh render UI với font hệ thống rồi nhảy layout).
+// ============================================================
+import {
+  Manrope_800ExtraBold,
+  Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import {
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
 
 // ====================================================================
 // App — EduCareLink
@@ -207,10 +228,30 @@ function useBackgroundFetch() {
 }
 
 export default function App() {
+  // QA-FIX-UI: load fonts trước khi render app — tránh render UI với
+  // font hệ thống rồi nhảy layout khi font load xong.
+  const [fontsLoaded] = useFonts({
+    Manrope_800ExtraBold,
+    Manrope_700Bold,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
   useNotificationChannels();
   useAutoResumeTracking();
   useTaskEndedListener();
   useBackgroundFetch();
+
+  // Khi font chưa load xong → render màn trắng + spinner (ngắn, ~200ms)
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.fontLoadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <AuthProvider>
@@ -218,3 +259,12 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  fontLoadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
