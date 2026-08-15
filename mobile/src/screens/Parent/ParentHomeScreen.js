@@ -1,9 +1,27 @@
+// ============================================================
+// ParentHomeScreen — Redesign theo Warm Professionalism (Stitch AI)
+// Thay đổi:
+// - Header: trắng (surface), avatar trái + brand name giữa + bell phải
+//   (thay vì header cam full-width)
+// - Greeting: 'Chào buổi sáng/chiều, [name]!' + subtitle on-surface-variant
+// - Promo banner: primary-container bg (cam), text trắng, icon circle
+//   phải — clickable vào Chatbot AI
+// - Service categories: bento grid (2 ô vuông + 1 ô wide) thay vì 8 ô
+// - CarePartner gợi ý: horizontal scroll cards (avatar, tên, rating,
+//   verified badge, chip danh mục, giá + nút 'Đặt lịch')
+//   * Chưa có API → dùng mock data tĩnh + 'Đặt lịch' → CreateTask
+// - Hoạt động gần đây: card nền primaryLight + chip trạng thái
+// - FAB: tròn 56px primary-container, icon add, shadow cam đậm
+// - Logout: long-press avatar (giữ chức năng, không phá design)
+// Giữ nguyên: fetchTasks (getMyTasksAsParent), refresh control,
+// navigation CreateTask/MyTasks/Chatbot
+// ============================================================
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
   StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -12,26 +30,87 @@ import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CATEGORY_SIZE = (SCREEN_WIDTH - 48 - 36) / 4; // 4 columns with gaps
 
 const STATUS_MAPPING = {
   open: { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
   in_progress: { label: 'Đang làm', color: COLORS.primary, bg: COLORS.primaryLight, icon: 'construct' },
   completed: { label: 'Hoàn thành', color: COLORS.success, bg: COLORS.successBg, icon: 'checkmark-circle' },
-  cancelled:   { label: 'Đã huỷ',   color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
+  cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
-// Sync 100% với web parent_home.html (Material Symbols → Ionicons)
-const CATEGORIES = [
-  { id: 1, iconName: 'book', name: 'Gia sư', color: COLORS.primary },
-  { id: 2, iconName: 'happy', name: 'Đón trẻ', color: COLORS.primary },
-  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', color: COLORS.primary },
-  { id: 4, iconName: 'people', name: 'Trông trẻ', color: COLORS.primary },
-  { id: 5, iconName: 'bag', name: 'Mua sắm', color: COLORS.primary },
-  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', color: COLORS.primary },
-  { id: 7, iconName: 'cube', name: 'Chuyển đồ', color: COLORS.primary },
-  { id: 8, iconName: 'apps', name: 'Khác', color: COLORS.primary },
+// Bento grid — 3 dịch vụ chính (theo design HTML)
+// 2 ô vuông (Đưa đón, Đồng hành) + 1 ô wide (Gia sư)
+const BENTO_CATEGORIES = [
+  {
+    id: 1,
+    iconName: 'car',
+    name: 'Đưa đón',
+    desc: '',
+    // Tertiary palette (blue) — theo design HTML
+    iconBg: '#cae6ff',  // tertiary-fixed
+    iconColor: '#006492', // tertiary
+    span: 1, // 1 ô
+  },
+  {
+    id: 2,
+    iconName: 'people',
+    name: 'Đồng hành',
+    desc: '',
+    // Secondary palette (green) — CarePartner identity
+    iconBg: COLORS.secondaryLight,
+    iconColor: COLORS.secondaryDark,
+    span: 1,
+  },
+  {
+    id: 3,
+    iconName: 'school',
+    name: 'Gia sư',
+    desc: 'Hỗ trợ bài tập về nhà & ôn tập',
+    // Primary palette (orange)
+    iconBg: COLORS.primaryLight,
+    iconColor: COLORS.primary,
+    span: 2, // wide — 2 ô
+  },
 ];
+
+// Mock CarePartner gợi ý — chưa có API thật
+// TODO: thay bằng API getSuggestedCarepartners() khi backend sẵn sàng
+const MOCK_CAREPARTNERS = [
+  {
+    id: 1,
+    name: 'Nguyễn Mai',
+    rating: 4.9,
+    trips: 120,
+    categories: ['Đưa đón', 'Gia sư'],
+    pricePerHour: 60000,
+    verified: true,
+    avatarColor: COLORS.secondaryLight,
+  },
+  {
+    id: 2,
+    name: 'Cô Lan',
+    rating: 5.0,
+    trips: 85,
+    categories: ['Đồng hành'],
+    pricePerHour: 80000,
+    verified: true,
+    avatarColor: COLORS.primaryLight,
+  },
+];
+
+const formatPrice = (price) => {
+  if (price >= 1000) {
+    return `${(price / 1000).toFixed(0)}k`;
+  }
+  return `${price}đ`;
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Chào buổi sáng';
+  if (hour < 18) return 'Chào buổi chiều';
+  return 'Chào buổi tối';
+};
 
 export default function ParentHomeScreen() {
   const navigation = useNavigation();
@@ -40,10 +119,9 @@ export default function ParentHomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Pulse animation for empty state icon
-  // Fix H12: store animation ref và stop() trong cleanup để tránh memory leak.
   const pulseAnimRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     if (!isLoading && tasks.length === 0) {
       pulseAnimRef.current = Animated.loop(
@@ -65,7 +143,7 @@ export default function ParentHomeScreen() {
   const fetchTasks = async () => {
     try {
       const res = await getMyTasksAsParent();
-      setTasks(res.data.slice(0, 3)); // Hiển thị 3 việc gần nhất trên trang chủ
+      setTasks(res.data.slice(0, 3));
     } catch (e) {
       console.error('Lỗi tải danh sách việc:', e);
     } finally {
@@ -78,341 +156,638 @@ export default function ParentHomeScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchTasks(); };
 
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+        logout();
+      }
+    } else {
+      Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Đăng xuất', style: 'destructive', onPress: logout },
+      ]);
+    }
+  };
+
+  // Long-press avatar → logout (giữ chức năng, không phá design)
+  const handleAvatarLongPress = () => {
+    if (Platform.OS === 'web') {
+      handleLogout();
+    } else {
+      Alert.alert('Tài khoản', user?.username || 'Phụ huynh', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Đăng xuất', style: 'destructive', onPress: logout },
+      ]);
+    }
+  };
+
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
 
+  // Lấy task gần nhất để hiển thị ở 'Hoạt động gần đây'
+  const recentTask = tasks[0];
+  const recentStatus = recentTask ? (STATUS_MAPPING[recentTask.status] || STATUS_MAPPING.open) : null;
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
-      {/* Header gradient cam */}
-      <View style={styles.header}>
-        {/* Subtle gradient overlay for depth */}
-        <View style={styles.headerGradientOverlay} />
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greetSmall}>Xin chào 👋</Text>
-            <Text style={styles.greetName}>{displayName}</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <NotificationBell />
-            <TouchableOpacity onPress={() => {
-              if (Platform.OS === 'web') {
-                if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                  logout();
-                }
-              } else {
-                Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-                  { text: 'Huỷ', style: 'cancel' },
-                  { text: 'Đăng xuất', style: 'destructive', onPress: logout },
-                ]);
-              }
-            }} style={styles.headerIconBtn}>
-              <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Thanh tìm kiếm / Nút đăng việc */}
-        <TouchableOpacity style={styles.searchBar} onPress={() => navigation.navigate('CreateTask')} activeOpacity={0.9}>
-          <View style={styles.searchIconCircle}>
-            <Ionicons name="add" size={24} color={COLORS.primary} />
-          </View>
-          <View style={styles.searchTextGroup}>
-            <Text style={styles.searchTitle}>Bạn cần tìm dịch vụ gì?</Text>
-            <Text style={styles.searchSub}>Đăng việc ngay để tìm Carepartner</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+      {/* Top App Bar — trắng, avatar + brand + bell */}
+      <View style={styles.appBar}>
+        <TouchableOpacity
+          style={styles.avatar}
+          onLongPress={handleAvatarLongPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person" size={20} color={COLORS.primary} />
         </TouchableOpacity>
+        <Text style={styles.appBarTitle}>EduCareLink</Text>
+        <View style={styles.appBarRight}>
+          <NotificationBell />
+        </View>
       </View>
 
       <ScrollView
-        style={styles.body}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
-        {/* Section: Danh mục dịch vụ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Dịch vụ</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
-            </TouchableOpacity>
+        {/* Greeting */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingTitle}>{getGreeting()}, {displayName}!</Text>
+          <Text style={styles.greetingSubtitle}>Sẵn sàng cho một ngày tuyệt vời?</Text>
+        </View>
+
+        {/* Promo Banner — primary-container bg, thay thế AI banner */}
+        <TouchableOpacity
+          style={styles.promoBanner}
+          onPress={() => navigation.navigate('Chatbot')}
+          activeOpacity={0.9}
+        >
+          {/* Decorative blurred circle */}
+          <View style={styles.promoDecorCircle} />
+          <View style={styles.promoContent}>
+            <Text style={styles.promoTitle}>Giảm 20% tháng này!</Text>
+            <Text style={styles.promoDesc}>
+              Cho dịch vụ Đưa đón học sinh định kỳ.
+            </Text>
           </View>
-          <View style={styles.categoriesGrid}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity key={cat.name} style={styles.catItem}
+          <View style={styles.promoIconBox}>
+            <Ionicons name="bus" size={28} color="#fff" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Service Categories — Bento grid (2 small + 1 wide) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Dịch vụ</Text>
+          <View style={styles.bentoGrid}>
+            {BENTO_CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.bentoCard,
+                  cat.span === 2 && styles.bentoCardWide,
+                ]}
                 onPress={() => navigation.navigate('CreateTask')}
-                activeOpacity={0.7}
+                activeOpacity={0.85}
               >
-                <View style={[styles.catIconBg, { backgroundColor: cat.color + '15' }]}>
-                  <Ionicons name={cat.iconName} size={28} color={cat.color} />
+                <View style={[styles.bentoIconCircle, { backgroundColor: cat.iconBg }]}>
+                  <Ionicons name={cat.iconName} size={24} color={cat.iconColor} />
                 </View>
-                <Text style={styles.catName}>{cat.name}</Text>
+                {cat.span === 2 ? (
+                  <View style={styles.bentoTextBlock}>
+                    <Text style={styles.bentoCardTitle}>{cat.name}</Text>
+                    {cat.desc ? (
+                      <Text style={styles.bentoCardDesc}>{cat.desc}</Text>
+                    ) : null}
+                  </View>
+                ) : (
+                  <Text style={styles.bentoCardTitle}>{cat.name}</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* AI Chatbot Banner — đồng bộ với web parent_home.html */}
-        <TouchableOpacity
-          style={styles.aiBanner}
-          onPress={() => navigation.navigate('Chatbot')}
-          activeOpacity={0.9}
-        >
-          <View style={styles.aiBannerIconWrap}>
-            <Ionicons name="sparkles" size={26} color="#fff" />
-          </View>
-          <View style={styles.aiBannerContent}>
-            <View style={styles.aiBannerTitleRow}>
-              <Text style={styles.aiBannerTitle}>Nhờ AI đăng việc hộ</Text>
-              <View style={styles.aiBadgeNew}>
-                <View style={styles.aiBadgeDot} />
-                <Text style={styles.aiBadgeText}>MỚI</Text>
-              </View>
-            </View>
-            <Text style={styles.aiBannerSubtitle} numberOfLines={2}>
-              Chỉ cần nói "Tôi cần gia sư Toán lớp 5" — AI sẽ tạo việc giúp bạn trong vài giây!
-            </Text>
-          </View>
-          <View style={styles.aiBannerCta}>
-            <Text style={styles.aiBannerCtaText}>Chat ngay</Text>
-            <Ionicons name="arrow-forward" size={14} color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        {/* Section: Việc gần đây */}
+        {/* Suggested CarePartners — horizontal scroll */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Việc gần đây</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MyTasks')}>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
+            <Text style={styles.sectionTitle}>CarePartner Gợi ý</Text>
+            <TouchableOpacity onPress={() => showComingSoonCarePartnerList()}>
+              <Text style={styles.seeAllLink}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carepartnerScroll}
+          >
+            {MOCK_CAREPARTNERS.map((cp) => (
+              <View key={cp.id} style={styles.carepartnerCard}>
+                {/* Top: avatar + name + rating + verified badge */}
+                <View style={styles.cpCardTop}>
+                  <View style={styles.cpInfoRow}>
+                    <View style={[styles.cpAvatar, { backgroundColor: cp.avatarColor }]}>
+                      <Ionicons name="person" size={22} color={COLORS.onSurface} />
+                    </View>
+                    <View style={styles.cpNameBlock}>
+                      <Text style={styles.cpName}>{cp.name}</Text>
+                      <View style={styles.cpRatingRow}>
+                        <Ionicons name="star" size={12} color="#FBBF24" />
+                        <Text style={styles.cpRatingText}>{cp.rating}</Text>
+                        <Text style={styles.cpTripsText}> ({cp.trips} chuyến)</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {cp.verified && (
+                    <Ionicons name="shield-checkmark" size={18} color={COLORS.secondary} />
+                  )}
+                </View>
 
-          {/* === Upgrade to Carepartner banner (only if user is parent + not yet a carepartner) === */}
-          {user?.role === 'parent' && !user?.is_staff && (
-            <TouchableOpacity
-              style={styles.upgradeBanner}
-              onPress={() => navigation.navigate('UpgradeToCarepartner')}
-              activeOpacity={0.9}
-            >
-              <View style={styles.upgradeBannerIconCircle}>
-                <Ionicons name="school" size={22} color={COLORS.primary} />
-              </View>
-              <View style={styles.upgradeBannerInfo}>
-                <Text style={styles.upgradeBannerTitle}>Trở thành Carepartner</Text>
-                <Text style={styles.upgradeBannerDesc}>
-                  Kiếm thêm thu nhập linh hoạt bằng việc làm sinh viên
-                </Text>
-              </View>
-              <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
-            </TouchableOpacity>
-          )}
+                {/* Category chips */}
+                <View style={styles.cpChipRow}>
+                  {cp.categories.map((cat) => (
+                    <View key={cat} style={styles.cpChip}>
+                      <Text style={styles.cpChipText}>{cat}</Text>
+                    </View>
+                  ))}
+                </View>
 
+                {/* Bottom: price + Đặt lịch button */}
+                <View style={styles.cpCardFooter}>
+                  <View style={styles.cpPriceBlock}>
+                    <Text style={styles.cpPriceLabel}>Từ</Text>
+                    <Text style={styles.cpPriceValue}>
+                      {formatPrice(cp.pricePerHour)}
+                      <Text style={styles.cpPriceUnit}>/giờ</Text>
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.cpBookBtn}
+                    onPress={() => navigation.navigate('CreateTask')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.cpBookBtnText}>Đặt lịch</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Recent Activity — card nền primaryLight + status chip */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
           {isLoading ? (
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
-          ) : tasks.length === 0 ? (
+          ) : recentTask && recentStatus ? (
+            <TouchableOpacity
+              style={styles.recentCard}
+              onPress={() => navigation.navigate('MyTasks')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.recentIconRow}>
+                <View style={styles.recentIconCircle}>
+                  <Ionicons name={recentStatus.icon} size={22} color={COLORS.primary} />
+                </View>
+                <View style={styles.recentTextBlock}>
+                  <Text style={styles.recentTitle} numberOfLines={1}>{recentTask.title}</Text>
+                  <Text style={styles.recentSubtitle} numberOfLines={1}>
+                    {recentTask.location || 'Không có địa điểm'}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.recentStatusChip, { backgroundColor: recentStatus.bg }]}>
+                <Text style={[styles.recentStatusText, { color: recentStatus.color }]}>
+                  {recentStatus.label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
             <View style={styles.emptyBox}>
               <Animated.View style={[styles.emptyIconCircle, { transform: [{ scale: pulseAnim }] }]}>
                 <Ionicons name="document-text-outline" size={36} color={COLORS.primary} />
               </Animated.View>
               <Text style={styles.emptyTitle}>Chưa có hoạt động nào</Text>
               <Text style={styles.emptyText}>Hãy đăng việc đầu tiên để tìm Carepartner phù hợp!</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} style={styles.emptyBtn} activeOpacity={0.85}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('CreateTask')}
+                style={styles.emptyBtn}
+                activeOpacity={0.85}
+              >
                 <Ionicons name="add-circle" size={20} color="#fff" />
                 <Text style={styles.emptyBtnText}>Đăng việc ngay</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            tasks.map((task) => {
-              const st = STATUS_MAPPING[task.status] || STATUS_MAPPING.open;
-              return (
-                <TouchableOpacity key={task.id} style={[styles.taskCard, { borderLeftColor: st.color }]}
-                  onPress={() => navigation.navigate('MyTasks')}
-                  activeOpacity={0.9}>
-                  <View style={styles.taskCardRow}>
-                    <View style={[styles.taskIconCircle, { backgroundColor: st.bg }]}>
-                      <Ionicons name={st.icon} size={20} color={st.color} />
-                    </View>
-                    <View style={styles.taskCardContent}>
-                      <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                        <View style={[styles.statusDot, { backgroundColor: st.color }]} />
-                        <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
-                      </View>
-                      <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
-                      <View style={styles.taskMetaRow}>
-                        <Ionicons name="location-outline" size={12} color={COLORS.textMuted} />
-                        <Text style={styles.taskMeta} numberOfLines={1}>{task.location}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.taskPrice}>
-                      {parseInt(task.price).toLocaleString('vi-VN')}đ
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
           )}
         </View>
 
-        <View style={{ height: 30 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* FAB — Đăng việc nhanh */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateTask')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
 
+// Helper — show coming soon cho 'Xem tất cả' CarePartner
+function showComingSoonCarePartnerList() {
+  Alert.alert('Thông báo', 'Tính năng "Xem tất cả CarePartner" đang được phát triển. Vui lòng quay lại sau!', [
+    { text: 'Đã hiểu', style: 'default' },
+  ]);
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  // === HEADER ===
-  header: {
-    backgroundColor: COLORS.primary,
-    paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
-    borderBottomLeftRadius: SIZES.radiusLg, borderBottomRightRadius: SIZES.radiusLg,
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  // === APP BAR (white header) ===
+  appBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20, // margin-mobile
+    paddingVertical: 12, // py-sm
+    backgroundColor: COLORS.surface, // surface (trắng)
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceContainer, // surface-variant
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  appBarTitle: {
+    ...TYPO.h1,
+    color: COLORS.primary, // primary-container (cam)
+    letterSpacing: -0.5,
+  },
+  appBarRight: {
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  // === SCROLL ===
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+  // === GREETING ===
+  greetingSection: {
+    marginTop: 16, // mt-md
+    marginBottom: 24, // mb-lg
+    paddingHorizontal: 20,
+  },
+  greetingTitle: {
+    ...TYPO.h2,
+    color: COLORS.onSurface,
+    marginBottom: 4,
+  },
+  greetingSubtitle: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant,
+  },
+  // === PROMO BANNER ===
+  promoBanner: {
+    backgroundColor: COLORS.primary, // primary-container
+    borderRadius: 14, // xl radius
+    padding: 16, // p-md
+    marginBottom: 24,
+    marginHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     overflow: 'hidden',
-    ...SHADOWS.large,
+    ...SHADOWS.medium,
+    position: 'relative',
   },
-  headerGradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderBottomLeftRadius: SIZES.radiusLg,
-    borderBottomRightRadius: SIZES.radiusLg,
+  promoDecorCircle: {
+    position: 'absolute',
+    top: -16,
+    right: -16,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  greetSmall: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
-  greetName: { color: '#fff', ...TYPO.h2, color: '#fff' },
-  headerRight: { flexDirection: 'row', gap: SIZES.sm },
-  headerIconBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  promoContent: {
+    flex: 1,
+    marginRight: 12,
   },
-  searchBar: {
-    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: SIZES.radiusMd, padding: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1.5, borderColor: COLORS.primarySoft,
+  promoTitle: {
+    ...TYPO.h3,
+    color: '#ffffff',
+    marginBottom: 4,
+    lineHeight: 22,
   },
-  searchIconCircle: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff',
-    justifyContent: 'center', alignItems: 'center',
+  promoDesc: {
+    ...TYPO.body,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    maxWidth: 200,
+    lineHeight: 18,
+  },
+  promoIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
     ...SHADOWS.small,
   },
-  searchTextGroup: { flex: 1 },
-  searchTitle: { color: '#fff', ...TYPO.bodyLarge, color: '#fff' },
-  searchSub: { color: 'rgba(255,255,255,0.7)', ...TYPO.bodySmall, marginTop: 2 },
-  // === BODY ===
-  body: { flex: 1, marginTop: -4 },
-  section: { paddingHorizontal: 20, marginTop: SIZES.lg },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.md },
-  sectionTitle: { ...TYPO.h3, color: COLORS.textPrimary },
-  seeAll: { color: COLORS.primary, ...TYPO.buttonSmall, color: COLORS.primary },
-  // === CATEGORIES ===
-  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  catItem: {
-    width: CATEGORY_SIZE, alignItems: 'center', gap: SIZES.sm,
+  // === SECTIONS ===
+  section: {
+    marginBottom: 24, // mb-xl
+    paddingHorizontal: 20,
   },
-  catIconBg: {
-    width: CATEGORY_SIZE - 8, height: CATEGORY_SIZE - 8,
-    borderRadius: SIZES.radiusMd, justifyContent: 'center', alignItems: 'center',
-    ...SHADOWS.cardHover,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    ...TYPO.h3,
+    color: COLORS.onSurface,
+    marginBottom: 16,
+  },
+  seeAllLink: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+    marginBottom: 16,
+  },
+  // === BENTO GRID ===
+  bentoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16, // gap-md
+  },
+  bentoCard: {
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    borderRadius: 14, // xl
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...SHADOWS.small,
+    // Mặc định 1 ô (calc 50% - gap/2)
+    width: (SCREEN_WIDTH - 40 - 16) / 2,
+    minHeight: 110,
   },
-  catImage: { width: 34, height: 34 },
-  catName: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  // === TASK CARDS ===
-  taskCard: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: SIZES.md,
-    marginBottom: 10, borderLeftWidth: 4, borderLeftColor: COLORS.primary,
-    ...SHADOWS.cardHover,
+  bentoCardWide: {
+    width: '100%', // full row
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 16,
   },
-  taskCardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  taskIconCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
+  bentoIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  taskCardContent: { flex: 1, gap: SIZES.xs },
-  statusBadge: {
-    alignSelf: 'flex-start', borderRadius: SIZES.radiusXs, paddingHorizontal: 10, paddingVertical: 4,
-    flexDirection: 'row', alignItems: 'center', gap: SIZES.xs,
+  bentoCardTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { ...TYPO.caption },
-  taskTitle: { ...TYPO.h5, color: COLORS.textPrimary },
-  taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: SIZES.xs },
-  taskMeta: { ...TYPO.bodySmall, color: COLORS.textMuted, flex: 1 },
-  taskPrice: { ...TYPO.bodyLarge, fontWeight: '900', color: COLORS.primary },
+  bentoTextBlock: {
+    flex: 1,
+  },
+  bentoCardDesc: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  // === CAREPARTNER SUGGESTIONS ===
+  carepartnerScroll: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  carepartnerCard: {
+    width: 260,
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    ...SHADOWS.small,
+  },
+  cpCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  cpInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  cpAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cpNameBlock: {
+    flex: 1,
+  },
+  cpName: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+  },
+  cpRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  cpRatingText: {
+    ...TYPO.caption,
+    color: COLORS.onSurface,
+  },
+  cpTripsText: {
+    fontSize: 10,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '500',
+  },
+  cpChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 16,
+  },
+  cpChip: {
+    backgroundColor: COLORS.surfaceContainer, // surface-variant
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  cpChipText: {
+    fontSize: 10,
+    color: COLORS.onSurface,
+    fontWeight: '500',
+  },
+  cpCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.outlineVariant,
+    paddingTop: 12,
+  },
+  cpPriceBlock: {
+    flexDirection: 'column',
+  },
+  cpPriceLabel: {
+    fontSize: 10,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '500',
+  },
+  cpPriceValue: {
+    ...TYPO.body,
+    fontWeight: '700',
+    color: COLORS.primary,
+    lineHeight: 18,
+  },
+  cpPriceUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.onSurfaceVariant,
+  },
+  cpBookBtn: {
+    backgroundColor: COLORS.surfaceContainerHigh, // surface-container-high
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8, // lg
+    ...SHADOWS.small,
+  },
+  cpBookBtnText: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+  },
+  // === RECENT ACTIVITY ===
+  recentCard: {
+    backgroundColor: COLORS.primaryLight, // #FFF4ED
+    borderWidth: 1,
+    borderColor: 'rgba(242, 101, 34, 0.2)',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    ...SHADOWS.small,
+  },
+  recentIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  recentIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  recentTextBlock: {
+    flex: 1,
+  },
+  recentTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  recentSubtitle: {
+    fontSize: 11,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '500',
+  },
+  recentStatusChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    ...SHADOWS.small,
+  },
+  recentStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   // === EMPTY STATE ===
-  emptyBox: { alignItems: 'center', paddingVertical: 36, gap: 12 },
+  emptyBox: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    gap: 12,
+  },
   emptyIconCircle: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center', alignItems: 'center', marginBottom: SIZES.sm,
-    ...SHADOWS.small,
-  },
-  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
-  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
-  emptyBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd,
-    paddingHorizontal: SIZES.lg, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', gap: SIZES.sm,
-    ...SHADOWS.large,
-    marginTop: SIZES.xs,
-  },
-  emptyBtnText: { color: '#fff', ...TYPO.button },
-  // === UPGRADE BANNER ===
-  upgradeBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, marginBottom: 12,
-    borderLeftWidth: 4, borderLeftColor: COLORS.primary,
-    ...SHADOWS.cardHover,
-  },
-  upgradeBannerIconCircle: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  upgradeBannerInfo: { flex: 1 },
-  upgradeBannerTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
-  upgradeBannerDesc: { ...TYPO.caption, color: COLORS.textSecondary, marginTop: 2 },
-  // === AI CHATBOT BANNER — đồng bộ web parent_home.html ===
-  aiBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginHorizontal: 20, marginTop: SIZES.lg, marginBottom: SIZES.sm,
-    padding: 14, borderRadius: 16,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1, borderColor: '#E0E7FF',
-    ...SHADOWS.card,
-  },
-  aiBannerIconWrap: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
     ...SHADOWS.small,
   },
-  aiBannerIcon: { width: 32, height: 32 },
-  aiBannerContent: { flex: 1, gap: 3 },
-  aiBannerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  aiBannerTitle: { ...TYPO.h5, color: '#312E81', fontWeight: '700', fontSize: 15 },
-  aiBadgeNew: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#6366F1', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 2,
+  emptyTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
   },
-  aiBadgeDot: {
-    width: 5, height: 5, borderRadius: 3, backgroundColor: '#6EE7B7',
+  emptyText: {
+    ...TYPO.bodySmall,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
   },
-  aiBadgeText: {
-    fontSize: 9, color: '#fff', fontWeight: '800', letterSpacing: 0.5,
+  emptyBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    ...SHADOWS.large,
+    marginTop: 8,
   },
-  aiBannerSubtitle: {
-    ...TYPO.caption, color: '#4338CA', lineHeight: 16, fontSize: 11,
+  emptyBtnText: {
+    color: '#fff',
+    ...TYPO.button,
   },
-  aiBannerCta: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#6366F1', borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 8,
-  },
-  aiBannerCtaText: {
-    color: '#fff', fontSize: 11, fontWeight: '700',
+  // === FAB ===
+  fab: {
+    position: 'absolute',
+    bottom: 90, // room for bottom tab bar
+    right: 20, // margin-mobile
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.large,
+    elevation: 8, // Android shadow
   },
 });
