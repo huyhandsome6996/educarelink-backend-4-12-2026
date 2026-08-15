@@ -28,22 +28,18 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useAuth } from '../../context/AuthContext';
+import { MOCK_SCREENING_STATUS, APPROVED_SCREENING_STATUS } from '../../mocks/workerScreeningMock';
 
-// === MOCK DATA — thay bằng API khi backend sẵn sàng ===
-const MOCK_STATUS = {
-  stage: 'Phỏng vấn trực tuyến',
-  estimatedHours: '24-48h làm việc',
-  description: 'EduCareLink đang rà soát thông tin của bạn. Kết quả sẽ có sau 24-48h làm việc.',
-  steps: [
-    { id: 1, label: 'Xác minh danh tính (ID)', status: 'done' },
-    { id: 2, label: 'Xác thực khuôn mặt', status: 'done' },
-    { id: 3, label: 'Khám sức khỏe cơ bản', status: 'done' },
-    { id: 4, label: 'Phỏng vấn chuyên môn', status: 'pending' },
-    { id: 5, label: 'Duyệt hồ sơ cuối', status: 'pending' },
-  ],
-  submittedDate: '15/05/2024',
-  expectedDate: '17/05/2024',
-};
+// === Chọn status dựa trên user.is_verified từ API thật ===
+// user.is_verified === true  → tất cả steps done, stage = 'Đã duyệt'
+// user.is_verified === false → dùng mock pending (backend chưa có API tổng hợp screening)
+export function getScreeningStatusForUser(user) {
+  if (user?.is_verified) {
+    return APPROVED_SCREENING_STATUS;
+  }
+  return MOCK_SCREENING_STATUS;
+}
 
 const STEP_STATUS_STYLE = {
   done: {
@@ -74,7 +70,9 @@ const STEP_STATUS_STYLE = {
 
 export default function WorkerScreeningStatusScreen() {
   const navigation = useNavigation();
-  const [status] = useState(MOCK_STATUS);
+  const { user } = useAuth();
+  // Nối thật field is_verified từ API /profile/ — nếu đã verified → hiện stage "Đã duyệt"
+  const [status] = useState(() => getScreeningStatusForUser(user));
 
   const completedCount = status.steps.filter(s => s.status === 'done').length;
   const totalCount = status.steps.length;
