@@ -290,29 +290,60 @@ export default function MyTasksScreen() {
                 <Ionicons name="location" size={14} color={COLORS.primary} />
                 <Text style={styles.secondaryBtnText}>Theo dõi</Text>
               </TouchableOpacity>
+              {/* QA-FIX-GAP-4: Entry point vào CareDiaryDetail (Nhóm B) */}
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('CareDiaryDetail', { taskId: task.id, taskTitle: task.title })}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="book-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.secondaryBtnText}>Nhật ký</Text>
+              </TouchableOpacity>
+              {/* QA-FIX-GAP-4: Entry point vào CancellationPolicy (Nhóm B) */}
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('CancellationPolicy', { taskId: task.id })}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="document-text-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.secondaryBtnText}>Chính sách huỷ</Text>
+              </TouchableOpacity>
             </View>
           )}
 
           {task.status === 'completed' && (
-            <TouchableOpacity
-              style={styles.btnPrimary}
-              onPress={async () => {
-                try {
-                  const candRes = await getCandidates(task.id);
-                  const accepted = candRes.data.find(c => c.status === 'accepted');
-                  navigation.navigate('Review', {
-                    taskId: task.id,
-                    revieweeId: accepted ? accepted.worker : null
-                  });
-                } catch (e) {
-                  navigation.navigate('Review', { taskId: task.id });
-                }
-              }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="star-outline" size={16} color="#fff" />
-              <Text style={styles.btnPrimaryText}>Đánh giá Carepartner</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.btnPrimary}
+                onPress={async () => {
+                  try {
+                    const candRes = await getCandidates(task.id);
+                    const accepted = candRes.data.find(c => c.status === 'accepted');
+                    navigation.navigate('Review', {
+                      taskId: task.id,
+                      revieweeId: accepted ? accepted.worker : null
+                    });
+                  } catch (e) {
+                    navigation.navigate('Review', { taskId: task.id });
+                  }
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="star-outline" size={16} color="#fff" />
+                <Text style={styles.btnPrimaryText}>Đánh giá Carepartner</Text>
+              </TouchableOpacity>
+              {/* QA-FIX-GAP-4: Entry point vào CareDiaryDetail (Nhóm B) cho task đã hoàn thành */}
+              <View style={styles.secondaryActions}>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={() => navigation.navigate('CareDiaryDetail', { taskId: task.id, taskTitle: task.title })}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="book-outline" size={14} color={COLORS.primary} />
+                  <Text style={styles.secondaryBtnText}>Xem nhật ký chăm sóc</Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
         </View>
       </View>
