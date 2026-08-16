@@ -19,14 +19,11 @@
 //   * 'Liên hệ hỗ trợ' (ghost, primary text)
 // ============================================================
 
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Platform,
-} from 'react-native';
+import React, {useState, useRef, useEffect} from 'react';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_SCREENING_STATUS, APPROVED_SCREENING_STATUS } from '../../mocks/workerScreeningMock';
@@ -71,6 +68,16 @@ const STEP_STATUS_STYLE = {
 
 export default function WorkerScreeningStatusScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   // Nối thật field is_verified từ API /profile/ — nếu đã verified → hiện stage "Đã duyệt"
@@ -81,7 +88,7 @@ export default function WorkerScreeningStatusScreen() {
   const progressPercent = (completedCount / totalCount) * 100;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar */}
@@ -207,7 +214,7 @@ export default function WorkerScreeningStatusScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 

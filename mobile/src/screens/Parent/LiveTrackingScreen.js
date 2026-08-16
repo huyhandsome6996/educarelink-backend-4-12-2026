@@ -1,9 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, StatusBar,
-  ActivityIndicator, Alert, Platform, Linking,
-  ScrollView, RefreshControl, Animated, Vibration, AppState,
-} from 'react-native';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
+import {View, Text, StyleSheet, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Linking, ScrollView, RefreshControl, Animated, Vibration, AppState} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +8,7 @@ import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
   getDeviceStatus, getOfflineAlerts,
 } from '../../api/tracking';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const POLL_INTERVAL_MS = 5000; // Parent poll location mỗi 5s
@@ -31,6 +27,16 @@ const GEOFENCE_RADIUS = 500; // mét
 
 export default function LiveTrackingScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const route = useRoute();
   const { taskId, taskTitle, taskLatitude, taskLongitude, workerPhone } = route.params || {};
@@ -337,7 +343,7 @@ export default function LiveTrackingScreen() {
   const location = liveData?.location;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar — trắng theo Warm Professionalism */}
@@ -549,7 +555,7 @@ export default function LiveTrackingScreen() {
           </View>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

@@ -14,12 +14,12 @@
 // Giữ nguyên: getWorkerProfile, approveCandidate, navigation
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, {useState, useEffect, useRef} from 'react';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Animated} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getWorkerProfile, approveCandidate } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,6 +35,16 @@ const AVAILABILITY_MOCK = {
 
 export default function CandidateProfileScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const route = useRoute();
   const { workerId, applicationId, isPending } = route.params || {};
@@ -104,7 +114,7 @@ export default function CandidateProfileScreen() {
              : null;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng */}
@@ -361,7 +371,7 @@ export default function CandidateProfileScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
