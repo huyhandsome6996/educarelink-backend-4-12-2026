@@ -26,7 +26,7 @@ mobile/web-build/
 # Node (root level for docx generation)
 node_modules/
 bun.lock
-package.json
+/package.json
 # Exception: Tailwind CLI build tooling (frontend/tailwind-build/) needs its
 # package.json tracked so the CSS bundles can be rebuilt deterministically.
 !frontend/tailwind-build/package.json
