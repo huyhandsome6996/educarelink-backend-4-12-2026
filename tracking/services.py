@@ -22,7 +22,7 @@ logger = logging.getLogger('educarelink.tracking')
 GEOFENCE_RADIUS_METERS = getattr(settings, 'TRACKING_GEOFENCE_RADIUS', 500)  # 500m mặc định
 UPDATE_INTERVAL_SECONDS = getattr(settings, 'TRACKING_UPDATE_INTERVAL', 10)
 HEARTBEAT_INTERVAL_SECONDS = getattr(settings, 'TRACKING_HEARTBEAT_INTERVAL', 30)
-OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 90)  # 3 lần miss heartbeat
+OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 60)  # 2 lần miss heartbeat (30s × 2)
 
 
 def _notify_user(user: User, title: str, message: str, data: dict = None):
