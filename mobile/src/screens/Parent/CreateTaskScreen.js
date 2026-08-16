@@ -15,14 +15,12 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
-} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
+  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useRef, useEffect} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let DateTimePicker;
@@ -43,6 +41,16 @@ const CATEGORIES = [
 
 export default function CreateTaskScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const [selectedCat, setSelectedCat] = useState(1);
   const [title, setTitle] = useState('');
@@ -167,7 +175,7 @@ export default function CreateTaskScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.container, { opacity: fadeAnim }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng, back + title + spacer */}

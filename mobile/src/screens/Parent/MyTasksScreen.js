@@ -16,13 +16,13 @@
 //   PaymentSetup/LiveTracking
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Alert, Platform, ScrollView } from 'react-native';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Alert, Platform, ScrollView, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyTasksAsParent, getCandidates, updateTaskStatus } from '../../api/tasks';
 import { checkConsent } from '../../api/tracking';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -70,6 +70,16 @@ const STATUS_STYLE = {
 
 export default function MyTasksScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('open');
@@ -353,7 +363,7 @@ export default function MyTasksScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Header — surface-container-low bg */}
@@ -419,7 +429,7 @@ export default function MyTasksScreen() {
           }
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 

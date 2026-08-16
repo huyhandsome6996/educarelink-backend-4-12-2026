@@ -15,14 +15,11 @@
 // - Sticky footer: 'Gửi phản hồi' button (showComingSoon)
 // ============================================================
 
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Image, FlatList, Dimensions,
-} from 'react-native';
+import React, {useState, useRef, useEffect} from 'react';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image, FlatList, Dimensions, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { MOCK_DIARY } from '../../mocks/careDiaryMock';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,11 +32,21 @@ const STATUS_STYLE = {
 
 export default function CareDiaryDetailScreen() {
   const navigation = useNavigation();
+
+  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIM.timingNormal,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const [diary] = useState(MOCK_DIARY);
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceContainerLow} />
 
       {/* Top App Bar */}
@@ -186,7 +193,7 @@ export default function CareDiaryDetailScreen() {
           <Text style={styles.feedbackBtnText}>Gửi phản hồi</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
