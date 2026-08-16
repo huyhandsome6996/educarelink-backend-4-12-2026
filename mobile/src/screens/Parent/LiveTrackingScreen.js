@@ -318,7 +318,7 @@ export default function LiveTrackingScreen() {
       <View style={styles.errorContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
         <View style={[styles.header, { paddingTop: insets.top + 32 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Quay lại">
             <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Theo dõi CarePartner</Text>
@@ -342,7 +342,7 @@ export default function LiveTrackingScreen() {
 
       {/* Top App Bar — trắng theo Warm Professionalism */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Quay lại">
           <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -527,8 +527,7 @@ export default function LiveTrackingScreen() {
           </View>
 
           <View style={styles.sheetActions}>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionCall]}>
-              <Ionicons name="call" size={16} color="#fff" />
+            <TouchableOpacity style={[styles.actionBtn, styles.actionCall]} accessibilityRole="button" accessibilityLabel="Gọi điện cho CarePartner"> size={16} color="#fff" />
               <Text style={styles.actionBtnTextWhite}>Gọi</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionBtn, styles.actionMsg]}>
@@ -539,7 +538,7 @@ export default function LiveTrackingScreen() {
               style={[styles.actionBtn, styles.actionSos, sosLoading && { opacity: 0.6 }]}
               onPress={handleSOS}
               disabled={sosLoading}
-            >
+             accessibilityRole="button" accessibilityLabel="Gửi tín hiệu SOS khẩn cấp">
               {sosLoading ? <ActivityIndicator size="small" color={COLORS.error} /> : (
                 <>
                   <Ionicons name="alert-circle" size={16} color={COLORS.error} />

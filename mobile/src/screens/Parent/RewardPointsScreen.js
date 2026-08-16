@@ -102,7 +102,7 @@ export default function RewardPointsScreen() {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
-        >
+         accessibilityRole="button" accessibilityLabel="Quay lại">
           <Ionicons name="arrow-back" size={22} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>Điểm thưởng</Text>

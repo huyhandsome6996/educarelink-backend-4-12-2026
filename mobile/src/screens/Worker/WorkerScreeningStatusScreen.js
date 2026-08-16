@@ -89,7 +89,7 @@ export default function WorkerScreeningStatusScreen() {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
-        >
+         accessibilityRole="button" accessibilityLabel="Quay lại">
           <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>Trạng thái thẩm định</Text>

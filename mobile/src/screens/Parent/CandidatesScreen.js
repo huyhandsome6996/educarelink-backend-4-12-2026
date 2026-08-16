@@ -281,7 +281,7 @@ export default function CandidatesScreen() {
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
+         accessibilityRole="button" accessibilityLabel="Quay lại">
           <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>Ứng viên</Text>
