@@ -175,8 +175,8 @@ export default function MyTasksScreen() {
               <Ionicons name={st.icon} size={20} color={st.text} />
             </View>
             <View style={styles.cardTitleBlock}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{task.title}</Text>
-              <Text style={styles.cardCaption} numberOfLines={1}>
+              <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{task.title}</Text>
+              <Text style={styles.cardCaption} numberOfLines={1} ellipsizeMode="tail">
                 {task.location || 'Không có địa điểm'}
               </Text>
             </View>

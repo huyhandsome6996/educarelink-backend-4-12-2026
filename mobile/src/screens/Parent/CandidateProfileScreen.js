@@ -324,7 +324,7 @@ export default function CandidateProfileScreen() {
                         </Text>
                       </View>
                       <View>
-                        <Text style={styles.reviewerName}>{r.reviewer_name}</Text>
+                        <Text style={styles.reviewerName} numberOfLines={1} ellipsizeMode="tail">{r.reviewer_name}</Text>
                         <Text style={styles.reviewDate}>
                           {new Date(r.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </Text>
@@ -341,7 +341,7 @@ export default function CandidateProfileScreen() {
                       ))}
                     </View>
                   </View>
-                  <Text style={styles.reviewComment}>{r.comment}</Text>
+                  <Text style={styles.reviewComment} numberOfLines={4} ellipsizeMode="tail">{r.comment}</Text>
                 </View>
               ))}
             </View>
