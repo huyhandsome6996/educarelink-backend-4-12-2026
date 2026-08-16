@@ -1,3 +1,17 @@
+// ============================================================
+// WorkerOnboardingScreen — Redesign theo Warm Professionalism
+// (Cùng pattern với ParentOnboardingScreen để consistency)
+// Design HTML worker_onboarding_id_verification là step ID verification
+// (camera viewfinder) — khác flow với welcome carousel này. Welcome
+// carousel này áp dụng cùng visual style với Parent onboarding.
+// Thay đổi:
+// - Layout 2 phần: top (illustration) + bottom (content + actions)
+// - Top: surface bg + 2 decorative circles (primary + secondary)
+// - Bottom: surfaceWarm bg, title + desc + pill progress dots
+// - Buttons: 'Tiếp theo' pill primary-container + 'Bỏ qua' ghost
+// Giữ nguyên: 4 slides, scroll logic, completeOnboarding API
+// ============================================================
+
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, StatusBar, Animated,
@@ -7,10 +21,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { completeOnboarding } from '../../api/onboarding';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-// Sync 100% với web onboarding_worker.html — Material Symbols → Ionicons
 const SLIDES = [
   {
     iconName: 'search-outline',
@@ -40,18 +54,21 @@ const SLIDES = [
 
 export default function WorkerOnboardingScreen() {
   const { completeOnboardingInContext } = useAuth();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const activeIndexRef = React.useRef(0);  // tránh setState trong onScroll
+  const activeIndexRef = React.useRef(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-  }, []);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   const handleScroll = (e) => {
-    // Dùng onMomentumScrollEnd + onScrollDragEnd thay vì onScroll để tránh
-    // setState liên tục khi user đang kéo.
     const x = e.nativeEvent.contentOffset.x;
     const idx = Math.round(x / width);
     if (idx !== activeIndexRef.current) {
@@ -79,98 +96,220 @@ export default function WorkerOnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chào mừng Carepartner</Text>
-        <TouchableOpacity onPress={finish} style={styles.skipBtn}>
-          <Text style={styles.skipText}>Bỏ qua</Text>
-        </TouchableOpacity>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
+
+      {/* Top half — illustration area */}
+      <View style={styles.illustrationArea}>
+        <View style={styles.decorCirclePrimary} />
+        <View style={styles.decorCircleSecondary} />
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          onScrollEndDrag={handleScroll}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {SLIDES.map((slide, idx) => (
+            <View key={idx} style={styles.slide}>
+              <Animated.View
+                style={[
+                  styles.iconCircle,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ scale: fadeAnim }, { translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <View style={[styles.iconBg, { backgroundColor: slide.color + '15' }]}>
+                  <Ionicons name={slide.iconName} size={64} color={slide.color} />
+                </View>
+              </Animated.View>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        onScrollEndDrag={handleScroll}
-        style={styles.scroll}
-      >
-        {SLIDES.map((slide, idx) => (
-          <View key={idx} style={styles.slide}>
-            <Animated.View style={[styles.iconCircle, { backgroundColor: slide.color + '20', opacity: fadeAnim }]}>
-              <Ionicons name={slide.iconName} size={56} color={slide.color} />
-            </Animated.View>
-            <Text style={styles.slideTitle}>{slide.title}</Text>
-            <Text style={styles.slideDesc}>{slide.desc}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      {/* Bottom half — content area */}
+      <View style={[styles.contentArea, { paddingTop: insets.top + 32 }]}>
+        <Animated.View
+          style={[
+            styles.textBlock,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.slideTitle}>{SLIDES[activeIndex].title}</Text>
+          <Text style={styles.slideDesc}>{SLIDES[activeIndex].desc}</Text>
+        </Animated.View>
 
-      <View style={styles.dotsRow}>
-        {SLIDES.map((_, idx) => (
-          <View
-            key={idx}
-            style={[styles.dot, activeIndex === idx && styles.dotActive]}
-          />
-        ))}
-      </View>
+        {/* Progress dots — pill style */}
+        <View style={styles.dotsRow}>
+          {SLIDES.map((_, idx) => (
+            <View
+              key={idx}
+              style={[styles.dot, activeIndex === idx && styles.dotActive]}
+            />
+          ))}
+        </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-          <Text style={styles.nextBtnText}>
-            {activeIndex === SLIDES.length - 1 ? 'Bắt đầu kiếm việc' : 'Tiếp theo'}
-          </Text>
-          <Ionicons
-            name={activeIndex === SLIDES.length - 1 ? 'checkmark-circle' : 'arrow-forward'}
-            size={20}
-            color="#fff"
-          />
-        </TouchableOpacity>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.nextBtn}
+            onPress={handleNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.nextBtnText}>
+              {activeIndex === SLIDES.length - 1 ? 'Bắt đầu kiếm việc' : 'Tiếp theo'}
+            </Text>
+            <Ionicons
+              name={activeIndex === SLIDES.length - 1 ? 'checkmark-circle' : 'arrow-forward'}
+              size={20}
+              color="#fff"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={finish}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipText}>Bỏ qua</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: 56, paddingBottom: 16, paddingHorizontal: 20,
-    backgroundColor: COLORS.primary,
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceWarm,
   },
-  headerTitle: { ...TYPO.h4, color: '#fff', fontWeight: '700' },
-  skipBtn: { paddingVertical: 6, paddingHorizontal: 12 },
-  skipText: { color: 'rgba(255,255,255,0.85)', ...TYPO.buttonSmall },
+  illustrationArea: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+    position: 'relative',
+  },
+  decorCirclePrimary: {
+    position: 'absolute',
+    top: -64,
+    right: -64,
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    backgroundColor: COLORS.primaryLight,
+    opacity: 0.5,
+  },
+  decorCircleSecondary: {
+    position: 'absolute',
+    bottom: 0,
+    left: -64,
+    width: 192,
+    height: 192,
+    borderRadius: 96,
+    backgroundColor: COLORS.secondaryLight,
+    opacity: 0.4,
+  },
   scroll: { flex: 1 },
+  scrollContent: { alignItems: 'center', justifyContent: 'center' },
   slide: {
-    width, alignItems: 'center', justifyContent: 'center',
-    padding: 32, gap: 18,
+    width,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
   },
   iconCircle: {
-    width: 160, height: 160, borderRadius: 80,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBg: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: COLORS.surface,
     ...SHADOWS.large,
   },
-  iconImage: { width: 90, height: 90 },
-  slideTitle: { ...TYPO.h1, fontSize: 26, color: COLORS.textPrimary, textAlign: 'center' },
-  slideDesc: { ...TYPO.body, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 24 },
+  contentArea: {
+    backgroundColor: COLORS.surfaceWarm,
+    paddingHorizontal: 20,
+    paddingBottom: 48,
+    alignItems: 'center',
+  },
+  textBlock: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  slideTitle: {
+    ...TYPO.h1,
+    color: COLORS.onSurface,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  slideDesc: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    maxWidth: 360,
+    lineHeight: 24,
+  },
   dotsRow: {
-    flexDirection: 'row', justifyContent: 'center', gap: 8,
-    paddingVertical: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 32,
   },
   dot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.border,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.outlineVariant,
   },
   dotActive: {
-    width: 24, backgroundColor: COLORS.primary,
+    width: 32,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
   },
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  actions: {
+    width: '100%',
+    maxWidth: 360,
+    gap: 8,
+  },
   nextBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusLg, height: 56,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    height: 48,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
     ...SHADOWS.large,
   },
-  nextBtnText: { color: '#fff', ...TYPO.button, fontSize: 16 },
+  nextBtnText: {
+    ...TYPO.h4,
+    color: COLORS.textOnPrimary,
+  },
+  skipBtn: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skipText: {
+    ...TYPO.h4,
+    color: COLORS.primary,
+  },
 });

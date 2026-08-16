@@ -161,7 +161,7 @@ export default function NotificationBell({ dark = false, size = 22, color, style
         style={[styles.bellBtn, dark && styles.bellBtnDark, style]}
         onPress={openPanel}
         activeOpacity={0.7}
-      >
+       accessibilityRole="button" accessibilityLabel="Thông báo">
         <Ionicons
           name={unread > 0 ? 'notifications' : 'notifications-outline'}
           size={size}
@@ -191,8 +191,7 @@ export default function NotificationBell({ dark = false, size = 22, color, style
                     </View>
                   )}
                 </View>
-                <TouchableOpacity onPress={closePanel} style={styles.closeBtn}>
-                  <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                <TouchableOpacity onPress={closePanel} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Đóng"> size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>

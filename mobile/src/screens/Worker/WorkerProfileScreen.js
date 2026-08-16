@@ -5,12 +5,14 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { updateCertificate } from '../../api/auth';
 import { submitCredential, requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
 
 export default function WorkerProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [isUploading, setIsUploading] = React.useState(false);
@@ -55,6 +57,8 @@ export default function WorkerProfileScreen() {
   const MENU_ITEMS = [
     { icon: 'star-outline', label: 'Xem đánh giá từ phụ huynh', color: COLORS.primary, action: 'view_reviews' },
     { icon: 'wallet-outline', label: 'Thu nhập của tôi', color: COLORS.success, action: 'view_earnings' },
+    // QA-FIX-GAP-4: Entry point vào WorkerScreeningStatus (Nhóm B)
+    { icon: 'shield-checkmark-outline', label: 'Trạng thái thẩm định hồ sơ', color: COLORS.primary, action: 'view_screening_status' },
     { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
     { icon: 'documents-outline', label: 'Khiếu nại của tôi', color: COLORS.error, action: 'view_my_complaints' },
     { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
@@ -135,6 +139,9 @@ export default function WorkerProfileScreen() {
       navigation.navigate('CandidateProfile', { workerId: user.id, isPending: false });
     } else if (action === 'view_earnings') {
       navigation.navigate('MyEarnings');
+    } else if (action === 'view_screening_status') {
+      // QA-FIX-GAP-4: Entry point vào WorkerScreeningStatus (Nhóm B)
+      navigation.navigate('WorkerScreeningStatus');
     } else if (action === 'view_my_complaints') {
       navigation.navigate('MyComplaints');
     } else if (action === 'help_center') {
@@ -186,7 +193,7 @@ export default function WorkerProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Header cam */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.headerTopRow}>
             <View style={{ width: 40 }} />
             <Text style={styles.headerTitle}>Hồ sơ</Text>
@@ -444,7 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingBottom: 16, width: '100%',
   },
-  headerTitle: { ...TYPO.h5, color: '#fff', fontWeight: '700' },
+  headerTitle: { ...TYPO.h5, color: COLORS.textOnPrimary, fontWeight: '700' },
   headerDeco1: {
     position: 'absolute', top: -40, right: -30,
     width: 140, height: 140, borderRadius: 70,
@@ -476,8 +483,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { color: '#fff', ...TYPO.h1, fontSize: 34 },
-  name: { ...TYPO.h2, color: '#fff' },
+  avatarText: { color: COLORS.textOnPrimary, ...TYPO.h1, fontSize: 34 },
+  name: { ...TYPO.h2, color: COLORS.textOnPrimary },
   username: { ...TYPO.bodySmall, color: 'rgba(255,255,255,0.7)' },
   verifiedBadge: {
     flexDirection: 'row', gap: 6, alignItems: 'center',
@@ -489,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245,158,11,0.15)',
     borderColor: 'rgba(245,158,11,0.3)',
   },
-  verifiedText: { ...TYPO.caption, color: '#fff' },
+  verifiedText: { ...TYPO.caption, color: COLORS.textOnPrimary },
   // === AI ===
   aiCard: {
     margin: SIZES.md, backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd,
@@ -598,5 +605,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     ...SHADOWS.large,
   },
-  modalSubmitText: { color: '#fff', ...TYPO.button, fontSize: 15 },
+  modalSubmitText: { color: COLORS.textOnPrimary, ...TYPO.button, fontSize: 15 },
 });
