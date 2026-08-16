@@ -72,6 +72,11 @@ export default function CreateTaskScreen() {
   const [priceFocused, setPriceFocused] = useState(false);
 
   const [enableGeofence, setEnableGeofence] = useState(false);
+
+  // QA-FIX-UI 3.3: errors state cho inline validation theo field
+  // (thay Alert chung — user biết chính xác field nào đang sai)
+  const [errors, setErrors] = useState({});
+  const clearError = (field) => setErrors(prev => prev[field] ? { ...prev, [field]: undefined } : prev);
   const [geofenceRadius, setGeofenceRadius] = useState('500');
 
   const onDateChange = (event, selectedDate) => {
@@ -116,14 +121,31 @@ export default function CreateTaskScreen() {
   const cat = CATEGORIES.find(c => c.id === selectedCat);
 
   const handleSubmit = async () => {
-    if (!title || !description || !location || !date || !time || !price) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ tất cả các trường.');
-      return;
-    }
+    // QA-FIX-UI 3.3: validate theo field, set errors state để hiển thị inline
+    const newErrors = {};
+    if (!title?.trim()) newErrors.title = 'Vui lòng nhập tiêu đề nhiệm vụ';
+    if (!description?.trim()) newErrors.description = 'Vui lòng mô tả nhiệm vụ';
+    if (!location?.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
+    if (!date?.trim()) newErrors.date = 'Vui lòng chọn ngày';
+    if (!time?.trim()) newErrors.time = 'Vui lòng chọn giờ';
+    if (!price?.trim()) newErrors.price = 'Vui lòng nhập mức thù lao';
+
+    // Validate format nếu field đã có giá trị
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     const timeRegex = /^\d{2}:\d{2}$/;
-    if (!dateRegex.test(date) || !timeRegex.test(time)) {
-      Alert.alert('Sai định dạng', 'Ngày phải là YYYY-MM-DD, giờ phải là HH:MM');
+    if (date && !dateRegex.test(date)) newErrors.date = 'Ngày phải có định dạng YYYY-MM-DD';
+    if (time && !timeRegex.test(time)) newErrors.time = 'Giờ phải có định dạng HH:MM';
+
+    setErrors(newErrors);
+
+    // Nếu có lỗi → scroll lên đầu form + Alert ngắn gọn (giữ Alert chỉ cho
+    // tóm tắt, không thay thế cho inline message)
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorField = Object.keys(newErrors)[0];
+      Alert.alert(
+        'Cần kiểm tra lại thông tin',
+        `Vui lòng sửa ${Object.keys(newErrors).length} trường đang lỗi (xem thông báo dưới mỗi ô nhập).`
+      );
       return;
     }
 
@@ -247,29 +269,30 @@ export default function CreateTaskScreen() {
           {/* Title */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Tiêu đề công việc *</Text>
-            <View style={[styles.inputWrapper, titleFocused && styles.inputWrapperFocused]}>
+            <View style={[styles.inputWrapper, titleFocused && styles.inputWrapperFocused, errors.title && styles.inputWrapperError]}>
               <TextInput
                 style={styles.input}
                 placeholder="VD: Gia sư Toán lớp 5 mỗi tối 7h"
                 placeholderTextColor={COLORS.outline}
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={(v) => { setTitle(v); clearError('title'); }}
                 onFocus={() => setTitleFocused(true)}
                 onBlur={() => setTitleFocused(false)}
               />
             </View>
+            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
           </View>
 
           {/* Description */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Mô tả chi tiết *</Text>
-            <View style={[styles.inputWrapper, styles.textareaWrapper, descFocused && styles.inputWrapperFocused]}>
+            <View style={[styles.inputWrapper, styles.textareaWrapper, descFocused && styles.inputWrapperFocused, errors.description && styles.inputWrapperError]}>
               <TextInput
                 style={[styles.input, styles.textarea]}
                 placeholder="Mô tả nhu cầu, yêu cầu cụ thể, thời lượng..."
                 placeholderTextColor={COLORS.outline}
                 value={description}
-                onChangeText={setDescription}
+                onChangeText={(v) => { setDescription(v); clearError('description'); }}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -277,12 +300,13 @@ export default function CreateTaskScreen() {
                 onBlur={() => setDescFocused(false)}
               />
             </View>
+            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
           </View>
 
           {/* Location */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Địa điểm *</Text>
-            <View style={[styles.inputWrapper, locationFocused && styles.inputWrapperFocused]}>
+            <View style={[styles.inputWrapper, locationFocused && styles.inputWrapperFocused, errors.location && styles.inputWrapperError]}>
               <Ionicons
                 name="location-outline"
                 size={18}
@@ -294,11 +318,12 @@ export default function CreateTaskScreen() {
                 placeholder="VD: 123 Lê Lợi, Q1, TP.HCM"
                 placeholderTextColor={COLORS.outline}
                 value={location}
-                onChangeText={setLocation}
+                onChangeText={(v) => { setLocation(v); clearError('location'); }}
                 onFocus={() => setLocationFocused(true)}
                 onBlur={() => setLocationFocused(false)}
               />
             </View>
+            {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
           </View>
 
           {/* Date & Time — 2 columns */}
@@ -306,8 +331,8 @@ export default function CreateTaskScreen() {
             <View style={[styles.fieldGroup, { flex: 1 }]}>
               <Text style={styles.fieldLabel}>Ngày</Text>
               <TouchableOpacity
-                style={styles.inputWrapper}
-                onPress={handleOpenDatePicker}
+                style={[styles.inputWrapper, errors.date && styles.inputWrapperError]}
+                onPress={() => { clearError('date'); handleOpenDatePicker(); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="calendar-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
@@ -315,12 +340,13 @@ export default function CreateTaskScreen() {
                   {date || 'Chọn ngày'}
                 </Text>
               </TouchableOpacity>
+              {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
             <View style={[styles.fieldGroup, { flex: 1 }]}>
               <Text style={styles.fieldLabel}>Giờ</Text>
               <TouchableOpacity
-                style={styles.inputWrapper}
-                onPress={handleOpenTimePicker}
+                style={[styles.inputWrapper, errors.time && styles.inputWrapperError]}
+                onPress={() => { clearError('time'); handleOpenTimePicker(); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="time-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
@@ -328,6 +354,7 @@ export default function CreateTaskScreen() {
                   {time || 'Chọn giờ'}
                 </Text>
               </TouchableOpacity>
+              {errors.time && <Text style={styles.errorText}>{errors.time}</Text>}
             </View>
           </View>
 
@@ -353,19 +380,20 @@ export default function CreateTaskScreen() {
           {/* Price */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Giá thỏa thuận (VNĐ)</Text>
-            <View style={[styles.inputWrapper, priceFocused && styles.inputWrapperFocused]}>
+            <View style={[styles.inputWrapper, priceFocused && styles.inputWrapperFocused, errors.price && styles.inputWrapperError]}>
               <TextInput
                 style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
                 placeholder="0"
                 placeholderTextColor={COLORS.outline}
                 value={price}
-                onChangeText={setPrice}
+                onChangeText={(v) => { setPrice(v); clearError('price'); }}
                 keyboardType="numeric"
                 onFocus={() => setPriceFocused(true)}
                 onBlur={() => setPriceFocused(false)}
               />
               <Text style={styles.currencyUnit}>VNĐ</Text>
             </View>
+            {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
           </View>
         </View>
 
@@ -578,6 +606,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingHorizontal: 13, // adjust for thicker border
     ...SHADOWS.inputFocus,
+  },
+  // QA-FIX-UI 3.3: error state cho input wrapper
+  inputWrapperError: {
+    borderColor: COLORS.error,
+    borderWidth: 2,
+    paddingHorizontal: 13,
+  },
+  errorText: {
+    ...TYPO.caption,
+    color: COLORS.error,
+    marginTop: 6,
+    marginLeft: 4,
+    fontWeight: '600',
   },
   inputIcon: {
     marginRight: 10,
