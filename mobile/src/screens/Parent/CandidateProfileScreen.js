@@ -152,7 +152,7 @@ export default function CandidateProfileScreen() {
             </View>
           </View>
 
-          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">{displayName}</Text>
 
           <View style={styles.verifiedRow}>
             <Ionicons name="shield-checkmark" size={16} color={COLORS.secondary} />

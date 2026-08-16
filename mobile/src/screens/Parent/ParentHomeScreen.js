@@ -260,13 +260,13 @@ export default function ParentHomeScreen() {
                 </View>
                 {cat.span === 2 ? (
                   <View style={styles.bentoTextBlock}>
-                    <Text style={styles.bentoCardTitle}>{cat.name}</Text>
+                    <Text style={styles.bentoCardTitle} numberOfLines={1} ellipsizeMode="tail">{cat.name}</Text>
                     {cat.desc ? (
-                      <Text style={styles.bentoCardDesc}>{cat.desc}</Text>
+                      <Text style={styles.bentoCardDesc} numberOfLines={2} ellipsizeMode="tail">{cat.desc}</Text>
                     ) : null}
                   </View>
                 ) : (
-                  <Text style={styles.bentoCardTitle}>{cat.name}</Text>
+                  <Text style={styles.bentoCardTitle} numberOfLines={1} ellipsizeMode="tail">{cat.name}</Text>
                 )}
               </TouchableOpacity>
             ))}
@@ -295,7 +295,7 @@ export default function ParentHomeScreen() {
                       <Ionicons name="person" size={22} color={COLORS.onSurface} />
                     </View>
                     <View style={styles.cpNameBlock}>
-                      <Text style={styles.cpName}>{cp.name}</Text>
+                      <Text style={styles.cpName} numberOfLines={1} ellipsizeMode="tail">{cp.name}</Text>
                       <View style={styles.cpRatingRow}>
                         <Ionicons name="star" size={12} color={COLORS.ratingStar} />
                         <Text style={styles.cpRatingText}>{cp.rating}</Text>
