@@ -54,8 +54,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 3,
-      "googleServicesFile": "./google-services.json"
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/favicon.png"
