@@ -91,22 +91,59 @@ export const COLORS = {
 
 // === COLORED SHADOWS (taste-skill principle) ===
 // Thay vì dùng shadow đen đơn điệu, dùng shadow pha màu primary
+//
+// P0 FIX (v1.1.5): Thêm proper shadow props (shadowColor/shadowOffset/
+// shadowOpacity/shadowRadius) + elevation cho Android.
+//
+// Root cause jank: Trước đây SHADOWS chỉ dùng `boxShadow` CSS string syntax
+// (mới trong RN 0.81+). Trên Android, `boxShadow` render qua Yoga layout
+// engine, KHÔNG dùng native elevation → chậm, jank khi scroll/animation.
+// Trên iOS cũng chậm hơn native shadow props.
+//
+// Fix: Thêm đầy đủ shadow props + elevation. Giữ `boxShadow` làm fallback
+// cho web platform (nếu có). Native props sẽ override trên iOS/Android.
 export const SHADOWS = {
   small: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
   },
   medium: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 4,
     boxShadow: '0px 4px 14px rgba(0, 0, 0, 0.07)',
   },
   large: {
+    // Orange glow — reserved for FAB & primary CTA
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
     boxShadow: '0px 6px 20px rgba(242, 101, 34, 0.2)',
   },
   // Colored shadow cho card khi press/hover
   cardHover: {
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
     boxShadow: '0px 4px 16px rgba(242, 101, 34, 0.12)',
   },
   // Subtle shadow cho input focus
   inputFocus: {
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
     boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.1)',
   },
 };

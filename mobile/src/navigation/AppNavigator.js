@@ -284,7 +284,13 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 88 : 84,
     paddingBottom: Platform.OS === 'ios' ? 28 : 24,
     paddingTop: 6,
-    boxShadow: '0px -2px 12px rgba(242, 101, 34, 0.06)',
+    // P0 FIX (v1.1.5): Thay boxShadow CSS string bằng proper shadow props + elevation
+    // để tránh jank trên Android (boxShadow render qua Yoga, không dùng native elevation)
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 8,
   },
   tabBarLabel: {
     ...TYPO.caption,

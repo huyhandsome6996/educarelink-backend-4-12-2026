@@ -28,69 +28,91 @@ let appStateSubscription = null;
 // ====================================================================
 // BACKGROUND TASK — location tracking (chạy khi app ở nền)
 // ====================================================================
-TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error('[LocationService] Background task error:', error);
-    return;
-  }
-  if (!data || !data.locations || data.locations.length === 0) return;
+// P0 FIX (v1.1.5): Bọc try/catch quanh TaskManager.defineTask ở top-level.
+//
+// Root cause: File này được import TĨNH (static import) qua chuỗi:
+//   App.js → AppNavigator.js → MyJobsScreen.js → LocationService.js
+//   MyJobsScreen.js → ActiveTrackingBanner.js → LocationService.js
+// Khi Metro resolve dependency graph lúc app khởi động, code top-level chạy
+// ngay — TRƯỚC KHI React render. Nếu defineTask throw (do native module
+// linking lỗi trong release build), ErrorBoundary (component) KHÔNG bắt được
+// → app crash-on-launch, màn đen.
+//
+// Fix v1.1.2 đã bọc try/catch cho BACKGROUND_FETCH_TASK trong App.js, nhưng
+// bỏ sót 2 lệnh defineTask tương tự trong file này. Fix v1.1.5 bổ sung try/catch
+// cho cả 2, theo đúng pattern App.js dòng 51-66.
+try {
+  TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+      console.error('[LocationService] Background task error:', error);
+      return;
+    }
+    if (!data || !data.locations || data.locations.length === 0) return;
 
-  const location = data.locations[data.locations.length - 1];
-  const taskId = await storage.getItem('tracking_task_id');
-  if (!taskId) {
-    return;
-  }
+    const location = data.locations[data.locations.length - 1];
+    const taskId = await storage.getItem('tracking_task_id');
+    if (!taskId) {
+      return;
+    }
 
-  try {
-    await apiClient.post('/tracking/location/', {
-      task_id: parseInt(taskId, 10),
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      accuracy: location.coords.accuracy,
-      speed: location.coords.speed,
-      heading: location.coords.heading,
-    });
-    lastKnownLocation = location.coords;
-    console.log('[LocationService] Background location update sent');
-  } catch (e) {
-    console.warn('[LocationService] Background location failed:', e?.response?.status || e.message);
-  }
-});
+    try {
+      await apiClient.post('/tracking/location/', {
+        task_id: parseInt(taskId, 10),
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy,
+        speed: location.coords.speed,
+        heading: location.coords.heading,
+      });
+      lastKnownLocation = location.coords;
+      console.log('[LocationService] Background location update sent');
+    } catch (e) {
+      console.warn('[LocationService] Background location failed:', e?.response?.status || e.message);
+    }
+  });
+} catch (e) {
+  console.warn('[LocationService] TaskManager.defineTask(LOCATION) failed (non-fatal):', e);
+}
 
 // ====================================================================
 // BACKGROUND TASK — heartbeat (chống tắt máy)
 // Gửi mỗi 30s — nếu backend không nhận > 90s sẽ báo chuông cho parent
 // ====================================================================
-TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error('[HeartbeatService] Background task error:', error);
-    return;
-  }
+// P0 FIX (v1.1.5): Bọc try/catch tương tự như LOCATION_TASK_NAME ở trên.
+try {
+  TaskManager.defineTask(HEARTBEAT_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+      console.error('[HeartbeatService] Background task error:', error);
+      return;
+    }
 
-  const taskId = await storage.getItem('tracking_task_id');
-  if (!taskId) return;
+    const taskId = await storage.getItem('tracking_task_id');
+    if (!taskId) return;
 
-  try {
-    // Lấy battery level nếu có thể
-    let batteryLevel = null;
     try {
-      const battery = await Battery.getBatteryLevelAsync();
-      if (battery >= 0) batteryLevel = Math.round(battery * 100);
-    } catch (e) { /* Battery API có thể không available */ }
+      // Lấy battery level nếu có thể
+      let batteryLevel = null;
+      try {
+        const battery = await Battery.getBatteryLevelAsync();
+        if (battery >= 0) batteryLevel = Math.round(battery * 100);
+      } catch (e) { /* Battery API có thể không available */ }
 
-    await apiClient.post('/tracking/heartbeat/', {
-      task_id: parseInt(taskId, 10),
-      latitude: lastKnownLocation?.latitude || null,
-      longitude: lastKnownLocation?.longitude || null,
-      battery_level: batteryLevel,
-      app_state: AppState.currentState || 'background',
-      network_type: '',  // không có API native trong Expo
-    });
-    console.log('[HeartbeatService] Heartbeat sent');
-  } catch (e) {
-    console.warn('[HeartbeatService] Heartbeat failed:', e?.response?.status || e.message);
-  }
-});
+      await apiClient.post('/tracking/heartbeat/', {
+        task_id: parseInt(taskId, 10),
+        latitude: lastKnownLocation?.latitude || null,
+        longitude: lastKnownLocation?.longitude || null,
+        battery_level: batteryLevel,
+        app_state: AppState.currentState || 'background',
+        network_type: '',  // không có API native trong Expo
+      });
+      console.log('[HeartbeatService] Heartbeat sent');
+    } catch (e) {
+      console.warn('[HeartbeatService] Heartbeat failed:', e?.response?.status || e.message);
+    }
+  });
+} catch (e) {
+  console.warn('[LocationService] TaskManager.defineTask(HEARTBEAT) failed (non-fatal):', e);
+}
 
 // ====================================================================
 // PUBLIC API
