@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     ...TYPO.h1,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     fontSize: 36,
   },
   name: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     ...SHADOWS.large,
   },
-  modalSubmitText: { color: '#fff', ...TYPO.button, fontSize: 15 },
+  modalSubmitText: { color: COLORS.textOnPrimary, ...TYPO.button, fontSize: 15 },
   statItem: {
     flex: 1,
     alignItems: 'center',

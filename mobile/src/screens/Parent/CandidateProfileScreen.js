@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     ...TYPO.h1,
     fontSize: 42,
   },
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
   },
   approveBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   // === AVAILABILITY SECTION (QA-FIX-UI 2.1) ===
   availabilityCard: {

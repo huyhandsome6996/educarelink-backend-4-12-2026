@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     color: COLORS.onSurfaceVariant,
   },
   chipTextActive: {
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   // === LIST ===
   list: { paddingHorizontal: 20, paddingBottom: 40, gap: 12 },
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   avatarText: {
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     ...TYPO.h3,
   },
   avatarBadge: {
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   },
   approveBtnText: {
     ...TYPO.buttonSmall,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   // === EMPTY STATE ===
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },

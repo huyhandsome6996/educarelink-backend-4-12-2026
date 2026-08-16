@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   promoTitle: {
     ...TYPO.h3,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
     marginBottom: 4,
     lineHeight: 22,
   },
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyBtnText: {
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     ...TYPO.button,
   },
   // === FAB ===

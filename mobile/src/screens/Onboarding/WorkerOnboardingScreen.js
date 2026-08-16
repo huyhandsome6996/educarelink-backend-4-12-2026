@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   nextBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   skipBtn: {
     height: 48,

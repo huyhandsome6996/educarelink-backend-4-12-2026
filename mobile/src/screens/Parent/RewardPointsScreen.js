@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   heroPoints: {
     fontSize: 48,
     fontWeight: '900',
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
     letterSpacing: -1.5,
     lineHeight: 50,
   },
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   heroTier: {
     ...TYPO.body,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
     fontWeight: '700',
     marginTop: 4,
   },
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   redeemBtnText: {
     ...TYPO.caption,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     fontWeight: '700',
   },
   redeemBtnTextDisabled: {

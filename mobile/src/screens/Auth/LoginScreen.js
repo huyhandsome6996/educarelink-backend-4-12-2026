@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.7 },
   loginBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   // Divider
   dividerRow: {

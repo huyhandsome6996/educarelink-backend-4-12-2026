@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   },
   tierTooltipText: {
     fontSize: 10,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     fontWeight: '700',
   },
   tierHours: {
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     color: COLORS.onSurface,
   },
   reasonChipTextActive: {
-    color: '#fff',
+    color: COLORS.textOnPrimary,
     fontWeight: '700',
   },
   // === NOTE INPUT ===
@@ -548,6 +548,6 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
 });

@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 4,
   },
-  liveText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  liveText: { color: COLORS.textOnPrimary, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
 
   mapArea: { flex: 1 },
   mapPlaceholder: { flex: 1, backgroundColor: COLORS.surfaceContainerLow },
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorDeep, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 4,
   },
-  geofenceText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  geofenceText: { color: COLORS.textOnPrimary, fontSize: 10, fontWeight: '700' },
 
   mapVisual: {
     flex: 1, position: 'relative',
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
 
   mapHint: {
     position: 'absolute', bottom: 12, left: 12, right: 12,
-    backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff',
+    backgroundColor: 'rgba(0,0,0,0.7)', color: COLORS.textOnPrimary,
     fontSize: 11, textAlign: 'center', padding: 6, borderRadius: 6,
     overflow: 'hidden',
   },
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: COLORS.surface,
     ...SHADOWS.small,
   },
-  sheetAvatarText: { color: '#fff', ...TYPO.h4, fontWeight: '800' },
+  sheetAvatarText: { color: COLORS.textOnPrimary, ...TYPO.h4, fontWeight: '800' },
   sheetInfo: { flex: 1 },
   sheetName: { ...TYPO.h4, color: COLORS.onSurface, fontWeight: '700' },
   sheetStatus: { ...TYPO.caption, color: COLORS.secondaryDark, marginTop: 2 },
@@ -738,8 +738,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorDeep,
     // bỏ border, dùng shadow đỏ đậm
   },
-  actionBtnTextWhite: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '700' },
-  actionBtnTextSos: { color: '#fff', ...TYPO.buttonSmall, fontWeight: '800', letterSpacing: 1 },
+  actionBtnTextWhite: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall, fontWeight: '700' },
+  actionBtnTextSos: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall, fontWeight: '800', letterSpacing: 1 },
 
   // === OFFLINE ALERT BANNER — errorDeep bg theo DESIGN.md ===
   offlineAlertBanner: {
@@ -752,13 +752,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   offlineAlertTitle: {
-    color: '#fff', ...TYPO.h4, fontWeight: '900', fontSize: 16,
+    color: COLORS.textOnPrimary, ...TYPO.h4, fontWeight: '900', fontSize: 16,
   },
   offlineAlertSub: {
     color: 'rgba(255,255,255,0.95)', ...TYPO.bodySmall, marginTop: 2,
   },
   offlineAlertLocation: {
-    color: '#fff', ...TYPO.caption, fontStyle: 'italic',
+    color: COLORS.textOnPrimary, ...TYPO.caption, fontStyle: 'italic',
   },
   offlineAlertTime: {
     color: 'rgba(255,255,255,0.85)', ...TYPO.caption,
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
   },
   offlineAlertBtnText: {
-    color: '#fff', ...TYPO.buttonSmall, fontWeight: '800',
+    color: COLORS.textOnPrimary, ...TYPO.buttonSmall, fontWeight: '800',
   },
 
   // === DEVICE STATUS BAR ===

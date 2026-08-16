@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: {
     ...TYPO.caption,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
     fontWeight: '700',
   },
   btnOutline: {
@@ -679,6 +679,6 @@ const styles = StyleSheet.create({
   },
   emptyBtnText: {
     ...TYPO.button,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
   },
 });
