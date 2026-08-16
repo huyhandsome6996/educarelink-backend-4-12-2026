@@ -23,22 +23,33 @@ import * as ImagePicker from 'expo-image-picker';
 //   try { WebBrowser = require('expo-web-browser'); } catch (e) {}
 // }
 
+// Role config — IDs ('parent' / 'worker') preserved verbatim for API contract.
+// Only display strings / colors / icons were refreshed to match the
+// Warm Professionalism register design (orange = Phụ huynh, green = CarePartner).
 const ROLES = [
   {
     id: 'parent',
-    label: 'Phụ Huynh',
+    label: 'Tôi là Phụ huynh',
     icon: 'people',
-    description: 'Đăng việc, tìm người chăm sóc cho bé',
+    description: 'Tìm kiếm người đồng hành uy tín cho con.',
     color: COLORS.primary,
     bg: COLORS.primaryLight,
+    iconBg: COLORS.primaryFixed,
+    iconColor: COLORS.primaryText,
+    activeIconBg: COLORS.primary,
+    activeIconColor: '#FFFFFF',
   },
   {
     id: 'worker',
-    label: 'Sinh Viên',
-    icon: 'school',
-    description: 'Tìm việc, kiếm thêm thu nhập',
-    color: COLORS.primary,
-    bg: COLORS.primaryLight,
+    label: 'Tôi là CarePartner',
+    icon: 'book',
+    description: 'Hỗ trợ học tập và đồng hành cùng trẻ.',
+    color: COLORS.secondary,
+    bg: COLORS.secondaryLight,
+    iconBg: COLORS.secondaryContainer,
+    iconColor: COLORS.secondaryDeep,
+    activeIconBg: COLORS.secondary,
+    activeIconColor: '#FFFFFF',
   },
 ];
 
@@ -275,21 +286,25 @@ export default function RegisterScreen() {
           <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
 
+        {/* Header — brand row + display title + subtitle */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          <View style={styles.logoWrap}>
-            <Ionicons name="heart" size={48} color="#fff" />
+          <View style={styles.brandRow}>
+            <View style={styles.brandLogo}>
+              <Ionicons name="school" size={28} color={COLORS.primary} />
+            </View>
+            <Text style={styles.brandText}>EduCareLink</Text>
           </View>
-          <Text style={styles.title}>Tạo tài khoản mới</Text>
-          <Text style={styles.subtitle}>Chọn vai trò của bạn để bắt đầu</Text>
+          <Text style={styles.title}>Bắt đầu hành trình</Text>
+          <Text style={styles.subtitle}>Chọn vai trò của bạn để chúng tôi cá nhân hóa trải nghiệm.</Text>
         </Animated.View>
 
-        {/* Chọn vai trò */}
-        <View style={styles.rolesRow}>
+        {/* Role selection — large vertical cards (Phụ huynh / CarePartner) */}
+        <View style={styles.rolesColumn}>
           {ROLES.map((role) => {
             const isSelected = selectedRole === role.id;
             const scaleRef = role.id === 'parent' ? roleScaleParent : roleScaleWorker;
             return (
-              <Animated.View key={role.id} style={{ flex: 1, transform: [{ scale: scaleRef }] }}>
+              <Animated.View key={role.id} style={{ transform: [{ scale: scaleRef }] }}>
                 <TouchableOpacity
                   style={[
                     styles.roleCard,
@@ -302,18 +317,40 @@ export default function RegisterScreen() {
                   onPress={() => setSelectedRole(role.id)}
                   onPressIn={() => handleRolePressIn(role.id)}
                   onPressOut={() => handleRolePressOut(role.id)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
-                  <View style={[styles.roleIconCircle, { backgroundColor: isSelected ? role.color : '#E5E7EB' }]}>
-                    <Ionicons name={role.icon} size={22} color={isSelected ? '#fff' : '#9ca3af'} />
+                  {/* Icon container — 56x56 soft-square, tinted by role */}
+                  <View
+                    style={[
+                      styles.roleIconBox,
+                      { backgroundColor: isSelected ? role.activeIconBg : role.iconBg },
+                      isSelected && styles.roleIconBoxActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name={role.icon}
+                      size={28}
+                      color={isSelected ? role.activeIconColor : role.iconColor}
+                    />
                   </View>
-                  <Text style={[styles.roleLabel, isSelected && { color: role.color }]}>{role.label}</Text>
-                  <Text style={styles.roleDesc}>{role.description}</Text>
-                  {isSelected && (
-                    <View style={[styles.checkMark, { backgroundColor: role.color }]}>
-                      <Ionicons name="checkmark" size={12} color="#fff" />
-                    </View>
-                  )}
+
+                  {/* Title + caption */}
+                  <View style={styles.roleContent}>
+                    <Text style={[styles.roleLabel, isSelected && { color: role.color }]}>
+                      {role.label}
+                    </Text>
+                    <Text style={styles.roleDesc}>{role.description}</Text>
+                  </View>
+
+                  {/* Circular radio indicator */}
+                  <View
+                    style={[
+                      styles.radioOuter,
+                      isSelected && { borderColor: role.color, backgroundColor: role.color },
+                    ]}
+                  >
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
             );
@@ -439,10 +476,10 @@ export default function RegisterScreen() {
               <Text style={styles.photoSectionDesc}>
                 Vui lòng cung cấp ảnh CCCD và ảnh chân dung để Admin xét duyệt tài khoản.
               </Text>
-              {renderImagePicker('📋 Mặt trước CCCD *', idCardFront, setIdCardFront, 'card-outline')}
-              {renderImagePicker('📋 Mặt sau CCCD *', idCardBack, setIdCardBack, 'card-outline')}
-              {renderImagePicker('📸 Ảnh chân dung *', selfiePhoto, setSelfiePhoto, 'person-circle-outline')}
-              {renderImagePicker('🎓 Bằng cấp/Chứng chỉ (tuỳ chọn)', certificatePhoto, setCertificatePhoto, 'ribbon-outline')}
+              {renderImagePicker('Mặt trước CCCD *', idCardFront, setIdCardFront, 'card-outline')}
+              {renderImagePicker('Mặt sau CCCD *', idCardBack, setIdCardBack, 'card-outline')}
+              {renderImagePicker('Ảnh chân dung *', selfiePhoto, setSelfiePhoto, 'person-circle-outline')}
+              {renderImagePicker('Bằng cấp / Chứng chỉ (tuỳ chọn)', certificatePhoto, setCertificatePhoto, 'ribbon-outline')}
             </View>
           )}
 
@@ -469,7 +506,10 @@ export default function RegisterScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
+                <View style={styles.registerBtnContent}>
+                  <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.registerBtnIcon} />
+                </View>
               )}
             </TouchableOpacity>
           </Animated.View>
@@ -506,76 +546,113 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 56, paddingBottom: 44 },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: SIZES.marginMobile,
+    paddingTop: 56,
+    paddingBottom: 44,
+  },
+  // === Back button ===
   backBtn: {
-    width: 46, height: 46, borderRadius: 23, backgroundColor: COLORS.surface,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 28,
+    width: 44, height: 44, borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: SIZES.lg,
+    borderWidth: 1, borderColor: COLORS.outlineVariant,
     ...SHADOWS.small,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    marginBottom: 12,
+  // === Header / brand ===
+  brandRow: {
+    flexDirection: 'row', alignItems: 'center', gap: SIZES.sm,
+    marginBottom: SIZES.lg,
   },
-  logoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    ...SHADOWS.large,
-  },
-  title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 8 },
-  subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, marginBottom: 28 },
-  rolesRow: { flexDirection: 'row', gap: 14, marginBottom: 28 },
-  roleCard: {
-    flex: 1, borderRadius: SIZES.radiusLg, borderWidth: 2, borderColor: COLORS.border,
-    backgroundColor: COLORS.surface, padding: 18, alignItems: 'center', gap: 10, position: 'relative',
-    ...SHADOWS.small,
-  },
-  roleIconCircle: {
-    width: 50, height: 50, borderRadius: 25,
+  brandLogo: {
+    width: 44, height: 44, borderRadius: SIZES.radiusMd,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center', alignItems: 'center',
   },
-  roleLabel: { ...TYPO.h5, color: COLORS.textSecondary },
-  roleDesc: { ...TYPO.caption, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16 },
-  checkMark: {
-    position: 'absolute', top: 10, right: 10, width: 24, height: 24,
-    borderRadius: 12, justifyContent: 'center', alignItems: 'center',
+  brandText: {
+    ...TYPO.h2, color: COLORS.primaryText,
   },
-  form: { gap: 16 },
-  nameRow: { flexDirection: 'row', gap: 12 },
+  title: {
+    ...TYPO.h1, color: COLORS.textPrimary, marginBottom: SIZES.sm,
+  },
+  subtitle: {
+    ...TYPO.body, color: COLORS.textSecondary,
+    marginBottom: SIZES.xl,
+  },
+  // === Role selection cards (vertical stack) ===
+  rolesColumn: {
+    flexDirection: 'column', gap: SIZES.md,
+    marginBottom: SIZES.xl,
+  },
+  roleCard: {
+    flexDirection: 'row', alignItems: 'center', gap: SIZES.md,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 2, borderColor: COLORS.outlineVariant,
+    padding: SIZES.md,
+    ...SHADOWS.small,
+  },
+  roleIconBox: {
+    width: 56, height: 56, borderRadius: SIZES.radiusMd,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  roleIconBoxActive: {
+    ...SHADOWS.small,
+  },
+  roleContent: {
+    flex: 1, gap: 2,
+  },
+  roleLabel: {
+    ...TYPO.h3, color: COLORS.textPrimary,
+  },
+  roleDesc: {
+    fontSize: 12, fontWeight: '500', letterSpacing: 0,
+    lineHeight: 16, color: COLORS.textSecondary,
+  },
+  radioOuter: {
+    width: 24, height: 24, borderRadius: SIZES.radiusFull,
+    borderWidth: 2, borderColor: COLORS.outlineVariant,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  radioInner: {
+    width: 10, height: 10, borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.surfaceContainerLowest,
+  },
+  // === Form ===
+  form: { gap: SIZES.md },
+  nameRow: { flexDirection: 'row', gap: SIZES.gutterMobile },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    paddingHorizontal: 16, height: 56,
-    ...SHADOWS.small,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1.5, borderColor: COLORS.outlineVariant,
+    paddingHorizontal: SIZES.md, height: 56,
   },
   inputWrapperFocused: {
-    ...FRAGMENTS.inputFocus,
+    borderColor: COLORS.primary,
     ...SHADOWS.inputFocus,
   },
-  inputIcon: { marginRight: 12 },
+  inputIcon: { marginRight: SIZES.sm },
   input: { flex: 1, ...TYPO.body, color: COLORS.textPrimary },
-  eyeIcon: { padding: 8 },
+  eyeIcon: { padding: SIZES.sm },
   // Photo upload section
   photoSection: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    padding: 18, gap: 14, borderWidth: 1.5, borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md, gap: SIZES.sm + 2,
+    borderWidth: 1.5, borderColor: COLORS.outlineVariant,
     ...SHADOWS.small,
   },
-  photoSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  photoSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: SIZES.sm },
   photoSectionTitle: { ...TYPO.h4, color: COLORS.textPrimary },
-  photoSectionDesc: { ...TYPO.bodySmall, color: COLORS.textMuted, lineHeight: 20 },
-  imagePicker: { gap: 8 },
-  imageLabel: { ...TYPO.h5, fontSize: 13, color: COLORS.textSecondary },
-  imageActions: { flexDirection: 'row', gap: 12 },
+  photoSectionDesc: { ...TYPO.bodySmall, color: COLORS.textSecondary, lineHeight: 20 },
+  imagePicker: { gap: SIZES.sm },
+  imageLabel: { ...TYPO.h5, color: COLORS.textSecondary },
+  imageActions: { flexDirection: 'row', gap: SIZES.gutterMobile },
   imageBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SIZES.sm,
     backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd, paddingVertical: 14,
     borderWidth: 1.5, borderColor: COLORS.primarySoft, borderStyle: 'dashed',
   },
@@ -584,15 +661,15 @@ const styles = StyleSheet.create({
     width: '100%', height: 140, borderRadius: SIZES.radiusMd, backgroundColor: COLORS.background,
   },
   imageOverlay: {
-    position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    position: 'absolute', bottom: SIZES.sm, right: SIZES.sm, flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: SIZES.radiusSm, paddingHorizontal: 10, paddingVertical: 5,
   },
   imageOverlayText: { ...TYPO.caption, color: '#fff' },
   // Info box with left accent border
   infoBox: {
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd, padding: 16,
-    borderWidth: 1, borderColor: COLORS.primarySoft,
+    flexDirection: 'row', gap: SIZES.sm, alignItems: 'flex-start',
+    backgroundColor: COLORS.surfaceContainerLow, borderRadius: SIZES.radiusMd, padding: SIZES.md,
+    borderWidth: 1, borderColor: COLORS.outlineVariant,
     overflow: 'hidden',
   },
   infoAccentBar: {
@@ -601,23 +678,31 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   infoText: { flex: 1, ...TYPO.bodySmall, color: COLORS.primary, lineHeight: 20, marginLeft: 4 },
-  // Buttons
+  // === Submit button ===
   registerBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusLg, height: 58,
-    justifyContent: 'center', alignItems: 'center', marginTop: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radiusFull, height: 58,
+    justifyContent: 'center', alignItems: 'center',
+    marginTop: 6,
     ...SHADOWS.large,
   },
   btnDisabled: { opacity: 0.7 },
+  registerBtnContent: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: SIZES.sm,
+  },
   registerBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
-  loginText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  loginLink: { ...TYPO.buttonSmall, color: COLORS.primary },
-  // === OAUTH ===
+  registerBtnIcon: { marginLeft: 2 },
+  // === Login link ===
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: SIZES.sm },
+  loginText: { ...TYPO.body, color: COLORS.textSecondary },
+  loginLink: { ...TYPO.body, color: COLORS.primary, fontWeight: '700' },
+  // === OAUTH (DISABLED — kept for future restore) ===
   oauthSection: { marginTop: 24, gap: 12 },
   oauthDivider: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4,
   },
-  oauthDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  oauthDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.outlineVariant },
   oauthDividerText: { ...TYPO.bodySmall, color: COLORS.textMuted, fontWeight: '600' },
   oauthBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -625,8 +710,8 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   oauthBtnGoogle: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5, borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderWidth: 1.5, borderColor: COLORS.outlineVariant,
   },
   oauthBtnFacebook: {
     backgroundColor: '#1877F2',

@@ -55,8 +55,8 @@ export default function SplashScreen() {
         <View style={styles.logoCircle}>
           <Ionicons name="heart" size={56} color="#fff" />
         </View>
-        <Text style={styles.appName}>Educarelink</Text>
-        <Text style={styles.tagline}>Trợ lý gia đình · Việc làm linh hoạt</Text>
+        <Text style={styles.appName}>EduCareLink</Text>
+        <Text style={styles.tagline}>An tâm gửi gắm, trọn vẹn yêu thương</Text>
       </Animated.View>
 
       {/* Loading dots */}
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
     ...TYPO.h1,
     fontSize: 38,
     color: '#FFFFFF',
+    fontWeight: '900',
     letterSpacing: -0.5,
     marginBottom: 12,
   },

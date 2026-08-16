@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cancellation Policy - EduCareLink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope"],
+                        "h4": ["Manrope"],
+                        "h3": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-container-low flex justify-between items-center px-margin-mobile py-sm w-full top-0 sticky z-50">
+<div class="flex items-center gap-md">
+<button class="text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 transition-transform w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-low">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-h1 text-h1 text-primary dark:text-primary-fixed-dim tracking-tight">Huỷ Lịch</h1>
+</div>
+</header>
+<main class="flex-grow px-margin-mobile pb-xxl pt-lg max-w-2xl mx-auto w-full flex flex-col gap-lg">
+<!-- Warning Banner -->
+<div class="bg-error-container text-on-error-container rounded-xl p-md flex items-start gap-sm shadow-sm">
+<span class="material-symbols-outlined fill mt-xs">warning</span>
+<div>
+<h3 class="font-h4 text-h4">Lưu ý giới hạn huỷ</h3>
+<p class="font-body text-body opacity-90">Bạn đã sử dụng <strong>2/3</strong> lần huỷ lịch miễn phí trong tháng này. Nếu vượt quá, tài khoản có thể bị hạn chế.</p>
+</div>
+</div>
+<!-- Refund Timeline Section -->
+<section class="bg-surface-container-lowest rounded-[20px] p-lg shadow-sm border border-outline-variant/30 flex flex-col gap-md">
+<h2 class="font-h3 text-h3 text-on-surface">Chính sách hoàn tiền</h2>
+<div class="relative pt-xl pb-md px-sm">
+<!-- Timeline Line -->
+<div class="absolute top-[52px] left-8 right-8 h-1 bg-surface-variant rounded-full"></div>
+<!-- Active Progress Line (Current Time = <6h) -->
+<div class="absolute top-[52px] right-8 w-1/3 h-1 bg-primary-container rounded-full z-10"></div>
+<div class="flex justify-between relative z-20">
+<!-- Point 1: >= 24h -->
+<div class="flex flex-col items-center gap-xs w-16">
+<div class="w-8 h-8 rounded-full bg-surface-variant border-2 border-surface-container-lowest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant text-center">≥ 24h<br/>100%</span>
+</div>
+<!-- Point 2: 6h - 24h -->
+<div class="flex flex-col items-center gap-xs w-16">
+<div class="w-8 h-8 rounded-full bg-surface-variant border-2 border-surface-container-lowest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant text-center">6h-24h<br/>80%</span>
+</div>
+<!-- Point 3: < 6h (Current Time) -->
+<div class="flex flex-col items-center gap-xs w-20 relative">
+<!-- Current Time Indicator -->
+<div class="absolute -top-10 bg-primary-container text-on-primary-container font-caption text-caption px-2 py-1 rounded-md shadow-sm whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-primary-container">
+                            Hiện tại
+                        </div>
+<div class="w-8 h-8 rounded-full bg-primary-container border-2 border-surface-container-lowest flex items-center justify-center text-on-primary-container shadow-md">
+<span class="material-symbols-outlined fill text-sm">schedule</span>
+</div>
+<span class="font-caption text-caption text-primary text-center">&lt; 6h<br/>50%</span>
+</div>
+</div>
+</div>
+<!-- Refund Amount Display -->
+<div class="bg-surface-container-low rounded-xl p-md flex justify-between items-center mt-sm">
+<div>
+<p class="font-body text-body text-on-surface-variant">Số tiền hoàn lại dự kiến (50%)</p>
+<p class="font-caption text-caption text-outline">Hoàn về ví EduCareLink sau 24h</p>
+</div>
+<div class="text-right">
+<p class="font-h2 text-h2 text-primary">150.000đ</p>
+<p class="font-caption text-caption line-through text-on-surface-variant">300.000đ</p>
+</div>
+</div>
+</section>
+<!-- Session Details summary -->
+<section class="bg-surface-container-lowest rounded-[20px] p-lg shadow-sm border border-outline-variant/30">
+<h3 class="font-h4 text-h4 mb-md">Chi tiết buổi chăm sóc</h3>
+<div class="flex items-start gap-md">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of a friendly Vietnamese female babysitter smiling warmly, wearing a neat light green uniform, set against a soft, bright, and airy interior background with a corporate modern and soft minimalism aesthetic, high key lighting, safe and professional mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV7OGWxfnqN98HIvmqyim7uq62bn8wLajSFacHM10N4BAHR_U1qEzLq7_aENW0YBVMSH4HqaposdO2ey1FydSC5LK-mT_5xHRsuOMtZFft16FJYtOOcAfSZlo9tojjbpJBVa8qeW2ezzwoCYX_FRNoA1tXUvIaipApNejCnpsLiO360_EFDocNqzQN4Z-d7CE4u7wCfvdCozG0b8nxQqs0_C5KczXkAQU_nvMPmyR2Qnx5OzbW5I9C"/>
+</div>
+<div>
+<h4 class="font-body text-body text-on-surface">Nguyễn Thị Lan (Bảo mẫu)</h4>
+<p class="font-caption text-caption text-on-surface-variant flex items-center gap-xs mt-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                        Hôm nay, 14:00 - 18:00
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Action Bar (Contextual) -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/20 p-md z-40 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+<div class="max-w-2xl mx-auto flex gap-md">
+<button class="flex-1 bg-surface-container-high text-on-surface font-body text-body h-12 rounded-xl hover:bg-surface-variant transition-colors active:scale-95">
+                Giữ lại
+            </button>
+<button class="flex-1 bg-primary-container text-on-primary-container font-h4 text-h4 h-12 rounded-xl shadow-lg hover:opacity-90 transition-opacity active:scale-95 flex items-center justify-center gap-xs">
+                Xác nhận huỷ
+            </button>
+</div>
+</div>
+</body></html>

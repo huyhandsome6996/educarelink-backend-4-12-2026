@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Worker Onboarding - Screening Status | EduCareLink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed-variant": "#004b6f",
+                      "on-secondary-container": "#007326",
+                      "outline": "#8d7166",
+                      "primary-fixed-dim": "#ffb599",
+                      "tertiary-container": "#009ade",
+                      "on-tertiary-container": "#002d45",
+                      "on-surface-variant": "#594138",
+                      "secondary-fixed-dim": "#5ce06d",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#8cceff",
+                      "surface-dim": "#eed5cc",
+                      "primary": "#a63b00",
+                      "surface-container-highest": "#f7ddd4",
+                      "secondary": "#006e24",
+                      "inverse-on-surface": "#ffede7",
+                      "primary-fixed": "#ffdbce",
+                      "secondary-container": "#76fa84",
+                      "tertiary-fixed": "#cae6ff",
+                      "surface-container-high": "#fde3da",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#79fd86",
+                      "inverse-primary": "#ffb599",
+                      "inverse-surface": "#3c2d27",
+                      "surface": "#fff8f6",
+                      "on-tertiary-fixed": "#001e2f",
+                      "error-container": "#ffdad6",
+                      "on-background": "#261813",
+                      "on-surface": "#261813",
+                      "background": "#fff8f6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#f7ddd4",
+                      "surface-container-low": "#fff1ec",
+                      "outline-variant": "#e1bfb3",
+                      "on-error-container": "#93000a",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#fff8f6",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#005319",
+                      "on-primary-fixed": "#370e00",
+                      "surface-container": "#ffe9e2",
+                      "on-secondary-fixed": "#002106",
+                      "on-primary-container": "#4f1800",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#006492",
+                      "primary-container": "#f26522",
+                      "on-primary-fixed-variant": "#7f2b00",
+                      "surface-tint": "#a63b00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "16px",
+                      "sm": "8px",
+                      "lg": "24px",
+                      "margin-mobile": "20px",
+                      "xl": "32px",
+                      "gutter-mobile": "12px",
+                      "xxl": "48px",
+                      "xs": "4px"
+              },
+              "fontFamily": {
+                      "caption": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "h1": [
+                              "Manrope"
+                      ],
+                      "body": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "h4": [
+                              "Manrope"
+                      ],
+                      "h2": [
+                              "Manrope"
+                      ],
+                      "h3": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h1": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body": [
+                              "15px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h4": [
+                              "16px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h2": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "h3": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body">
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center p-margin-mobile">
+<!-- Center Card Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-lg p-lg max-w-md w-full border border-surface-variant flex flex-col items-center text-center space-y-lg">
+<!-- Illustration Area -->
+<div class="w-48 h-48 rounded-full bg-primary-fixed/30 flex items-center justify-center mb-md overflow-hidden relative shadow-inner">
+<img class="object-cover w-full h-full" data-alt="A flat, minimal illustration of a professional caregiver in a warm orange and green palette, holding a checklist and looking patiently at a glowing clock face. The style is modern, approachable, and reassuring, using rounded geometry and avoiding sharp edges. The background is a soft beige." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdA9Vl-LeRLrwOr-jPAA-bbC3y4MTWiHCi-Yhs1sVTUOSHjhonkU-9tnafvLdR35SXJ82yupYD1c-_ZJXsyEEbn9XQlTiN_qQiS_juOjZd849b8VY46FzeDXdgWYOqjpGUN4HRQTBtDAdjO7KacQi7-GHTEuqdQjFSp1mPXMCR4cbQ0dE8X9gw_x8O93_4JX8IBxlH3P-RSkxairt2lWmvzBc9G8i1VguVDyAl734D9lb7fPxZt2y_"/>
+</div>
+<!-- Header Section -->
+<div class="space-y-sm">
+<h1 class="font-h3 text-h3 text-primary-container">Hồ sơ đang được thẩm định</h1>
+<p class="font-body text-body text-on-surface-variant">EduCareLink đang rà soát thông tin của bạn. Kết quả sẽ có sau 24-48h làm việc.</p>
+</div>
+<!-- Status Badge -->
+<div class="bg-[#FFF4ED] px-md py-sm rounded-full border border-primary-fixed flex items-center space-x-sm shadow-sm">
+<span class="material-symbols-outlined text-primary-container text-[20px]" data-icon="hourglass_top">hourglass_top</span>
+<span class="font-caption text-caption text-primary-container uppercase tracking-wider">Giai đoạn: Phỏng vấn trực tuyến</span>
+</div>
+<!-- Checklist Summary -->
+<div class="w-full text-left bg-surface rounded-lg p-md border border-surface-variant shadow-sm space-y-md">
+<h4 class="font-h4 text-h4 text-on-surface mb-sm">Tiến độ hồ sơ</h4>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-sm">
+<div class="w-6 h-6 rounded-full bg-[#EAFBEF] flex items-center justify-center text-[#1E9439]">
+<span class="material-symbols-outlined text-[16px] font-bold" data-icon="check">check</span>
+</div>
+<span class="font-body text-body text-on-surface">Xác minh danh tính (ID)</span>
+</div>
+<span class="font-caption text-caption text-[#1E9439]">Hoàn tất</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-sm">
+<div class="w-6 h-6 rounded-full bg-[#EAFBEF] flex items-center justify-center text-[#1E9439]">
+<span class="material-symbols-outlined text-[16px] font-bold" data-icon="check">check</span>
+</div>
+<span class="font-body text-body text-on-surface">Xác thực khuôn mặt</span>
+</div>
+<span class="font-caption text-caption text-[#1E9439]">Hoàn tất</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-sm">
+<div class="w-6 h-6 rounded-full bg-[#EAFBEF] flex items-center justify-center text-[#1E9439]">
+<span class="material-symbols-outlined text-[16px] font-bold" data-icon="check">check</span>
+</div>
+<span class="font-body text-body text-on-surface">Khám sức khỏe cơ bản</span>
+</div>
+<span class="font-caption text-caption text-[#1E9439]">Hoàn tất</span>
+</div>
+<div class="flex items-center justify-between opacity-60">
+<div class="flex items-center space-x-sm">
+<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="pending">pending</span>
+</div>
+<span class="font-body text-body text-on-surface">Phỏng vấn chuyên môn</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Đang chờ</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="w-full flex flex-col space-y-sm mt-lg">
+<button class="w-full bg-[#2DB84B] hover:bg-[#259c3f] text-on-primary font-body text-body py-md rounded-lg shadow-md transition-colors duration-200">
+                    Trang chủ
+                </button>
+<button class="w-full bg-transparent hover:bg-surface-variant/50 text-primary-container font-body text-body py-md rounded-lg transition-colors duration-200 border border-transparent hover:border-primary-fixed">
+                    Liên hệ hỗ trợ
+                </button>
+</div>
+</div>
+</main>
+</body></html>

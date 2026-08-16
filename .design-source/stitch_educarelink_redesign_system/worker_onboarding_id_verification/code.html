@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hồ sơ CarePartner - Xác minh CCCD</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "on-secondary-container": "#007326",
+                        "outline": "#8d7166",
+                        "primary-fixed-dim": "#ffb599",
+                        "tertiary-container": "#009ade",
+                        "on-tertiary-container": "#002d45",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "surface-dim": "#eed5cc",
+                        "primary": "#a63b00",
+                        "surface-container-highest": "#f7ddd4",
+                        "secondary": "#006e24",
+                        "inverse-on-surface": "#ffede7",
+                        "primary-fixed": "#ffdbce",
+                        "secondary-container": "#76fa84",
+                        "tertiary-fixed": "#cae6ff",
+                        "surface-container-high": "#fde3da",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#79fd86",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "surface": "#fff8f6",
+                        "on-tertiary-fixed": "#001e2f",
+                        "error-container": "#ffdad6",
+                        "on-background": "#261813",
+                        "on-surface": "#261813",
+                        "background": "#fff8f6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#f7ddd4",
+                        "surface-container-low": "#fff1ec",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fff8f6",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#005319",
+                        "on-primary-fixed": "#370e00",
+                        "surface-container": "#ffe9e2",
+                        "on-secondary-fixed": "#002106",
+                        "on-primary-container": "#4f1800",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#006492",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "surface-tint": "#a63b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "gutter-mobile": "12px",
+                        "xxl": "48px",
+                        "xs": "4px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "h4": ["Manrope"],
+                        "h2": ["Manrope"],
+                        "h3": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .camera-overlay {
+            background: linear-gradient(to right, rgba(255,255,255,0.8) 2px, transparent 2px) 0 0,
+                        linear-gradient(to right, rgba(255,255,255,0.8) 2px, transparent 2px) 0 100%,
+                        linear-gradient(to left, rgba(255,255,255,0.8) 2px, transparent 2px) 100% 0,
+                        linear-gradient(to left, rgba(255,255,255,0.8) 2px, transparent 2px) 100% 100%,
+                        linear-gradient(to bottom, rgba(255,255,255,0.8) 2px, transparent 2px) 0 0,
+                        linear-gradient(to bottom, rgba(255,255,255,0.8) 2px, transparent 2px) 100% 0,
+                        linear-gradient(to top, rgba(255,255,255,0.8) 2px, transparent 2px) 0 100%,
+                        linear-gradient(to top, rgba(255,255,255,0.8) 2px, transparent 2px) 100% 100%;
+            background-repeat: no-repeat;
+            background-size: 40px 40px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-safe">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-14 bg-surface dark:bg-surface-bright flat no shadows">
+<button aria-label="Close" class="w-11 h-11 flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+<div class="font-h2 text-h2 text-primary font-black">EduCareLink</div>
+<div class="w-11 h-11"></div> <!-- Spacer for center alignment -->
+</header>
+<!-- Main Content -->
+<main class="pt-14 px-margin-mobile flex flex-col h-[calc(100vh-56px)]">
+<!-- Header -->
+<div class="mt-lg mb-md">
+<h1 class="font-h2 text-h2 text-on-surface mb-xs">Hồ sơ CarePartner</h1>
+<p class="font-body text-body text-on-surface-variant">Bước 1 trên 8: Xác minh CCCD</p>
+</div>
+<!-- Stepper -->
+<div aria-label="Progress" class="flex gap-1 mb-lg">
+<div class="h-2 flex-1 rounded-full bg-primary-container"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+<div class="h-2 flex-1 rounded-full bg-surface-container-high"></div>
+</div>
+<!-- Camera View Area -->
+<div class="relative flex-grow flex flex-col bg-surface-container-lowest rounded-xl shadow-md p-md mb-lg">
+<div class="bg-surface-variant rounded-lg flex-grow relative overflow-hidden flex items-center justify-center">
+<!-- Simulated Camera Feed Placeholder -->
+<div class="absolute inset-0 bg-inverse-surface/10"></div>
+<img class="absolute inset-0 w-full h-full object-cover opacity-50" data-alt="A softly lit, blurred abstract background simulating a camera viewfinder pointing at a neutral surface. The lighting is bright and even, typical of a modern UI element. The color palette is composed of light grays and soft beiges, suggesting a clean, professional environment ready for document scanning. The overall aesthetic is minimalist and functional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ0OkgFLrDv1JAzfv4Z6hCOAGVYCFxc099GeEDjaokfO-kwnqzw9OguStIiU5A7EplasbWAPWCoQ2t3Eten8Vl6kAaxHQlSbF7H7W0-qxwb_MoCyEAoET3M3kF5vKN56UyZfBn1R5QRED-oIVwjSKCWL2I6hfQfwX1o7uonqzUpplFqAZfempuU1xBwXaWjM9HWN5_piBcIRbIQUiwzx0gPjAaRWfGvqg13WvVqgbq82big3GLB4or"/>
+<!-- Target Overlay -->
+<div class="absolute inset-md border-2 border-primary-container/30 rounded-lg camera-overlay z-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-container/50 text-6xl" style="font-variation-settings: 'FILL' 0;">id_card</span>
+</div>
+</div>
+<!-- Tutorial/Tips -->
+<div class="mt-md flex gap-sm items-start bg-inverse-on-surface p-sm rounded-lg">
+<span class="material-symbols-outlined text-secondary mt-xs" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+<p class="font-caption text-caption text-on-surface-variant font-medium">
+                    Đảm bảo thẻ CCCD nằm gọn trong khung hình. Tránh phản chiếu ánh sáng và giữ điện thoại ổn định để hình ảnh không bị mờ.
+                </p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-sm mt-auto pb-lg">
+<button class="w-full h-14 bg-primary-container text-on-primary font-h4 text-h4 rounded-full shadow-[0_4px_14px_0_rgba(242,101,34,0.39)] hover:bg-[#D4541E] transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">photo_camera</span>
+                Chụp ảnh mặt trước
+            </button>
+<button class="w-full h-14 bg-transparent text-primary-container font-body text-body rounded-full hover:bg-primary-container/10 transition-colors flex items-center justify-center">
+                Lưu nháp
+            </button>
+</div>
+</main>
+</body></html>

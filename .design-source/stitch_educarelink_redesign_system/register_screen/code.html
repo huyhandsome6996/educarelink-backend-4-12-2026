@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - Bắt đầu hành trình</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed-variant": "#004b6f",
+                      "on-secondary-container": "#007326",
+                      "outline": "#8d7166",
+                      "primary-fixed-dim": "#ffb599",
+                      "tertiary-container": "#009ade",
+                      "on-tertiary-container": "#002d45",
+                      "on-surface-variant": "#594138",
+                      "secondary-fixed-dim": "#5ce06d",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#8cceff",
+                      "surface-dim": "#eed5cc",
+                      "primary": "#a63b00",
+                      "surface-container-highest": "#f7ddd4",
+                      "secondary": "#006e24",
+                      "inverse-on-surface": "#ffede7",
+                      "primary-fixed": "#ffdbce",
+                      "secondary-container": "#76fa84",
+                      "tertiary-fixed": "#cae6ff",
+                      "surface-container-high": "#fde3da",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#79fd86",
+                      "inverse-primary": "#ffb599",
+                      "inverse-surface": "#3c2d27",
+                      "surface": "#fff8f6",
+                      "on-tertiary-fixed": "#001e2f",
+                      "error-container": "#ffdad6",
+                      "on-background": "#261813",
+                      "on-surface": "#261813",
+                      "background": "#fff8f6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#f7ddd4",
+                      "surface-container-low": "#fff1ec",
+                      "outline-variant": "#e1bfb3",
+                      "on-error-container": "#93000a",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#fff8f6",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#005319",
+                      "on-primary-fixed": "#370e00",
+                      "surface-container": "#ffe9e2",
+                      "on-secondary-fixed": "#002106",
+                      "on-primary-container": "#4f1800",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#006492",
+                      "primary-container": "#f26522",
+                      "on-primary-fixed-variant": "#7f2b00",
+                      "surface-tint": "#a63b00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "16px",
+                      "sm": "8px",
+                      "lg": "24px",
+                      "margin-mobile": "20px",
+                      "xl": "32px",
+                      "gutter-mobile": "12px",
+                      "xxl": "48px",
+                      "xs": "4px"
+              },
+              "fontFamily": {
+                      "caption": ["Plus Jakarta Sans"],
+                      "h1": ["Manrope"],
+                      "body": ["Plus Jakarta Sans"],
+                      "h4": ["Manrope"],
+                      "h2": ["Manrope"],
+                      "h3": ["Manrope"]
+              },
+              "fontSize": {
+                      "caption": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                      "h1": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "body": ["15px", {"lineHeight": "24px", "fontWeight": "500"}],
+                      "h4": ["16px", {"lineHeight": "22px", "fontWeight": "700"}],
+                      "h2": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800"}],
+                      "h3": ["18px", {"lineHeight": "24px", "fontWeight": "800"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #e1bfb3; border-radius: 20px; }
+        
+        /* Subtle background glow effect */
+        .bg-glow {
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle at 50% 0%, rgba(255, 219, 206, 0.4) 0%, rgba(255, 248, 246, 0) 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col relative overflow-x-hidden selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Atmospheric Background -->
+<div class="bg-glow"></div>
+<main class="flex-1 flex flex-col items-center justify-center px-margin-mobile py-xl w-full max-w-lg mx-auto z-10">
+<!-- Header Section -->
+<header class="w-full flex flex-col items-center text-center mb-xl">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined icon-fill text-[32px] text-primary-container">school</span>
+<span class="font-h2 text-h2 text-primary font-black tracking-tight">EduCareLink</span>
+</div>
+<h1 class="font-h1 text-h1 text-on-surface mb-sm">Bắt đầu hành trình</h1>
+<p class="font-body text-body text-on-surface-variant max-w-[280px]">
+                Chọn vai trò của bạn để chúng tôi cá nhân hóa trải nghiệm.
+            </p>
+</header>
+<!-- Role Selection Form -->
+<div class="w-full flex flex-col gap-md mb-xl" id="role-selection-group">
+<!-- Parent Card -->
+<button class="role-card group relative w-full text-left bg-surface-container-lowest border-2 border-outline-variant rounded-[20px] p-md flex items-center gap-md transition-all duration-300 hover:border-primary-fixed hover:bg-surface-container-low hover:shadow-sm" data-role="parent" type="button">
+<!-- Icon Container -->
+<div class="w-14 h-14 rounded-xl flex items-center justify-center bg-primary-fixed text-on-primary-fixed transition-colors duration-300 group-[.is-active]:bg-primary-container group-[.is-active]:text-on-primary group-[.is-active]:shadow-md">
+<span class="material-symbols-outlined text-[28px] transition-transform duration-300 group-[.is-active]:scale-110 group-[.is-active]:icon-fill">family_restroom</span>
+</div>
+<!-- Content -->
+<div class="flex-1">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs transition-colors duration-300 group-[.is-active]:text-primary-container">Tôi là Phụ huynh</h3>
+<p class="font-caption text-caption text-on-surface-variant font-medium">Tìm kiếm người đồng hành uy tín cho con.</p>
+</div>
+<!-- Radio Indicator -->
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center transition-all duration-300 group-[.is-active]:border-primary-container group-[.is-active]:bg-primary-container">
+<div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest opacity-0 scale-50 transition-all duration-300 group-[.is-active]:opacity-100 group-[.is-active]:scale-100"></div>
+</div>
+</button>
+<!-- CarePartner Card -->
+<button class="role-card group relative w-full text-left bg-surface-container-lowest border-2 border-outline-variant rounded-[20px] p-md flex items-center gap-md transition-all duration-300 hover:border-secondary-fixed hover:bg-surface-container-low hover:shadow-sm" data-role="partner" type="button">
+<!-- Icon Container -->
+<div class="w-14 h-14 rounded-xl flex items-center justify-center bg-secondary-fixed text-on-secondary-fixed transition-colors duration-300 group-[.is-active]:bg-secondary group-[.is-active]:text-on-secondary group-[.is-active]:shadow-md">
+<span class="material-symbols-outlined text-[28px] transition-transform duration-300 group-[.is-active]:scale-110 group-[.is-active]:icon-fill">menu_book</span>
+</div>
+<!-- Content -->
+<div class="flex-1">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs transition-colors duration-300 group-[.is-active]:text-secondary">Tôi là CarePartner</h3>
+<p class="font-caption text-caption text-on-surface-variant font-medium">Hỗ trợ học tập và đồng hành cùng trẻ.</p>
+</div>
+<!-- Radio Indicator -->
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center transition-all duration-300 group-[.is-active]:border-secondary group-[.is-active]:bg-secondary">
+<div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest opacity-0 scale-50 transition-all duration-300 group-[.is-active]:opacity-100 group-[.is-active]:scale-100"></div>
+</div>
+</button>
+</div>
+<!-- Action Area -->
+<div class="w-full flex flex-col items-center gap-lg">
+<button class="w-full bg-surface-variant text-on-surface-variant font-h4 text-h4 py-[16px] rounded-full transition-all duration-300 opacity-60 cursor-not-allowed flex items-center justify-center gap-sm" disabled="" id="btn-continue">
+<span>Tiếp tục</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<!-- Footer Link -->
+<p class="font-body text-body text-on-surface-variant">
+                Đã có tài khoản? 
+                <a class="text-primary-container font-bold hover:underline underline-offset-2 transition-all" href="#">Đăng nhập</a>
+</p>
+</div>
+</main>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const roleCards = document.querySelectorAll('.role-card');
+            const btnContinue = document.getElementById('btn-continue');
+            let selectedRole = null;
+
+            roleCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    // Remove active state from all cards
+                    roleCards.forEach(c => {
+                        c.classList.remove('is-active', 'border-primary-container', 'border-secondary', 'bg-primary-fixed/10', 'bg-secondary-fixed/10', 'shadow-md');
+                        // Reset borders to default
+                        c.classList.add('border-outline-variant');
+                    });
+
+                    // Add active state to clicked card
+                    card.classList.add('is-active', 'shadow-md');
+                    card.classList.remove('border-outline-variant');
+                    
+                    selectedRole = card.getAttribute('data-role');
+
+                    // Apply specific thematic styling based on role selection
+                    if (selectedRole === 'parent') {
+                        card.classList.add('border-primary-container', 'bg-primary-fixed/10');
+                    } else if (selectedRole === 'partner') {
+                        card.classList.add('border-secondary', 'bg-secondary-fixed/10');
+                    }
+
+                    // Enable and style the continue button
+                    btnContinue.disabled = false;
+                    btnContinue.classList.remove('bg-surface-variant', 'text-on-surface-variant', 'opacity-60', 'cursor-not-allowed');
+                    
+                    // Style button with Primary brand color (Orange) regardless of choice to maintain clear primary CTA
+                    btnContinue.classList.add('bg-primary-container', 'text-on-primary', 'shadow-lg', 'hover:bg-[#D4541E]', 'active:scale-95');
+                });
+            });
+        });
+    </script>
+</body></html>

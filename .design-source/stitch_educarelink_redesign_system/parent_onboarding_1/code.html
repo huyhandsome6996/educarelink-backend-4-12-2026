@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - Parent Onboarding Step 1</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed-variant": "#004b6f",
+                      "on-secondary-container": "#007326",
+                      "outline": "#8d7166",
+                      "primary-fixed-dim": "#ffb599",
+                      "tertiary-container": "#009ade",
+                      "on-tertiary-container": "#002d45",
+                      "on-surface-variant": "#594138",
+                      "secondary-fixed-dim": "#5ce06d",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#8cceff",
+                      "surface-dim": "#eed5cc",
+                      "primary": "#a63b00",
+                      "surface-container-highest": "#f7ddd4",
+                      "secondary": "#006e24",
+                      "inverse-on-surface": "#ffede7",
+                      "primary-fixed": "#ffdbce",
+                      "secondary-container": "#76fa84",
+                      "tertiary-fixed": "#cae6ff",
+                      "surface-container-high": "#fde3da",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#79fd86",
+                      "inverse-primary": "#ffb599",
+                      "inverse-surface": "#3c2d27",
+                      "surface": "#fff8f6",
+                      "on-tertiary-fixed": "#001e2f",
+                      "error-container": "#ffdad6",
+                      "on-background": "#261813",
+                      "on-surface": "#261813",
+                      "background": "#fff8f6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#f7ddd4",
+                      "surface-container-low": "#fff1ec",
+                      "outline-variant": "#e1bfb3",
+                      "on-error-container": "#93000a",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#fff8f6",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#005319",
+                      "on-primary-fixed": "#370e00",
+                      "surface-container": "#ffe9e2",
+                      "on-secondary-fixed": "#002106",
+                      "on-primary-container": "#4f1800",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#006492",
+                      "primary-container": "#f26522",
+                      "on-primary-fixed-variant": "#7f2b00",
+                      "surface-tint": "#a63b00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "16px",
+                      "sm": "8px",
+                      "lg": "24px",
+                      "margin-mobile": "20px",
+                      "xl": "32px",
+                      "gutter-mobile": "12px",
+                      "xxl": "48px",
+                      "xs": "4px"
+              },
+              "fontFamily": {
+                      "caption": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "h1": [
+                              "Manrope"
+                      ],
+                      "body": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "h4": [
+                              "Manrope"
+                      ],
+                      "h2": [
+                              "Manrope"
+                      ],
+                      "h3": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h1": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body": [
+                              "15px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h4": [
+                              "16px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h2": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "h3": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Navigation shell suppressed for onboarding flow per instructions -->
+<!-- Main Canvas -->
+<main class="flex-grow flex flex-col relative overflow-hidden">
+<!-- Illustration Area (Top Half) -->
+<div class="flex-grow relative bg-surface-container-lowest flex items-center justify-center p-lg rounded-b-xl shadow-[0_4px_16px_rgba(242,101,34,0.05)] z-10">
+<!-- Decorative Background Elements -->
+<div class="absolute inset-0 overflow-hidden pointer-events-none">
+<div class="absolute -top-xxl -right-xxl w-64 h-64 bg-primary-fixed rounded-full blur-3xl opacity-50"></div>
+<div class="absolute bottom-0 -left-xl w-48 h-48 bg-secondary-fixed rounded-full blur-3xl opacity-30"></div>
+</div>
+<!-- Main Illustration Image -->
+<div class="relative w-full max-w-sm aspect-square mx-auto rounded-full overflow-hidden border-4 border-surface-container shadow-xl">
+<img alt="Student tutor walking with a child" class="w-full h-full object-cover mix-blend-multiply" data-alt="A flat, minimal geometric illustration showing a cheerful student tutor holding hands and walking with a young child. The illustration uses a 'Safety Palette' featuring bright primary orange for the human figures, secondary green for subtle background nature elements like abstract leaves, set against a warm beige background. The mood is friendly, trustworthy, and safe, with no sharp edges in the character design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXOKUWITVLE4EA8xH7R-dXfJ1f2yU3uRnkYfhLVD_iS6gMX54eRx_V4aGTzBMOB2P6pPQRntwpuW6IyjVMAePp5ksl6HgRgIMefgmPA14dobwwHTVmvhBLvBOGzuolHqqri5PfdnU8QOEFZrtQCmzQeyR1Y9BWuySNTogzhTv7wkW7VKpANH79Ry19guEfltrDTOhXnlu4S3G1siJz2-yyXdbwrHAnnV0Pak0nnbtKVNA4rSdwtKhX"/>
+</div>
+</div>
+<!-- Content Area (Bottom Half) -->
+<div class="flex-none bg-surface px-margin-mobile pt-xl pb-xxl flex flex-col items-center text-center z-20">
+<h1 class="font-h1 text-h1 text-on-surface mb-md">Tìm kiếm CarePartner tin cậy</h1>
+<p class="font-body text-body text-on-surface-variant max-w-sm mb-xl">
+                Đội ngũ sinh viên, gia sư đã được sàng lọc kỹ lưỡng, sẵn sàng đồng hành cùng con bạn.
+            </p>
+<!-- Progress Indicators -->
+<div class="flex items-center justify-center gap-2 mb-xl">
+<div class="w-8 h-2 rounded-full bg-primary-container transition-all duration-300"></div>
+<div class="w-2 h-2 rounded-full bg-surface-variant transition-all duration-300"></div>
+<div class="w-2 h-2 rounded-full bg-surface-variant transition-all duration-300"></div>
+</div>
+<!-- Actions -->
+<div class="w-full max-w-sm flex flex-col gap-sm mt-auto">
+<button class="w-full py-3 px-6 bg-primary-container text-on-primary font-h4 text-h4 rounded-full shadow-[0_8px_16px_-4px_rgba(242,101,34,0.3)] hover:bg-[#D4541E] hover:shadow-[0_12px_20px_-4px_rgba(242,101,34,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm transition-all duration-200 flex items-center justify-center gap-2">
+                    Tiếp theo
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span>
+</button>
+<button class="w-full py-3 px-6 bg-transparent text-primary-container font-h4 text-h4 rounded-full hover:bg-surface-container-low active:bg-surface-container transition-colors duration-200">
+                    Bỏ qua
+                </button>
+</div>
+</div>
+</main>
+</body></html>

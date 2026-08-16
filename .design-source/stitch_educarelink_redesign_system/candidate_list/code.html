@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Candidate List - EduCareLink</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope"],
+                        "h4": ["Manrope"],
+                        "h3": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom Utilities to enforce specific style guidance */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Subtle orange tint shadow for interactive elements */
+        .shadow-glow {
+            box-shadow: 0 4px 14px -2px rgba(242, 101, 34, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased selection:bg-primary-fixed selection:text-on-primary-fixed overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-container-low flex justify-between items-center px-margin-mobile py-sm w-full bg-surface-container-low transition-all duration-300">
+<div class="flex items-center gap-sm">
+<img class="w-10 h-10 rounded-full object-cover border-2 border-surface-container-lowest shadow-sm hover:opacity-80 transition-opacity cursor-pointer" data-alt="A close-up portrait of a caring, professional parent smiling softly. The lighting is bright and warm, creating a pristine light-mode aesthetic. The background is a blurred, inviting modern home interior with subtle hints of nature-inspired green and warm beige tones, conveying safety and trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArLk2EKf3TfbGWw32dp4PMdZuYticCykWZGhkxgwL7flrNEx2yIrcFUWBIg-Ama3o72rX4v718_cxBgr6ewbeliAO64k_895-ltiWJ_It0tN4jcWG2ZfvmCFVmcmdrnrT2VgoRI6OMf3UigDSxxCjRzu6bpK_Rp1frgEYc-ysSYJl20IqyizbdkhNlqCjJjvwrye0Op3tPUo92YQylQi6nZ-TzmHtKMvTv4m8WzUJK3DaLcrHds-0l"/>
+</div>
+<div class="font-h1 text-h1 text-primary dark:text-primary-fixed-dim tracking-tight">EduCareLink</div>
+<div class="text-primary dark:text-primary-fixed-dim cursor-pointer hover:opacity-80 transition-opacity active:scale-95 transition-transform flex items-center justify-center w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-margin-mobile pt-[90px] pb-[100px] flex flex-col gap-lg min-h-screen relative z-10">
+<!-- Search Bar Area -->
+<section class="flex flex-col gap-md">
+<div class="relative w-full shadow-sm rounded-xl group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant transition-colors group-focus-within:text-primary">search</span>
+<input class="w-full pl-12 pr-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body text-body text-on-surface placeholder:text-on-surface-variant shadow-sm focus:shadow-glow" placeholder="Tìm kiếm CarePartner..." type="text"/>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-sm overflow-x-auto pb-2 hide-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-variant text-on-surface-variant font-caption text-caption border border-transparent hover:bg-surface-container-highest transition-colors flex items-center gap-1 active:scale-95">
+                    Giá cả <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-caption text-caption border border-transparent shadow-glow transition-colors flex items-center gap-1 active:scale-95">
+                    Đánh giá cao <span class="material-symbols-outlined text-[16px]">check</span>
+</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-variant text-on-surface-variant font-caption text-caption border border-transparent hover:bg-surface-container-highest transition-colors flex items-center gap-1 active:scale-95">
+                    Khoảng cách <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-variant text-on-surface-variant font-caption text-caption border border-transparent hover:bg-surface-container-highest transition-colors flex items-center gap-1 active:scale-95">
+                    Kinh nghiệm <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+</section>
+<!-- Dynamic Content Section -->
+<section class="flex flex-col gap-md" id="content-container">
+<div class="flex items-center justify-between mb-xs">
+<h2 class="font-h3 text-h3 text-on-surface">Ứng viên phù hợp</h2>
+<span class="font-caption text-caption text-on-surface-variant" id="result-count">Đang tải...</span>
+</div>
+<!-- Loading State (Skeleton Loaders) -->
+<div class="flex flex-col gap-md w-full" id="skeleton-view">
+<!-- Skeleton Card 1 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm border border-outline-variant/20 animate-pulse relative overflow-hidden">
+<div class="w-24 h-28 rounded-xl bg-surface-variant shrink-0 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-container-lowest/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+</div>
+<div class="flex-1 flex flex-col py-1">
+<div class="w-3/4 h-5 bg-surface-variant rounded-md mb-2"></div>
+<div class="w-1/2 h-4 bg-surface-variant rounded-md mb-auto"></div>
+<div class="flex gap-2 mt-4">
+<div class="w-12 h-6 bg-surface-variant rounded-full"></div>
+<div class="w-16 h-6 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Skeleton Card 2 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm border border-outline-variant/20 animate-pulse relative overflow-hidden">
+<div class="w-24 h-28 rounded-xl bg-surface-variant shrink-0 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-container-lowest/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+</div>
+<div class="flex-1 flex flex-col py-1">
+<div class="w-2/3 h-5 bg-surface-variant rounded-md mb-2"></div>
+<div class="w-3/5 h-4 bg-surface-variant rounded-md mb-auto"></div>
+<div class="flex gap-2 mt-4">
+<div class="w-14 h-6 bg-surface-variant rounded-full"></div>
+<div class="w-20 h-6 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Skeleton Card 3 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm border border-outline-variant/20 animate-pulse relative overflow-hidden">
+<div class="w-24 h-28 rounded-xl bg-surface-variant shrink-0 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-container-lowest/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+</div>
+<div class="flex-1 flex flex-col py-1">
+<div class="w-4/5 h-5 bg-surface-variant rounded-md mb-2"></div>
+<div class="w-1/2 h-4 bg-surface-variant rounded-md mb-auto"></div>
+<div class="flex gap-2 mt-4">
+<div class="w-12 h-6 bg-surface-variant rounded-full"></div>
+<div class="w-16 h-6 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Real Data State (Hidden Initially) -->
+<div class="hidden flex-col gap-md w-full opacity-0 transition-opacity duration-500" id="real-data-view">
+<!-- CarePartner Card 1 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm hover:shadow-glow transition-all duration-300 relative overflow-hidden group cursor-pointer border border-transparent hover:border-primary-fixed-dim/50 active:scale-[0.98]">
+<!-- Profile Photo & Badge -->
+<div class="relative w-24 h-28 rounded-xl overflow-hidden shrink-0 shadow-sm">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" data-alt="A professional headshot of a friendly female caregiver in her late 20s. She is smiling warmly at the camera. The lighting is bright and soft, typical of a high-end light mode UI. The background is a clean, softly blurred modern educational setting with hints of primary orange and soft green tones, conveying warmth, safety, and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfqoMtw0MpUd1gQo9ziORGQh3lqbBgSOs1PB5TlkjBJV52Q5HAURYWqwKNe288f32WZ37dBIvFLifxOPdI20h-DcNwGIr0Ng6Ko0oIcSBspnbvpC4sgSt4hvgnZF2NZ9Gegmvv1aIDEdhLonfnEOsO9I40hFuRlM2Dj_mF56nHBDs9KkWNtyyvnIy9bNOGdKvvedx_CfOUBNwyb4yFNZq8HuJhNMrFTQfAoztN-iy10MNKq2vN7Ri5"/>
+<!-- Priority Badge Floating -->
+<div class="absolute top-0 left-0 bg-[#EAFBEF] text-[#1E9439] font-caption text-caption px-2 py-1 rounded-br-xl flex items-center gap-1 shadow-sm backdrop-blur-sm bg-opacity-90 border-r border-b border-[#1E9439]/10">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">bolt</span> Ưu tiên
+                        </div>
+</div>
+<!-- Info -->
+<div class="flex-1 flex flex-col justify-center py-1">
+<div class="flex items-start justify-between mb-1">
+<div class="flex items-center gap-1">
+<h3 class="font-h4 text-h4 text-on-surface tracking-tight group-hover:text-primary transition-colors">Nguyễn Mai Anh</h3>
+<!-- Verified Badge -->
+<span class="material-symbols-outlined text-[#2DB84B] text-[18px]" style="font-variation-settings: 'FILL' 1;" title="Verified CarePartner">verified</span>
+</div>
+</div>
+<p class="font-body text-[14px] text-on-surface-variant line-clamp-1 mb-3">Giáo viên mầm non &amp; Kỹ năng sống</p>
+<div class="flex items-center gap-3 mt-auto">
+<!-- Rating -->
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-[#F26522]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-on-surface">4.9</span>
+</div>
+<!-- Distance -->
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">location_on</span>
+<span class="font-caption text-caption text-on-surface-variant">1.2 km</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CarePartner Card 2 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm hover:shadow-glow transition-all duration-300 relative overflow-hidden group cursor-pointer border border-transparent hover:border-primary-fixed-dim/50 active:scale-[0.98]">
+<div class="relative w-24 h-28 rounded-xl overflow-hidden shrink-0 shadow-sm">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" data-alt="A portrait of a kind, professional male caregiver in his early 30s wearing a neat, casual uniform. He has a gentle, reassuring smile. The scene is lit with bright, high-key lighting for a clean, modern aesthetic. The softly out-of-focus background features warm beige and subtle green elements, projecting a sense of supervised freedom and trustworthiness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5BpFPNZxOlE-lbESpMnf_NLHotNCsJspQBRku3skB6pFNROwhn6Tegn6mOcpNelUdwW087Db-koUS-MH7BL1tYOC9xA1geTrQ5Nhsm4OqIBfLVkkfIRf6vs1g5CQTVsvrX7s7ZPTVpqLe0r24NjgNjrIpYo3R2I-TJFH5xnbPe5wfzwowpY0J8_B2d5_YiKrpDrb-ZLFU765ShsKxZR2aqYW4qHq31VUxntYIpILE8HD6HfnhNTiC"/>
+</div>
+<div class="flex-1 flex flex-col justify-center py-1">
+<div class="flex items-start justify-between mb-1">
+<div class="flex items-center gap-1">
+<h3 class="font-h4 text-h4 text-on-surface tracking-tight group-hover:text-primary transition-colors">Trần Văn Hùng</h3>
+<span class="material-symbols-outlined text-[#2DB84B] text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<p class="font-body text-[14px] text-on-surface-variant line-clamp-1 mb-3">Chuyên gia hỗ trợ đặc biệt</p>
+<div class="flex items-center gap-3 mt-auto">
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-[#F26522]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-on-surface">4.8</span>
+</div>
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">location_on</span>
+<span class="font-caption text-caption text-on-surface-variant">3.5 km</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CarePartner Card 3 -->
+<div class="bg-surface-container-lowest rounded-[20px] p-md flex gap-md shadow-sm hover:shadow-glow transition-all duration-300 relative overflow-hidden group cursor-pointer border border-transparent hover:border-primary-fixed-dim/50 active:scale-[0.98]">
+<div class="relative w-24 h-28 rounded-xl overflow-hidden shrink-0 shadow-sm">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" data-alt="A bright and welcoming headshot of a middle-aged female care partner with a comforting smile. She exudes warmth and experience. The lighting is pristine and soft, fitting a high-end corporate modern application. The background subtly incorporates the brand's primary orange in a soft, non-intrusive way against a light surface, ensuring the subject stands out beautifully." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpaKuvDdpUxM20jZdDZowsmNU0e8Mm55gh5TkONJxjbAhTEDMP_bDwwkxNHUZgAU64vmQsRlpvd6C840dBBYPB54bPAIRerYP7b2b6ig7A05nQnzHff4Uaql6neoFA4uDzlPBvKDK3dzrVB8yXRm2Z_ODFun9k0IGnjd_bpk-sr8z-hZTdxfEiZWWmAY4LrYhE0um8t2VkljxhReWK5gW6_8m3i0kuwyv8aK1KL-FMha-ZxvuL2_9O"/>
+<!-- Priority Badge Floating -->
+<div class="absolute top-0 left-0 bg-[#EAFBEF] text-[#1E9439] font-caption text-caption px-2 py-1 rounded-br-xl flex items-center gap-1 shadow-sm backdrop-blur-sm bg-opacity-90 border-r border-b border-[#1E9439]/10">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">bolt</span> Ưu tiên
+                        </div>
+</div>
+<div class="flex-1 flex flex-col justify-center py-1">
+<div class="flex items-start justify-between mb-1">
+<div class="flex items-center gap-1">
+<h3 class="font-h4 text-h4 text-on-surface tracking-tight group-hover:text-primary transition-colors">Lê Thu Hà</h3>
+<span class="material-symbols-outlined text-[#2DB84B] text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<p class="font-body text-[14px] text-on-surface-variant line-clamp-1 mb-3">Sinh viên sư phạm xuất sắc</p>
+<div class="flex items-center gap-3 mt-auto">
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-[#F26522]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-on-surface">5.0</span>
+</div>
+<div class="flex items-center gap-[2px] bg-surface-variant/50 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">location_on</span>
+<span class="font-caption text-caption text-on-surface-variant">4.1 km</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pb-sm pt-xs bg-surface dark:bg-surface-container shadow-lg shadow-lg rounded-t-xl transition-all duration-300">
+<!-- Active Tab: Home (Semantic match for main discovery feed) -->
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 active:scale-90 transition-all duration-200 cursor-pointer w-[64px]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-caption text-caption mt-1">Home</span>
+</div>
+<!-- Inactive Tabs -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200 cursor-pointer rounded-xl w-[64px]">
+<span class="material-symbols-outlined">event_note</span>
+<span class="font-caption text-caption mt-1">Diary</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200 cursor-pointer rounded-xl w-[64px]">
+<span class="material-symbols-outlined">bolt</span>
+<span class="font-caption text-caption mt-1 whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">AI Assistant</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200 cursor-pointer rounded-xl w-[64px]">
+<span class="material-symbols-outlined">location_on</span>
+<span class="font-caption text-caption mt-1">Tracking</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200 cursor-pointer rounded-xl w-[64px]">
+<span class="material-symbols-outlined">person</span>
+<span class="font-caption text-caption mt-1">Profile</span>
+</div>
+</nav>
+<!-- Tailwind arbitrary values for animation used in skeleton -->
+<style>
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+<!-- Interactive Script to simulate loading state -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const skeletonView = document.getElementById('skeleton-view');
+            const realDataView = document.getElementById('real-data-view');
+            const resultCount = document.getElementById('result-count');
+
+            // Simulate a network request delay to show off the skeleton loader
+            setTimeout(() => {
+                // Fade out skeleton
+                skeletonView.style.opacity = '0';
+                
+                setTimeout(() => {
+                    skeletonView.style.display = 'none';
+                    
+                    // Show real data
+                    realDataView.style.display = 'flex';
+                    // Trigger reflow to ensure transition happens
+                    void realDataView.offsetWidth; 
+                    realDataView.style.opacity = '1';
+                    
+                    // Update count
+                    resultCount.textContent = '24 kết quả';
+                    resultCount.classList.add('text-primary');
+                    resultCount.classList.remove('text-on-surface-variant');
+                }, 300); // Wait for fade out
+                
+            }, 2000); // 2 second mock loading time
+        });
+    </script>
+</body></html>

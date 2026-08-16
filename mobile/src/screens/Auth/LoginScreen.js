@@ -7,7 +7,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 // ====================================================================
 // ⚠️  OAuth (Google / Facebook) TẠM THỜI VÔ HIỆU HOÁ
@@ -96,58 +96,65 @@ export default function LoginScreen() {
           <View style={styles.logoWrap}>
             <Ionicons name="heart" size={48} color="#fff" />
           </View>
-          <Text style={styles.title}>Chào mừng trở lại!</Text>
-          <Text style={styles.subtitle}>Đăng nhập để tiếp tục sử dụng Educarelink</Text>
+          <Text style={styles.title}>Chào mừng trở lại</Text>
+          <Text style={styles.subtitle}>Đăng nhập để tiếp tục kết nối</Text>
         </Animated.View>
 
-        {/* Form */}
-        <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        {/* Form Card — Warm Professionalism */}
+        <Animated.View style={[styles.formCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {/* Username */}
-          <View style={[
-            styles.inputWrapper,
-            usernameFocused && styles.inputWrapperFocused,
-          ]}>
-            <View style={[styles.inputIconBox, usernameFocused && styles.inputIconBoxFocused]}>
-              <Ionicons name="person-outline" size={18} color={usernameFocused ? COLORS.primary : COLORS.textMuted} />
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Số điện thoại hoặc tên tài khoản</Text>
+            <View style={[
+              styles.inputWrapper,
+              usernameFocused && styles.inputWrapperFocused,
+            ]}>
+              <Ionicons name="person-outline" size={18} color={usernameFocused ? COLORS.primary : COLORS.outline} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập tài khoản của bạn"
+                placeholderTextColor={COLORS.textMuted}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setUsernameFocused(true)}
+                onBlur={() => setUsernameFocused(false)}
+              />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Tên tài khoản"
-              placeholderTextColor={COLORS.textMuted}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => setUsernameFocused(true)}
-              onBlur={() => setUsernameFocused(false)}
-            />
           </View>
 
           {/* Password */}
-          <View style={[
-            styles.inputWrapper,
-            passwordFocused && styles.inputWrapperFocused,
-          ]}>
-            <View style={[styles.inputIconBox, passwordFocused && styles.inputIconBoxFocused]}>
-              <Ionicons name="lock-closed-outline" size={18} color={passwordFocused ? COLORS.primary : COLORS.textMuted} />
+          <View style={styles.fieldGroup}>
+            <View style={styles.passwordLabelRow}>
+              <Text style={styles.fieldLabel}>Mật khẩu</Text>
+              <TouchableOpacity onPress={() => showAlert('Quên mật khẩu', 'Vui lòng liên hệ admin để đặt lại mật khẩu.')}>
+                <Text style={styles.forgotLink}>Quên mật khẩu?</Text>
+              </TouchableOpacity>
             </View>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Mật khẩu"
-              placeholderTextColor={COLORS.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon}>
-              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
+            <View style={[
+              styles.inputWrapper,
+              passwordFocused && styles.inputWrapperFocused,
+            ]}>
+              <Ionicons name="lock-closed-outline" size={18} color={passwordFocused ? COLORS.primary : COLORS.outline} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Nhập mật khẩu"
+                placeholderTextColor={COLORS.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+              />
+              <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon}>
+                <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.outline} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Nút Đăng nhập */}
-          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+          <Animated.View style={{ transform: [{ scale: btnScale }], marginTop: SIZES.sm }}>
             <TouchableOpacity
               style={[styles.loginBtn, isLoading && styles.btnDisabled]}
               onPress={handleLogin}
@@ -166,15 +173,15 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
           </Animated.View>
-
-          {/* Chuyển đến Đăng ký */}
-          <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Đăng ký ngay</Text>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
+
+        {/* Divider + Register */}
+        <View style={styles.registerSection}>
+          <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.registerLink}>Đăng ký ngay</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Tài khoản test — chỉ hiện trong môi trường development */}
         {__DEV__ && (
@@ -289,14 +296,8 @@ import { getOAuthConfig } from '../../api/auth';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 44 },
-  header: { alignItems: 'center', marginBottom: 44 },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
+  scroll: { flexGrow: 1, paddingHorizontal: SIZES.marginMobile, paddingTop: 80, paddingBottom: 44 },
+  header: { alignItems: 'center', marginBottom: SIZES.xl },
   logoWrap: {
     width: 80,
     height: 80,
@@ -304,45 +305,54 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SIZES.md,
     ...SHADOWS.large,
   },
-  title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
-  subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  form: { gap: 18, marginBottom: 36 },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    paddingRight: 16, height: 58,
+  title: { ...TYPO.h1, fontSize: 28, color: COLORS.primaryText, marginBottom: 8, fontWeight: '800' },
+  subtitle: { ...TYPO.body, color: COLORS.textSecondary, textAlign: 'center' },
+  // === FORM CARD (Warm Professionalism) ===
+  formCard: {
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.lg,
+    marginBottom: SIZES.lg,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    gap: SIZES.lg,
     ...SHADOWS.small,
   },
+  fieldGroup: { gap: SIZES.xs },
+  fieldLabel: { ...TYPO.caption, color: COLORS.textSecondary, fontWeight: '700' },
+  passwordLabelRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  forgotLink: { ...TYPO.caption, color: COLORS.primary, fontWeight: '700' },
+  inputWrapper: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1.5, borderColor: COLORS.outlineVariant,
+    paddingHorizontal: SIZES.md,
+    height: 52,
+  },
   inputWrapperFocused: {
-    ...FRAGMENTS.inputFocus,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surfaceContainerLowest,
     ...SHADOWS.inputFocus,
   },
-  inputIconBox: {
-    width: 50, height: 42, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radiusSm,
-    marginLeft: 8, marginRight: 12,
-  },
-  inputIconBoxFocused: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  input: { flex: 1, ...TYPO.body, color: COLORS.textPrimary },
-  eyeIcon: { padding: 8 },
+  inputIcon: { marginRight: SIZES.sm },
+  input: { flex: 1, ...TYPO.body, color: COLORS.textPrimary, paddingVertical: 0 },
+  eyeIcon: { padding: SIZES.xs },
   loginBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusLg, height: 58,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 52,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SIZES.xs,
     ...SHADOWS.large,
-    marginTop: 6,
   },
   btnDisabled: { opacity: 0.7 },
-  loginBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
-  registerText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  registerLink: { ...TYPO.buttonSmall, color: COLORS.primary },
+  loginBtnText: { ...TYPO.button, fontSize: 16, color: '#fff' },
+  registerSection: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: SIZES.lg },
+  registerText: { ...TYPO.body, color: COLORS.textSecondary },
+  registerLink: { ...TYPO.h4, color: COLORS.primary, fontWeight: '700' },
   testAccountBox: {
     backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusLg, padding: 18,
     borderWidth: 1.5, borderColor: COLORS.primarySoft,

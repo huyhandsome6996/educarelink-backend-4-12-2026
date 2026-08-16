@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - Splash Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700&amp;family=Manrope:wght@700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "on-secondary-container": "#007326",
+                        "outline": "#8d7166",
+                        "primary-fixed-dim": "#ffb599",
+                        "tertiary-container": "#009ade",
+                        "on-tertiary-container": "#002d45",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "surface-dim": "#eed5cc",
+                        "primary": "#a63b00",
+                        "surface-container-highest": "#f7ddd4",
+                        "secondary": "#006e24",
+                        "inverse-on-surface": "#ffede7",
+                        "primary-fixed": "#ffdbce",
+                        "secondary-container": "#76fa84",
+                        "tertiary-fixed": "#cae6ff",
+                        "surface-container-high": "#fde3da",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#79fd86",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "surface": "#fff8f6",
+                        "on-tertiary-fixed": "#001e2f",
+                        "error-container": "#ffdad6",
+                        "on-background": "#261813",
+                        "on-surface": "#261813",
+                        "background": "#fff8f6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#f7ddd4",
+                        "surface-container-low": "#fff1ec",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fff8f6",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#005319",
+                        "on-primary-fixed": "#370e00",
+                        "surface-container": "#ffe9e2",
+                        "on-secondary-fixed": "#002106",
+                        "on-primary-container": "#4f1800",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#006492",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "surface-tint": "#a63b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "gutter-mobile": "12px",
+                        "xxl": "48px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "h4": ["Manrope"],
+                        "h2": ["Manrope"],
+                        "h3": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom animation for splash screen loading */
+        @keyframes subtlePulse {
+            0% { opacity: 0.7; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0.7; transform: scale(0.98); }
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        
+        .animate-float-up {
+            animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        
+        .bg-primary-gradient {
+            background: linear-gradient(135deg, #f26522 0%, #d4541e 100%);
+        }
+        
+        /* Custom loader */
+        .loader-bar {
+            width: 100%;
+            height: 4px;
+            background-color: rgba(255, 207, 179, 0.3); /* #FFCFB3 with opacity */
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .loader-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 30%;
+            background-color: #ffffff;
+            border-radius: 999px;
+            animation: progressSweep 2s ease-in-out infinite;
+        }
+        
+        @keyframes progressSweep {
+            0% { left: -30%; }
+            100% { left: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-primary-container h-screen w-full flex flex-col justify-between items-center overflow-hidden relative">
+<!-- Subtle Background Pattern (Abstract Warm Shapes) -->
+<div class="absolute inset-0 w-full h-full opacity-10 pointer-events-none z-0">
+<svg height="100%" preserveaspectratio="none" viewbox="0 0 100 100" width="100%">
+<circle cx="20" cy="20" fill="#ffffff" r="40"></circle>
+<circle cx="80" cy="80" fill="#ffffff" r="50"></circle>
+<path d="M-20,100 Q40,50 120,80 L120,120 L-20,120 Z" fill="#ffffff"></path>
+</svg>
+</div>
+<!-- Top spacer for vertical centering -->
+<div class="flex-1"></div>
+<!-- Main Content Area -->
+<main class="flex flex-col items-center justify-center z-10 w-full px-margin-mobile">
+<!-- Logo / Illustration Container -->
+<div class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-lg animate-float-up shadow-xl" style="animation-name: subtlePulse; animation-duration: 4s; animation-iteration-count: infinite; animation-timing-function: ease-in-out;">
+<!-- Illustration Placeholder -->
+<div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-inner bg-white flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A minimal, warm-toned vector illustration of an adult hand gently holding a child's hand. The style is modern corporate minimalism, utilizing a high-key light mode aesthetic. The background is a crisp white. The adult hand is rendered in a soft, grounding green while the child's hand uses a vibrant, reassuring orange. The artwork communicates supervised freedom, safety, and professional caregiving." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoywOIelWIOLKjs3G-p4rE-CHkBEGVGL9hSTxmQnD56nFuv-TJ454E1-TLJ5gsrTrEg3a-DRlm2S0A1rop4hDtPIQoqchlO4k0vCCtsmYz5jSEGExMTfyB3KwGtidkyfbJKLWoBUgQrqS-o1uTzs6wCS9GzsksS4AnPbeoaaUs59b8dj_bt8_cgdNngDVMA8fgCx1PNBqhgrG06QKMOBEFCJsuVOZVTBX1mdm2EThvZKGTXRhIzxwM"/>
+</div>
+</div>
+<!-- Typography -->
+<div class="text-center opacity-0 animate-float-up delay-100 flex flex-col items-center">
+<h1 class="font-h1 text-h1 text-white mb-sm" style="font-weight: 900;">
+                EduCareLink
+            </h1>
+<p class="font-body text-body text-primary-fixed text-center max-w-[280px]">
+                An tâm gửi gắm, trọn vẹn yêu thương
+            </p>
+</div>
+</main>
+<!-- Bottom Section (Loader) -->
+<div class="flex-1 w-full flex flex-col justify-end items-center pb-xxl px-margin-mobile z-10 opacity-0 animate-float-up delay-300">
+<div class="w-48 max-w-full">
+<div class="loader-bar">
+<div class="loader-progress"></div>
+</div>
+<p class="font-caption text-caption text-primary-fixed text-center mt-sm opacity-80">
+                Đang tải dữ liệu...
+            </p>
+</div>
+</div>
+<script>
+        // Simple script to handle transition out if needed in a real app
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     setTimeout(() => {
+        //         document.body.style.opacity = '0';
+        //         document.body.style.transition = 'opacity 0.5s ease-out';
+        //         // window.location.href = '/dashboard'; // Redirect logic
+        //     }, 3000);
+        // });
+    </script>
+</body></html>

@@ -6,7 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
-import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import MapPickerModal from '../../components/MapPickerModal';
 
 let DateTimePicker;
@@ -24,6 +24,13 @@ const CATEGORIES = [
   { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
   { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
   { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận' },
+];
+
+// Progress stepper steps (visual only — no state added, single-screen form)
+const STEPS = [
+  { id: 1, label: 'Loại việc' },
+  { id: 2, label: 'Chi tiết' },
+  { id: 3, label: 'Xác nhận' },
 ];
 
 export default function CreateTaskScreen() {
@@ -146,7 +153,7 @@ export default function CreateTaskScreen() {
           } else {
             Alert.alert(
               'Cần chọn vị trí trên bản đồ',
-              'Bạn chưa chọn vị trí trên bản đồ và chưa cấp quyền vị trí. Hãy bấm "Chọn vị trí trên bản đồ" để chọn, hoặc cấp quyền vị trí để dùng vị trí hiện tại.',
+              'Bạn chưa chọn vị trí trên bản đồ và chưa cấp quyền vị trí. Hãy bấm "Chọn trên bản đồ" để chọn, hoặc cấp quyền vị trí để dùng vị trí hiện tại.',
               [
                 { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
               ]
@@ -172,84 +179,157 @@ export default function CreateTaskScreen() {
     }
   };
 
+  // ===== Helper render for stepper =====
+  const renderStep = (step, isActive, isCompleted) => (
+    <View style={styles.stepWrap}>
+      <View style={[styles.stepCircle, isActive ? styles.stepActive : styles.stepInactive]}>
+        {isCompleted ? (
+          <Ionicons name="checkmark" size={16} color={COLORS.textOnPrimary} />
+        ) : (
+          <Text style={[styles.stepText, isActive ? styles.stepTextActive : styles.stepTextInactive]}>
+            {step.id}
+          </Text>
+        )}
+      </View>
+      <Text style={[styles.stepLabel, isActive ? styles.stepLabelActive : styles.stepLabelInactive]}>
+        {step.label}
+      </Text>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="dark-content" />
-      {/* Header */}
+
+      {/* ===== Top App Bar (Warm Professionalism) ===== */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="chevron-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đăng việc mới</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Tạo yêu cầu mới</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {/* Chọn danh mục */}
-        <Text style={styles.label}>Chọn loại dịch vụ</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catsScroll}>
-          {CATEGORIES.map((c) => (
-            <TouchableOpacity key={c.id} style={[styles.catBtn, selectedCat === c.id && styles.catBtnActive]}
-              onPress={() => setSelectedCat(c.id)} activeOpacity={0.8}>
-              <Ionicons name={c.iconName} size={28} color={selectedCat === c.id ? '#fff' : COLORS.primary} />
-              <Text style={[styles.catName, selectedCat === c.id && styles.catNameActive]}>{c.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Gợi ý giá */}
-        <View style={styles.priceHint}>
-          <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
-          <Text style={styles.priceHintText}>Gợi ý mức giá cho {cat?.name}: {cat?.hint}</Text>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ===== Progress Stepper (3 steps, visual only) ===== */}
+        <View style={styles.stepper}>
+          {renderStep(STEPS[0], true, false)}
+          <View style={styles.stepLine}>
+            <View style={[styles.stepLineFill, { width: '0%' }]} />
+          </View>
+          {renderStep(STEPS[1], false, false)}
+          <View style={styles.stepLine} />
+          {renderStep(STEPS[2], false, false)}
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <TextInput style={[styles.input, titleFocused && styles.inputFocused]}
-            placeholder="Tiêu đề công việc *" placeholderTextColor={COLORS.textMuted}
-            value={title} onChangeText={setTitle}
-            onFocus={() => setTitleFocused(true)} onBlur={() => setTitleFocused(false)} />
-          <TextInput style={[styles.input, styles.textarea, descFocused && styles.inputFocused]}
-            placeholder="Mô tả chi tiết yêu cầu *"
-            placeholderTextColor={COLORS.textMuted} value={description} onChangeText={setDescription}
-            multiline numberOfLines={4} textAlignVertical="top"
-            onFocus={() => setDescFocused(true)} onBlur={() => setDescFocused(false)} />
-          <View style={[styles.inputRow, locationFocused && styles.inputRowFocused]}>
-            <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <TextInput style={styles.inputInline}
-              placeholder="Địa điểm thực hiện *" placeholderTextColor={COLORS.textMuted}
-              value={location} onChangeText={setLocation}
-              onFocus={() => setLocationFocused(true)} onBlur={() => setLocationFocused(false)} />
-            <TouchableOpacity
-              style={styles.mapPickerBtn}
-              onPress={() => setShowMapPicker(true)}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              accessibilityRole="button"
-              accessibilityLabel="Chọn vị trí trên bản đồ"
-            >
-              <Ionicons name="map-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.mapPickerBtnText}>Bản đồ</Text>
-            </TouchableOpacity>
+        {/* ===== Section: Loại dịch vụ (chip selector) ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Loại dịch vụ</Text>
+          <View style={styles.chipRow}>
+            {CATEGORIES.map((c) => {
+              const active = selectedCat === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setSelectedCat(c.id)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={c.iconName}
+                    size={14}
+                    color={active ? COLORS.textOnPrimary : COLORS.primary}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          {pickedCoords && (
-            <View style={styles.pickedCoordsInfo}>
-              <Ionicons name="location" size={14} color={COLORS.primary} />
-              <Text style={styles.pickedCoordsText} numberOfLines={1}>
-                {pickedCoords.latitude.toFixed(4)}, {pickedCoords.longitude.toFixed(4)}
-                {pickedCoords.address ? ` — ${pickedCoords.address.substring(0, 60)}${pickedCoords.address.length > 60 ? '...' : ''}` : ''}
-              </Text>
-            </View>
-          )}
+          {/* Price hint */}
+          <View style={styles.priceHint}>
+            <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.priceHintText}>Gợi ý: {cat?.hint}</Text>
+          </View>
+        </View>
+
+        {/* ===== Section: Tiêu đề ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Tiêu đề</Text>
+          <View style={[styles.inputCard, titleFocused && styles.inputCardFocused]}>
+            <Ionicons name="create-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.inputInline}
+              placeholder="VD: Đón bé ở trường chiều nay"
+              placeholderTextColor={COLORS.textMuted}
+              value={title}
+              onChangeText={setTitle}
+              onFocus={() => setTitleFocused(true)}
+              onBlur={() => setTitleFocused(false)}
+            />
+          </View>
+        </View>
+
+        {/* ===== Section: Mô tả chi tiết ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Mô tả chi tiết</Text>
+          <View style={[styles.inputCard, styles.textareaCard, descFocused && styles.inputCardFocused]}>
+            <TextInput
+              style={styles.textarea}
+              placeholder="Mô tả yêu cầu, thời gian, lưu ý đặc biệt..."
+              placeholderTextColor={COLORS.textMuted}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              onFocus={() => setDescFocused(true)}
+              onBlur={() => setDescFocused(false)}
+            />
+          </View>
+        </View>
+
+        {/* ===== Section: Thời gian (date + time, 2-col grid) ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Thời gian</Text>
           <View style={styles.twoCol}>
-            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenDatePicker}>
-              <Text style={{ ...TYPO.body, color: date ? COLORS.textPrimary : COLORS.textMuted }}>
-                {date ? date : 'Chọn ngày'}
-              </Text>
+            <TouchableOpacity
+              style={styles.dtCard}
+              onPress={handleOpenDatePicker}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dtCaption}>Ngày</Text>
+              <View style={styles.dtRow}>
+                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+                <Text style={[styles.dtValue, !date && styles.dtPlaceholder]} numberOfLines={1}>
+                  {date || 'Chọn ngày'}
+                </Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenTimePicker}>
-              <Text style={{ ...TYPO.body, color: time ? COLORS.textPrimary : COLORS.textMuted }}>
-                {time ? time : 'Chọn giờ'}
-              </Text>
+
+            <TouchableOpacity
+              style={styles.dtCard}
+              onPress={handleOpenTimePicker}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dtCaption}>Giờ</Text>
+              <View style={styles.dtRow}>
+                <Ionicons name="time-outline" size={16} color={COLORS.primary} />
+                <Text style={[styles.dtValue, !time && styles.dtPlaceholder]} numberOfLines={1}>
+                  {time || 'Chọn giờ'}
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -272,15 +352,72 @@ export default function CreateTaskScreen() {
               onChange={onTimeChange}
             />
           )}
-          <View style={[styles.inputRow, priceFocused && styles.inputRowFocused]}>
-            <TextInput style={styles.priceInput}
-              placeholder="0" placeholderTextColor={COLORS.textMuted} value={price} onChangeText={setPrice}
-              keyboardType="numeric"
-              onFocus={() => setPriceFocused(true)} onBlur={() => setPriceFocused(false)} />
-            <Text style={styles.currency}>VNĐ/buổi</Text>
-          </View>
+        </View>
 
-          {/* ===== GEOFENCE TOGGLE (VÙNG AN TOÀN) ===== */}
+        {/* ===== Section: Địa điểm (with map picker) ===== */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>Địa điểm</Text>
+            <TouchableOpacity
+              onPress={() => setShowMapPicker(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.sectionAction}>Chọn trên bản đồ</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.inputCard, locationFocused && styles.inputCardFocused]}>
+            <Ionicons name="location-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.inputInline}
+              placeholder="VD: Trường Tiểu học Nguyễn Du"
+              placeholderTextColor={COLORS.textMuted}
+              value={location}
+              onChangeText={setLocation}
+              onFocus={() => setLocationFocused(true)}
+              onBlur={() => setLocationFocused(false)}
+            />
+            <TouchableOpacity
+              style={styles.mapBtn}
+              onPress={() => setShowMapPicker(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel="Chọn vị trí trên bản đồ"
+            >
+              <Ionicons name="map-outline" size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+          {pickedCoords && (
+            <View style={styles.pickedCoordsInfo}>
+              <Ionicons name="location" size={14} color={COLORS.primary} />
+              <Text style={styles.pickedCoordsText} numberOfLines={1}>
+                {pickedCoords.latitude.toFixed(4)}, {pickedCoords.longitude.toFixed(4)}
+                {pickedCoords.address ? ` — ${pickedCoords.address.substring(0, 60)}${pickedCoords.address.length > 60 ? '...' : ''}` : ''}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ===== Section: Mức thù lao ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Mức thù lao</Text>
+          <View style={[styles.inputCard, priceFocused && styles.inputCardFocused]}>
+            <Ionicons name="cash-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.priceInput}
+              placeholder="0"
+              placeholderTextColor={COLORS.textMuted}
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="numeric"
+              onFocus={() => setPriceFocused(true)}
+              onBlur={() => setPriceFocused(false)}
+            />
+            <Text style={styles.currency}>VNĐ</Text>
+          </View>
+        </View>
+
+        {/* ===== Section: Vùng an toàn (Geofence) ===== */}
+        <View style={styles.section}>
           <TouchableOpacity
             style={[styles.geofenceToggle, enableGeofence && styles.geofenceToggleActive]}
             onPress={() => setEnableGeofence(!enableGeofence)}
@@ -290,9 +427,10 @@ export default function CreateTaskScreen() {
               {enableGeofence && <Ionicons name="checkmark" size={16} color="#fff" />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.geofenceToggleTitle}>
-                <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} /> Yêu cầu theo dõi vị trí Carepartner
-              </Text>
+              <View style={styles.geofenceTitleRow}>
+                <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.geofenceToggleTitle}>Yêu cầu theo dõi vị trí Carepartner</Text>
+              </View>
               <Text style={styles.geofenceToggleDesc}>
                 Carepartner phải đồng ý chia sẻ vị trí mới được nhận việc. Bạn sẽ nhận chuông cảnh báo khi họ rời vùng an toàn.
               </Text>
@@ -302,32 +440,45 @@ export default function CreateTaskScreen() {
           {enableGeofence && (
             <View style={styles.geofenceSettings}>
               <Text style={styles.geofenceLabel}>Bán kính vùng an toàn (mét):</Text>
-              <View style={styles.inputRow}>
+              <View style={[styles.inputCard, styles.geofenceRadiusRow]}>
                 <Ionicons name="map-outline" size={18} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput style={styles.priceInput}
-                  placeholder="500" placeholderTextColor={COLORS.textMuted}
-                  value={geofenceRadius} onChangeText={setGeofenceRadius}
-                  keyboardType="numeric" />
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="500"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={geofenceRadius}
+                  onChangeText={setGeofenceRadius}
+                  keyboardType="numeric"
+                />
                 <Text style={styles.currency}>mét</Text>
               </View>
-              <Text style={styles.geofenceHint}>Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng vị trí hiện tại của bạn.</Text>
+              <Text style={styles.geofenceHint}>
+                Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng toạ độ đã chọn trên bản đồ, hoặc vị trí hiện tại của bạn nếu chưa chọn.
+              </Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Submit button */}
+      {/* ===== Sticky footer with primary CTA ===== */}
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitBtn, isLoading && { opacity: 0.7 }]}
-          onPress={handleSubmit} disabled={isLoading} activeOpacity={0.85}>
-          {isLoading ? <ActivityIndicator color="#fff" /> : (
+        <TouchableOpacity
+          style={[styles.submitBtn, isLoading && { opacity: 0.7 }]}
+          onPress={handleSubmit}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
             <>
-              <Ionicons name="send" size={18} color="#fff" />
               <Text style={styles.submitText}>Đăng lên cộng đồng</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
             </>
           )}
         </TouchableOpacity>
       </View>
+
       <MapPickerModal
         visible={showMapPicker}
         onPick={(coords) => {
@@ -344,52 +495,273 @@ export default function CreateTaskScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
-  body: { flex: 1, padding: 20 },
-  label: { ...TYPO.overline, color: COLORS.textSecondary, marginBottom: 10 },
-  catsScroll: { marginBottom: 12 },
-  catBtn: { alignItems: 'center', padding: 12, borderRadius: SIZES.radiusMd, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, marginRight: 10, minWidth: 76 },
-  catBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15', ...SHADOWS.cardHover, transform: [{ scale: 1.03 }] },
-  catImage: { width: 32, height: 32, marginBottom: 6 },
-  catName: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  catNameActive: { color: COLORS.primary, fontWeight: '700' },
-  priceHint: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusSm, padding: 10, marginBottom: 20, borderWidth: 1, borderColor: COLORS.primarySoft },
-  priceHintText: { flex: 1, ...TYPO.bodySmall, color: COLORS.primaryDark, fontWeight: '500' },
-  form: { gap: 12 },
-  input: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, ...TYPO.body, color: COLORS.textPrimary, marginBottom: 0 },
-  inputFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
-  textarea: { minHeight: 100, paddingTop: 14 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 16, minHeight: 54 },
-  inputRowFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
-  inputInline: { flex: 1, ...TYPO.body, color: COLORS.textPrimary, paddingVertical: 0 },
-  priceInput: { flex: 1, ...TYPO.h3, color: COLORS.primary, fontWeight: '700', paddingVertical: 0 },
-  inputIcon: { marginRight: 8 },
-  // Map picker button (inside location input row)
-  mapPickerBtn: {
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  // ===== Top App Bar =====
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: SIZES.radiusSm,
-    backgroundColor: COLORS.primaryLight,
-    marginLeft: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: SIZES.marginMobile,
+    paddingTop: 56,
+    paddingBottom: SIZES.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.outlineVariant + '80',
   },
-  mapPickerBtnText: {
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    ...TYPO.h3,
+    color: COLORS.textPrimary,
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
+  },
+
+  // ===== Body =====
+  body: {
+    flex: 1,
+  },
+  bodyContent: {
+    paddingHorizontal: SIZES.marginMobile,
+    paddingTop: SIZES.md,
+    paddingBottom: 140,
+    gap: SIZES.lg,
+  },
+
+  // ===== Progress Stepper =====
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.sm,
+  },
+  stepWrap: {
+    alignItems: 'center',
+    gap: SIZES.xs,
+    zIndex: 2,
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: SIZES.radiusFull,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepActive: {
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.cardHover,
+  },
+  stepInactive: {
+    backgroundColor: COLORS.surfaceContainer,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant + '60',
+  },
+  stepText: {
+    ...TYPO.caption,
+  },
+  stepTextActive: {
+    color: COLORS.textOnPrimary,
+  },
+  stepTextInactive: {
+    color: COLORS.textSecondary,
+  },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  stepLabelActive: {
+    color: COLORS.primaryText,
+  },
+  stepLabelInactive: {
+    color: COLORS.textMuted,
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: COLORS.outlineVariant + '70',
+    marginHorizontal: -SIZES.xs,
+    borderRadius: 1,
+    zIndex: 1,
+  },
+  stepLineFill: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: COLORS.primary,
+    borderRadius: 1,
+  },
+
+  // ===== Sections =====
+  section: {
+    gap: SIZES.sm,
+  },
+  sectionLabel: {
+    ...TYPO.h4,
+    color: COLORS.textPrimary,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionAction: {
     ...TYPO.caption,
     color: COLORS.primary,
-    fontWeight: '600',
   },
-  // Picked coords info (shown below location input when coords selected)
+
+  // ===== Chips (service type) =====
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SIZES.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 8,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    ...SHADOWS.cardHover,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+    color: COLORS.textPrimary,
+  },
+  chipTextActive: {
+    color: COLORS.textOnPrimary,
+    fontWeight: '700',
+  },
+  priceHint: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
+    marginTop: SIZES.xs,
+  },
+  priceHintText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.primaryText,
+  },
+
+  // ===== Inputs (card-style, rounded 14) =====
+  inputCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    paddingHorizontal: SIZES.md,
+    minHeight: 54,
+  },
+  inputCardFocused: {
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    ...SHADOWS.inputFocus,
+  },
+  inputIcon: {
+    marginRight: SIZES.sm,
+  },
+  inputInline: {
+    flex: 1,
+    ...TYPO.body,
+    color: COLORS.textPrimary,
+    paddingVertical: 0,
+  },
+  textareaCard: {
+    alignItems: 'stretch',
+    paddingVertical: SIZES.sm,
+    minHeight: 110,
+  },
+  textarea: {
+    flex: 1,
+    ...TYPO.body,
+    color: COLORS.textPrimary,
+    paddingVertical: 0,
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
+
+  // ===== Date / Time grid =====
+  twoCol: {
+    flexDirection: 'row',
+    gap: SIZES.md,
+  },
+  dtCard: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 12,
+    gap: 4,
+    minHeight: 64,
+    justifyContent: 'center',
+  },
+  dtCaption: {
+    ...TYPO.caption,
+    color: COLORS.textSecondary,
+  },
+  dtRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SIZES.sm,
+  },
+  dtValue: {
+    ...TYPO.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  dtPlaceholder: {
+    color: COLORS.textMuted,
+  },
+
+  // ===== Map picker =====
+  mapBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SIZES.xs,
+  },
   pickedCoordsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 6,
-    paddingHorizontal: 12,
+    marginTop: SIZES.xs,
+    paddingHorizontal: SIZES.md,
     paddingVertical: 8,
     borderRadius: SIZES.radiusSm,
     backgroundColor: COLORS.primaryLight,
@@ -397,47 +769,117 @@ const styles = StyleSheet.create({
   pickedCoordsText: {
     flex: 1,
     ...TYPO.caption,
-    color: COLORS.primaryDark || COLORS.primary,
+    color: COLORS.primaryText,
     lineHeight: 18,
   },
-  twoCol: { flexDirection: 'row', gap: 12 },
-  currency: { ...TYPO.h5, color: COLORS.textSecondary, marginLeft: 8 },
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
-  submitBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large },
-  submitText: { color: '#fff', ...TYPO.button },
 
-  // === GEOFENCE TOGGLE ===
+  // ===== Price input =====
+  priceInput: {
+    flex: 1,
+    ...TYPO.h3,
+    color: COLORS.primary,
+    fontWeight: '700',
+    paddingVertical: 0,
+  },
+  currency: {
+    ...TYPO.h5,
+    color: COLORS.textSecondary,
+    marginLeft: SIZES.sm,
+  },
+
+  // ===== Geofence toggle =====
   geofenceToggle: {
-    flexDirection: 'row', gap: 12, alignItems: 'flex-start',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm,
-    borderWidth: 1.5, borderColor: COLORS.border, padding: 14,
-    marginTop: 8,
+    flexDirection: 'row',
+    gap: SIZES.md,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    padding: SIZES.md,
   },
   geofenceToggleActive: {
-    borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
   },
   geofenceCheckbox: {
-    width: 22, height: 22, borderRadius: 6,
-    borderWidth: 2, borderColor: COLORS.border,
-    justifyContent: 'center', alignItems: 'center',
+    width: 22,
+    height: 22,
+    borderRadius: SIZES.radiusSm,
+    borderWidth: 2,
+    borderColor: COLORS.outlineVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 2,
   },
   geofenceCheckboxActive: {
-    backgroundColor: COLORS.primary, borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  geofenceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
   },
   geofenceToggleTitle: {
-    ...TYPO.bodySmall, color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4,
+    ...TYPO.bodySmall,
+    color: COLORS.textPrimary,
+    fontWeight: '700',
   },
   geofenceToggleDesc: {
-    ...TYPO.caption, color: COLORS.textSecondary, lineHeight: 18,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
   geofenceSettings: {
-    marginTop: 10, gap: 8,
+    marginTop: SIZES.sm,
+    gap: SIZES.sm,
+  },
+  geofenceRadiusRow: {
+    minHeight: 50,
   },
   geofenceLabel: {
-    ...TYPO.overline, color: COLORS.textMuted, fontWeight: '700',
+    ...TYPO.caption,
+    color: COLORS.textSecondary,
   },
   geofenceHint: {
-    ...TYPO.caption, color: COLORS.textMuted, fontStyle: 'italic',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+
+  // ===== Sticky footer =====
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: SIZES.marginMobile,
+    paddingTop: SIZES.md,
+    paddingBottom: 36,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.outlineVariant + '70',
+    ...SHADOWS.medium,
+  },
+  submitBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radiusMd,
+    height: 56,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SIZES.sm,
+    ...SHADOWS.large,
+  },
+  submitText: {
+    color: COLORS.textOnPrimary,
+    ...TYPO.h4,
   },
 });

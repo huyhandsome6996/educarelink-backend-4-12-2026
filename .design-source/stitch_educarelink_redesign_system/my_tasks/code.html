@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - My Tasks</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1.25rem",
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope"],
+                        "h4": ["Manrope"],
+                        "h3": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    },
+                    "boxShadow": {
+                        'card-sm': '0 2px 8px -2px rgba(242, 101, 34, 0.08), 0 4px 16px -4px rgba(242, 101, 34, 0.04)',
+                        'card-md': '0 4px 12px -2px rgba(242, 101, 34, 0.12), 0 8px 24px -4px rgba(242, 101, 34, 0.06)',
+                        'fab': '0 8px 24px -4px rgba(242, 101, 34, 0.25), 0 4px 12px -2px rgba(242, 101, 34, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Hide scrollbar for tabs */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body pb-[80px] md:pb-0 antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-container-low w-full top-0 sticky z-40 bg-surface-container-low flat no shadows">
+<div class="flex justify-between items-center px-margin-mobile py-sm w-full">
+<div class="flex items-center gap-sm cursor-pointer hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<img alt="Parent Profile" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A small circular avatar of a professional looking mother with a warm smile, set against a soft blurred background with natural lighting, embodying a sense of trust and care. Light mode aesthetic, high quality photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQ0qxZCwZWUjV888z76QjOaQvmxb5RTQQkTmDB8YM731WIM4b3Aef878nI-TTSiaOz-8fZ7bF3gAATfHRcXJSPITuaw0Y0wREiO0tcQ-d3tlTBUGtnjUFKvf23anrCasFDvERxcQJpv-m-pYCy19Y-EH7K9LnH8f4Krj8pqAiXgfVFU_gUl1V8FVX0iQX49Zzsf9ouGYvK8kr5XR3mJTCN85f0TDiqq1VMUYJsVpYWO7mJjXPZr__m"/>
+<span class="font-h2 text-h2 text-primary dark:text-primary-fixed-dim">EduCareLink</span>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container hover:opacity-80 transition-opacity active:scale-95 transition-transform text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<main class="w-full max-w-3xl mx-auto pt-md md:pt-lg min-h-screen">
+<!-- Header Section -->
+<div class="px-margin-mobile mb-lg">
+<h1 class="font-h1 text-h1 text-on-background tracking-tight mb-xs">Nhiệm vụ của tôi</h1>
+<p class="font-body text-body text-on-surface-variant">Quản lý và theo dõi các dịch vụ chăm sóc.</p>
+</div>
+<!-- Tabs -->
+<div class="px-margin-mobile mb-lg">
+<div class="flex overflow-x-auto no-scrollbar gap-sm pb-xs border-b border-surface-container-highest">
+<button class="px-md py-sm rounded-t-lg font-caption text-caption whitespace-nowrap border-b-2 border-primary-container text-primary-container bg-primary-container/10 transition-colors">Đang chờ</button>
+<button class="px-md py-sm rounded-t-lg font-caption text-caption whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">Đang diễn ra</button>
+<button class="px-md py-sm rounded-t-lg font-caption text-caption whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">Hoàn tất</button>
+<button class="px-md py-sm rounded-t-lg font-caption text-caption whitespace-nowrap border-b-2 border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">Đã huỷ</button>
+</div>
+</div>
+<!-- Task List Container -->
+<div class="px-margin-mobile flex flex-col gap-md pb-xl">
+<!-- Task Card 1: Waiting (Warning) -->
+<article class="bg-surface-container-lowest rounded-2xl p-md shadow-card-sm border border-outline-variant/30 relative overflow-hidden group hover:shadow-card-md transition-shadow duration-300 cursor-pointer">
+<!-- Status Bar Top -->
+<div class="absolute top-0 left-0 w-full h-1 bg-[#F59E0B]"></div>
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-[#FFFBEB] text-[#F59E0B] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined icon-fill" data-icon="school">school</span>
+</div>
+<div>
+<h3 class="font-h4 text-h4 text-on-background">Đón bé tại trường</h3>
+<p class="font-caption text-caption text-on-surface-variant">Trường Tiểu học Nguyễn Bỉnh Khiêm</p>
+</div>
+</div>
+<!-- Warning Status Chip -->
+<div class="px-sm py-xs rounded-full bg-[#FFFBEB] text-[#B45309] font-caption text-caption flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+                        Đang chờ
+                    </div>
+</div>
+<div class="bg-surface-bright rounded-xl p-sm mb-md flex flex-col gap-xs border border-surface-container">
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<span class="material-symbols-outlined text-[18px]" data-icon="calendar_today">calendar_today</span>
+<span>Hôm nay, 16:30</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<span class="material-symbols-outlined text-[18px]" data-icon="person_search">person_search</span>
+<span class="italic text-on-surface-variant/70">Đang tìm CarePartner...</span>
+</div>
+</div>
+<div class="flex justify-between items-center mt-auto pt-sm border-t border-surface-container-highest">
+<div class="font-h3 text-h3 text-primary-container">150.000đ</div>
+<button class="px-md py-xs rounded-full bg-transparent text-primary-container border border-primary-container font-caption text-caption hover:bg-primary-container/10 transition-colors">Xem chi tiết</button>
+</div>
+</article>
+<!-- Task Card 2: Ongoing (Info) -->
+<article class="bg-surface-container-lowest rounded-2xl p-md shadow-card-sm border border-outline-variant/30 relative overflow-hidden group hover:shadow-card-md transition-shadow duration-300 cursor-pointer">
+<div class="absolute top-0 left-0 w-full h-1 bg-tertiary-container"></div>
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined icon-fill" data-icon="menu_book">menu_book</span>
+</div>
+<div>
+<h3 class="font-h4 text-h4 text-on-background">Hỗ trợ bài tập về nhà</h3>
+<p class="font-caption text-caption text-on-surface-variant">Toán &amp; Tiếng Việt lớp 3</p>
+</div>
+</div>
+<!-- Info Status Chip -->
+<div class="px-sm py-xs rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-caption text-caption flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px] animate-pulse" data-icon="radio_button_checked">radio_button_checked</span>
+                        Đang diễn ra
+                    </div>
+</div>
+<div class="bg-surface-bright rounded-xl p-sm mb-md flex flex-col gap-xs border border-surface-container">
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<span class="material-symbols-outlined text-[18px]" data-icon="calendar_today">calendar_today</span>
+<span>Hôm nay, 19:00 - 21:00</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<img alt="CarePartner" class="w-6 h-6 rounded-full object-cover" data-alt="A small circular avatar of a young female university student tutor, wearing glasses and smiling warmly. Natural lighting, professional yet approachable look. Soft orange and green color palette hints in background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgjh7-Flxm7pBXaRO76t5xp-Doz_C3Brgljq0SWclr-_iVvGcu1mybzp9jSZYUdd9Cwkq74ljYcFHRBEZTaKHPunoqTpIoqixr_2DPnkcbKcOv1HsOyzFdeVskeTb8ZKHLnGs40ZhsquUZVJiwAp_4sqLGg5IxiVA-sYPKSKH6mwTdBdWqI_nGYMgWc1c5STHJS-_JRlctf1WIcrcPv8Omru6P82DDUp0E-MAoWSu2thI6uqg8AniG"/>
+<span>Trần Thị Mai (CarePartner)</span>
+</div>
+</div>
+<div class="flex justify-between items-center mt-auto pt-sm border-t border-surface-container-highest">
+<div class="font-h3 text-h3 text-primary-container">200.000đ</div>
+<button class="px-md py-xs rounded-full bg-tertiary-container text-on-tertiary font-caption text-caption hover:bg-tertiary transition-colors shadow-sm">Theo dõi</button>
+</div>
+</article>
+<!-- Task Card 3: Completed (Success) -->
+<article class="bg-surface-container-lowest rounded-2xl p-md shadow-card-sm border border-outline-variant/30 relative overflow-hidden group hover:shadow-card-md transition-shadow duration-300 cursor-pointer opacity-80">
+<div class="absolute top-0 left-0 w-full h-1 bg-secondary"></div>
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined icon-fill" data-icon="pool">pool</span>
+</div>
+<div>
+<h3 class="font-h4 text-h4 text-on-background">Đưa đi bơi</h3>
+<p class="font-caption text-caption text-on-surface-variant">Hồ bơi Yết Kiêu</p>
+</div>
+</div>
+<!-- Success Status Chip -->
+<div class="px-sm py-xs rounded-full bg-[#EAFBEF] text-[#1E9439] font-caption text-caption flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                        Hoàn tất
+                    </div>
+</div>
+<div class="bg-surface-bright rounded-xl p-sm mb-md flex flex-col gap-xs border border-surface-container">
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<span class="material-symbols-outlined text-[18px]" data-icon="calendar_today">calendar_today</span>
+<span class="line-through text-on-surface-variant/50">Hôm qua, 15:00 - 17:00</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body text-body">
+<img alt="CarePartner" class="w-6 h-6 rounded-full object-cover grayscale opacity-70" data-alt="A small circular avatar of a sporty male CarePartner, looking friendly and energetic. Wearing a polo shirt. Soft bright lighting, professional portrait." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-jNXQwRtrwaRK9JY6jrIFiDjR3kTs236PipqDKEwrSDKrrvy5nrWCW7wQMCHaq22_E1JfMNHG_2GM1Lap14ptN56wDKQikcbn_YbN4KRh6-9ebJahKS4VI-XFBS6bW4TcSrpaMjQj4-XvTJ1WSyxfwhfZ0hkXlRCcBqwPIVdl0aD5Jl52S5o2kEuAlHfbU_XHleYfZhjqDDTi8CKJepyBU_6heiVihJaIeU--yG7vj6TpzupI9JCi"/>
+<span>Lê Văn Nam (CarePartner)</span>
+</div>
+</div>
+<div class="flex justify-between items-center mt-auto pt-sm border-t border-surface-container-highest">
+<div class="font-h3 text-h3 text-on-surface-variant">180.000đ</div>
+<button class="px-md py-xs rounded-full bg-surface-container text-on-surface-variant font-caption text-caption hover:bg-surface-container-high transition-colors">Đánh giá</button>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on md and above) -->
+<nav class="md:hidden bg-surface dark:bg-surface-container fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-container shadow-lg fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pb-sm pt-xs">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-xs" data-icon="home">home</span>
+<span class="font-caption text-caption">Home</span>
+</a>
+<!-- Diary (My Tasks conceptually maps to Diary/Schedule) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-xs icon-fill" data-icon="event_note">event_note</span>
+<span class="font-caption text-caption">Diary</span>
+</a>
+<!-- AI Assistant -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-xs" data-icon="bolt">bolt</span>
+<span class="font-caption text-caption">AI Assistant</span>
+</a>
+<!-- Tracking -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-xs" data-icon="location_on">location_on</span>
+<span class="font-caption text-caption">Tracking</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-xs" data-icon="person">person</span>
+<span class="font-caption text-caption">Profile</span>
+</a>
+</nav>
+</body></html>

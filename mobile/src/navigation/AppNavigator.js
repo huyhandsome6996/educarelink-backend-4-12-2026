@@ -71,14 +71,15 @@ import ImagePreviewScreen from '../screens/ImagePreviewScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// === Custom Tab Bar Icon with refined indicator ===
+// === Custom Tab Bar — Warm Professionalism pill style ===
+// Active tab: orange pill bg, white icon + label
+// Inactive tab: muted icon + label, transparent bg
 function TabIcon({ name, focused, color }) {
+  const bg = focused ? COLORS.primary : 'transparent';
+  const fg = focused ? '#FFFFFF' : COLORS.textMuted;
   return (
-    <View style={styles.tabIconContainer}>
-      <View style={[styles.iconBg, focused && { backgroundColor: COLORS.primaryLight }]}>
-        <Ionicons name={name} size={22} color={color} />
-      </View>
-      {focused && <View style={[styles.activeIndicator, { backgroundColor: color }]} />}
+    <View style={[styles.tabPill, { backgroundColor: bg }]}>
+      <Ionicons name={name} size={22} color={fg} />
     </View>
   );
 }
@@ -95,7 +96,7 @@ function ParentTabs() {
           else if (route.name === 'Chatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -106,7 +107,7 @@ function ParentTabs() {
       })}
     >
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Hoạt động' }} />
+      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Nhiệm vụ' }} />
       <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
     </Tab.Navigator>
   );
@@ -125,7 +126,7 @@ function WorkerTabs() {
           else if (route.name === 'WorkerProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -260,34 +261,34 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: COLORS.surface,
     borderTopWidth: 0,
-    height: Platform.OS === 'ios' ? 88 : 84,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 24,
-    paddingTop: 6,
-    boxShadow: '0px -2px 12px rgba(242, 101, 34, 0.06)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: Platform.OS === 'ios' ? 88 : 76,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 18,
+    paddingTop: 8,
+    paddingHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 8,
   },
   tabBarLabel: {
     ...TYPO.caption,
-    marginTop: 2,
+    marginTop: 4,
+    fontSize: 11,
   },
   tabBarItem: {
     paddingTop: 2,
+    paddingHorizontal: 4,
   },
-  tabIconContainer: {
+  tabPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-  },
-  iconBg: {
-    width: 40,
-    height: 28,
-    borderRadius: SIZES.radiusSm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeIndicator: {
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-    marginTop: 2,
+    minWidth: 56,
+    minHeight: 40,
   },
 });
