@@ -57,6 +57,7 @@ export const COLORS = {
   // Trạng thái — giữ nguyên, lưu ý DESIGN.md dùng error #ba1a1a đậm hơn
   success:       '#10B981',
   successBg:     '#ECFDF5',
+  successDeep:   '#1E9439',  // QA-FIX-UI 2.1: text/icon trên nền successBg (đậm hơn success cho contrast AAA)
   warning:       '#F59E0B',
   warningBg:     '#FFFBEB',
   error:         '#EF4444',

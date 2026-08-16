@@ -23,6 +23,16 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// QA-FIX-UI 2.1: Mock data lịch rảnh trong tuần.
+// Backend chưa có field availability cho Worker → dùng mock cố định
+// khớp với screen.png. Khi backend bổ sung field thật, thay bằng
+// profile.availability (cấu trúc mong muốn: { morning: [7 bool], afternoon: [7 bool] }).
+const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const AVAILABILITY_MOCK = {
+  morning:   [true, true, false, true, false, true, true],
+  afternoon: [false, true, true, false, true, true, false],
+};
+
 export default function CandidateProfileScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -227,6 +237,58 @@ export default function CandidateProfileScreen() {
             </View>
           </View>
         )}
+
+        {/* Section: Lịch rảnh trong tuần — MOCK (QA-FIX-UI 2.1)
+            Backend chưa có field availability cho Worker (core/models.py
+            chưa định nghĩa) → dùng mock data cố định. Khi backend thêm
+            field thật, thay AVAILABILITY_MOCK bằng profile.availability. */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lịch rảnh trong tuần</Text>
+          <View style={styles.availabilityCard}>
+            {/* Header row: 7 cột ngày T2–CN */}
+            <View style={styles.availHeaderRow}>
+              {DAYS.map((d) => (
+                <View key={d} style={styles.availDayCell}>
+                  <Text style={styles.availDayLabel}>{d}</Text>
+                </View>
+              ))}
+            </View>
+            {/* Morning row */}
+            <View style={styles.availSlotBlock}>
+              <Text style={styles.availSlotLabel}>Sáng (08:00 - 12:00)</Text>
+              <View style={styles.availRow}>
+                {AVAILABILITY_MOCK.morning.map((avail, idx) => (
+                  <View
+                    key={`m-${idx}`}
+                    style={[
+                      styles.availCell,
+                      avail ? styles.availCellAvailable : styles.availCellBusy,
+                    ]}
+                  >
+                    {avail && <Ionicons name="checkmark" size={14} color={COLORS.successDeep} />}
+                  </View>
+                ))}
+              </View>
+            </View>
+            {/* Afternoon row */}
+            <View style={styles.availSlotBlock}>
+              <Text style={styles.availSlotLabel}>Chiều (13:00 - 17:00)</Text>
+              <View style={styles.availRow}>
+                {AVAILABILITY_MOCK.afternoon.map((avail, idx) => (
+                  <View
+                    key={`a-${idx}`}
+                    style={[
+                      styles.availCell,
+                      avail ? styles.availCellAvailable : styles.availCellBusy,
+                    ]}
+                  >
+                    {avail && <Ionicons name="checkmark" size={14} color={COLORS.successDeep} />}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* Section: Đánh giá từ phụ huynh */}
         <View style={styles.section}>
@@ -656,5 +718,50 @@ const styles = StyleSheet.create({
   approveBtnText: {
     ...TYPO.h4,
     color: '#ffffff',
+  },
+  // === AVAILABILITY SECTION (QA-FIX-UI 2.1) ===
+  availabilityCard: {
+    backgroundColor: COLORS.primaryLight,  // #FFF4ED — primaryLight (khớp design HTML)
+    borderRadius: 20,
+    padding: 16,
+  },
+  availHeaderRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 12,
+  },
+  availDayCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  availDayLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '700',
+  },
+  availSlotBlock: {
+    marginBottom: 8,
+  },
+  availSlotLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    marginBottom: 6,
+  },
+  availRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  availCell: {
+    flex: 1,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  availCellAvailable: {
+    backgroundColor: COLORS.successBg,  // #ECFDF5 — xanh nhạt (gần design #EAFBEF)
+  },
+  availCellBusy: {
+    backgroundColor: COLORS.surfaceContainer,  // surface-variant (xám nhạt — ô bận)
   },
 });
