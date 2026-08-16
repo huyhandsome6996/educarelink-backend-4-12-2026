@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Menu items — những mục chưa có screen → showComingSoon
 const MENU_ITEMS = [
@@ -42,6 +43,7 @@ const MENU_ITEMS = [
 
 export default function ParentProfileScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
 
   // Modal state cho "Yêu cầu sửa hồ sơ" — pattern giống WorkerProfileScreen
@@ -123,7 +125,7 @@ export default function ParentProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <View style={styles.avatarSmall}>
           <Ionicons name="person" size={18} color={COLORS.primary} />
         </View>
@@ -357,7 +359,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
   },

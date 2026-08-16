@@ -13,6 +13,7 @@ import {
   getDeviceStatus, getOfflineAlerts,
 } from '../../api/tracking';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const POLL_INTERVAL_MS = 5000; // Parent poll location mỗi 5s
 const DEVICE_STATUS_POLL_MS = 10000; // Parent poll device status mỗi 10s
@@ -30,6 +31,7 @@ const GEOFENCE_RADIUS = 500; // mét
 
 export default function LiveTrackingScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const { taskId, taskTitle, taskLatitude, taskLongitude, workerPhone } = route.params || {};
   // Fix H14: lưu workerPhone truyền qua navigation param để gọi điện.
@@ -315,7 +317,7 @@ export default function LiveTrackingScreen() {
     return (
       <View style={styles.errorContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 32 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
           </TouchableOpacity>
@@ -560,7 +562,7 @@ const styles = StyleSheet.create({
   // Header — trắng theo Warm Professionalism
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 12, paddingTop: 56, paddingBottom: 14,
+    paddingHorizontal: 12, paddingBottom: 14,
     backgroundColor: COLORS.surface, // trắng thay vì cam
     borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant,
   },

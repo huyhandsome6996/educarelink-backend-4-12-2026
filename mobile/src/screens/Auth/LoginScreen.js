@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') {
@@ -34,6 +35,7 @@ const showAlert = (title, message) => {
 
 export default function LoginScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -97,7 +99,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 48 }]} showsVerticalScrollIndicator={false}>
 
         {/* Header — centered, no logo box (theo design HTML) */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -256,7 +258,6 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 20, // margin-mobile = 20px
-    paddingTop: 72,
     paddingBottom: 40,
   },
   // Header

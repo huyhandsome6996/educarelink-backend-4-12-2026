@@ -3,6 +3,7 @@ import { Platform, AppState, Alert, Linking, Vibration, View, ActivityIndicator,
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { storage } from './src/utils/storage';
@@ -254,9 +255,11 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <AppNavigator />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

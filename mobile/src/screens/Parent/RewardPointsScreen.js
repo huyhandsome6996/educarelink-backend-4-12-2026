@@ -24,9 +24,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { MOCK_REWARDS, MOCK_VOUCHERS, MOCK_HISTORY } from '../../mocks/rewardPointsMock';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function RewardPointsScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const progressPercent = (MOCK_REWARDS.currentPoints / MOCK_REWARDS.nextTierPoints) * 100;
   const pointsToNext = MOCK_REWARDS.nextTierPoints - MOCK_REWARDS.currentPoints;
@@ -96,7 +98,7 @@ export default function RewardPointsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -217,7 +219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,

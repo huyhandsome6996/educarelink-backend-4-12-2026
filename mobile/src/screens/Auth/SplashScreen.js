@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES, TYPO } from '../../theme/colors';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SplashScreen() {
   const navigation = useNavigation();
@@ -97,7 +98,7 @@ export default function SplashScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.primary }} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
       {/* Background decorative circles — subtle white shapes */}
@@ -169,7 +170,7 @@ export default function SplashScreen() {
         </View>
         <Text style={styles.loaderCaption}>Đang tải dữ liệu...</Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { completeOnboarding } from '../../api/onboarding';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,7 @@ const SLIDES = [
 
 export default function ParentOnboardingScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user, completeOnboardingInContext } = useAuth();
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -141,7 +143,7 @@ export default function ParentOnboardingScreen() {
       </View>
 
       {/* Bottom half — content area */}
-      <View style={styles.contentArea}>
+      <View style={[styles.contentArea, { paddingTop: insets.top + 32 }]}>
         {/* Active slide title + description */}
         <Animated.View
           style={[
@@ -256,7 +258,6 @@ const styles = StyleSheet.create({
   contentArea: {
     backgroundColor: COLORS.surfaceWarm,
     paddingHorizontal: 20, // margin-mobile
-    paddingTop: 32, // pt-xl
     paddingBottom: 48, // pb-xxl
     alignItems: 'center',
   },

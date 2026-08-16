@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ROLES = [
   {
@@ -124,6 +125,7 @@ const renderImagePicker = (label, image, setter) => (
 
 export default function RegisterScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { register } = useAuth();
 
   const [selectedRole, setSelectedRole] = useState('parent');
@@ -254,7 +256,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 32 }]} showsVerticalScrollIndicator={false}>
 
         {/* Back button */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -523,7 +525,6 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 20, // margin-mobile
-    paddingTop: 56,
     paddingBottom: 44,
   },
   // Back button

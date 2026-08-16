@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -42,6 +43,7 @@ const CATEGORIES = [
 
 export default function CreateTaskScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [selectedCat, setSelectedCat] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -169,7 +171,7 @@ export default function CreateTaskScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng, back + title + spacer */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -433,7 +435,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
