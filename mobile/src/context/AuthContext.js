@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
 import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
@@ -7,9 +7,42 @@ import apiClient from '../api/client';
 
 const AuthContext = createContext(null);
 
+// ====================================================================
+// v1.1.2 FIX: Push token registration chạy nền (fire-and-forget)
+// Bug cũ: `await registerForPushNotificationsAsync()` block login flow
+// 5+ phút nếu Expo Push service hang → user thấy spinner "Đăng nhập"
+// treo vô hạn sau khi logout → login lại.
+//
+// Fix: Tách push registration thành helper async riêng, KHÔNG await trong
+// login()/loginWithOAuth(). Gọi helper rồi tiếp tục ngay — user được navigate
+// sang home screen ngay lập tức. Push token nếu lấy được sẽ tự sync lên backend
+// trong nền.
+//
+// Lớp phòng vệ 2: bản thân `registerForPushNotificationsAsync` trong
+// notifications.js cũng đã có timeout 8s, nên dù có race condition cũng
+// không bao giờ hang vô hạn.
+// ====================================================================
+async function syncPushTokenToBackend() {
+  try {
+    const pushToken = await registerForPushNotificationsAsync();
+    if (!pushToken) return;
+    await apiClient.patch('/profile/', { expo_push_token: pushToken });
+    console.log('[AuthContext] Push token synced to backend');
+  } catch (e) {
+    // Non-fatal — push notification là tính năng phụ, không block app
+    console.warn('[AuthContext] Push token sync failed (non-fatal):', e?.message || e);
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);      // Thông tin user đang đăng nhập
   const [isLoading, setIsLoading] = useState(true); // Kiểm tra token lúc app khởi động
+  // Track mounted để tránh setState sau unmount (defensive)
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Khi app mở lại — kiểm tra xem đã có token chưa
   useEffect(() => {
@@ -43,20 +76,14 @@ export function AuthProvider({ children }) {
     await storage.setItem('user_role', role);
     if (is_staff) await storage.setItem('is_staff', 'true');
 
-    // Lấy full profile
+    // Lấy full profile — đây là bước cuối block login
     const profileResp = await getProfile();
     setUser(profileResp.data);
 
-    // Register push token
-    try {
-      const pushToken = await registerForPushNotificationsAsync();
-      if (pushToken) {
-        await apiClient.patch('/profile/', { expo_push_token: pushToken });
-        console.log('Push token sent to backend successfully');
-      }
-    } catch (e) {
-      console.log('Failed to send push token to backend', e);
-    }
+    // v1.1.2: Push token registration — FIRE AND FORGET.
+    // Không await — user được navigate sang home screen ngay lập tức.
+    // Push token sẽ sync nền, không ảnh hưởng login UX.
+    syncPushTokenToBackend();
 
     return profileResp.data;
   };
@@ -89,14 +116,8 @@ export function AuthProvider({ children }) {
     const profileResp = await getProfile();
     setUser(profileResp.data);
 
-    try {
-      const pushToken = await registerForPushNotificationsAsync();
-      if (pushToken) {
-        await apiClient.patch('/profile/', { expo_push_token: pushToken });
-      }
-    } catch (e) {
-      console.log('Failed to send push token', e);
-    }
+    // v1.1.2: Push token registration — FIRE AND FORGET (giống login)
+    syncPushTokenToBackend();
 
     return profileResp.data;
   };
