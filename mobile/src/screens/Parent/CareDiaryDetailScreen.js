@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   cpAvatarText: {
     ...TYPO.h2,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
   },
   cpVerifiedBadge: {
     position: 'absolute',

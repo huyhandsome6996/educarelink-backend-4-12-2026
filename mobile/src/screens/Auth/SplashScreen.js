@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     ...TYPO.h1,
     fontSize: 32,           // phóng to hơn h1 mặc định (28) cho splash
     fontWeight: '900',
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
     textAlign: 'center',
     marginBottom: SIZES.sm,
     letterSpacing: -0.6,

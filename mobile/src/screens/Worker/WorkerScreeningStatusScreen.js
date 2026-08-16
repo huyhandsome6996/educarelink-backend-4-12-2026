@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   interviewBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   supportBtn: {
     borderRadius: 14,

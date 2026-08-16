@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   },
   imageOverlayText: {
     ...TYPO.caption,
-    color: '#fff',
+    color: COLORS.textOnPrimary,
   },
   // Info box
   infoBox: {
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.7 },
   registerBtnText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   // Login link
   loginRow: {

@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   },
   stepTextActive: {
     ...TYPO.caption,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   stepLine: {
     flex: 1,
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     color: COLORS.onSurface,
   },
   chipTextActive: {
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
   priceHintBox: {
     flexDirection: 'row',
@@ -726,6 +726,6 @@ const styles = StyleSheet.create({
   },
   submitText: {
     ...TYPO.h4,
-    color: '#ffffff',
+    color: COLORS.textOnPrimary,
   },
 });
