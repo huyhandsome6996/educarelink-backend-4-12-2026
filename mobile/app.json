@@ -2,7 +2,7 @@
   "expo": {
     "name": "EduCareLink",
     "slug": "educarelink",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -54,7 +54,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -62,6 +62,7 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-font",
+      "expo-splash-screen",
       "expo-location",
       "expo-background-fetch",
       [
