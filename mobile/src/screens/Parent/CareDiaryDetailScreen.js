@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { MOCK_DIARY } from '../../mocks/careDiaryMock';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_STYLE = {
   done: { icon: 'checkmark', color: COLORS.secondary, border: COLORS.secondary, label: 'Hoàn thành' },
@@ -34,6 +35,7 @@ const STATUS_STYLE = {
 
 export default function CareDiaryDetailScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [diary] = useState(MOCK_DIARY);
 
   return (
@@ -41,7 +43,7 @@ export default function CareDiaryDetailScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceContainerLow} />
 
       {/* Top App Bar */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -196,7 +198,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surfaceContainerLow,
   },

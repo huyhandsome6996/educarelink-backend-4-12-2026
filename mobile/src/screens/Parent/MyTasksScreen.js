@@ -24,6 +24,7 @@ import { getMyTasksAsParent, getCandidates, updateTaskStatus } from '../../api/t
 import { checkConsent } from '../../api/tracking';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TABS = [
   { key: 'open',        label: 'Đang chờ' },
@@ -69,6 +70,7 @@ const STATUS_STYLE = {
 
 export default function MyTasksScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('open');
   const [isLoading, setIsLoading] = useState(true);
@@ -355,7 +357,7 @@ export default function MyTasksScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Header — surface-container-low bg */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 32 }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Nhiệm vụ của tôi</Text>
           <Text style={styles.headerSubtitle}>Quản lý và theo dõi các dịch vụ chăm sóc.</Text>
@@ -429,7 +431,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 56,
     paddingBottom: 16,
     backgroundColor: COLORS.surfaceContainerLow, // surface-container-low (ấm)
   },

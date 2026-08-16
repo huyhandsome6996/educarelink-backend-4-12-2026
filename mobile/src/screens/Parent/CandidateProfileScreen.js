@@ -21,9 +21,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { getWorkerProfile, approveCandidate } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CandidateProfileScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const { workerId, applicationId, isPending } = route.params || {};
   const [profile, setProfile] = useState(null);
@@ -94,7 +96,7 @@ export default function CandidateProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -307,7 +309,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
   },

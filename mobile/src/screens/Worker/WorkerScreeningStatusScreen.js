@@ -30,6 +30,7 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_SCREENING_STATUS, APPROVED_SCREENING_STATUS } from '../../mocks/workerScreeningMock';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // === Chọn status dựa trên user.is_verified từ API thật ===
 // user.is_verified === true  → tất cả steps done, stage = 'Đã duyệt'
@@ -70,6 +71,7 @@ const STEP_STATUS_STYLE = {
 
 export default function WorkerScreeningStatusScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   // Nối thật field is_verified từ API /profile/ — nếu đã verified → hiện stage "Đã duyệt"
   const [status] = useState(() => getScreeningStatusForUser(user));
@@ -83,7 +85,7 @@ export default function WorkerScreeningStatusScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -217,7 +219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,

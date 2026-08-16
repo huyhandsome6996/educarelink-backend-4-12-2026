@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // === MOCK DATA — thay bằng API khi backend sẵn sàng ===
 const MOCK_BOOKING = {
@@ -68,6 +69,7 @@ const CANCEL_REASONS = [
 
 export default function CancellationPolicyScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [booking] = useState(MOCK_BOOKING);
   const [selectedReason, setSelectedReason] = useState(null);
   const [note, setNote] = useState('');
@@ -91,7 +93,7 @@ export default function CancellationPolicyScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Top App Bar */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -249,7 +251,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,

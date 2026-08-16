@@ -22,6 +22,7 @@ import { getCandidates, approveCandidate, getWorkerProfile } from '../../api/tas
 import { getCandidateRecommendations } from '../../api/ai_recommendations';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Filter chips — cosmetic (không thay đổi logic filter hiện tại)
 const FILTER_CHIPS = [
@@ -33,6 +34,7 @@ const FILTER_CHIPS = [
 
 export default function CandidatesScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const { taskId, taskTitle } = route.params || {};
   const [candidates, setCandidates] = useState([]);
@@ -274,7 +276,7 @@ export default function CandidatesScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 32 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.appBarBtn}
@@ -379,7 +381,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
   },

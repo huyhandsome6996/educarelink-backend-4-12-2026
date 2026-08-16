@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -114,6 +115,7 @@ const getGreeting = () => {
 
 export default function ParentHomeScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,7 +196,7 @@ export default function ParentHomeScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng, avatar + brand + bell */}
-      <View style={styles.appBar}>
+      <View style={[styles.appBar, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
         <TouchableOpacity
           style={styles.avatar}
           onLongPress={handleAvatarLongPress}
@@ -414,7 +416,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20, // margin-mobile
-    paddingVertical: 12, // py-sm
+    paddingBottom: 12, // py-sm (paddingTop moved inline for safe area)
     backgroundColor: COLORS.surface, // surface (trắng)
   },
   avatar: {
