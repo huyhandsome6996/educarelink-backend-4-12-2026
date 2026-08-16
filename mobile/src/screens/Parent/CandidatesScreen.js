@@ -163,7 +163,7 @@ export default function CandidatesScreen() {
 
           <View style={styles.cardInfo}>
             <View style={styles.cardNameRow}>
-              <Text style={styles.cardName} numberOfLines={1}>{c.worker_name}</Text>
+              <Text style={styles.cardName} numberOfLines={1} ellipsizeMode="tail">{c.worker_name}</Text>
               <Ionicons name="shield-checkmark" size={14} color={COLORS.secondary} />
             </View>
             <View style={styles.cardRatingRow}>
@@ -307,7 +307,7 @@ export default function CandidatesScreen() {
       {taskTitle ? (
         <View style={styles.taskBar}>
           <Ionicons name="document-text-outline" size={14} color={COLORS.onSurfaceVariant} />
-          <Text style={styles.taskBarText} numberOfLines={1}>{taskTitle}</Text>
+          <Text style={styles.taskBarText} numberOfLines={1} ellipsizeMode="tail">{taskTitle}</Text>
         </View>
       ) : null}
 

@@ -5,12 +5,14 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { updateCertificate } from '../../api/auth';
 import { submitCredential, requestProfileChange } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
 
 export default function WorkerProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [isUploading, setIsUploading] = React.useState(false);
@@ -191,7 +193,7 @@ export default function WorkerProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Header cam */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.headerTopRow}>
             <View style={{ width: 40 }} />
             <Text style={styles.headerTitle}>Hồ sơ</Text>
@@ -449,7 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingBottom: 16, width: '100%',
   },
-  headerTitle: { ...TYPO.h5, color: '#fff', fontWeight: '700' },
+  headerTitle: { ...TYPO.h5, color: COLORS.textOnPrimary, fontWeight: '700' },
   headerDeco1: {
     position: 'absolute', top: -40, right: -30,
     width: 140, height: 140, borderRadius: 70,
@@ -481,8 +483,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { color: '#fff', ...TYPO.h1, fontSize: 34 },
-  name: { ...TYPO.h2, color: '#fff' },
+  avatarText: { color: COLORS.textOnPrimary, ...TYPO.h1, fontSize: 34 },
+  name: { ...TYPO.h2, color: COLORS.textOnPrimary },
   username: { ...TYPO.bodySmall, color: 'rgba(255,255,255,0.7)' },
   verifiedBadge: {
     flexDirection: 'row', gap: 6, alignItems: 'center',
@@ -494,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245,158,11,0.15)',
     borderColor: 'rgba(245,158,11,0.3)',
   },
-  verifiedText: { ...TYPO.caption, color: '#fff' },
+  verifiedText: { ...TYPO.caption, color: COLORS.textOnPrimary },
   // === AI ===
   aiCard: {
     margin: SIZES.md, backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusMd,
@@ -603,5 +605,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     ...SHADOWS.large,
   },
-  modalSubmitText: { color: '#fff', ...TYPO.button, fontSize: 15 },
+  modalSubmitText: { color: COLORS.textOnPrimary, ...TYPO.button, fontSize: 15 },
 });

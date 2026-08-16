@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { getWorkerRecommendations } from '../../api/ai_recommendations';
@@ -23,6 +24,7 @@ const CATEGORY_MAP = [
 
 export default function WorkerFeedScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -277,7 +279,7 @@ export default function WorkerFeedScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         {/* Decorative circles */}
         <View style={styles.headerDeco1} />
         <View style={styles.headerDeco2} />
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
   // === HEADER ===
   header: {
     backgroundColor: COLORS.primary,
-    paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20,
+    paddingBottom: 20, paddingHorizontal: 20,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     overflow: 'hidden',
     position: 'relative',
@@ -353,7 +355,7 @@ const styles = StyleSheet.create({
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   headerGreet: { ...TYPO.overline, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' },
-  headerName: { ...TYPO.h2, color: '#fff' },
+  headerName: { ...TYPO.h2, color: COLORS.textOnPrimary },
   notifBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
@@ -429,7 +431,7 @@ const styles = StyleSheet.create({
     boxShadow: '0px 0px 4px rgba(0, 0, 0, 0.05)',
     opacity: 0.7,
   },
-  applyBtnText: { color: '#fff', ...TYPO.buttonSmall },
+  applyBtnText: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall },
   // === EMPTY ===
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyIconCircle: {
