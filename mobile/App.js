@@ -27,9 +27,21 @@ import {
 // ====================================================================
 // App — EduCareLink
 // ====================================================================
-// v1.1.2: Đổi useFonts → Font.loadAsync thủ công + timeout fallback
-// Nếu font load throw hoặc hang >3s → render app với system font anyway
-// (tránh black screen khi @expo-google-fonts không load được trong release)
+// v1.1.4: FIX "Cannot read property 'user' of null" crash on launch
+// Bug: useAutoResumeTracking() và useBackgroundFetch() gọi useAuth() để
+// lấy `user`, nhưng chúng được gọi trong AppInner — nằm OUTSIDE AuthProvider
+// (AuthProvider wrap AppNavigator trong return, không wrap AppInner).
+// → useContext(AuthContext) trả về null (default) → `const { user } = null`
+// → TypeError crash.
+//
+// Fix: Tách AppContent — component con nằm INSIDE AuthProvider. Các hook
+// cần auth (useAutoResumeTracking, useBackgroundFetch) được gọi trong
+// AppContent thay vì AppInner. Các hook không cần auth (useNotificationChannels,
+// useTaskEndedListener, useAppFonts) vẫn ở AppInner.
+//
+// Lớp phòng vệ 2: AuthContext giờ có default value an toàn (không null),
+// nên dù sau này có ai vô tình gọi useAuth() ngoài AuthProvider cũng không
+// crash app.
 // ====================================================================
 
 const BACKGROUND_FETCH_TASK = 'educarelink-background-fetch';
@@ -90,7 +102,7 @@ function useNotificationChannels() {
         description: 'Cảnh báo khi Carepartner rời vùng an toàn',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 500, 250, 500, 250, 500],
-        lightColor: '#F59E0B',
+        lightColor: '#F59B0B',
         sound: 'default',
         enableVibrate: true,
         showBadge: true,
@@ -112,6 +124,10 @@ function useNotificationChannels() {
   }, []);
 }
 
+// ====================================================================
+// Hook: Auto-resume tracking khi app mở lại + clear khi task ended
+// PHẢI được gọi INSIDE AuthProvider (cần useAuth() để biết user)
+// ====================================================================
 function useAutoResumeTracking() {
   const { user } = useAuth();
   useEffect(() => {
@@ -159,6 +175,10 @@ function useTaskEndedListener() {
   }, []);
 }
 
+// ====================================================================
+// Hook: Register background fetch (giữ app sống khi task in_progress)
+// PHẢI được gọi INSIDE AuthProvider (cần useAuth() để biết user)
+// ====================================================================
 function useBackgroundFetch() {
   const { user } = useAuth();
   useEffect(() => {
@@ -194,8 +214,6 @@ function useAppFonts() {
 
     const load = async () => {
       try {
-        // Timeout 3s — nếu Font.loadAsync hang (hiếm nhưng đã từng xảy ra
-        // trong release với @expo-google-fonts), vẫn render app với system font
         timeoutHandle = setTimeout(() => {
           if (mounted) {
             console.warn('[App] Font load timed out after 3s — rendering with system fonts');
@@ -221,7 +239,6 @@ function useAppFonts() {
         if (mounted) {
           setError(e);
           clearTimeout(timeoutHandle);
-          // Render app anyway with system fonts — better than black screen
           setLoaded(true);
         }
       }
@@ -237,13 +254,25 @@ function useAppFonts() {
   return { loaded, error };
 }
 
+// ====================================================================
+// AppContent — component con nằm INSIDE AuthProvider
+// Chứa các hook cần auth (useAutoResumeTracking, useBackgroundFetch)
+// v1.1.4 FIX: Trước đây 2 hook này gọi useAuth() từ AppInner (ngoài
+// AuthProvider) → useContext trả null → crash "Cannot read property
+// 'user' of null". Giờ move vào đây để chắc chắn có AuthProvider wrap.
+// ====================================================================
+function AppContent() {
+  useAutoResumeTracking();
+  useBackgroundFetch();
+  return <AppNavigator />;
+}
+
 function AppInner() {
   const { loaded, error } = useAppFonts();
 
+  // useNotificationChannels + useTaskEndedListener không cần auth → giữ ở đây
   useNotificationChannels();
-  useAutoResumeTracking();
   useTaskEndedListener();
-  useBackgroundFetch();
 
   if (!loaded) {
     return (
@@ -256,7 +285,8 @@ function AppInner() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppNavigator />
+        {/* AppContent chứa các hook cần auth — phải nằm trong AuthProvider */}
+        <AppContent />
       </AuthProvider>
     </SafeAreaProvider>
   );

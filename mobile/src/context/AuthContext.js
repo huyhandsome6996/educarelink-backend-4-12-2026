@@ -5,7 +5,27 @@ import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import apiClient from '../api/client';
 
-const AuthContext = createContext(null);
+// ====================================================================
+// v1.1.4 FIX: Default context value an toàn (không null)
+// Trước đây default là null → nếu useAuth() được gọi ngoài AuthProvider
+// (lỗi architect), `const { user } = null` crash app.
+// Giờ default là object có user: null, isLoading: true, các hàm no-op
+// → component gọi useAuth() ngoài AuthProvider vẫn render được (không crash),
+// chỉ không có auth functionality. Lớp phòng vệ 2 cho bug v1.1.4.
+// ====================================================================
+const NOOP_ASYNC = async () => {
+  console.warn('[AuthContext] useAuth() called outside AuthProvider — returning no-op');
+};
+const AuthContext = createContext({
+  user: null,
+  isLoading: true,
+  login: NOOP_ASYNC,
+  register: NOOP_ASYNC,
+  logout: NOOP_ASYNC,
+  loginWithOAuth: NOOP_ASYNC,
+  refreshUser: NOOP_ASYNC,
+  completeOnboardingInContext: NOOP_ASYNC,
+});
 
 // ====================================================================
 // v1.1.2 FIX: Push token registration chạy nền (fire-and-forget)
