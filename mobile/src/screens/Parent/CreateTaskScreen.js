@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import MapPickerModal from '../../components/MapPickerModal';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -91,6 +92,10 @@ export default function CreateTaskScreen() {
   const [enableGeofence, setEnableGeofence] = useState(false);
   const [geofenceRadius, setGeofenceRadius] = useState('500');
 
+  // Map picker state — lưu toạ độ đã chọn trên bản đồ
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [pickedCoords, setPickedCoords] = useState(null); // { latitude, longitude, address }
+
   const handleSubmit = async () => {
     if (!title || !description || !location || !date || !time || !price) {
       Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ tất cả các trường.');
@@ -115,13 +120,22 @@ export default function CreateTaskScreen() {
         price: parseInt(price),
       };
 
-      // ===== GEOFENCE (nếu parent bật) =====
-      // Mobile chưa có map picker nên dùng location mặc định null
-      // Parent có thể set geofence sau khi tạo task trên web
-      // Hoặc nếu parent dùng app có GPS, ta xin quyền location và dùng làm tâm vùng
-      if (enableGeofence) {
+      // ===== TỌA ĐỘ TỪ MAP PICKER =====
+      // Nếu parent đã chọn vị trí trên bản đồ → gán làm toạ độ task
+      // VÀ làm tâm vùng geofence (nếu bật) — đúng semantics: vùng an toàn
+      // quanh nơi làm việc, không phải quanh vị trí parent hiện tại.
+      if (pickedCoords) {
+        taskData.latitude = pickedCoords.latitude;
+        taskData.longitude = pickedCoords.longitude;
+        if (enableGeofence) {
+          taskData.geofence_lat = pickedCoords.latitude;
+          taskData.geofence_lng = pickedCoords.longitude;
+          taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
+        }
+      } else if (enableGeofence) {
+        // Fallback: nếu parent bật geofence nhưng chưa chọn trên map →
+        // xin quyền location và dùng vị trí hiện tại (giữ behaviour cũ)
         try {
-          // Xin quyền location
           const LocationModule = await import('expo-location');
           const { status } = await LocationModule.requestForegroundPermissionsAsync();
           if (status === 'granted') {
@@ -130,12 +144,9 @@ export default function CreateTaskScreen() {
             taskData.geofence_lng = loc.coords.longitude;
             taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
           } else {
-            // Fix M9: trước đây có 2 button mà cả 2 đều dẫn tới return —
-            // "double-return" gây nhầm lẫn. Gom còn 1 button "Bỏ qua geofence"
-            // (tắt toggle và return để user submit lại không có geofence).
             Alert.alert(
-              'Cần quyền vị trí',
-              'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bấm bỏ qua để đăng việc không có geofence.',
+              'Cần chọn vị trí trên bản đồ',
+              'Bạn chưa chọn vị trí trên bản đồ và chưa cấp quyền vị trí. Hãy bấm "Chọn vị trí trên bản đồ" để chọn, hoặc cấp quyền vị trí để dùng vị trí hiện tại.',
               [
                 { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
               ]
@@ -145,7 +156,6 @@ export default function CreateTaskScreen() {
           }
         } catch (e) {
           console.warn('Location permission error:', e);
-          // Vẫn tiếp tục submit không có geofence
         }
       }
 
@@ -210,7 +220,26 @@ export default function CreateTaskScreen() {
               placeholder="Địa điểm thực hiện *" placeholderTextColor={COLORS.textMuted}
               value={location} onChangeText={setLocation}
               onFocus={() => setLocationFocused(true)} onBlur={() => setLocationFocused(false)} />
+            <TouchableOpacity
+              style={styles.mapPickerBtn}
+              onPress={() => setShowMapPicker(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel="Chọn vị trí trên bản đồ"
+            >
+              <Ionicons name="map-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.mapPickerBtnText}>Bản đồ</Text>
+            </TouchableOpacity>
           </View>
+          {pickedCoords && (
+            <View style={styles.pickedCoordsInfo}>
+              <Ionicons name="location" size={14} color={COLORS.primary} />
+              <Text style={styles.pickedCoordsText} numberOfLines={1}>
+                {pickedCoords.latitude.toFixed(4)}, {pickedCoords.longitude.toFixed(4)}
+                {pickedCoords.address ? ` — ${pickedCoords.address.substring(0, 60)}${pickedCoords.address.length > 60 ? '...' : ''}` : ''}
+              </Text>
+            </View>
+          )}
           <View style={styles.twoCol}>
             <TouchableOpacity style={[styles.input, { flex: 1, justifyContent: 'center' }]} onPress={handleOpenDatePicker}>
               <Text style={{ ...TYPO.body, color: date ? COLORS.textPrimary : COLORS.textMuted }}>
@@ -299,6 +328,17 @@ export default function CreateTaskScreen() {
           )}
         </TouchableOpacity>
       </View>
+      <MapPickerModal
+        visible={showMapPicker}
+        onPick={(coords) => {
+          setPickedCoords(coords);
+          // Auto-fill location text if empty or update with reverse-geocoded address
+          if (coords.address) {
+            setLocation(coords.address);
+          }
+        }}
+        onClose={() => setShowMapPicker(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -327,6 +367,39 @@ const styles = StyleSheet.create({
   inputInline: { flex: 1, ...TYPO.body, color: COLORS.textPrimary, paddingVertical: 0 },
   priceInput: { flex: 1, ...TYPO.h3, color: COLORS.primary, fontWeight: '700', paddingVertical: 0 },
   inputIcon: { marginRight: 8 },
+  // Map picker button (inside location input row)
+  mapPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight,
+    marginLeft: 8,
+  },
+  mapPickerBtnText: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  // Picked coords info (shown below location input when coords selected)
+  pickedCoordsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight,
+  },
+  pickedCoordsText: {
+    flex: 1,
+    ...TYPO.caption,
+    color: COLORS.primaryDark || COLORS.primary,
+    lineHeight: 18,
+  },
   twoCol: { flexDirection: 'row', gap: 12 },
   currency: { ...TYPO.h5, color: COLORS.textSecondary, marginLeft: 8 },
   footer: { padding: 20, paddingBottom: 36, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
