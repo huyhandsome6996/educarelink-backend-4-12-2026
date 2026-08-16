@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Candidate Profile - EduCareLink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px",
+                        "nav-bottom": "80px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope", "sans-serif"],
+                        "h4": ["Manrope", "sans-serif"],
+                        "h3": ["Manrope", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "caption": ["Plus Jakarta Sans", "sans-serif"],
+                        "h1": ["Manrope", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    },
+                    "boxShadow": {
+                        "sm": "0 1px 2px 0 rgba(242, 101, 34, 0.05)",
+                        "md": "0 4px 6px -1px rgba(242, 101, 34, 0.1), 0 2px 4px -1px rgba(242, 101, 34, 0.06)",
+                        "lg": "0 10px 15px -3px rgba(242, 101, 34, 0.2), 0 4px 6px -2px rgba(242, 101, 34, 0.1)",
+                        "fab": "0 4px 14px 0 rgba(242, 101, 34, 0.39)"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fff8f6; color: #261813; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background pb-nav-bottom min-h-screen">
+<!-- Top Navigation (Contextual Back) -->
+<header class="sticky top-0 z-40 bg-surface/80 backdrop-blur-md px-margin-mobile py-sm flex justify-between items-center w-full">
+<button class="w-[44px] h-[44px] flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back_ios_new</span>
+</button>
+<div class="font-h3 text-h3 text-on-surface">Candidate Profile</div>
+<button class="w-[44px] h-[44px] flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">more_horiz</span>
+</button>
+</header>
+<main class="flex flex-col gap-xl pb-xl">
+<!-- Hero Section: Profile Intro -->
+<section class="px-margin-mobile pt-md">
+<div class="relative w-full rounded-[24px] bg-surface-container-low overflow-hidden shadow-sm flex flex-col items-center pt-xl pb-lg px-md">
+<!-- Background Accent -->
+<div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary-fixed-dim/30 to-transparent"></div>
+<!-- Avatar -->
+<div class="relative z-10 w-32 h-32 rounded-full border-4 border-surface shadow-md overflow-hidden mb-md">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a friendly, approachable young woman in her mid-20s, smiling warmly at the camera. She is wearing a neat, casual business outfit. The lighting is soft and natural, suggesting a safe and reliable caregiving persona. The background is a gently blurred, bright indoor setting with subtle warm orange and green tones reflecting the corporate modern and soft minimalist aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWa4Pvob9NMZiKAaGJOI0xSILAy9FeJZ62BKw2PXi_vSjKcrtYeKeDSCTzJP8VHY9tSEX7pManzItYL_5Y_t8i2YQ_eaKI1RsULEOxym-9bR3E9T-bdP6DfvRrkGp67CUS4wC3kUgJS8aeRZ-aprU-EaAhnM6JxtuWxyg4yLV-utIOLBjaIc5hq1qPoCyXnzmE2JvG7S5QRXnojWh9PVPI8z_RFJ67JWUpw-wiQsyY0LZXhrwk8DbK"/>
+</div>
+<!-- Info -->
+<div class="text-center z-10">
+<h1 class="font-h1 text-h1 text-on-surface mb-xs">Nguyễn Trần Lan Anh</h1>
+<div class="flex items-center justify-center gap-xs mb-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-body text-body text-on-surface-variant">CarePartner Được Chứng Nhận</span>
+</div>
+<!-- Badge -->
+<div class="inline-flex items-center bg-[#FFD700]/20 border border-[#FFD700]/50 rounded-full px-sm py-1 gap-xs mt-xs">
+<span class="material-symbols-outlined text-[#B8860B] text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-[#B8860B]">Hạng Vàng</span>
+</div>
+</div>
+<!-- Quick Stats -->
+<div class="flex justify-around w-full mt-lg pt-md border-t border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-h3 text-h3 text-primary-container">4.9</span>
+<div class="flex items-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="font-caption text-caption ml-1">Đánh giá</span>
+</div>
+</div>
+<div class="w-px h-10 bg-outline-variant/30"></div>
+<div class="flex flex-col items-center">
+<span class="font-h3 text-h3 text-primary-container">150+</span>
+<span class="font-caption text-caption text-on-surface-variant">Giờ chăm sóc</span>
+</div>
+<div class="w-px h-10 bg-outline-variant/30"></div>
+<div class="flex flex-col items-center">
+<span class="font-h3 text-h3 text-primary-container">12</span>
+<span class="font-caption text-caption text-on-surface-variant">Gia đình</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Experience Section (Bento style) -->
+<section class="px-margin-mobile">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Kinh nghiệm &amp; Kỹ năng</h2>
+<div class="grid grid-cols-2 gap-md">
+<!-- Main Exp -->
+<div class="col-span-2 bg-surface-container rounded-[20px] p-md shadow-sm">
+<div class="flex items-start gap-md">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-secondary-fixed-dim shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">child_care</span>
+</div>
+<div>
+<h3 class="font-h4 text-h4 text-on-surface mb-xs">3 năm kinh nghiệm</h3>
+<p class="font-body text-body text-on-surface-variant text-sm">Chuyên chăm sóc trẻ từ 2-6 tuổi. Thiết kế các hoạt động phát triển kỹ năng mềm.</p>
+</div>
+</div>
+</div>
+<!-- Skills Chips -->
+<div class="col-span-2 flex flex-wrap gap-sm">
+<span class="bg-[#F7F7F7] text-[#1A1A2E] px-md py-xs rounded-full font-body text-body text-sm border border-outline-variant/20">Sơ cứu cơ bản</span>
+<span class="bg-[#F7F7F7] text-[#1A1A2E] px-md py-xs rounded-full font-body text-body text-sm border border-outline-variant/20">Nấu ăn dinh dưỡng</span>
+<span class="bg-[#F7F7F7] text-[#1A1A2E] px-md py-xs rounded-full font-body text-body text-sm border border-outline-variant/20">Kể chuyện tương tác</span>
+<span class="bg-[#F7F7F7] text-[#1A1A2E] px-md py-xs rounded-full font-body text-body text-sm border border-outline-variant/20">Hỗ trợ bài tập</span>
+</div>
+</div>
+</section>
+<!-- Certificates (Horizontal Scroll) -->
+<section>
+<div class="px-margin-mobile flex justify-between items-end mb-md">
+<h2 class="font-h2 text-h2 text-on-surface">Chứng chỉ</h2>
+<button class="font-caption text-caption text-primary-container">Xem tất cả</button>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar pl-margin-mobile gap-md pr-margin-mobile pb-sm">
+<!-- Cert 1 -->
+<div class="min-w-[160px] bg-surface-container-low rounded-xl p-md border border-outline-variant/20 flex flex-col items-center text-center snap-start">
+<div class="w-16 h-16 rounded-full bg-[#EAFBEF] text-[#1E9439] flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 0;">health_and_safety</span>
+</div>
+<span class="font-h4 text-h4 text-on-surface text-sm mb-xs">Sơ Cấp Cứu</span>
+<span class="font-caption text-caption text-on-surface-variant">Hội Chữ Thập Đỏ VN</span>
+</div>
+<!-- Cert 2 -->
+<div class="min-w-[160px] bg-surface-container-low rounded-xl p-md border border-outline-variant/20 flex flex-col items-center text-center snap-start">
+<div class="w-16 h-16 rounded-full bg-primary-fixed text-primary flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 0;">psychology</span>
+</div>
+<span class="font-h4 text-h4 text-on-surface text-sm mb-xs">Tâm Lý Học Trẻ Em</span>
+<span class="font-caption text-caption text-on-surface-variant">ĐH Sư Phạm HN</span>
+</div>
+<!-- Cert 3 -->
+<div class="min-w-[160px] bg-surface-container-low rounded-xl p-md border border-outline-variant/20 flex flex-col items-center text-center snap-start">
+<div class="w-16 h-16 rounded-full bg-tertiary-container/20 text-tertiary flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 0;">restaurant</span>
+</div>
+<span class="font-h4 text-h4 text-on-surface text-sm mb-xs">Dinh Dưỡng</span>
+<span class="font-caption text-caption text-on-surface-variant">Viện Dinh Dưỡng QG</span>
+</div>
+</div>
+</section>
+<!-- Availability (Calendar Grid) -->
+<section class="px-margin-mobile">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Lịch rảnh trong tuần</h2>
+<div class="bg-[#FFF4ED] rounded-[20px] p-md">
+<div class="grid grid-cols-7 gap-xs mb-sm text-center">
+<span class="font-caption text-caption text-on-surface-variant">T2</span>
+<span class="font-caption text-caption text-on-surface-variant">T3</span>
+<span class="font-caption text-caption text-on-surface-variant">T4</span>
+<span class="font-caption text-caption text-on-surface-variant">T5</span>
+<span class="font-caption text-caption text-on-surface-variant">T6</span>
+<span class="font-caption text-caption text-on-surface-variant">T7</span>
+<span class="font-caption text-caption text-on-surface-variant">CN</span>
+</div>
+<!-- Morning -->
+<div class="mb-xs">
+<span class="font-caption text-caption text-on-surface-variant block mb-1">Sáng (08:00 - 12:00)</span>
+<div class="grid grid-cols-7 gap-xs">
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-surface-variant/50"></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-surface-variant/50"></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+</div>
+</div>
+<!-- Afternoon -->
+<div>
+<span class="font-caption text-caption text-on-surface-variant block mb-1">Chiều (13:00 - 17:00)</span>
+<div class="grid grid-cols-7 gap-xs">
+<div class="h-8 rounded-md bg-surface-variant/50"></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-surface-variant/50"></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-[#EAFBEF] flex items-center justify-center"><span class="material-symbols-outlined text-[#1E9439] text-[16px]">check</span></div>
+<div class="h-8 rounded-md bg-surface-variant/50"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Reviews -->
+<section class="px-margin-mobile">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Đánh giá từ phụ huynh khác</h2>
+<div class="flex flex-col gap-md">
+<!-- Review 1 -->
+<div class="bg-surface rounded-xl p-md shadow-sm border border-outline-variant/10">
+<div class="flex items-center gap-sm mb-sm">
+<div class="w-10 h-10 rounded-full bg-tertiary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Small avatar of a smiling mother with short dark hair. The background is a soft beige. The style is warm and approachable, fitting the soft minimalism aesthetic of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN89CUi4WBukOAn_LUe6-c4Bj5eTuATRV3N_IHhnYC53IComiAWqgGZF7kI8gXJ6jX6AsM0rM5WeVulCO54CV1nfWtJ8wNsUVIhRcrf68iCK1uIHSmTXUD2_Nxb7JFSdrmJSpnaECPb_ZcT7KSkuNUa58HccDnLy401FXGwv2X94JqcNaasQ0NZikOPwrTL-iHuqrlTZMIZeOt8TRdZK0d81KoahQOObPnSyTDevlwOOllvz0xfk-S"/>
+</div>
+<div>
+<h4 class="font-h4 text-h4 text-on-surface text-sm">Mẹ bé Bi</h4>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+</div>
+</div>
+<span class="font-caption text-caption text-on-surface-variant ml-auto">2 ngày trước</span>
+</div>
+<p class="font-body text-body text-on-surface text-sm">"Cô Lan Anh rất nhiệt tình và chu đáo. Bé nhà mình bình thường rất nhát nhưng lại rất bám cô. Cô hay bày nhiều trò chơi sáng tạo giúp bé học hỏi thêm."</p>
+</div>
+<!-- Review 2 -->
+<div class="bg-surface rounded-xl p-md shadow-sm border border-outline-variant/10">
+<div class="flex items-center gap-sm mb-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Small avatar of a father looking confident. The style is clean and modern, matching the safety and reliability theme of the EduCareLink app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFpAJJJ7hdtc6xdb-6_cWoovDUiXBEVpYWhh6uDuL2a2aP9Y-dBBoiGj8kSdNMQXttIr_tXNFIPTbXJFLclezFhhsVDTdQ5OgvejEfWAzc9jolJgHdZ_JxAV48n6AvPXhme5O518o93ueePz1iLeFWArtSCMq6BHwDmwyHtYdqhL5rzX0DV9wSX1oxslWoHuAR8-_icQG4BhqaU8YmPJsZtKYSWJc7qoTwSsbkKdcj7qEFirmQ-7Zw"/>
+</div>
+<div>
+<h4 class="font-h4 text-h4 text-on-surface text-sm">Bố Đức Anh</h4>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1; color: #FFD700;">star_half</span>
+</div>
+</div>
+<span class="font-caption text-caption text-on-surface-variant ml-auto">1 tuần trước</span>
+</div>
+<p class="font-body text-body text-on-surface text-sm">"Đúng giờ, chuyên nghiệp và xử lý tình huống tốt. Có hôm bé bị sốt nhẹ, cô đã báo cáo ngay và biết cách chườm mát cho bé."</p>
+</div>
+</div>
+<button class="w-full mt-md py-sm font-body text-body text-primary-container border border-primary-container rounded-lg hover:bg-primary-container/5 transition-colors">Đọc thêm 14 đánh giá</button>
+</section>
+<!-- Bottom spacing for fixed CTA -->
+<div class="h-20"></div>
+</main>
+<!-- Fixed Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 px-margin-mobile py-sm flex items-center justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Mức phí dự kiến</span>
+<span class="font-h3 text-h3 text-on-surface">120.000đ<span class="text-sm font-body font-normal text-on-surface-variant">/giờ</span></span>
+</div>
+<button class="bg-[#F26522] hover:bg-[#D4541E] text-white px-xl py-3 rounded-xl font-h4 text-h4 shadow-fab active:scale-95 transition-all flex items-center gap-2">
+            Thuê ngay
+            <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</body></html>

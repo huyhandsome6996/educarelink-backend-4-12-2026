@@ -73,11 +73,16 @@ export function AuthProvider({ children }) {
           // Lấy profile từ server để đảm bảo token còn hợp lệ
           const response = await getProfile();
           setUser(response.data);
+          // QA-FIX-2 / B2: đảm bảo user_id có trong storage (cho LocationService)
+          if (response.data?.id) {
+            await storage.setItem('user_id', String(response.data.id));
+          }
         }
       } catch (error) {
         // Token hết hạn hoặc lỗi — xoá hết
         await storage.deleteItem('access_token');
         await storage.deleteItem('user_role');
+        await storage.deleteItem('user_id');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -100,9 +105,18 @@ export function AuthProvider({ children }) {
     const profileResp = await getProfile();
     setUser(profileResp.data);
 
-    // v1.1.2: Push token registration — FIRE AND FORGET.
+    // QA-FIX-2 / B2 (feature): lưu user_id vào storage để LocationService
+    // isolate queue. Trước đây không lưu → LocationService không biết user
+    // nào đang login → queue SQLite có thể bị flush nhầm giữa 2 user.
+    if (profileResp.data?.id) {
+      await storage.setItem('user_id', String(profileResp.data.id));
+    }
+
+    // v1.1.2 (main): Push token registration — FIRE AND FORGET.
     // Không await — user được navigate sang home screen ngay lập tức.
     // Push token sẽ sync nền, không ảnh hưởng login UX.
+    // (Feature branch used `await` here which would re-introduce v1.1.2
+    // login-hang bug — explicitly NOT taking that path.)
     syncPushTokenToBackend();
 
     return profileResp.data;
@@ -135,6 +149,10 @@ export function AuthProvider({ children }) {
 
     const profileResp = await getProfile();
     setUser(profileResp.data);
+    // QA-FIX-2 / B2: lưu user_id cho LocationService
+    if (profileResp.data?.id) {
+      await storage.setItem('user_id', String(profileResp.data.id));
+    }
 
     // v1.1.2: Push token registration — FIRE AND FORGET (giống login)
     syncPushTokenToBackend();
@@ -142,11 +160,31 @@ export function AuthProvider({ children }) {
     return profileResp.data;
   };
 
+  // QA-FIX-2 / G: logout cleanup — stop background tracking + xóa queue
+  // SQLite của user hiện tại + clear storage. Tránh worker cũ tiếp tục
+  // gửi heartbeat/location sau logout, tránh user mới auto-resume task
+  // của user cũ.
   const logout = async () => {
+    // Capture userId trước khi clear storage
+    const userIdStr = await storage.getItem('user_id');
+    const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+
+    // Stop background tracking + cleanup listeners + xóa queue của user
+    try {
+      const { cleanupOnLogout } = await import('../services/LocationService');
+      if (userId) {
+        await cleanupOnLogout(userId);
+      }
+    } catch (e) {
+      console.warn('Logout: cleanup LocationService failed:', e);
+    }
+
     await storage.deleteItem('access_token');
     await storage.deleteItem('refresh_token');
     await storage.deleteItem('user_role');
     await storage.deleteItem('is_staff');
+    await storage.deleteItem('user_id');
+    await storage.deleteItem('tracking_task_id');
     setUser(null);
   };
 

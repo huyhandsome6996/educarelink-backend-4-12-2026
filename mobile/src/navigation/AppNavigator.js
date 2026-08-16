@@ -77,14 +77,15 @@ import ImagePreviewScreen from '../screens/ImagePreviewScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// === Custom Tab Bar Icon with refined indicator ===
+// === Custom Tab Bar — Warm Professionalism pill style ===
+// Active tab: orange pill bg, white icon + label
+// Inactive tab: muted icon + label, transparent bg
 function TabIcon({ name, focused, color }) {
+  const bg = focused ? COLORS.primary : 'transparent';
+  const fg = focused ? '#FFFFFF' : COLORS.textMuted;
   return (
-    <View style={styles.tabIconContainer}>
-      <View style={[styles.iconBg, focused && { backgroundColor: COLORS.primaryLight }]}>
-        <Ionicons name={name} size={22} color={color} />
-      </View>
-      {focused && <View style={[styles.activeIndicator, { backgroundColor: color }]} />}
+    <View style={[styles.tabPill, { backgroundColor: bg }]}>
+      <Ionicons name={name} size={22} color={fg} />
     </View>
   );
 }
@@ -109,7 +110,7 @@ function ParentTabs() {
           else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -141,7 +142,7 @@ function WorkerTabs() {
           else if (route.name === 'WorkerProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -294,27 +295,20 @@ const styles = StyleSheet.create({
   },
   tabBarLabel: {
     ...TYPO.caption,
-    marginTop: 2,
+    marginTop: 4,
+    fontSize: 11,
   },
   tabBarItem: {
     paddingTop: 2,
+    paddingHorizontal: 4,
   },
-  tabIconContainer: {
+  tabPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-  },
-  iconBg: {
-    width: 40,
-    height: 28,
-    borderRadius: SIZES.radiusSm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeIndicator: {
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-    marginTop: 2,
+    minWidth: 56,
+    minHeight: 40,
   },
 });

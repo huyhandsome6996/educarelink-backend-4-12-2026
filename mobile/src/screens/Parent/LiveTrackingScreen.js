@@ -6,10 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
-  getDeviceStatus, getOfflineAlerts,
+  getDeviceStatus, getOfflineAlerts, acknowledgeOfflineAlert,
 } from '../../api/tracking';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  playEmergencyAlarm, stopEmergencyAlarm, unloadEmergencyAlarm,
+} from '../../services/EmergencyAlarmService';
 
 const POLL_INTERVAL_MS = 5000; // Parent poll location mỗi 5s
 const DEVICE_STATUS_POLL_MS = 10000; // Parent poll device status mỗi 10s
@@ -51,11 +54,18 @@ export default function LiveTrackingScreen() {
   const [sosLoading, setSosLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [offlineAlertActive, setOfflineAlertActive] = useState(false);
+  // QA-FIX-2 / B3: track trạng thái offline/stale từ API để hiển thị rõ
+  // "vị trí cuối cùng lúc X" thay vì giả như vị trí live khi carepartner mất mạng.
+  const [isLocationStale, setIsLocationStale] = useState(false);
+  const [isLocationOffline, setIsLocationOffline] = useState(false);
+  const [offlineThresholdSeconds, setOfflineThresholdSeconds] = useState(null);
   const pollRef = useRef(null);
   const deviceStatusPollRef = useRef(null);
   const lastAlertIdRef = useRef(null);
 
   // Poll live location
+  // QA-FIX-2 / B3: parse thêm is_stale/is_offline/last_seen từ response
+  // để UI hiển thị rõ vị trí cuối vs vị trí live.
   const fetchLive = useCallback(async () => {
     if (!taskId) return;
     try {
@@ -63,6 +73,12 @@ export default function LiveTrackingScreen() {
       setLiveData(res.data);
       setLastUpdate(new Date());
       setError(null);
+      // QA-FIX-2 / B3: cập nhật stale/offline status từ API response
+      setIsLocationStale(res.data?.is_stale || false);
+      setIsLocationOffline(res.data?.is_offline || false);
+      if (res.data?.offline_threshold_seconds) {
+        setOfflineThresholdSeconds(res.data.offline_threshold_seconds);
+      }
     } catch (e) {
       console.warn('fetchLive error:', e?.response?.status);
       if (e?.response?.status === 403) {
@@ -86,7 +102,9 @@ export default function LiveTrackingScreen() {
       if (activeAlert && activeAlert.id !== lastAlertIdRef.current) {
         lastAlertIdRef.current = activeAlert.id;
         setOfflineAlertActive(true);
-        triggerAlarmSound();
+        // Phan 2: truyền alertId để khi user bấm "Đã biết" có thể gọi
+        // API acknowledge → backend dừng retry push.
+        triggerAlarmSound(activeAlert.id);
       } else if (!activeAlert) {
         setOfflineAlertActive(false);
       }
@@ -103,6 +121,10 @@ export default function LiveTrackingScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (deviceStatusPollRef.current) clearInterval(deviceStatusPollRef.current);
+      // QA-FIX-1 / Spec 2.6: stop + unload alarm khi unmount screen
+      // (tránh audio loop tiếp tục chạy khi parent đã rời screen).
+      stopEmergencyAlarm();
+      unloadEmergencyAlarm();
     };
     // Fix H11: thêm taskId trực tiếp vào deps để khi taskId đổi (vd: từ
     // navigation param), fetchLive/fetchDeviceStatus được re-bind và poll
@@ -111,9 +133,32 @@ export default function LiveTrackingScreen() {
   }, [fetchLive, fetchDeviceStatus, taskId]);
 
   // Trigger alarm sound + vibration khi có offline alert
-  const triggerAlarmSound = async () => {
+  // Phan 2: nhận type 'device_offline' + flag data.critical=True (channel
+  // emergency-alerts, còi to + retry liên tục tới khi acknowledge). Khi user
+  // bấm "Đã biết" → gọi API acknowledge để backend dừng retry push.
+  //
+  // QA-FIX-1 / Spec 2.6: dùng EmergencyAlarmService cho audio alarm loop
+  // (trước đây chỉ Vibration + local notification — không có audio thực sự).
+  //
+  // QA-FIX-7 / N1: payload đã được đảo lại — data.type luôn là 'device_offline'
+  // (giá trị CŨ, để app cũ tiếp tục match), flag data.critical=True thay thế
+  // cho 'device_offline_critical' cũ. App mới check data.critical để quyết
+  // định dùng EmergencyAlarmService (còi to) hay chỉ Vibration (fallback).
+  const triggerAlarmSound = async (alertIdFromData, isCritical) => {
     try {
-      // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần
+      // QA-FIX-7 / N1: nếu data.critical=True → dùng EmergencyAlarmService
+      // (còi to loop + Vibration pattern dài). Nếu critical=false/missing
+      // (backend cũ hơn hoặc flag không có) → chỉ Vibration (fallback basic).
+      if (isCritical) {
+        // QA-FIX-1 / Spec 2.6: phát audio alarm loop liên tục qua EmergencyAlarmService
+        // (expo-av + Vibration fallback). Alarm sẽ loop cho tới khi parent acknowledge
+        // hoặc unmount screen.
+        await playEmergencyAlarm();
+      }
+
+      // Vibration pattern khẩn cấp: 1s rung, 0.5s nghỉ, lặp 5 lần (cũ — giữ làm
+      // burst ban đầu để thu hút chú ý ngay lập tức, sau đó EmergencyAlarmService
+      // sẽ tiếp tục loop Vibration pattern dài nếu critical=True).
       Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000], false);
 
       // Schedule local notification với sound default (đảm bảo available)
@@ -124,8 +169,11 @@ export default function LiveTrackingScreen() {
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: {
+            // QA-FIX-7 / N1: type='device_offline' (giống backend) + critical flag
             type: 'device_offline',
+            critical: isCritical,
             task_id: taskId,
+            alert_id: alertIdFromData,
             priority: 'high',
           },
         },
@@ -136,6 +184,23 @@ export default function LiveTrackingScreen() {
     }
   };
 
+  // Phan 2 — gọi API acknowledge để dừng retry push ở backend
+  // QA-FIX-1 / Spec 2.6: cũng stop alarm audio khi parent acknowledge
+  // (trước đây audio loop không có cách dừng trừ unmount screen).
+  const handleAcknowledgeAlert = async (alertId) => {
+    if (!alertId || !taskId) return;
+    try {
+      // QA-FIX-1 / Spec 2.6: stop alarm NGAY khi parent bấm "Đã biết"
+      // (trước khi gọi API — giảm độ trễ cảm giác).
+      await stopEmergencyAlarm();
+      await acknowledgeOfflineAlert(taskId, alertId);
+      setOfflineAlertActive(false);
+      console.log(`[LiveTracking] Acknowledged alert #${alertId} — backend sẽ dừng retry push + alarm stopped`);
+    } catch (e) {
+      console.warn(`[LiveTracking] Acknowledge alert #${alertId} failed:`, e?.response?.status || e.message);
+    }
+  };
+
   // Listen notification khi app đang mở
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
@@ -143,14 +208,41 @@ export default function LiveTrackingScreen() {
       const body = notification.request.content.body || '';
 
       // === DEVICE OFFLINE alert ===
+      // QA-FIX-7 / N1: payload giờ luôn có data.type='device_offline' (giá trị
+      // CŨ, để app cũ tiếp tục match). App mới đọc thêm data.critical để quyết
+      // định hành vi:
+      //   - data.critical === true → bản nâng cấp (còi to EmergencyAlarmService,
+      //     channel emergency-alerts, retry push liên tục).
+      //   - data.critical falsy (false/undefined) → fallback basic (chỉ
+      //     Vibration, channel critical_alerts) — tương thích backend cũ hơn
+      //     nữa nếu có.
+      //
+      // Điều kiện if ĐƠN GIẢN: `data.type === 'device_offline'` — y hệt app cũ
+      // trên nhánh main. App cũ không biết field `critical` nên ignore, vẫn
+      // báo động được (channel critical_alerts do backend send_expo_push_notification
+      // resolve type='device_offline' không có critical → dùng config cũ).
       if (data.type === 'device_offline') {
-        // Vibration pattern khẩn cấp
+        const alertId = data.alert_id;
+        const isCritical = data.critical === true;
+        // QA-FIX-1 / Spec 2.6 + QA-FIX-7 / N1: nếu critical=True → phát audio
+        // alarm loop qua EmergencyAlarmService (còi to). Nếu không → chỉ
+        // Vibration (fallback basic, tương thích backend cũ).
+        if (isCritical) {
+          playEmergencyAlarm();
+        }
+        // Vibration pattern khẩn cấp (burst ban đầu)
         Vibration.vibrate([1000, 500, 1000, 500, 1000, 500, 1000], false);
         Alert.alert(
           "🚨🚨🚨 CẢNH BÁO KHẨN CẤP",
           body || 'Thiết bị Carepartner mất kết nối!',
           [
-            { text: 'Đã biết', style: 'destructive' },
+            // Phan 2: bấm "Đã biết" → acknowledge → backend dừng retry push
+            // + QA-FIX-1 / Spec 2.6: stop alarm audio
+            {
+              text: 'Đã biết',
+              style: 'destructive',
+              onPress: () => handleAcknowledgeAlert(alertId),
+            },
             { text: 'Gọi 113', onPress: () => Linking.openURL('tel:113') },
             // Fix H14: chỉ mở dialer khi có số carepartner
             ...(workerPhone ? [{ text: 'Gọi Carepartner', onPress: () => Linking.openURL(`tel:${workerPhone}`) }] : []),
@@ -353,13 +445,36 @@ export default function LiveTrackingScreen() {
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle} numberOfLines={1}>{taskTitle || `Task #${taskId}`}</Text>
+          {/*
+            QA-FIX-2 / B3: hiển thị trạng thái rõ ràng cho phụ huynh:
+              - LIVE (online, cập nhật < 30s): "● LIVE · cập nhật HH:MM:SS"
+              - STALE (online nhưng vị trí cũ > 30s): "● VỊ TRÍ CUỐI · cập nhật HH:MM:SS"
+              - OFFLINE (vượt ngưỡng cấu hình): "● MẤT TÍN HIỆU · lần cuối HH:MM:SS"
+            Trước đây chỉ hiển thị LIVE/OFF — phụ huynh không phân biệt được
+            vị trí live vs vị trí cuối cùng khi carepartner mất mạng.
+          */}
           <Text style={styles.headerSub}>
-            {isTracking ? '● LIVE · cập nhật ' + (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '') : 'Không có dữ liệu'}
+            {isLocationOffline
+              ? `● MẤT TÍN HIỆU · lần cuối ${liveData?.last_seen ? new Date(liveData.last_seen).toLocaleTimeString('vi-VN') : ''}`
+              : isLocationStale
+                ? `● VỊ TRÍ CUỐI · cập nhật ${liveData?.last_seen ? new Date(liveData.last_seen).toLocaleTimeString('vi-VN') : (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '')}`
+                : isTracking
+                  ? '● LIVE · cập nhật ' + (lastUpdate ? lastUpdate.toLocaleTimeString('vi-VN') : '')
+                  : 'Không có dữ liệu'}
           </Text>
         </View>
-        <View style={[styles.liveBadge, !isTracking && { backgroundColor: COLORS.outlineVariant }]}>
-          <Text style={[styles.liveText, !isTracking && { color: COLORS.onSurfaceVariant }]}>
-            {isTracking ? 'LIVE' : 'OFF'}
+        <View style={[
+          styles.liveBadge,
+          !isTracking && { backgroundColor: COLORS.outlineVariant },
+          isLocationOffline && { backgroundColor: COLORS.error },
+          isLocationStale && !isLocationOffline && { backgroundColor: COLORS.warning },
+        ]}>
+          <Text style={[
+            styles.liveText,
+            !isTracking && { color: COLORS.onSurfaceVariant },
+            isLocationOffline && { color: COLORS.textOnPrimary },
+          ]}>
+            {isLocationOffline ? 'OFFLINE' : isLocationStale ? 'STALE' : isTracking ? 'LIVE' : 'OFF'}
           </Text>
         </View>
       </View>

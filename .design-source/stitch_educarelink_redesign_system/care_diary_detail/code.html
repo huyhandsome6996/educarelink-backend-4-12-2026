@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Care Diary Detail - EduCareLink</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1.25rem",
+                        "3xl": "1.5rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope"],
+                        "h4": ["Manrope"],
+                        "h3": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1; }
+        .timeline-line { position: absolute; left: 24px; top: 40px; bottom: 0; width: 2px; background-color: theme('colors.outline-variant'); z-index: 0; }
+        .bento-card { background: theme('colors.surface-container-lowest'); border-radius: theme('borderRadius.2xl'); box-shadow: 0 4px 12px rgba(242, 101, 34, 0.05); padding: theme('spacing.lg'); position: relative; overflow: hidden; }
+        .bento-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, theme('colors.primary-container'), theme('colors.secondary-container')); opacity: 0; transition: opacity 0.3s ease; }
+        .bento-card:hover::before { opacity: 1; }
+    </style>
+</head>
+<body class="font-body pb-32">
+<!-- TopAppBar (Suppressed back arrow logic as this is a detail screen, keeping it simple to just go back) -->
+<header class="bg-surface dark:bg-surface-container-low w-full top-0 bg-surface-container-low flex justify-between items-center px-margin-mobile py-sm w-full sticky z-10">
+<button aria-label="Go back" class="p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors text-primary">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-h2 text-h2 text-primary dark:text-primary-fixed-dim text-center flex-1 pr-10">Chi tiết nhật ký</h1>
+</header>
+<main class="px-margin-mobile pt-lg max-w-4xl mx-auto space-y-lg">
+<!-- Header Information -->
+<section class="flex items-center gap-md bg-surface-container p-md rounded-2xl shadow-sm border border-outline-variant/30">
+<div class="relative">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="CarePartner Avatar" class="w-full h-full object-cover" data-alt="A portrait photograph of a young, friendly Vietnamese CarePartner female smiling gently. The background is a soft, blurred modern home environment. Warm, inviting lighting emphasizing trust and approachability. High resolution, professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvk7FKZJaQTAGvVTBQEdEZGs2ie5xppLf4F83dW9awD6ZG19aHcA3Q1NSCGZ71-cemYwU3NWOz3b00czCSb-vBphWwW3NoVdZkzaZfMaMDKUo1vRFjXTcBAJL5diEObpLpUUxBSE5UPW73fKRi6gtQ_XWJzpy6HrPNs0zjhUpMdiVGMwXli-s7isOv7mCiXKNh1kZIQRMEbU1-e9OYla3g2JCOsimpiFBe78N_-mOljKSUFkWr74q6"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-secondary-container text-on-secondary-container rounded-full p-1 border-2 border-surface flex items-center justify-center">
+<span class="material-symbols-outlined filled text-[14px]">check_circle</span>
+</div>
+</div>
+<div class="flex-1">
+<h2 class="font-h3 text-h3 text-on-surface">Nguyễn Thị Lan (CarePartner)</h2>
+<p class="font-body text-body text-on-surface-variant">Thứ Tư, 24 Tháng 5, 2024</p>
+<div class="flex items-center gap-xs mt-xs text-secondary font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Đã hoàn thành</span>
+</div>
+</div>
+</section>
+<!-- Main Bento Grid Content -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-md">
+<!-- Tâm trạng của bé (Mood) - Bento Item -->
+<div class="bento-card md:col-span-4 flex flex-col items-center justify-center text-center gap-sm">
+<h3 class="font-h4 text-h4 text-on-surface w-full text-left mb-xs">Tâm trạng của bé</h3>
+<div class="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-xs">
+<span class="material-symbols-outlined filled text-primary-container text-5xl">sentiment_very_satisfied</span>
+</div>
+<p class="font-h3 text-h3 text-primary-container">Vui vẻ &amp; Hợp tác</p>
+<p class="font-caption text-caption text-on-surface-variant">Bé rất hào hứng với các bài tập vận động hôm nay.</p>
+</div>
+<!-- Mức độ hoàn thành (Progress) - Bento Item -->
+<div class="bento-card md:col-span-8 flex flex-col justify-center gap-md">
+<h3 class="font-h4 text-h4 text-on-surface">Mức độ hoàn thành</h3>
+<div class="flex items-end gap-sm mb-xs">
+<span class="font-h1 text-h1 text-secondary">85%</span>
+<span class="font-body text-body text-on-surface-variant pb-1">Mục tiêu ngày</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-4 overflow-hidden">
+<div class="bg-secondary-container h-4 rounded-full transition-all duration-1000 ease-out" style="width: 85%"></div>
+</div>
+<div class="grid grid-cols-3 gap-xs text-center mt-sm">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-2">
+<span class="block font-h4 text-h4 text-on-surface">3</span>
+<span class="font-caption text-caption text-on-surface-variant">Hoạt động</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-2">
+<span class="block font-h4 text-h4 text-secondary">2</span>
+<span class="font-caption text-caption text-on-surface-variant">Hoàn thành tốt</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-2">
+<span class="block font-h4 text-h4 text-primary-container">1</span>
+<span class="font-caption text-caption text-on-surface-variant">Cần cố gắng</span>
+</div>
+</div>
+</div>
+<!-- Hoạt động đã dạy (Timeline) - Full Width Bento -->
+<div class="bento-card md:col-span-12">
+<h3 class="font-h4 text-h4 text-on-surface mb-md">Hoạt động đã dạy</h3>
+<div class="relative pl-sm">
+<div class="timeline-line"></div>
+<!-- Activity 1 -->
+<div class="relative pl-xl pb-md">
+<div class="absolute left-0 top-1 w-8 h-8 bg-surface-container-lowest border-2 border-secondary rounded-full flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[16px]">check</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-md">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-h4 text-h4 text-on-surface">Phát triển ngôn ngữ: Chỉ đồ vật</h4>
+<span class="font-caption text-caption text-on-surface-variant bg-surface-variant px-2 py-1 rounded-md">09:00 - 09:45</span>
+</div>
+<p class="font-body text-body text-on-surface-variant mb-sm">Dạy bé chỉ vào các đồ vật quen thuộc (cốc, bóng, xe) khi được hỏi "Cái gì đây?".</p>
+<div class="inline-flex items-center gap-xs bg-[#EAFBEF] text-[#1E9439] px-3 py-1 rounded-full font-caption text-caption">
+<span class="material-symbols-outlined text-[14px]">star</span>
+                                Hoàn thành xuất sắc
+                            </div>
+</div>
+</div>
+<!-- Activity 2 -->
+<div class="relative pl-xl pb-md">
+<div class="absolute left-0 top-1 w-8 h-8 bg-surface-container-lowest border-2 border-secondary rounded-full flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[16px]">check</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-md">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-h4 text-h4 text-on-surface">Vận động tinh: Xếp khối gỗ</h4>
+<span class="font-caption text-caption text-on-surface-variant bg-surface-variant px-2 py-1 rounded-md">10:00 - 10:30</span>
+</div>
+<p class="font-body text-body text-on-surface-variant mb-sm">Khuyến khích bé chồng 3-4 khối gỗ lên nhau mà không bị đổ.</p>
+<div class="inline-flex items-center gap-xs bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-caption text-caption">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                                Đang tiến bộ
+                            </div>
+</div>
+</div>
+<!-- Activity 3 -->
+<div class="relative pl-xl">
+<div class="absolute left-0 top-1 w-8 h-8 bg-surface-container-lowest border-2 border-primary-container rounded-full flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-primary-container text-[16px]">priority_high</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-md">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-h4 text-h4 text-on-surface">Tương tác xã hội: Giao tiếp mắt</h4>
+<span class="font-caption text-caption text-on-surface-variant bg-surface-variant px-2 py-1 rounded-md">14:00 - 14:30</span>
+</div>
+<p class="font-body text-body text-on-surface-variant mb-sm">Gọi tên bé và chờ bé quay lại nhìn vào mắt trong 2-3 giây.</p>
+<div class="inline-flex items-center gap-xs bg-error-container text-on-error-container px-3 py-1 rounded-full font-caption text-caption">
+<span class="material-symbols-outlined text-[14px]">error</span>
+                                Cần hỗ trợ thêm
+                            </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Điểm mạnh & Khó khăn - Bento Item -->
+<div class="bento-card md:col-span-6 bg-gradient-to-br from-surface-container-lowest to-surface-container">
+<div class="flex items-center gap-sm mb-md">
+<div class="w-10 h-10 bg-tertiary-container rounded-full flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<h3 class="font-h4 text-h4 text-on-surface">Điểm mạnh &amp; Khó khăn</h3>
+</div>
+<div class="space-y-sm">
+<div>
+<h4 class="font-caption text-caption text-secondary uppercase tracking-wider mb-xs flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">add_circle</span> Điểm mạnh hôm nay
+                        </h4>
+<p class="font-body text-body text-on-surface-variant pl-6 border-l-2 border-secondary/30 ml-2 py-1">
+                            Bé rất thích thú với các trò chơi âm thanh và có phản xạ tốt khi nghe tiếng gõ lạch cạch. Khả năng tập trung tăng lên đáng kể ở đầu buổi.
+                        </p>
+</div>
+<div class="pt-sm">
+<h4 class="font-caption text-caption text-error uppercase tracking-wider mb-xs flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">remove_circle</span> Khó khăn gặp phải
+                        </h4>
+<p class="font-body text-body text-on-surface-variant pl-6 border-l-2 border-error/30 ml-2 py-1">
+                            Bé còn né tránh giao tiếp mắt khi bị gọi tên đột ngột. Có biểu hiện cáu gắt nhẹ khi buồn ngủ vào buổi chiều.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Lưu ý từ CarePartner - Bento Item -->
+<div class="bento-card md:col-span-6 bg-surface-container-low border border-primary-fixed/50">
+<div class="flex items-center gap-sm mb-md">
+<div class="w-10 h-10 bg-primary-fixed rounded-full flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined">edit_note</span>
+</div>
+<h3 class="font-h4 text-h4 text-on-surface">Lưu ý từ CarePartner</h3>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant/30">
+<p class="font-body text-body text-on-surface italic text-on-surface-variant relative z-10">
+                        "Gia đình cố gắng ôn lại bài tập 'Chỉ đồ vật' vào buổi tối nhé. Mẹ có thể dùng những món đồ chơi bé thích để dụ bé chỉ. Mai mình sẽ tiếp tục tập trung vào phần giao tiếp mắt ạ."
+                    </p>
+<div class="mt-md flex justify-end">
+<button class="bg-primary-container text-on-primary hover:bg-primary transition-colors py-2 px-4 rounded-full font-body text-body shadow-lg shadow-primary-container/20 flex items-center gap-xs">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+                            Nhắn tin trao đổi
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Suppressed for detail screen logic, but keeping structure if needed for demo purposes, generally hidden on detail views in modern apps unless it's a root tab) -->
+<!-- Applying exclusion logic from Prompt: "Task-Focused: Any sub-page featuring a 'Close' or 'Back' action that implies a temporary departure from the main navigation flow." - So Navbar is OMITTED here intentionally. -->
+</body></html>

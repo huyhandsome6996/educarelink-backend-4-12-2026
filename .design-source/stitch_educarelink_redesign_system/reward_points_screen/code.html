@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - Reward Points</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px",
+                        "bottom-nav": "80px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope"],
+                        "h4": ["Manrope"],
+                        "h3": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800"}],
+                        "h4": ["16px", {"lineHeight": "22px", "fontWeight": "700"}],
+                        "h3": ["18px", {"lineHeight": "24px", "fontWeight": "800"}],
+                        "body": ["15px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "caption": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "h1": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom Shadows as per guidance */
+        .shadow-sm-card {
+            box-shadow: 0 2px 8px -2px rgba(166, 59, 0, 0.05), 0 4px 16px -4px rgba(166, 59, 0, 0.02);
+        }
+        .shadow-md-interactive {
+            box-shadow: 0 4px 12px -2px rgba(166, 59, 0, 0.08), 0 8px 24px -4px rgba(166, 59, 0, 0.04);
+        }
+        .shadow-lg-orange {
+            box-shadow: 0 8px 20px -4px rgba(242, 101, 34, 0.25), 0 12px 28px -6px rgba(242, 101, 34, 0.15);
+        }
+        
+        /* Glassmorphism helpers */
+        .glass-panel {
+            background: rgba(255, 248, 246, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(242, 101, 34, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body pb-bottom-nav">
+<!-- TopAppBar (Shared Component) -->
+<header class="w-full top-0 bg-surface dark:bg-surface-container-low flex justify-between items-center px-margin-mobile py-sm z-40 sticky shadow-sm-card">
+<div class="flex items-center gap-sm">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A warm, professional avatar photo of a caring parent or professional care partner. The portrait is brightly lit with a soft minimalist background in beige or light orange tones. Friendly expression, conveying trust and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVJDs9AyuR-XtaBymaNNXY2aqdEpCqm41LvlT0xqHbJnkMiXvSnFlE-0RVSJjd_anHELdKeXMxltz1sD8F-1LWHFH3cyQncNGfhroCVdYtYBqnU8AGgQXCmI-L4br_0KsHv0l2Rf5z0qtrfCXL9pzw6hSM4Qe4npvFC7f1C6TZR8kqqEpWIL9wNPu6LOfD30Yfj_JmJ63nIymMr6U-5xCo6MKwM4GeJf6XnmXkSPQUyH2ubIgwrBDX"/>
+<span class="font-h1 text-h1 text-primary dark:text-primary-fixed-dim tracking-tight">EduCareLink</span>
+</div>
+<button class="w-11 h-11 flex items-center justify-center rounded-full text-primary hover:opacity-80 transition-opacity active:scale-95 bg-surface-container-low">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="px-margin-mobile pt-md pb-xl max-w-4xl mx-auto space-y-lg">
+<!-- Header Area -->
+<div class="space-y-xs">
+<h1 class="font-h2 text-h2 text-on-surface">Điểm thưởng của bạn</h1>
+<p class="font-body text-body text-on-surface-variant">Tích lũy điểm để đổi những phần quà hấp dẫn.</p>
+</div>
+<!-- Large Orange Points Card -->
+<section class="bg-primary-container text-on-primary-container rounded-2xl p-lg shadow-lg-orange relative overflow-hidden">
+<!-- Decorative background element -->
+<div class="absolute -right-8 -top-8 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+<div class="absolute -left-12 -bottom-12 w-32 h-32 bg-black/5 rounded-full blur-xl"></div>
+<div class="relative z-10 flex flex-col items-center text-center space-y-xs">
+<span class="font-h4 text-h4 opacity-90">Số điểm hiện tại</span>
+<div class="flex items-end justify-center gap-xs">
+<span class="text-[48px] font-extrabold leading-tight tracking-tighter text-white drop-shadow-md">2,450</span>
+<span class="font-h3 text-h3 text-white/90 pb-2">pts</span>
+</div>
+<div class="w-full max-w-md mt-md pt-sm border-t border-white/20">
+<div class="flex justify-between font-caption text-caption text-white/90 mb-2">
+<span>Hạng Bạc</span>
+<span>Hạng Vàng (3,000 pts)</span>
+</div>
+<!-- Progress Bar -->
+<div class="h-3 w-full bg-black/10 rounded-full overflow-hidden backdrop-blur-sm">
+<div class="h-full bg-white rounded-full relative" style="width: 82%;">
+<div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/50 to-transparent animate-pulse"></div>
+</div>
+</div>
+<p class="font-caption text-caption text-white/80 mt-2 text-right">Còn 550 điểm nữa để thăng hạng</p>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout for Vouchers & History -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-md md:gap-lg">
+<!-- Left Column (Vouchers) -->
+<div class="md:col-span-7 space-y-md">
+<div class="flex items-center justify-between">
+<h2 class="font-h3 text-h3 text-on-surface flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary fill-icon">redeem</span>
+                        Voucher có thể đổi
+                    </h2>
+<button class="font-caption text-caption text-primary font-bold hover:underline">Xem tất cả</button>
+</div>
+<!-- Voucher List -->
+<div class="space-y-sm">
+<!-- Voucher Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-sm-card flex flex-row gap-md items-center hover:shadow-md-interactive transition-shadow">
+<div class="w-20 h-20 rounded-lg bg-surface-container-highest flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<span class="material-symbols-outlined text-4xl text-primary opacity-20 absolute">local_cafe</span>
+<img class="w-full h-full object-cover rounded-lg relative z-10" data-alt="A brightly lit, aesthetic photo of a modern coffee cup on a warm wooden table. The lighting is soft and natural, emphasizing a relaxing cafe atmosphere. Warm beige and soft green tones in the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4iZ-ADlAqa_m76g3QmeA2lmRTOijUav651Ih2gg4_2L9Fn5Y493K8yh0A2HA91v_mt8aDQAsEdk8kCKMFZHcxhky0ImENB0gW-wlY0itFIkgyGo_pMIJ0t4lnq7c7LnjgWJ50xsDWshhxJUdHHGWjsfeBkSSnkkepdiFH_Dvv7y5w4iaUXRBgJdz9IeEFsta5dgf3N72PfKVfB2Yqk_5sb1mrAxMW-J9de1NaNoW3OXnB927OfmZS"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-h4 text-h4 text-on-surface truncate">Voucher Highlands 50K</h3>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Hết hạn: 31/12/2023</p>
+<div class="flex items-center gap-1 mt-2 text-primary font-bold font-body text-body">
+<span class="material-symbols-outlined text-sm">stars</span>
+                                500 pts
+                            </div>
+</div>
+<button class="bg-primary-container text-white px-4 py-2 rounded-lg font-caption text-caption hover:bg-surface-tint active:scale-95 transition-all shadow-md-interactive whitespace-nowrap">Đổi ngay</button>
+</div>
+<!-- Voucher Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-sm-card flex flex-row gap-md items-center hover:shadow-md-interactive transition-shadow">
+<div class="w-20 h-20 rounded-lg bg-surface-container-highest flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<span class="material-symbols-outlined text-4xl text-secondary opacity-20 absolute">shopping_bag</span>
+<img class="w-full h-full object-cover rounded-lg relative z-10" data-alt="A stylized, clean illustration or photo of a grocery shopping bag filled with healthy fresh produce like oranges and leafy greens. High key lighting, modern soft minimal aesthetic, prioritizing primary orange and secondary green colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBR0AN8MiDvNr8Tbbtzg8Wph6hca5wbeWE3FaF9wZfqjGQUef9GhqXmpyRroE0xXK4VwH-V75jasgpqaGY8oG1WCofXi8nzDAhgrTBMJ8QeuqgQS8IAT6_SHsK14l72m05TMBn-ZApTY0i6A8fusAZHvQ902iFXPPugBSIN923j10pJvl0r2MJuCOkjeB_taBraw3C3C5VN5YyfLVtbjQkhVx8LKHj492wGLD8cw_ei12Ey7c360EMr"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-h4 text-h4 text-on-surface truncate">Mã giảm giá GrabMart</h3>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Giảm 30K cho đơn từ 150K</p>
+<div class="flex items-center gap-1 mt-2 text-primary font-bold font-body text-body">
+<span class="material-symbols-outlined text-sm">stars</span>
+                                300 pts
+                            </div>
+</div>
+<button class="bg-primary-container text-white px-4 py-2 rounded-lg font-caption text-caption hover:bg-surface-tint active:scale-95 transition-all shadow-md-interactive whitespace-nowrap">Đổi ngay</button>
+</div>
+</div>
+</div>
+<!-- Right Column (History & Badges) -->
+<div class="md:col-span-5 space-y-md">
+<!-- Recent History Glassmorphism Card -->
+<div class="glass-panel rounded-xl p-md flex flex-col h-full">
+<h2 class="font-h3 text-h3 text-on-surface mb-md flex items-center gap-xs">
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+                        Lịch sử nhận điểm
+                    </h2>
+<div class="space-y-md flex-1">
+<!-- History Item 1 -->
+<div class="flex items-start justify-between">
+<div class="flex gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">check_circle</span>
+</div>
+<div>
+<p class="font-body text-body text-on-surface leading-snug">Hoàn thành buổi trông trẻ</p>
+<p class="font-caption text-caption text-on-surface-variant">Hôm nay, 14:30</p>
+</div>
+</div>
+<span class="font-h4 text-h4 text-secondary flex items-center">
+                                +50
+                            </span>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-outline-variant/30"></div>
+<!-- History Item 2 -->
+<div class="flex items-start justify-between">
+<div class="flex gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">rate_review</span>
+</div>
+<div>
+<p class="font-body text-body text-on-surface leading-snug">Đánh giá dịch vụ</p>
+<p class="font-caption text-caption text-on-surface-variant">Hôm qua</p>
+</div>
+</div>
+<span class="font-h4 text-h4 text-secondary flex items-center">
+                                +15
+                            </span>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-outline-variant/30"></div>
+<!-- History Item 3 -->
+<div class="flex items-start justify-between opacity-70">
+<div class="flex gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">redeem</span>
+</div>
+<div>
+<p class="font-body text-body text-on-surface leading-snug">Đổi Voucher CGV</p>
+<p class="font-caption text-caption text-on-surface-variant">12/10/2023</p>
+</div>
+</div>
+<span class="font-h4 text-h4 text-on-surface-variant flex items-center">
+                                -200
+                            </span>
+</div>
+</div>
+<button class="w-full mt-md py-2 border border-outline-variant rounded-lg font-caption text-caption text-on-surface-variant hover:bg-surface-container-low transition-colors">Xem toàn bộ lịch sử</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Shared Component) -->
+<!-- Profile context intent matching the Reward Points screen slightly, but Home might be active. Assuming Profile as it's user-specific rewards -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-container shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex justify-around items-center px-sm pb-sm pt-xs md:hidden border-t border-outline-variant/20">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">home</span>
+<span class="font-caption text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">event_note</span>
+<span class="font-caption text-[10px]">Diary</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">bolt</span>
+<span class="font-caption text-[10px]">AI Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">location_on</span>
+<span class="font-caption text-[10px]">Tracking</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined fill-icon text-2xl mb-1">person</span>
+<span class="font-caption text-[10px] font-bold">Profile</span>
+</a>
+</nav>
+</body></html>

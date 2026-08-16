@@ -11,12 +11,13 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { storage } from './src/utils/storage';
 import { COLORS } from './src/theme/colors';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import RandomVerificationModal from './src/components/RandomVerificationModal';
 
 // ============================================================
 // Font assets — import tĩnh để Metro bundler ship .ttf vào APK
 // (assetBundlePatterns đã include node_modules/@expo-google-fonts/**)
 // ============================================================
-import { Manrope_800ExtraBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
+import { Manrope_800extraBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import {
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
@@ -27,27 +28,20 @@ import {
 // ====================================================================
 // App — EduCareLink
 // ====================================================================
-// v1.1.4: FIX "Cannot read property 'user' of null" crash on launch
-// Bug: useAutoResumeTracking() và useBackgroundFetch() gọi useAuth() để
-// lấy `user`, nhưng chúng được gọi trong AppInner — nằm OUTSIDE AuthProvider
-// (AuthProvider wrap AppNavigator trong return, không wrap AppInner).
-// → useContext(AuthContext) trả về null (default) → `const { user } = null`
-// → TypeError crash.
-//
-// Fix: Tách AppContent — component con nằm INSIDE AuthProvider. Các hook
-// cần auth (useAutoResumeTracking, useBackgroundFetch) được gọi trong
-// AppContent thay vì AppInner. Các hook không cần auth (useNotificationChannels,
-// useTaskEndedListener, useAppFonts) vẫn ở AppInner.
-//
-// Lớp phòng vệ 2: AuthContext giờ có default value an toàn (không null),
-// nên dù sau này có ai vô tình gọi useAuth() ngoài AuthProvider cũng không
-// crash app.
+// MERGE NOTE (merge/safety-module-into-main-20260816):
+// - Kiến trúc ErrorBoundary → AppInner → SafeAreaProvider → AuthProvider →
+//   AppContent (chứa hooks cần auth) được GIỮ NGUYÊN từ main's v1.1.4 fix.
+// - useAppFonts + try/catch BACKGROUND_FETCH_TASK (v1.1.2 fix) GIỮ NGUYÊN.
+// - Thêm từ feature branch:
+//   • RandomVerificationModal render trong AppContent (safety module).
+//   • Channel 'emergency-alerts' (còi to, bypassDnd, custom sound).
+//   • useTaskEndedListener + useBackgroundFetch cleanup khi logout.
 // ====================================================================
 
 const BACKGROUND_FETCH_TASK = 'educarelink-background-fetch';
 
 // Wrap TaskManager.defineTask trong try/catch — nếu native module lỗi
-// trong release build, không crash app
+// trong release build, không crash app (v1.1.2 fix)
 try {
   TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
     try {
@@ -86,6 +80,25 @@ function useNotificationChannels() {
         showBadge: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
+
+      // === PHẦN 2 & 3 — Channel emergency-alerts (còi to, bypass DnD) ===
+      // Dùng chung cho DeviceOfflineAlert + RandomVerificationCheck.
+      // ⚠️ Channel này dùng file sound 'emergency_alarm.wav' — KHÔNG hoạt động
+      // trên Expo Go, phải build bằng EAS Build mới test được sound custom.
+      // Trường hợp file không load được, expo-notifications fallback 'default'.
+      Notifications.setNotificationChannelAsync('emergency-alerts', {
+        name: '🚨🚨 Cảnh báo khẩn cấp (còi to)',
+        description: 'Còi báo động liên tục khi Carepartner mất kết nối / yêu cầu xác minh',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+        lightColor: '#EF4444',
+        sound: 'emergency_alarm.wav',
+        enableVibrate: true,
+        showBadge: true,
+        bypassDnd: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+
       Notifications.setNotificationChannelAsync('sos_alerts', {
         name: 'SOS',
         description: 'Cảnh báo SOS khẩn cấp',
@@ -149,19 +162,33 @@ function useAutoResumeTracking() {
   }, [user]);
 }
 
+// ====================================================================
+// Hook: Lắng nghe notification task_ended → clear tracking storage
+// QA-FIX-2 / A1 (feature branch): chỉ đăng ký khi đã có user (tránh
+// pollute login screen). MERGE: gi_KEEP useAuth() dependency từ feature,
+// giữ try/catch wrapping từ main (defensive).
+// ====================================================================
 function useTaskEndedListener() {
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (!user) return;
     let subscription;
     try {
       subscription = Notifications.addNotificationReceivedListener(async (notification) => {
         const data = notification.request.content.data || {};
         if (data.type === 'task_completed' || data.type === 'task_cancelled' || data.type === 'tracking_stopped') {
+          console.log('[App] Task ended notification received → clear tracking');
           try {
             await storage.deleteItem('tracking_task_id');
             const { stopTracking } = await import('./src/services/LocationService');
             await stopTracking();
             if (data.type === 'tracking_stopped') {
-              Alert.alert('Theo dõi vị trí đã dừng', notification.request.content.body || 'Phụ huynh đã dừng chia sẻ vị trí.', [{ text: 'OK' }]);
+              Alert.alert(
+                'Theo dõi vị trí đã dừng',
+                notification.request.content.body || 'Phụ huynh đã dừng chia sẻ vị trí.',
+                [{ text: 'OK' }]
+              );
             }
           } catch (e) {
             console.warn('[App] Clear tracking on task_ended failed:', e);
@@ -172,12 +199,14 @@ function useTaskEndedListener() {
       console.warn('[App] Notification listener setup failed (non-fatal):', e);
     }
     return () => { if (subscription) subscription.remove(); };
-  }, []);
+  }, [user]);
 }
 
 // ====================================================================
 // Hook: Register background fetch (giữ app sống khi task in_progress)
 // PHẢI được gọi INSIDE AuthProvider (cần useAuth() để biết user)
+// QA-FIX-2 / G (feature branch): cleanup khi user logout → unregister
+// background fetch để worker cũ không tiếp tục chạy nền khi user mới login.
 // ====================================================================
 function useBackgroundFetch() {
   const { user } = useAuth();
@@ -197,11 +226,26 @@ function useBackgroundFetch() {
       }
     };
     registerBackgroundFetch();
+
+    return () => {
+      // QA-FIX-2 / G: khi user logout (user → null) → unregister
+      (async () => {
+        try {
+          const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_FETCH_TASK);
+          if (isRegistered) {
+            await BackgroundFetch.unregisterTaskAsync(BACKGROUND_FETCH_TASK);
+            console.log('[BackgroundFetch] unregistered on logout');
+          }
+        } catch (e) {
+          console.warn('[BackgroundFetch] unregister failed:', e);
+        }
+      })();
+    };
   }, [user]);
 }
 
 // ====================================================================
-// Hook: load fonts thủ công với Font.loadAsync + timeout 3s
+// Hook: load fonts thủ công với Font.loadAsync + timeout 3s (v1.1.2 fix)
 // Trả về true khi fonts đã load HOẶC khi timeout chạy ra → render app
 // ====================================================================
 function useAppFonts() {
@@ -256,23 +300,43 @@ function useAppFonts() {
 
 // ====================================================================
 // AppContent — component con nằm INSIDE AuthProvider
-// Chứa các hook cần auth (useAutoResumeTracking, useBackgroundFetch)
-// v1.1.4 FIX: Trước đây 2 hook này gọi useAuth() từ AppInner (ngoài
-// AuthProvider) → useContext trả null → crash "Cannot read property
-// 'user' of null". Giờ move vào đây để chắc chắn có AuthProvider wrap.
+// Chứa các hook cần auth (useAutoResumeTracking, useBackgroundFetch,
+// RandomVerificationModal). v1.1.4 FIX: trước đây 2 hook này gọi useAuth()
+// từ AppInner (ngoài AuthProvider) → crash. Giờ move vào đây.
+// MERGE: render RandomVerificationModal từ feature branch (safety module).
 // ====================================================================
 function AppContent() {
+  // Tất cả hook trong đây PHẢI dùng useAuth() → chỉ chạy khi đã có user.
+  // MERGE: useTaskEndedListener move từ AppInner (main cũ) sang đây vì
+  // feature branch thêm useAuth() dependency để chỉ đăng ký khi logged in.
   useAutoResumeTracking();
+  useTaskEndedListener();
   useBackgroundFetch();
-  return <AppNavigator />;
+  return (
+    <>
+      <AppNavigator />
+      {/*
+        Phần 3 — RandomVerificationModal (full-screen, dùng chung cho mọi screen).
+        Render ở App root để modal có thể hiện trên mọi screen khi có push
+        type='random_verification'. Modal tự poll API mỗi 5s để phát hiện
+        check pending (không phụ thuộc push tới được — đề phòng push fail).
+
+        Phải nằm TRONG AuthProvider (đây là AppContent) để modal dùng được
+        useAuth() — chỉ poll khi user là worker đã đăng nhập, không poll ở
+        login screen (tránh 401 spam).
+      */}
+      <RandomVerificationModal />
+    </>
+  );
 }
 
 function AppInner() {
   const { loaded, error } = useAppFonts();
 
-  // useNotificationChannels + useTaskEndedListener không cần auth → giữ ở đây
+  // useNotificationChannels không cần auth → giữ ở đây (ngoài AuthProvider).
+  // useTaskEndedListener + useAutoResumeTracking + useBackgroundFetch đã
+  // move vào AppContent (trong AuthProvider) vì chúng cần useAuth().
   useNotificationChannels();
-  useTaskEndedListener();
 
   if (!loaded) {
     return (

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCareLink - Parent Home</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Manrope (Headings) & Plus Jakarta Sans (Body) -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#007326",
+                        "on-secondary-fixed": "#002106",
+                        "surface-dim": "#eed5cc",
+                        "secondary": "#006e24",
+                        "surface-container-low": "#fff1ec",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#ffb599",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#001e2f",
+                        "tertiary-container": "#009ade",
+                        "outline-variant": "#e1bfb3",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f7ddd4",
+                        "tertiary": "#006492",
+                        "on-primary-fixed": "#370e00",
+                        "on-tertiary-fixed-variant": "#004b6f",
+                        "secondary-fixed-dim": "#5ce06d",
+                        "surface-container-highest": "#f7ddd4",
+                        "surface": "#fff8f6",
+                        "surface-tint": "#a63b00",
+                        "inverse-primary": "#ffb599",
+                        "inverse-surface": "#3c2d27",
+                        "on-surface": "#261813",
+                        "on-tertiary-container": "#002d45",
+                        "primary-container": "#f26522",
+                        "on-primary-fixed-variant": "#7f2b00",
+                        "on-secondary-fixed-variant": "#005319",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#594138",
+                        "secondary-fixed": "#79fd86",
+                        "secondary-container": "#76fa84",
+                        "surface-container-high": "#fde3da",
+                        "surface-container": "#ffe9e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#8cceff",
+                        "on-background": "#261813",
+                        "outline": "#8d7166",
+                        "primary-fixed": "#ffdbce",
+                        "on-primary-container": "#4f1800",
+                        "inverse-on-surface": "#ffede7",
+                        "primary": "#a63b00",
+                        "background": "#fff8f6",
+                        "tertiary-fixed": "#cae6ff",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xxl": "48px",
+                        "lg": "24px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Manrope", "sans-serif"],
+                        "h4": ["Manrope", "sans-serif"],
+                        "h3": ["Manrope", "sans-serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "caption": ["Plus Jakarta Sans", "sans-serif"],
+                        "h1": ["Manrope", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "h2": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "800" }],
+                        "h4": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "h3": ["18px", { "lineHeight": "24px", "fontWeight": "800" }],
+                        "body": ["15px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "h1": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for horizontal scroll areas */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-surface top-0 w-full flex justify-between items-center px-margin-mobile py-sm sticky z-30">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A close-up photographic portrait of an approachable, smiling mother in her early 30s. She has a warm, trusting expression, wearing a soft, casual beige sweater. The lighting is soft and natural, suggesting a bright, welcoming morning in a modern home. The background is slightly blurred with soft warm tones, perfectly fitting a light-mode, modern corporate minimalist UI aesthetic designed for safety and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm4d9qGr8X0FqsurxPYi_MefIjX-uILSJeqF1lbtuXkaVMG4SiZvRihDaB8x95TVMUOs90GiltGUi-5rSTG9vlmmwRi_60uGbHrRGfXUt1U5wCWy5SZP9ERY-O8UF_B0C9w7SMZs2C9AcIa8osQJ8QoZ50bcE5aoAbCjBdbukON71Lqt4j3JVNGz_TfMAPaLHkd9UA78zeN9G6C9nVF__NaLup-cB6usFhvMg9Lg48vnB1m9V_Wh12"/>
+</div>
+<h1 class="font-h1 text-h1 text-primary tracking-tight">EduCareLink</h1>
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform flex items-center justify-center w-10 h-10">
+<span class="material-symbols-outlined text-[28px]">notifications</span>
+</button>
+</header>
+<main class="px-margin-mobile">
+<!-- Greeting -->
+<section class="mt-md mb-lg">
+<h2 class="font-h2 text-h2 text-on-surface">Chào buổi sáng, Alex!</h2>
+<p class="font-body text-body text-on-surface-variant mt-1">Sẵn sàng cho một ngày tuyệt vời?</p>
+</section>
+<!-- Promo Banner -->
+<section class="bg-primary-container text-on-primary-container rounded-xl p-md mb-lg shadow-md relative overflow-hidden flex items-center justify-between">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+<div class="relative z-10">
+<h3 class="font-h3 text-h3 mb-xs leading-tight">Giảm 20% tháng này!</h3>
+<p class="font-body text-body text-[14px] opacity-90 max-w-[200px] leading-snug">Cho dịch vụ Đưa đón học sinh định kỳ.</p>
+</div>
+<div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm relative z-10 shadow-sm">
+<span class="material-symbols-outlined text-[32px] text-white" style="font-variation-settings: 'FILL' 1;">directions_bus</span>
+</div>
+</section>
+<!-- Service Categories (Bento Grid) -->
+<section class="mb-xl">
+<h3 class="font-h3 text-h3 mb-md text-on-surface">Dịch vụ</h3>
+<div class="grid grid-cols-2 gap-md">
+<button class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all active:scale-95 group">
+<div class="w-12 h-12 rounded-full bg-tertiary-container/20 text-tertiary flex items-center justify-center mb-sm group-hover:bg-tertiary-container group-hover:text-on-tertiary-container transition-colors">
+<span class="material-symbols-outlined text-[28px]">directions_car</span>
+</div>
+<span class="font-h4 text-h4 text-on-surface">Đưa đón</span>
+</button>
+<button class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all active:scale-95 group">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 text-secondary flex items-center justify-center mb-sm group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined text-[28px]">diversity_3</span>
+</div>
+<span class="font-h4 text-h4 text-on-surface">Đồng hành</span>
+</button>
+<button class="col-span-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md flex items-center justify-start shadow-sm hover:shadow-md transition-all active:scale-95 group">
+<div class="w-12 h-12 rounded-full bg-[#FFF4ED] text-primary flex items-center justify-center mr-md group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined text-[28px]">school</span>
+</div>
+<div class="text-left">
+<span class="font-h4 text-h4 block text-on-surface">Gia sư</span>
+<span class="font-caption text-caption text-on-surface-variant font-normal">Hỗ trợ bài tập về nhà &amp; ôn tập</span>
+</div>
+</button>
+</div>
+</section>
+<!-- Suggested CarePartners -->
+<section class="mb-xl">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-h3 text-h3 text-on-surface">CarePartner Gợi ý</h3>
+<button class="font-caption text-caption text-primary hover:opacity-80 active:opacity-60 transition-opacity">Xem tất cả</button>
+</div>
+<div class="flex overflow-x-auto gap-md pb-xs -mx-margin-mobile px-margin-mobile hide-scrollbar">
+<!-- Card 1 -->
+<div class="min-w-[260px] bg-surface-container-lowest rounded-[20px] p-md shadow-sm border border-outline-variant/40 flex-shrink-0 flex flex-col justify-between">
+<div>
+<div class="flex items-start justify-between mb-sm">
+<div class="flex gap-sm items-center">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A high-quality photographic headshot of a friendly female university student, acting as a professional caregiver. She is smiling warmly, wearing a neat, understated green collared shirt. The lighting is bright and evenly distributed, creating a safe, professional, and trustworthy atmosphere. The background is a clean, minimal light beige wall, ensuring the focus remains on her approachable expression, fitting perfectly within a warm, safety-oriented UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL5nM4WLhBOzO4y40PVJQrKxTPxTY_tO8LnIM30QMb6OEs4ekCowibmneiA8C23yXNcD0dexDJXhIFB2aHCrsiE_2O3w7guoVA0iiPElDiHH1jCuSerwOtMjqosEufIhy85l7LPzxsGK6xPNy12qehgBGixMD32LuDhXDNvuXvku-eXNRAYwO1fsIRv_JNdDuAeGZkvQTWsUlILbdNu-BusykljDt1wKmm-6idVLa8zVSsIcxi2GjF"/>
+</div>
+<div>
+<h4 class="font-h4 text-h4 text-on-surface">Nguyễn Mai</h4>
+<div class="flex items-center gap-[4px] mt-[2px]">
+<span class="material-symbols-outlined text-yellow-500 text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-on-surface">4.9</span>
+<span class="font-caption text-[10px] text-on-surface-variant font-normal">(120 chuyến)</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;" title="Verified">verified</span>
+</div>
+<div class="flex gap-xs mb-md flex-wrap">
+<span class="bg-surface-variant text-on-surface px-2 py-1 rounded-full font-caption text-[10px] font-normal">Đưa đón</span>
+<span class="bg-surface-variant text-on-surface px-2 py-1 rounded-full font-caption text-[10px] font-normal">Gia sư</span>
+</div>
+</div>
+<div class="flex justify-between items-end border-t border-outline-variant/20 pt-sm mt-xs">
+<div class="flex flex-col">
+<span class="font-caption text-[10px] text-on-surface-variant">Từ</span>
+<span class="font-body text-body font-bold text-primary leading-none">60k<span class="text-[12px] font-normal text-on-surface-variant">/giờ</span></span>
+</div>
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-lg font-caption text-caption hover:bg-primary hover:text-on-primary transition-colors active:scale-95 shadow-sm">Đặt lịch</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="min-w-[260px] bg-surface-container-lowest rounded-[20px] p-md shadow-sm border border-outline-variant/40 flex-shrink-0 flex flex-col justify-between">
+<div>
+<div class="flex items-start justify-between mb-sm">
+<div class="flex gap-sm items-center">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A serene photographic portrait of an experienced, mature female retired teacher offering tutoring services. She has a gentle, reassuring smile and wears elegant, understated light-colored clothing. Soft, natural window light highlights her features, conveying wisdom, patience, and absolute safety. The background features subtle, out-of-focus indoor plants, adding a touch of natural green to complement the brand's secondary color palette and warm minimalist style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFss3bKdEIJs8tCUFgwWW9UZbSWHTVhpzsH_ONavjrb88OjsZEh7ZR0q6a2BTpcPgNfsNv9-7sxJ6Pc0o56SlC_NeHBwlm26Jx6YVi3g7FTG3ttmYoYt2VtNNzlGandnLSWBjDcacI9ERbxhTc0pUMyUzVrba74wkpWqI8K0xiN03Yl1gwvR_JB2r6QNBI4uhoMMRmI74oj_ndzdamSKt5l1mf3CCg8hx7U8OTNBdduhUySLR1Hh8A"/>
+</div>
+<div>
+<h4 class="font-h4 text-h4 text-on-surface">Cô Lan</h4>
+<div class="flex items-center gap-[4px] mt-[2px]">
+<span class="material-symbols-outlined text-yellow-500 text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-caption text-caption text-on-surface">5.0</span>
+<span class="font-caption text-[10px] text-on-surface-variant font-normal">(85 giờ)</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;" title="Verified">verified</span>
+</div>
+<div class="flex gap-xs mb-md flex-wrap">
+<span class="bg-surface-variant text-on-surface px-2 py-1 rounded-full font-caption text-[10px] font-normal">Đồng hành</span>
+</div>
+</div>
+<div class="flex justify-between items-end border-t border-outline-variant/20 pt-sm mt-xs">
+<div class="flex flex-col">
+<span class="font-caption text-[10px] text-on-surface-variant">Từ</span>
+<span class="font-body text-body font-bold text-primary leading-none">80k<span class="text-[12px] font-normal text-on-surface-variant">/giờ</span></span>
+</div>
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-lg font-caption text-caption hover:bg-primary hover:text-on-primary transition-colors active:scale-95 shadow-sm">Đặt lịch</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section>
+<h3 class="font-h3 text-h3 mb-md text-on-surface">Hoạt động gần đây</h3>
+<div class="bg-[#FFF4ED] border border-[#F26522]/20 rounded-[20px] p-md flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[24px]">directions_walk</span>
+</div>
+<div>
+<h4 class="font-h4 text-h4 text-on-surface leading-tight mb-1">Đón bé tại trường ABC</h4>
+<p class="font-caption text-[11px] text-on-surface-variant font-normal">CarePartner: Nguyễn Mai</p>
+</div>
+</div>
+<!-- Status Chip -->
+<div class="bg-[#EAFBEF] text-[#1E9439] px-3 py-1.5 rounded-full font-caption text-[10px] uppercase font-bold tracking-wider whitespace-nowrap shadow-sm border border-[#2DB84B]/20">
+                    Đang đón
+                </div>
+</div>
+</section>
+</main>
+<!-- FAB -->
+<button class="fixed bottom-24 right-margin-mobile w-14 h-14 bg-[#F26522] text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-all duration-200 hover:bg-[#D4541E] focus:outline-none focus:ring-4 focus:ring-primary-container/30" style="box-shadow: 0 8px 24px -4px rgba(242, 101, 34, 0.5);">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pt-xs pb-6 bg-surface shadow-[0_-4px_24px_rgba(0,0,0,0.06)] rounded-t-2xl">
+<!-- Home (Active) -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 min-w-[64px] transition-transform active:scale-90">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-caption text-caption mt-1">Home</span>
+</button>
+<!-- Diary (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 rounded-xl transition-all duration-200 active:scale-90 min-w-[64px] group">
+<span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">event_note</span>
+<span class="font-caption text-caption mt-1 font-normal group-hover:text-primary transition-colors">Diary</span>
+</button>
+<!-- AI Assistant (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 rounded-xl transition-all duration-200 active:scale-90 min-w-[64px] group">
+<span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">bolt</span>
+<span class="font-caption text-caption mt-1 font-normal group-hover:text-primary transition-colors">AI Assistant</span>
+</button>
+<!-- Tracking (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 rounded-xl transition-all duration-200 active:scale-90 min-w-[64px] group">
+<span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">location_on</span>
+<span class="font-caption text-caption mt-1 font-normal group-hover:text-primary transition-colors">Tracking</span>
+</button>
+<!-- Profile (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-primary-fixed-dim/20 rounded-xl transition-all duration-200 active:scale-90 min-w-[64px] group">
+<span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">person</span>
+<span class="font-caption text-caption mt-1 font-normal group-hover:text-primary transition-colors">Profile</span>
+</button>
+</nav>
+</body></html>
