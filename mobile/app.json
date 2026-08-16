@@ -2,10 +2,14 @@
   "expo": {
     "name": "EduCareLink",
     "slug": "educarelink",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "assets/**/*",
+      "node_modules/@expo-google-fonts/**/*.ttf"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "backgroundColor": "#F26522",
@@ -50,7 +54,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -58,6 +62,7 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
+      "expo-font",
       "expo-location",
       "expo-background-fetch",
       [
