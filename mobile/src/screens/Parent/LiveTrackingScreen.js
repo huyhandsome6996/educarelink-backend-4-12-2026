@@ -257,8 +257,8 @@ export default function LiveTrackingScreen() {
       L.marker([${parentLat}, ${parentLng}], {icon: parentIcon}).addTo(map)
         .bindPopup('<b>Nhà bạn</b><br>Điểm đến');
       L.circle([${parentLat}, ${parentLng}], {
-        color: '#3b82f6',
-        fillColor: '#3b82f6',
+        color: '${COLORS.info}',
+        fillColor: '${COLORS.info}',
         fillOpacity: 0.08,
         weight: 2,
         dashArray: '6,4',
@@ -268,7 +268,7 @@ export default function LiveTrackingScreen() {
 
     const routeLine = parentLat ? `
       L.polyline([[${workerLat}, ${workerLng}], [${parentLat}, ${parentLng}]], {
-        color: '#F26522', weight: 3, dashArray: '6,4', opacity: 0.7
+        color: '${COLORS.primary}', weight: 3, dashArray: '6,4', opacity: 0.7
       }).addTo(map);
     ` : '';
 
@@ -293,11 +293,11 @@ export default function LiveTrackingScreen() {
     }).addTo(map);
 
     var workerIcon = L.divIcon({
-      html: '<div style="background:#F26522;width:36px;height:36px;border-radius:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;">🚶</div>',
+      html: '<div style="background:${COLORS.primary};width:36px;height:36px;border-radius:18px;border:3px solid ${COLORS.surface};box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:${COLORS.textOnPrimary};font-size:18px;">🚶</div>',
       className: '', iconSize: [36, 36], iconAnchor: [18, 18]
     });
     var parentIcon = L.divIcon({
-      html: '<div style="background:#10B981;width:36px;height:36px;border-radius:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;">🏠</div>',
+      html: '<div style="background:${COLORS.success};width:36px;height:36px;border-radius:18px;border:3px solid ${COLORS.surface};box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:${COLORS.textOnPrimary};font-size:18px;">🏠</div>',
       className: '', iconSize: [36, 36], iconAnchor: [18, 18]
     });
 
