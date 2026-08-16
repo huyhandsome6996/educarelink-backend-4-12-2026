@@ -297,7 +297,7 @@ export default function ParentHomeScreen() {
                     <View style={styles.cpNameBlock}>
                       <Text style={styles.cpName}>{cp.name}</Text>
                       <View style={styles.cpRatingRow}>
-                        <Ionicons name="star" size={12} color="#FBBF24" />
+                        <Ionicons name="star" size={12} color={COLORS.ratingStar} />
                         <Text style={styles.cpRatingText}>{cp.rating}</Text>
                         <Text style={styles.cpTripsText}> ({cp.trips} chuyến)</Text>
                       </View>

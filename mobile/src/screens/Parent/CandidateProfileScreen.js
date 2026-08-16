@@ -97,8 +97,10 @@ export default function CandidateProfileScreen() {
   const reviewCount = profile.review_count || 0;
 
   // Tier badge dựa trên review_count (mock logic — không có API thật)
-  const tier = reviewCount >= 50 ? { label: 'Hạng Vàng', color: '#B8860B', bg: 'rgba(255, 215, 0, 0.2)' }
-             : reviewCount >= 20 ? { label: 'Hạng Bạc', color: '#6B7280', bg: 'rgba(156, 163, 175, 0.2)' }
+  // QA-FIX-UI 3.1: dùng token tierGold/tierSilver (tông be/vàng ấm) thay
+  // cho hex #B8860B/#6B7280 chói/lạnh không thuộc Warm Professionalism.
+  const tier = reviewCount >= 50 ? { label: 'Hạng Vàng', color: COLORS.tierGold, bg: COLORS.tierGoldBg }
+             : reviewCount >= 20 ? { label: 'Hạng Bạc', color: COLORS.tierSilver, bg: COLORS.tierSilverBg }
              : null;
 
   return (
@@ -159,7 +161,7 @@ export default function CandidateProfileScreen() {
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{rating > 0 ? rating.toFixed(1) : 'N/A'}</Text>
               <View style={styles.statSubRow}>
-                <Ionicons name="star" size={12} color="#FFD700" />
+                <Ionicons name="star" size={12} color={COLORS.ratingStar} />
                 <Text style={styles.statLabel}>Đánh giá</Text>
               </View>
             </View>
@@ -324,7 +326,7 @@ export default function CandidateProfileScreen() {
                           key={i}
                           name={i <= r.rating ? 'star' : 'star-outline'}
                           size={12}
-                          color="#FBBF24"
+                          color={COLORS.ratingStar}
                         />
                       ))}
                     </View>

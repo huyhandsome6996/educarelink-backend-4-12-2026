@@ -68,6 +68,15 @@ export const COLORS = {
   errorDeep:     '#ba1a1a',
   errorContainer:'#ffdad6',
 
+  // Tier badge tokens (QA-FIX-UI 3.1) — tông be/vàng ấm khớp screen.png
+  // Tránh #FFD700 (vàng kim loại chói) và #6B7280 (xám lạnh) không thuộc
+  // bảng Warm Professionalism.
+  tierGold:      '#a67c00',  // text/icon Hạng Vàng — vàng hổ phách ấm
+  tierGoldBg:    '#fff4d6',  // nền Hạng Vàng — be vàng nhạt
+  tierSilver:    '#7d6a5d',  // text/icon Hạng Bạc — nâu xám ấm
+  tierSilverBg:  '#f0e6df',  // nền Hạng Bạc — be nhạt
+  ratingStar:    '#f59e0b',  // sao đánh giá — cam vàng ấm (khớp warning)
+
   // Border & Divider — giữ nguyên + bổ sung outline ấm theo DESIGN.md
   border:        '#F0F0F0',
   divider:       '#E5E7EB',

@@ -162,7 +162,7 @@ export default function CandidatesScreen() {
                   key={i}
                   name={rating?.avg >= i ? 'star' : 'star-outline'}
                   size={12}
-                  color="#FBBF24"
+                  color={COLORS.ratingStar}
                 />
               ))}
               <Text style={styles.cardRatingText}>
