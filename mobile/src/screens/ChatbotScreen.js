@@ -56,6 +56,26 @@ export default function ChatbotScreen() {
   // Chỉ lưu tối đa 20 tin nhắn gần nhất để tránh request quá lớn
   const chatHistoryRef = useRef([]);
 
+  // P0 FIX (v1.1.5): Move ListFooterComponent ra top-level useMemo
+  // Trước đây dùng React.useMemo inline trong JSX → tạo lại memo mỗi render,
+  // gây re-render không cần thiết + jank khi typing.
+  const TypingFooter = React.useMemo(() => {
+    if (!isTyping) return null;
+    return (
+      <View style={styles.typingRow}>
+        <View style={styles.botAvatar}>
+          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+        </View>
+        <View style={styles.typingBubble}>
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
+        </View>
+      </View>
+    );
+  }, [isTyping, dot1Anim, dot2Anim, dot3Anim]);
+
   // Typing dots animation
   useEffect(() => {
     if (isTyping) {
@@ -128,6 +148,9 @@ export default function ChatbotScreen() {
     }
   };
 
+  // P0 FIX (v1.1.5): Gỡ onContentSizeChange khỏi FlatList — nó trigger scrollToEnd
+  // quá nhiều lần khi typing animation chạy, gây jank. Chỉ giữ useEffect scroll-to-end
+  // dựa trên [messages, isTyping] ở dưới (đã có setTimeout 100ms debounce).
   useEffect(() => {
     if (flatListRef.current) {
       const timerId = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -155,20 +178,7 @@ export default function ChatbotScreen() {
 
       <FlatList ref={flatListRef} data={messages} keyExtractor={i => i.id}
         renderItem={renderMessage} contentContainerStyle={styles.list}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        ListFooterComponent={React.useMemo(() => isTyping ? (
-          <View style={styles.typingRow}>
-            <View style={styles.botAvatar}>
-              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
-            </View>
-            <View style={styles.typingBubble}>
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-              <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
-            </View>
-          </View>
-        ) : null, [isTyping, dot1Anim, dot2Anim, dot3Anim])}
+        ListFooterComponent={TypingFooter}
       />
 
       {/* Input bar */}
@@ -222,7 +232,11 @@ const styles = StyleSheet.create({
   bubbleUser: {
     backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
     ...SHADOWS.small,
-    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.25)',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   bubbleBot: {
     backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
@@ -267,10 +281,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.small,
-    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.3)',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sendBtnDisabled: {
     backgroundColor: COLORS.divider,
-    boxShadow: 'none',
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });

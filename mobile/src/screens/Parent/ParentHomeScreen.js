@@ -195,10 +195,11 @@ export default function ParentHomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
-      {/* Top App Bar — trắng, avatar + brand + bell */}
+      {/* Top App Bar — trắng, avatar + brand + bell + profile shortcut */}
       <View style={[styles.appBar, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
         <TouchableOpacity
           style={styles.avatar}
+          onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
           onLongPress={handleAvatarLongPress}
           activeOpacity={0.7}
         >
@@ -206,6 +207,14 @@ export default function ParentHomeScreen() {
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>EduCareLink</Text>
         <View style={styles.appBarRight}>
+          <TouchableOpacity
+            style={styles.profileShortcut}
+            onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="person-circle-outline" size={26} color={COLORS.primary} />
+          </TouchableOpacity>
           <NotificationBell />
         </View>
       </View>
@@ -434,7 +443,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   appBarRight: {
-    minWidth: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 80,
+  },
+  profileShortcut: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   // === SCROLL ===

@@ -242,7 +242,11 @@ const styles = StyleSheet.create({
   bubbleUser: {
     backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
     ...SHADOWS.small,
-    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.25)',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   bubbleBot: {
     backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
@@ -273,7 +277,11 @@ const styles = StyleSheet.create({
   sendBtn: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary,
     justifyContent: 'center', alignItems: 'center', ...SHADOWS.small,
-    boxShadow: '0px 2px 8px rgba(242, 101, 34, 0.3)',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  sendBtnDisabled: { backgroundColor: COLORS.divider, boxShadow: 'none' },
+  sendBtnDisabled: { backgroundColor: COLORS.divider, shadowOpacity: 0, elevation: 0 },
 });

@@ -320,7 +320,8 @@ const styles = StyleSheet.create({
   },
   applyBtnDisabled: {
     backgroundColor: COLORS.textMuted, opacity: 0.6,
-    boxShadow: 'none',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   applyBtnText: { color: '#fff', ...TYPO.button, letterSpacing: 0.5 },
 
