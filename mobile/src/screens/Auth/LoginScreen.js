@@ -167,6 +167,8 @@ export default function LoginScreen() {
                 onPress={() => setShowPass(!showPass)}
                 style={styles.eyeIcon}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
                 <Ionicons
                   name={showPass ? 'eye-outline' : 'eye-off-outline'}
