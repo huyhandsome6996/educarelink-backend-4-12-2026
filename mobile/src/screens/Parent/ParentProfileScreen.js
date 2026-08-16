@@ -151,7 +151,7 @@ export default function ParentProfileScreen() {
           <View style={styles.avatarLarge}>
             <Text style={styles.avatarText}>{displayName[0]?.toUpperCase() || '?'}</Text>
           </View>
-          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">{displayName}</Text>
           <Text style={styles.role}>Phụ huynh</Text>
 
           {/* Badges */}
@@ -213,7 +213,7 @@ export default function ParentProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{user?.email || 'Chưa cập nhật'}</Text>
+                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">{user?.email || 'Chưa cập nhật'}</Text>
               </View>
             </View>
             <View style={styles.infoDivider} />
@@ -223,7 +223,7 @@ export default function ParentProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Số điện thoại</Text>
-                <Text style={styles.infoValue}>{user?.phone_number || 'Chưa cập nhật'}</Text>
+                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">{user?.phone_number || 'Chưa cập nhật'}</Text>
               </View>
             </View>
             <View style={styles.infoDivider} />
@@ -233,7 +233,7 @@ export default function ParentProfileScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Địa chỉ</Text>
-                <Text style={styles.infoValue} numberOfLines={2}>
+                <Text style={styles.infoValue} numberOfLines={2} ellipsizeMode="tail">
                   {user?.address || 'Chưa cập nhật'}
                 </Text>
               </View>
