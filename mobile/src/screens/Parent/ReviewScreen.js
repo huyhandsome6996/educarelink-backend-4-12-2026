@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityInd
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createReview } from '../../api/tasks';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM, FRAGMENTS } from '../../theme/colors';
 
 export default function ReviewScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
   const { taskId, revieweeId } = route.params || {};
@@ -47,7 +49,7 @@ export default function ReviewScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="close" size={22} color={COLORS.textSecondary} />
         </TouchableOpacity>
@@ -106,7 +108,7 @@ export default function ReviewScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingTop: 56, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, ...SHADOWS.small },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIZES.md, paddingBottom: 16, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border, ...SHADOWS.small },
   backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
   body: { flex: 1, padding: SIZES.lg, gap: SIZES.md },
@@ -120,5 +122,5 @@ const styles = StyleSheet.create({
   textarea: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSm, borderWidth: 1.5, borderColor: COLORS.border, padding: SIZES.md, ...TYPO.body, color: COLORS.textPrimary, minHeight: 120 },
   textareaFocused: { ...FRAGMENTS.inputFocus, ...SHADOWS.inputFocus },
   submitBtn: { backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.large, marginTop: SIZES.sm },
-  submitText: { color: '#fff', ...TYPO.button },
+  submitText: { color: COLORS.textOnPrimary, ...TYPO.button },
 });

@@ -1,20 +1,29 @@
+// ============================================================
+// LoginScreen — Redesign theo Warm Professionalism (Stitch AI)
+// Thay đổi:
+// - Background: surfaceWarm (#fff8f6) — nền ấm
+// - Header: title màu primary-container (#F26522), bỏ logo box
+// - Form bọc trong card trắng (radius 20, border surface-variant, shadow)
+// - Field labels kiểu caption (Plus Jakarta Sans 700, on-surface-variant)
+// - Input: icon trái + text, border #F0F0F0, focus ring primary-container
+// - "Quên mật khẩu?" link → showComingSoon
+// - Button: primary-container bg, text trắng, shadow cam, icon arrow_forward
+// - Divider "Hoặc tiếp tục với" + 2 nút Google/Facebook (showComingSoon)
+// - Link "Đăng ký ngay" màu primary-container
+// Giữ nguyên: logic login qua AuthContext, alert lỗi 403 pending_approval
+// ============================================================
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Animated
 } from 'react-native';
-// Fix M8: xoá import Image không dùng tới (expo-image) — dead import.
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
-
-// ====================================================================
-// ⚠️  OAuth (Google / Facebook) TẠM THỜI VÔ HIỆU HOÁ
-//  Lý do: gây crash APK khi build (theo handoff file)
-//  Sẽ bật lại sau khi release APK cơ bản hoàn tất
-//  Code OAuth cũ được comment tại phần dưới, không xóa để dễ khôi phục
-// ====================================================================
+import { showComingSoon } from '../../utils/comingSoon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') {
@@ -26,6 +35,7 @@ const showAlert = (title, message) => {
 
 export default function LoginScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -33,7 +43,7 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Focus state tracking for input wrappers
+  // Focus state tracking cho input wrapper
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
@@ -88,65 +98,88 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 48 }]} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
+        {/* Header — centered, no logo box (theo design HTML) */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.logoWrap}>
-            <Ionicons name="heart" size={48} color="#fff" />
-          </View>
-          <Text style={styles.title}>Chào mừng trở lại!</Text>
-          <Text style={styles.subtitle}>Đăng nhập để tiếp tục sử dụng Educarelink</Text>
+          <Text style={styles.title}>Chào mừng trở lại</Text>
+          <Text style={styles.subtitle}>Đăng nhập để tiếp tục kết nối</Text>
         </Animated.View>
 
-        {/* Form */}
-        <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {/* Username */}
-          <View style={[
-            styles.inputWrapper,
-            usernameFocused && styles.inputWrapperFocused,
-          ]}>
-            <View style={[styles.inputIconBox, usernameFocused && styles.inputIconBoxFocused]}>
-              <Ionicons name="person-outline" size={18} color={usernameFocused ? COLORS.primary : COLORS.textMuted} />
+        {/* Form Card — bọc toàn bộ inputs + button trong card trắng */}
+        <Animated.View
+          style={[
+            styles.card,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          {/* Username field — label + input với icon trái */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Số điện thoại / Tên tài khoản</Text>
+            <View style={[styles.inputWrapper, usernameFocused && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="phone-portrait-outline"
+                size={20}
+                color={usernameFocused ? COLORS.primary : COLORS.outlineVariant}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập số điện thoại của bạn"
+                placeholderTextColor={COLORS.outline}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setUsernameFocused(true)}
+                onBlur={() => setUsernameFocused(false)}
+              />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Tên tài khoản"
-              placeholderTextColor={COLORS.textMuted}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => setUsernameFocused(true)}
-              onBlur={() => setUsernameFocused(false)}
-            />
           </View>
 
-          {/* Password */}
-          <View style={[
-            styles.inputWrapper,
-            passwordFocused && styles.inputWrapperFocused,
-          ]}>
-            <View style={[styles.inputIconBox, passwordFocused && styles.inputIconBoxFocused]}>
-              <Ionicons name="lock-closed-outline" size={18} color={passwordFocused ? COLORS.primary : COLORS.textMuted} />
+          {/* Password field — label + "Quên mật khẩu?" link */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.passwordLabelRow}>
+              <Text style={styles.fieldLabel}>Mật khẩu</Text>
+              <TouchableOpacity onPress={() => showComingSoon('Quên mật khẩu')}>
+                <Text style={styles.forgotLink}>Quên mật khẩu?</Text>
+              </TouchableOpacity>
             </View>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Mật khẩu"
-              placeholderTextColor={COLORS.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon}>
-              <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
+            <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={passwordFocused ? COLORS.primary : COLORS.outlineVariant}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Nhập mật khẩu"
+                placeholderTextColor={COLORS.outline}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPass(!showPass)}
+                style={styles.eyeIcon}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                <Ionicons
+                  name={showPass ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color={COLORS.outlineVariant}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Nút Đăng nhập */}
+          {/* Submit button — primary-container bg, white text, arrow icon, orange shadow */}
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
               style={[styles.loginBtn, isLoading && styles.btnDisabled]}
@@ -166,15 +199,42 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
           </Animated.View>
-
-          {/* Chuyển đến Đăng ký */}
-          <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Đăng ký ngay</Text>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
+
+        {/* Divider "Hoặc tiếp tục với" */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>Hoặc tiếp tục với</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Social buttons — Google + Facebook (showComingSoon vì OAuth chưa bật) */}
+        <View style={styles.socialRow}>
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => showComingSoon('Đăng nhập bằng Google')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="logo-google" size={20} color="#4285F4" />
+            <Text style={styles.socialBtnText}>Google</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => showComingSoon('Đăng nhập bằng Facebook')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+            <Text style={styles.socialBtnText}>Facebook</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Signup link */}
+        <View style={styles.registerRow}>
+          <Text style={styles.registerText}>Chưa có tài khoản?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+            <Text style={styles.registerLink}> Đăng ký ngay</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Tài khoản test — chỉ hiện trong môi trường development */}
         {__DEV__ && (
@@ -184,7 +244,6 @@ export default function LoginScreen() {
                 <Ionicons name="flask-outline" size={16} color={COLORS.primary} />
                 <Text style={styles.testAccountTitle}>Tài khoản thử nghiệm (DEV)</Text>
               </View>
-              {/* Fix C7: test password hiển thị sai — Demo@2026 mới đúng theo AGENTS.md */}
               <Text style={styles.testAccountText}>Phụ huynh: phuhuynh_test / Demo@2026</Text>
               <Text style={styles.testAccountText}>Sinh viên: sinhvien_test / Demo@2026</Text>
             </View>
@@ -196,188 +255,176 @@ export default function LoginScreen() {
   );
 }
 
-/* ====================================================================
-   ⚠️  OAuth CODE (ĐÃ VÔ HIỆU HOÁ — KHÔNG XÓA)
-   Khi nào muốn bật lại OAuth:
-   1. Đảm bảo đã cài: npm install expo-auth-session expo-web-browser expo-facebook
-   2. Đảm bảo backend có GOOGLE_OAUTH_CLIENT_ID + FACEBOOK_APP_ID
-   3. Bỏ comment các import + handleGooglePress + handleFacebookLogin + 2 button OAuth
-   4. Test kỹ trên Expo Go trước khi build APK
-   ====================================================================
-
-import * as Google from 'expo-auth-session/providers/google';
-import * as Facebook from 'expo-facebook';
-import { getOAuthConfig } from '../../api/auth';
-
-// Trong component:
-// const { login, loginWithOAuth } = useAuth();
-// const [oauthLoading, setOauthLoading] = useState(null);
-// const [oauthConfig, setOauthConfig] = useState(null);
-
-// useEffect(() => {
-//   getOAuthConfig().then(res => setOauthConfig(res.data)).catch(() => {});
-// }, []);
-
-// const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-//   clientId: oauthConfig?.google_client_id,
-//   redirectUri: 'https://auth.expo.io/@educarelink/educarelink',
-// });
-
-// useEffect(() => {
-//   if (googleResponse?.type === 'success') {
-//     handleGoogleLogin(googleResponse.authentication.accessToken);
-//   }
-// }, [googleResponse]);
-
-// const handleGoogleLogin = async (accessToken) => {
-//   setOauthLoading('google');
-//   try { await loginWithOAuth('google', accessToken); }
-//   catch (e) { showAlert('Lỗi', e.response?.data?.error || 'Đăng nhập Google thất bại.'); }
-//   finally { setOauthLoading(null); }
-// };
-
-// const handleGooglePress = async () => {
-//   if (!oauthConfig?.google_client_id) {
-//     showAlert('Chưa sẵn sàng', 'Đăng nhập Google chưa được cấu hình.');
-//     return;
-//   }
-//   await googlePromptAsync();
-// };
-
-// const handleFacebookLogin = async () => {
-//   if (!oauthConfig?.facebook_app_id) {
-//     showAlert('Chưa sẵn sàng', 'Đăng nhập Facebook chưa được cấu hình.');
-//     return;
-//   }
-//   setOauthLoading('facebook');
-//   try {
-//     await Facebook.initializeAsync({ appId: oauthConfig.facebook_app_id });
-//     const result = await Facebook.logInWithReadPermissionsAsync({
-//       permissions: ['public_profile', 'email'],
-//     });
-//     if (result.type === 'success' && result.token) {
-//       await loginWithOAuth('facebook', result.token);
-//     }
-//   } catch (e) {
-//     showAlert('Lỗi', e.message || 'Đăng nhập Facebook thất bại.');
-//   } finally { setOauthLoading(null); }
-// };
-
-// Trong JSX (sau nút Đăng nhập):
-// <View style={styles.dividerRow}>
-//   <View style={styles.dividerLine} />
-//   <Text style={styles.dividerText}>hoặc</Text>
-//   <View style={styles.dividerLine} />
-// </View>
-// <TouchableOpacity style={styles.googleBtn} onPress={handleGooglePress} disabled={oauthLoading !== null}>
-//   {oauthLoading === 'google' ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : (
-//     <>
-//       <View style={styles.googleLogo}><Text style={styles.googleLogoText}>G</Text></View>
-//       <Text style={styles.oauthBtnText}>Đăng nhập với Google</Text>
-//     </>
-//   )}
-// </TouchableOpacity>
-// <TouchableOpacity style={styles.facebookBtn} onPress={handleFacebookLogin} disabled={oauthLoading !== null}>
-//   {oauthLoading === 'facebook' ? <ActivityIndicator color="#fff" /> : (
-//     <>
-//       <Ionicons name="logo-facebook" size={20} color="#fff" />
-//       <Text style={[styles.oauthBtnText, { color: '#fff' }]}>Đăng nhập với Facebook</Text>
-//     </>
-//   )}
-// </TouchableOpacity>
-==================================================================== */
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 44 },
-  header: { alignItems: 'center', marginBottom: 44 },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    marginBottom: 12,
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm }, // #fff8f6 — nền ấm
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 20, // margin-mobile = 20px
+    paddingBottom: 40,
   },
-  logoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    ...SHADOWS.large,
+  // Header
+  header: { alignItems: 'center', marginBottom: 32 }, // mb-xl
+  title: {
+    ...TYPO.h1,
+    color: COLORS.primary, // primary-container #F26522
+    textAlign: 'center',
+    marginBottom: 8, // mb-sm
   },
-  title: { ...TYPO.h1, fontSize: 28, color: COLORS.textPrimary, marginBottom: 10 },
-  subtitle: { ...TYPO.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },
-  form: { gap: 18, marginBottom: 36 },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    paddingRight: 16, height: 58,
+  subtitle: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant, // #594138
+    textAlign: 'center',
+  },
+  // Card bọc form
+  card: {
+    backgroundColor: COLORS.surface, // surface-container-lowest #ffffff
+    borderRadius: 20, // lg radius
+    padding: 24, // p-lg
+    marginBottom: 24, // mb-lg
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant, // surface-variant
     ...SHADOWS.small,
+    gap: 20, // space-y-lg giữa các field
+  },
+  // Field group — label + input
+  fieldGroup: {
+    gap: 8, // mb-xs cho label
+  },
+  fieldLabel: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant, // #594138
+  },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  forgotLink: {
+    ...TYPO.caption,
+    color: COLORS.primary, // primary-container
+  },
+  // Input wrapper
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface, // surface-container-lowest
+    borderWidth: 1,
+    borderColor: COLORS.border, // #F0F0F0
+    borderRadius: 14, // md radius
+    paddingHorizontal: 12, // px-sm
+    height: 48, // py-sm + input
   },
   inputWrapperFocused: {
-    ...FRAGMENTS.inputFocus,
+    borderColor: COLORS.primary, // primary-container
+    borderWidth: 2,
     ...SHADOWS.inputFocus,
   },
-  inputIconBox: {
-    width: 50, height: 42, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radiusSm,
-    marginLeft: 8, marginRight: 12,
+  inputIcon: {
+    marginRight: 12, // pl-sm + icon
   },
-  inputIconBoxFocused: {
-    backgroundColor: COLORS.primaryLight,
+  input: {
+    flex: 1,
+    ...TYPO.body,
+    color: COLORS.onSurface, // #261813
+    paddingVertical: 0, // tránh RN thêm padding mặc định
   },
-  input: { flex: 1, ...TYPO.body, color: COLORS.textPrimary },
-  eyeIcon: { padding: 8 },
+  eyeIcon: {
+    padding: 8,
+  },
+  // Submit button
   loginBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusLg, height: 58,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
-    ...SHADOWS.large,
-    marginTop: 6,
+    backgroundColor: COLORS.primary, // primary-container
+    borderRadius: 14, // md radius (theo DESIGN.md buttons dùng md=14px)
+    height: 48, // min 44px touch target
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4, // gap-xs
+    ...SHADOWS.large, // shadow cam
   },
   btnDisabled: { opacity: 0.7 },
-  loginBtnText: { ...TYPO.button, fontSize: 17, color: '#fff' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
-  registerText: { ...TYPO.bodySmall, color: COLORS.textSecondary },
-  registerLink: { ...TYPO.buttonSmall, color: COLORS.primary },
+  loginBtnText: {
+    ...TYPO.h4,
+    color: COLORS.textOnPrimary,
+  },
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24, // mb-lg
+    gap: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.outlineVariant, // surface-variant
+  },
+  dividerText: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    backgroundColor: COLORS.surfaceWarm,
+    paddingHorizontal: 8,
+  },
+  // Social buttons
+  socialRow: {
+    flexDirection: 'row',
+    gap: 16, // gap-md
+    marginBottom: 32, // mb-xl
+  },
+  socialBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.surface, // surface-container-lowest
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant, // surface-variant
+    borderRadius: 14, // md radius
+    height: 48, // min 44px touch target
+  },
+  socialBtnText: {
+    ...TYPO.body,
+    color: COLORS.onSurface,
+  },
+  // Register link
+  registerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  registerText: {
+    ...TYPO.body,
+    color: COLORS.onSurfaceVariant,
+  },
+  registerLink: {
+    ...TYPO.h4,
+    color: COLORS.primary, // primary-container
+  },
+  // DEV test account box
   testAccountBox: {
-    backgroundColor: COLORS.primaryLight, borderRadius: SIZES.radiusLg, padding: 18,
-    borderWidth: 1.5, borderColor: COLORS.primarySoft,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.primarySoft,
   },
   testAccountIconRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
-  testAccountTitle: { ...TYPO.h5, fontSize: 13, color: COLORS.primaryDark, marginBottom: 0 },
-  testAccountText: { ...TYPO.bodySmall, color: COLORS.primary, lineHeight: 22 },
-
-  // === OAUTH STYLES (giữ lại để dùng khi bật lại OAuth) ===
-  dividerRow: {
-    flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 12,
+  testAccountTitle: {
+    ...TYPO.h5,
+    fontSize: 13,
+    color: COLORS.primaryDark,
+    marginBottom: 0,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  dividerText: { ...TYPO.caption, color: COLORS.textMuted, fontWeight: '600' },
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg, height: 54,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    ...SHADOWS.small,
-    marginBottom: 10,
+  testAccountText: {
+    ...TYPO.bodySmall,
+    color: COLORS.primary,
+    lineHeight: 22,
   },
-  googleLogo: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff',
-    borderWidth: 1, borderColor: '#4285F4',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  googleLogoText: {
-    color: '#4285F4', fontWeight: '900', fontSize: 16,
-  },
-  facebookBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: '#1877F2', borderRadius: SIZES.radiusLg, height: 54,
-    ...SHADOWS.small,
-  },
-  oauthBtnText: { ...TYPO.body, color: COLORS.textPrimary, fontWeight: '600' },
 });
