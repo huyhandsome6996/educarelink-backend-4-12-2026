@@ -891,7 +891,7 @@ Cách hỏi:
 Chế độ này sẽ:
 • Vẽ vùng an toàn quanh nơi làm việc (mặc định 500m)
 • Cảnh báo ngay nếu Carepartner rời vùng an toàn
-• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 90 giây
+• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 60 giây
 • Nút SOS khẩn cấp cho cả phụ huynh và Carepartner
 • Theo dõi vị trí real-time khi Carepartner đang làm việc
 
@@ -1073,7 +1073,7 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
                 safety_msg = ""
                 if safety_enabled:
-                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 90s\n• Nút SOS sẵn sàng cho cả 2 bên"
+                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 60s\n• Nút SOS sẵn sàng cho cả 2 bên"
                 return Response({
                     "response": clean_response + f"\n\n✅ Đã tạo công việc thành công!{safety_msg}",
                     "type": "task_created",
