@@ -62,6 +62,7 @@ import AdminAllTasksScreen from '../screens/Admin/AdminAllTasksScreen';
 
 // Live Tracking (Parent)
 import LiveTrackingScreen from '../screens/Parent/LiveTrackingScreen';
+import TrackingOverviewScreen from '../screens/Parent/TrackingOverviewScreen';
 
 // Complaint (Worker)
 import ComplaintScreen from '../screens/Worker/ComplaintScreen';
@@ -89,8 +90,12 @@ function TabIcon({ name, focused, color }) {
 }
 
 // === Tab Navigator dành cho PHỤ HUYNH ===
-// QA-FIX-GAP-3: thêm tab thứ 4 'Tài khoản' → ParentProfileScreen
-// (trước chỉ có 3 tab Home/MyTasks/Chatbot — thiếu sót có sẵn)
+// QA-FIX-UI 1.2 (Hướng A): 5 tab đúng thiết kế Stitch AI
+//   1. Trang chủ  (ParentHome)
+//   2. Nhật ký    (MyTasks — đổi nhãn từ 'Hoạt động')
+//   3. AI Trợ lý  (Chatbot)
+//   4. Theo dõi   (TrackingOverview — MỚI, tổng hợp các task in_progress)
+//   5. Tài khoản  (ParentProfile)
 function ParentTabs() {
   return (
     <Tab.Navigator
@@ -98,8 +103,9 @@ function ParentTabs() {
         tabBarIcon: ({ focused, color }) => {
           let iconName;
           if (route.name === 'ParentHome') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'MyTasks') iconName = focused ? 'list' : 'list-outline';
+          else if (route.name === 'MyTasks') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Chatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
+          else if (route.name === 'TrackingOverview') iconName = focused ? 'radar' : 'radar-outline';
           else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
@@ -114,8 +120,9 @@ function ParentTabs() {
       })}
     >
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Hoạt động' }} />
+      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Nhật ký' }} />
       <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
+      <Tab.Screen name="TrackingOverview" component={TrackingOverviewScreen} options={{ tabBarLabel: 'Theo dõi' }} />
       <Tab.Screen name="ParentProfile" component={ParentProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
     </Tab.Navigator>
   );
