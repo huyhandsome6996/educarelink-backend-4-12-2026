@@ -102,34 +102,34 @@ class QAFix6B1PinRequiredToApplyTestCase(TestCase):
             scheduled_time=timezone.now(),
         )
 
-    def test_b1_worker_without_pin_cannot_apply_no_geofence(self):
-        """Worker chưa có PIN apply vào task thường → 403 PIN_REQUIRED."""
+    def test_b1_worker_without_pin_can_apply_no_geofence(self):
+        """Worker chưa có PIN apply vào task KHÔNG có geofence → thành công.
+        PIN chỉ yêu cầu cho task CÓ tracking (geofence). Task thường không cần."""
         client = APIClient()
         client.force_authenticate(user=self.worker_no_pin)
         resp = client.post(f'/api/worker/tasks/{self.task_no_geofence.id}/apply/', {
             'consent_tracking': False,
         }, format='json')
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.data['error'], 'PIN_REQUIRED')
-        self.assertIn('mã cá nhân', resp.data['message'].lower())
-        # Verify không tạo TaskApplication
-        self.assertFalse(
+        self.assertEqual(resp.status_code, 201)
+        # Verify tạo TaskApplication
+        self.assertTrue(
             TaskApplication.objects.filter(
-                task=self.task_no_geofence, worker=self.worker_no_pin
+                task=self.task_no_geofence, worker=self.worker_no_pin,
+                status='pending',
             ).exists()
         )
 
     def test_b1_worker_without_pin_cannot_apply_geofence_before_consent(self):
-        """Worker chưa có PIN apply vào task có geofence → 403 PIN_REQUIRED
+        """Worker chưa có PIN apply vào task có geofence → 403 verification_pin_required
         (chặn TRƯỚC khi check consent_tracking)."""
         client = APIClient()
         client.force_authenticate(user=self.worker_no_pin)
         resp = client.post(f'/api/worker/tasks/{self.task_with_geofence.id}/apply/', {
             'consent_tracking': True,
         }, format='json')
-        # Phải 403 PIN_REQUIRED, KHÔNG phải 400 CONSENT_REQUIRED
+        # Phải 403 verification_pin_required, KHÔNG phải 400 CONSENT_REQUIRED
         self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.data['error'], 'PIN_REQUIRED')
+        self.assertEqual(resp.data['error'], 'verification_pin_required')
         self.assertFalse(
             TaskApplication.objects.filter(
                 task=self.task_with_geofence, worker=self.worker_no_pin

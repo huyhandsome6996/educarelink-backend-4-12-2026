@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
 import { getWorkerRecommendations } from '../../api/ai_recommendations';
 import NotificationBell from '../../components/NotificationBell';
+import VerificationPinSetupModal from '../../components/VerificationPinSetupModal';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import { CATEGORY_ICONS, renderCategoryIcon } from '../../theme/categoryIcons';
 
@@ -25,7 +26,7 @@ const CATEGORY_MAP = [
 export default function WorkerFeedScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,6 +34,11 @@ export default function WorkerFeedScreen() {
   const [appliedTaskIds, setAppliedTaskIds] = useState([]);
   const [searchFocused, setSearchFocused] = useState(false);
   const bounceAnim = useRef(new Animated.Value(0)).current;
+
+  // LỖ HỔNG #1 fix: state cho VerificationPinSetupModal + retry flow
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pendingApplyTaskId, setPendingApplyTaskId] = useState(null); // task cần retry sau khi đặt PIN
+  const [applyLoading, setApplyLoading] = useState(null); // taskId đang apply (loading state cho button)
 
   // AI Recommendations state
   const [aiRecs, setAiRecs] = useState([]);
@@ -106,13 +112,21 @@ export default function WorkerFeedScreen() {
     outputRange: [0, -8],
   });
 
-  // Fix H16: wrap handleApply trong useCallback để function reference ổn
-  // định giữa các render → renderItem không nhận function mới mỗi render
-  // (tránh re-render không cần thiết của tất cả items trong FlatList).
+  // LỖ HỔNG #1 fix: handleApply với PIN enforcement
+  // - Phát hiện error `verification_pin_required` → mở VerificationPinSetupModal
+  // - Sau khi đặt PIN thành công → retry apply tự động (không mất context)
+  // - Loading state trên button apply để tránh double-tap
+  // - Gửi consent_tracking khi task có geofence (backend yêu cầu)
   const handleApply = useCallback((taskId) => {
+    // Tìm task để check geofence → gửi consent_tracking nếu cần
+    const task = tasks.find(t => t.id === taskId);
+    const hasGeofence = !!(task?.geofence_lat && task?.geofence_lng);
+
     const startApply = async () => {
+      setApplyLoading(taskId);
       try {
-        const res = await applyTask(taskId);
+        // consent_tracking: true nếu task có geofence (worker đồng ý tracking)
+        const res = await applyTask(taskId, hasGeofence ? true : null);
         setAppliedTaskIds(prev => [...prev, taskId]);
         if (Platform.OS === 'web') {
           alert('✅ Thành công! Đã ứng tuyển!');
@@ -120,12 +134,79 @@ export default function WorkerFeedScreen() {
           Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
         }
       } catch (e) {
-        const msg = e.response?.data?.error || e.response?.data?.message || 'Thao tác thất bại.';
-        if (Platform.OS === 'web') {
-          alert(`Thông báo: ${msg}`);
+        const errorCode = e.response?.data?.error;
+        const msg = e.response?.data?.message || 'Thao tác thất bại.';
+
+        // ================================================================
+        // LỖ HỔNG #1: Bắt error verification_pin_required → mở PIN setup
+        // Thay vì show generic alert, điều hướng worker đặt PIN.
+        // Sau khi đặt xong, retry apply tự động (pendingApplyTaskId).
+        // ================================================================
+        if (errorCode === 'verification_pin_required') {
+          setPendingApplyTaskId(taskId);
+          setPinModalVisible(true);
+        } else if (errorCode === 'CONSENT_REQUIRED') {
+          // Task có geofence nhưng worker chưa đồng ý tracking
+          // Hiện dialog hỏi đồng ý → retry với consent_tracking=true
+          if (Platform.OS === 'web') {
+            if (window.confirm('Việc này yêu cầu theo dõi vị trí. Bạn đồng ý chia sẻ vị trí?')) {
+              setApplyLoading(taskId);
+              applyTask(taskId, true)
+                .then(res => {
+                  setAppliedTaskIds(prev => [...prev, taskId]);
+                  Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
+                })
+                .catch(err => {
+                  const errCode2 = err.response?.data?.error;
+                  if (errCode2 === 'verification_pin_required') {
+                    setPendingApplyTaskId(taskId);
+                    setPinModalVisible(true);
+                  } else {
+                    Alert.alert('Lỗi', err.response?.data?.message || 'Thao tác thất bại.');
+                  }
+                })
+                .finally(() => setApplyLoading(null));
+            }
+          } else {
+            Alert.alert(
+              'Theo dõi vị trí',
+              'Việc này yêu cầu theo dõi vị trí. Bạn đồng ý chia sẻ vị trí khi làm việc?',
+              [
+                { text: 'Huỷ', style: 'cancel' },
+                {
+                  text: 'Đồng ý',
+                  onPress: () => {
+                    setApplyLoading(taskId);
+                    applyTask(taskId, true)
+                      .then(res => {
+                        setAppliedTaskIds(prev => [...prev, taskId]);
+                        Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
+                      })
+                      .catch(err => {
+                        const errCode2 = err.response?.data?.error;
+                        if (errCode2 === 'verification_pin_required') {
+                          setPendingApplyTaskId(taskId);
+                          setPinModalVisible(true);
+                        } else {
+                          Alert.alert('Lỗi', err.response?.data?.message || 'Thao tác thất bại.');
+                        }
+                      })
+                      .finally(() => setApplyLoading(null));
+                  },
+                },
+              ]
+            );
+          }
         } else {
-          Alert.alert('Thông báo', msg);
+          // Generic error
+          if (Platform.OS === 'web') {
+            alert(`Thông báo: ${msg}`);
+          } else {
+            Alert.alert('Thông báo', msg);
+          }
         }
+      } finally {
+        setApplyLoading(null);
       }
     };
 
@@ -139,7 +220,34 @@ export default function WorkerFeedScreen() {
         { text: 'Ứng tuyển', onPress: startApply },
       ]);
     }
-  }, []);
+  }, [tasks]);
+
+  // LỖ HỔNG #1 fix: callback khi đặt PIN thành công
+  // → refresh user (cập nhật has_verification_pin) → retry apply task đang chờ
+  const handlePinSetupSuccess = useCallback(async () => {
+    await refreshUser();
+    if (pendingApplyTaskId) {
+      const taskIdToRetry = pendingApplyTaskId;
+      setPendingApplyTaskId(null);
+      setPinModalVisible(false);
+      // Retry apply — lúc này user đã có PIN → backend cho phép
+      setApplyLoading(taskIdToRetry);
+      try {
+        const task = tasks.find(t => t.id === taskIdToRetry);
+        const hasGeofence = !!(task?.geofence_lat && task?.geofence_lng);
+        const res = await applyTask(taskIdToRetry, hasGeofence ? true : null);
+        setAppliedTaskIds(prev => [...prev, taskIdToRetry]);
+        Alert.alert('✅ Thành công', 'Đã đặt mã cá nhân và ứng tuyển thành công!');
+      } catch (e) {
+        const msg = e.response?.data?.message || 'Ứng tuyển thất bại sau khi đặt mã.';
+        Alert.alert('Lỗi', msg);
+      } finally {
+        setApplyLoading(null);
+      }
+    } else {
+      setPinModalVisible(false);
+    }
+  }, [pendingApplyTaskId, refreshUser, tasks]);
 
 
   // Fix M11: thêm null check cho task.title và task.location — nếu task
@@ -196,13 +304,19 @@ export default function WorkerFeedScreen() {
             <Text style={styles.parentLabel}>{task.parent_name}</Text>
           </View>
           <TouchableOpacity
-            style={[styles.applyBtn, hasApplied && styles.applyBtnDisabled]}
+            style={[styles.applyBtn, (hasApplied || applyLoading === task.id) && styles.applyBtnDisabled]}
             onPress={() => handleApply(task.id)}
-            disabled={hasApplied}
+            disabled={hasApplied || !!applyLoading}
             activeOpacity={0.85}
           >
-            <Ionicons name={hasApplied ? "checkmark" : "paper-plane"} size={14} color="#fff" />
-            <Text style={styles.applyBtnText}>{hasApplied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</Text>
+            {applyLoading === task.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name={hasApplied ? "checkmark" : "paper-plane"} size={14} color="#fff" />
+            )}
+            <Text style={styles.applyBtnText}>
+              {applyLoading === task.id ? 'Đang gửi...' : hasApplied ? 'Đã ứng tuyển' : 'Ứng tuyển'}
+            </Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -324,6 +438,14 @@ export default function WorkerFeedScreen() {
           }
         />
       )}
+
+      {/* LỖ HỔNG #1 fix: VerificationPinSetupModal — mở khi worker chưa đặt PIN nhận task có tracking */}
+      <VerificationPinSetupModal
+        visible={pinModalVisible}
+        onClose={() => { setPinModalVisible(false); setPendingApplyTaskId(null); }}
+        onSuccess={handlePinSetupSuccess}
+        isChange={false}
+      />
     </View>
   );
 }
