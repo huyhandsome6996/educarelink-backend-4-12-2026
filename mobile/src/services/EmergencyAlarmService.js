@@ -25,7 +25,8 @@
 //   - Khi app background/killed: JS không chạy → audio loop dừng.
 //     Remote push do OS xử lý (channel emergency-alerts, sound custom
 //     nếu có file + EAS build).
-//   - iOS critical alert cần entitlement Apple (chưa có → UNTESTABLE).
+//   - iOS critical alert cần entitlement Apple (đã thêm vào app.json —
+//     nhưng cần MANUALLY request trên Apple Developer Portal, có thể bị reject).
 // ====================================================================
 
 import { Vibration, Platform } from 'react-native';

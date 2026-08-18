@@ -626,10 +626,29 @@ class ApproveCandidateAPIView(APIView):
             if application.task.status != 'open':
                 return Response({"error": "Công việc này đã đóng hoặc đang làm."}, status=status.HTTP_400_BAD_REQUEST)
             
+            task = application.task
+            worker = application.worker
+
+            # ================================================================
+            # LỖ HỔNG #1 — Dòng phòng vệ 2: chặn parent duyệt worker chưa có PIN
+            # cho task có geofence/tracking.
+            # --------------------------------------------------------------
+            # Dòng phòng vệ 1 ở ApplyTaskAPIView chặn worker tự apply, nhưng
+            # nếu bypass được (API trực tiếp, race condition sau khi xoá PIN,
+            # hoặc lỗi mobile không check), parent vẫn có thể approve → task
+            # chuyển sang in_progress mà không bao giờ có verification check.
+            # Đây là second line of defense — không hồi tố task đang in_progress.
+            # ================================================================
+            has_geofence = bool(task.geofence_lat and task.geofence_lng)
+            if has_geofence and not worker.has_verification_pin_set:
+                return Response({
+                    "error": "verification_pin_required",
+                    "message": f"CarePartner {worker.username} chưa đặt mã xác minh cá nhân. Không thể duyệt cho việc có theo dõi vị trí. Vui lòng yêu cầu họ đặt mã trước.",
+                }, status=status.HTTP_403_FORBIDDEN)
+
             application.status = 'accepted'
             application.save()
             
-            task = application.task
             task.status = 'in_progress'
             task.save()
             
@@ -695,25 +714,6 @@ class ApplyTaskAPIView(APIView):
         if not request.user.is_approved:
             return Response({"error": "Tài khoản của bạn chưa được Admin duyệt. Vui lòng đợi."}, status=status.HTTP_403_FORBIDDEN)
 
-        # ================================================================
-        # QA-FIX-6 / BẮT BUỘC 1 — Chặn worker chưa đặt PIN nhận việc
-        # --------------------------------------------------------------
-        # Vấn đề: verification_scheduler.py có dòng
-        #   `if not worker.verification_pin_hash: continue`
-        # nghĩa là worker chưa đặt PIN sẽ được miễn trừ VĨNH VIỄN khỏi
-        # tính năng xác minh ngẫu nhiên. Nếu không chặn ở bước nhận việc,
-        # worker (cố ý hoặc vô ý) không đặt PIN vẫn nhận việc bình thường
-        # → vô hiệu hoá toàn bộ mục đích của module xác minh ngẫu nhiên.
-        #
-        # Fix: chặn ngay ở bước apply (điểm sớm nhất trong luồng nhận việc)
-        # để worker nhận feedback rõ ràng trước khi đầu tư thời gian, và
-        # parent không thấy candidates không thể thực sự làm việc.
-        # ================================================================
-        if not request.user.verification_pin_hash:
-            return Response({
-                "error": "PIN_REQUIRED",
-                "message": "Bạn cần đặt mã cá nhân xác minh trước khi nhận việc. Vào Hồ sơ > Đặt mã cá nhân.",
-            }, status=status.HTTP_403_FORBIDDEN)
         try:
             task = Task.objects.get(id=task_id)
             if task.parent == request.user:
@@ -727,6 +727,35 @@ class ApplyTaskAPIView(APIView):
             # ================================================================
             consent_tracking = request.data.get('consent_tracking', None)
             has_geofence = bool(task.geofence_lat and task.geofence_lng)
+
+            # ================================================================
+            # QA-FIX-6 / BẮT BUỘC 1 + LỖ HỔNG #1 — Chặn worker chưa đặt PIN
+            # nhận việc CÓ THEO DÕI VỊ TRÍ (geofence/tracking)
+            # --------------------------------------------------------------
+            # Vấn đề: verification_scheduler.py có dòng
+            #   `if not worker.verification_pin_hash: continue`
+            # nghĩa là worker chưa đặt PIN sẽ được miễn trừ VĨNH VIỄN khỏi
+            # tính năng xác minh ngẫu nhiên. Nếu không chặn ở bước nhận việc,
+            # worker (cố ý hoặc vô ý) không đặt PIN vẫn nhận việc bình thường
+            # → vô hiệu hoá toàn bộ mục đích của module xác minh ngẫu nhiên.
+            #
+            # Fix (lỗ hổng #1): chỉ chặn khi task CÓ tracking (geofence).
+            # Task không có geofence → không cần PIN (không có risk bỏ máy
+            # vì không theo dõi vị trí). Cho phép worker chưa đặt PIN ứng tuyển
+            # task không có tracking để không khóa hoàn toàn người dùng mới.
+            #
+            # Error code `verification_pin_required` — mobile bắt riêng để
+            # điều hướng worker đến màn đặt PIN + retry flow.
+            # ================================================================
+            if has_geofence and not request.user.has_verification_pin_set:
+                return Response({
+                    "error": "verification_pin_required",
+                    "message": "Bạn cần đặt mã xác minh cá nhân trước khi nhận việc có theo dõi vị trí.",
+                    "has_geofence": True,
+                    "geofence_lat": task.geofence_lat,
+                    "geofence_lng": task.geofence_lng,
+                    "geofence_radius": task.geofence_radius or 500,
+                }, status=status.HTTP_403_FORBIDDEN)
 
             if has_geofence and consent_tracking is None:
                 return Response({

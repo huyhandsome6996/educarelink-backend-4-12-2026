@@ -31,6 +31,9 @@
         "NSCameraUsageDescription": "EduCareLink cần camera để chụp ảnh CCCD và chân dung.",
         "NSPhotoLibraryUsageDescription": "EduCareLink cần truy cập ảnh để tải lên CCCD và ảnh chân dung.",
         "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+      },
+      "entitlements": {
+        "com.apple.developer.usernotifications.critical-alerts": true
       }
     },
     "android": {

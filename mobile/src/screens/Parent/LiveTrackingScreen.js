@@ -484,6 +484,19 @@ export default function LiveTrackingScreen() {
         </View>
       </View>
 
+      {/* === LỖ HỔNG #2 fix: iOS Critical Alert fallback banner === */}
+      {/* Trên iOS, nếu entitlement chưa được Apple approve hoặc Focus/DnD đang bật,
+          push notification khẩn cấp sẽ bị downgrade → phụ huynh có thể bỏ lỡ cảnh báo.
+          Banner này cảnh báo phụ huynh tắt Focus/DnD thủ công. */}
+      {Platform.OS === 'ios' && (
+        <View style={styles.iosCriticalAlertBanner}>
+          <Ionicons name="information-circle" size={16} color={COLORS.warning || '#F59E0B'} />
+          <Text style={styles.iosCriticalAlertText}>
+            iOS Focus / Đừng làm phiền có thể làm câm cảnh báo khẩn cấp. Hãy tắt Focus khi theo dõi.
+          </Text>
+        </View>
+      )}
+
       {/* === DEVICE OFFLINE ALERT BANNER — cảnh báo khẩn cấp === */}
       {offlineAlertActive && deviceStatus?.active_alerts?.length > 0 && (
         <View style={styles.offlineAlertBanner}>
@@ -878,6 +891,25 @@ const styles = StyleSheet.create({
   },
   actionBtnTextWhite: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall, fontWeight: '700' },
   actionBtnTextSos: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall, fontWeight: '800', letterSpacing: 1 },
+
+  // === LỖ HỔNG #2 fix: iOS Critical Alert fallback banner ===
+  iosCriticalAlertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7', // amber-100
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F59E0B', // amber-500
+  },
+  iosCriticalAlertText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#92400E', // amber-800
+    fontWeight: '500',
+  },
 
   // === OFFLINE ALERT BANNER — errorDeep bg theo DESIGN.md ===
   offlineAlertBanner: {
