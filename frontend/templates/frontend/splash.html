@@ -6,16 +6,23 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
-    <title>EduCareLink - Kết nối yêu thương, Nuôi dưỡng tương lai</title>
+    <title>EduCareLink - An tâm giao con, yên tâm học cùng</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-radius-a.css' %}">
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <!-- Fonts: Manrope (display/headline) + Plus Jakarta Sans (body/label) -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
     <!-- Material Symbols Outlined Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-    <!-- Tailwind CSS CDN -->
+    <!--
+        Tailwind CSS is precompiled.
+        This template does NOT load cdn.tailwindcss.com and does NOT define an
+        inline tailwind.config block. To regenerate the stylesheet after editing
+        utility classes here, run:
+            cd frontend/tailwind-build && npm install && npm run build:radius-a
+        then commit frontend/static/css/tailwind-radius-a.css.
+    -->
 
     <style>
         /* Material Symbols configuration */
@@ -26,781 +33,196 @@
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
         }
 
-        /* Smooth scroll */
+        /* Smooth scroll for in-page anchors */
         html {
             scroll-behavior: smooth;
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #F7F7F7;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #FFCFB3;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #F26522;
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        /* Hero gradient animation */
-        @keyframes gradient-shift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        .hero-gradient {
-            background: linear-gradient(135deg, #FFF4ED 0%, #FFF9F5 25%, #FFF4ED 50%, #FFCFB3 75%, #FFF4ED 100%);
-            background-size: 300% 300%;
-            animation: gradient-shift 12s ease infinite;
-        }
-
-        /* Float animation */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-12px); }
-        }
-        .animate-float {
-            animation: float 4s ease-in-out infinite;
-        }
-        .animate-float-delay {
-            animation: float 4s ease-in-out infinite;
-            animation-delay: 1.5s;
-        }
-        .animate-float-delay-2 {
-            animation: float 4s ease-in-out infinite;
-            animation-delay: 3s;
+        /*
+         * Glass card used by the floating illustration chips in the hero.
+         * Local to this template — kept here (not in shared-theme.js) because
+         * it is a one-off visual effect, not a token.
+         */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
-        /* Fade in up animation */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(24px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .fade-in-up {
-            animation: fadeInUp 0.7s ease-out forwards;
-        }
-        .fade-in-up-delay-1 {
-            animation: fadeInUp 0.7s ease-out 0.15s forwards;
-            opacity: 0;
-        }
-        .fade-in-up-delay-2 {
-            animation: fadeInUp 0.7s ease-out 0.3s forwards;
-            opacity: 0;
-        }
-        .fade-in-up-delay-3 {
-            animation: fadeInUp 0.7s ease-out 0.45s forwards;
-            opacity: 0;
+        /*
+         * Tailwind v3 emits the `animation:` property for arbitrary
+         * `animate-[spin_60s_linear_infinite]` utilities, but it only emits
+         * the corresponding `@keyframes` when the matching `animate-spin` /
+         * `animate-ping` / `animate-bounce` utilities are also used somewhere
+         * in the build's `content` array. To keep this template self-sufficient
+         * and not depend on whether other templates in the radius-a bundle
+         * happen to use those utilities, define the keyframes here.
+         */
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @keyframes ping   { 75%, 100% { transform: scale(2); opacity: 0; } }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+            50%      { transform: translateY(0);   animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
         }
 
-        /* Step connector line */
-        .step-connector {
-            position: relative;
-        }
-        .step-connector::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            right: -1.5rem;
-            width: 3rem;
-            height: 2px;
-            background: linear-gradient(90deg, #F26522, #FFCFB3);
-        }
-        @media (max-width: 767px) {
-            .step-connector::after {
-                display: none;
-            }
-        }
-
-        /* Nav transparency on scroll */
-        .nav-scrolled {
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-        }
-
-        /* Feature card hover */
-        .feature-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(242, 101, 34, 0.1);
-        }
-
-        /* Blob decoration */
-        .blob-decoration {
-            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-        }
+        /* Custom scrollbar (kept consistent with the rest of the app) */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #F7F7F7; }
+        ::-webkit-scrollbar-thumb { background: #FFCFB3; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #F26522; }
     </style>
 </head>
 
-<body class="bg-background text-textPrimary font-body antialiased min-h-dvh">
+<body class="bg-background text-textPrimary font-body antialiased overflow-x-hidden">
 
-    <!-- ============================================ -->
-    <!-- NAVIGATION BAR                               -->
-    <!-- ============================================ -->
-    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 md:h-20">
-                <!-- Logo -->
-                <a href="#" class="flex items-center gap-2.5 group">
-                    <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-                    <span class="font-headline font-extrabold text-2xl text-primary tracking-tight">EduCareLink</span>
-                </a>
-
-                <!-- Desktop Nav Buttons -->
-                <div class="hidden md:flex items-center gap-3">
-                    <a href="{% url 'frontend:login' %}"
-                       class="px-6 py-2.5 rounded-full font-label font-semibold text-sm text-primary border-2 border-primary/20 hover:border-primary hover:bg-primaryLight transition-all duration-200">
-                        Đăng nhập
-                    </a>
-                    <a href="{% url 'frontend:register' %}"
-                       class="px-6 py-2.5 rounded-full font-label font-semibold text-sm bg-primary text-white hover:bg-primaryDark shadow-md hover:shadow-lg transition-all duration-200">
-                        Đăng ký
-                    </a>
-                </div>
-
-                <!-- Mobile Hamburger -->
-                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-primaryLight transition-colors" aria-label="Menu">
-                    <span class="material-symbols-outlined text-textPrimary text-28">menu</span>
-                </button>
+    <!-- ============================================================ -->
+    <!-- TopNavBar (shared look with the rest of the app)             -->
+    <!-- ============================================================ -->
+    <nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-16 py-2 max-w-7xl mx-auto bg-background/80 backdrop-blur-md shadow-sm">
+        <div class="flex items-center gap-6">
+            <a class="font-headline text-2xl font-extrabold text-primary" href="{% url 'frontend:splash' %}">EduCareLink</a>
+            <div class="hidden md:flex gap-6 font-body text-base">
+                <a class="text-primary font-bold border-b-2 border-primary pb-1" href="#">Dịch vụ</a>
+                <a class="text-textSecondary font-medium hover:text-primary transition-colors duration-200" href="#">Về chúng tôi</a>
+                <a class="text-textSecondary font-medium hover:text-primary transition-colors duration-200" href="#">Đối tác</a>
+                <a class="text-textSecondary font-medium hover:text-primary transition-colors duration-200" href="#">Tin tức</a>
             </div>
-
-            <!-- Mobile Menu Dropdown -->
-            <div id="mobile-menu" class="hidden md:hidden pb-4">
-                <div class="bg-surface rounded-2xl shadow-xl p-4 space-y-2 border border-gray-100">
-                    <a href="{% url 'frontend:login' %}"
-                       class="block w-full text-center px-6 py-3 rounded-xl font-label font-semibold text-sm text-primary border-2 border-primary/20 hover:border-primary hover:bg-primaryLight transition-all">
-                        Đăng nhập
-                    </a>
-                    <a href="{% url 'frontend:register' %}"
-                       class="block w-full text-center px-6 py-3 rounded-xl font-label font-semibold text-sm bg-primary text-white hover:bg-primaryDark transition-all">
-                        Đăng ký
-                    </a>
-                </div>
-            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a class="hidden md:inline-block font-label text-base text-textSecondary hover:text-primary transition-colors" href="{% url 'frontend:login' %}">Đăng nhập</a>
+            <a class="bg-primary text-white font-label text-base px-6 py-3 rounded-full hover:bg-primaryDark transition-colors" href="{% url 'frontend:register' %}">Đăng ký</a>
         </div>
     </nav>
 
-    <!-- ============================================ -->
-    <!-- HERO SECTION                                 -->
-    <!-- ============================================ -->
-    <section class="hero-gradient relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28 lg:pt-44 lg:pb-36">
-        <!-- Decorative Blobs -->
-        <div class="absolute top-20 -left-20 w-72 h-72 bg-primarySoft/40 blob-decoration blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-10 -right-20 w-96 h-96 bg-primary/5 blob-decoration blur-3xl pointer-events-none"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- ============================================================ -->
+    <!-- Hero Section                                                 -->
+    <!-- ============================================================ -->
+    <section class="pt-[120px] pb-16 px-4 md:px-16 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-        <!-- Decorative Floating Elements -->
-        <div class="absolute top-32 right-16 lg:right-32 animate-float hidden sm:block">
-            <div class="w-16 h-16 bg-surface rounded-2xl shadow-lg flex items-center justify-center">
-                <span class="material-symbols-outlined filled text-secondary text-3xl">favorite</span>
-            </div>
-        </div>
-        <div class="absolute bottom-24 left-12 lg:left-24 animate-float-delay hidden sm:block">
-            <div class="w-14 h-14 bg-surface rounded-2xl shadow-lg flex items-center justify-center">
-                <span class="material-symbols-outlined filled text-primary text-2xl">school</span>
-            </div>
-        </div>
-        <div class="absolute top-48 left-8 lg:left-48 animate-float-delay-2 hidden lg:block">
-            <div class="w-12 h-12 bg-surface rounded-xl shadow-lg flex items-center justify-center">
-                <span class="material-symbols-outlined filled text-primary text-xl">home</span>
-            </div>
-        </div>
-
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="max-w-3xl mx-auto text-center">
-                <!-- Badge -->
-                <div class="fade-in-up inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 mb-8 shadow-sm border border-primarySoft/50">
-                    <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-                    <span class="font-label font-semibold text-xs text-textSecondary uppercase tracking-wider">Nền tảng kết nối gia đình uy tín</span>
+            <!-- Left content -->
+            <div class="flex flex-col gap-6">
+                <div class="inline-flex items-center gap-2 bg-secondaryLight text-secondary font-label text-sm font-semibold px-2 py-1 rounded-full w-fit">
+                    <span class="material-symbols-outlined filled text-base">verified</span>
+                    100% CarePartner được xác minh CCCD
                 </div>
 
-                <!-- Headline -->
-                <h1 class="fade-in-up-delay-1 font-headline font-extrabold text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tight leading-[1.1] mb-6">
-                    <span class="text-textPrimary">Kết nối</span>
-                    <span class="text-primary"> yêu thương,</span>
-                    <br class="hidden sm:block"/>
-                    <span class="text-textPrimary">Nuôi dưỡng</span>
-                    <span class="text-primary"> tương lai</span>
+                <h1 class="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-textPrimary">
+                    An tâm giao con,<br/>
+                    <span class="text-primary">yên tâm học cùng.</span>
                 </h1>
 
-                <!-- Subheadline -->
-                <p class="fade-in-up-delay-2 font-body text-base sm:text-lg md:text-xl text-textSecondary max-w-2xl mx-auto mb-10 leading-relaxed">
-                    EduCareLink - Nền tảng kết nối Phụ huynh với Sinh viên Carepartner đáng tin cậy
+                <p class="font-body text-lg text-textSecondary max-w-[500px] leading-relaxed">
+                    Nền tảng kết nối phụ huynh với các CarePartner uy tín, chuyên nghiệp để chăm sóc và hỗ trợ việc học của trẻ tại Việt Nam.
                 </p>
 
-                <!-- CTA Buttons -->
-                <div class="fade-in-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <a href="{% url 'frontend:register' %}"
-                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white font-label font-bold text-base rounded-full shadow-lg hover:bg-primaryDark hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
-                        Bắt đầu ngay
-                        <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </a>
-                    <a href="{% url 'frontend:login' %}"
-                       class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-surface text-primary font-label font-bold text-base rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primaryLight shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
-                        <span class="material-symbols-outlined text-xl">login</span>
-                        Đăng nhập
-                    </a>
+                <div class="flex flex-col sm:flex-row gap-2 pt-2">
+                    <a class="bg-primary text-white font-label text-base px-10 py-4 rounded-full text-center hover:bg-primaryDark transition-colors shadow-[0_12px_32px_rgba(242,101,34,0.2)]" href="{% url 'frontend:register' %}">Tìm CarePartner</a>
+                    <a class="bg-transparent border border-borderMain text-textPrimary font-label text-base px-10 py-4 rounded-full text-center hover:bg-surfaceAlt transition-colors" href="{% url 'frontend:register' %}?role=worker">Trở thành CarePartner</a>
                 </div>
 
-                <!-- Social Proof -->
-                <div class="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-textSecondary">
-                    <div class="flex items-center gap-2">
-                        <div class="flex -space-x-2">
-                            <div class="w-8 h-8 rounded-full bg-primaryLight border-2 border-white flex items-center justify-center">
-                                <span class="material-symbols-outlined text-primary text-sm filled">person</span>
-                            </div>
-                            <div class="w-8 h-8 rounded-full bg-secondaryLight border-2 border-white flex items-center justify-center">
-                                <span class="material-symbols-outlined text-secondary text-sm filled">person</span>
-                            </div>
-                            <div class="w-8 h-8 rounded-full bg-primarySoft border-2 border-white flex items-center justify-center">
-                                <span class="material-symbols-outlined text-primary text-sm filled">person</span>
-                            </div>
+                <!-- Trust stats -->
+                <div class="flex items-center gap-10 pt-10 mt-6 border-t border-dividerMain">
+                    <div>
+                        <div class="font-headline text-3xl font-extrabold text-primary">5k+</div>
+                        <div class="font-body text-sm text-textSecondary">Gia đình tin dùng</div>
+                    </div>
+                    <div>
+                        <div class="font-headline text-3xl font-extrabold text-primary">10k+</div>
+                        <div class="font-body text-sm text-textSecondary">Giờ chăm sóc</div>
+                    </div>
+                    <!-- Plus-avatar placeholder (Stitch export referenced temporary
+                         aida-public image URLs — replaced with a CSS placeholder per spec). -->
+                    <div class="flex -space-x-4">
+                        <div class="w-12 h-12 rounded-full border-2 border-surface bg-surfaceAlt flex items-center justify-center font-label text-sm font-semibold text-textSecondary z-10">
+                            <span class="material-symbols-outlined filled text-xl">add</span>
                         </div>
-                        <span class="font-medium">500+ Carepartner</span>
                     </div>
-                    <div class="hidden sm:block w-1 h-1 rounded-full bg-textSecondary/30"></div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-yellow-400 text-lg filled">star</span>
-                        <span class="font-medium">4.8/5 Đánh giá</span>
+                </div>
+            </div>
+
+            <!-- Right illustration (Signature Safety Zone) — hidden on mobile to keep the hero focused -->
+            <div class="relative w-full aspect-square max-w-[600px] mx-auto hidden lg:block">
+                <div class="absolute inset-0 flex items-center justify-center">
+
+                    <!-- Orbit rings -->
+                    <div class="absolute w-full h-full rounded-full border border-primarySoft/30 animate-[spin_60s_linear_infinite]"></div>
+                    <div class="absolute w-3/4 h-3/4 rounded-full border border-primarySoft/50 animate-[spin_40s_linear_infinite_reverse]"></div>
+                    <div class="absolute w-1/2 h-1/2 rounded-full border border-primary/20 bg-primary/5 animate-pulse"></div>
+
+                    <!-- Central shield -->
+                    <div class="relative w-32 h-32 bg-white rounded-full shadow-[0_12px_32px_rgba(36,26,22,0.08)] flex items-center justify-center z-10">
+                        <span class="material-symbols-outlined filled text-5xl text-primary">shield_person</span>
+                        <div class="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-20"></div>
                     </div>
-                    <div class="hidden sm:block w-1 h-1 rounded-full bg-textSecondary/30"></div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-secondary text-lg filled">verified</span>
-                        <span class="font-medium">Xác minh danh tính</span>
+
+                    <!-- Floating glass chips -->
+                    <div class="absolute top-[10%] left-[20%] glass-card p-2 rounded-full flex items-center gap-2 shadow-sm animate-bounce" style="animation-duration: 3s;">
+                        <div class="w-10 h-10 rounded-full bg-secondaryLight flex items-center justify-center text-secondary">
+                            <span class="material-symbols-outlined filled">family_restroom</span>
+                        </div>
+                        <span class="font-label text-sm font-semibold pr-2">Phụ huynh</span>
+                    </div>
+
+                    <div class="absolute bottom-[20%] right-[10%] glass-card p-2 rounded-full flex items-center gap-2 shadow-sm animate-bounce" style="animation-delay: 1s; animation-duration: 3.5s;">
+                        <div class="w-10 h-10 rounded-full bg-hcBlueLight flex items-center justify-center text-hcBlue">
+                            <span class="material-symbols-outlined filled">child_care</span>
+                        </div>
+                        <span class="font-label text-sm font-semibold pr-2">Bé yêu</span>
+                    </div>
+
+                    <div class="absolute bottom-[40%] left-[5%] glass-card p-2 rounded-full flex items-center gap-2 shadow-sm animate-bounce" style="animation-delay: 2s; animation-duration: 4s;">
+                        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
+                            <span class="material-symbols-outlined filled">school</span>
+                        </div>
+                        <span class="font-label text-sm font-semibold pr-2">CarePartner</span>
+                    </div>
+
+                    <!-- Safety status card -->
+                    <div class="absolute top-[30%] right-[-5%] bg-white p-6 rounded-xl shadow-[0_24px_48px_rgba(36,26,22,0.12)] z-20">
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>
+                            <span class="font-label text-sm font-semibold text-textPrimary">Trạng thái</span>
+                        </div>
+                        <p class="font-body text-base font-semibold text-secondary">Vùng an toàn đang hoạt động</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ============================================ -->
-    <!-- FEATURES SECTION                             -->
-    <!-- ============================================ -->
-    <section id="features" class="py-20 md:py-28 bg-background relative">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Section Header -->
-            <div class="text-center mb-14 md:mb-20">
-                <div class="inline-flex items-center gap-2 bg-primaryLight rounded-full px-4 py-1.5 mb-5">
-                    <span class="material-symbols-outlined text-primary text-sm filled">star</span>
-                    <span class="font-label font-semibold text-xs text-primary uppercase tracking-wider">Dịch vụ</span>
-                </div>
-                <h2 class="font-headline font-extrabold text-3xl sm:text-4xl md:text-5xl text-textPrimary tracking-tight mb-4">
-                    Dịch vụ <span class="text-primary">chăm sóc</span> toàn diện
-                </h2>
-                <p class="font-body text-textSecondary text-base sm:text-lg max-w-2xl mx-auto">
-                    EduCareLink cung cấp đa dạng dịch vụ chăm sóc gia đình, từ học tập đến sinh hoạt hàng ngày
-                </p>
-            </div>
-
-            <!-- Feature Cards Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-                <!-- Feature 1: Gia sư tại nhà -->
-                <div class="feature-card bg-surface rounded-2xl p-6 lg:p-8 border border-gray-100 group cursor-pointer">
-                    <div class="w-14 h-14 bg-primaryLight rounded-2xl flex items-center justify-center mb-5 group-hover:bg-primary transition-colors duration-300">
-                        <span class="material-symbols-outlined filled text-primary text-3xl group-hover:text-white transition-colors duration-300">school</span>
-                    </div>
-                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Gia sư tại nhà</h3>
-                    <p class="font-body text-textSecondary text-sm leading-relaxed">Hỗ trợ học tập cá nhân hóa cho bé với phương pháp giáo dục phù hợp và hiệu quả</p>
-                    <div class="mt-4 flex items-center gap-1 text-primary font-label font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        Tìm hiểu thêm
-                        <span class="material-symbols-outlined text-base">arrow_forward</span>
-                    </div>
-                </div>
-
-                <!-- Feature 2: Chăm sóc trẻ em -->
-                <div class="feature-card bg-surface rounded-2xl p-6 lg:p-8 border border-gray-100 group cursor-pointer">
-                    <div class="w-14 h-14 bg-secondaryLight rounded-2xl flex items-center justify-center mb-5 group-hover:bg-secondary transition-colors duration-300">
-                        <span class="material-symbols-outlined filled text-secondary text-3xl group-hover:text-white transition-colors duration-300">child_care</span>
-                    </div>
-                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Chăm sóc trẻ em</h3>
-                    <p class="font-body text-textSecondary text-sm leading-relaxed">Đón trẻ, trông trẻ an toàn tận tâm với người chăm sóc giàu kinh nghiệm và yêu thương</p>
-                    <div class="mt-4 flex items-center gap-1 text-secondary font-label font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        Tìm hiểu thêm
-                        <span class="material-symbols-outlined text-base">arrow_forward</span>
-                    </div>
-                </div>
-
-                <!-- Feature 3: Dọn dẹp nhà cửa -->
-                <div class="feature-card bg-surface rounded-2xl p-6 lg:p-8 border border-gray-100 group cursor-pointer">
-                    <div class="w-14 h-14 bg-primaryLight rounded-2xl flex items-center justify-center mb-5 group-hover:bg-primary transition-colors duration-300">
-                        <span class="material-symbols-outlined filled text-primary text-3xl group-hover:text-white transition-colors duration-300">cleaning_services</span>
-                    </div>
-                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Dọn dẹp nhà cửa</h3>
-                    <p class="font-body text-textSecondary text-sm leading-relaxed">Vệ sinh sạch sẽ, tiết kiệm thời gian để bạn tập trung vào những điều quan trọng hơn</p>
-                    <div class="mt-4 flex items-center gap-1 text-primary font-label font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        Tìm hiểu thêm
-                        <span class="material-symbols-outlined text-base">arrow_forward</span>
-                    </div>
-                </div>
-
-                <!-- Feature 4: Mua sắm hộ -->
-                <div class="feature-card bg-surface rounded-2xl p-6 lg:p-8 border border-gray-100 group cursor-pointer">
-                    <div class="w-14 h-14 bg-secondaryLight rounded-2xl flex items-center justify-center mb-5 group-hover:bg-secondary transition-colors duration-300">
-                        <span class="material-symbols-outlined filled text-secondary text-3xl group-hover:text-white transition-colors duration-300">shopping_cart</span>
-                    </div>
-                    <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Mua sắm hộ</h3>
-                    <p class="font-body text-textSecondary text-sm leading-relaxed">Chạy việc linh hoạt, tiện lợi nhanh chóng - từ chợ đến siêu thị, tất cả trong tầm tay</p>
-                    <div class="mt-4 flex items-center gap-1 text-secondary font-label font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        Tìm hiểu thêm
-                        <span class="material-symbols-outlined text-base">arrow_forward</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================================ -->
-    <!-- HOW IT WORKS SECTION                         -->
-    <!-- ============================================ -->
-    <section id="how-it-works" class="py-20 md:py-28 bg-surface relative overflow-hidden">
-        <!-- Background Decoration -->
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primarySoft to-transparent"></div>
-        <div class="absolute -top-40 -right-40 w-80 h-80 bg-primaryLight/50 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-secondaryLight/50 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Section Header -->
-            <div class="text-center mb-14 md:mb-20">
-                <div class="inline-flex items-center gap-2 bg-primaryLight rounded-full px-4 py-1.5 mb-5">
-                    <span class="material-symbols-outlined text-primary text-sm filled">route</span>
-                    <span class="font-label font-semibold text-xs text-primary uppercase tracking-wider">Cách hoạt động</span>
-                </div>
-                <h2 class="font-headline font-extrabold text-3xl sm:text-4xl md:text-5xl text-textPrimary tracking-tight mb-4">
-                    Đơn giản & <span class="text-primary">Dễ dàng</span>
-                </h2>
-                <p class="font-body text-textSecondary text-base sm:text-lg max-w-2xl mx-auto">
-                    Chỉ với vài bước đơn giản, bạn đã có thể kết nối với Carepartner phù hợp
-                </p>
-            </div>
-
-            <!-- Two Column: For Parents & For Carepartners -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-
-                <!-- FOR PARENTS -->
-                <div class="bg-background rounded-3xl p-6 sm:p-8 lg:p-10 border border-gray-100">
-                    <!-- Header -->
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-md">
-                            <span class="material-symbols-outlined filled text-white text-2xl">family_restroom</span>
-                        </div>
-                        <div>
-                            <h3 class="font-headline font-bold text-xl text-textPrimary">Dành cho Phụ huynh</h3>
-                            <p class="font-body text-textSecondary text-sm">Tìm Carepartner phù hợp cho gia đình</p>
-                        </div>
-                    </div>
-
-                    <!-- Steps -->
-                    <div class="space-y-6">
-                        <!-- Step 1 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                1
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Đăng ký tài khoản</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Tạo hồ sơ phụ huynh nhanh chóng và miễn phí</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-primary to-primarySoft rounded-full"></div>
-
-                        <!-- Step 2 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                2
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Đăng việc</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Mô tả nhu cầu chăm sóc, thời gian và ngân sách</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-primary to-primarySoft rounded-full"></div>
-
-                        <!-- Step 3 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                3
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Chọn Carepartner</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Xem hồ sơ, đánh giá và chọn người phù hợp nhất</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-primary to-primarySoft rounded-full"></div>
-
-                        <!-- Step 4 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                4
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Đánh giá</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Để lại đánh giá sau khi hoàn thành công việc</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- CTA -->
-                    <div class="mt-8 pt-6 border-t border-gray-100">
-                        <a href="{% url 'frontend:register' %}"
-                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-primary text-white font-label font-bold text-sm rounded-full hover:bg-primaryDark hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md hover:shadow-lg">
-                            Đăng ký làm Phụ huynh
-                            <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- FOR CAREPARTNERS -->
-                <div class="bg-background rounded-3xl p-6 sm:p-8 lg:p-10 border border-gray-100">
-                    <!-- Header -->
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-md">
-                            <span class="material-symbols-outlined filled text-white text-2xl">volunteer_activism</span>
-                        </div>
-                        <div>
-                            <h3 class="font-headline font-bold text-xl text-textPrimary">Dành cho Carepartner</h3>
-                            <p class="font-body text-textSecondary text-sm">Bắt đầu sự nghiệp chăm sóc chuyên nghiệp</p>
-                        </div>
-                    </div>
-
-                    <!-- Steps -->
-                    <div class="space-y-6">
-                        <!-- Step 1 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-secondary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                1
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Đăng ký & Xác minh</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Tạo tài khoản và xác minh danh tính để đảm bảo uy tín</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-secondary to-secondary/20 rounded-full"></div>
-
-                        <!-- Step 2 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-secondary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                2
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Tìm việc</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Duyệt qua các công việc phù hợp với kỹ năng và lịch trình</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-secondary to-secondary/20 rounded-full"></div>
-
-                        <!-- Step 3 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-secondary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                3
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Ứng tuyển</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Gửi đơn ứng tuyển cho các công việc bạn quan tâm</p>
-                            </div>
-                        </div>
-
-                        <!-- Connector -->
-                        <div class="ml-5 w-0.5 h-4 bg-gradient-to-b from-secondary to-secondary/20 rounded-full"></div>
-
-                        <!-- Step 4 -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 w-10 h-10 bg-secondary text-white rounded-xl flex items-center justify-center font-headline font-bold text-sm shadow-sm">
-                                4
-                            </div>
-                            <div class="flex-1 pt-1">
-                                <h4 class="font-label font-bold text-textPrimary text-base">Hoàn thành & Nhận thu nhập</h4>
-                                <p class="font-body text-textSecondary text-sm mt-0.5">Thực hiện công việc và nhận thanh toán nhanh chóng</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- CTA -->
-                    <div class="mt-8 pt-6 border-t border-gray-100">
-                        <a href="{% url 'frontend:register' %}"
-                           class="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-secondary text-white font-label font-bold text-sm rounded-full hover:bg-secondaryDark hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md hover:shadow-lg">
-                            Đăng ký làm Carepartner
-                            <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================================ -->
-    <!-- CTA / TRUST SECTION                          -->
-    <!-- ============================================ -->
-    <section class="py-20 md:py-28 relative overflow-hidden">
-        <!-- Background -->
-        <div class="absolute inset-0 bg-gradient-to-br from-primary via-primaryDark to-primary"></div>
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 left-1/4 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-            <div class="absolute bottom-0 right-1/4 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-        </div>
-
-        <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="font-headline font-extrabold text-3xl sm:text-4xl md:text-5xl text-white tracking-tight mb-6">
-                Sẵn sàng bắt đầu hành trình<br class="hidden sm:block"/> chăm sóc chuyên nghiệp?
-            </h2>
-            <p class="font-body text-white/80 text-base sm:text-lg max-w-2xl mx-auto mb-10">
-                Tham gia cùng hàng trăm phụ huynh và carepartner trên EduCareLink. Đăng ký miễn phí ngay hôm nay!
+    <!-- ============================================================ -->
+    <!-- Footer (shared look with the rest of the app)               -->
+    <!-- ============================================================ -->
+    <footer class="w-full py-16 px-4 md:px-16 grid grid-cols-1 md:grid-cols-5 gap-6 bg-surfaceAlt border-t border-dividerMain mt-16">
+        <div class="md:col-span-1 flex flex-col gap-2">
+            <div class="font-headline text-2xl font-extrabold text-primary">EduCareLink</div>
+            <p class="font-body text-sm text-textSecondary leading-relaxed">
+                © 2026 EduCareLink. Nền tảng kết nối giáo dục và chăm sóc trẻ em hàng đầu Việt Nam.
             </p>
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="{% url 'frontend:register' %}"
-                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary font-label font-bold text-base rounded-full hover:bg-gray-50 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
-                    Đăng ký miễn phí
-                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </a>
-                <a href="{% url 'frontend:login' %}"
-                   class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent text-white font-label font-bold text-base rounded-full border-2 border-white/30 hover:border-white/70 hover:bg-white/10 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
-                    <span class="material-symbols-outlined text-lg">login</span>
-                    Tôi đã có tài khoản
-                </a>
-            </div>
         </div>
-    </section>
 
-    <!-- ============================================ -->
-    <!-- FOOTER                                       -->
-    <!-- ============================================ -->
-    <footer class="bg-textPrimary py-12 md:py-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-10">
-                <!-- Brand -->
-                <div class="md:col-span-1">
-                    <div class="flex items-center gap-2.5 mb-4">
-                        <img src="/static/images/logo.png" alt="EduCareLink" class="h-6 w-6 rounded-lg object-contain">
-                        <span class="font-headline font-extrabold text-xl text-white tracking-tight">EduCareLink</span>
-                    </div>
-                    <p class="font-body text-gray-400 text-sm leading-relaxed max-w-xs">
-                        Nền tảng kết nối Phụ huynh với Sinh viên Carepartner đáng tin cậy. Kết nối yêu thương, Nuôi dưỡng tương lai.
-                    </p>
-                </div>
+        <!-- Legal links: no dedicated routes exist yet — left as `#` per spec. -->
+        <div class="flex flex-col gap-2 md:col-start-3">
+            <a class="font-body text-sm text-textSecondary hover:text-secondary transition-colors" href="#">Điều khoản sử dụng</a>
+            <a class="font-body text-sm text-textSecondary hover:text-secondary transition-colors" href="#">Chính sách bảo mật</a>
+        </div>
 
-                <!-- Quick Links -->
-                <div>
-                    <h4 class="font-label font-bold text-white text-sm uppercase tracking-wider mb-4">Dịch vụ</h4>
-                    <ul class="space-y-2.5">
-                        <li>
-                            <a href="#" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">school</span>
-                                Gia sư tại nhà
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">child_care</span>
-                                Chăm sóc trẻ em
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">cleaning_services</span>
-                                Dọn dẹp nhà cửa
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">shopping_cart</span>
-                                Mua sắm hộ
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+        <!-- FAQ has an existing equivalent route (help_center). -->
+        <div class="flex flex-col gap-2">
+            <a class="font-body text-sm text-textSecondary hover:text-secondary transition-colors" href="#">Liên hệ hỗ trợ</a>
+            <a class="font-body text-sm text-textSecondary hover:text-secondary transition-colors" href="{% url 'frontend:help_center' %}">Câu hỏi thường gặp</a>
+        </div>
 
-                <!-- Contact / Legal -->
-                <div>
-                    <h4 class="font-label font-bold text-white text-sm uppercase tracking-wider mb-4">Tài khoản</h4>
-                    <ul class="space-y-2.5">
-                        <li>
-                            <a href="{% url 'frontend:login' %}" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">login</span>
-                                Đăng nhập
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{% url 'frontend:register' %}" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">person_add</span>
-                                Đăng ký
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#how-it-works" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">help</span>
-                                Hướng dẫn
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#features" class="font-body text-gray-400 text-sm hover:text-primary transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-base">info</span>
-                                Về chúng tôi
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Divider -->
-            <div class="border-t border-gray-700 pt-8">
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <p class="font-body text-gray-500 text-sm text-center sm:text-left">
-                        &copy; 2026 EduCareLink. Tất cả quyền được bảo lưu.
-                    </p>
-                    <div class="flex items-center gap-4">
-                        <a href="#" class="text-gray-500 hover:text-primary transition-colors">
-                            <span class="material-symbols-outlined text-xl">policy</span>
-                        </a>
-                        <a href="#" class="text-gray-500 hover:text-primary transition-colors">
-                            <span class="material-symbols-outlined text-xl">description</span>
-                        </a>
-                        <a href="#" class="text-gray-500 hover:text-primary transition-colors">
-                            <span class="material-symbols-outlined text-xl">mail</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <div class="flex flex-col gap-2">
+            <a class="font-body text-sm text-textSecondary hover:text-secondary transition-colors" href="#">Blog giáo dục</a>
         </div>
     </footer>
-
-    <!-- ============================================ -->
-    <!-- JAVASCRIPT                                   -->
-    <!-- ============================================ -->
-    <script>
-        // Navbar scroll effect
-        const navbar = document.getElementById('navbar');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 20) {
-                navbar.classList.add('nav-scrolled');
-            } else {
-                navbar.classList.remove('nav-scrolled');
-            }
-        });
-
-        // Mobile menu toggle
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        let menuOpen = false;
-
-        mobileMenuBtn.addEventListener('click', () => {
-            menuOpen = !menuOpen;
-            mobileMenu.classList.toggle('hidden', !menuOpen);
-            const icon = mobileMenuBtn.querySelector('.material-symbols-outlined');
-            icon.textContent = menuOpen ? 'close' : 'menu';
-        });
-
-        // Close mobile menu on resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768 && menuOpen) {
-                menuOpen = false;
-                mobileMenu.classList.add('hidden');
-                const icon = mobileMenuBtn.querySelector('.material-symbols-outlined');
-                icon.textContent = 'menu';
-            }
-        });
-
-        // Intersection Observer for fade-in animations on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-
-        // Observe feature cards and step sections
-        document.querySelectorAll('.feature-card').forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(24px)';
-            card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
-            observer.observe(card);
-        });
-    </script>
-
-
-    <!-- Mobile App-like Transition -->
-    <style>
-        @media (max-width: 767px) {
-            body {
-                opacity: 0;
-                transform: translateY(15px) scale(0.98);
-                transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            body.page-loaded {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            body.page-exit {
-                opacity: 0;
-                transform: translateY(-10px) scale(0.98);
-            }
-        }
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.innerWidth <= 767) {
-                // Initial load animation
-                requestAnimationFrame(() => {
-                    document.body.classList.add('page-loaded');
-                });
-
-                // Link click transitions
-                document.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        const href = link.getAttribute('href');
-                        const target = link.getAttribute('target');
-                        if (href && href.startsWith('/') && !href.startsWith('#') && target !== '_blank' && !e.ctrlKey && !e.metaKey) {
-                            e.preventDefault();
-                            document.body.classList.remove('page-loaded');
-                            document.body.classList.add('page-exit');
-                            setTimeout(() => {
-                                window.location.href = href;
-                            }, 300); // match transition duration
-                        }
-                    });
-                });
-            } else {
-                // Ensure visibility on desktop if resized
-                document.body.style.opacity = '1';
-                document.body.style.transform = 'none';
-            }
-        });
-        
-        // Handle back/forward navigation cache
-        window.addEventListener('pageshow', (event) => {
-            if (event.persisted && window.innerWidth <= 767) {
-                document.body.classList.remove('page-exit');
-                document.body.classList.add('page-loaded');
-            }
-        });
-    </script>
 
 </body>
 </html>
