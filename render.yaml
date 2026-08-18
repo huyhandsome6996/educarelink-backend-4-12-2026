@@ -70,9 +70,141 @@ services:
       # Backend scheduler quét mỗi 1 phút — nếu last_seen > 60s → push chuông cho phụ huynh
       - key: TRACKING_HEARTBEAT_INTERVAL
         value: "30"
+      # QA-FIX-2 / C: TRACKING_OFFLINE_THRESHOLD là nguồn cấu hình DUY NHẤT.
+      # Không hardcode 60s hay 90s trong code/UI. API trả về giá trị này.
       - key: TRACKING_OFFLINE_THRESHOLD
         value: "60"
       - key: TRACKING_OFFLINE_CHECK_ENABLED
         value: "true"
       - key: TRACKING_OFFLINE_CHECK_INTERVAL
         value: "1"
+      # QA-FIX-2 / C: schedulers KHÔNG chạy trong web worker mặc định
+      # (tránh duplicate alerts khi WEB_CONCURRENCY=2). Chạy schedulers qua
+      # background worker riêng hoặc Render cron job:
+      #   python manage.py run_tracking_schedulers --once
+      # Set TRACKING_SCHEDULER_IN_WEB_WORKER=true để override (debug only).
+      - key: TRACKING_SCHEDULER_IN_WEB_WORKER
+        value: "false"
+      # ── Random Verification Check (xác minh ngẫu nhiên PIN) ──
+      # Carepartner phải nhập PIN 4-6 số khi hệ thống yêu cầu bất ngờ
+      - key: VERIFICATION_CHECK_ENABLED
+        value: "true"
+      - key: VERIFICATION_TARGET_CHECKS_PER_SHIFT
+        value: "2"
+      - key: VERIFICATION_ESTIMATED_SHIFT_MINUTES
+        value: "180"
+      - key: VERIFICATION_MIN_MINUTES_BETWEEN_CHECKS
+        value: "15"
+      - key: VERIFICATION_RESPOND_TIMEOUT_SECONDS
+        value: "90"
+      - key: VERIFICATION_CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+        value: "2"
+      - key: VERIFICATION_MAX_WRONG_ATTEMPTS
+        value: "3"
+      - key: VERIFICATION_CHECK_INTERVAL_MINUTES
+        value: "1"
+      # QA-FIX-3 / B: health logging — scheduler process log mỗi N lần chạy
+      # (mặc định 5 → log heartbeat mỗi 5 phút nếu cron mỗi 1 phút).
+      - key: TRACKING_SCHEDULER_HEALTH_LOG_EVERY
+        value: "5"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # QA-FIX-3 / C + QA-FIX-5 / M3 — SCHEDULER PRODUCTION DEPLOYMENT
+  # ═══════════════════════════════════════════════════════════════════
+  # Vấn đề: QA-FIX-2 set TRACKING_SCHEDULER_IN_WEB_WORKER=false để tránh
+  # 2 gunicorn worker cùng chạy scheduler → scheduler KHÔNG chạy ai cả.
+  # → DeviceOfflineAlert + RandomVerificationCheck không bao giờ được tạo.
+  #
+  # Giải pháp: bổ sung 1 Render Cron Job chạy mỗi 1 phút:
+  #   python manage.py run_tracking_schedulers --once
+  # Cron job chạy độc lập với web service, không phụ thuộc WEB_CONCURRENCY.
+  # DB unique constraint (unique_active_alert_per_task,
+  # unique_pending_check_per_task_worker) đảm bảo即使 2 cron run overlap
+  # cũng không tạo duplicate.
+  #
+  # QA-FIX-5 / M3 (fix QA-report Medium bug): SECRET_KEY + DATABASE_URL
+  # không tự sync từ web service qua Blueprint. Trước đây chỉ có comment
+  # "copy thủ công" → nếu quên, cron fail silently với lỗi cryptic. Giờ:
+  #   1. startCommand chạy `check_scheduler_env` TRƯỚC — fail-fast với
+  #      checklist rõ ràng nếu thiếu env var.
+  #   2. SECRET_KEY + DATABASE_URL khai báo tường minh với `sync: false`
+  #      để Blueprint surface chúng (Render Dashboard sẽ prompt nhập).
+  #
+  # Lưu ý:
+  #   - Render free plan: cron job miễn phí nhưng giới hạn 1 phút minimum.
+  #   - Nếu cron job fail → Render log, không retry. Code wrap try/except
+  #     và log error để debug.
+  #   - Alternative: dùng background worker dyno chạy daemon
+  #     (`python manage.py run_tracking_schedulers` không --once) — tốn
+  #     tiền nhưng reliable hơn (auto-restart on crash).
+  #
+  # 📋 DEPLOY CHECKLIST (sau khi import Blueprint):
+  #   1. Vào Cron Job "educarelink-tracking-scheduler" → Settings → Environment
+  #   2. Click "Copy from existing service" → chọn "educarelink-backend"
+  #   3. Chọn các biến: SECRET_KEY, DATABASE_URL, GEMINI_API_KEY, EXPO_ACCESS_TOKEN
+  #   4. Save changes → đợi cron run tiếp theo (≤ 1 phút)
+  #   5. Verify qua endpoint:
+  #      curl https://educarelink-backend.onrender.com/api/tracking/scheduler-health/
+  #      → status=ok + health_source=db → scheduler đang chạy + DB health works.
+  #      → status=no_data → scheduler chưa chạy (kiểm tra Render logs).
+  #      → status=stale → scheduler đã chạy nhưng die gần đây (kiểm tra logs).
+  # ═══════════════════════════════════════════════════════════════════
+  - type: cron
+    name: educarelink-tracking-scheduler
+    env: python
+    schedule: "* * * * *"   # mỗi 1 phút
+    buildCommand: "./build.sh"
+    # QA-FIX-5 / M3: check_scheduler_env fail-fast nếu thiếu SECRET_KEY/DATABASE_URL
+    # → in checklist deploy rõ ràng thay vì fail silently.
+    startCommand: "python manage.py check_scheduler_env && python manage.py run_tracking_schedulers --once --only both"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: RENDER
+        value: "true"
+      - key: DEBUG
+        value: "False"
+      # QA-FIX-5 / M3: SECRET_KEY bắt buộc cho Django. sync: false → Render
+      # Dashboard sẽ prompt nhập khi import Blueprint (không tự generate
+      # secret mới cho cron — phải cùng giá trị với web service để session
+      # chia sẻ). Nếu không set, check_scheduler_env sẽ fail với checklist.
+      - key: SECRET_KEY
+        sync: false
+      # QA-FIX-5 / M3: DATABASE_URL bắt buộc để truy cập Postgres. sync: false
+      # → deploy-er phải copy từ web service (Render Dashboard → Environment
+      # → "Copy from existing service").
+      - key: DATABASE_URL
+        sync: false
+      # GEMINI_API_KEY: scheduler không gọi Gemini, nhưng Django settings.py
+      # có thể reference → sync: false để an toàn.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TRACKING_SCHEDULER_PROCESS
+        value: "true"
+      - key: TRACKING_SCHEDULER_IN_WEB_WORKER
+        value: "false"
+      - key: TRACKING_OFFLINE_CHECK_ENABLED
+        value: "true"
+      - key: TRACKING_OFFLINE_THRESHOLD
+        value: "60"
+      - key: TRACKING_HEARTBEAT_INTERVAL
+        value: "30"
+      - key: VERIFICATION_CHECK_ENABLED
+        value: "true"
+      - key: VERIFICATION_TARGET_CHECKS_PER_SHIFT
+        value: "2"
+      - key: VERIFICATION_ESTIMATED_SHIFT_MINUTES
+        value: "180"
+      - key: VERIFICATION_MIN_MINUTES_BETWEEN_CHECKS
+        value: "15"
+      - key: VERIFICATION_RESPOND_TIMEOUT_SECONDS
+        value: "90"
+      - key: VERIFICATION_CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT
+        value: "2"
+      - key: VERIFICATION_MAX_WRONG_ATTEMPTS
+        value: "3"
+      - key: VERIFICATION_CHECK_INTERVAL_MINUTES
+        value: "1"
+      - key: TRACKING_SCHEDULER_HEALTH_LOG_EVERY
+        value: "5"
+

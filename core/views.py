@@ -78,50 +78,110 @@ def send_expo_push_notification(token, title, body, data=None):
     - 'geofence_enter'    → recovery_alerts channel, priority=default
     - 'device_recovered'  → recovery_alerts channel, priority=default
     - khác (mặc định)     → default channel, priority=default
+
+    QA-FIX-1 / Bug 1.4:
+    - Trả về True/False/None thay vì fire-and-forget.
+      True  = Expo trả status=ok cho token này.
+      False = Expo trả errors (validation, DeviceNotRegistered, ...).
+      None  = network error / timeout (không rõ kết quả).
+    - Parse response JSON, kiểm tra field `errors` + `data.status`.
+    - Thêm header `Authorization: Bearer <EXPO_ACCESS_TOKEN>` nếu có env
+      (tăng rate limit + enable receipts).
+    - Dùng `channelId` (camelCase, top-level) theo spec Expo Push API chính thức
+      + giữ `android_channel_id` trong data cho backward compat với mobile cũ.
+    - Log warning riêng cho DeviceNotRegistered — caller nên clear token.
     """
     if not token:
-        return
+        return None
     headers = {
         'Accept': 'application/json',
         'Accept-encoding': 'gzip, deflate',
         'Content-Type': 'application/json',
     }
+    # QA-FIX-1 / Bug 1.4: Authorization header nếu có env EXPO_ACCESS_TOKEN.
+    expo_access_token = getattr(__import__('django.conf', fromlist=['settings']).settings,
+                                'EXPO_ACCESS_TOKEN', None) or os.environ.get('EXPO_ACCESS_TOKEN')
+    if expo_access_token:
+        headers['Authorization'] = f'Bearer {expo_access_token}'
+
     data = data or {}
     alert_type = data.get('type', '')
 
     # Mapping alert type → Android channel + iOS config
+    #
+    # QA-FIX-7 / N1: sau khi đảo lại field tương thích ngược, payload push
+    # có data.type='device_offline' (giá trị CŨ, để app cũ match) + thêm
+    # data.critical=True (flag MỚI). Khi send_expo_push_notification thấy
+    # type='device_offline' VÀ critical=True → phải dùng channel
+    # 'emergency-alerts' (còi to, sound emergency_alarm.wav, bypass DnD)
+    # thay vì 'critical_alerts' mặc định. Logic này nằm ở
+    # `_resolve_alert_type()` bên dưới.
     ALERT_CONFIG = {
         'device_offline': {
             'android_channel_id': 'critical_alerts',
+            'channel_id': 'critical_alerts',  # QA-FIX-1: top-level channelId (Expo spec)
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
+        # === Phan 2 — Bao dong that su to (channel rieng emergency-alerts) ===
+        # QA-FIX-7 / N1: entry này giờ được dùng khi type='device_offline'
+        # VÀ data.critical=True (xem _resolve_alert_type).
+        'device_offline_critical': {
+            'android_channel_id': 'emergency-alerts',
+            'channel_id': 'emergency-alerts',
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
+        # === Phan 3 — Xac minh ngau nhien ===
+        'random_verification': {
+            'android_channel_id': 'emergency-alerts',
+            'channel_id': 'emergency-alerts',
             'priority': 'high',
             'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
         },
         'geofence_exit': {
             'android_channel_id': 'geofence_alerts',
+            'channel_id': 'geofence_alerts',
             'priority': 'high',
             'ios': {'sound': 'default', 'priority': 'high', 'category': 'GEOFENCE_ALERT'},
         },
         'geofence_warning': {
             'android_channel_id': 'geofence_alerts',
+            'channel_id': 'geofence_alerts',
             'priority': 'high',
             'ios': {'sound': 'default', 'priority': 'high', 'category': 'GEOFENCE_WARNING'},
         },
         'sos_alert': {
             'android_channel_id': 'sos_alerts',
+            'channel_id': 'sos_alerts',
             'priority': 'high',
             'ios': {'sound': 'default', 'priority': 'high', 'category': 'SOS_ALERT'},
         },
         'geofence_enter': {
             'android_channel_id': 'recovery_alerts',
+            'channel_id': 'recovery_alerts',
             'priority': 'default',
             'ios': {'sound': 'default', 'priority': 'default'},
         },
         'device_recovered': {
             'android_channel_id': 'recovery_alerts',
+            'channel_id': 'recovery_alerts',
             'priority': 'default',
             'ios': {'sound': 'default', 'priority': 'default'},
         },
     }
+
+    def _resolve_alert_type(raw_type, data_dict):
+        """QA-FIX-7 / N1: resolve alert type thực tế để tra ALERT_CONFIG.
+
+        Nếu raw_type='device_offline' VÀ data_dict['critical']=True →
+        trả 'device_offline_critical' (channel emergency-alerts, còi to).
+        Ngược lại → trả raw_type nguyên thuỷ (giữ behaviour cũ cho
+        backward compat với backend cũ không set critical).
+        """
+        if raw_type == 'device_offline' and data_dict.get('critical') is True:
+            return 'device_offline_critical'
+        return raw_type
 
     payload = {
         'to': token,
@@ -132,16 +192,74 @@ def send_expo_push_notification(token, title, body, data=None):
     }
 
     # Apply alert-specific config
-    config = ALERT_CONFIG.get(alert_type)
+    # QA-FIX-7 / N1: resolve type thực tế trước khi tra ALERT_CONFIG.
+    effective_alert_type = _resolve_alert_type(alert_type, data)
+    config = ALERT_CONFIG.get(effective_alert_type)
     if config:
-        payload['android_channel_id'] = config['android_channel_id']
+        payload['android_channel_id'] = config['android_channel_id']  # backward compat
+        payload['channelId'] = config['channel_id']  # QA-FIX-1: top-level (Expo spec)
         payload['priority'] = config['priority']
         payload['ios'] = config['ios']
 
     try:
-        requests.post('https://exp.host/--/api/v2/push/send', headers=headers, json=payload, timeout=5)
+        resp = requests.post(
+            'https://exp.host/--/api/v2/push/send',
+            headers=headers, json=payload, timeout=5,
+        )
+        # QA-FIX-1 / Bug 1.4: parse response JSON, check errors + data.status.
+        try:
+            resp_json = resp.json()
+        except Exception:
+            logger.warning(f"[expo_push] Expo response không phải JSON: {resp.text[:200]}")
+            return None
+
+        # Expo trả { data: { status: 'ok'|'error', ... } } cho 1 token.
+        data_field = resp_json.get('data')
+        if isinstance(data_field, dict):
+            push_status = data_field.get('status')
+            if push_status == 'ok':
+                receipt = data_field.get('id', '')
+                logger.info(f"[expo_push] Push sent (receipt={receipt}, type={alert_type})")
+                return True
+            elif push_status == 'error':
+                details = data_field.get('details', {})
+                err_msg = data_field.get('message', 'unknown error')
+                logger.warning(
+                    f"[expo_push] Push rejected by Expo (type={alert_type}): "
+                    f"{err_msg} | details={details}"
+                )
+                # DeviceNotRegistered → caller nên clear expo_push_token.
+                if details.get('error') == 'DeviceNotRegistered':
+                    logger.warning(
+                        f"[expo_push] DeviceNotRegistered — caller nên clear "
+                        f"expo_push_token cho user có token={token[:30]}..."
+                    )
+                return False
+
+        # Expo trả { errors: [...] } cho validation error (vd: token sai format).
+        errors = resp_json.get('errors')
+        if isinstance(errors, list) and errors:
+            logger.warning(f"[expo_push] Expo API errors: {errors}")
+            return False
+
+        # HTTP 4xx nhưng body không có errors/data — vẫn coi là fail.
+        if resp.status_code >= 400:
+            logger.warning(
+                f"[expo_push] Expo HTTP {resp.status_code}: {resp.text[:200]}"
+            )
+            return False
+
+        # Edge case: không có errors + không có data.status — vẫn log warning.
+        logger.warning(
+            f"[expo_push] Expo response không có status/error: {resp_json}"
+        )
+        return None
+    except requests.Timeout:
+        logger.warning(f"[expo_push] Timeout khi gửi push (type={alert_type})")
+        return None
     except Exception as e:
-        print(f"Lỗi gửi thông báo push: {e}")
+        logger.warning(f"[expo_push] Network error (type={alert_type}): {e}")
+        return None
 
 # --- PHẦN 1: TÀI KHOẢN (ONBOARDING) ---
 class RegisterAPIView(generics.CreateAPIView):
@@ -576,6 +694,26 @@ class ApplyTaskAPIView(APIView):
             return Response({"error": "Chỉ Carepartner mới được nhận việc!"}, status=status.HTTP_403_FORBIDDEN)
         if not request.user.is_approved:
             return Response({"error": "Tài khoản của bạn chưa được Admin duyệt. Vui lòng đợi."}, status=status.HTTP_403_FORBIDDEN)
+
+        # ================================================================
+        # QA-FIX-6 / BẮT BUỘC 1 — Chặn worker chưa đặt PIN nhận việc
+        # --------------------------------------------------------------
+        # Vấn đề: verification_scheduler.py có dòng
+        #   `if not worker.verification_pin_hash: continue`
+        # nghĩa là worker chưa đặt PIN sẽ được miễn trừ VĨNH VIỄN khỏi
+        # tính năng xác minh ngẫu nhiên. Nếu không chặn ở bước nhận việc,
+        # worker (cố ý hoặc vô ý) không đặt PIN vẫn nhận việc bình thường
+        # → vô hiệu hoá toàn bộ mục đích của module xác minh ngẫu nhiên.
+        #
+        # Fix: chặn ngay ở bước apply (điểm sớm nhất trong luồng nhận việc)
+        # để worker nhận feedback rõ ràng trước khi đầu tư thời gian, và
+        # parent không thấy candidates không thể thực sự làm việc.
+        # ================================================================
+        if not request.user.verification_pin_hash:
+            return Response({
+                "error": "PIN_REQUIRED",
+                "message": "Bạn cần đặt mã cá nhân xác minh trước khi nhận việc. Vào Hồ sơ > Đặt mã cá nhân.",
+            }, status=status.HTTP_403_FORBIDDEN)
         try:
             task = Task.objects.get(id=task_id)
             if task.parent == request.user:
@@ -753,7 +891,7 @@ Cách hỏi:
 Chế độ này sẽ:
 • Vẽ vùng an toàn quanh nơi làm việc (mặc định 500m)
 • Cảnh báo ngay nếu Carepartner rời vùng an toàn
-• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 90 giây
+• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 60 giây
 • Nút SOS khẩn cấp cho cả phụ huynh và Carepartner
 • Theo dõi vị trí real-time khi Carepartner đang làm việc
 
@@ -935,7 +1073,7 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
                 safety_msg = ""
                 if safety_enabled:
-                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 90s\n• Nút SOS sẵn sàng cho cả 2 bên"
+                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 60s\n• Nút SOS sẵn sàng cho cả 2 bên"
                 return Response({
                     "response": clean_response + f"\n\n✅ Đã tạo công việc thành công!{safety_msg}",
                     "type": "task_created",

@@ -69,5 +69,32 @@ export const getDeviceStatus = (taskId) =>
 export const getOfflineAlerts = (taskId, limit = 50) =>
   apiClient.get(`/tracking/${taskId}/offline-alerts/`, { params: { limit } });
 
+// === PHẦN 2 — Parent acknowledge offline alert (dừng retry push) ===
+// Khi parent mở app và xem cảnh báo → gọi endpoint này để backend dừng
+// retry push liên tục (mặc định backend retry 5 lần cách 30s nếu chưa ack).
+export const acknowledgeOfflineAlert = (taskId, alertId) =>
+  apiClient.post(`/tracking/${taskId}/offline-alerts/${alertId}/acknowledge/`);
+
+// === PHẦN 3 — Verification PIN ===
+// Carepartner đặt/đổi mã cá nhân (body: { pin, current_password })
+export const setVerificationPin = (payload) =>
+  apiClient.post('/tracking/verification-pin/set/', payload);
+
+// Carepartner poll lấy check pending của mình (khi nhận push hoặc poll định kỳ)
+export const getPendingVerificationCheck = () =>
+  apiClient.get('/tracking/verification-checks/pending/');
+
+// Carepartner phản hồi check (body: { pin, latitude?, longitude? })
+export const respondVerificationCheck = (checkId, payload) =>
+  apiClient.post(`/tracking/verification-checks/${checkId}/respond/`, payload);
+
+// Admin xem lịch sử verification checks
+export const getAdminVerificationChecks = (params = {}) =>
+  apiClient.get('/tracking/admin/verification-checks/', { params });
+
+// Admin trigger manual verification check (debug, chỉ hoạt động khi DEBUG=True)
+export const triggerVerificationCheck = (payload) =>
+  apiClient.post('/tracking/admin/trigger-verification-check/', payload);
+
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkTrackingHealth = () => apiClient.get('/tracking/health/');

@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createTask } from '../../api/tasks';
 import {COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapPickerModal from '../../components/MapPickerModal';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -78,6 +79,10 @@ export default function CreateTaskScreen() {
   const [errors, setErrors] = useState({});
   const clearError = (field) => setErrors(prev => prev[field] ? { ...prev, [field]: undefined } : prev);
   const [geofenceRadius, setGeofenceRadius] = useState('500');
+
+  // Map picker state — lưu toạ độ đã chọn trên bản đồ
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [pickedCoords, setPickedCoords] = useState(null); // { latitude, longitude, address }
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -160,7 +165,21 @@ export default function CreateTaskScreen() {
         price: parseInt(price),
       };
 
-      if (enableGeofence) {
+      // ===== TỌA ĐỘ TỪ MAP PICKER =====
+      // Nếu parent đã chọn vị trí trên bản đồ → gán làm toạ độ task
+      // VÀ làm tâm vùng geofence (nếu bật) — đúng semantics: vùng an toàn
+      // quanh nơi làm việc, không phải quanh vị trí parent hiện tại.
+      if (pickedCoords) {
+        taskData.latitude = pickedCoords.latitude;
+        taskData.longitude = pickedCoords.longitude;
+        if (enableGeofence) {
+          taskData.geofence_lat = pickedCoords.latitude;
+          taskData.geofence_lng = pickedCoords.longitude;
+          taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
+        }
+      } else if (enableGeofence) {
+        // Fallback: nếu parent bật geofence nhưng chưa chọn trên map →
+        // xin quyền location và dùng vị trí hiện tại (giữ behaviour cũ)
         try {
           const LocationModule = await import('expo-location');
           const { status } = await LocationModule.requestForegroundPermissionsAsync();
@@ -171,9 +190,11 @@ export default function CreateTaskScreen() {
             taskData.geofence_radius = parseFloat(geofenceRadius) || 500;
           } else {
             Alert.alert(
-              'Cần quyền vị trí',
-              'Để thiết lập vùng an toàn, app cần quyền truy cập vị trí của bạn. Bấm bỏ qua để đăng việc không có geofence.',
-              [{ text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } }]
+              'Cần chọn vị trí trên bản đồ',
+              'Bạn chưa chọn vị trí trên bản đồ và chưa cấp quyền vị trí. Hãy bấm "Bản đồ" để chọn, hoặc cấp quyền vị trí để dùng vị trí hiện tại.',
+              [
+                { text: 'Bỏ qua geofence', onPress: () => { setEnableGeofence(false); } },
+              ]
             );
             setIsLoading(false);
             return;
@@ -322,8 +343,27 @@ export default function CreateTaskScreen() {
                 onFocus={() => setLocationFocused(true)}
                 onBlur={() => setLocationFocused(false)}
               />
+              <TouchableOpacity
+                style={styles.mapPickerBtn}
+                onPress={() => setShowMapPicker(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel="Chọn vị trí trên bản đồ"
+              >
+                <Ionicons name="map-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.mapPickerBtnText}>Bản đồ</Text>
+              </TouchableOpacity>
             </View>
             {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
+            {pickedCoords && (
+              <View style={styles.pickedCoordsInfo}>
+                <Ionicons name="location" size={14} color={COLORS.primary} />
+                <Text style={styles.pickedCoordsText} numberOfLines={1}>
+                  {pickedCoords.latitude.toFixed(4)}, {pickedCoords.longitude.toFixed(4)}
+                  {pickedCoords.address ? ` — ${pickedCoords.address.substring(0, 60)}${pickedCoords.address.length > 60 ? '...' : ''}` : ''}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Date & Time — 2 columns */}
@@ -433,7 +473,7 @@ export default function CreateTaskScreen() {
                 />
                 <Text style={styles.currencyUnit}>mét</Text>
               </View>
-              <Text style={styles.geofenceHint}>Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng vị trí hiện tại của bạn.</Text>
+              <Text style={styles.geofenceHint}>Khuyến nghị: 300-1000m. Tâm vùng sẽ dùng toạ độ từ bản đồ nếu đã chọn, nếu không sẽ dùng vị trí hiện tại của bạn.</Text>
             </View>
           )}
         </View>
@@ -459,6 +499,20 @@ export default function CreateTaskScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Map Picker Modal — chọn toạ độ từ bản đồ */}
+      <MapPickerModal
+        visible={showMapPicker}
+        onPick={(coords) => {
+          setPickedCoords(coords);
+          // Auto-fill location text if address available from reverse geocoding
+          if (coords.address) {
+            setLocation(coords.address);
+            clearError('location');
+          }
+        }}
+        onClose={() => setShowMapPicker(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -705,6 +759,37 @@ const styles = StyleSheet.create({
     ...TYPO.caption,
     color: COLORS.onSurfaceVariant,
     fontStyle: 'italic',
+  },
+  // === MAP PICKER ===
+  mapPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+    marginLeft: 8,
+  },
+  mapPickerBtnText: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  pickedCoordsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+  },
+  pickedCoordsText: {
+    flex: 1,
+    ...TYPO.caption,
+    color: COLORS.primaryDark || COLORS.primary,
+    lineHeight: 18,
   },
   // === FOOTER ===
   footer: {

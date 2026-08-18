@@ -313,6 +313,14 @@ TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '6
 TRACKING_OFFLINE_CHECK_ENABLED = os.environ.get('TRACKING_OFFLINE_CHECK_ENABLED', 'true').lower() == 'true'
 TRACKING_OFFLINE_CHECK_INTERVAL = int(os.environ.get('TRACKING_OFFLINE_CHECK_INTERVAL', '1'))  # phút
 
+# QA-FIX-2 / C: schedulers KHÔNG chạy trong web worker mặc định (tránh
+# duplicate khi WEB_CONCURRENCY=2). Chạy qua Render Cron Job hoặc worker
+# dyno riêng: python manage.py run_tracking_schedulers --once
+# QA-FIX-3 / C: expose qua Django settings để monitoring endpoint đọc.
+TRACKING_SCHEDULER_IN_WEB_WORKER = os.environ.get(
+    'TRACKING_SCHEDULER_IN_WEB_WORKER', 'false'
+).lower() == 'true'
+
 # ────────────────────────────────────────────────────────────────────
 # CẤU HÌNH PAYOS MODULE (thêm bởi feature/payos-integration)
 # ────────────────────────────────────────────────────────────────────

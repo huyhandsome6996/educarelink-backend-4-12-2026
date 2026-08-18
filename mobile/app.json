@@ -2,7 +2,7 @@
   "expo": {
     "name": "EduCareLink",
     "slug": "educarelink",
-    "version": "1.1.5",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -54,7 +54,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -73,6 +73,7 @@
         }
       ],
       "expo-notifications",
+      "expo-sqlite",
       [
         "expo-build-properties",
         {
@@ -89,7 +90,8 @@
         {
           "faceIDPermission": "EduCareLink sử dụng Face ID để bảo vệ thông tin đăng nhập của bạn."
         }
-      ]
+      ],
+      "./plugins/withEmergencyAlarmSound"
     ],
     "extra": {
       "eas": {
