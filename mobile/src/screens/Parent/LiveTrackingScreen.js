@@ -96,7 +96,13 @@ export default function LiveTrackingScreen() {
         setOfflineAlertActive(true);
         // Phan 2: truyền alertId để khi user bấm "Đã biết" có thể gọi
         // API acknowledge → backend dừng retry push.
-        triggerAlarmSound(activeAlert.id);
+        // BUG FIX: DeviceOfflineAlert LUÔN LUÔN là cảnh báo khẩn cấp
+        // (isCritical=true). Trước đây chỉ truyền alertId, thiếu isCritical
+        // → isCritical nhận undefined (falsy) → playEmergencyAlarm() không
+        // bao giờ chạy qua đường polling → còi to không kêu khi push bị miss.
+        // Mọi lời gọi triggerAlarmSound cho DeviceOfflineAlert phải truyền
+        // isCritical=true — đây là invariant của hệ thống an toàn.
+        triggerAlarmSound(activeAlert.id, /* isCritical= */ true);
       } else if (!activeAlert) {
         setOfflineAlertActive(false);
       }
