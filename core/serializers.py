@@ -4,6 +4,10 @@ from .models import User, ServiceCategory, Task, TaskApplication, Review, Creden
 
 # 1. Dịch dữ liệu Người dùng (Dùng cho Đăng ký/Đăng nhập & Màn hình Hồ sơ)
 class UserSerializer(serializers.ModelSerializer):
+    # Phần 3 — Field boolean cho frontend biết user đã đặt PIN xác minh chưa.
+    # KHÔNG expose verification_pin_hash (hash là thông tin nhạy cảm).
+    has_verification_pin = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         # Bổ sung first_name, last_name để frontend mobile hiển thị tên đầy đủ
@@ -15,6 +19,8 @@ class UserSerializer(serializers.ModelSerializer):
             'certificate_photo', 'qualifications', 'expo_push_token',
             'first_login', 'latitude', 'longitude',
             'auth_provider', 'avatar_url',
+            # Phần 3 — boolean flag (không expose hash)
+            'has_verification_pin',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -35,6 +41,9 @@ class UserSerializer(serializers.ModelSerializer):
             'latitude': {'required': False, 'allow_null': True},
             'longitude': {'required': False, 'allow_null': True},
         }
+
+    def get_has_verification_pin(self, obj):
+        return bool(obj.verification_pin_hash)
 
     def create(self, validated_data):
         # Tách password ra, dùng create_user để hash đúng cách

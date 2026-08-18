@@ -106,3 +106,499 @@
 | MoMo | ✅ Disabled (as requested) |
 | PayOS | ⏳ On branch `feature/payos-integration` (pending merge) |
 | Mobile | ✅ Build OK, syntax OK, parity 100% |
+
+---
+
+# QA-FIX-1 — Bug fixes + spec gaps (2026-08-13)
+
+Branch: `feature/module-an-toan-carepartner`
+Commit: (sẽ tạo sau khi test suite pass)
+
+## Mục lục fix
+
+### 🔴 5 Critical Bugs
+
+| # | Bug | File(s) | Mô tả |
+|---|-----|---------|-------|
+| 1.1 | OfflineLocationQueue drop cả chunk khi 1 điểm lỗi | `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/services/LocationService.js` | Thêm cột `sync_attempts` + `incrementAttempts()`. Khi flush chunk fail 4xx: chỉ tăng counter từng điểm, skip riêng điểm ≥ 5 attempts (trước đây xoá cả chunk 200 điểm) |
+| 1.2 | BatchLocationAPIView thiếu transaction.atomic | `tracking/views.py` | Wrap `LocationHistory.bulk_create` + `LiveLocation.update_or_create` trong `transaction.atomic()`. Nếu LiveLocation update fail → rollback LocationHistory inserts |
+| 1.3 | Verification scheduler spam push parent mỗi timeout | `tracking/models.py`, `tracking/verification_scheduler.py`, `tracking/services.py` | Thêm `parent_alert_sent` + `consecutive_timeouts_count` fields. Scheduler chỉ gửi parent alert 1 lần/streak (lần đầu đạt CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT). Reset khi `confirmed`/`wrong_code`/`cancelled` |
+| 1.4 | `send_expo_push_notification` fire-and-forget | `core/views.py`, `tracking/services.py`, `tracking/verification_scheduler.py` | Parse response JSON, check `errors` + `data.status`, return `True`/`False`/`None`. Thêm `Authorization: Bearer <EXPO_ACCESS_TOKEN>`. Move `channelId` to top-level payload (giữ `android_channel_id` backward compat). Caller chỉ set `push_sent=True` khi `_notify_user` trả True |
+| 1.5 | `acknowledge_offline_alert` map exception sai | `tracking/services.py`, `tracking/views.py` | Thêm `AlreadyAcknowledgedError(ValueError)` exception riêng. View map: `AlreadyAcknowledgedError` → 400, `ValueError` (task_id mismatch) → 404, `PermissionError` → 403 |
+
+### 🟡 6 Spec Gaps
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| 2.2 | `DeviceOfflineAlert.acknowledged_by` FK | `tracking/models.py`, `tracking/migrations/0005_*.py`, `tracking/services.py` | Thêm FK `acknowledged_by` → User (SET_NULL). Service set field khi `acknowledge_offline_alert()` thành công |
+| 2.3 | User model PIN helper methods | `core/models.py`, `tracking/services.py` | Thêm `set_verification_pin(raw_pin)`, `check_verification_pin(raw_pin)`, property `has_verification_pin_set`. Services refactor để gọi helper methods (trước đây gọi `make_password`/`check_password` trực tiếp) |
+| 2.4 | Parent verification history + Cancel check | `tracking/views.py`, `tracking/services.py`, `tracking/urls.py`, `tracking/models.py`, `tracking/migrations/0005_*.py` | Thêm endpoint `GET /tracking/<task_id>/verification-checks/history/` (parent xem timeline). Thêm endpoint `POST /tracking/verification-checks/<id>/cancel/` (admin/parent huỷ check pending, worker denied). Thêm status `'cancelled'` vào `STATUS_CHOICES` |
+| 2.5 | Batch location validation + status codes | `tracking/views.py` | Trả 201 Created (không phải 200). Trả 413 nếu > 500 points (trước đây 400). Validate `recorded_at`: không vượt quá ±5 phút future, không cũ quá 7 ngày. Điểm invalid bị skip riêng (không drop cả batch) |
+| 2.6 | Mobile audio alarm loop | `mobile/src/services/EmergencyAlarmService.js` (NEW), `mobile/src/screens/Parent/LiveTrackingScreen.js`, `mobile/package.json` | Thêm `expo-av ~14.0.7`. Tạo `EmergencyAlarmService` với `playEmergencyAlarm()` (loop), `stopEmergencyAlarm()`, `unloadEmergencyAlarm()`. Tích hợp vào LiveTrackingScreen: play khi foreground push `device_offline_critical`, stop khi parent acknowledge, unload khi unmount. Fallback `Vibration` nếu audio không khả dụng |
+| Bổ sung | `logger.warning` per-alert at max retry | `tracking/services.py` | `retry_offline_alert_pushes()` log warning cho từng alert đạt `OFFLINE_PUSH_MAX_RETRIES` (trước đây chỉ đếm số lượng) |
+
+## Migration
+
+`tracking/migrations/0005_deviceofflinealert_acknowledged_by_and_more.py`:
+- AddField `DeviceOfflineAlert.acknowledged_by` (FK → User, SET_NULL, default=None)
+- AddField `RandomVerificationCheck.parent_alert_sent` (BooleanField, default=False)
+- AddField `RandomVerificationCheck.consecutive_timeouts_count` (IntegerField, default=0)
+- AlterField `RandomVerificationCheck.status` (choices + 'cancelled')
+
+Backward compatible (tất cả fields có default), chạy trên DB hiện có không cần downtime.
+
+## Test Suite
+
+- `tracking/tests_safety_module.py` (14 tests cũ): update 2 tests
+  - `test_trigger_verification_check_now_creates_check`: set `expo_push_token` + mock `requests.post` (Bug 1.4 fix làm `push_sent` chỉ True khi _notify_user trả True)
+  - `test_batch_location_view_creates_history_with_past_recorded_at`: expected status 200 → 201 (Spec 2.5)
+
+- `tracking/tests_qa_fixes.py` (NEW, 38 tests): cover từng bug + spec gap
+  - 🔴 1.1: 1 test (per-point skip)
+  - 🔴 1.2: 1 test (atomic rollback)
+  - 🔴 1.3: 6 tests (streak counter, parent alert once, reset on confirmed/cancelled)
+  - 🔴 1.4: 5 tests (True/False/None returns, push_sent logic)
+  - 🔴 1.5: 4 tests (AlreadyAcknowledgedError, task_id mismatch, view 400/404)
+  - 🟡 2.2: 2 tests (acknowledged_by set, field exists)
+  - 🟡 2.3: 5 tests (set/check/has_pin_set)
+  - 🟡 2.4: 8 tests (parent history, cancel by parent/admin/worker, edge cases)
+  - 🟡 2.5: 5 tests (201, 413, future/old skip, field name preserved)
+  - Bổ sung: 1 test (max retry warning per alert)
+
+Total: 14 (existing) + 38 (new) = 52 tests. All must PASS.
+
+## Mobile Lint Check
+
+```
+node --check mobile/src/services/OfflineLocationQueue.js     # OK
+node --check mobile/src/services/LocationService.js          # OK
+node --check mobile/src/services/EmergencyAlarmService.js    # OK
+node --check mobile/src/screens/Parent/LiveTrackingScreen.js # OK
+```
+
+## Commit Strategy
+
+- Branch: `feature/module-an-toan-carepartner` (KHÔNG merge main)
+- Commit message: `QA-FIX-1: 5 critical bugs + 6 spec gaps (offline cache, push, verification PIN)`
+- Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+# QA-FIX-2 — Bổ sung an toàn CarePartner toàn diện (2026-08-14)
+
+Branch: `feature/module-an-toan-carepartner`
+
+## Mục lục fix
+
+### A. Mobile Blockers
+
+| # | Bug | File(s) | Mô tả |
+|---|-----|---------|-------|
+| A1 | App crash do AuthProvider | `mobile/App.js` | Tách `AppContent` ra khỏi `<AuthProvider>`. Các hook dùng `useAuth()` (auto resume, background fetch, RandomVerificationModal) chỉ gọi BÊN TRONG AuthProvider. Trước đây hook gọi ở ngoài → `useAuth()` trả null → destructuring crash. |
+| A2 | expo-sqlite 15.0.13 không tồn tại | `mobile/package.json`, `mobile/package-lock.json` | Đổi sang `expo-sqlite@~16.0.10` (tương thích SDK 54). Chạy `npx expo install --fix` để fix thêm 4 package khác (expo-av, expo-battery, netinfo, react-native-webview). Fix `app.json` bỏ `useNextNotificationsApi` (deprecated). Convert `assets/logo.png` + `assets/icon.png` từ JPEG sang PNG thật. |
+
+### B. Offline tracking + last-known location
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| B1 | Batch location idempotent | `tracking/models.py`, `tracking/views.py`, `tracking/serializers.py`, `tracking/migrations/0006_*.py` | Thêm field `LocationHistory.client_point_id` (UUID). Partial unique constraint `(task, worker, client_point_id) WHERE client_point_id IS NOT NULL`. View trả `inserted_ids` / `already_exists_ids` / `rejected` per-point. Mobile retry cùng point → backend skip, không tạo duplicate route. |
+| B2 | SQLite queue isolation | `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/services/LocationService.js`, `mobile/src/context/AuthContext.js` | Schema queue thêm `user_id` + `client_point_id`. `enqueueLocation(userId, taskId, point)` yêu cầu userId. `getChunk(userId)` chỉ lấy row của user hiện tại. `clearByUser(userId)` khi logout. AuthContext lưu `user_id` vào storage. Queue của user A không bao giờ flush bằng token user B. |
+| B3 | Last-known location + UI Parent | `tracking/views.py` (LiveLocationAPIView, DeviceStatusAPIView), `mobile/src/screens/Parent/LiveTrackingScreen.js` | API live location trả thêm `last_seen`, `seconds_since_last_seen`, `is_stale`, `is_offline`, `offline_threshold_seconds`. UI Parent hiển thị 3 trạng thái rõ: LIVE / STALE (vị trí cuối) / OFFLINE (mất tín hiệu). Không hardcode 60/90s — dùng `offline_threshold_seconds` từ API. |
+
+### C. Scheduler production-safe
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| C1 | Scheduler không chạy trong web worker | `tracking/apps.py`, `render.yaml`, `tracking/management/commands/run_tracking_schedulers.py` (NEW) | `apps.py` skip scheduler mặc định khi `TRACKING_SCHEDULER_IN_WEB_WORKER=false`. Management command `run_tracking_schedulers` chạy standalone (`--once` cho cron job, daemon cho worker dyno). render.yaml document pattern mới. |
+| C2 | DB constraint chống duplicate | `tracking/models.py`, `tracking/migrations/0006_*.py` | `UniqueConstraint(task) WHERE status='active'` trên DeviceOfflineAlert. `UniqueConstraint(task, worker) WHERE status='pending'` trên RandomVerificationCheck. Defense-in-depth dưới scheduler logic. |
+
+### D. Emergency notifications
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| D1 | Backend push parse + retry | `core/views.py` (đã có QA-FIX-1), `tracking/services.py` | Verify `send_expo_push_notification` trả True/False/None. `channelId` top-level + `android_channel_id` backward compat. Retry max 5 lần cách 30s. |
+| D2 | Mobile Android channel + alarm | `mobile/App.js`, `mobile/src/services/EmergencyAlarmService.js` | Channel `emergency-alerts` importance MAX, bypassDnd, sound `emergency_alarm.wav` (TODO: file chưa có — ghi rõ trong README/comment). EmergencyAlarmService loop audio + Vibration khi foreground. Stop khi parent acknowledge. Document: Expo Go không đủ, cần EAS dev build. iOS critical alert UNTESTABLE (cần entitlement Apple). |
+
+### E. Geofence + tọa độ 0
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| E1 | Predictive warning persist | `tracking/models.py`, `tracking/services.py`, `tracking/migrations/0006_*.py` | Thêm field `LiveLocation.predictive_warned` (BooleanField, default=False). Thay thế thuộc tính tạm `_predictive_warned` → persist DB → chỉ push 1 lần khi vào vùng 80-100%, clear khi về vùng < 80% hoặc rời vùng > 100%. |
+| E2 | Tọa độ 0 hợp lệ | `tracking/services.py`, `mobile/src/services/LocationService.js`, `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/components/RandomVerificationModal.js` | Python: `if geofence_lat is not None` thay `if geofence_lat`. JS: `?? null` thay `|| null` cho accuracy/speed/heading/latitude/longitude (tọa độ 0 là hợp lệ). |
+
+### F. Random PIN verification
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| F1 | Backend scheduler + constants | `tracking/verification_scheduler.py` (đã có QA-FIX-1) | Constants: TARGET_CHECKS_PER_SHIFT, ESTIMATED_SHIFT_MINUTES, MIN_MINUTES_BETWEEN_CHECKS, RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS, CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT. Scheduler skip worker chưa set PIN. Timeout lần đầu → notify admin. Streak ≥ 2 → notify parent 1 lần. |
+| F2 | Mobile modal chỉ poll khi worker | `mobile/src/components/RandomVerificationModal.js` | `useAuth()` check `user?.role === 'worker'` + `authLoading=false` trước khi poll. Logout → cleanup interval + Vibration.cancel(). Trước đây poll ngay khi mở app ở login screen → 401 spam. |
+
+### G. Logout cleanup
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| G1 | Logout dừng background + xóa queue | `mobile/src/context/AuthContext.js`, `mobile/src/services/LocationService.js` (NEW `cleanupOnLogout`), `mobile/App.js` (useBackgroundFetch cleanup) | `logout()` gọi `cleanupOnLogout(userId)` → stopTracking + clearByUser + clear storage. `useBackgroundFetch` unregister BackgroundFetch khi user=null. `useTaskEndedListener` chỉ đăng ký khi có user. Không để worker cũ tiếp tục heartbeat sau logout. |
+
+## Migration
+
+`tracking/migrations/0006_qa_fix_2_idempotent_batch_and_constraints.py`:
+- AddField `LocationHistory.client_point_id` (CharField max_length=36, null=True)
+- AddConstraint `unique_task_worker_client_point_id` (partial WHERE client_point_id IS NOT NULL)
+- AddField `LiveLocation.predictive_warned` (BooleanField default=False)
+- AddConstraint `unique_active_alert_per_task` (partial WHERE status='active')
+- AddConstraint `unique_pending_check_per_task_worker` (partial WHERE status='pending')
+
+`tracking/migrations/0007_alter_deviceheartbeat_device_status_and_more.py`:
+- AlterField `DeviceHeartbeat.device_status` (choices help text — không đổi DB schema)
+- AlterField `RandomVerificationCheck.respond_deadline` (help text — không đổi DB schema)
+
+Backward compatible (tất cả fields có default, constraints dùng partial index).
+
+## Test Suite
+
+- `tracking/tests_qa_fix_2.py` (NEW, 33 tests):
+  - B1: 5 tests (idempotent, mixed, no client_point_id, rejected, no leak)
+  - C: 5 tests (unique alert, alert after recovered, unique check, check after timeout, scheduler no duplicate, DB constraint)
+  - B3: 3 tests (device-status fields, live stale/offline, live fresh)
+  - E: 3 tests (predictive_warned field, no duplicate warning, tọa độ 0)
+  - F: 7 tests (PIN hash, check, has_pin, correct PIN reset, wrong PIN max, cancel by parent, cancel by worker denied, timeout, streak)
+  - D: 3 tests (acknowledge sets by, twice raises, task mismatch 404)
+  - C: 2 tests (management command, apps.py module)
+  - Ownership: 2 tests (parent history, parent ack other parent)
+
+Total: 33 (QA-FIX-2) + 52 (QA-FIX-1) + 0 (safety_module, đã merge vào qa_fixes) = 85 tests. All PASS.
+
+## Mobile Lint + Build
+
+```
+node --check App.js                                              # OK
+node --check src/context/AuthContext.js                          # OK
+node --check src/services/LocationService.js                     # OK
+node --check src/services/OfflineLocationQueue.js                # OK
+node --check src/services/EmergencyAlarmService.js               # OK
+node --check src/components/RandomVerificationModal.js           # OK
+node --check src/screens/Parent/LiveTrackingScreen.js            # OK
+npm ci                                                           # OK (734 packages)
+npx expo-doctor                                                  # 18/18 checks passed
+```
+
+## Kết quả test nguyên văn
+
+```
+$ python manage.py migrate
+[TrackingConfig] Local dev — schedulers SKIPPED.
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, core, moderation, payments, sessions, token_blacklist, tracking
+Running migrations:
+  Applying tracking.0006_qa_fix_2_idempotent_batch_and_constraints... OK
+  Applying tracking.0007_alter_deviceheartbeat_device_status_and_more... OK
+
+$ python manage.py check
+[Payments Scheduler] DISABLED (PAYMENT_SCHEDULER_ENABLED != true)
+[TrackingConfig] Local dev — schedulers SKIPPED.
+System check identified no issues (0 silenced).
+
+$ python manage.py test
+[TrackingConfig] Local dev — schedulers SKIPPED.
+System check identified no issues (0 silenced).
+... (test output) ...
+----------------------------------------------------------------------
+Ran 85 tests in 30.309s
+OK
+
+$ npm ci
+added 734 packages in 13s
+
+$ npx expo-doctor
+Running 18 checks on your project...
+18/18 checks passed. No issues detected!
+```
+
+## Commit Strategy
+
+- Branch: `feature/module-an-toan-carepartner`
+- Commit message: `QA-FIX-2: bổ sung an toàn CarePartner toàn diện (offline idempotent, scheduler production-safe, geofence persist, tọa độ 0, logout cleanup)`
+- Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+# QA-FIX-3 — Hoàn thiện an toàn CarePartner (2026-08-14)
+
+Branch: `feature/module-an-toan-carepartner`
+
+## Mục lục fix
+
+### A. Sửa bug mobile nghiêm trọng
+
+| # | Bug | File(s) | Mô tả |
+|---|-----|---------|-------|
+| A1 | `alreadyExistsIds === 0` so sánh array với số 0 | `mobile/src/services/LocationService.js` | **SỬA BUG NGHIÊM TRỌNG**: `alreadyExistsIds` là array, `=== 0` luôn false → break không bao giờ xảy ra → vòng while lặp 50 lần gọi API vô ích. Sửa thành `.length === 0`. Thêm logic break khi chunk toàn rejected-only — chỉ tăng sync_attempts 1 lần rồi dừng lần flush đó. |
+
+### B. Scheduler production deployment thật sự chạy
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| B1 | Render Cron Job cho scheduler | `render.yaml` | Bổ sung Cron Job service `educarelink-tracking-scheduler` chạy mỗi 1 phút: `python manage.py run_tracking_schedulers --once --only both`. Có đủ env vars cần thiết. Trước đây `TRACKING_SCHEDULER_IN_WEB_WORKER=false` nhưng không có process nào chạy scheduler → alert không bao giờ được tạo. |
+| B2 | Health logging + monitoring endpoint | `tracking/management/commands/run_tracking_schedulers.py`, `tracking/views.py`, `tracking/urls.py` | Mỗi lần chạy, ghi file `/tmp/tracking_scheduler_health.json` với timestamp + stats. Thêm endpoint `/api/tracking/scheduler-health/` (public, no auth) để monitoring outside phát hiện scheduler die (file cũ quá 3 phút → stale). |
+| B3 | Expose TRACKING_SCHEDULER_IN_WEB_WORKER qua settings | `backend/settings.py` | Monitoring endpoint đọc Django settings thay vì os.environ trực tiếp. |
+
+### C. Firebase config + native build
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| C1 | Bỏ google-services.json reference | `mobile/app.json`, `mobile/GOOGLE_SERVICES_SETUP.md` (NEW) | `app.json` trước đây reference `./google-services.json` nhưng file không commit (secret) → `expo prebuild` fail ENOENT. Bỏ reference — Expo Push Notifications dùng Expo Push Service (không cần Firebase trực tiếp). Document cách cung cấp file khi cần (EAS credentials). |
+
+### D. Emergency alarm audio thật
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| D1 | Asset emergency_alarm.wav thật | `mobile/assets/sounds/emergency_alarm.wav` (NEW), `mobile/assets/sounds/README.md` | Generate file WAV 3s, 44100Hz, 16-bit mono PCM, sine siren 800Hz/1000Hz xen kẽ. Generated procedurally bằng Python — không vấn đề bản quyền. Trước đây chỉ có README placeholder. |
+| D2 | Bật static require + audio mode | `mobile/src/services/EmergencyAlarmService.js` | Uncomment `require('../../assets/sounds/emergency_alarm.wav')`. Thêm `setAudioModeAsync` với `playsInSilentModeIOS: true`. `stopEmergencyAlarm()` unload audio object. `unloadEmergencyAlarm()` cũng stop + cancel vibration. |
+
+### E. Regression tests
+
+| # | Spec | File(s) | Mô tả |
+|---|------|---------|-------|
+| E1 | 26 regression tests mới | `tracking/tests_qa_fix_3.py` (NEW) | Cover: A (rejected-only), B (scheduler deployment + health endpoint + render.yaml), C (authorization worker khác), D (last-known location trong alert), E (duplicate client_point_id), F (PIN hash + sai PIN + timeout + reset streak), G (scheduler concurrent no duplicate), H (render.yaml structure). |
+
+## Test Suite
+
+- 111 tests PASS (85 cũ QA-FIX-1+2 + 26 mới QA-FIX-3).
+- `npm ci` + `npx expo-doctor` 18/18 PASS.
+- `npx expo prebuild --platform android` PASS (không còn ENOENT).
+- `npx expo export --platform android` PASS (3.88 MB JS bundle).
+- 7 file mobile `node --check` PASS.
+
+## UNTESTABLE
+
+- Native EAS Android build (cần `eas build` cloud).
+- Custom sound + full-screen intent trên device thật (cần EAS Build).
+- iOS critical alert (cần entitlement Apple).
+- Scheduler production trên Render (chưa deploy).
+- Push/background location khi app killed (cần device thật).
+
+## Commit Strategy
+
+- Branch: `feature/module-an-toan-carepartner`
+- Commit message: `QA-FIX-3: scheduler Render Cron Job + emergency_alarm.wav asset + bug alreadyExistsIds + 26 regression tests`
+- Push: `git push origin feature/module-an-toan-carepartner`
+
+---
+
+## QA-FIX-5 (14-08-2026) — fix 3 bug QA phát hiện sau commit 9747188
+
+### Bug High — trộn vị trí giữa 2 task
+
+- **Vấn đề**: `flushOfflineQueue(userId)` dùng `getChunk(userId)` lấy 200 điểm của *mọi task* theo thời gian, rồi dùng `chunk[0].task_id` làm `task_id` của cả request. Điểm của task B (cùng user) có thể bị gửi nhầm vào task A.
+- **Fix**: thêm `getDistinctTaskIds(userId)` + `getChunkByTask(userId, taskId, size)` trong `OfflineLocationQueue.js`. Rewrite `flushOfflineQueue` để duyệt qua từng task_id riêng, mỗi task = 1 hoặc nhiều request batch riêng (không trộn).
+- **Behavior**: 5xx dừng cả flush; 4xx chỉ break task đó, thử task tiếp.
+- **Files**: `mobile/src/services/OfflineLocationQueue.js`, `mobile/src/services/LocationService.js`.
+- **Tests**: `mobile/scripts/test_qa5_mobile_flush_isolation.test.js` (6 JS tests PASS), `tracking/tests_qa_fix_5.py::QAFix5H1TestCase` (3 backend tests PASS).
+
+### Bug Medium — health endpoint sai kiến trúc
+
+- **Vấn đề**: `/api/tracking/scheduler-health/` đọc `/tmp/tracking_scheduler_health.json` — nhưng Render Cron container và web container không chia sẻ `/tmp` → endpoint luôn trả `no_data` dù cron đã chạy.
+- **Fix**: thêm `SchedulerHealth` model (DB-based, singleton row). Cron ghi DB qua `record_run()`, endpoint đọc DB trước (`_read_health_db()`), fallback `/tmp` file cho dev local.
+- **Migration**: `0008_qa_fix_5_scheduler_health.py` — tạo bảng `SchedulerHealth`.
+- **Files**: `tracking/models.py`, `tracking/management/commands/run_tracking_schedulers.py`, `tracking/views.py`, `tracking/migrations/0008_qa_fix_5_scheduler_health.py`.
+- **Tests**: `tracking/tests_qa_fix_5.py::QAFix5M2SchedulerHealthDBTestCase` (8 tests PASS).
+
+### Bug Medium — cron thiếu SECRET_KEY/DATABASE_URL
+
+- **Vấn đề**: `render.yaml` cron không khai báo tường minh `SECRET_KEY` + `DATABASE_URL`. Nếu deploy-er import Blueprint mà quên copy thủ công → cron fail silently với lỗi cryptic.
+- **Fix**: thêm management command `check_scheduler_env` fail-fast với checklist deploy rõ ràng. Cron `startCommand` chạy `check_scheduler_env && run_tracking_schedulers`. Khai báo `SECRET_KEY` + `DATABASE_URL` + `GEMINI_API_KEY` với `sync: false` trong render.yaml.
+- **Files**: `tracking/management/commands/check_scheduler_env.py` (NEW), `render.yaml`.
+- **Tests**: `tracking/tests_qa_fix_5.py::QAFix5M3CheckSchedulerEnvTestCase` (5 tests PASS).
+
+### Test Results
+
+- 127 backend tests PASS (111 cũ + 16 mới QA-FIX-5).
+- 6 mobile JS tests PASS (mock SQLite + apiClient).
+- `npx expo-doctor` 18/18 PASS.
+- `npx expo prebuild --platform android` PASS + sound file copy OK.
+- `npx expo export --platform android` PASS (3.88 MB JS bundle).
+
+### UNTESTABLE (giữ nguyên từ QA-FIX-3/4)
+
+- Native EAS Android build (cần eas build cloud).
+- Custom sound + full-screen intent trên device thật (cần EAS Build).
+- iOS critical alert (cần entitlement Apple).
+- Scheduler production trên Render (chưa deploy).
+- Push/background location khi app killed (cần device thật).
+- DB health trên Render production (cần deploy + check endpoint thật).
+- Cron fail-fast behavior trên Render (cần deploy với env var thiếu để verify log).
+
+---
+
+## QA-FIX-6 (14-08-2026) — Fix 4 vấn đề QA vòng 2 báo cáo
+
+**Agent**: Super Z (main agent)
+**Branch**: `feature/module-an-toan-carepartner`
+**Commit**: `<TBD>` — QA-FIX-6
+
+### Bối cảnh
+
+QA vòng 2 (sau commit `4a4f97f` QA-FIX-5) xác nhận: migration an toàn, 169 test
+pass, kiến trúc offline-cache/idempotent-batch/DB-constraint đều đã đúng. Nhưng
+vẫn còn 4 vấn đề cần xử lý trước khi merge:
+
+- **BẮT BUỘC 1**: Worker chưa đặt PIN vẫn nhận việc → miễn trừ vĩnh viễn khỏi
+  xác minh ngẫu nhiên (lỗ hổng lớn).
+- **BẮT BUỘC 2**: User đăng ký qua Google/Facebook không đặt được PIN do
+  `set_unusable_password()` → `authenticate()` luôn fail.
+- **NÊN LÀM 1**: Push type đổi từ `device_offline` sang `device_offline_critical`
+  không giữ tương thích ngược → app cũ mất cảnh báo offline.
+- **NÊN LÀM 2**: Batch offline flush ghi đè LiveLocation bằng điểm cũ → "nhảy lùi"
+  vị trí tạm thời.
+- **BONUS**: `pyyaml` thiếu trong `requirements.txt` → 5 test fail.
+
+### Work Log
+
+- Đọc lại state 4 vùng cần fix: `core/views.py:ApplyTaskAPIView` (line 662-728),
+  `tracking/services.py:set_verification_pin` (line 765-795), push call sites
+  (line 535-571, 681-698), `tracking/views.py:BatchLocationAPIView` (line 1139),
+  `tracking/models.py:LiveLocation` (line 76-124).
+- Thêm `PyYAML==6.0.2` vào `requirements.txt` (BONUS).
+- BẮT BUỘC 1: Thêm PIN check ở `ApplyTaskAPIView.post()` TRƯỚC consent check,
+  trả 403 `PIN_REQUIRED` với message tiếng Việt rõ ràng.
+- BẮT BUỘC 2: Rewrite `set_verification_pin()` để phân loại user theo
+  `has_usable_password()`. User email/password vẫn cần current_password đúng
+  (giữ hành vi cũ). User OAuth (Google/Facebook) bỏ qua current_password, dựa
+  vào JWT IsAuthenticated của endpoint. Cập nhật `SetVerificationPinSerializer`
+  (current_password optional) và `SetVerificationPinAPIView.post()` (dùng `.get()`).
+- NÊN LÀM 1: Thêm `legacy_type='device_offline'` vào payload push ở 2 chỗ
+  (`check_offline_devices` + `retry_offline_alert_pushes`). Comment rõ ràng:
+  field tạm thời, target xoá sau 2-3 tháng (~2026-11) khi 100% user đã update.
+- NÊN LÀM 2: Thêm `LiveLocation.client_recorded_at` field + migration `0009`
+  (nullable, an toàn cho Postgres). Cập nhật `update_worker_location` set
+  `client_recorded_at = now()` cho real-time. Cập nhật `BatchLocationAPIView`
+  so sánh `existing.client_recorded_at >= batch_last_recorded_at` trước khi
+  update_or_create → skip nếu existing mới hơn (chống "nhảy lùi"). Backward
+  compat: nếu `existing.client_recorded_at IS NULL` → luôn update (giữ behaviour
+  cũ cho row cũ chưa populate field mới).
+- Viết `tracking/tests_qa_fix_6.py` với 20 tests cover cả 4 fix:
+  - `QAFix6B1PinRequiredToApplyTestCase` (5 tests).
+  - `QAFix6B2OAuthSetPinTestCase` (8 tests).
+  - `QAFix6N1LegacyPushTypeTestCase` (2 tests).
+  - `QAFix6N2LiveLocationNoStaleOverwriteTestCase` (5 tests).
+- Fix 1 bug phát hiện khi chạy test: `SetVerificationPinAPIView.post()` dùng
+  `serializer.validated_data['current_password']` (KeyError khi field optional)
+  → đổi sang `.get('current_password')`.
+- Chạy test: 20/20 QA-FIX-6 PASS, 147/147 full tracking suite PASS.
+- Verify `manage.py check` 0 lỗi, `makemigrations --check` "No changes detected".
+- Viết `QA_FIX_6_HANDOFF.md` (handoff document).
+
+### Stage Summary
+
+- **4 vấn đề + 1 bonus**: TẤT CẢ đã fix + test PASS.
+- **Test results**: 147 tests PASS (127 cũ + 20 mới QA-FIX-6), 0 fail.
+- **Migration safety**: `0009` chỉ AddField nullable → an toàn cho Postgres/Render.
+- **Files changed**:
+  - `requirements.txt` (+PyYAML).
+  - `core/views.py` (ApplyTaskAPIView PIN check).
+  - `tracking/services.py` (set_verification_pin rewrite + legacy_type x2).
+  - `tracking/serializers.py` (current_password optional).
+  - `tracking/views.py` (SetVerificationPinAPIView .get() + BatchLocationAPIView skip logic).
+  - `tracking/models.py` (LiveLocation.client_recorded_at).
+  - `tracking/migrations/0009_qa_fix_6_livelocation_client_recorded_at.py` (NEW).
+  - `tracking/tests_qa_fix_6.py` (NEW, 20 tests).
+  - `QA_FIX_6_HANDOFF.md` (NEW).
+- **Lựa chọn thiết kế**:
+  - B2: chọn JWT IsAuthenticated (không token freshness) cho user OAuth — đơn
+    giản, không tăng security mà chỉ block tính năng.
+  - N1: `legacy_type` giữ 2-3 tháng (~2026-11) theo dõi analytics trước khi xoá.
+- **UNTESTABLE (giữ nguyên)**: EAS Android build, custom sound device thật,
+  iOS critical alert entitlement, scheduler production Render, push khi app killed.
+- **Rủi ro deploy cao nhất (không phải bug code)**: kiến trúc scheduler đổi sang
+  Render Cron Job — cần cấu hình tay copy `SECRET_KEY` + `DATABASE_URL` từ web
+  service sang Cron Job, nếu không scheduler sẽ không chạy → tính năng offline
+  detection đang chạy tốt sẽ bị gãy. Xem `QA_FIX_6_HANDOFF.md` phần "Quy trình
+  deploy an toàn 5 bước".
+
+---
+
+## QA-FIX-7 (14-08-2026) — Đảo lại field tương thích ngược push (fix QA-FIX-6 / N1)
+
+**Agent**: Super Z (main agent)
+**Branch**: `feature/module-an-toan-carepartner`
+**Commit**: `<TBD>` — QA-FIX-7
+
+### Bối cảnh
+
+QA vòng 3 phát hiện QA-FIX-6 / N1 (tương thích ngược push type) KHÔNG hoạt động
+thật. Field `legacy_type='device_offline'` vô dụng vì app mobile CŨ (nhánh main)
+chỉ check `if (data.type === 'device_offline')` — nó không biết field
+`legacy_type` tồn tại. Vì `data.type` giờ là `'device_offline_critical'`, app
+cũ KHÔNG match → mất hoàn toàn cảnh báo (y hệt như trước khi "sửa"). Test
+QA-FIX-6 chỉ assert 2 field có mặt trong dict, KHÔNG mô phỏng logic if-check
+thật của app cũ → test PASS nhưng chức năng không hoạt động.
+
+### Work Log
+
+- Đọc state: tracking/services.py (push call sites), core/views.py (ALERT_CONFIG
+  + send_expo_push_notification), mobile/src/screens/Parent/LiveTrackingScreen.js
+  (notification listener + triggerAlarmSound), mobile/App.js (channel setup).
+- Xác nhận app cũ (main) dùng `if (data.type === 'device_offline')` — chỉ check
+  data.type, không check field nào khác.
+- Backend tracking/services.py: đảo payload ở 2 chỗ (check_offline_devices +
+  retry_offline_alert_pushes). Trước: type='device_offline_critical' +
+  legacy_type='device_offline'. Sau: type='device_offline' + critical=True.
+- Backend core/views.py: thêm helper _resolve_alert_type() — khi
+  type='device_offline' VÀ critical=True → trả 'device_offline_critical' để tra
+  ALERT_CONFIG (channel emergency-alerts, còi to). Không có critical → trả
+  nguyên type='device_offline' (channel critical_alerts, basic — backward compat
+  với backend cũ hơn nữa).
+- Mobile LiveTrackingScreen.js: cập nhật notification listener — đổi điều kiện
+  if từ `(data.type === 'device_offline' || data.type === 'device_offline_critical')`
+  về ĐƠN GIẢN `if (data.type === 'device_offline')` (y hệt app cũ). Bên trong,
+  check `data.critical === true` để quyết định: critical=True → playEmergencyAlarm
+  (còi to); critical falsy → chỉ Vibration (fallback basic).
+- Mobile LiveTrackingScreen.js: cập nhật triggerAlarmSound() nhận tham số
+  isCritical, chỉ playEmergencyAlarm nếu critical=True. Local notification data
+  cũng đổi theo: type='device_offline' + critical: isCritical.
+- Mobile App.js: cập nhật comment mô tả channel emergency-alerts (logic channel
+  setup không đổi).
+- Tests tracking/tests_qa_fix_6.py::QAFix6N1LegacyPushTypeTestCase: cập nhật 2
+  test cũ + thêm 4 test mới (tổng 6 tests cho N1):
+  + test_n1_initial_alert_payload_qa_fix_7 — assert type='device_offline' +
+    critical=True, KHÔNG còn legacy_type.
+  + test_n1_retry_push_payload_qa_fix_7 — tương tự cho retry push.
+  + test_n1_old_app_logic_matches_new_payload_initial_alert — MÔ PHỎNG logic
+    app cũ `if (data.type === 'device_offline')` cho initial alert → phải match.
+  + test_n1_old_app_logic_matches_new_payload_retry_push — tương tự cho retry.
+  + test_n1_send_expo_push_notification_resolves_critical_to_emergency_channel —
+    end-to-end: type+critical → channel 'emergency-alerts'.
+  + test_n1_send_expo_push_notification_without_critical_uses_basic_channel —
+    backward compat: không có critical → channel 'critical_alerts' (basic).
+- Chạy test: 24/24 QA-FIX-6 PASS, 151/151 full suite (core+payments+moderation+
+  tracking) PASS.
+- Verify `manage.py check` 0 lỗi, `makemigrations --check` "No changes detected"
+  (không đổi model → không có migration mới).
+- Viết QA_FIX_7_HANDOFF.md.
+
+### Stage Summary
+
+- **Vấn đề duy nhất còn lại**: ĐÃ FIX.
+- **Test results**: 151 tests PASS (147 cũ + 4 mới thêm cho QA-FIX-7), 0 fail.
+- **No migration**: QA-FIX-7 không đổi model → không có migration mới.
+- **Files changed**:
+  - `tracking/services.py` (đảo payload 2 chỗ).
+  - `core/views.py` (thêm _resolve_alert_type + comment).
+  - `mobile/src/screens/Parent/LiveTrackingScreen.js` (notification listener +
+    triggerAlarmSound).
+  - `mobile/App.js` (comment update).
+  - `tracking/tests_qa_fix_6.py` (cập nhật 2 test N1 cũ + thêm 4 test mới).
+  - `QA_FIX_7_HANDOFF.md` (NEW).
+- **Lựa chọn thiết kế**:
+  - Tên field: `critical` (ngắn gọn, semantic rõ, JS convention cho flag trong
+    JSON object).
+  - Backward compat 2 lớp: app cũ match `data.type='device_offline'`; backend
+    cũ không set critical → channel basic (không crash).
+  - Target xoá flag critical: 2-3 tháng sau release (~2026-11), cùng thời điểm
+    kế hoạch dọn dẹp mobile cũ.
+- **UNTESTABLE (giữ nguyên)**: EAS Android build, custom sound device thật,
+  iOS critical alert, scheduler production Render, push khi app killed.
+- **Rủi ro deploy cao nhất (KHÔNG phải bug code, giữ nguyên QA-FIX-6)**:
+  kiến trúc scheduler đổi sang Render Cron Job — cần cấu hình tay copy
+  SECRET_KEY + DATABASE_URL từ web service sang Cron Job. Xem QA_FIX_7_HANDOFF.md
+  phần "Quy trình deploy an toàn 5 bước".

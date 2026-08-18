@@ -50,8 +50,54 @@ class User(AbstractUser):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
 
+    # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
+    # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác
+    # minh trong lúc task in_progress, carepartner phải nhập đúng mã này để
+    # chứng minh vẫn đang cầm máy (chống để máy lại rồi bỏ đi).
+    # Hash bằng django.contrib.auth.hashers.make_password — KHÔNG lưu plaintext.
+    verification_pin_hash = models.CharField(
+        max_length=128, blank=True, null=True,
+        help_text="Hash mã cá nhân xác minh — KHÔNG lưu plaintext"
+    )
+    verification_pin_set_at = models.DateTimeField(blank=True, null=True)
+
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+
+    # ================================================================
+    # QA-FIX-1 / Spec 2.3 — Helper methods cho verification PIN
+    # Đóng gói logic hash/check để:
+    #   - Tránh lặp logic make_password/check_password ở nhiều nơi
+    #     (services.py, verification_scheduler.py, tests).
+    #   - Dễ unit test, dễ audit security.
+    #   - has_verification_pin_set property dùng cho scheduler check
+    #     (trước đây kiểm tra `not worker.verification_pin_hash` trực tiếp).
+    # ================================================================
+    def set_verification_pin(self, raw_pin: str) -> None:
+        """Hash + lưu PIN cá nhân. KHÔNG lưu plaintext.
+
+        Caller chịu trách nhiệm validate format (4-6 chữ số) + re-auth
+        current_password trước khi gọi method này.
+        """
+        from django.contrib.auth.hashers import make_password
+        from django.utils import timezone as _tz
+        self.verification_pin_hash = make_password(raw_pin)
+        self.verification_pin_set_at = _tz.now()
+        self.save(update_fields=['verification_pin_hash', 'verification_pin_set_at'])
+
+    def check_verification_pin(self, raw_pin: str) -> bool:
+        """Trả về True nếu raw_pin khớp với hash đã lưu.
+        Trả về False nếu user chưa set PIN hoặc PIN sai.
+        Dùng constant-time comparison (django.contrib.auth.hashers.check_password)."""
+        from django.contrib.auth.hashers import check_password
+        if not self.verification_pin_hash:
+            return False
+        return check_password(raw_pin, self.verification_pin_hash)
+
+    @property
+    def has_verification_pin_set(self) -> bool:
+        """True nếu user đã đặt PIN xác minh (hash không null)."""
+        return bool(self.verification_pin_hash)
 
 
 # 2. BẢNG DANH MỤC DỊCH VỤ (Gia sư, Đón trẻ...)

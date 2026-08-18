@@ -22,18 +22,23 @@ logger = logging.getLogger('educarelink.tracking')
 GEOFENCE_RADIUS_METERS = getattr(settings, 'TRACKING_GEOFENCE_RADIUS', 500)  # 500m mặc định
 UPDATE_INTERVAL_SECONDS = getattr(settings, 'TRACKING_UPDATE_INTERVAL', 10)
 HEARTBEAT_INTERVAL_SECONDS = getattr(settings, 'TRACKING_HEARTBEAT_INTERVAL', 30)
-OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 90)  # 3 lần miss heartbeat
+OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 60)  # 2 lần miss heartbeat (30s × 2)
 
 
 def _notify_user(user: User, title: str, message: str, data: dict = None):
-    """Helper: gửi in-app Notification + Expo push."""
+    """Helper: gửi in-app Notification + Expo push.
+
+    QA-FIX-1 / Bug 1.4: trả về True/False/None theo kết quả push để caller
+    quyết định set push_sent=True (trước đây fire-and-forget → set True sai).
+    """
+    push_result = None
     try:
         Notification.objects.create(recipient=user, title=title, message=message)
     except Exception as e:
         logger.warning(f"[tracking] Notification create thất bại: {e}")
     try:
         if user.expo_push_token:
-            send_expo_push_notification(
+            push_result = send_expo_push_notification(
                 token=user.expo_push_token,
                 title=title,
                 body=message,
@@ -41,6 +46,8 @@ def _notify_user(user: User, title: str, message: str, data: dict = None):
             )
     except Exception as e:
         logger.warning(f"[tracking] Expo push thất bại cho user#{user.id}: {e}")
+        push_result = None
+    return push_result
 
 
 def get_accepted_worker(task: Task) -> User | None:
@@ -134,6 +141,13 @@ def update_worker_location(*, task: Task, worker: User,
 
     with transaction.atomic():
         # Update LiveLocation (OneToOne với task — update-in-place)
+        #
+        # QA-FIX-6 / NÊN LÀM 2 — set client_recorded_at = now() (server
+        # time) cho real-time. Dùng để BatchLocationAPIView so sánh khi
+        # flush offline queue: nếu existing.client_recorded_at mới hơn
+        # batch.last_point['recorded_at'] → skip update, tránh ghi đè
+        # LiveLocation bằng điểm cũ (race condition "nhảy lùi").
+        _now = timezone.now()
         live, created = LiveLocation.objects.update_or_create(
             task=task,
             defaults={
@@ -143,6 +157,7 @@ def update_worker_location(*, task: Task, worker: User,
                 'accuracy': accuracy,
                 'speed': speed,
                 'heading': heading,
+                'client_recorded_at': _now,
             }
         )
 
@@ -163,7 +178,11 @@ def update_worker_location(*, task: Task, worker: User,
         geofence_lng = task.geofence_lng if (task.geofence_lng is not None) else task.longitude
         geofence_radius = task.geofence_radius if (task.geofence_radius and task.geofence_radius > 0) else GEOFENCE_RADIUS_METERS
 
-        if geofence_lat and geofence_lng:
+        # QA-FIX-2 / E: dùng `is not None` thay vì `if geofence_lat` —
+        # tọa độ 0 là hợp lệ (ví dụ: nhà ở kinh độ 0 đi qua Anh/Pháp),
+        # trước đây `if 0` = False → fallback về task.latitude → bỏ sót
+        # geofence check hoặc dùng sai tâm vùng an toàn.
+        if geofence_lat is not None and geofence_lng is not None:
             distance = haversine_distance(
                 float(latitude), float(longitude),
                 float(geofence_lat), float(geofence_lng)
@@ -172,11 +191,18 @@ def update_worker_location(*, task: Task, worker: User,
 
             # ⚡ AI PREDICTIVE WARNING — báo TRƯỚC khi rời vùng (80% radius)
             # Nếu carepartner đang ở 80-100% bán kính → cảnh báo sớm "sắp rời vùng"
+            #
+            # QA-FIX-2 / E: dùng live.predictive_warned (persist DB) thay vì
+            # thuộc tính tạm `_predictive_warned`. Trước đây mỗi GPS update
+            # tạo instance LiveLocation mới → flag luôn reset → push lặp vô hạn
+            # "sắp rời vùng an toàn" cho cùng 1 task. Giờ flag persist → chỉ
+            # push 1 lần khi vào vùng 80-100%, clear khi về vùng an toàn (< 80%)
+            # hoặc rời vùng (> 100%).
             warning_threshold = geofence_radius * 0.8
             if not outside and distance >= warning_threshold and not live.is_outside_geofence:
-                # Chỉ warning 1 lần (đánh dấu via geofence_warned_at nếu chưa có)
-                if not hasattr(live, '_predictive_warned') or not live._predictive_warned:
-                    live._predictive_warned = True
+                if not live.predictive_warned:
+                    live.predictive_warned = True
+                    live.save(update_fields=['predictive_warned'])
                     _notify_user(
                         task.parent,
                         title="⚠️ AI Cảnh báo: Carepartner sắp rời vùng an toàn!",
@@ -191,13 +217,26 @@ def update_worker_location(*, task: Task, worker: User,
                             'priority': 'high',
                         }
                     )
+            elif not outside and distance < warning_threshold and live.predictive_warned:
+                # QA-FIX-2 / E: carepartner về vùng an toàn (< 80% radius)
+                # → clear predictive_warned để lần tới vào vùng 80-100% sẽ warn lại.
+                # Trước đây chỉ clear khi `is_outside_geofence=True` (về từ ngoài vào)
+                # → nếu carepartner chỉ đi vào vùng 80-100% rồi quay về (không rời hẳn)
+                # thì flag không bao giờ clear → push warning chỉ 1 lần đúng, nhưng
+                # nếu ca làm dài → carepartner ra vào vùng warning nhiều lần → không
+                # warn lại được. Giờ clear ngay khi về < 80%.
+                live.predictive_warned = False
+                live.save(update_fields=['predictive_warned'])
 
             if outside and not live.is_outside_geofence:
                 # Vừa rời vùng → push cảnh báo (chỉ fire lần đầu; các poll
                 # tiếp theo khi vẫn ngoài vùng sẽ thấy flag đã True → skip).
                 live.is_outside_geofence = True
                 live.geofence_warned_at = timezone.now()
-                live.save(update_fields=['is_outside_geofence', 'geofence_warned_at'])
+                # QA-FIX-2 / E: clear predictive_warned khi đã rời vùng (để
+                # lần quay lại vùng 80-100% sẽ warn lại).
+                live.predictive_warned = False
+                live.save(update_fields=['is_outside_geofence', 'geofence_warned_at', 'predictive_warned'])
                 _notify_user(
                     task.parent,
                     title="🚨🚨🚨 CẢNH BÁO: Carepartner rời vùng an toàn!",
@@ -215,7 +254,10 @@ def update_worker_location(*, task: Task, worker: User,
             elif not outside and live.is_outside_geofence:
                 # Vừa quay lại vùng → clear flag + thông báo yên tâm
                 live.is_outside_geofence = False
-                live.save(update_fields=['is_outside_geofence'])
+                # QA-FIX-2 / E: clear predictive_warned khi về vùng an toàn
+                # (< 80% radius) — lần tới vào vùng 80-100% sẽ warn lại.
+                live.predictive_warned = False
+                live.save(update_fields=['is_outside_geofence', 'predictive_warned'])
                 _notify_user(
                     task.parent,
                     title="✅ Carepartner đã quay lại vùng an toàn",
@@ -253,11 +295,19 @@ def get_location_history(*, task: Task, requester: User, limit: int = 1000):
     """
     Parent lấy lịch sử toàn bộ vị trí (lưu vĩnh viễn).
     Trả về list of dict cho frontend render polyline.
+
+    Phần 1: ưu tiên client_recorded_at nếu có (cho batch offline sync),
+    fallback về recorded_at (server timestamp).
     """
     if task.parent_id != requester.id:
         raise PermissionError("Bạn không sở hữu task này.")
 
-    qs = LocationHistory.objects.filter(task=task).order_by('recorded_at')[:limit]
+    # Sắp xếp theo client_recorded_at nếu có, fallback recorded_at
+    # Dùng Coalesce trong DB để sort đúng thứ tự thời gian thực
+    from django.db.models import F, Func, Value
+    qs = LocationHistory.objects.filter(task=task).order_by(
+        Func(F('client_recorded_at'), F('recorded_at'), function='COALESCE')
+    )[:limit]
     return [
         {
             'id': h.id,
@@ -266,7 +316,10 @@ def get_location_history(*, task: Task, requester: User, limit: int = 1000):
             'accuracy': h.accuracy,
             'speed': h.speed,
             'heading': h.heading,
-            'recorded_at': h.recorded_at.isoformat(),
+            # Trả về client_recorded_at nếu có (đúng thời điểm GPS capture),
+            # fallback recorded_at (thời điểm server nhận)
+            'recorded_at': (h.client_recorded_at or h.recorded_at).isoformat(),
+            'client_recorded_at': h.client_recorded_at.isoformat() if h.client_recorded_at else None,
         }
         for h in qs
     ]
@@ -432,7 +485,7 @@ def check_offline_devices():
       - device_status='online'
       - task.status='in_progress'
       - consent='granted'
-      - last_seen < now - OFFLINE_THRESHOLD_SECONDS (90s)
+      - last_seen < now - OFFLINE_THRESHOLD_SECONDS (mặc định 60s)
 
     Với mỗi heartbeat thỏa mãn → tạo DeviceOfflineAlert + push priority=high cho parent.
 
@@ -482,8 +535,31 @@ def check_offline_devices():
         )
 
         # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
+        #
+        # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True.
+        #
+        # QA-FIX-7 / N1 (sửa lại QA-FIX-6 / NÊN LÀM 1 — field tương thích
+        # ngược bị đảo ngược):
+        # ----------------------------------------------------------------
+        # QA-FIX-6 trước đây đổi data.type='device_offline' → 'device_offline_critical'
+        # và thêm data.legacy_type='device_offline'. NHƯNG app mobile CŨ
+        # (nhánh main) chỉ check `if (data.type === 'device_offline')` —
+        # nó không biết field legacy_type → với data.type='device_offline_critical'
+        # app cũ KHÔNG match → mất hoàn toàn cảnh báo (y hệt như chưa sửa).
+        #
+        # Fix QA-FIX-7: ĐẢO LẠI — giữ data.type='device_offline' (giá trị CŨ)
+        # để app cũ tiếp tục match đúng điều kiện hiện có của nó (KHÔNG cần
+        # sửa gì ở app cũ). Thêm field MỚI data.critical=True để đánh dấu
+        # "bản nâng cấp cần xử lý khẩn cấp hơn — còi to, channel
+        # emergency-alerts". App MỚI đọc data.critical để quyết định hành
+        # vi (channel/sound), app CŨ ignore field này và vẫn báo động được
+        # (channel critical_alerts cũ + sound default).
+        #
+        # send_expo_push_notification (core/views.py) cũng đã được cập nhật
+        # để khi type='device_offline' VÀ critical=True → dùng channel
+        # emergency-alerts (còi to) thay vì critical_alerts mặc định.
         try:
-            _notify_user(
+            push_result = _notify_user(
                 hb.task.parent,
                 title="🚨🚨🚨 CẢNH BÁO KHẨN CẤP: Thiết bị Carepartner mất kết nối!",
                 message=f"⚠️ Thiết bị của carepartner đã ngừng gửi tín hiệu "
@@ -491,18 +567,28 @@ def check_offline_devices():
                         f"Lần cuối online: {hb.last_seen:%H:%M:%S}. "
                         f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
                 data={
-                    'type': 'device_offline',
+                    'type': 'device_offline',  # QA-FIX-7 / N1: GIỮ giá trị CŨ để app cũ match
+                    'critical': True,  # QA-FIX-7 / N1: flag MỚI — app mới dùng để bật còi to + emergency-alerts channel
                     'task_id': hb.task.id,
                     'alert_id': alert.id,
                     'priority': 'high',  # expo: high priority = chuông kêu
                     'sound': 'critical',  # iOS critical alert
-                    'android_channel_id': 'critical_alerts',
+                    'android_channel_id': 'emergency-alerts',
                 }
             )
-            alert.push_sent = True
-            alert.push_sent_at = now
-            alert.save(update_fields=['push_sent', 'push_sent_at'])
-            stats['new_alerts'] += 1
+            if push_result is True:
+                alert.push_sent = True
+                alert.push_sent_at = now
+                alert.push_retry_count = 1
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['new_alerts'] += 1
+            else:
+                # Push fail (Expo reject hoặc network error) — vẫn giữ alert
+                # active nhưng push_sent=False để retry scheduler thử lại.
+                logger.warning(
+                    f"[tracking] Offline push FAILED (Expo reject/network) for Task#{hb.task_id}"
+                )
+                stats['push_failed'] += 1
 
             # Notify admin cũng
             try:
@@ -525,6 +611,355 @@ def check_offline_devices():
         logger.info(f"[tracking] Offline check: {stats}")
 
     return stats
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 2 — RETRY PUSH cho DeviceOfflineAlert
+#  Mô phỏng kiểu "gọi điện đến" liên tục cho tới khi parent phản hồi:
+#    - Mỗi 30s gửi lại push cho alert active chưa acknowledged
+#    - Tối đa 5 lần (OFFLINE_PUSH_MAX_RETRIES)
+#  Sau 5 lần vẫn không acknowledge → vẫn giữ alert active (để parent xem
+#  khi mở app), nhưng không push nữa (tránh spam).
+# ═══════════════════════════════════════════════════════════════════
+
+OFFLINE_PUSH_MAX_RETRIES = getattr(settings, 'TRACKING_OFFLINE_PUSH_MAX_RETRIES', 5)
+OFFLINE_PUSH_RETRY_INTERVAL_SECONDS = getattr(
+    settings, 'TRACKING_OFFLINE_PUSH_RETRY_INTERVAL', 30
+)
+
+
+def retry_offline_alert_pushes():
+    """
+    Scheduler chạy mỗi 1 phút — gửi lại push cho các DeviceOfflineAlert:
+      - status='active' (chưa recovered)
+      - acknowledged_at IS NULL (parent chưa xem)
+      - push_retry_count < OFFLINE_PUSH_MAX_RETRIES (chưa vượt số lần tối đa)
+      - push_sent_at < now - OFFLINE_PUSH_RETRY_INTERVAL_SECONDS (đủ khoảng cách giữa 2 lần retry)
+
+    QA-FIX-1 / Bug 1.4: chỉ set push_sent=True + tăng push_retry_count khi
+    _notify_user trả về True (trước đây fire-and-forget → set True sai).
+
+    QA-FIX-1 / SUP-1: log warning riêng cho từng alert đạt max retry
+    (trước đây chỉ đếm số lượng).
+
+    Trả về dict thống kê.
+    """
+    now = timezone.now()
+    retry_threshold = now - timedelta(seconds=OFFLINE_PUSH_RETRY_INTERVAL_SECONDS)
+
+    pending_alerts = DeviceOfflineAlert.objects.filter(
+        status='active',
+        acknowledged_at__isnull=True,
+        push_retry_count__lt=OFFLINE_PUSH_MAX_RETRIES,
+    ).filter(
+        Q(push_sent_at__isnull=True) | Q(push_sent_at__lt=retry_threshold)
+    ).select_related('task', 'task__parent', 'worker')
+
+    # QA-FIX-1 / SUP-1: query riêng các alert đã đạt max retry để log warning
+    # chi tiết cho từng alert (trước đây chỉ đếm số lượng).
+    max_reached_alerts = DeviceOfflineAlert.objects.filter(
+        status='active',
+        acknowledged_at__isnull=True,
+        push_retry_count__gte=OFFLINE_PUSH_MAX_RETRIES,
+    ).select_related('task', 'task__parent', 'worker')
+
+    stats = {
+        'checked_at': now.isoformat(),
+        'retried_count': 0,
+        'max_reached_count': max_reached_alerts.count(),
+        'push_failed': 0,
+    }
+
+    # Log warning cho từng alert đạt max retry
+    for alert in max_reached_alerts:
+        logger.warning(
+            f"[tracking] Alert#{alert.id} (Task#{alert.task_id}) đã đạt max retry "
+            f"({OFFLINE_PUSH_MAX_RETRIES}/{OFFLINE_PUSH_MAX_RETRIES}) — parent "
+            f"{alert.task.parent.username} chưa acknowledge. Stopping push loop "
+            f"(alert vẫn active để parent xem khi mở app)."
+        )
+
+    for alert in pending_alerts:
+        # Nếu đã đạt max retry → skip (không push nữa)
+        if alert.push_retry_count >= OFFLINE_PUSH_MAX_RETRIES:
+            stats['max_reached_count'] += 1
+            continue
+
+        try:
+            push_result = _notify_user(
+                alert.task.parent,
+                title=f"🚨🚨🚨 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}/{OFFLINE_PUSH_MAX_RETRIES})",
+                message=f"⚠️ Thiết bị carepartner VẪN mất kết nối cho công việc "
+                        f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
+                        f"Vui lòng kiểm tra NGAY!",
+                data={
+                    # QA-FIX-7 / N1: giữ type='device_offline' (giá trị CŨ)
+                    # để app cũ match. Thêm critical=True để app mới + backend
+                    # send_expo_push_notification biết đây là bản nâng cấp
+                    # (channel emergency-alerts, còi to). Xem comment đầy đủ
+                    # ở check_offline_devices() bên trên.
+                    'type': 'device_offline',
+                    'critical': True,
+                    'task_id': alert.task.id,
+                    'alert_id': alert.id,
+                    'retry': alert.push_retry_count + 1,
+                    'priority': 'high',
+                    'sound': 'critical',
+                    'android_channel_id': 'emergency-alerts',
+                }
+            )
+            if push_result is True:
+                alert.push_sent = True
+                alert.push_sent_at = now
+                alert.push_retry_count += 1
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['retried_count'] += 1
+            else:
+                # Push fail — không tăng retry_count (sẽ thử lại ở lần scheduler sau).
+                logger.warning(
+                    f"[tracking] Retry push FAILED (Expo reject/network) for Alert#{alert.id}"
+                )
+                stats['push_failed'] += 1
+        except Exception as e:
+            logger.error(f"[tracking] Retry push failed for Alert#{alert.id}: {e}")
+            stats['push_failed'] += 1
+
+    if stats['retried_count'] > 0:
+        logger.info(f"[tracking] Offline retry push: {stats}")
+
+    return stats
+
+
+class AlreadyAcknowledgedError(ValueError):
+    """QA-FIX-1 / Bug 1.5: exception riêng cho alert đã acknowledged."""
+    pass
+
+
+def acknowledge_offline_alert(*, alert_id: int, requester: User,
+                                    task_id: int = None) -> DeviceOfflineAlert:
+    """
+    Parent mở app và xem cảnh báo → acknowledge → dừng retry loop.
+    - Verify requester là parent sở hữu task
+    - Set acknowledged_at = now + acknowledged_by = requester (QA-FIX-1 / Spec 2.2)
+    - KHÔNG đổi status (vẫn 'active' cho tới khi thiết bị recovered)
+
+    QA-FIX-1 / Bug 1.5:
+    - Nếu alert đã được acknowledge (acknowledged_at không null) → raise
+      AlreadyAcknowledgedError (view map → 400).
+    - Nếu task_id truyền vào không khớp alert.task_id → raise ValueError
+      (view map → 404 — chống dùng alert_id của task khác).
+    """
+    try:
+        alert = DeviceOfflineAlert.objects.get(pk=alert_id)
+    except DeviceOfflineAlert.DoesNotExist:
+        raise ValueError("Không tìm thấy alert.")
+
+    # QA-FIX-1 / Bug 1.5: task_id mismatch → 404 (không透露 alert tồn tại)
+    if task_id is not None and alert.task_id != task_id:
+        raise ValueError(f"Alert #{alert_id} không thuộc task #{task_id}.")
+
+    if alert.task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    # QA-FIX-1 / Bug 1.5: alert đã acknowledge → 400 (không phải 200 im lặng)
+    if alert.acknowledged_at is not None:
+        raise AlreadyAcknowledgedError(
+            f"Alert #{alert.id} đã được acknowledge lúc "
+            f"{alert.acknowledged_at.isoformat()}."
+        )
+
+    alert.acknowledged_at = timezone.now()
+    # QA-FIX-1 / Spec 2.2: set acknowledged_by để audit.
+    if hasattr(alert, 'acknowledged_by') and alert.acknowledged_by_id is None:
+        alert.acknowledged_by = requester
+        alert.save(update_fields=['acknowledged_at', 'acknowledged_by'])
+    else:
+        alert.save(update_fields=['acknowledged_at'])
+
+    return alert
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PHẦN 3 — RANDOM VERIFICATION CHECK
+#  Service: respond_verification_check (CarePartner nhập mã PIN)
+# ═══════════════════════════════════════════════════════════════════
+
+# QA-FIX-1 / Spec 2.3: không cần import check_password/make_password ở đây
+# nữa — User model tự đóng gói logic hash/check qua set_verification_pin() /
+# check_verification_pin() / has_verification_pin_set.
+
+# Import constants từ verification_scheduler (tránh circular import: dùng lazy import trong hàm)
+def _get_verification_constants():
+    from .verification_scheduler import (
+        RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS,
+    )
+    return RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS
+
+
+def set_verification_pin(*, user: User, pin: str, current_password: str = None) -> User:
+    """
+    CarePartner đặt/đổi mã cá nhân (PIN 4-6 số).
+    - Validate PIN: 4-6 chữ số
+    - Validate current_password: nếu user đã có PIN → bắt buộc xác thực lại mật khẩu tài khoản
+      (tránh ai cầm máy đổi PIN tuỳ tiện)
+    - Hash PIN + save qua user.set_verification_pin() — KHÔNG lưu plaintext
+
+    QA-FIX-1 / Spec 2.3: refactor để gọi user.set_verification_pin()
+    (trước đây gọi make_password trực tiếp → lặp logic).
+
+    QA-FIX-6 / BẮT BUỘC 2 — Hỗ trợ user đăng ký qua Google/Facebook:
+    Trước đây hàm này LUÔN gọi authenticate(username, password=current_password)
+    để xác thực lại trước khi cho đổi PIN. Nhưng user đăng ký qua Google/Facebook
+    được gọi set_unusable_password() (xem core/oauth_views.py:212, :342) →
+    họ KHÔNG có mật khẩu thật → authenticate() luôn trả None → họ KHÔNG BAO GIỜ
+    đặt được PIN → bị miễn trừ vĩnh viễn khỏi xác minh ngẫu nhiên (giống hệt
+    hệ quả của việc không đặt PIN, xem BẮT BUỘC 1).
+
+    Fix: phân biệt 2 trường hợp:
+      - user.has_usable_password() == True (đăng ký email/password) →
+        giữ nguyên luồng cũ: bắt buộc current_password đúng.
+      - user.has_usable_password() == False (đăng ký Google/Facebook) →
+        bỏ qua current_password. Lý do: user này đã đăng nhập hợp lệ qua
+        JWT access token (endpoint SetVerificationPinAPIView yêu cầu
+        IsAuthenticated), nếu attacker có access token thì họ đã có khả
+        năng làm mọi việc user làm được (đổi email, password, ...). Buộc
+        thêm current_password cho user OAuth không tăng security mà chỉ
+        block tính năng. Mobile app được thiết kế để ẩn trường
+        current_password khi user.auth_provider != 'email'.
+    """
+    import re
+    from django.contrib.auth import authenticate
+
+    # Validate PIN format: 4-6 chữ số
+    if not re.match(r'^\d{4,6}$', pin):
+        raise ValueError("Mã cá nhân phải là 4-6 chữ số.")
+
+    # ================================================================
+    # QA-FIX-6 / BẮT BUỘC 2 — Re-auth theo loại user
+    # ================================================================
+    if user.has_usable_password():
+        # User đăng ký qua email/password → bắt buộc xác thực lại mật khẩu
+        # tài khoản để chống ai cầm máy đổi PIN.
+        if not current_password:
+            raise PermissionError("Vui lòng nhập mật khẩu tài khoản để xác nhận.")
+
+        user_auth = authenticate(username=user.username, password=current_password)
+        if not user_auth or user_auth.id != user.id:
+            raise PermissionError("Mật khẩu tài khoản không đúng.")
+    else:
+        # User đăng ký qua Google/Facebook (set_unusable_password) → không
+        # có mật khẩu để xác thực lại. Dựa vào JWT IsAuthenticated của
+        # endpoint để bảo vệ. current_password (nếu client gửi) bị bỏ qua.
+        # Log để audit: ai đó cố gửi current_password cho user OAuth sẽ
+        # bị ignore — không phải lỗi, chỉ là không cần thiết.
+        if current_password:
+            logger.info(
+                f"[tracking] set_verification_pin: User#{user.id} "
+                f"(auth_provider={user.auth_provider}) gửi current_password "
+                f"nhưng has_usable_password=False → bỏ qua re-auth password."
+            )
+
+    # QA-FIX-1 / Spec 2.3: dùng helper method của User model.
+    user.set_verification_pin(pin)
+    logger.info(f"[tracking] Verification PIN set for User#{user.id}")
+    return user
+
+
+def respond_verification_check(*, check_id: int, requester: User,
+                                pin: str, latitude: float = None,
+                                longitude: float = None) -> 'RandomVerificationCheck':
+    """
+    CarePartner phản hồi RandomVerificationCheck — nhập mã PIN.
+    Logic:
+      - Nếu quá respond_deadline → trả lỗi, set 'timeout' nếu chưa set
+      - requester.check_verification_pin(pin) đúng → 'confirmed'
+        + reset parent_alert_sent/consecutive_timeouts_count (chấm dứt streak)
+      - Sai → tăng attempts; >= MAX_WRONG_ATTEMPTS → 'wrong_code' + báo admin
+        + reset consecutive_timeouts_count (chấm dứt streak — wrong_code không
+          phải timeout nên không cộng dồn streak)
+
+    QA-FIX-1 / Spec 2.3: dùng user.check_verification_pin() + has_verification_pin_set
+    (trước đây gọi check_password trực tiếp + kiểm tra verification_pin_hash trực tiếp).
+    QA-FIX-1 / Bug 1.3: reset parent_alert_sent + consecutive_timeouts_count
+    khi status chuyển sang 'confirmed'/'wrong_code'.
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    # Verify requester là worker của check
+    if check.worker_id != requester.id:
+        raise PermissionError("Bạn không phải là carepartner được yêu cầu xác minh.")
+
+    now = timezone.now()
+
+    # Nếu check đã xử lý (confirmed/wrong_code/timeout/cancelled) → không cho phản hồi lại
+    if check.status != 'pending':
+        raise ValueError(f"Yêu cầu xác minh đã kết thúc với trạng thái: {check.get_status_display()}.")
+
+    # Nếu quá deadline → set 'timeout' + trả lỗi
+    if now > check.respond_deadline:
+        check.status = 'timeout'
+        check.save(update_fields=['status'])
+        raise ValueError("Đã hết thời gian phản hồi. Yêu cầu xác minh đã chuyển trạng thái timeout.")
+
+    # Verify worker đã đặt PIN (dùng property mới của User model)
+    if not requester.has_verification_pin_set:
+        raise PermissionError("Bạn chưa đặt mã cá nhân. Vui lòng đặt mã trước khi phản hồi.")
+
+    # Check PIN — dùng helper method của User model
+    _, MAX_WRONG_ATTEMPTS = _get_verification_constants()
+    if requester.check_verification_pin(pin):
+        # Đúng mã → confirmed + reset streak (Bug 1.3)
+        check.status = 'confirmed'
+        check.responded_at = now
+        check.response_lat = Decimal(str(latitude)) if latitude else None
+        check.response_lng = Decimal(str(longitude)) if longitude else None
+        # QA-FIX-1 / Bug 1.3: chấm dứt streak timeout
+        check.parent_alert_sent = False
+        check.consecutive_timeouts_count = 0
+        check.save(update_fields=[
+            'status', 'responded_at', 'response_lat', 'response_lng',
+            'parent_alert_sent', 'consecutive_timeouts_count',
+        ])
+        logger.info(f"[tracking] Verification Check#{check.id} confirmed by User#{requester.id}")
+        return check
+    else:
+        # Sai mã → tăng attempts
+        check.attempts += 1
+        if check.attempts >= MAX_WRONG_ATTEMPTS:
+            check.status = 'wrong_code'
+            check.responded_at = now
+            # QA-FIX-1 / Bug 1.3: wrong_code chấm dứt streak (không phải timeout)
+            check.parent_alert_sent = False
+            check.consecutive_timeouts_count = 0
+            check.save(update_fields=[
+                'attempts', 'status', 'responded_at',
+                'parent_alert_sent', 'consecutive_timeouts_count',
+            ])
+
+            # Báo admin (nghi ngờ không phải đúng CarePartner đang cầm máy)
+            try:
+                admin_users = User.objects.filter(is_staff=True, is_active=True)
+                for admin in admin_users:
+                    Notification.objects.create(
+                        recipient=admin,
+                        title="🚨 CarePartner nhập sai mã xác minh",
+                        message=f"Task '{check.task.title}' (#{check.task.id}) — carepartner "
+                                f"{check.worker.username} đã nhập sai mã {check.attempts} lần liên tiếp. "
+                                f"Có dấu hiệu không phải đúng người đang cầm máy — kiểm tra ngay!",
+                    )
+            except Exception:
+                pass
+            logger.warning(f"[tracking] Verification Check#{check.id} WRONG_CODE (User#{requester.id})")
+            raise ValueError(f"Bạn đã nhập sai mã {check.attempts} lần. Yêu cầu đã bị khoá — admin đã được báo.")
+        else:
+            check.save(update_fields=['attempts'])
+            remaining = MAX_WRONG_ATTEMPTS - check.attempts
+            raise ValueError(f"Mã không đúng. Còn {remaining} lần thử.")
 
 
 def clear_task_heartbeat(task: Task):
@@ -630,3 +1065,122 @@ def get_offline_alerts_for_task(*, task: Task, requester: User, limit: int = 50)
         }
         for a in qs
     ]
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  QA-FIX-1 / Spec 2.4 — Verification check history (parent) + cancel
+# ═══════════════════════════════════════════════════════════════════
+
+def get_verification_history_for_parent(*, task: Task, requester: User,
+                                          limit: int = 100) -> list:
+    """
+    Parent xem lịch sử verification checks của task mình.
+    Trả về list of dict cho frontend render timeline.
+
+    QA-FIX-1 / Spec 2.4: trước đây parent không có endpoint xem lịch sử
+    verification checks — chỉ admin xem được. Parent cần biết carepartner
+    đã xác minh đúng/sai/timeout bao nhiêu lần để đánh giá tin cậy.
+    """
+    if task.parent_id != requester.id and not requester.is_superuser:
+        raise PermissionError("Bạn không sở hữu task này.")
+
+    from .models import RandomVerificationCheck
+    qs = RandomVerificationCheck.objects.filter(task=task).order_by('-triggered_at')[:limit]
+    return [
+        {
+            'id': c.id,
+            'task_id': c.task_id,
+            'worker_id': c.worker_id,
+            'worker_name': c.worker.username,
+            'triggered_at': c.triggered_at.isoformat(),
+            'respond_deadline': c.respond_deadline.isoformat(),
+            'status': c.status,
+            'status_display': c.get_status_display(),
+            'attempts': c.attempts,
+            'responded_at': c.responded_at.isoformat() if c.responded_at else None,
+            'response_lat': float(c.response_lat) if c.response_lat else None,
+            'response_lng': float(c.response_lng) if c.response_lng else None,
+            'parent_alert_sent': c.parent_alert_sent,
+            'consecutive_timeouts_count': c.consecutive_timeouts_count,
+        }
+        for c in qs
+    ]
+
+
+def cancel_verification_check(*, check_id: int, requester: User,
+                                reason: str = '') -> 'RandomVerificationCheck':
+    """
+    Admin HOẶC parent sở hữu task có thể huỷ verification check đang pending.
+
+    QA-FIX-1 / Spec 2.4: trước đây check pending chỉ có thể chờ timeout
+    (90s — RESPOND_TIMEOUT_SECONDS). Nếu parent phát hiện false alarm hoặc task đã completed, không
+    có cách chủ động dừng check → push vẫn retry 5 lần trong 90s + 30s grace.
+
+    Worker (carepartner) KHÔNG được huỷ — phải nhập mã hoặc chờ timeout.
+    Điều này tránh carepartner huỷ check để trốn xác minh.
+
+    Logic:
+      - Chỉ cho huỷ nếu status='pending' (đã confirmed/wrong_code/timeout/
+        cancelled thì không huỷ lại được).
+      - Set status='cancelled' + responded_at=now + reset streak counters
+        (cancelled không tính vào streak timeout — nó là hành động chủ động
+        của admin/parent, không phải do carepartner timeout).
+      - Notify worker rằng check đã bị huỷ.
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    # Permission: admin (is_superuser) hoặc parent sở hữu task.
+    # Worker (role='worker') bị từ chối — phải nhập mã hoặc chờ timeout.
+    is_admin = requester.is_superuser
+    is_parent = (check.task.parent_id == requester.id)
+    if not (is_admin or is_parent):
+        raise PermissionError(
+            "Chỉ admin hoặc phụ huynh sở hữu task mới được huỷ yêu cầu xác minh."
+        )
+
+    # Chỉ huỷ được nếu đang pending
+    if check.status != 'pending':
+        raise ValueError(
+            f"Không thể huỷ yêu cầu đã kết thúc (trạng thái: {check.get_status_display()})."
+        )
+
+    now = timezone.now()
+    check.status = 'cancelled'
+    check.responded_at = now
+    # Cancel không tính vào streak timeout → reset counters (giống confirmed/wrong_code).
+    check.parent_alert_sent = False
+    check.consecutive_timeouts_count = 0
+    check.save(update_fields=[
+        'status', 'responded_at',
+        'parent_alert_sent', 'consecutive_timeouts_count',
+    ])
+
+    # Notify worker rằng check đã bị huỷ (không cần nhập mã nữa).
+    try:
+        cancelled_by_role = 'admin' if is_admin else 'parent'
+        _notify_user(
+            check.worker,
+            title="✅ Yêu cầu xác minh đã được huỷ",
+            message=f"Yêu cầu xác minh cho công việc '{check.task.title}' đã bị "
+                    f"{cancelled_by_role} huỷ. Bạn không cần nhập mã nữa.",
+            data={
+                'type': 'verification_cancelled',
+                'task_id': check.task.id,
+                'check_id': check.id,
+            }
+        )
+    except Exception as e:
+        logger.warning(
+            f"[tracking] cancel_verification_check: notify worker failed: {e}"
+        )
+
+    logger.info(
+        f"[tracking] Verification Check#{check.id} cancelled by "
+        f"User#{requester.id} (reason={reason!r})"
+    )
+    return check
