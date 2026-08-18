@@ -98,3 +98,22 @@ export const triggerVerificationCheck = (payload) =>
 
 // ── HEALTH CHECK ───────────────────────────────────────────────────
 export const checkTrackingHealth = () => apiClient.get('/tracking/health/');
+
+// === PHẦN 3 (Parent) — Verification PIN History & Cancel ===
+// Parent xem lịch sử các lần xác minh PIN cho task (thành công/sai mã/timeout/đã huỷ)
+// Backend: ParentVerificationHistoryAPIView — GET /tracking/{task_id}/verification-checks/history/
+export const getVerificationHistory = (taskId, limit = 50) =>
+  apiClient.get(`/tracking/${taskId}/verification-checks/history/`, { params: { limit } });
+
+// Parent/admin huỷ 1 lần xác minh đang pending (tránh báo động sai)
+// Backend: CancelVerificationCheckAPIView — POST /tracking/verification-checks/{check_id}/cancel/
+// Body: { reason?: string }
+export const cancelVerificationCheck = (checkId, reason = '') =>
+  apiClient.post(`/tracking/verification-checks/${checkId}/cancel/`, { reason });
+
+// === OFFLINE CACHE — Batch Location Upload ===
+// Carepartner upload nhiều điểm vị trí cùng lúc (sync sau khi offline → online)
+// Backend: BatchLocationAPIView — POST /tracking/location/batch/
+// Body: { task_id, locations: [{ latitude, longitude, accuracy, speed, heading, recorded_at }, ...] }
+export const uploadBatchLocations = (payload) =>
+  apiClient.post('/tracking/location/batch/', payload);
