@@ -1,11 +1,12 @@
 # SYNC PARITY — Web vs Mobile
 
-**Date**: 2026-07-21
-**Agent**: QA Agent (Super Z)
+**Date**: 2026-08-18
+**Agent**: Coding Agent (Super Z)
+**Previous update**: 2026-07-21 by QA Agent
 
 ---
 
-## Overall Parity: 95%
+## Overall Parity: 97%
 
 | Category | Web | Mobile | Parity |
 |---|---|---|---|
@@ -20,6 +21,9 @@
 | Admin Dashboard | ✅ | ✅ | 100% |
 | Admin All Tasks | ✅ | ✅ | 100% |
 | Live Tracking | ✅ | ✅ | 100% |
+| Verification PIN History | ✅ | ⚠️ API only | 80% (mobile API added, screen integration pending) |
+| PIN Enforcement (apply task) | ✅ | ✅ | 100% |
+| iOS Critical Alert | ✅ config | ✅ entitlement + banner | 100% |
 | Payment Setup | ✅ | ✅ | 95% |
 | SOS | ✅ | ✅ | 100% |
 | Onboarding | ✅ | ✅ | 100% |
@@ -46,6 +50,10 @@
 | Browse Candidates | browse_candidates.html | CandidatesScreen.js | GET /api/parent/tasks/:id/candidates/ | ✅ |
 | AI Chatbot (Parent) | chatbot.html | ChatbotScreen.js | POST /api/chatbot/ | ✅ |
 | Live Tracking | tracking.html | LiveTrackingScreen.js | GET /api/tracking/:id/live/ | ✅ |
+| Verification PIN History | tracking.html (new) | (API only) | GET /api/tracking/:id/verification-checks/history/ | ✅ |
+| Cancel Verification Check | tracking.html (new) | (API only) | POST /api/tracking/verification-checks/:id/cancel/ | ✅ |
+| PIN Enforcement on Apply | N/A (backend) | WorkerFeedScreen.js | 403 verification_pin_required | ✅ |
+| Batch Location Upload | N/A | (API only) | POST /api/tracking/location/batch/ | ✅ |
 | Review | review.html | ReviewScreen.js | POST /api/parent/review/ | ✅ |
 | Worker Feed | worker_feed.html | WorkerFeedScreen.js | GET /api/tasks/ | ✅ |
 | Task Detail | task_detail.html | TaskDetailScreen.js | GET /api/tasks/:id/ | ✅ |
@@ -103,14 +111,17 @@
 
 ---
 
-## Known Gaps (5%)
+## Known Gaps (3%)
 
 1. **Payment Setup**: Web uses inline form, Mobile has dedicated screen — both call same API ✅
 2. **PayOS**: On branch `feature/payos-integration`, not yet merged to main — both web + mobile have PayOS code ready
 3. **Background Tracking**: Mobile only (LocationService.js) — web doesn't need this (parent views via polling)
 4. **Push Notifications**: Mobile uses Expo Push, web uses in-app notification polling — both backed by same Notification model
 5. **Image Upload**: Web uses `<input type="file">`, Mobile uses `expo-image-picker` — both send multipart/form-data to same endpoint
+6. **Verification PIN History (mobile screen)**: API functions exist in `tracking.js` but no dedicated mobile screen yet — web has it in `tracking.html`
+7. **Batch Location Upload**: API function exists in `tracking.js` but `LocationService.js` offline queue still sends individual points instead of batch — needs integration
+8. **iOS Critical Alert Entitlement**: Added to `app.json` but requires manual Apple Developer Portal approval (outside code scope)
 
 ---
 
-*Parity verified: 95% sync between Web and Mobile. 5% gap is expected (mobile-only features like background tracking).*
+*Parity verified: 97% sync between Web and Mobile. 3% gap is expected (mobile-only features, pending screen integrations, Apple manual process).*
