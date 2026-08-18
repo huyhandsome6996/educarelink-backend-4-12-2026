@@ -10,26 +10,13 @@
     <link rel="stylesheet" href="{% static 'css/tailwind-radius-b.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <!-- Leaflet.js Map (CDN — unrelated to Tailwind; this is the correct way this project loads Leaflet) -->
+    <!-- Leaflet.js Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!--
-        Tailwind CSS is precompiled.
-        This template does NOT load cdn.tailwindcss.com and does NOT define an
-        inline tailwind.config block. To regenerate the stylesheet after editing
-        utility classes here, run:
-            cd frontend/tailwind-build && npm install && npm run build:radius-b
-        then commit frontend/static/css/tailwind-radius-b.css.
-    -->
-
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
             vertical-align: middle;
-        }
-        .material-symbols-outlined.filled {
-            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         html { scroll-behavior: smooth; }
         body {
@@ -40,10 +27,19 @@
         }
 
         /* Custom scrollbar */
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
 
         /* Toast animations */
         @keyframes toast-slide-in {
@@ -54,10 +50,14 @@
             from { transform: translateX(0);    opacity: 1; }
             to   { transform: translateX(110%); opacity: 0; }
         }
-        .toast-enter { animation: toast-slide-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
-        .toast-exit  { animation: toast-slide-out 0.3s ease-in forwards; }
+        .toast-enter {
+            animation: toast-slide-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+        }
+        .toast-exit {
+            animation: toast-slide-out 0.3s ease-in forwards;
+        }
 
-        /* Upload zone hover (referenced by .has-file state set in JS) */
+        /* Upload zone hover */
         .upload-zone {
             transition: all 0.2s ease;
         }
@@ -76,14 +76,26 @@
         }
 
         /* Spinner */
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner { animation: spin 0.8s linear infinite; }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 0.8s linear infinite;
+        }
 
-        /*
-         * Smooth section reveal for the worker-only fields.
-         * Toggled by adding the .visible class (the JS calls
-         * workerFields.classList.add('visible') when role = worker).
-         */
+        /* Floating shapes animation */
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50%      { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes float-medium {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50%      { transform: translateY(-15px) rotate(-3deg); }
+        }
+        .float-slow   { animation: float-slow 6s ease-in-out infinite; }
+        .float-medium  { animation: float-medium 4.5s ease-in-out infinite; }
+
+        /* Smooth section reveal */
         .worker-section {
             max-height: 0;
             overflow: hidden;
@@ -98,79 +110,96 @@
             opacity: 1;
             margin-top: 1.5rem;
         }
-
-        /*
-         * Stitch-inspired input styling. Focus ring uses the project's hcBlue
-         * token (#2563EB) for a calm, modern accent — same color family as
-         * Stitch's "tertiary-container" focus ring.
-         */
-        .stitch-input {
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .stitch-input:focus {
-            border-color: #2563EB;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-            outline: none;
-        }
-        .stitch-input:hover {
-            border-color: #E5E7EB;
-        }
     </style>
 </head>
-<body class="bg-surfaceAlt text-textPrimary antialiased min-h-screen flex flex-col md:flex-row w-full overflow-x-hidden">
+<body class="bg-bgMain text-textPrimary antialiased">
 
-<!-- Toast Container (used by showToast() in the script below) -->
+<!-- Toast Container -->
 <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none" style="max-width: 400px;"></div>
 
-<!-- Main Layout: Split Screen (Stitch-inspired) -->
-<div class="min-h-dvh flex flex-col md:flex-row w-full">
+<!-- Main Layout: Split Screen -->
+<div class="min-h-dvh flex flex-col lg:flex-row">
 
-    <!-- ================================================================ -->
-    <!-- LEFT: Branding Panel (desktop/tablet only — hidden on mobile)    -->
-    <!-- Stitch-faithful: hero photo background + dark gradient overlay,  -->
-    <!-- branding block bottom-left. Project's own logo is preserved.     -->
-    <!-- ================================================================ -->
-    <div class="hidden md:flex md:w-1/2 lg:w-5/12 relative overflow-hidden flex-col justify-end p-10 xl:p-14"
-         style="background-image: url('{% static 'images/register-hero.jpg' %}'); background-size: cover; background-position: center; background-color: #feeae3;">
+    <!-- LEFT: Branding Panel (desktop only) -->
+    <div class="hidden lg:flex lg:w-[45%] xl:w-[48%] relative overflow-hidden bg-gradient-to-br from-primary via-primaryDark to-[#C44418] flex-col justify-between p-12 xl:p-16">
+        <!-- Decorative shapes -->
+        <div class="absolute top-[-80px] right-[-60px] w-[300px] h-[300px] bg-white/5 rounded-full float-slow"></div>
+        <div class="absolute bottom-[-40px] left-[-40px] w-[200px] h-[200px] bg-white/5 rounded-full float-medium"></div>
+        <div class="absolute top-[40%] right-[10%] w-[120px] h-[120px] bg-primarySoft/10 rounded-2xl rotate-12 float-medium"></div>
+        <div class="absolute bottom-[30%] left-[15%] w-[80px] h-[80px] bg-white/5 rounded-xl -rotate-6 float-slow"></div>
 
-        <!-- Gradient Overlay for text legibility (Stitch: dark at bottom, transparent at top) -->
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
-
-        <!-- Branding & Value Prop (bottom-left, per Stitch) -->
-        <div class="relative z-10 max-w-md">
-            <!-- Logo + wordmark (project's own logo preserved per user request) -->
-            <div class="flex items-center gap-3 mb-6">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-10 w-10 rounded-xl object-contain bg-white/15 backdrop-blur-sm p-1.5">
+        <!-- Top: Logo -->
+        <div class="relative z-10">
+            <div class="flex items-center gap-3">
+                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
                 <span class="text-white text-2xl font-extrabold tracking-tight font-headline">EduCareLink</span>
             </div>
-            <h1 class="text-white text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight mb-3">
-                Nơi gửi gắm niềm tin của gia đình.
+        </div>
+
+        <!-- Center: Main message -->
+        <div class="relative z-10 space-y-6">
+            <h1 class="text-white text-4xl xl:text-5xl font-extrabold leading-tight tracking-tight">
+                Kết nối yêu thương,<br/>
+                <span class="text-primarySoft">Nuôi dưỡng tương lai</span>
             </h1>
-            <p class="text-white/80 text-base xl:text-lg leading-relaxed">
-                Kết nối phụ huynh với hàng ngàn chuyên gia chăm sóc và giáo dục trẻ em được xác thực kỹ lưỡng.
+            <p class="text-white/80 text-lg leading-relaxed max-w-md">
+                Nền tảng hàng đầu kết nối phụ huynh với sinh viên chăm sóc trẻ em chuyên nghiệp và đáng tin cậy.
             </p>
+
+            <!-- Feature highlights -->
+            <div class="space-y-4 mt-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-white text-xl">verified_user</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-bold text-sm">Xác minh danh tính</p>
+                        <p class="text-white/60 text-xs">Carepartner được xác minh CCCD chân thực</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-white text-xl">shield</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-bold text-sm">An toàn & Bảo mật</p>
+                        <p class="text-white/60 text-xs">Thông tin cá nhân được bảo vệ tuyệt đối</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-white text-xl">handshake</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-bold text-sm">Kết nối nhanh chóng</p>
+                        <p class="text-white/60 text-xs">Tìm người chăm sóc phù hợp trong vài phút</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: Copyright -->
+        <div class="relative z-10">
+            <p class="text-white/40 text-sm">&copy; 2026 EduCareLink. All rights reserved.</p>
         </div>
     </div>
 
-    <!-- ================================================================ -->
-    <!-- RIGHT: Registration Form                                          -->
-    <!-- ================================================================ -->
-    <main class="w-full md:w-1/2 lg:w-7/12 flex-1 flex flex-col min-h-dvh bg-surfaceAlt overflow-y-auto">
-
-        <!-- Mobile Header (visible only on mobile — hidden md+) -->
-        <div class="md:hidden bg-white border-b border-borderMain px-6 py-4">
+    <!-- RIGHT: Registration Form -->
+    <div class="flex-1 flex flex-col min-h-dvh bg-bgMain">
+        <!-- Mobile Header (visible only on mobile/tablet) -->
+        <div class="lg:hidden bg-white border-b border-borderMain px-6 py-4">
             <div class="flex items-center gap-3">
                 <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
                 <span class="text-textPrimary text-xl font-extrabold tracking-tight font-headline">EduCareLink</span>
             </div>
         </div>
 
-        <!-- Form Container (centered, max-w-[440px] per Stitch) -->
-        <div class="flex-1 flex items-start justify-center p-4 sm:p-6 md:p-8 lg:p-12 xl:p-14">
-            <div class="w-full max-w-[440px] mx-auto">
+        <!-- Form Container -->
+        <div class="flex-1 flex items-start justify-center p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
+            <div class="w-full max-w-lg">
 
                 <!-- Desktop: Back to login link -->
-                <div class="hidden md:flex items-center gap-2 mb-8">
+                <div class="hidden lg:flex items-center gap-2 mb-8">
                     <a href="/login/" class="flex items-center gap-1.5 text-textSecondary hover:text-primary transition-colors text-sm font-semibold group">
                         <span class="material-symbols-outlined text-lg group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
                         Quay lại đăng nhập
@@ -178,307 +207,276 @@
                 </div>
 
                 <!-- Title Section -->
+                <div class="mb-8">
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-textPrimary">Tạo tài khoản mới</h2>
+                    <p class="text-textSecondary mt-2">Chọn vai trò và điền thông tin để bắt đầu</p>
+                </div>
+
+                <!-- Role Selector -->
                 <div class="mb-6">
-                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-textPrimary">Tạo tài khoản</h2>
-                    <p class="text-textSecondary mt-1.5 text-sm">Bắt đầu hành trình cùng chúng tôi ngay hôm nay.</p>
+                    <label class="block text-sm font-bold text-textPrimary mb-3">Bạn là ai?</label>
+                    <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                        <!-- Parent Role Card -->
+                        <button type="button" id="role-parent-btn" onclick="selectRole('parent')"
+                            class="role-card flex flex-col items-center justify-center p-4 sm:p-5 rounded-xl border-2 border-primary bg-primaryLight relative group">
+                            <div class="absolute top-2.5 right-2.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center" id="parent-check">
+                                <span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+                            </div>
+                            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/15 flex items-center justify-center mb-3">
+                                <span class="material-symbols-outlined text-primary text-2xl sm:text-3xl" style="font-variation-settings: 'FILL' 1;">groups</span>
+                            </div>
+                            <span class="text-sm sm:text-base font-bold text-primary">Phụ Huynh</span>
+                            <span class="text-[11px] text-textSecondary mt-1 text-center leading-tight">Đăng việc, tìm người chăm sóc</span>
+                        </button>
+
+                        <!-- Worker Role Card -->
+                        <button type="button" id="role-worker-btn" onclick="selectRole('worker')"
+                            class="role-card flex flex-col items-center justify-center p-4 sm:p-5 rounded-xl border-2 border-borderMain bg-white relative group hover:border-primarySoft">
+                            <div class="absolute top-2.5 right-2.5 w-5 h-5 bg-primary rounded-full items-center justify-center hidden" id="worker-check">
+                                <span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+                            </div>
+                            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3 group-hover:bg-primaryLight transition-colors" id="worker-icon-bg">
+                                <span class="material-symbols-outlined text-textMuted text-2xl sm:text-3xl group-hover:text-primary transition-colors" id="worker-icon">work</span>
+                            </div>
+                            <span class="text-sm sm:text-base font-bold text-textSecondary group-hover:text-primary transition-colors" id="worker-label">Carepartner</span>
+                            <span class="text-[11px] text-textMuted mt-1 text-center leading-tight">Tìm việc, kiếm thêm thu nhập</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Registration Form -->
-                <form id="register-form" novalidate class="flex flex-col gap-5">
-
-                    <!-- Role Selector (Bento Tabs — Stitch pattern) -->
-                    <div>
-                        <label class="block text-sm font-semibold text-textPrimary mb-2">Bạn đăng ký với vai trò gì?</label>
-                        <div class="grid grid-cols-2 gap-2 p-1.5 bg-surfaceAlt rounded-xl border border-borderMain">
-
-                            <!-- Parent Role Card (active by default) -->
-                            <!--
-                                The selectRole('parent') JS will toggle these classes on this button:
-                                  border-borderMain / border-primary
-                                  bg-white           / bg-primaryLight
-                                Initial state (parent active): border-primary bg-primaryLight
-                            -->
-                            <button type="button" id="role-parent-btn" onclick="selectRole('parent')"
-                                class="role-card relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg border-2 border-primary bg-primaryLight group">
-                                <div class="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center" id="parent-check">
-                                    <span class="material-symbols-outlined text-white text-sm filled">check</span>
-                                </div>
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/15 flex items-center justify-center mb-2">
-                                    <span class="material-symbols-outlined text-primary text-xl sm:text-2xl filled">escalator_warning</span>
-                                </div>
-                                <span class="text-sm font-semibold text-primary">Phụ Huynh</span>
-                                <span class="text-[11px] text-textSecondary mt-0.5 text-center leading-tight">Đăng việc, tìm người chăm sóc</span>
-                            </button>
-
-                            <!-- Worker Role Card (inactive by default) -->
-                            <!--
-                                The selectRole('worker') JS will toggle these classes on this button:
-                                  border-borderMain / border-primary
-                                  bg-white           / bg-primaryLight
-                                Initial state (worker inactive): border-borderMain bg-white
-                                Plus the JS toggles these on the worker-icon-bg/worker-icon/worker-label:
-                                  worker-icon-bg: bg-gray-100  <->  bg-primary/15
-                                  worker-icon:    text-textMuted <->  text-primary
-                                  worker-label:   text-textSecondary <-> text-primary
-                            -->
-                            <button type="button" id="role-worker-btn" onclick="selectRole('worker')"
-                                class="role-card relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg border-2 border-borderMain bg-white group hover:bg-surfaceAlt">
-                                <div class="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full items-center justify-center hidden" id="worker-check">
-                                    <span class="material-symbols-outlined text-white text-sm filled">check</span>
-                                </div>
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2 group-hover:bg-primaryLight transition-colors" id="worker-icon-bg">
-                                    <span class="material-symbols-outlined text-textMuted text-xl sm:text-2xl group-hover:text-primary transition-colors" id="worker-icon">diversity_3</span>
-                                </div>
-                                <span class="text-sm font-semibold text-textSecondary group-hover:text-primary transition-colors" id="worker-label">Carepartner</span>
-                                <span class="text-[11px] text-textMuted mt-0.5 text-center leading-tight">Tìm việc, kiếm thêm thu nhập</span>
-                            </button>
-                        </div>
-                    </div>
-
+                <form id="register-form" novalidate>
                     <!-- Basic Fields (always visible) -->
-                    <div class="flex flex-col gap-3">
-
-                        <!-- Name Row (Họ + Tên) -->
-                        <div class="grid grid-cols-5 gap-2">
+                    <div class="space-y-4">
+                        <!-- Name Row -->
+                        <div class="grid grid-cols-5 gap-3">
                             <div class="col-span-2">
-                                <label class="block text-xs font-semibold text-textPrimary mb-1.5">Họ</label>
+                                <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Họ</label>
                                 <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">badge</span>
+                                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">badge</span>
                                     <input type="text" id="last_name" name="last_name"
-                                        class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
+                                        class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
                                         placeholder="Nguyễn"/>
                                 </div>
                             </div>
                             <div class="col-span-3">
-                                <label class="block text-xs font-semibold text-textPrimary mb-1.5">Tên <span class="text-errorMain">*</span></label>
+                                <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Tên <span class="text-errorMain">*</span></label>
                                 <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">person</span>
                                     <input type="text" id="first_name" name="first_name" required
-                                        class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
+                                        class="w-full pl-4 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
                                         placeholder="Văn A"/>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Username (required by live API — Stitch omitted it but we must keep it) -->
+                        <!-- Username -->
                         <div>
-                            <label class="block text-xs font-semibold text-textPrimary mb-1.5">Tên tài khoản <span class="text-errorMain">*</span></label>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Tên tài khoản <span class="text-errorMain">*</span></label>
                             <div class="relative">
-                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">alternate_email</span>
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">person</span>
                                 <input type="text" id="username" name="username" required autocomplete="username"
-                                    class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
+                                    class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
                                     placeholder="nguyenvana"/>
                             </div>
                         </div>
 
                         <!-- Email -->
                         <div>
-                            <label class="block text-xs font-semibold text-textPrimary mb-1.5">Email <span class="text-errorMain">*</span></label>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Email <span class="text-errorMain">*</span></label>
                             <div class="relative">
-                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">mail</span>
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">mail</span>
                                 <input type="email" id="email" name="email" required autocomplete="email"
-                                    class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
+                                    class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
                                     placeholder="nguyenvana@gmail.com"/>
                             </div>
                         </div>
 
                         <!-- Phone Number -->
                         <div>
-                            <label class="block text-xs font-semibold text-textPrimary mb-1.5">Số điện thoại <span class="text-errorMain">*</span></label>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Số điện thoại <span class="text-errorMain">*</span></label>
                             <div class="relative">
-                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">call</span>
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">call</span>
                                 <input type="tel" id="phone_number" name="phone_number" required
-                                    class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
+                                    class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
                                     placeholder="0901 234 567"/>
                             </div>
                         </div>
 
-                        <!-- Password + Confirm Password (2-column on sm+) -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-textPrimary mb-1.5">Mật khẩu <span class="text-errorMain">*</span></label>
-                                <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">lock</span>
-                                    <input type="password" id="password" name="password" required autocomplete="new-password"
-                                        class="stitch-input w-full h-12 pl-10 pr-11 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
-                                        placeholder="Tối thiểu 6 ký tự"/>
-                                    <button type="button" onclick="togglePassword('password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted hover:text-textSecondary transition-colors">
-                                        <span class="material-symbols-outlined text-xl">visibility</span>
-                                    </button>
-                                </div>
+                        <!-- Password -->
+                        <div>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Mật khẩu <span class="text-errorMain">*</span></label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">lock</span>
+                                <input type="password" id="password" name="password" required autocomplete="new-password"
+                                    class="w-full pl-11 pr-12 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
+                                    placeholder="Tối thiểu 6 ký tự"/>
+                                <button type="button" onclick="togglePassword('password', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-textMuted hover:text-textSecondary transition-colors">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-textPrimary mb-1.5">Xác nhận mật khẩu <span class="text-errorMain">*</span></label>
-                                <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">lock_reset</span>
-                                    <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password"
-                                        class="stitch-input w-full h-12 pl-10 pr-11 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
-                                        placeholder="Nhập lại mật khẩu"/>
-                                    <button type="button" onclick="togglePassword('confirm_password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted hover:text-textSecondary transition-colors">
-                                        <span class="material-symbols-outlined text-xl">visibility</span>
-                                    </button>
-                                </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div>
+                            <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Xác nhận mật khẩu <span class="text-errorMain">*</span></label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">lock</span>
+                                <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password"
+                                    class="w-full pl-11 pr-12 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
+                                    placeholder="Nhập lại mật khẩu"/>
+                                <button type="button" onclick="togglePassword('confirm_password', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-textMuted hover:text-textSecondary transition-colors">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ============================================================ -->
-                    <!-- Worker-Only Fields                                           -->
-                    <!-- Wrapped in a card with the same rounded-xl/soft border      -->
-                    <!-- treatment as the rest of the form. Revealed via the          -->
-                    <!-- .worker-section.visible transition (max-height + opacity).  -->
-                    <!-- ============================================================ -->
+                    <!-- Worker-Only Fields -->
                     <div id="worker-fields" class="worker-section">
-                        <div class="bg-white border border-borderMain rounded-xl p-5 shadow-[0px_2px_12px_rgba(36,26,22,0.03)]">
+                        <!-- Divider -->
+                        <div class="relative my-5">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-dividerMain"></div>
+                            </div>
+                            <div class="relative flex justify-center">
+                                <span class="bg-bgMain px-3 text-xs font-bold text-textMuted uppercase tracking-wider">Thông tin Carepartner</span>
+                            </div>
+                        </div>
 
-                            <!-- Card header -->
-                            <div class="flex items-center gap-2 mb-4">
-                                <div class="w-8 h-8 rounded-lg bg-hcBlueLight flex items-center justify-center flex-shrink-0">
-                                    <span class="material-symbols-outlined text-hcBlue text-base filled">verified_user</span>
+                        <div class="space-y-4">
+                            <!-- Address with Map Picker -->
+                            <div>
+                                <label class="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1.5 ml-1">Địa chỉ <span class="text-errorMain">*</span></label>
+                                <div class="relative mb-2">
+                                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted text-xl">location_on</span>
+                                    <input type="text" id="address" name="address"
+                                        class="w-full pl-11 pr-3 py-3.5 bg-white border border-borderMain rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-gray-300 transition-all duration-200 outline-none text-textPrimary placeholder:text-textMuted/60 text-sm"
+                                        placeholder="Bấm vào bản đồ hoặc gõ địa chỉ..." onfocus="showRegMap()"/>
                                 </div>
-                                <div>
-                                    <h3 class="font-bold text-textPrimary text-sm leading-tight">Thông tin Carepartner</h3>
-                                    <p class="text-textMuted text-[11px] mt-0.5">Cần hoàn tất để được Admin xét duyệt</p>
+                                <input type="hidden" id="reg-lat" />
+                                <input type="hidden" id="reg-lng" />
+                                <div id="reg-map-wrapper" class="rounded-xl overflow-hidden border border-borderMain mb-2" style="display:none;">
+                                    <div id="reg-location-map" style="width:100%;height:250px;"></div>
+                                </div>
+                                <div class="flex gap-2" id="reg-map-buttons" style="display:none;">
+                                    <button type="button" onclick="useMyLocationReg()" class="flex items-center gap-1.5 px-3 py-2 bg-primaryLight text-primary rounded-lg text-xs font-semibold hover:bg-primarySoft transition-all">
+                                        <span class="material-symbols-outlined text-sm">my_location</span> Vị trí của tôi
+                                    </button>
+                                    <button type="button" onclick="searchAddressReg()" class="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-all">
+                                        <span class="material-symbols-outlined text-sm">search</span> Tìm địa chỉ
+                                    </button>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="flex flex-col gap-4">
+                        <!-- CCCD Upload Section -->
+                        <div class="mt-6 bg-white border border-borderMain rounded-xl p-5">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">shield</span>
+                                <h3 class="font-bold text-textPrimary text-base">Xác minh danh tính</h3>
+                            </div>
+                            <p class="text-textMuted text-xs leading-relaxed mb-5">
+                                Vui lòng tải lên ảnh CCCD và ảnh chân dung để Admin xét duyệt tài khoản của bạn.
+                            </p>
 
-                                <!-- Address with Map Picker -->
+                            <div class="space-y-4">
+                                <!-- ID Card Front -->
                                 <div>
-                                    <label class="block text-xs font-semibold text-textPrimary mb-1.5">Địa chỉ <span class="text-errorMain">*</span></label>
-                                    <div class="relative mb-2">
-                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-textMuted text-xl pointer-events-none">location_on</span>
-                                        <input type="text" id="address" name="address"
-                                            class="stitch-input w-full h-12 pl-10 pr-3 bg-white border border-borderMain rounded-xl text-textPrimary placeholder:text-textMuted/60 text-sm shadow-[0px_2px_8px_rgba(36,26,22,0.02)]"
-                                            placeholder="Bấm vào bản đồ hoặc gõ địa chỉ..." onfocus="showRegMap()"/>
-                                    </div>
-                                    <input type="hidden" id="reg-lat" />
-                                    <input type="hidden" id="reg-lng" />
-                                    <div id="reg-map-wrapper" class="rounded-xl overflow-hidden border border-borderMain mb-2" style="display:none;">
-                                        <div id="reg-location-map" style="width:100%;height:250px;"></div>
-                                    </div>
-                                    <div class="flex gap-2" id="reg-map-buttons" style="display:none;">
-                                        <button type="button" onclick="useMyLocationReg()" class="flex items-center gap-1.5 px-3 py-2 bg-primaryLight text-primary rounded-lg text-xs font-semibold hover:bg-primarySoft transition-all">
-                                            <span class="material-symbols-outlined text-sm">my_location</span> Vị trí của tôi
-                                        </button>
-                                        <button type="button" onclick="searchAddressReg()" class="flex items-center gap-1.5 px-3 py-2 bg-hcBlueLight text-hcBlue rounded-lg text-xs font-semibold hover:bg-hcBlueSoft transition-all">
-                                            <span class="material-symbols-outlined text-sm">search</span> Tìm địa chỉ
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- CCCD Upload Section -->
-                                <div class="border-t border-dividerMain pt-4">
-                                    <div class="flex items-center gap-2 mb-1.5">
-                                        <span class="material-symbols-outlined text-primary text-base filled">shield</span>
-                                        <h4 class="font-semibold text-textPrimary text-sm">Xác minh danh tính</h4>
-                                    </div>
-                                    <p class="text-textMuted text-xs leading-relaxed mb-4">
-                                        Vui lòng tải lên ảnh CCCD và ảnh chân dung để Admin xét duyệt tài khoản của bạn.
-                                    </p>
-
-                                    <div class="flex flex-col gap-3">
-
-                                        <!-- ID Card Front -->
-                                        <div>
-                                            <label class="block text-xs font-semibold text-textSecondary mb-1.5">
-                                                <span class="material-symbols-outlined text-sm align-middle mr-1">credit_card</span>
-                                                Mặt trước CCCD <span class="text-errorMain">*</span>
-                                            </label>
-                                            <div id="zone-id_card_front" class="upload-zone border-2 border-dashed border-borderMain rounded-xl p-4 text-center cursor-pointer"
-                                                 onclick="triggerUpload('id_card_front')">
-                                                <input type="file" id="input-id_card_front" name="id_card_front" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'id_card_front')"/>
-                                                <div id="placeholder-id_card_front">
-                                                    <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_photo_alternate</span>
-                                                    <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
-                                                    <p class="text-textMuted/60 text-[11px] mt-0.5">JPG, PNG — Tối đa 5MB</p>
-                                                </div>
-                                                <div id="preview-id_card_front" class="hidden">
-                                                    <img id="img-id_card_front" class="max-h-28 mx-auto rounded-lg object-contain" alt="Mặt trước CCCD"/>
-                                                    <p id="filename-id_card_front" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
-                                                    <button type="button" onclick="event.stopPropagation(); removeFile('id_card_front')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
-                                                        <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
-                                                    </button>
-                                                </div>
-                                            </div>
+                                    <label class="block text-xs font-bold text-textSecondary mb-2 ml-0.5">
+                                        <span class="material-symbols-outlined text-sm align-middle mr-1">credit_card</span>
+                                        Mặt trước CCCD <span class="text-errorMain">*</span>
+                                    </label>
+                                    <div id="zone-id_card_front" class="upload-zone border-2 border-dashed border-borderMain rounded-lg p-4 text-center cursor-pointer"
+                                         onclick="triggerUpload('id_card_front')">
+                                        <input type="file" id="input-id_card_front" name="id_card_front" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'id_card_front')"/>
+                                        <div id="placeholder-id_card_front">
+                                            <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_photo_alternate</span>
+                                            <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
+                                            <p class="text-textMuted/60 text-[11px] mt-0.5">JPG, PNG — Tối đa 5MB</p>
                                         </div>
-
-                                        <!-- ID Card Back -->
-                                        <div>
-                                            <label class="block text-xs font-semibold text-textSecondary mb-1.5">
-                                                <span class="material-symbols-outlined text-sm align-middle mr-1">credit_card</span>
-                                                Mặt sau CCCD <span class="text-errorMain">*</span>
-                                            </label>
-                                            <div id="zone-id_card_back" class="upload-zone border-2 border-dashed border-borderMain rounded-xl p-4 text-center cursor-pointer"
-                                                 onclick="triggerUpload('id_card_back')">
-                                                <input type="file" id="input-id_card_back" name="id_card_back" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'id_card_back')"/>
-                                                <div id="placeholder-id_card_back">
-                                                    <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_photo_alternate</span>
-                                                    <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
-                                                    <p class="text-textMuted/60 text-[11px] mt-0.5">JPG, PNG — Tối đa 5MB</p>
-                                                </div>
-                                                <div id="preview-id_card_back" class="hidden">
-                                                    <img id="img-id_card_back" class="max-h-28 mx-auto rounded-lg object-contain" alt="Mặt sau CCCD"/>
-                                                    <p id="filename-id_card_back" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
-                                                    <button type="button" onclick="event.stopPropagation(); removeFile('id_card_back')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
-                                                        <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Selfie Photo -->
-                                        <div>
-                                            <label class="block text-xs font-semibold text-textSecondary mb-1.5">
-                                                <span class="material-symbols-outlined text-sm align-middle mr-1">face</span>
-                                                Ảnh chân dung <span class="text-errorMain">*</span>
-                                            </label>
-                                            <div id="zone-selfie_photo" class="upload-zone border-2 border-dashed border-borderMain rounded-xl p-4 text-center cursor-pointer"
-                                                 onclick="triggerUpload('selfie_photo')">
-                                                <input type="file" id="input-selfie_photo" name="selfie_photo" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'selfie_photo')"/>
-                                                <div id="placeholder-selfie_photo">
-                                                    <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_a_photo</span>
-                                                    <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
-                                                    <p class="text-textMuted/60 text-[11px] mt-0.5">Ảnh rõ mặt, JPG, PNG — Tối đa 5MB</p>
-                                                </div>
-                                                <div id="preview-selfie_photo" class="hidden">
-                                                    <img id="img-selfie_photo" class="max-h-28 mx-auto rounded-lg object-contain" alt="Ảnh chân dung"/>
-                                                    <p id="filename-selfie_photo" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
-                                                    <button type="button" onclick="event.stopPropagation(); removeFile('selfie_photo')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
-                                                        <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
-                                                    </button>
-                                                </div>
-                                            </div>
+                                        <div id="preview-id_card_front" class="hidden">
+                                            <img id="img-id_card_front" class="max-h-28 mx-auto rounded-md object-contain" alt="Mặt trước CCCD"/>
+                                            <p id="filename-id_card_front" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
+                                            <button type="button" onclick="event.stopPropagation(); removeFile('id_card_front')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
+                                                <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Info box for Workers -->
-                                <div class="flex items-start gap-3 bg-primaryLight border border-primary/20 rounded-xl p-3.5">
-                                    <span class="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5 filled">info</span>
-                                    <p class="text-xs text-primary/90 leading-relaxed">
-                                        Tài khoản Carepartner cần được Admin xét duyệt trước khi đăng nhập. Quá trình duyệt thường mất 1-2 ngày làm việc.
-                                    </p>
+                                <!-- ID Card Back -->
+                                <div>
+                                    <label class="block text-xs font-bold text-textSecondary mb-2 ml-0.5">
+                                        <span class="material-symbols-outlined text-sm align-middle mr-1">credit_card</span>
+                                        Mặt sau CCCD <span class="text-errorMain">*</span>
+                                    </label>
+                                    <div id="zone-id_card_back" class="upload-zone border-2 border-dashed border-borderMain rounded-lg p-4 text-center cursor-pointer"
+                                         onclick="triggerUpload('id_card_back')">
+                                        <input type="file" id="input-id_card_back" name="id_card_back" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'id_card_back')"/>
+                                        <div id="placeholder-id_card_back">
+                                            <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_photo_alternate</span>
+                                            <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
+                                            <p class="text-textMuted/60 text-[11px] mt-0.5">JPG, PNG — Tối đa 5MB</p>
+                                        </div>
+                                        <div id="preview-id_card_back" class="hidden">
+                                            <img id="img-id_card_back" class="max-h-28 mx-auto rounded-md object-contain" alt="Mặt sau CCCD"/>
+                                            <p id="filename-id_card_back" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
+                                            <button type="button" onclick="event.stopPropagation(); removeFile('id_card_back')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
+                                                <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Selfie Photo -->
+                                <div>
+                                    <label class="block text-xs font-bold text-textSecondary mb-2 ml-0.5">
+                                        <span class="material-symbols-outlined text-sm align-middle mr-1">face</span>
+                                        Ảnh chân dung <span class="text-errorMain">*</span>
+                                    </label>
+                                    <div id="zone-selfie_photo" class="upload-zone border-2 border-dashed border-borderMain rounded-lg p-4 text-center cursor-pointer"
+                                         onclick="triggerUpload('selfie_photo')">
+                                        <input type="file" id="input-selfie_photo" name="selfie_photo" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'selfie_photo')"/>
+                                        <div id="placeholder-selfie_photo">
+                                            <span class="material-symbols-outlined text-textMuted text-3xl mb-1 block">add_a_photo</span>
+                                            <p class="text-textMuted text-xs font-semibold">Nhấn để chọn ảnh</p>
+                                            <p class="text-textMuted/60 text-[11px] mt-0.5">Ảnh rõ mặt, JPG, PNG — Tối đa 5MB</p>
+                                        </div>
+                                        <div id="preview-selfie_photo" class="hidden">
+                                            <img id="img-selfie_photo" class="max-h-28 mx-auto rounded-md object-contain" alt="Ảnh chân dung"/>
+                                            <p id="filename-selfie_photo" class="text-textSecondary text-xs font-medium mt-2 truncate"></p>
+                                            <button type="button" onclick="event.stopPropagation(); removeFile('selfie_photo')" class="mt-2 inline-flex items-center gap-1 text-errorMain text-xs font-semibold hover:underline">
+                                                <span class="material-symbols-outlined text-sm">delete</span> Xóa ảnh
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Info box for Workers -->
+                        <div class="mt-4 flex items-start gap-3 bg-primaryLight border border-primary/20 rounded-xl p-4">
+                            <span class="material-symbols-outlined text-primary text-xl flex-shrink-0 mt-0.5">info</span>
+                            <p class="text-xs text-primary/80 leading-relaxed">
+                                Tài khoản Carepartner cần được Admin xét duyệt trước khi đăng nhập. Quá trình duyệt thường mất 1-2 ngày làm việc.
+                            </p>
                         </div>
                     </div>
 
                     <!-- Terms -->
-                    <div class="flex items-start gap-3">
-                        <input type="checkbox" id="agree_terms" class="mt-0.5 rounded border-borderMain text-primary focus:ring-primary/30 w-4 h-4 cursor-pointer"/>
+                    <div class="flex items-start gap-3 mt-6">
+                        <input type="checkbox" id="agree_terms" class="mt-0.5 rounded border-borderMain text-primary focus:ring-primary/30 w-4 h-4"/>
                         <label for="agree_terms" class="text-xs text-textSecondary leading-relaxed cursor-pointer">
                             Bằng việc đăng ký, bạn đồng ý với <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark" href="#">Điều khoản dịch vụ</a> và <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark" href="#">Chính sách bảo mật</a> của chúng tôi.
                         </label>
                     </div>
 
-                    <!-- Submit Button (rounded-full, primary background, arrow_forward icon — per Stitch) -->
+                    <!-- Submit Button -->
                     <button type="submit" id="submit-btn"
-                        class="w-full h-12 bg-primary hover:bg-primaryDark text-white font-bold rounded-full shadow-[0px_4px_20px_rgba(242,101,34,0.25)] hover:shadow-[0px_12px_32px_rgba(242,101,34,0.35)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0">
-                        <span id="submit-text">Đăng ký tài khoản</span>
+                        class="w-full mt-6 py-4 bg-primary hover:bg-primaryDark text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+                        <span id="submit-text">Đăng ký ngay</span>
                         <span class="material-symbols-outlined text-lg" id="submit-arrow">arrow_forward</span>
-                        <!-- Spinner (hidden by default — toggled by JS during submission) -->
+                        <!-- Spinner (hidden by default) -->
                         <svg id="submit-spinner" class="hidden spinner w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -486,7 +484,7 @@
                     </button>
                 </form>
 
-                <!-- Social Register (chỉ cho Phụ huynh — hidden by JS when role=worker) -->
+                <!-- Social Register (chỉ cho Phụ huynh) -->
                 <div id="social-register-section" class="mt-6">
                     <!-- Divider -->
                     <div class="relative my-5">
@@ -494,13 +492,13 @@
                             <div class="w-full border-t border-dividerMain"></div>
                         </div>
                         <div class="relative flex justify-center text-xs uppercase">
-                            <span class="bg-bgMain px-3 text-textMuted font-medium tracking-wider">Hoặc tiếp tục với</span>
+                            <span class="bg-surface px-3 text-textMuted font-medium">Hoặc đăng ký nhanh với</span>
                         </div>
                     </div>
 
-                    <!-- Social Buttons (outlined, rounded-full per Stitch) -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="google-register-btn" class="flex items-center justify-center gap-2.5 h-12 border border-borderMain bg-white rounded-full hover:bg-surfaceAlt transition-all duration-200 group shadow-[0px_2px_8px_rgba(36,26,22,0.02)]">
+                    <!-- Social Buttons -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="google-register-btn" class="flex items-center justify-center gap-2.5 py-3 border border-borderMain rounded-xl hover:bg-bgMain transition-all duration-200 group">
                             <svg class="w-5 h-5" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -509,7 +507,7 @@
                             </svg>
                             <span class="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Google</span>
                         </button>
-                        <button id="facebook-register-btn" class="flex items-center justify-center gap-2.5 h-12 border border-borderMain bg-white rounded-full hover:bg-surfaceAlt transition-all duration-200 group shadow-[0px_2px_8px_rgba(36,26,22,0.02)]">
+                        <button id="facebook-register-btn" class="flex items-center justify-center gap-2.5 py-3 border border-borderMain rounded-xl hover:bg-bgMain transition-all duration-200 group">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                             </svg>
@@ -528,11 +526,11 @@
             </div>
         </div>
 
-        <!-- Footer (mobile only — hidden md+) -->
-        <div class="md:hidden mt-auto border-t border-borderMain bg-white px-6 py-4 text-center">
+        <!-- Footer (mobile) -->
+        <div class="lg:hidden mt-auto border-t border-borderMain bg-white px-6 py-4 text-center">
             <p class="text-textMuted text-xs">&copy; 2026 EduCareLink. Nền tảng chăm sóc và giáo dục hàng đầu.</p>
         </div>
-    </main>
+    </div>
 
 </div>
 
