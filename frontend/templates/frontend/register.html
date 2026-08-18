@@ -1248,5 +1248,30 @@
         });
     </script>
 
+    <!--
+        Optional prefill: when the landing page's "Trở thành CarePartner"
+        CTA links here with ?role=worker, pre-select the Carepartner tab.
+        This is purely additive — if selectRole() is not defined (e.g. JS
+        earlier in the page failed), this script does nothing.
+    -->
+    <script>
+        (function () {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('role') === 'worker' && typeof window.selectRole === 'function') {
+                    // Defer to the next tick so the rest of register.html's
+                    // DOM and event listeners are fully wired up before we
+                    // toggle the role tab.
+                    window.setTimeout(function () {
+                        window.selectRole('worker');
+                    }, 0);
+                }
+            } catch (e) {
+                // Silently ignore — prefill is a progressive enhancement.
+                if (window.console) console.warn('role prefill skipped:', e);
+            }
+        })();
+    </script>
+
 </body>
 </html>
