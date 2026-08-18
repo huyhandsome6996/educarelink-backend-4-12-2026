@@ -12,7 +12,7 @@ import NotificationBell from '../../components/NotificationBell';
 import VerificationPinSetupModal from '../../components/VerificationPinSetupModal';
 
 export default function WorkerProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigation = useNavigation();
   const [isUploading, setIsUploading] = React.useState(false);
 
@@ -348,10 +348,14 @@ export default function WorkerProfileScreen() {
         visible={pinModalVisible}
         onClose={() => setPinModalVisible(false)}
         isChange={!!user?.has_verification_pin}
-        onSuccess={() => {
-          // Có thể refresh user object ở đây nếu AuthContext có hàm refresh
-          // (tạm thời chỉ đóng modal — user.has_verification_pin sẽ được refresh
-          // khi user đăng nhập lại hoặc khi AuthContext fetch lại)
+        onSuccess={async () => {
+          // BUG FIX: Sau khi đặt/đổi PIN thành công, gọi refreshUser() để
+          // cập nhật ngay user.has_verification_pin trong AuthContext — không
+          // cần chờ đăng nhập lại. Trước đây onSuccess để trống → UI vẫn
+          // hiển thị "Chưa đặt mã" dù PIN đã được lưu đúng ở backend.
+          if (refreshUser) {
+            await refreshUser();
+          }
         }}
       />
 
