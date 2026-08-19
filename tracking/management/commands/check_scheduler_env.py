@@ -17,7 +17,10 @@ import os
 import sys
 
 from django.core.management.base import BaseCommand
-from django.conf import settings
+
+# KHÔNG import django.conf.settings — command này check env vars TRƯỚC khi
+# settings load đầy đủ. Nếu import settings, nó sẽ trigger SECRET_KEY check
+# trong settings.py → circular dependency (chính lý do command này tồn tại).
 
 
 class Command(BaseCommand):
@@ -41,12 +44,13 @@ class Command(BaseCommand):
     ]
 
     def handle(self, *args, **options):
+        debug = os.environ.get('DEBUG', 'False').lower() == 'true'
         is_render = os.environ.get('RENDER', '').lower() == 'true'
         self.stdout.write(self.style.SUCCESS(
             '[check_scheduler_env] Kiểm tra env vars cho scheduler process...'
         ))
         self.stdout.write(f'  RENDER = {os.environ.get("RENDER", "(unset)")}')
-        self.stdout.write(f'  DEBUG  = {getattr(settings, "DEBUG", "(unset)")}')
+        self.stdout.write(f'  DEBUG  = {debug}')
 
         missing = []
         for var_name, hint in self.REQUIRED_ENV_VARS:

@@ -4,6 +4,7 @@ Django settings for backend project.
 
 from pathlib import Path
 import os
+import sys
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
@@ -24,6 +25,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = 'django-insecure-fallback-for-dev-only'
+    elif 'check_scheduler_env' in sys.argv:
+        # Cho phép check_scheduler_env chạy khi chưa có SECRET_KEY
+        # để nó có thể báo lỗi rõ ràng thay vì crash cryptic.
+        SECRET_KEY = 'dummy-key-for-env-check-only'
     else:
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured("SECRET_KEY environment variable must be set in production.")
@@ -110,13 +115,14 @@ if DATABASE_URL and DATABASE_URL.startswith('postgres'):
         )
     }
 else:
-    if not DEBUG:
+    if not DEBUG and 'check_scheduler_env' not in sys.argv:
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured(
             "DATABASE_URL environment variable is required in production. "
             "Set it to your Neon/Render PostgreSQL connection string."
         )
     # Development local: SQLite (không cần cài gì thêm)
+    # check_scheduler_env cũng fallback SQLite — nó chỉ check env vars, không truy vấn DB.
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
