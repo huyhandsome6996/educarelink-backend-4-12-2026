@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { revokeConsent } from '../api/tracking';
-import { stopTracking } from '../services/LocationService';
+import { stopTracking, getCurrentUserId } from '../services/LocationService';
+import { getQueueSize } from '../services/OfflineLocationQueue';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
 /**
@@ -20,7 +21,22 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
  */
 export default function ActiveTrackingBanner({ taskId, taskTitle, onStopped }) {
   const [isStopping, setIsStopping] = useState(false);
+  const [queueCount, setQueueCount] = useState(0);
   const pulseAnim = React.useRef(new Animated.Value(0)).current;
+
+  // Poll offline queue size mỗi 10s (SQLite local — no network)
+  useEffect(() => {
+    const poll = async () => {
+      const userId = getCurrentUserId();
+      if (userId) {
+        const size = await getQueueSize(userId);
+        setQueueCount(size);
+      }
+    };
+    poll();
+    const iv = setInterval(poll, 10000);
+    return () => clearInterval(iv);
+  }, []);
 
   // Pulse animation
   useEffect(() => {
@@ -89,6 +105,11 @@ export default function ActiveTrackingBanner({ taskId, taskTitle, onStopped }) {
         <Text style={styles.sub} numberOfLines={1}>
           Phụ huynh đang thấy bạn · {taskTitle || `Task #${taskId}`}
         </Text>
+        {queueCount > 0 ? (
+          <Text style={styles.queueHint}>
+            📍 {queueCount} điểm đang chờ đồng bộ
+          </Text>
+        ) : null}
       </View>
       <TouchableOpacity
         style={[styles.stopBtn, isStopping && { opacity: 0.6 }]}
@@ -136,6 +157,9 @@ const styles = StyleSheet.create({
   },
   sub: {
     ...TYPO.caption, color: '#047857', marginTop: 2,
+  },
+  queueHint: {
+    ...TYPO.caption, color: '#b45309', marginTop: 2,
   },
   stopBtn: {
     backgroundColor: '#fff',
