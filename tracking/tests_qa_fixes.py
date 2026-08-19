@@ -33,6 +33,7 @@ from tracking.services import (
     set_verification_pin, respond_verification_check,
     acknowledge_offline_alert, retry_offline_alert_pushes,
     cancel_verification_check, get_verification_history_for_parent,
+    cancel_pending_verification_checks_for_task,
     AlreadyAcknowledgedError,
 )
 from tracking.verification_scheduler import (
@@ -814,3 +815,88 @@ class QAFix1TestCase(TestCase):
         # Mỗi alert phải có 1 warning log riêng (không phải chỉ 1 log tổng)
         # Log count >= 2 (có thể nhiều hơn do các warning khác)
         self.assertGreaterEqual(mock_warning.call_count, 2)
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Auto-cancel pending verification checks khi task kết thúc
+    # ═══════════════════════════════════════════════════════════════════
+
+    def test_auto_cancel_pending_check_on_task_completed(self):
+        """Task in_progress có 1 pending check → task completed → check tự cancelled."""
+        # Set PIN cho worker
+        set_verification_pin(user=self.worker, pin='1234', current_password='worker_pass_123')
+        # Trigger check (debug mode)
+        check = trigger_verification_check_now(self.task.id)
+        self.assertEqual(check.status, 'pending')
+        self.assertIsNone(check.responded_at)
+
+        # Chuyển task sang completed
+        self.task.status = 'completed'
+        self.task.save()
+
+        # Verify check đã bị tự huỷ
+        check.refresh_from_db()
+        self.assertEqual(check.status, 'cancelled')
+        self.assertIsNotNone(check.responded_at)
+        self.assertFalse(check.parent_alert_sent)
+        self.assertEqual(check.consecutive_timeouts_count, 0)
+
+    def test_auto_cancel_pending_check_on_task_cancelled(self):
+        """Task cancelled cũng tự cancel pending checks."""
+        set_verification_pin(user=self.worker, pin='1234', current_password='worker_pass_123')
+        check = trigger_verification_check_now(self.task.id)
+        self.assertEqual(check.status, 'pending')
+
+        self.task.status = 'cancelled'
+        self.task.save()
+
+        check.refresh_from_db()
+        self.assertEqual(check.status, 'cancelled')
+
+    def test_auto_cancel_does_not_touch_non_pending_checks(self):
+        """Check đã confirmed/timeout/wrong_code KHÔNG bị đụng khi task kết thúc."""
+        set_verification_pin(user=self.worker, pin='1234', current_password='worker_pass_123')
+        check1 = trigger_verification_check_now(self.task.id)
+        # Respond correctly
+        respond_verification_check(
+            check_id=check1.id, requester=self.worker, pin='1234'
+        )
+
+        # Tạo check thứ 2 rồi timeout
+        self.task.status = 'in_progress'
+        self.task.save()
+        check2 = trigger_verification_check_now(self.task.id)
+        check2.status = 'timeout'
+        check2.responded_at = timezone.now()
+        check2.save()
+
+        # Task completed
+        self.task.status = 'completed'
+        self.task.save()
+
+        check1.refresh_from_db()
+        check2.refresh_from_db()
+        # Các check không pending phải giữ nguyên status
+        self.assertEqual(check1.status, 'confirmed')
+        self.assertEqual(check2.status, 'timeout')
+
+    def test_auto_cancel_pending_check_not_returned_by_api(self):
+        """PendingVerificationCheckAPIView không trả check của task đã completed."""
+        from tracking.views import PendingVerificationCheckAPIView
+        from rest_framework.test import APIRequestFactory, force_authenticate
+
+        set_verification_pin(user=self.worker, pin='1234', current_password='worker_pass_123')
+        check = trigger_verification_check_now(self.task.id)
+        self.assertEqual(check.status, 'pending')
+
+        # Task completed → auto-cancel
+        self.task.status = 'completed'
+        self.task.save()
+
+        # Worker poll pending → phải không còn check
+        factory = APIRequestFactory()
+        request = factory.get('/tracking/verification-checks/pending/')
+        force_authenticate(request, user=self.worker)
+        view = PendingVerificationCheckAPIView.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data.get('has_pending', True))

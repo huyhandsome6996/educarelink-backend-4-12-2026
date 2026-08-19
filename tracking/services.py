@@ -1184,3 +1184,40 @@ def cancel_verification_check(*, check_id: int, requester: User,
         f"User#{requester.id} (reason={reason!r})"
     )
     return check
+
+
+def cancel_pending_verification_checks_for_task(task: Task) -> int:
+    """Huỷ tất cả pending RandomVerificationCheck của task khi task kết thúc.
+
+    Gọi từ tracking.signals._clear_tracking_on_task_save() khi task chuyển
+    sang 'completed' hoặc 'cancelled'. Tái sử dụng pattern từ
+    cancel_verification_check() — set status='cancelled', responded_at=now,
+    reset parent_alert_sent=False, consecutive_timeouts_count=0.
+
+    KHÔNG gửi notification cho worker (khác với cancel thủ công) vì lý do
+    huỷ là "task đã xong" — không cần làm phiền CarePartner thêm.
+
+    Trả về số check đã huỷ.
+    """
+    from .models import RandomVerificationCheck
+
+    pending_checks = RandomVerificationCheck.objects.filter(
+        task=task, status='pending',
+    )
+    count = pending_checks.count()
+    if count == 0:
+        return 0
+
+    now = timezone.now()
+    updated = pending_checks.update(
+        status='cancelled',
+        responded_at=now,
+        parent_alert_sent=False,
+        consecutive_timeouts_count=0,
+    )
+    if updated > 0:
+        logger.info(
+            f"[tracking] Auto-cancelled {updated} pending verification check(s) "
+            f"for Task#{task.id} (task ended — status={task.status})"
+        )
+    return updated
