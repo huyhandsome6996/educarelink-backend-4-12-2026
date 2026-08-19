@@ -44,11 +44,12 @@ def _clear_tracking_on_task_save(sender, instance: Task, created: bool, **kwargs
         return
 
     if new_status in ('completed', 'cancelled'):
-        from .services import clear_task_tracking, clear_task_heartbeat
+        from .services import clear_task_tracking, clear_task_heartbeat, cancel_pending_verification_checks_for_task
         try:
             clear_task_tracking(instance)
             clear_task_heartbeat(instance)
+            cancel_pending_verification_checks_for_task(instance)
         except Exception as e:
             logger.exception(
-                f"[tracking.signals] clear_task_tracking/heartbeat thất bại cho Task#{instance.id}: {e}"
+                f"[tracking.signals] clear_task_tracking/heartbeat/verification failed for Task#{instance.id}: {e}"
             )
