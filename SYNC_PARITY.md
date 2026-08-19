@@ -21,7 +21,7 @@
 | Admin Dashboard | ✅ | ✅ | 100% |
 | Admin All Tasks | ✅ | ✅ | 100% |
 | Live Tracking | ✅ | ✅ | 100% |
-| Verification PIN History | ✅ | ⚠️ API only | 80% (mobile API added, screen integration pending) |
+| Verification PIN History | ✅ | ✅ | 100% (collapsible section in LiveTrackingScreen) |
 | PIN Enforcement (apply task) | ✅ | ✅ | 100% |
 | iOS Critical Alert | ✅ config | ✅ entitlement + banner | 100% |
 | Payment Setup | ✅ | ✅ | 95% |
@@ -50,8 +50,8 @@
 | Browse Candidates | browse_candidates.html | CandidatesScreen.js | GET /api/parent/tasks/:id/candidates/ | ✅ |
 | AI Chatbot (Parent) | chatbot.html | ChatbotScreen.js | POST /api/chatbot/ | ✅ |
 | Live Tracking | tracking.html | LiveTrackingScreen.js | GET /api/tracking/:id/live/ | ✅ |
-| Verification PIN History | tracking.html (new) | (API only) | GET /api/tracking/:id/verification-checks/history/ | ✅ |
-| Cancel Verification Check | tracking.html (new) | (API only) | POST /api/tracking/verification-checks/:id/cancel/ | ✅ |
+| Verification PIN History | tracking.html (new) | LiveTrackingScreen.js (collapsible) | GET /api/tracking/:id/verification-checks/history/ | ✅ |
+| Cancel Verification Check | tracking.html (new) | LiveTrackingScreen.js (inline button) | POST /api/tracking/verification-checks/:id/cancel/ | ✅ |
 | PIN Enforcement on Apply | N/A (backend) | WorkerFeedScreen.js | 403 verification_pin_required | ✅ |
 | Batch Location Upload | N/A | (API only) | POST /api/tracking/location/batch/ | ✅ |
 | Review | review.html | ReviewScreen.js | POST /api/parent/review/ | ✅ |
@@ -118,7 +118,7 @@
 3. **Background Tracking**: Mobile only (LocationService.js) — web doesn't need this (parent views via polling)
 4. **Push Notifications**: Mobile uses Expo Push, web uses in-app notification polling — both backed by same Notification model
 5. **Image Upload**: Web uses `<input type="file">`, Mobile uses `expo-image-picker` — both send multipart/form-data to same endpoint
-6. **Verification PIN History (mobile screen)**: API functions exist in `tracking.js` but no dedicated mobile screen yet — web has it in `tracking.html`
+6. ~~**Verification PIN History (mobile screen)**~~: RESOLVED — collapsible section added in `LiveTrackingScreen.js`
 7. **Batch Location Upload**: API function exists in `tracking.js` but `LocationService.js` offline queue still sends individual points instead of batch — needs integration
 8. **iOS Critical Alert Entitlement**: Added to `app.json` but requires manual Apple Developer Portal approval (outside code scope)
 

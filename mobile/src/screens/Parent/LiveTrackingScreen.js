@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
   getDeviceStatus, getOfflineAlerts, acknowledgeOfflineAlert,
+  getVerificationHistory, cancelVerificationCheck,
 } from '../../api/tracking';
 import {
   playEmergencyAlarm, stopEmergencyAlarm, unloadEmergencyAlarm,
@@ -59,6 +60,8 @@ export default function LiveTrackingScreen() {
   const [isLocationStale, setIsLocationStale] = useState(false);
   const [isLocationOffline, setIsLocationOffline] = useState(false);
   const [offlineThresholdSeconds, setOfflineThresholdSeconds] = useState(null);
+  const [verificationChecks, setVerificationChecks] = useState([]);
+  const [verificationExpanded, setVerificationExpanded] = useState(false);
   const pollRef = useRef(null);
   const deviceStatusPollRef = useRef(null);
   const lastAlertIdRef = useRef(null);
@@ -331,6 +334,42 @@ export default function LiveTrackingScreen() {
     );
   };
 
+  // === VERIFICATION PIN HISTORY ===
+  const fetchVerificationHistory = useCallback(async () => {
+    if (!taskId) return;
+    try {
+      const res = await getVerificationHistory(taskId);
+      setVerificationChecks(res.data?.checks || []);
+    } catch (e) {
+      // 403 = not parent — ignore silently
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    if (taskId && isTracking) {
+      fetchVerificationHistory();
+      const iv = setInterval(fetchVerificationHistory, 30000);
+      return () => clearInterval(iv);
+    }
+  }, [taskId, isTracking, fetchVerificationHistory]);
+
+  const handleCancelCheck = async (checkId) => {
+    try {
+      await cancelVerificationCheck(checkId);
+      fetchVerificationHistory();
+    } catch (e) { /* silent */ }
+  };
+
+  const getStatusConfig = (status) => {
+    switch (status) {
+      case 'confirmed': return { icon: '✅', label: 'Đúng mã', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' };
+      case 'wrong_code': return { icon: '❌', label: 'Sai mã', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+      case 'timeout': return { icon: '⏰', label: 'Timeout', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+      case 'cancelled': return { icon: '🚫', label: 'Đã huỷ', color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
+      default: return { icon: '⏳', label: 'Đang chờ', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
+    }
+  };
+
   // Build OSM URL cho WebView
   // Sử dụng Leaflet qua WebView với OSM tiles
   const buildMapHtml = () => {
@@ -553,6 +592,73 @@ export default function LiveTrackingScreen() {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+      )}
+
+      {/* === VERIFICATION PIN HISTORY (collapsible) === */}
+      {verificationChecks.length > 0 && (
+        <View style={styles.verificationSection}>
+          <TouchableOpacity
+            style={styles.verificationHeader}
+            onPress={() => setVerificationExpanded(!verificationExpanded)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Xem lịch sử xác minh"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="shield-checkmark" size={16} color={COLORS.primary || '#F26522'} />
+              <Text style={styles.verificationTitle}>Xác minh bảo mật</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.verificationCount}>
+                {verificationChecks.filter(c => c.status === 'confirmed').length}/{verificationChecks.length} thành công
+              </Text>
+              <Ionicons
+                name={verificationExpanded ? 'chevron-up' : 'chevron-down'}
+                size={18} color={COLORS.onSurfaceVariant}
+              />
+            </View>
+          </TouchableOpacity>
+          {verificationExpanded && (
+            <View style={styles.verificationList}>
+              {verificationChecks.map((check) => {
+                const sc = getStatusConfig(check.status);
+                return (
+                  <View key={check.id} style={[styles.verificationItem, { backgroundColor: sc.bg, borderColor: sc.border }]}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 14 }}>{sc.icon}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: sc.color }}>{sc.label}</Text>
+                        <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
+                          {new Date(check.triggered_at).toLocaleTimeString('vi-VN')}
+                        </Text>
+                      </View>
+                      {check.attempts > 0 && (
+                        <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                          Nhập sai: {check.attempts} lần
+                        </Text>
+                      )}
+                      {check.consecutive_timeouts_count > 0 && (
+                        <Text style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>
+                          Timeout liên tiếp: {check.consecutive_timeouts_count}
+                        </Text>
+                      )}
+                    </View>
+                    {check.status === 'pending' && (
+                      <TouchableOpacity
+                        style={styles.verificationCancelBtn}
+                        onPress={() => handleCancelCheck(check.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Huỷ yêu cầu xác minh"
+                      >
+                        <Text style={styles.verificationCancelText}>Huỷ</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
 
@@ -981,5 +1087,36 @@ const styles = StyleSheet.create({
   },
   batteryText: {
     ...TYPO.caption, color: COLORS.onSurfaceVariant, fontWeight: '700', fontSize: 11,
+  },
+
+  // === VERIFICATION HISTORY ===
+  verificationSection: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant,
+  },
+  verificationHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  verificationTitle: {
+    ...TYPO.bodySmall, fontWeight: '700', color: COLORS.onSurface,
+  },
+  verificationCount: {
+    ...TYPO.caption, color: COLORS.onSurfaceVariant,
+  },
+  verificationList: {
+    paddingHorizontal: 14, paddingBottom: 10, gap: 6,
+  },
+  verificationItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 8, borderRadius: SIZES.radiusSm,
+    borderWidth: 1,
+  },
+  verificationCancelBtn: {
+    backgroundColor: '#fef3c7', borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  verificationCancelText: {
+    fontSize: 11, fontWeight: '700', color: '#92400e',
   },
 });
