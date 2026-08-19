@@ -152,6 +152,29 @@
     </div>
   </div>
 
+  <!-- Verification PIN History — Phần B.2: đồng bộ tính năng mobile lên web -->
+  <div id="verification-history-section" class="bg-white rounded-xl p-4 shadow-sm mt-4 hidden">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <svg width="20" height="20" fill="none" stroke="#F26522" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4m-4 0h8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3 class="text-base font-bold text-gray-800">Xác minh bảo mật</h3>
+      </div>
+      <button onclick="fetchVerificationHistory()" class="text-xs text-[#F26522] hover:underline font-semibold">
+        🔄 Làm mới
+      </button>
+    </div>
+    <p class="text-xs text-gray-500 mb-3">Hệ thống ngẫu nhiên yêu cầu CarePartner nhập mã cá nhân để xác nhận vẫn đang cầm máy (chống để máy lại rồi bỏ đi).</p>
+    <div id="verification-history-list" class="space-y-2">
+      <div class="text-sm text-gray-400 text-center py-4">Đang tải lịch sử xác minh...</div>
+    </div>
+    <div id="verification-history-empty" class="text-sm text-gray-500 text-center py-4 hidden">
+      Chưa có lần xác minh nào cho công việc này.
+    </div>
+  </div>
+
   <!-- Not tracking state -->
   <div id="not-tracking" class="bg-white rounded-xl p-8 shadow-sm mt-4 text-center hidden">
     <div class="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
@@ -673,6 +696,135 @@ function stopAlarm() {
 if ('Notification' in window && Notification.permission === 'default') {
   Notification.requestPermission();
 }
+
+// ====================================================================
+// VERIFICATION PIN HISTORY — Phần B.2
+// Backend: ParentVerificationHistoryAPIView — GET /tracking/{task_id}/verification-checks/history/
+// Backend: CancelVerificationCheckAPIView — POST /tracking/verification-checks/{check_id}/cancel/
+// ====================================================================
+let verificationHistoryLoaded = false;
+
+async function fetchVerificationHistory() {
+  if (!taskId) return;
+  const section = document.getElementById('verification-history-section');
+  const list = document.getElementById('verification-history-list');
+  const empty = document.getElementById('verification-history-empty');
+
+  try {
+    const r = await authFetch(`${API_BASE}/tracking/${taskId}/verification-checks/history/`);
+    if (!r.ok) {
+      // 403 = not parent of this task, or task doesn't exist — hide section silently
+      section.classList.add('hidden');
+      return;
+    }
+    const data = await r.json();
+    section.classList.remove('hidden');
+
+    const checks = data.checks || [];
+    if (checks.length === 0) {
+      list.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    // Render check items — giống pattern mobile RandomVerificationModal
+    let html = '';
+    for (const check of checks) {
+      const time = new Date(check.triggered_at).toLocaleString('vi-VN');
+      const statusConfig = getVerificationStatusConfig(check.status);
+      const isPending = check.status === 'pending';
+
+      html += `
+        <div class="flex items-start gap-3 p-3 rounded-lg border ${statusConfig.borderClass}">
+          <div class="text-lg mt-0.5">${statusConfig.icon}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold ${statusConfig.textClass}">${statusConfig.label}</span>
+              <span class="text-xs text-gray-400">${time}</span>
+            </div>
+            ${check.responded_at ? `<div class="text-xs text-gray-500 mt-0.5">Phản hồi: ${new Date(check.responded_at).toLocaleString('vi-VN')}</div>` : ''}
+            ${check.attempts > 0 ? `<div class="text-xs text-gray-500">Số lần nhập: ${check.attempts}</div>` : ''}
+            ${check.consecutive_timeouts_count > 0 ? `<div class="text-xs text-amber-600">⚠️ Timeout liên tiếp: ${check.consecutive_timeouts_count}</div>` : ''}
+          </div>
+          ${isPending ? `<button onclick="cancelVerificationCheck(${check.id})" class="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 font-semibold whitespace-nowrap">Huỷ</button>` : ''}
+        </div>
+      `;
+    }
+    list.innerHTML = html;
+
+    // Show summary count in section header
+    const confirmed = checks.filter(c => c.status === 'confirmed').length;
+    const timeouts = checks.filter(c => c.status === 'timeout').length;
+    const total = checks.length;
+    const summaryEl = document.getElementById('verification-summary');
+    if (!summaryEl) {
+      const summary = document.createElement('div');
+      summary.id = 'verification-summary';
+      summary.className = 'text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100';
+      section.querySelector('.space-y-2')?.after(summary);
+    }
+    const summary = document.getElementById('verification-summary');
+    if (summary) {
+      summary.textContent = `Tổng: ${total} lần xác minh · ✅ ${confirmed} thành công · ⏰ ${timeouts} timeout`;
+    }
+  } catch (e) {
+    console.error('fetchVerificationHistory error:', e);
+    // Don't crash the page — just hide the section
+    section.classList.add('hidden');
+  }
+  verificationHistoryLoaded = true;
+}
+
+function getVerificationStatusConfig(status) {
+  switch (status) {
+    case 'confirmed':
+      return { icon: '✅', label: 'Xác nhận đúng', textClass: 'text-green-600', borderClass: 'border-green-200 bg-green-50' };
+    case 'wrong_code':
+      return { icon: '❌', label: 'Sai mã', textClass: 'text-red-600', borderClass: 'border-red-200 bg-red-50' };
+    case 'timeout':
+      return { icon: '⏰', label: 'Không phản hồi', textClass: 'text-amber-600', borderClass: 'border-amber-200 bg-amber-50' };
+    case 'pending':
+      return { icon: '⏳', label: 'Đang chờ phản hồi...', textClass: 'text-blue-600', borderClass: 'border-blue-200 bg-blue-50' };
+    case 'cancelled':
+      return { icon: '🚫', label: 'Đã huỷ', textClass: 'text-gray-500', borderClass: 'border-gray-200 bg-gray-50' };
+    default:
+      return { icon: '❓', label: status, textClass: 'text-gray-600', borderClass: 'border-gray-200 bg-gray-50' };
+  }
+}
+
+async function cancelVerificationCheck(checkId) {
+  if (!confirm('Huỷ lần xác minh này? (Phụ huynh huỷ khi biết CarePartner đang bận, tránh báo động sai)')) return;
+  try {
+    const r = await authFetch(`${API_BASE}/tracking/verification-checks/${checkId}/cancel/`, {
+      method: 'POST',
+      body: { reason: 'Phụ huynh huỷ từ web tracking' }
+    });
+    if (r.ok) {
+      showToast('✅ Đã huỷ lần xác minh');
+      fetchVerificationHistory(); // refresh list
+    } else {
+      const data = await r.json();
+      showToast(`❌ ${data.error || 'Không thể huỷ'}`);
+    }
+  } catch (e) {
+    showToast('❌ Lỗi mạng');
+  }
+}
+
+// ====================================================================
+// MODIFIED INIT — also fetch verification history after init
+// ====================================================================
+const _origInit = init;
+init = async function() {
+  await _origInit();
+  // Fetch verification history once after init (only if task is in_progress with geofence)
+  if (taskId) {
+    setTimeout(fetchVerificationHistory, 2000); // slight delay to not race with other API calls
+    // Poll verification history every 30s (less frequent than location polling)
+    setInterval(fetchVerificationHistory, 30000);
+  }
+};
 
 // Start
 init();
