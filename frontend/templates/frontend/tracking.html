@@ -713,8 +713,22 @@ async function fetchVerificationHistory() {
   try {
     const r = await authFetch(`${API_BASE}/tracking/${taskId}/verification-checks/history/`);
     if (!r.ok) {
-      // 403 = not parent of this task, or task doesn't exist — hide section silently
-      section.classList.add('hidden');
+      if (r.status === 403) {
+        // 403 = not parent of this task — hide section silently
+        section.classList.add('hidden');
+      } else {
+        // 500, network error, timeout — show error with retry
+        section.classList.remove('hidden');
+        const list = document.getElementById('verification-history-list');
+        list.innerHTML = `
+          <div class="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50">
+            <span class="text-sm text-red-600">Không thể tải lịch sử xác minh.</span>
+            <button onclick="fetchVerificationHistory()" class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 font-semibold">Thử lại</button>
+          </div>
+        `;
+        const empty = document.getElementById('verification-history-empty');
+        if (empty) empty.classList.add('hidden');
+      }
       return;
     }
     const data = await r.json();
@@ -770,8 +784,19 @@ async function fetchVerificationHistory() {
     }
   } catch (e) {
     console.error('fetchVerificationHistory error:', e);
-    // Don't crash the page — just hide the section
-    section.classList.add('hidden');
+    // Network error / timeout — show retry UI (not silent hide)
+    section.classList.remove('hidden');
+    const list = document.getElementById('verification-history-list');
+    if (list && !list.querySelector('.retry-btn')) {
+      list.innerHTML = `
+        <div class="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50 retry-btn">
+          <span class="text-sm text-red-600">Không thể tải lịch sử xác minh.</span>
+          <button onclick="fetchVerificationHistory()" class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 font-semibold">Thử lại</button>
+        </div>
+      `;
+    }
+    const empty = document.getElementById('verification-history-empty');
+    if (empty) empty.classList.add('hidden');
   }
   verificationHistoryLoaded = true;
 }
