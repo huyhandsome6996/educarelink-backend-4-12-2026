@@ -74,6 +74,9 @@ export default function RandomVerificationModal() {
                 body: 'Vui lòng nhập mã cá nhân để xác nhận',
                 sound: 'default',
                 priority: Notifications.AndroidNotificationPriority.HIGH,
+                android: {
+                  channelId: 'emergency-alerts',
+                },
                 data: {
                   type: 'random_verification',
                   task_id: newCheck.task_id,
@@ -267,6 +270,10 @@ export default function RandomVerificationModal() {
           )}
         </TouchableOpacity>
 
+        <Text style={styles.forgotPinHint}>
+          Quên mã? Vào Hồ sơ để đổi mã mới sau khi hoàn tất xác minh này hoặc liên hệ hỗ trợ.
+        </Text>
+
         <Text style={styles.warning}>
           ⚠️ Nếu không phản hồi trong thời hạn, hệ thống sẽ báo admin và có thể báo phụ huynh.
         </Text>
@@ -346,9 +353,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotPinHint: {
+    fontSize: 11, color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 12, lineHeight: 16,
+  },
   warning: {
     fontSize: 12, color: '#9CA3AF',
     textAlign: 'center',
-    marginTop: 20, lineHeight: 16,
+    marginTop: 16, lineHeight: 16,
   },
 });
