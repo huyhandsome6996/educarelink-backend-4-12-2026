@@ -114,6 +114,6 @@ export const cancelVerificationCheck = (checkId, reason = '') =>
 // === OFFLINE CACHE — Batch Location Upload ===
 // Carepartner upload nhiều điểm vị trí cùng lúc (sync sau khi offline → online)
 // Backend: BatchLocationAPIView — POST /tracking/location/batch/
-// Body: { task_id, locations: [{ latitude, longitude, accuracy, speed, heading, recorded_at }, ...] }
+// Body: { task_id, points: [{ latitude, longitude, accuracy?, speed?, heading?, recorded_at, client_point_id? }, ...] }
 export const uploadBatchLocations = (payload) =>
   apiClient.post('/tracking/location/batch/', payload);
