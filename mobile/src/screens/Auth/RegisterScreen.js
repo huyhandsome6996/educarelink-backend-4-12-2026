@@ -1,31 +1,19 @@
 // ============================================================
-// RegisterScreen — Redesign theo Warm Professionalism (Stitch AI)
-// Thay đổi:
-// - Background: surfaceWarm (#fff8f6) với subtle glow
-// - Header: brand row (school icon + 'EduCareLink') + title 'Bắt đầu
-//   hành trình' + subtitle 'Chọn vai trò của bạn để chúng tôi cá nhân
-//   hóa trải nghiệm'
-// - Role cards: stacked vertically (full-width), icon container 56px,
-//   title + description + radio indicator (theo design HTML)
-//   * Parent card: primary-fixed bg icon, primary-container border khi active
-//   * CarePartner card: secondary-fixed bg icon, secondary border khi active
-// - Form: bọc trong card trắng, field labels kiểu caption trên input
-// - Input wrapper: border #F0F0F0, focus ring 2px primary-container
-// - Button 'Tạo tài khoản': primary-container bg, shadow cam
-// - Photo section (CarePartner): card trắng với primary tint header
-// Giữ nguyên: logic register (validation, image upload, pending_approval)
+// RegisterScreen — Warm Professionalism
+// Fix: removed KeyboardAvoidingView + Animated.View transforms
+// to prevent keyboard bounce/flicker on Android
 // ============================================================
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Animated
+  StatusBar, ScrollView, Platform, Alert, ActivityIndicator, Animated
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
+import { COLORS, SHADOWS, TYPO } from '../../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,23 +23,21 @@ const ROLES = [
     label: 'Tôi là Phụ huynh',
     icon: 'people',
     description: 'Tìm kiếm người đồng hành uy tín cho con.',
-    // Parent dùng primary palette (cam)
-    iconBg: COLORS.primaryLight,       // primary-fixed
-    iconBgActive: COLORS.primary,      // primary-container
-    iconColor: COLORS.primaryDeep,     // on-primary-fixed
-    iconColorActive: '#ffffff',        // on-primary
-    borderColorActive: COLORS.primary, // primary-container
+    iconBg: COLORS.primaryLight,
+    iconBgActive: COLORS.primary,
+    iconColor: COLORS.primaryDeep,
+    iconColorActive: '#ffffff',
+    borderColorActive: COLORS.primary,
   },
   {
     id: 'worker',
     label: 'Tôi là CarePartner',
     icon: 'school',
     description: 'Hỗ trợ học tập và đồng hành cùng trẻ.',
-    // Worker dùng secondary palette (xanh) — theo DESIGN.md
-    iconBg: COLORS.secondaryLight,     // secondary-fixed
-    iconBgActive: COLORS.secondary,    // secondary
-    iconColor: COLORS.secondaryDark,   // on-secondary-fixed
-    iconColorActive: '#ffffff',        // on-secondary
+    iconBg: COLORS.secondaryLight,
+    iconBgActive: COLORS.secondary,
+    iconColor: COLORS.secondaryDark,
+    iconColorActive: '#ffffff',
     borderColorActive: COLORS.secondary,
   },
 ];
@@ -139,39 +125,16 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Ảnh cho Carepartner
   const [idCardFront, setIdCardFront] = useState(null);
   const [idCardBack, setIdCardBack] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);
   const [certificatePhoto, setCertificatePhoto] = useState(null);
 
-  // Focus state tracking
-  const [lastNameFocused, setLastNameFocused] = useState(false);
-  const [firstNameFocused, setFirstNameFocused] = useState(false);
-  const [usernameFocused, setUsernameFocused] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
-
-  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-  const btnScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
-
-  const handlePressIn = () => {
-    Animated.spring(btnScale, { toValue: 0.97, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-  const handlePressOut = () => {
-    Animated.spring(btnScale, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
 
   const handleRegister = async () => {
     if (!firstName || !username || !password || !confirmPassword) {
@@ -251,20 +214,19 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 32 }]} showsVerticalScrollIndicator={false}>
-
-        {/* Back button */}
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 32 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Quay lại">
           <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
 
-        {/* Header — brand row + title + subtitle */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <View style={styles.brandRow}>
             <Ionicons name="school" size={32} color={COLORS.primary} />
             <Text style={styles.brandName}>EduCareLink</Text>
@@ -273,7 +235,6 @@ export default function RegisterScreen() {
           <Text style={styles.subtitle}>Chọn vai trò của bạn để chúng tôi cá nhân hóa trải nghiệm.</Text>
         </Animated.View>
 
-        {/* Role selection — stacked vertically (theo design HTML) */}
         <View style={styles.roleGroup}>
           {ROLES.map((role) => {
             const isSelected = selectedRole === role.id;
@@ -291,7 +252,6 @@ export default function RegisterScreen() {
                 onPress={() => setSelectedRole(role.id)}
                 activeOpacity={0.85}
               >
-                {/* Icon container */}
                 <View
                   style={[
                     styles.roleIconBox,
@@ -307,7 +267,6 @@ export default function RegisterScreen() {
                   />
                 </View>
 
-                {/* Content */}
                 <View style={styles.roleContent}>
                   <Text style={[styles.roleLabel, isSelected && { color: role.borderColorActive }]}>
                     {role.label}
@@ -315,7 +274,6 @@ export default function RegisterScreen() {
                   <Text style={styles.roleDesc}>{role.description}</Text>
                 </View>
 
-                {/* Radio indicator */}
                 <View
                   style={[
                     styles.radioOuter,
@@ -332,42 +290,35 @@ export default function RegisterScreen() {
           })}
         </View>
 
-        {/* Form Card — bọc toàn bộ inputs trong card trắng */}
-        <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {/* Name row — Họ + Tên */}
+        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Họ và tên</Text>
             <View style={styles.nameRow}>
-              <View style={[styles.inputWrapper, { flex: 1 }, lastNameFocused && styles.inputWrapperFocused]}>
+              <View style={[styles.inputWrapper, { flex: 1 }]}>
                 <TextInput
                   style={styles.input}
                   placeholder="Họ"
                   placeholderTextColor={COLORS.outline}
                   value={lastName}
                   onChangeText={setLastName}
-                  onFocus={() => setLastNameFocused(true)}
-                  onBlur={() => setLastNameFocused(false)}
                 />
               </View>
-              <View style={[styles.inputWrapper, { flex: 1.5 }, firstNameFocused && styles.inputWrapperFocused]}>
+              <View style={[styles.inputWrapper, { flex: 1.5 }]}>
                 <TextInput
                   style={styles.input}
                   placeholder="Tên *"
                   placeholderTextColor={COLORS.outline}
                   value={firstName}
                   onChangeText={setFirstName}
-                  onFocus={() => setFirstNameFocused(true)}
-                  onBlur={() => setFirstNameFocused(false)}
                 />
               </View>
             </View>
           </View>
 
-          {/* Username */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Tên tài khoản</Text>
-            <View style={[styles.inputWrapper, usernameFocused && styles.inputWrapperFocused]}>
-              <Ionicons name="person-outline" size={20} color={usernameFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color={COLORS.outlineVariant} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Chọn tên tài khoản"
@@ -376,17 +327,14 @@ export default function RegisterScreen() {
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
-                onFocus={() => setUsernameFocused(true)}
-                onBlur={() => setUsernameFocused(false)}
               />
             </View>
           </View>
 
-          {/* Email */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Email</Text>
-            <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused]}>
-              <Ionicons name="mail-outline" size={20} color={emailFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color={COLORS.outlineVariant} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="email@example.com"
@@ -395,17 +343,14 @@ export default function RegisterScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
               />
             </View>
           </View>
 
-          {/* Phone */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Số điện thoại</Text>
-            <View style={[styles.inputWrapper, phoneFocused && styles.inputWrapperFocused]}>
-              <Ionicons name="call-outline" size={20} color={phoneFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="call-outline" size={20} color={COLORS.outlineVariant} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="09xx xxx xxx"
@@ -413,17 +358,14 @@ export default function RegisterScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
-                onFocus={() => setPhoneFocused(true)}
-                onBlur={() => setPhoneFocused(false)}
               />
             </View>
           </View>
 
-          {/* Password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Mật khẩu (tối thiểu 6 ký tự)</Text>
-            <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
-              <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.outlineVariant} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="••••••••"
@@ -431,8 +373,6 @@ export default function RegisterScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPass}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
               />
               <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeIcon} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                 <Ionicons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color={COLORS.outlineVariant} />
@@ -440,11 +380,10 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          {/* Confirm password */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Xác nhận mật khẩu</Text>
-            <View style={[styles.inputWrapper, confirmPasswordFocused && styles.inputWrapperFocused]}>
-              <Ionicons name="lock-closed-outline" size={20} color={confirmPasswordFocused ? COLORS.primary : COLORS.outlineVariant} style={styles.inputIcon} />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.outlineVariant} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
@@ -452,13 +391,10 @@ export default function RegisterScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPass}
-                onFocus={() => setConfirmPasswordFocused(true)}
-                onBlur={() => setConfirmPasswordFocused(false)}
               />
             </View>
           </View>
 
-          {/* Photo upload section — chỉ hiện khi chọn CarePartner */}
           {selectedRole === 'worker' && (
             <View style={styles.photoSection}>
               <View style={styles.photoSectionHeader}>
@@ -475,7 +411,6 @@ export default function RegisterScreen() {
             </View>
           )}
 
-          {/* Info box cho carepartner */}
           {selectedRole === 'worker' && (
             <View style={styles.infoBox}>
               <View style={styles.infoAccentBar} />
@@ -486,28 +421,22 @@ export default function RegisterScreen() {
             </View>
           )}
 
-          {/* Submit button */}
-          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
-            <TouchableOpacity
-              style={[styles.registerBtn, isLoading && styles.btnDisabled]}
-              onPress={handleRegister}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              disabled={isLoading}
-              activeOpacity={0.9}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity
+            style={[styles.registerBtn, isLoading && styles.btnDisabled]}
+            onPress={handleRegister}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.registerBtnText}>Tạo tài khoản</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
+            )}
+          </TouchableOpacity>
 
-          {/* Login link */}
           <View style={styles.loginRow}>
             <Text style={styles.loginText}>Đã có tài khoản?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
@@ -516,7 +445,7 @@ export default function RegisterScreen() {
           </View>
         </Animated.View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -524,10 +453,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 20, // margin-mobile
+    paddingHorizontal: 20,
     paddingBottom: 44,
   },
-  // Back button
   backBtn: {
     width: 44,
     height: 44,
@@ -538,7 +466,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...SHADOWS.small,
   },
-  // Header
   header: {
     alignItems: 'center',
     marginBottom: 32,
@@ -551,7 +478,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     ...TYPO.h2,
-    color: COLORS.primaryDeep, // primary trong DESIGN.md (cam đất đậm)
+    color: COLORS.primaryDeep,
     fontWeight: '900',
     letterSpacing: -0.3,
   },
@@ -567,7 +494,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
-  // Role selection group
   roleGroup: {
     gap: 16,
     marginBottom: 24,
@@ -576,17 +502,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    backgroundColor: COLORS.surface, // surface-container-lowest
+    backgroundColor: COLORS.surface,
     borderWidth: 2,
-    borderColor: COLORS.outlineVariant, // outline-variant
-    borderRadius: 20, // lg radius
-    padding: 16, // p-md
+    borderColor: COLORS.outlineVariant,
+    borderRadius: 20,
+    padding: 16,
     ...SHADOWS.small,
   },
   roleIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 14, // xl radius
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -617,9 +543,8 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.surface, // surface-container-lowest
+    backgroundColor: COLORS.surface,
   },
-  // Form card
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,
@@ -629,7 +554,6 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
     gap: 20,
   },
-  // Field group
   fieldGroup: {
     gap: 8,
   },
@@ -641,21 +565,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  // Input wrapper — cùng style với Login
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border, // #F0F0F0
-    borderRadius: 14, // md radius
+    borderColor: COLORS.border,
+    borderRadius: 14,
     paddingHorizontal: 12,
     height: 48,
-  },
-  inputWrapperFocused: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-    ...SHADOWS.inputFocus,
   },
   inputIcon: {
     marginRight: 12,
@@ -669,9 +587,8 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 8,
   },
-  // Photo upload section
   photoSection: {
-    backgroundColor: COLORS.surfaceContainerLow, // surface-container-low (ấm hơn)
+    backgroundColor: COLORS.surfaceContainerLow,
     borderRadius: 20,
     padding: 18,
     gap: 14,
@@ -737,7 +654,6 @@ const styles = StyleSheet.create({
     ...TYPO.caption,
     color: COLORS.textOnPrimary,
   },
-  // Info box
   infoBox: {
     flexDirection: 'row',
     gap: 10,
@@ -765,7 +681,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 4,
   },
-  // Submit button
   registerBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: 14,
@@ -781,7 +696,6 @@ const styles = StyleSheet.create({
     ...TYPO.h4,
     color: COLORS.textOnPrimary,
   },
-  // Login link
   loginRow: {
     flexDirection: 'row',
     justifyContent: 'center',
