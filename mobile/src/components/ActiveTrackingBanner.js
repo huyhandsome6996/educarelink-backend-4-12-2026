@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { revokeConsent } from '../api/tracking';
 import { stopTracking, getCurrentUserId } from '../services/LocationService';
 import { getQueueSize } from '../services/OfflineLocationQueue';
+import { openBatteryOptimizationSettings, openAppDetailsSettings } from '../services/BatteryOptimization';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
 /**
@@ -88,6 +89,34 @@ export default function ActiveTrackingBanner({ taskId, taskTitle, onStopped }) {
     }
   };
 
+  // QA-FIX-9 / Fix A: hướng dẫn tắt tối ưu pin — chống Android kill app nền
+  // (Xiaomi/Oppo/Samsung/Vivo) → heartbeat ngừng → phụ huynh nhận cảnh báo nhầm.
+  const handleBatteryOptimization = () => {
+    if (Platform.OS === 'web') return;
+    Alert.alert(
+      '⚡ Tối ưu pin có thể làm ngắt kết nối',
+      'Một số máy Android (Xiaomi/Oppo/Samsung/Vivo) tự "ngủ" app khi bạn khoá màn hình. ' +
+      'Để đảm bảo phụ huynh luôn thấy vị trí, hãy cho phép EduCareLink chạy nền:',
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: '📵 Tắt tối ưu pin',
+          onPress: () => openBatteryOptimizationSettings().then((ok) => {
+            if (!ok) openAppDetailsSettings();
+          }),
+        },
+        {
+          text: '⚙️ Chi tiết ứng dụng',
+          onPress: () => openAppDetailsSettings(),
+        },
+        {
+          text: 'OK, giữ hướng dẫn này',
+          style: 'default',
+        },
+      ]
+    );
+  };
+
   return (
     <Animated.View style={[
       styles.banner,
@@ -110,15 +139,20 @@ export default function ActiveTrackingBanner({ taskId, taskTitle, onStopped }) {
             📍 {queueCount} điểm đang chờ đồng bộ
           </Text>
         ) : null}
+        <TouchableOpacity onPress={handleBatteryOptimization} activeOpacity={0.7}>
+          <Text style={styles.batteryHint}>⚡ Tối ưu pin có thể làm ngắt kết nối — bấm để hướng dẫn</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={[styles.stopBtn, isStopping && { opacity: 0.6 }]}
-        onPress={handleStop}
-        disabled={isStopping}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.stopText}>{isStopping ? '...' : 'Dừng'}</Text>
-      </TouchableOpacity>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.stopBtn, isStopping && { opacity: 0.6 }]}
+          onPress={handleStop}
+          disabled={isStopping}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.stopText}>{isStopping ? '...' : 'Dừng'}</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -160,6 +194,14 @@ const styles = StyleSheet.create({
   },
   queueHint: {
     ...TYPO.caption, color: '#b45309', marginTop: 2,
+  },
+  batteryHint: {
+    ...TYPO.caption, color: '#7c4a03', marginTop: 4, textDecorationLine: 'underline',
+  },
+  actions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   stopBtn: {
     backgroundColor: '#fff',
