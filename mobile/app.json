@@ -43,7 +43,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#F26522"
       },
-      "softwareKeyboardLayoutMode": "resize",
+      "softwareKeyboardLayoutMode": "adjustResize",
       "package": "com.educarelink.app",
       "permissions": [
         "android.permission.RECORD_AUDIO",
