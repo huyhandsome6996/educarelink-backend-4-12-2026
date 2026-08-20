@@ -52,6 +52,42 @@ export async function registerForPushNotificationsAsync() {
     } catch (e) {
       console.warn('[notifications] setNotificationChannelAsync failed/timed out:', e?.message || e);
     }
+
+    // QA-FIX-9 / Fix B: channel "emergency-alerts" với còi to custom sound.
+    //
+    // Backend gửi push với data.android_channel_id='emergency-alerts' (xem
+    // tracking/services.py check_offline_devices / retry_offline_alert_pushes
+    // và verification_scheduler.py). NHƯNG trước đây app KHÔNG tạo channel này
+    // → Android fallback về channel 'default' → KHÔNG có còi to, chỉ chuông
+    // thường → phụ huynh dễ bỏ lỡ cảnh báo khẩn cấp.
+    //
+    // Ở đây tạo channel 'emergency-alerts' với:
+    //   + sound: 'emergency_alarm.wav' — file được copy vào res/raw bởi
+    //     plugins/withEmergencyAlarmSound.js khi prebuild (không phát được
+    //     trong Expo Go — cần APK).
+    //   + importance MAX + bypassDnd + vibration mạnh → luôn reo kể cả
+    //     khi thiết bị nền/im lặng.
+    //
+    // Tương thích ngược: app cũ (chưa có channel này) vẫn nhận push qua
+    // channel 'default' — backend thiết kế data.critical để app mới xử lý
+    // còi to, app cũ ignore và vẫn báo được (xem comment QA-FIX-7 trong
+    // tracking/services.py).
+    try {
+      await _withTimeout(
+        Notifications.setNotificationChannelAsync('emergency-alerts', {
+          name: 'Cảnh báo khẩn cấp',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 500, 400, 500, 400, 500],
+          lightColor: '#D4541E',
+          sound: 'emergency_alarm.wav',
+          bypassDnd: true,
+        }),
+        3000,
+        'setNotificationChannelAsync(emergency-alerts)'
+      );
+    } catch (e) {
+      console.warn('[notifications] setNotificationChannelAsync(emergency-alerts) failed/timed out:', e?.message || e);
+    }
   }
 
   if (!Device.isDevice) {
