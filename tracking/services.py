@@ -30,8 +30,14 @@ def _notify_user(user: User, title: str, message: str, data: dict = None):
 
     QA-FIX-1 / Bug 1.4: trả về True/False/None theo kết quả push để caller
     quyết định set push_sent=True (trước đây fire-and-forget → set True sai).
+
+    QA-FIX-8 / Bug #1: trả về tuple (result, reason) thay vì chỉ result.
+      result: True/False/None
+      reason: 'ok' | 'no_token' | 'expo_rejected' | 'device_not_registered' | 'network_error'
+      Caller cần reason để log chính xác và quyết định có clear token hay không.
     """
     push_result = None
+    push_reason = 'network_error'
     try:
         Notification.objects.create(recipient=user, title=title, message=message)
     except Exception as e:
@@ -44,10 +50,18 @@ def _notify_user(user: User, title: str, message: str, data: dict = None):
                 body=message,
                 data=data or {},
             )
+            if push_result is True:
+                push_reason = 'ok'
+            elif push_result is False:
+                push_reason = 'expo_rejected'
+            # None stays 'network_error'
+        else:
+            push_reason = 'no_token'
     except Exception as e:
         logger.warning(f"[tracking] Expo push thất bại cho user#{user.id}: {e}")
         push_result = None
-    return push_result
+        push_reason = 'network_error'
+    return push_result, push_reason
 
 
 def get_accepted_worker(task: Task) -> User | None:
@@ -559,7 +573,7 @@ def check_offline_devices():
         # để khi type='device_offline' VÀ critical=True → dùng channel
         # emergency-alerts (còi to) thay vì critical_alerts mặc định.
         try:
-            push_result = _notify_user(
+            push_result, push_reason = _notify_user(
                 hb.task.parent,
                 title="🚨🚨🚨 CẢNH BÁO KHẨN CẤP: Thiết bị Carepartner mất kết nối!",
                 message=f"⚠️ Thiết bị của carepartner đã ngừng gửi tín hiệu "
@@ -567,28 +581,43 @@ def check_offline_devices():
                         f"Lần cuối online: {hb.last_seen:%H:%M:%S}. "
                         f"Vui lòng liên hệ carepartner NGAY hoặc gọi cơ quan chức năng nếu nghi ngờ!",
                 data={
-                    'type': 'device_offline',  # QA-FIX-7 / N1: GIỮ giá trị CŨ để app cũ match
-                    'critical': True,  # QA-FIX-7 / N1: flag MỚI — app mới dùng để bật còi to + emergency-alerts channel
+                    'type': 'device_offline',
+                    'critical': True,
                     'task_id': hb.task.id,
                     'alert_id': alert.id,
-                    'priority': 'high',  # expo: high priority = chuông kêu
-                    'sound': 'critical',  # iOS critical alert
+                    'priority': 'high',
+                    'sound': 'critical',
                     'android_channel_id': 'emergency-alerts',
                 }
             )
+
+            # QA-FIX-8 / Bug #1: LUÔN cập nhật push_sent_at và
+            # push_retry_count trên mọi outcome (True/False/None),
+            # kể cả fail. Trước đây chỉ cập nhật khi push_result=True
+            # → khi parent không có token, alert không bao giờ tiến
+            # tới max_retry → infinite loop.
+            alert.push_sent_at = now
+            alert.push_retry_count = 1
+
             if push_result is True:
                 alert.push_sent = True
-                alert.push_sent_at = now
-                alert.push_retry_count = 1
                 alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
                 stats['new_alerts'] += 1
-            else:
-                # Push fail (Expo reject hoặc network error) — vẫn giữ alert
-                # active nhưng push_sent=False để retry scheduler thử lại.
+            elif push_reason == 'no_token':
                 logger.warning(
-                    f"[tracking] Offline push FAILED (Expo reject/network) for Task#{hb.task_id}"
+                    f"[tracking] Alert#{alert.id}: parent {hb.task.parent.username} "
+                    f"has no expo_push_token — cannot push, "
+                    f"in-app Notification still created"
                 )
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
                 stats['push_failed'] += 1
+            else:
+                # Expo rejected hoặc network error
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['push_failed'] += 1
+                logger.warning(
+                    f"[tracking] Offline push FAILED ({push_reason}) for Task#{hb.task_id}"
+                )
 
             # Notify admin cũng
             try:
@@ -686,18 +715,13 @@ def retry_offline_alert_pushes():
             continue
 
         try:
-            push_result = _notify_user(
+            push_result, push_reason = _notify_user(
                 alert.task.parent,
                 title=f"🚨🚨🚨 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}/{OFFLINE_PUSH_MAX_RETRIES})",
                 message=f"⚠️ Thiết bị carepartner VẪN mất kết nối cho công việc "
                         f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
                         f"Vui lòng kiểm tra NGAY!",
                 data={
-                    # QA-FIX-7 / N1: giữ type='device_offline' (giá trị CŨ)
-                    # để app cũ match. Thêm critical=True để app mới + backend
-                    # send_expo_push_notification biết đây là bản nâng cấp
-                    # (channel emergency-alerts, còi to). Xem comment đầy đủ
-                    # ở check_offline_devices() bên trên.
                     'type': 'device_offline',
                     'critical': True,
                     'task_id': alert.task.id,
@@ -708,26 +732,95 @@ def retry_offline_alert_pushes():
                     'android_channel_id': 'emergency-alerts',
                 }
             )
+
+            # QA-FIX-8 / Bug #1: LUÔN cập nhật push_sent_at và
+            # push_retry_count trên mọi outcome. Nếu không cập nhật
+            # khi fail → query pending_alerts luôn match (push_sent_at
+            # cũ < threshold) → infinite retry loop.
+            alert.push_sent_at = now
+            alert.push_retry_count += 1
+
             if push_result is True:
                 alert.push_sent = True
-                alert.push_sent_at = now
-                alert.push_retry_count += 1
                 alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
                 stats['retried_count'] += 1
-            else:
-                # Push fail — không tăng retry_count (sẽ thử lại ở lần scheduler sau).
+            elif push_reason == 'no_token':
                 logger.warning(
-                    f"[tracking] Retry push FAILED (Expo reject/network) for Alert#{alert.id}"
+                    f"[tracking] Alert#{alert.id}: parent {alert.task.parent.username} "
+                    f"has no expo_push_token — cannot push retry #{alert.push_retry_count}"
                 )
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
                 stats['push_failed'] += 1
+
+                # QA-FIX-8 / Bug #1: khi đạt max retry VÀ parent không
+                # có push token → escalate cho admin.
+                if alert.push_retry_count >= OFFLINE_PUSH_MAX_RETRIES:
+                    _escalate_no_push_channel(alert)
+            else:
+                # Expo rejected hoặc network error
+                alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
+                stats['push_failed'] += 1
+                if push_reason == 'expo_rejected':
+                    logger.warning(
+                        f"[tracking] Retry push FAILED (Expo rejected) for Alert#{alert.id}"
+                    )
+                else:
+                    logger.warning(
+                        f"[tracking] Retry push FAILED (network/timeout) for Alert#{alert.id}"
+                    )
+
+                # QA-FIX-8 / Bug #1: Expo trả DeviceNotRegistered →
+                # clear dead token để tránh retry vô ích.
+                if push_result is False and push_reason == 'expo_rejected':
+                    parent = alert.task.parent
+                    if parent.expo_push_token:
+                        logger.warning(
+                            f"[tracking] Clearing dead expo_push_token for "
+                            f"parent {parent.username} (user#{parent.id})"
+                        )
+                        parent.expo_push_token = ''
+                        parent.save(update_fields=['expo_push_token'])
+
         except Exception as e:
+            # QA-FIX-8 / Bug #1: ngay cả khi exception, vẫn cập nhật
+            # retry count để không infinite loop.
+            alert.push_sent_at = now
+            alert.push_retry_count += 1
+            alert.save(update_fields=['push_sent_at', 'push_retry_count'])
             logger.error(f"[tracking] Retry push failed for Alert#{alert.id}: {e}")
             stats['push_failed'] += 1
 
-    if stats['retried_count'] > 0:
+    if stats['retried_count'] > 0 or stats['push_failed'] > 0:
         logger.info(f"[tracking] Offline retry push: {stats}")
 
     return stats
+
+
+def _escalate_no_push_channel(alert: DeviceOfflineAlert):
+    """QA-FIX-8 / Bug #1: khi alert đạt max retry mà parent không có
+    push token → tạo in-app Notification cho admin yêu cầu liên hệ
+    thủ công (SMS, gọi điện).
+    """
+    try:
+        admin_users = User.objects.filter(is_staff=True, is_active=True)
+        for admin in admin_users:
+            Notification.objects.create(
+                recipient=admin,
+                title=f"⚠️ Push channel unavailable cho parent {alert.task.parent.username}",
+                message=(
+                    f"Alert#{alert.id} (Task#{alert.task_id}) đã thử push "
+                    f"{OFFLINE_PUSH_MAX_RETRIES} lần nhưng parent "
+                    f"{alert.task.parent.username} không có expo_push_token. "
+                    f"Cần liên hệ parent qua SMS/gọi điện thủ công."
+                ),
+            )
+        logger.warning(
+            f"[tracking] Alert#{alert.id}: escalated to admin — "
+            f"parent {alert.task.parent.username} has no push channel "
+            f"after {OFFLINE_PUSH_MAX_RETRIES} retries."
+        )
+    except Exception as e:
+        logger.error(f"[tracking] Admin escalation failed for Alert#{alert.id}: {e}")
 
 
 class AlreadyAcknowledgedError(ValueError):

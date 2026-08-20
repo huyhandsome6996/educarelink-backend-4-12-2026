@@ -21,17 +21,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # WARNING: keep the secret key used in production secret!
+#
+# Fallback hierarchy (CHỈ local dev hoặc check_scheduler_env command):
+#   1. RENDER=true, DEBUG=false, không có env var → CRASH (production-safe)
+#   2. DEBUG=true, không có env var → insecure fallback (local dev only)
+#   3. check_scheduler_env command → dummy key (cho phép check env vars)
+#   4. Có env var → dùng env var (production bình thường)
+#
+# ⚠️ Dummy fallbacks KHÔNG BAO GIỜ reachable khi RENDER=true.
+_DUMMY_KEYS = {'django-insecure-fallback-for-dev-only', 'dummy-key-for-env-check-only'}
+
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    if DEBUG:
+    _is_check_cmd = 'check_scheduler_env' in sys.argv
+    if DEBUG and not _is_check_cmd:
+        # Local dev only — KHÔNG reachable trên Render (RENDER=true → DEBUG=false)
         SECRET_KEY = 'django-insecure-fallback-for-dev-only'
-    elif 'check_scheduler_env' in sys.argv:
-        # Cho phép check_scheduler_env chạy khi chưa có SECRET_KEY
-        # để nó có thể báo lỗi rõ ràng thay vì crash cryptic.
+    elif _is_check_cmd:
+        # Chỉ cho check_scheduler_env — env check command cần import settings
+        # mà không cần SECRET_KEY thật. Dummy value này KHÔNG dùng để
+        # sign JWT/session — command này không truy vấn DB.
         SECRET_KEY = 'dummy-key-for-env-check-only'
     else:
         from django.core.exceptions import ImproperlyConfigured
-        raise ImproperlyConfigured("SECRET_KEY environment variable must be set in production.")
+        raise ImproperlyConfigured('SECRET_KEY environment variable must be set in production.')
+
+# Runtime guard: nếu RENDER=true mà SECRET_KEY là dummy → CRASH ngay.
+# Đặt sau INSTALLED_APPS để Django sẵn sàng, nhưng trước SIMPLE_JWT
+# vì SIGNING_KEY dùng SECRET_KEY.
+_DUMMY_KEYS = frozenset({'django-insecure-fallback-for-dev-only', 'dummy-key-for-env-check-only'})
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'educarelink-backend.onrender.com,localhost,127.0.0.1').split(',')
 
@@ -205,6 +223,14 @@ CACHES = {
 }
 
 # Cấu hình thời gian của Token
+# QA-FIX-8 / Issue #3: guardSECRET_KEY dummy trong production.
+if SECRET_KEY in _DUMMY_KEYS and os.environ.get('RENDER') == 'true':
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'SECRET_KEY is a known dummy value in production (RENDER=true). '
+        'This should NEVER happen. Check Render env vars.'
+    )
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Access token sống 60 phút
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),

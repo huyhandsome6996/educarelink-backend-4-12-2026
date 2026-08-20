@@ -165,7 +165,7 @@ def _create_check(task, worker):
     )
 
     # Push yêu cầu nhập mã cho CarePartner — channel emergency-alerts (còi to)
-    push_result = _notify_user(
+    push_result, push_reason = _notify_user(
         worker,
         title="🔐 Xác minh bảo mật",
         message="Vui lòng nhập mã cá nhân để xác nhận",

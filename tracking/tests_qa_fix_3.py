@@ -422,7 +422,7 @@ class QAFix3TestCase(TestCase):
         )
 
         # Chạy scheduler → tạo alert
-        with patch('tracking.services._notify_user', return_value=True):
+        with patch('tracking.services._notify_user', return_value=(True, 'ok')):
             stats = check_offline_devices()
 
         self.assertEqual(stats['new_alerts'], 1)
@@ -680,7 +680,7 @@ class QAFix3TestCase(TestCase):
             last_location_lng=Decimal('106.0'),
             device_status='online',
         )
-        with patch('tracking.services._notify_user', return_value=True):
+        with patch('tracking.services._notify_user', return_value=(True, 'ok')):
             stats1 = check_offline_devices()
             stats2 = check_offline_devices()
 
@@ -712,7 +712,7 @@ class QAFix3TestCase(TestCase):
         set_verification_pin(user=self.worker, pin='1234', current_password='worker_pass_123')
         # Patch random để lần 1 luôn tạo check
         with patch('tracking.verification_scheduler.random.random', return_value=0.0):
-            with patch('tracking.verification_scheduler._notify_user', return_value=True):
+            with patch('tracking.verification_scheduler._notify_user', return_value=(True, 'ok')):
                 stats1 = run_verification_check()
                 stats2 = run_verification_check()
 
