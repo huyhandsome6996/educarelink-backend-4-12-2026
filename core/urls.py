@@ -21,8 +21,9 @@ from .views import (
     DistanceCalculationAPIView,
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
-    AdminSetWorkerTierAPIView, AdminRecomputeWorkerTierAPIView,
 )
+from .tier_views import AdminSetWorkerTierAPIView, AdminRecomputeWorkerTierAPIView
+
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
 urlpatterns = [
