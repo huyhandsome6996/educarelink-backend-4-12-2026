@@ -70,7 +70,7 @@ export default function LoginScreen() {
     return {
       clientId: oauthConfig.google.client_id,
       scopes: ['openid', 'email', 'profile'],
-      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      redirectUri: AuthSession.makeRedirectUri(),
     };
   }, [oauthConfig?.google?.enabled, oauthConfig?.google?.client_id]);
 
@@ -88,7 +88,7 @@ export default function LoginScreen() {
     return {
       clientId: oauthConfig.facebook.app_id,
       scopes: ['email', 'public_profile'],
-      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      redirectUri: AuthSession.makeRedirectUri(),
     };
   }, [oauthConfig?.facebook?.enabled, oauthConfig?.facebook?.app_id]);
 
@@ -211,7 +211,7 @@ export default function LoginScreen() {
         <View style={styles.fieldGroup}>
           <View style={styles.passwordLabelRow}>
             <Text style={styles.fieldLabel}>Mật khẩu</Text>
-            <TouchableOpacity onPress={() => showComingSoon('Quên mật khẩu')}>
+            <TouchableOpacity onPress={() => showAlert('Sắp ra mắt', 'Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ Admin qua email hỗ trợ.')}>
               <Text style={styles.forgotLink}>Quên mật khẩu?</Text>
             </TouchableOpacity>
           </View>

@@ -158,7 +158,7 @@ export default function ProfileChangeRequestsScreen() {
                 </View>
 
                 {/* Changes */}
-                {renderChanges(req)}
+                {renderChanges(req.proposed_changes)}
 
                 {/* Admin review — chỉ hiện khi bị từ chối */}
                 {req.status === 'rejected' && req.admin_review && (
