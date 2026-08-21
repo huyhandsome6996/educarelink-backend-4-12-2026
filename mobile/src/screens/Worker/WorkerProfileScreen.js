@@ -66,6 +66,7 @@ export default function WorkerProfileScreen() {
     { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
     { icon: 'documents-outline', label: 'Khiếu nại của tôi', color: COLORS.error, action: 'view_my_complaints' },
     { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
+    { icon: 'document-text-outline', label: 'Lịch sử yêu cầu đổi hồ sơ', color: COLORS.info, action: 'view_change_history' },
     { icon: 'help-circle-outline', label: 'Trung tâm hỗ trợ', color: COLORS.info, action: 'help_center' },
     { icon: 'card-outline', label: 'Xác thực thẻ sinh viên / bằng cấp', color: COLORS.primary, action: 'upload_cert' },
     { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.primary },
@@ -161,6 +162,9 @@ export default function WorkerProfileScreen() {
         address: user?.address || '',
       });
       setChangeModalVisible(true);
+    } else if (action === 'view_change_history') {
+      // WIRING FIX (2026-08-21): Entry point vào ProfileChangeRequestsScreen
+      navigation.navigate('ProfileChangeRequests');
     } else if (action === 'upload_cert') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {

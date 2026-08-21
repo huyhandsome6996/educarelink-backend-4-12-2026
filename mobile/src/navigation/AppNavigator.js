@@ -37,11 +37,13 @@ import MyJobsScreen from '../screens/Worker/MyJobsScreen';
 import WorkerProfileScreen from '../screens/Worker/WorkerProfileScreen';
 import WorkerChatbotScreen from '../screens/Worker/WorkerChatbotScreen';
 import WorkerScreeningStatusScreen from '../screens/Worker/WorkerScreeningStatusScreen';
+import ProfileChangeRequestsScreen from '../screens/Worker/ProfileChangeRequestsScreen';
 
 // Payment Screens
 import PaymentSetupScreen from '../screens/Payment/PaymentSetupScreen';
 import MyEarningsScreen from '../screens/Payment/MyEarningsScreen';
 import SettlementDetailScreen from '../screens/Payment/SettlementDetailScreen';
+import PaymentDetailScreen from '../screens/Payment/PaymentDetailScreen';
 
 // Help Center
 import HelpCenterScreen from '../screens/HelpCenter/HelpCenterScreen';
@@ -223,6 +225,7 @@ export default function AppNavigator() {
             {/* ParentProfile giờ là tab trong ParentTabs — không cần Stack.Screen riêng */}
             <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
             <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
+            <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
@@ -239,6 +242,8 @@ export default function AppNavigator() {
             <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
+            <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
+            <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         )}

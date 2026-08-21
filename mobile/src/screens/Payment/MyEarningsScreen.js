@@ -143,7 +143,12 @@ export default function MyEarningsScreen() {
           recentPayments.map((payment) => {
             const st = STATUS_STYLE[payment.status] || STATUS_STYLE.pending;
             return (
-              <View key={payment.id} style={styles.paymentCard}>
+              <TouchableOpacity
+                key={payment.id}
+                style={styles.paymentCard}
+                onPress={() => navigation.navigate('PaymentDetail', { paymentId: payment.id })}
+                activeOpacity={0.8}
+              >
                 <View style={styles.paymentTopRow}>
                   <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
                     <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
@@ -169,7 +174,7 @@ export default function MyEarningsScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}

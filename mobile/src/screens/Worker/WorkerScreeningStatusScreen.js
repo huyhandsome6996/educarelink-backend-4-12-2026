@@ -1,42 +1,150 @@
 // ============================================================
-// WorkerScreeningStatusScreen — MỚI (Nhóm B, mock data)
-// Hiển thị trạng thái thẩm định hồ sơ CarePartner cho worker.
-// Chưa có backend → dùng mock data tĩnh.
-// Khi có API: thay MOCK_STATUS bằng getScreeningStatus() trong useEffect.
-//
-// Layout theo design HTML worker_screening_status/code.html:
-// - Top App Bar: surface bg, back + 'Trạng thái thẩm định' + spacer
-// - Hero card: surface-container-lowest bg, radius 14, shadow large
-//   * Illustration circle 192px (primaryLight bg + icon hourglass)
-//   * 'Hồ sơ đang được thẩm định' h3 primary
-//   * Subtitle body on-surface-variant (24-48h làm việc)
-//   * Stage badge: pill primaryLight bg, hourglass icon + uppercase
-//     'Giai đoạn: Phỏng vấn trực tuyến'
-// - Progress card: surface bg, 'Tiến độ hồ sơ' h4 + 5 step rows
-//   (check circle green = done, pending circle = waiting)
-// - 2 action buttons:
-//   * 'Xem chi tiết phỏng vấn' (secondary bg, white text, shadow)
-//   * 'Liên hệ hỗ trợ' (ghost, primary text)
+// WorkerScreeningStatusScreen — WIRING FIX (2026-08-21)
+// Trước: dùng mock data tĩnh (MOCK_SCREENING_STATUS / APPROVED_SCREENING_STATUS)
+// Sau: gọi getMyCredentials() + getProfile() để lấy dữ liệu thật,
+//        ánh xạ CredentialSubmission.status thành các bước thẩm định.
+//        Mock chỉ dùng làm fallback khi API lỗi.
 // ============================================================
 
 import React, {useState, useRef, useEffect} from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Animated} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Animated, ActivityIndicator} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import { useAuth } from '../../context/AuthContext';
+import { getMyCredentials } from '../../api/tasks';
+import { getProfile } from '../../api/auth';
 import { MOCK_SCREENING_STATUS, APPROVED_SCREENING_STATUS } from '../../mocks/workerScreeningMock';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// === Chọn status dựa trên user.is_verified từ API thật ===
-// user.is_verified === true  → tất cả steps done, stage = 'Đã duyệt'
-// user.is_verified === false → dùng mock pending (backend chưa có API tổng hợp screening)
-export function getScreeningStatusForUser(user) {
-  if (user?.is_verified) {
-    return APPROVED_SCREENING_STATUS;
+/**
+ * Ánh xạ dữ liệu thật từ API thành format steps cho UI.
+ *
+ * Logic:
+ *  - user.is_approved === true → Tất cả steps = done, stage = 'Đã duyệt'
+ *  - Có CredentialSubmission:
+ *      + approved → steps 1-3 done, 4-5 done
+ *      + pending  → steps 1-3 done (đã nộp), 4-5 pending
+ *      + rejected → steps 1-3 done, step 4 rejected, 5 pending
+ *  - Chưa có CredentialSubmission:
+ *      + is_verified === true → Tất cả done (đã xác thực danh tính)
+ *      + else → Tất cả pending (chưa bắt đầu)
+ */
+function buildScreeningFromAPI(user, credentials) {
+  // Trường hợp đã được admin duyệt tài khoản
+  if (user?.is_approved) {
+    return {
+      stage: 'Đã duyệt',
+      description: 'Tài khoản Carepartner của bạn đã được Admin phê duyệt. Bạn có thể bắt đầu nhận việc ngay.',
+      steps: [
+        { id: 1, label: 'Xác minh danh tính (ID)', status: 'done' },
+        { id: 2, label: 'Xác thực khuôn mặt', status: 'done' },
+        { id: 3, label: 'Khám sức khỏe cơ bản', status: 'done' },
+        { id: 4, label: 'Phỏng vấn chuyên môn', status: 'done' },
+        { id: 5, label: 'Duyệt hồ sơ cuối', status: 'done' },
+      ],
+      submittedDate: credentials?.length > 0
+        ? new Date(credentials[0].created_at).toLocaleDateString('vi-VN')
+        : '—',
+      expectedDate: '—',
+    };
   }
-  return MOCK_SCREENING_STATUS;
+
+  // Có credential submissions
+  if (credentials && credentials.length > 0) {
+    // Lấy submission mới nhất
+    const latest = credentials[0]; // Backend trả theo created_at desc
+    const status = latest.status; // pending | approved | rejected
+    const submittedDate = new Date(latest.created_at).toLocaleDateString('vi-VN');
+
+    // Nếu có admin_review (lý do từ chối)
+    const adminReview = latest.admin_review || '';
+
+    if (status === 'approved') {
+      return {
+        stage: 'Đã duyệt bằng cấp',
+        description: 'Bằng cấp của bạn đã được duyệt. Đang chờ Admin phê duyệt tài khoản cuối cùng.',
+        steps: [
+          { id: 1, label: 'Xác minh danh tính (ID)', status: user?.is_verified ? 'done' : 'pending' },
+          { id: 2, label: 'Xác thực khuôn mặt', status: user?.is_verified ? 'done' : 'pending' },
+          { id: 3, label: 'Nộp bằng cấp/chứng chỉ', status: 'done' },
+          { id: 4, label: 'Duyệt bằng cấp', status: 'done' },
+          { id: 5, label: 'Duyệt tài khoản cuối', status: 'pending' },
+        ],
+        submittedDate,
+        expectedDate: '—',
+        adminReview: '',
+      };
+    }
+
+    if (status === 'rejected') {
+      return {
+        stage: 'Bị từ chối',
+        description: adminReview
+          ? `Lý do: ${adminReview}`
+          : 'Bằng cấp của bạn không được chấp nhận. Vui lòng nộp lại bằng cấp khác.',
+        steps: [
+          { id: 1, label: 'Xác minh danh tính (ID)', status: user?.is_verified ? 'done' : 'pending' },
+          { id: 2, label: 'Xác thực khuôn mặt', status: user?.is_verified ? 'done' : 'pending' },
+          { id: 3, label: 'Nộp bằng cấp/chứng chỉ', status: 'done' },
+          { id: 4, label: 'Duyệt bằng cấp', status: 'rejected' },
+          { id: 5, label: 'Duyệt tài khoản cuối', status: 'pending' },
+        ],
+        submittedDate,
+        expectedDate: '—',
+        adminReview,
+      };
+    }
+
+    // pending
+    return {
+      stage: 'Đang thẩm định bằng cấp',
+      description: 'Bằng cấp của bạn đang được Admin xem xét. Kết quả sẽ có sau 24-48h làm việc.',
+      steps: [
+        { id: 1, label: 'Xác minh danh tính (ID)', status: user?.is_verified ? 'done' : 'pending' },
+        { id: 2, label: 'Xác thực khuôn mặt', status: user?.is_verified ? 'done' : 'pending' },
+        { id: 3, label: 'Nộp bằng cấp/chứng chỉ', status: 'done' },
+        { id: 4, label: 'Duyệt bằng cấp', status: 'pending' },
+        { id: 5, label: 'Duyệt tài khoản cuối', status: 'pending' },
+      ],
+      submittedDate,
+      expectedDate: '24-48h làm việc',
+      adminReview: '',
+    };
+  }
+
+  // Chưa có credential submission nào
+  if (user?.is_verified) {
+    return {
+      stage: 'Chờ nộp bằng cấp',
+      description: 'Đã xác minh danh tính. Bạn cần nộp bằng cấp/chứng chỉ để hoàn tất thẩm định.',
+      steps: [
+        { id: 1, label: 'Xác minh danh tính (ID)', status: 'done' },
+        { id: 2, label: 'Xác thực khuôn mặt', status: 'done' },
+        { id: 3, label: 'Nộp bằng cấp/chứng chỉ', status: 'pending' },
+        { id: 4, label: 'Duyệt bằng cấp', status: 'pending' },
+        { id: 5, label: 'Duyệt tài khoản cuối', status: 'pending' },
+      ],
+      submittedDate: '—',
+      expectedDate: '—',
+    };
+  }
+
+  // Chưa xác minh, chưa nộp bằng cấp
+  return {
+    stage: 'Chờ xác minh',
+    description: 'Hồ sơ của bạn đang chờ xác minh danh tính. Vui lòng đảm bảo đã tải lên ảnh CCCD và ảnh chân dung.',
+    steps: [
+      { id: 1, label: 'Xác minh danh tính (ID)', status: 'pending' },
+      { id: 2, label: 'Xác thực khuôn mặt', status: 'pending' },
+      { id: 3, label: 'Nộp bằng cấp/chứng chỉ', status: 'pending' },
+      { id: 4, label: 'Duyệt bằng cấp', status: 'pending' },
+      { id: 5, label: 'Duyệt tài khoản cuối', status: 'pending' },
+    ],
+    submittedDate: '—',
+    expectedDate: '—',
+  };
 }
 
 const STEP_STATUS_STYLE = {
@@ -79,13 +187,62 @@ export default function WorkerScreeningStatusScreen() {
     }).start();
   }, [fadeAnim]);
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  // Nối thật field is_verified từ API /profile/ — nếu đã verified → hiện stage "Đã duyệt"
-  const [status] = useState(() => getScreeningStatusForUser(user));
+  const { user, refreshUser } = useAuth();
+
+  const [status, setStatus] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdminReview, setIsAdminReview] = useState(false);
+
+  // Gọi API thật: getProfile() + getMyCredentials()
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [profileRes, credRes] = await Promise.all([
+          getProfile(),
+          getMyCredentials().catch(() => ({ data: [] })),
+        ]);
+        const profile = profileRes.data;
+        const credentials = credRes.data || [];
+        const built = buildScreeningFromAPI(profile, credentials);
+        setStatus(built);
+        if (built.adminReview) {
+          setIsAdminReview(true);
+        }
+      } catch (e) {
+        console.warn('[WorkerScreeningStatus] API lỗi, dùng mock fallback:', e?.message || e);
+        // Fallback: dùng mock data cũ dựa trên user.is_verified
+        setStatus(user?.is_verified ? APPROVED_SCREENING_STATUS : MOCK_SCREENING_STATUS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color={COLORS.primary} size="large" />
+        <Text style={{ ...TYPO.body, color: COLORS.onSurfaceVariant, marginTop: 12 }}>Đang tải trạng thái thẩm định...</Text>
+      </View>
+    );
+  }
+
+  if (!status) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ ...TYPO.body, color: COLORS.onSurfaceVariant }}>Không thể tải trạng thái.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={{ ...TYPO.h4, color: COLORS.primary }}>Quay lại</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const completedCount = status.steps.filter(s => s.status === 'done').length;
   const totalCount = status.steps.length;
   const progressPercent = (completedCount / totalCount) * 100;
+  const isRejected = status.stage === 'Bị từ chối';
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -106,22 +263,32 @@ export default function WorkerScreeningStatusScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero card — illustration + title + stage badge */}
         <View style={styles.heroCard}>
-          {/* Illustration circle 192px */}
-          <View style={styles.illustrationCircle}>
-            <Ionicons name="hourglass" size={64} color={COLORS.primary} />
+          {/* Illustration circle */}
+          <View style={[styles.illustrationCircle, isRejected && styles.illustrationCircleRejected]}>
+            <Ionicons name={isRejected ? 'close-circle' : 'hourglass'} size={64} color={isRejected ? COLORS.error : COLORS.primary} />
           </View>
 
-          <Text style={styles.heroTitle}>Hồ sơ đang được thẩm định</Text>
+          <Text style={[styles.heroTitle, isRejected && { color: COLORS.error }]}>
+            {isRejected ? 'Hồ sơ bị từ chối' : (status.stage === 'Đã duyệt' ? 'Hồ sơ đã được phê duyệt' : 'Hồ sơ đang được thẩm định')}
+          </Text>
           <Text style={styles.heroSubtitle}>{status.description}</Text>
 
           {/* Stage badge */}
-          <View style={styles.stageBadge}>
-            <Ionicons name="hourglass" size={16} color={COLORS.primary} />
-            <Text style={styles.stageBadgeText}>
+          <View style={[styles.stageBadge, isRejected && styles.stageBadgeRejected]}>
+            <Ionicons name={isRejected ? 'alert-circle' : 'hourglass'} size={16} color={isRejected ? COLORS.error : COLORS.primary} />
+            <Text style={[styles.stageBadgeText, isRejected && { color: COLORS.error }]}>
               GIAI ĐOẠN: {status.stage.toUpperCase()}
             </Text>
           </View>
         </View>
+
+        {/* Admin review banner — chỉ hiện khi bị từ chối */}
+        {isAdminReview && (
+          <View style={styles.reviewBanner}>
+            <Ionicons name="information-circle" size={18} color={COLORS.error} />
+            <Text style={styles.reviewBannerText}>{status.description}</Text>
+          </View>
+        )}
 
         {/* Estimated time card */}
         <View style={styles.estimatedCard}>
@@ -220,6 +387,11 @@ export default function WorkerScreeningStatusScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
+  backBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
   // === APP BAR ===
   appBar: {
     flexDirection: 'row',
@@ -266,6 +438,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.primarySoft,
   },
+  illustrationCircleRejected: {
+    backgroundColor: COLORS.errorContainer,
+    borderColor: '#fca5a5',
+  },
   heroTitle: {
     ...TYPO.h3,
     color: COLORS.primary,
@@ -290,11 +466,32 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primarySoft,
     ...SHADOWS.small,
   },
+  stageBadgeRejected: {
+    backgroundColor: COLORS.errorContainer,
+    borderColor: '#fca5a5',
+  },
   stageBadgeText: {
     ...TYPO.caption,
     color: COLORS.primary,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  // === ADMIN REVIEW BANNER ===
+  reviewBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: COLORS.errorContainer,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+  },
+  reviewBannerText: {
+    flex: 1,
+    ...TYPO.body,
+    fontSize: 13,
+    color: COLORS.errorDeep,
+    lineHeight: 20,
   },
   // === ESTIMATED CARD ===
   estimatedCard: {

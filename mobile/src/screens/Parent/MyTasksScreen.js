@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyTasksAsParent, getCandidates, updateTaskStatus } from '../../api/tasks';
 import { checkConsent } from '../../api/tracking';
+import { getTaskModeration } from '../../api/moderation';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import NotificationBell from '../../components/NotificationBell';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -86,11 +87,29 @@ export default function MyTasksScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  // WIRING FIX (2026-08-21): Lưu moderation status theo task ID
+  const [moderationMap, setModerationMap] = useState({});
 
   const fetchTasks = async () => {
     try {
       const res = await getMyTasksAsParent();
       setTasks(res.data);
+      // WIRING FIX (2026-08-21): Fetch moderation status cho các task không phải 'approved'
+      const tasksToCheck = (res.data || []).filter(t => t.moderation_status && t.moderation_status !== 'approved');
+      if (tasksToCheck.length > 0) {
+        const newMap = {};
+        await Promise.allSettled(
+          tasksToCheck.map(async (t) => {
+            try {
+              const modRes = await getTaskModeration(t.id);
+              newMap[t.id] = modRes.data;
+            } catch (e) { /* ignore */ }
+          })
+        );
+        if (Object.keys(newMap).length > 0) {
+          setModerationMap(prev => ({ ...prev, ...newMap }));
+        }
+      }
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); setRefreshing(false); }
   };
@@ -167,6 +186,18 @@ export default function MyTasksScreen() {
       <View style={styles.card}>
         {/* Top accent bar — màu theo status */}
         <View style={[styles.cardAccent, { backgroundColor: st.accent }]} />
+
+        {/* WIRING FIX (2026-08-21): Banner kiểm duyệt AI */}
+        {task.moderation_status && task.moderation_status !== 'approved' && moderationMap[task.id] ? (
+          <View style={styles.moderationBanner}>
+            <Ionicons name="shield-outline" size={16} color={COLORS.warning} />
+            <Text style={styles.moderationText} numberOfLines={2}>
+              {moderationMap[task.id].status === 'rejected'
+                ? 'Việc này không vượt qua kiểm duyệt tự động. Lý do: ' + (moderationMap[task.id].ai_verdict || 'Nội dung không phù hợp')
+                : 'Việc này đang chờ Admin xem xét lại.'}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.cardBody}>
           {/* Top row: icon + title + status chip */}
@@ -510,6 +541,23 @@ const styles = StyleSheet.create({
   cardAccent: {
     height: 4,
     width: '100%',
+  },
+  // === MODERATION BANNER ===
+  moderationBanner: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.warningBg,
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+  },
+  moderationText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.warning,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   cardBody: {
     padding: 16,

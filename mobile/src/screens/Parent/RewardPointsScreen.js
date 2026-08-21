@@ -1,18 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 // ============================================================
 // RewardPointsScreen — MỚI (Nhóm B, mock data)
-// Hiển thị điểm thưởng tích lũy + voucher có thể đổi.
-// Chưa có backend → dùng mock data tĩnh.
-// Khi có API: thay MOCK_REWARDS bằng getRewardPoints() trong useEffect.
-//
-// Layout theo design HTML reward_points_screen/code.html:
-// - Top App Bar: surface bg, avatar + 'EduCareLink' + bell
-// - Title section: 'Điểm thưởng của bạn' h2 + subtitle
-// - Hero card: primary-container bg (cam), text trắng, điểm hiện tại
-//   (48px extrabold) + progress bar tới hạng tiếp theo
-// - Voucher section: 'Ưu đãi của bạn' h3 + 'Xem tất cả' link + list
-//   of voucher cards (icon/image + title + expiry + points + 'Đổi ngay')
-// - History section: 'Lịch sử tích điểm' + list of transactions
+// CHÚ Ý: Backend chưa có model RewardPoint/PointTransaction → toàn bộ data là MOCK.
+// WIRING FIX (2026-08-21): Thêm banner "Sắp ra mắt" để người dùng thật
+// không hiểu nhầm đây là dữ liệu thật.
 // ============================================================
 
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, FlatList, Animated} from 'react-native';
@@ -122,6 +113,12 @@ export default function RewardPointsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* WIRING FIX (2026-08-21): Banner "Sắp ra mắt" — backend chưa có model RewardPoint */}
+        <View style={styles.comingSoonBanner}>
+          <Ionicons name="construct" size={18} color={COLORS.primary} />
+          <Text style={styles.comingSoonText}>Tính năng đang được phát triển. Dữ liệu hiển thị dưới đây là minh họa, không phải dữ liệu thật.</Text>
+        </View>
+
         {/* Title section */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>Điểm thưởng của bạn</Text>
@@ -507,5 +504,24 @@ const styles = StyleSheet.create({
     ...TYPO.body,
     fontSize: 14,
     color: COLORS.onSurface,
+  },
+  // === COMING SOON BANNER ===
+  comingSoonBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
+    marginBottom: 16,
+  },
+  comingSoonText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.primary,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 });
