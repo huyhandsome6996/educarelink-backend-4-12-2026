@@ -12,6 +12,13 @@ class User(AbstractUser):
         ('google', 'Google'),
         ('facebook', 'Facebook'),
     )
+    # B4 — Phân hạng CarePartner (Đồng / Bạc / Vàng / Kim cương)
+    class CarePartnerTier(models.TextChoices):
+        BRONZE = 'bronze', 'Hạng Đồng'
+        SILVER = 'silver', 'Hạng Bạc'
+        GOLD = 'gold', 'Hạng Vàng'
+        DIAMOND = 'diamond', 'Hạng Kim cương'
+
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='parent')
     auth_provider = models.CharField(max_length=20, choices=AUTH_PROVIDER_CHOICES, default='email', help_text="Phương thức đăng ký/đăng nhập")
     avatar_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL ảnh đại diện từ Google/Facebook")
@@ -23,6 +30,25 @@ class User(AbstractUser):
     
     # Trạng thái duyệt tài khoản (Admin duyệt cho Carepartner)
     is_approved = models.BooleanField(default=False, help_text="Admin duyệt tài khoản Carepartner")
+
+    # B4 — Phân hạng CarePartner
+    tier = models.CharField(
+        max_length=20,
+        choices=CarePartnerTier.choices,
+        default=CarePartnerTier.BRONZE,
+        db_index=True,
+        help_text="Hạng CarePartner: bronze/silver/gold/diamond (chỉ meaningful khi role=worker & is_approved)",
+    )
+    tier_updated_at = models.DateTimeField(null=True, blank=True, help_text="Lần cuối hạng được cập nhật")
+    tier_override = models.BooleanField(
+        default=False,
+        help_text="True = admin đã set hạng thủ công; không tự tính lại trừ khi force",
+    )
+    tier_meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Snapshot số liệu khi tính hạng: completed_jobs, avg_rating, review_count, has_cert, has_specialized",
+    )
     
     # Ảnh xác minh danh tính (dành cho Carepartner)
     id_card_front = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt trước CCCD")
@@ -50,11 +76,6 @@ class User(AbstractUser):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
 
-    # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
-    # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác
-    # minh trong lúc task in_progress, carepartner phải nhập đúng mã này để
-    # chứng minh vẫn đang cầm máy (chống để máy lại rồi bỏ đi).
-    # Hash bằng django.contrib.auth.hashers.make_password — KHÔNG lưu plaintext.
     verification_pin_hash = models.CharField(
         max_length=128, blank=True, null=True,
         help_text="Hash mã cá nhân xác minh — KHÔNG lưu plaintext"
@@ -64,21 +85,7 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
 
-    # ================================================================
-    # QA-FIX-1 / Spec 2.3 — Helper methods cho verification PIN
-    # Đóng gói logic hash/check để:
-    #   - Tránh lặp logic make_password/check_password ở nhiều nơi
-    #     (services.py, verification_scheduler.py, tests).
-    #   - Dễ unit test, dễ audit security.
-    #   - has_verification_pin_set property dùng cho scheduler check
-    #     (trước đây kiểm tra `not worker.verification_pin_hash` trực tiếp).
-    # ================================================================
     def set_verification_pin(self, raw_pin: str) -> None:
-        """Hash + lưu PIN cá nhân. KHÔNG lưu plaintext.
-
-        Caller chịu trách nhiệm validate format (4-6 chữ số) + re-auth
-        current_password trước khi gọi method này.
-        """
         from django.contrib.auth.hashers import make_password
         from django.utils import timezone as _tz
         self.verification_pin_hash = make_password(raw_pin)
@@ -86,9 +93,6 @@ class User(AbstractUser):
         self.save(update_fields=['verification_pin_hash', 'verification_pin_set_at'])
 
     def check_verification_pin(self, raw_pin: str) -> bool:
-        """Trả về True nếu raw_pin khớp với hash đã lưu.
-        Trả về False nếu user chưa set PIN hoặc PIN sai.
-        Dùng constant-time comparison (django.contrib.auth.hashers.check_password)."""
         from django.contrib.auth.hashers import check_password
         if not self.verification_pin_hash:
             return False
@@ -96,11 +100,9 @@ class User(AbstractUser):
 
     @property
     def has_verification_pin_set(self) -> bool:
-        """True nếu user đã đặt PIN xác minh (hash không null)."""
         return bool(self.verification_pin_hash)
 
 
-# 2. BẢNG DANH MỤC DỊCH VỤ (Gia sư, Đón trẻ...)
 class ServiceCategory(models.Model):
     name = models.CharField(max_length=100) 
     icon_name = models.CharField(max_length=50, blank=True, help_text="Tên icon, VD: BookOpen, Baby")
@@ -110,7 +112,6 @@ class ServiceCategory(models.Model):
         return self.name
 
 
-# 3. BẢNG CÔNG VIỆC (Do phụ huynh đăng)
 class Task(models.Model):
     STATUS_CHOICES = (
         ('open', 'Đang tìm người'),
@@ -120,48 +121,24 @@ class Task(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=0) # Lương (VNĐ)
+    price = models.DecimalField(max_digits=10, decimal_places=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
-    
-    # Khóa ngoại: Ai là người đăng? Thuộc danh mục nào?
     parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posted_tasks')
     category = models.ForeignKey(ServiceCategory, on_delete=models.SET_NULL, null=True)
-    
     location = models.CharField(max_length=255)
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ địa điểm công việc")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ địa điểm công việc")
-    scheduled_time = models.DateTimeField() # Thời gian bắt đầu làm
-
-    # ---- GEOFENCE (VÙNG AN TOÀN) — thêm cho chức năng Live Tracking ----
-    # Parent có thể vẽ vùng an toàn trên bản đồ khi đăng việc.
-    # Carepartner rời vùng này → phụ huynh nhận chuông cảnh báo.
-    geofence_lat = models.FloatField(
-        null=True, blank=True,
-        help_text="Vĩ độ tâm vùng an toàn (geofence) — parent vẽ trên bản đồ khi đăng việc"
-    )
-    geofence_lng = models.FloatField(
-        null=True, blank=True,
-        help_text="Kinh độ tâm vùng an toàn (geofence)"
-    )
-    geofence_radius = models.FloatField(
-        null=True, blank=True, default=500,
-        help_text="Bán kính vùng an toàn (mét). Mặc định 500m"
-    )
-    
-    # ---> KHUNG CHỜ AI: Lưu lại câu chat gốc của phụ huynh
-    ai_generated_from_prompt = models.TextField(
-        blank=True, 
-        null=True, 
-        help_text="Lưu lại câu chat của phụ huynh nếu việc này tạo qua AI."
-    )
-
+    scheduled_time = models.DateTimeField()
+    geofence_lat = models.FloatField(null=True, blank=True, help_text="Vĩ độ tâm vùng an toàn (geofence)")
+    geofence_lng = models.FloatField(null=True, blank=True, help_text="Kinh độ tâm vùng an toàn (geofence)")
+    geofence_radius = models.FloatField(null=True, blank=True, default=500, help_text="Bán kính vùng an toàn (mét). Mặc định 500m")
+    ai_generated_from_prompt = models.TextField(blank=True, null=True, help_text="Lưu lại câu chat của phụ huynh nếu việc này tạo qua AI.")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.title} - {self.get_status_display()}"
 
 
-# 4. BẢNG ỨNG TUYỂN (Khi Carepartner bấm nhận việc)
 class TaskApplication(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Đang chờ duyệt'),
@@ -173,7 +150,6 @@ class TaskApplication(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     applied_at = models.DateTimeField(auto_now_add=True)
 
-    # Đảm bảo 1 worker chỉ ứng tuyển 1 task 1 lần
     class Meta:
         unique_together = ('task', 'worker')
 
@@ -181,12 +157,11 @@ class TaskApplication(models.Model):
         return f"{self.worker.username} ứng tuyển: {self.task.title}"
 
 
-# 5. BẢNG ĐÁNH GIÁ (Review sau khi xong việc)
 class Review(models.Model):
     task = models.OneToOneField(Task, on_delete=models.CASCADE, related_name='review')
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
     reviewee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_received')
-    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)]) # 1 đến 5 sao
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
     comment = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -194,16 +169,25 @@ class Review(models.Model):
         return f"{self.rating} sao cho việc: {self.task.title}"
 
 
-# 6. BẢNG GỬI BẰNG CẤP (Carepartner gửi minh chứng cho Admin duyệt)
 class CredentialSubmission(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Chờ duyệt'),
         ('approved', 'Đã duyệt'),
         ('rejected', 'Bị từ chối'),
     )
+    CREDENTIAL_TYPE_CHOICES = (
+        ('certificate', 'Chứng chỉ'),
+        ('degree', 'Bằng cấp'),
+        ('license', 'Giấy phép / license'),
+        ('other', 'Khác'),
+    )
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='credential_submissions')
     certificate_photo = models.ImageField(upload_to='credential_submissions/', blank=True, null=True, help_text="Ảnh bằng cấp/chứng chỉ minh chứng")
     description = models.TextField(blank=True, null=True, help_text="Mô tả về bằng cấp, kinh nghiệm")
+    credential_type = models.CharField(max_length=30, choices=CREDENTIAL_TYPE_CHOICES, default='certificate', help_text="Loại minh chứng: chứng chỉ / bằng cấp / license")
+    title = models.CharField(max_length=200, blank=True, default='', help_text="Tên chứng chỉ/bằng cấp (VD: Chứng chỉ Sư phạm)")
+    field = models.CharField(max_length=100, blank=True, default='', help_text="Lĩnh vực (VD: Toán, Tiếng Anh, Mầm non)")
+    is_specialized = models.BooleanField(default=False, help_text="True = bằng cấp chuyên ngành — điều kiện Hạng Kim cương (admin đánh dấu khi duyệt)")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     admin_review = models.TextField(blank=True, null=True, help_text="Admin viết đánh giá bằng cấp cho Carepartner")
     reviewed_at = models.DateTimeField(blank=True, null=True)
@@ -213,7 +197,6 @@ class CredentialSubmission(models.Model):
         return f"{self.worker.username} - {self.get_status_display()} - {self.created_at.strftime('%d/%m/%Y')}"
 
 
-# 7. BẢNG YÊU CẦU THAY ĐỔI HỒ SƠ (Carepartner yêu cầu sửa thông tin, Admin duyệt)
 class ProfileChangeRequest(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Chờ duyệt'),
@@ -221,8 +204,7 @@ class ProfileChangeRequest(models.Model):
         ('rejected', 'Bị từ chối'),
     )
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_change_requests')
-    # Dữ liệu thay đổi (lưu dưới dạng JSON: field -> giá trị mới)
-    proposed_changes = models.JSONField(help_text="Dữ liệu thay đổi yêu cầu, ví dụ: {'first_name': 'Minh', 'phone_number': '0987654321'}")
+    proposed_changes = models.JSONField(help_text="Dữ liệu thay đổi yêu cầu")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     admin_review = models.TextField(blank=True, null=True, help_text="Admin ghi chú lý do duyệt/từ chối")
     reviewed_at = models.DateTimeField(blank=True, null=True)
@@ -235,7 +217,6 @@ class ProfileChangeRequest(models.Model):
         return f"{self.worker.username} - Yêu cầu thay đổi hồ sơ - {self.get_status_display()}"
 
 
-# 8. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True, help_text="Null = gửi cho tất cả Carepartner")
     title = models.CharField(max_length=255)
