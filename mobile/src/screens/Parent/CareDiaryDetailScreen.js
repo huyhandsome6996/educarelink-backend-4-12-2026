@@ -1,18 +1,9 @@
 // ============================================================
 // CareDiaryDetailScreen — MỚI (Nhóm B, mock data)
 // Hiển thị chi tiết nhật ký chăm sóc do CarePartner tạo sau khi làm việc.
-// Chưa có backend → dùng mock data tĩnh.
-// Khi có API: thay MOCK_DIARY bằng getCareDiary(taskId) trong useEffect.
-//
-// Layout theo design HTML care_diary_detail/code.html:
-// - Top App Bar: surfaceContainerLow bg, back + 'Chi tiết nhật ký' + spacer
-// - CarePartner card: surface-container bg, avatar 64px + name + date +
-//   verified badge
-// - Bento grid 2 cột: Tâm trạng bé (icon + text) + Mức độ hoàn thành
-//   (progress bar 85% + 3 stat boxes)
-// - Timeline hoạt động đã teach (vertical timeline với check icons)
-// - Ghi chú thêm + ảnh đính kèm
-// - Sticky footer: 'Gửi phản hồi' button (showComingSoon)
+// CHÚ Ý: Backend chưa có model CareDiaryEntry → toàn bộ data là MOCK.
+// WIRING FIX (2026-08-21): Thêm banner "Sắp ra mắt" để người dùng thật
+// không hiểu nhầm đây là dữ liệu thật của con họ.
 // ============================================================
 
 import React, {useState, useRef, useEffect} from 'react';
@@ -63,6 +54,12 @@ export default function CareDiaryDetailScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* WIRING FIX (2026-08-21): Banner "Sắp ra mắt" — backend chưa có model CareDiaryEntry */}
+        <View style={styles.comingSoonBanner}>
+          <Ionicons name="construct" size={18} color={COLORS.primary} />
+          <Text style={styles.comingSoonText}>Tính năng đang được phát triển. Dữ liệu hiển thị dưới đây là minh họa, không phải dữ liệu thật.</Text>
+        </View>
+
         {/* CarePartner info card */}
         <View style={styles.cpCard}>
           <View style={styles.cpAvatarBox}>
@@ -539,5 +536,24 @@ const styles = StyleSheet.create({
   feedbackBtnText: {
     ...TYPO.h4,
     color: COLORS.primary,
+  },
+  // === COMING SOON BANNER ===
+  comingSoonBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
+    marginBottom: 16,
+  },
+  comingSoonText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.primary,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 });

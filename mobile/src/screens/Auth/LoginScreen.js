@@ -2,9 +2,15 @@
 // LoginScreen — Warm Professionalism
 // Fix: removed KeyboardAvoidingView + Animated.View transforms
 // on Android to prevent keyboard bounce/flicker
+//
+// WIRING FIX (2026-08-21): OAuth Google/Facebook nối thật
+// — Gọi getOAuthConfig() lấy Client ID/App ID từ backend
+// — Dùng expo-auth-session để lấy access token
+// — Gọi loginWithOAuth() qua AuthContext (giống flow login())
+// — Nếu OAuth chưa cấu hình trên backend → hiện thông báo rõ ràng
 // ============================================================
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, Platform, Alert, ActivityIndicator, Animated
@@ -13,8 +19,13 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, TYPO } from '../../theme/colors';
-import { showComingSoon } from '../../utils/comingSoon';
+import { getOAuthConfig } from '../../api/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+// Hoàn thành auth session khi quay lại từ browser (bắt buộc cho OAuth)
+WebBrowser.maybeCompleteAuthSession();
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') {
@@ -27,12 +38,14 @@ const showAlert = (title, message) => {
 export default function LoginScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, loginWithOAuth } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [oauthConfig, setOauthConfig] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -43,6 +56,103 @@ export default function LoginScreen() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Lấy OAuth config từ backend (Client ID / App ID)
+  useEffect(() => {
+    getOAuthConfig()
+      .then(r => setOauthConfig(r.data))
+      .catch(() => setOauthConfig({ google: { enabled: false }, facebook: { enabled: false } }));
+  }, []);
+
+  // === GOOGLE OAUTH ===
+  const googleAuthConfig = useMemo(() => {
+    if (!oauthConfig?.google?.enabled || !oauthConfig?.google?.client_id) return null;
+    return {
+      clientId: oauthConfig.google.client_id,
+      scopes: ['openid', 'email', 'profile'],
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+    };
+  }, [oauthConfig?.google?.enabled, oauthConfig?.google?.client_id]);
+
+  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
+    googleAuthConfig,
+    {
+      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    }
+  );
+
+  // === FACEBOOK OAUTH ===
+  const fbAuthConfig = useMemo(() => {
+    if (!oauthConfig?.facebook?.enabled || !oauthConfig?.facebook?.app_id) return null;
+    return {
+      clientId: oauthConfig.facebook.app_id,
+      scopes: ['email', 'public_profile'],
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+    };
+  }, [oauthConfig?.facebook?.enabled, oauthConfig?.facebook?.app_id]);
+
+  const [fbRequest, fbResponse, fbPromptAsync] = AuthSession.useAuthRequest(
+    fbAuthConfig,
+    {
+      authorizationEndpoint: 'https://www.facebook.com/v18.0/dialog/oauth',
+      tokenEndpoint: 'https://graph.facebook.com/v18.0/oauth/access_token',
+    }
+  );
+
+  // Xử lý kết quả OAuth
+  const handleOAuthSuccess = useCallback(async (provider, accessToken) => {
+    if (!accessToken) {
+      showAlert('Lỗi', 'Không nhận được token từ ' + (provider === 'google' ? 'Google' : 'Facebook') + '.');
+      return;
+    }
+    setIsOAuthLoading(true);
+    try {
+      await loginWithOAuth(provider, accessToken);
+    } catch (error) {
+      const data = error.response?.data;
+      const msg = data?.error || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      showAlert('Đăng nhập thất bại', msg);
+    } finally {
+      setIsOAuthLoading(false);
+    }
+  }, [loginWithOAuth]);
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      handleOAuthSuccess('google', googleResponse.params?.access_token);
+    }
+  }, [googleResponse, handleOAuthSuccess]);
+
+  useEffect(() => {
+    if (fbResponse?.type === 'success') {
+      handleOAuthSuccess('facebook', fbResponse.params?.access_token);
+    }
+  }, [fbResponse, handleOAuthSuccess]);
+
+  const handleGoogleLogin = () => {
+    if (!oauthConfig?.google?.enabled) {
+      showAlert('Chưa cấu hình', 'Đăng nhập bằng Google chưa được kích hoạt trên hệ thống. Vui lòng sử dụng tên tài khoản và mật khẩu để đăng nhập.');
+      return;
+    }
+    if (!googleRequest) {
+      showAlert('Lỗi', 'Không thể khởi tạo đăng nhập Google. Vui lòng thử lại sau.');
+      return;
+    }
+    googlePromptAsync();
+  };
+
+  const handleFacebookLogin = () => {
+    if (!oauthConfig?.facebook?.enabled) {
+      showAlert('Chưa cấu hình', 'Đăng nhập bằng Facebook chưa được kích hoạt trên hệ thống. Vui lòng sử dụng tên tài khoản và mật khẩu để đăng nhập.');
+      return;
+    }
+    if (!fbRequest) {
+      showAlert('Lỗi', 'Không thể khởi tạo đăng nhập Facebook. Vui lòng thử lại sau.');
+      return;
+    }
+    fbPromptAsync();
+  };
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -159,20 +269,30 @@ export default function LoginScreen() {
 
       <View style={styles.socialRow}>
         <TouchableOpacity
-          style={styles.socialBtn}
-          onPress={() => showComingSoon('Đăng nhập bằng Google')}
+          style={[styles.socialBtn, isOAuthLoading && styles.socialBtnDisabled]}
+          onPress={handleGoogleLogin}
+          disabled={isOAuthLoading}
           activeOpacity={0.7}
         >
-          <Ionicons name="logo-google" size={20} color="#4285F4" />
-          <Text style={styles.socialBtnText}>Google</Text>
+          {isOAuthLoading ? (
+            <ActivityIndicator size="small" color="#4285F4" />
+          ) : (
+            <Ionicons name="logo-google" size={20} color="#4285F4" />
+          )}
+          <Text style={styles.socialBtnText}>{isOAuthLoading ? 'Đang xử lý...' : 'Google'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.socialBtn}
-          onPress={() => showComingSoon('Đăng nhập bằng Facebook')}
+          style={[styles.socialBtn, isOAuthLoading && styles.socialBtnDisabled]}
+          onPress={handleFacebookLogin}
+          disabled={isOAuthLoading}
           activeOpacity={0.7}
         >
-          <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-          <Text style={styles.socialBtnText}>Facebook</Text>
+          {isOAuthLoading ? (
+            <ActivityIndicator size="small" color="#1877F2" />
+          ) : (
+            <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+          )}
+          <Text style={styles.socialBtnText}>{isOAuthLoading ? 'Đang xử lý...' : 'Facebook'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -322,6 +442,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outlineVariant,
     borderRadius: 14,
     height: 48,
+  },
+  socialBtnDisabled: {
+    opacity: 0.5,
   },
   socialBtnText: {
     ...TYPO.body,

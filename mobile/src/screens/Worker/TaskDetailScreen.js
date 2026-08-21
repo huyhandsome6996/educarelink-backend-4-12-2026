@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Activi
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getTaskDetail, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import { getTaskModeration } from '../../api/moderation';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import { CATEGORY_ICONS, renderCategoryIcon, getCategoryIconByName } from '../../theme/categoryIcons';
 
@@ -27,6 +28,8 @@ export default function TaskDetailScreen() {
   const [applying, setApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
+  // WIRING FIX (2026-08-21): moderation info
+  const [moderationInfo, setModerationInfo] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +42,14 @@ export default function TaskDetailScreen() {
         const jobsRes = await getMyJobsAsWorker();
         const alreadyApplied = jobsRes.data.some(job => job.task === taskId);
         setHasApplied(alreadyApplied);
+
+        // WIRING FIX (2026-08-21): Fetch moderation info nếu task bị từ chối/chờ review
+        if (taskRes.data.moderation_status && taskRes.data.moderation_status !== 'approved') {
+          try {
+            const modRes = await getTaskModeration(taskId);
+            setModerationInfo(modRes.data);
+          } catch (e) { /* ignore */ }
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -135,6 +146,18 @@ export default function TaskDetailScreen() {
       </View>
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        {/* WIRING FIX (2026-08-21): Banner kiểm duyệt AI */}
+        {moderationInfo && moderationInfo.status !== 'approved' ? (
+          <View style={styles.moderationBanner}>
+            <Ionicons name="shield-outline" size={18} color={COLORS.warning} />
+            <Text style={styles.moderationText}>
+              {moderationInfo.status === 'rejected'
+                ? 'Việc này không vượt qua kiểm duyệt tự động. Lý do: ' + (moderationInfo.ai_verdict || 'Nội dung không phù hợp')
+                : 'Việc này đang chờ Admin xem xét lại.'}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.categoryTag}>
@@ -269,6 +292,23 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...TYPO.h4, color: COLORS.textPrimary, fontWeight: '800' },
   body: { flex: 1 },
+  // === MODERATION BANNER ===
+  moderationBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.warningBg,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+  },
+  moderationText: {
+    flex: 1,
+    ...TYPO.bodySmall,
+    color: COLORS.warning,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
   // === HERO ===
   hero: {
     backgroundColor: COLORS.surfaceAlt, padding: 24,
