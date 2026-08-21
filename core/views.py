@@ -1504,7 +1504,7 @@ class WorkerSubmitCredentialAPIView(APIView):
                 'certificate_photo': build_absolute_uri(request, submission.certificate_photo.url) if submission.certificate_photo else None,
                 'description': submission.description,
                 'status': submission.status,
-                'created_at': submission.created_at.strftime('%d/%m/%Y %H:%M'),
+                'created_at': submission.created_at.isoformat(),
             }
         }, status=status.HTTP_201_CREATED)
 
@@ -1523,8 +1523,8 @@ class WorkerSubmitCredentialAPIView(APIView):
                 'status': s.status,
                 'status_display': s.get_status_display(),
                 'admin_review': s.admin_review,
-                'reviewed_at': s.reviewed_at.strftime('%d/%m/%Y %H:%M') if s.reviewed_at else None,
-                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M'),
+                'reviewed_at': s.reviewed_at.isoformat() if s.reviewed_at else None,
+                'created_at': s.created_at.isoformat(),
             })
         return Response(data)
 
@@ -1873,7 +1873,7 @@ class WorkerProfileChangeRequestAPIView(APIView):
                 'id': change_request.id,
                 'proposed_changes': change_request.proposed_changes,
                 'status': change_request.status,
-                'created_at': change_request.created_at.strftime('%d/%m/%Y %H:%M'),
+                'created_at': change_request.created_at.isoformat(),
             }
         }, status=status.HTTP_201_CREATED)
 
@@ -1891,8 +1891,8 @@ class WorkerProfileChangeRequestAPIView(APIView):
                 'status': r.status,
                 'status_display': r.get_status_display(),
                 'admin_review': r.admin_review,
-                'reviewed_at': r.reviewed_at.strftime('%d/%m/%Y %H:%M') if r.reviewed_at else None,
-                'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+                'reviewed_at': r.reviewed_at.isoformat() if r.reviewed_at else None,
+                'created_at': r.created_at.isoformat(),
             })
         return Response(data)
 

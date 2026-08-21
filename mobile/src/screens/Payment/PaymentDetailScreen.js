@@ -36,7 +36,7 @@ function buildTimeline(payment) {
 
   timeline.push({
     label: 'Tạo giao dịch',
-    time: payment.created_at,
+    time: payment.initiated_at,
     status: 'done',
   });
 
@@ -51,11 +51,11 @@ function buildTimeline(payment) {
   if (s === 'completed' && payment.completed_at) {
     timeline.push({ label: 'Giao dịch hoàn tất', time: payment.completed_at, status: 'done' });
   } else if (s === 'cancelled') {
-    timeline.push({ label: 'Giao dịch đã huỷ', time: payment.updated_at, status: 'cancelled' });
+    timeline.push({ label: 'Giao dịch đã huỷ', time: payment.refunded_at, status: 'cancelled' });
   } else if (s === 'refunded') {
-    timeline.push({ label: 'Đã hoàn tiền', time: payment.updated_at, status: 'refunded' });
+    timeline.push({ label: 'Đã hoàn tiền', time: payment.refunded_at, status: 'refunded' });
   } else if (s === 'payout_failed') {
-    timeline.push({ label: 'Giải ngân thất bại', time: payment.updated_at, status: 'rejected' });
+    timeline.push({ label: 'Giải ngân thất bại', time: payment.refunded_at, status: 'rejected' });
   } else if (payment.held_at) {
     timeline.push({ label: 'Chờ hoàn thành việc để giải ngân', time: null, status: 'pending' });
   }
@@ -144,10 +144,10 @@ export default function PaymentDetailScreen() {
             <Text style={styles.infoLabel}>Phương thức</Text>
             <Text style={styles.infoValue}>{methodLabel}</Text>
           </View>
-          {payment.momo_transaction_id ? (
+          {payment.momo_order_id ? (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mã giao dịch MoMo</Text>
-              <Text style={[styles.infoValue, { fontSize: 12 }]} numberOfLines={1}>{payment.momo_transaction_id}</Text>
+              <Text style={[styles.infoValue, { fontSize: 12 }]} numberOfLines={1}>{payment.momo_order_id}</Text>
             </View>
           ) : null}
           {payment.payos_payment_link_id ? (
@@ -158,7 +158,7 @@ export default function PaymentDetailScreen() {
           ) : null}
           {payment.commission_amount ? (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Hoa hồng ({payment.commission_percent || 10}%)</Text>
+              <Text style={styles.infoLabel}>Hoa hồng ({payment.commission_rate || 10}%)</Text>
               <Text style={[styles.infoValue, { color: COLORS.warning }]}>{parseInt(payment.commission_amount).toLocaleString('vi-VN')}đ</Text>
             </View>
           ) : null}

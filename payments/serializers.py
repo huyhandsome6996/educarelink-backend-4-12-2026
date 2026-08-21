@@ -24,6 +24,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'payos_order_code', 'payos_checkout_url', 'payos_payment_link_id',
             'payos_status', 'payos_account_reference',
             'initiated_at', 'held_at', 'completed_at', 'refunded_at',
+            'updated_at',
         ]
         read_only_fields = [
             'parent', 'worker', 'amount', 'commission_rate', 'commission_amount',
@@ -33,6 +34,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'payos_order_code', 'payos_checkout_url', 'payos_payment_link_id',
             'payos_status', 'payos_account_reference',
             'initiated_at', 'held_at', 'completed_at', 'refunded_at',
+            'updated_at',
         ]
 
     def get_parent_full_name(self, obj):
