@@ -14,12 +14,12 @@
 // permission flow, 8 categories, AI moderation message
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useRef, useEffect} from 'react-native';
+  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { createTask } from '../../api/tasks';
+import { createTask, getPriceSuggestion } from '../../api/tasks';
 import {COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapPickerModal from '../../components/MapPickerModal';
@@ -29,15 +29,32 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
+// === A1: Category local → DB ServiceCategory ID mapping ===
+// Local CATEGORIES dùng id 1-8 để UI hoạt động (chip selection, submit).
+// DB ServiceCategory có thể khác thứ tự do get_or_create.
+// Mapping này dùng riêng cho getPriceSuggestion API (cần DB ID thật).
+// Lưu ý: id=7 ('Chuyển đồ') không tồn tại trong DB → map sang 'Hỗ trợ AI' (id thực tế tùy seed).
+// TODO: Tương lai fetch categories từ API thật thay vì hardcode.
+const DB_CATEGORY_IDS = {
+  1: 'Gia sư',
+  2: 'Đón trẻ',
+  3: 'Dọn dẹp nhà cửa',
+  4: 'Trông trẻ',
+  5: 'Mua sắm hộ',
+  6: 'Nấu ăn',
+  7: 'Hỗ trợ AI',
+  8: 'Khác',
+};
+
 const CATEGORIES = [
-  { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
-  { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
-  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
-  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
-  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
-  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
-  { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
-  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận' },
+  { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi', pricingType: 'hourly' },
+  { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần', pricingType: 'distance' },
+  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca', pricingType: 'hourly' },
+  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
+  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần', pricingType: 'fixed' },
+  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần', pricingType: 'hourly' },
+  { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần', pricingType: 'fixed' },
+  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận', pricingType: 'fixed' },
 ];
 
 export default function CreateTaskScreen() {
@@ -124,6 +141,78 @@ export default function CreateTaskScreen() {
   };
 
   const cat = CATEGORIES.find(c => c.id === selectedCat);
+
+  // === A1: Gợi ý giá tự động ===
+  const [priceSuggestion, setPriceSuggestion] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const priceDebounceRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const fetchPriceSuggestion = useCallback(async (categoryId) => {
+    setPriceLoading(true);
+    try {
+      if (abortRef.current) { try { abortRef.current.abort(); } catch(e) {} }
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const payload = { category_id: categoryId };
+      if (pickedCoords) {
+        payload.latitude = pickedCoords.latitude;
+        payload.longitude = pickedCoords.longitude;
+        // Cho distance: dùng fallback HCM center làm reference
+        payload.reference_latitude = 10.7626;
+        payload.reference_longitude = 106.6602;
+      }
+      if (cat?.pricingType === 'hourly') {
+        payload.estimated_duration_hours = 2;
+      }
+
+      const res = await getPriceSuggestion(payload);
+      setPriceSuggestion(res.data);
+    } catch (e) {
+      if (e.name !== 'AbortError' && e.name !== 'CanceledError') {
+        console.warn('[A1] Price suggestion error:', e?.message || e);
+        setPriceSuggestion(null);
+      }
+    } finally {
+      setPriceLoading(false);
+    }
+  }, [pickedCoords, cat?.pricingType]);
+
+  useEffect(() => {
+    if (!selectedCat) { setPriceSuggestion(null); return; }
+    if (priceDebounceRef.current) clearTimeout(priceDebounceRef.current);
+    priceDebounceRef.current = setTimeout(() => {
+      fetchPriceSuggestion(selectedCat);
+    }, 400);
+    return () => { if (priceDebounceRef.current) clearTimeout(priceDebounceRef.current); };
+  }, [selectedCat, pickedCoords, fetchPriceSuggestion]);
+
+  const applySuggestedPrice = () => {
+    if (priceSuggestion?.suggested_price) {
+      setPrice(String(priceSuggestion.suggested_price));
+      clearError('price');
+    }
+  };
+
+  const priceHintContent = (() => {
+    if (priceSuggestion) {
+      const { suggested_price, price_range, pricing_type, reason, message } = priceSuggestion;
+      if (message) return message;
+      if (reason) return reason;
+      if (suggested_price != null) {
+        let txt = `Gợi ý: ${suggested_price.toLocaleString('vi-VN')}đ`;
+        if (pricing_type === 'distance' && priceSuggestion.breakdown?.distance_km) {
+          txt += ` (${priceSuggestion.breakdown.distance_km}km)`;
+        } else if (pricing_type === 'hourly' && priceSuggestion.breakdown?.estimated_hours) {
+          txt += ` (${priceSuggestion.breakdown.estimated_hours}h)`;
+        }
+        return txt;
+      }
+      if (price_range) return `Khoảng: ${price_range.min.toLocaleString('vi-VN')}đ - ${price_range.max.toLocaleString('vi-VN')}đ`;
+    }
+    return cat?.hint || '';
+  })();
 
   const handleSubmit = async () => {
     // QA-FIX-UI 3.3: validate theo field, set errors state để hiển thị inline
@@ -274,12 +363,21 @@ export default function CreateTaskScreen() {
             ))}
           </View>
 
-          {/* Gợi ý giá */}
+          {/* Gợi ý giá (A1 — động) */}
           <View style={styles.priceHintBox}>
-            <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.priceHintText}>
-              Gợi ý mức giá cho {cat?.name}: {cat?.hint}
+            {priceLoading ? (
+              <ActivityIndicator size='small' color={COLORS.primary} />
+            ) : (
+              <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
+            )}
+            <Text style={styles.priceHintText} numberOfLines={2}>
+              {cat?.name ? `Gợi ý cho ${cat.name}: ` : ''}{priceHintContent}
             </Text>
+            {priceSuggestion?.suggested_price != null && !priceLoading && (
+              <TouchableOpacity onPress={applySuggestedPrice} style={styles.applyPriceBtn} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+                <Text style={styles.applyPriceBtnText}>Dùng giá gợi ý</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -808,6 +906,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     ...SHADOWS.large,
+  },
+  applyPriceBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  applyPriceBtnText: {
+    ...TYPO.caption,
+    color: COLORS.textOnPrimary,
+    fontWeight: '700',
   },
   submitText: {
     ...TYPO.h4,
