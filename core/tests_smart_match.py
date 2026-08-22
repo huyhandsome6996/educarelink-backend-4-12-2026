@@ -462,17 +462,81 @@ class RankingFairnessTests(TestCase):
             start_time=time(8, 0), end_time=time(18, 0),
         )
 
-    def _add_accepted_task(self, worker, scheduled_time):
+    def _add_accepted_task(self, worker, scheduled_time, task_status='in_progress'):
         """Tạo task + application accepted để tăng workload cho worker."""
         t = Task.objects.create(
             title='Việc cũ', description='d', price=100000,
             parent=self.parent, category=self.category,
             location='Q1', latitude=HCM_LAT, longitude=HCM_LNG,
-            scheduled_time=scheduled_time, status='in_progress',
+            scheduled_time=scheduled_time, status=task_status,
         )
         TaskApplication.objects.create(
             task=t, worker=worker, status='accepted',
         )
+
+    def test_completed_task_same_day_increases_workload_day(self):
+        """Worker có task đã completed cùng ngày → workload_day > 0,
+        không được xếp ngang ưu tiên với worker 0 việc."""
+        w_free = self._make_worker('w_free_completed')
+        w_done = self._make_worker('w_done_today')
+        self._add_availability(w_free)
+        self._add_availability(w_done)
+
+        # w_done hoàn thành 1 việc cùng ngày với task mới
+        same_day_dt = django_tz.make_aware(datetime(2026, 1, 6, 10, 0))
+        self._add_accepted_task(w_done, same_day_dt, task_status='completed')
+
+        result = find_smart_matches(self.task, radius_m=5000)
+        matches = {m['worker_id']: m for m in result['matches']}
+
+        # w_done phải có workload_day = 1, w_free = 0
+        self.assertEqual(matches[w_free.id]['workload_day'], 0)
+        self.assertEqual(matches[w_done.id]['workload_day'], 1)
+        # w_free phải xếp trên w_done
+        ids = [m['worker_id'] for m in result['matches']]
+        self.assertEqual(ids, [w_free.id, w_done.id],
+                         'Worker 0 việc phải xếp trên worker đã completed việc cùng ngày')
+
+    def test_completed_task_same_week_increases_workload_week(self):
+        """Worker có task đã completed trong cùng tuần (khác ngày) → workload_week > 0."""
+        w_free = self._make_worker('w_free_week')
+        w_done = self._make_worker('w_done_week')
+        self._add_availability(w_free)
+        self._add_availability(w_done)
+
+        # w_done hoàn thành 1 việc hôm Thứ Năm (cùng ISO week với Thứ Ba 2026-01-06)
+        # ISO week 2: Thứ Hai 05/01 → Chủ Nhật 11/01/2026
+        other_day_dt = django_tz.make_aware(datetime(2026, 1, 8, 10, 0))  # Thứ Năm
+        self._add_accepted_task(w_done, other_day_dt, task_status='completed')
+
+        result = find_smart_matches(self.task, radius_m=5000)
+        matches = {m['worker_id']: m for m in result['matches']}
+
+        # w_done phải có workload_week >= 1, w_free = 0
+        self.assertEqual(matches[w_free.id]['workload_week'], 0)
+        self.assertGreaterEqual(matches[w_done.id]['workload_week'], 1)
+        # Cùng workload_day (0), nhưng w_free có workload_week nhỏ hơn → xếp trên
+        ids = [m['worker_id'] for m in result['matches']]
+        self.assertEqual(ids[0], w_free.id,
+                         'Worker 0 việc tuần phải xếp trên worker đã completed việc trong tuần')
+
+    def test_cancelled_task_not_counted_in_workload(self):
+        """Task đã cancelled KHÔNG được tính vào workload — đảm bảo hành vi cũ."""
+        w_free = self._make_worker('w_free_cancel')
+        w_cancel = self._make_worker('w_cancel_task')
+        self._add_availability(w_free)
+        self._add_availability(w_cancel)
+
+        # w_cancel có task bị hủy cùng ngày
+        same_day_dt = django_tz.make_aware(datetime(2026, 1, 6, 10, 0))
+        self._add_accepted_task(w_cancel, same_day_dt, task_status='cancelled')
+
+        result = find_smart_matches(self.task, radius_m=5000)
+        matches = {m['worker_id']: m for m in result['matches']}
+
+        # Task cancelled không tính → cả hai đều workload_day = 0
+        self.assertEqual(matches[w_cancel.id]['workload_day'], 0)
+        self.assertEqual(matches[w_cancel.id]['workload_week'], 0)
 
     def test_zero_day_workload_ranked_above_one_plus(self):
         """Worker 0 việc hôm nay xếp trên worker có 1+ việc hôm nay."""
