@@ -83,26 +83,38 @@ class WorkerCareDiaryAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # 6. Tạo entry
+        # 6. Validate + tạo entry
+        try:
+            completion = services.parse_completion_percent(data.get('completion_percent', 0))
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
         entry = CareDiaryEntry.objects.create(
             task=task,
             worker=request.user,
             mood_icon=str(data.get('mood_icon', ''))[:30],
             mood_label=str(data.get('mood_label', ''))[:100],
             mood_note=str(data.get('mood_note', '')),
-            completion_percent=int(data.get('completion_percent', 0)),
+            completion_percent=completion,
             note=str(data.get('note', '')),
         )
 
         # 7. Tạo activities
+        VALID_STATUSES = dict(CareDiaryActivity.STATUS_CHOICES).keys()
         if activities_raw and isinstance(activities_raw, list):
             for idx, act in enumerate(activities_raw):
+                act_status = act.get('status', 'done')
+                if act_status not in VALID_STATUSES:
+                    return Response(
+                        {'error': f"Trạng thái hoạt động không hợp lệ: '{act_status}'. Giá trị cho phép: {', '.join(VALID_STATUSES)}."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 CareDiaryActivity.objects.create(
                     entry=entry,
                     time=str(act.get('time', ''))[:10],
                     title=str(act.get('title', ''))[:200],
                     description=str(act.get('description', '')),
-                    status=act.get('status', 'done'),
+                    status=act_status,
                     order=act.get('order', idx),
                 )
 
@@ -142,11 +154,17 @@ class WorkerCareDiaryAPIView(APIView):
             'mood_icon', 'mood_label', 'mood_note',
             'completion_percent', 'note',
         ]
+        FIELD_MAX_LENGTH = {'mood_icon': 30, 'mood_label': 100}
         for field in updatable_fields:
             if field in data:
                 val = data[field]
                 if field == 'completion_percent':
-                    val = int(val)
+                    try:
+                        val = services.parse_completion_percent(val)
+                    except ValueError as e:
+                        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                elif field in FIELD_MAX_LENGTH:
+                    val = str(val)[:FIELD_MAX_LENGTH[field]]
                 setattr(entry, field, str(val) if isinstance(val, str) else val)
         entry.save()
         # Replace activities nếu gửi lên
@@ -162,14 +180,21 @@ class WorkerCareDiaryAPIView(APIView):
                     )
             # Xoá cũ, tạo mới
             entry.activities.all().delete()
+            VALID_STATUSES = dict(CareDiaryActivity.STATUS_CHOICES).keys()
             if isinstance(activities_raw, list):
                 for idx, act in enumerate(activities_raw):
+                    act_status = act.get('status', 'done')
+                    if act_status not in VALID_STATUSES:
+                        return Response(
+                            {'error': f"Trạng thái hoạt động không hợp lệ: '{act_status}'. Giá trị cho phép: {', '.join(VALID_STATUSES)}."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                     CareDiaryActivity.objects.create(
                         entry=entry,
                         time=str(act.get('time', ''))[:10],
                         title=str(act.get('title', ''))[:200],
                         description=str(act.get('description', '')),
-                        status=act.get('status', 'done'),
+                        status=act_status,
                         order=act.get('order', idx),
                     )
 

@@ -255,7 +255,7 @@ export default function MyJobsScreen() {
         )}
 
         {/* === LIVE TRACKING UI === */}
-        {showTrackingUI && (
+        {showTrackingUI && app.task_status !== 'completed' && (
           <>
             {/* === B1 — NÚT GHI NHẬT KÝ CHĂM SÓC === */}
             <TouchableOpacity

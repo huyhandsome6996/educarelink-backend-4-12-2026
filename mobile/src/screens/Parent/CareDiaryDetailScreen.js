@@ -223,7 +223,7 @@ export default function CareDiaryDetailScreen() {
                   style={styles.attachmentBox}
                   onPress={() => {
                     if (att.url) {
-                      navigation.navigate('ImagePreview', { imageUrl: att.url });
+                      navigation.navigate('ImagePreview', { uri: att.url, title: 'Ảnh đính kèm nhật ký' });
                     }
                   }}
                   activeOpacity={0.85}

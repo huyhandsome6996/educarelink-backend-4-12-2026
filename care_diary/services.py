@@ -8,6 +8,8 @@ from django.core.exceptions import PermissionDenied
 
 from core.models import Task, TaskApplication
 
+from .models import CareDiaryActivity
+
 
 def _get_accepted_application(*, task_id, worker):
     """Lấy application đã accepted cho task+worker. Raise nếu không tìm thấy."""
@@ -43,15 +45,30 @@ def check_can_read(*, task, user):
     """Kiểm tra user được phép xem nhật ký.
 
     Raises:
-        PermissionError: user không phải parent chủ task hay worker chủ nhật ký.
+        PermissionError: user không phải parent chủ task hay worker accepted.
     """
     if task.parent_id == user.id:
         return  # parent chủ task
-    # Kiểm tra user là worker chủ nhật ký
-    entry = getattr(task, 'care_diary', None)
-    if entry and entry.worker_id == user.id:
-        return
+    # Kiểm tra user là worker đã được accepted trên task này
+    try:
+        TaskApplication.objects.get(
+            task_id=task.id, worker=user, status='accepted',
+        )
+        return  # worker accepted — có quyền xem (nếu chưa có entry thì trả 404 ở view)
+    except TaskApplication.DoesNotExist:
+        pass
     raise PermissionError('Bạn không có quyền xem nhật ký này.')
+
+
+def parse_completion_percent(raw):
+    """Parse + validate completion_percent (0-100). Raise ValueError nếu sai."""
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError('completion_percent phải là số nguyên.')
+    if val < 0 or val > 100:
+        raise ValueError('completion_percent phải nằm trong khoảng 0-100.')
+    return val
 
 
 def build_entry_response(*, entry, request=None):
