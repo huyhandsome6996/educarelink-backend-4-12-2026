@@ -292,3 +292,51 @@ class Notification(models.Model):
         if self.recipient:
             return f"Thông báo cho {self.recipient.username}: {self.title}"
         return f"Thông báo chung: {self.title}"
+
+
+# 11. BẢNG LỊCH RẢNH TUẦN CỦA CAREPARTNER (A2 — Ghép việc thông minh)
+# Mỗi CarePartner có thể khai báo các khung giờ rảnh lặp lại hàng tuần,
+# ví dụ Thứ 2 14:00–18:00. Hệ thống dùng để ghép việc phù hợp.
+class WorkerAvailability(models.Model):
+    WEEKDAY_CHOICES = (
+        (0, 'Thứ Hai'),
+        (1, 'Thứ Ba'),
+        (2, 'Thứ Tư'),
+        (3, 'Thứ Năm'),
+        (4, 'Thứ Sáu'),
+        (5, 'Thứ Bảy'),
+        (6, 'Chủ Nhật'),
+    )
+
+    worker = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='availability_windows',
+        help_text='CarePartner sở hữu khung giờ này'
+    )
+    weekday = models.IntegerField(choices=WEEKDAY_CHOICES, help_text='Thứ trong tuần (0=Thứ Hai, 6=Chủ Nhật)')
+    start_time = models.TimeField(help_text='Giờ bắt đầu (VD: 14:00)')
+    end_time = models.TimeField(help_text='Giờ kết thúc (VD: 18:00)')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Khung giờ rảnh'
+        verbose_name_plural = 'Khung giờ rảnh'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['worker', 'weekday', 'start_time', 'end_time'],
+                name='unique_availability_window',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['worker', 'weekday'], name='idx_worker_weekday'),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.start_time >= self.end_time:
+            raise ValidationError({
+                'end_time': 'Giờ kết thúc phải sau giờ bắt đầu.'
+            })
+
+    def __str__(self):
+        return f"{self.worker.username} — {self.get_weekday_display()} {self.start_time}–{self.end_time}"

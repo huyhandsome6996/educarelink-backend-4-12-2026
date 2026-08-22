@@ -70,6 +70,10 @@ import TrackingOverviewScreen from '../screens/Parent/TrackingOverviewScreen';
 import ComplaintScreen from '../screens/Worker/ComplaintScreen';
 import MyComplaintsScreen from '../screens/Worker/MyComplaintsScreen';
 
+// A2 — Smart Job Matching
+import WorkerAvailabilityScreen from '../screens/Worker/WorkerAvailabilityScreen';
+import SmartMatchesScreen from '../screens/Parent/SmartMatchesScreen';
+
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
 
@@ -216,6 +220,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ParentTabs" component={ParentTabs} />
             <Stack.Screen name="CreateTask" component={CreateTaskScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="Candidates" component={CandidatesScreen} />
+            <Stack.Screen name="SmartMatches" component={SmartMatchesScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
@@ -242,6 +247,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
+            <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />

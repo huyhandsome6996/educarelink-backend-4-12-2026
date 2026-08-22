@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification
+from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification, WorkerAvailability
 
 
 # 1. Dịch dữ liệu Người dùng (Dùng cho Đăng ký/Đăng nhập & Màn hình Hồ sơ)
@@ -112,3 +112,57 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = '__all__'
         read_only_fields = ['reviewer', 'reviewee']
+
+
+# 5. A2 — Khung giờ rảnh của CarePartner
+WEEKDAY_LABELS = {
+    0: 'Thứ Hai', 1: 'Thứ Ba', 2: 'Thứ Tư', 3: 'Thứ Năm',
+    4: 'Thứ Sáu', 5: 'Thứ Bảy', 6: 'Chủ Nhật',
+}
+
+
+class WorkerAvailabilitySerializer(serializers.ModelSerializer):
+    weekday_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WorkerAvailability
+        fields = ['id', 'weekday', 'weekday_display', 'start_time', 'end_time', 'created_at', 'updated_at']
+        read_only_fields = ['worker', 'created_at', 'updated_at']
+
+    def get_weekday_display(self, obj):
+        return obj.get_weekday_display()
+
+    def validate_start_time(self, value):
+        end = self.initial_data.get('end_time')
+        if end and value >= serializers.TimeField().to_internal_value(end):
+            raise serializers.ValidationError('Giờ kết thúc phải sau giờ bắt đầu.')
+        return value
+
+    def validate(self, attrs):
+        if attrs.get('start_time') and attrs.get('end_time'):
+            if attrs['start_time'] >= attrs['end_time']:
+                raise serializers.ValidationError({'end_time': 'Giờ kết thúc phải sau giờ bắt đầu.'})
+
+        # Kiểm tra overlapping (chỉ khi create hoặc đổi weekday/time)
+        request = self.context.get('request')
+        if request and request.user:
+            qs = WorkerAvailability.objects.filter(
+                worker=request.user,
+                weekday=attrs.get('weekday', getattr(self.instance, 'weekday', None)),
+            )
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            st = attrs.get('start_time', getattr(self.instance, 'start_time', None))
+            et = attrs.get('end_time', getattr(self.instance, 'end_time', None))
+            if st and et:
+                # Overlap: new_start < existing_end AND new_end > existing_start
+                overlap = qs.filter(
+                    start_time__lt=et,
+                    end_time__gt=st,
+                )
+                if overlap.exists():
+                    raise serializers.ValidationError(
+                        'Khung giờ này bị trùng với một khung giờ đã khai báo. Vui lòng chỉnh sửa hoặc xoá khung cũ.'
+                    )
+        return attrs

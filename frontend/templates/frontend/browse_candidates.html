@@ -87,6 +87,26 @@
             50% { opacity: 0.7; }
         }
         .pending-pulse { animation: softPulse 2s ease-in-out infinite; }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(0,0,0,0.1);
+            border-top-color: #F26522;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Smart match rank badge */
+        .rank-badge { min-width: 28px; min-height: 28px; }
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #78350f; }
+        .rank-2 { background: linear-gradient(135deg, #d1d5db, #9ca3af); color: #1f2937; }
+        .rank-3 { background: linear-gradient(135deg, #f97316, #ea580c); color: #7c2d12; }
+        .rank-default { background: #f3f4f6; color: #6b7280; }
     </style>
 </head>
 
@@ -326,6 +346,65 @@
                         Thử lại
                     </button>
                 </div>
+            </div>
+        </section>
+
+        <!-- =============================== -->
+        <!-- SMART MATCHES SECTION            -->
+        <!-- =============================== -->
+        <section id="smart-matches-section" class="hidden">
+            <!-- Collapsible header -->
+            <div id="smart-matches-header" onclick="toggleSmartMatches()"
+                 class="cursor-pointer bg-gradient-to-br from-purple-50 via-white to-blue-50 rounded-2xl p-5 border border-blue-200 flex items-center justify-between hover:shadow-md transition-shadow active:scale-[0.99]">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-headline font-bold text-base text-textPrimary">Gợi ý CarePartner thông minh</h3>
+                        <p class="text-xs text-textSecondary mt-0.5">AI tìm kiếm CarePartner phù hợp nhất cho việc của bạn</p>
+                    </div>
+                </div>
+                <span id="smart-matches-chevron" class="material-symbols-outlined text-textSecondary text-xl transition-transform duration-200 flex-shrink-0 ml-2">expand_more</span>
+            </div>
+
+            <!-- Collapsible body -->
+            <div id="smart-matches-body" class="hidden mt-3">
+                <!-- Status message (for non-open / already accepted tasks) -->
+                <div id="smart-matches-not-needed" class="hidden bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
+                    <span class="material-symbols-outlined text-textSecondary text-3xl block mb-2">check_circle</span>
+                    <p id="smart-matches-not-needed-text" class="text-sm text-textSecondary"></p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="smart-matches-loading" class="hidden bg-white rounded-xl p-8 text-center border border-gray-100">
+                    <div class="spinner mx-auto mb-3" style="width: 32px; height: 32px; border-width: 3px;"></div>
+                    <p class="text-sm text-textSecondary">Đang tìm CarePartner phù hợp nhất...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="smart-matches-error" class="hidden bg-red-50 rounded-xl p-5 text-center border border-red-100">
+                    <span class="material-symbols-outlined text-error text-3xl block mb-2">cloud_off</span>
+                    <p class="text-sm text-textSecondary mb-3">Không thể tải gợi ý. Vui lòng thử lại.</p>
+                    <button onclick="loadSmartMatches()" class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                        <span class="material-symbols-outlined text-base">refresh</span>
+                        Thử lại
+                    </button>
+                </div>
+
+                <!-- No matches state -->
+                <div id="smart-matches-empty" class="hidden bg-white rounded-xl p-8 text-center border border-gray-100">
+                    <span class="material-symbols-outlined text-textSecondary text-3xl block mb-2">search_off</span>
+                    <p id="smart-matches-empty-text" class="text-sm text-textSecondary">Chưa tìm thấy CarePartner phù hợp. Hãy thử lại sau!</p>
+                </div>
+
+                <!-- Matches list -->
+                <div id="smart-matches-list" class="hidden space-y-3"></div>
+
+                <!-- Disclaimer -->
+                <p id="smart-matches-disclaimer" class="hidden text-xs text-textMuted mt-3 italic px-1">
+                    * Gợi ý AI chỉ mang tính tham khảo. Quyền quyết định cuối cùng thuộc về bạn.
+                </p>
             </div>
         </section>
 
@@ -954,6 +1033,216 @@ async function loadAIInsights(forceRefresh = false) {
     }
 }
 
+// ==================== SMART MATCHES (Feature A2) ====================
+let smartMatchesExpanded = false;
+let smartMatchesLoaded = false;
+
+function toggleSmartMatches() {
+    const body = document.getElementById('smart-matches-body');
+    const chevron = document.getElementById('smart-matches-chevron');
+    smartMatchesExpanded = !smartMatchesExpanded;
+
+    if (smartMatchesExpanded) {
+        body.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+        // Load data on first expand
+        if (!smartMatchesLoaded) {
+            loadSmartMatches();
+        }
+    } else {
+        body.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+function getRankClass(rank) {
+    if (rank === 1) return 'rank-1';
+    if (rank === 2) return 'rank-2';
+    if (rank === 3) return 'rank-3';
+    return 'rank-default';
+}
+
+function renderSmartMatches(matches) {
+    const listEl = document.getElementById('smart-matches-list');
+    const emptyEl = document.getElementById('smart-matches-empty');
+    const emptyText = document.getElementById('smart-matches-empty-text');
+    const disclaimerEl = document.getElementById('smart-matches-disclaimer');
+
+    hideAllSmartMatchStates();
+
+    if (!matches || matches.length === 0) {
+        emptyEl.classList.remove('hidden');
+        // Use API-provided message or default
+        if (typeof smartMatchesEmptyMsg === 'string' && smartMatchesEmptyMsg) {
+            emptyText.textContent = smartMatchesEmptyMsg;
+        }
+        return;
+    }
+
+    listEl.classList.remove('hidden');
+    disclaimerEl.classList.remove('hidden');
+
+    listEl.innerHTML = matches.map((m, idx) => {
+        const rank = m.rank || (idx + 1);
+        const rankCls = getRankClass(rank);
+        const displayName = m.display_name || m.name || 'CarePartner';
+        const avatarSrc = m.avatar
+            ? escapeHtml(m.avatar)
+            : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=F26522&color=fff&size=128';
+        const workerId = m.worker_id || m.id || '';
+
+        // Distance
+        let distanceHtml = '';
+        if (m.distance_km != null) {
+            const distLabel = typeof m.distance_km === 'number'
+                ? m.distance_km < 1
+                    ? Math.round(m.distance_km * 1000) + ' m'
+                    : m.distance_km.toFixed(1) + ' km'
+                : escapeHtml(String(m.distance_km));
+            distanceHtml = `
+                <div class="flex items-center gap-1.5 text-xs text-blue-600">
+                    <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">straight</span>
+                    <span class="font-medium">${distLabel}</span>
+                </div>`;
+        }
+
+        // Availability window
+        let availHtml = '';
+        if (m.availability_window) {
+            availHtml = `
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600">
+                    <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                    <span>${escapeHtml(m.availability_window)}</span>
+                </div>`;
+        }
+
+        // Workload info
+        let workloadHtml = '';
+        if (m.workload_info) {
+            workloadHtml = `
+                <div class="flex items-center gap-1.5 text-xs text-textSecondary">
+                    <span class="material-symbols-outlined text-sm">work</span>
+                    <span>${escapeHtml(m.workload_info)}</span>
+                </div>`;
+        }
+
+        // Rank reason
+        let reasonHtml = '';
+        if (m.rank_reason) {
+            reasonHtml = `
+                <div class="flex items-start gap-1.5 text-xs text-textSecondary mt-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <span class="material-symbols-outlined text-sm mt-0.5 text-primary flex-shrink-0">tips_and_updates</span>
+                    <span>${escapeHtml(m.rank_reason)}</span>
+                </div>`;
+        }
+
+        return `
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-[0_8px_25px_rgba(242,101,34,0.08)] hover:-translate-y-0.5 transition-all duration-200">
+            <div class="flex items-start gap-3">
+                <!-- Rank badge -->
+                <div class="rank-badge w-8 h-8 rounded-full flex items-center justify-center font-headline font-extrabold text-sm flex-shrink-0 ${rankCls}">
+                    ${rank <= 3 ? '#' + rank : rank}
+                </div>
+
+                <!-- Avatar -->
+                <div class="w-12 h-12 rounded-full overflow-hidden ring-2 ring-primary/10 flex-shrink-0">
+                    <img alt="" class="w-full h-full object-cover"
+                         src="${avatarSrc}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=U&background=F26522&color=fff'"/>
+                </div>
+
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-headline font-bold text-sm text-textPrimary truncate">${escapeHtml(displayName)}</h4>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1.5 mt-1.5">
+                        ${distanceHtml}
+                        ${availHtml}
+                        ${workloadHtml}
+                    </div>
+                    ${reasonHtml}
+                </div>
+
+                <!-- View profile button -->
+                <a href="{% url 'frontend:worker_profile' %}?worker_id=${workerId}"
+                   class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-textSecondary font-semibold text-xs hover:bg-gray-50 hover:text-primary hover:border-primary/20 transition-all duration-200">
+                    <span class="material-symbols-outlined text-base">person</span>
+                    <span class="hidden sm:inline">Xem hồ sơ</span>
+                </a>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function hideAllSmartMatchStates() {
+    document.getElementById('smart-matches-loading').classList.add('hidden');
+    document.getElementById('smart-matches-error').classList.add('hidden');
+    document.getElementById('smart-matches-empty').classList.add('hidden');
+    document.getElementById('smart-matches-list').classList.add('hidden');
+    document.getElementById('smart-matches-not-needed').classList.add('hidden');
+    document.getElementById('smart-matches-disclaimer').classList.add('hidden');
+}
+
+let smartMatchesEmptyMsg = '';
+
+async function loadSmartMatches() {
+    if (!currentTask) return;
+
+    hideAllSmartMatchStates();
+    document.getElementById('smart-matches-loading').classList.remove('hidden');
+
+    // Check if task already has accepted candidates or status != 'open'
+    if (currentTask.status && currentTask.status !== 'open') {
+        document.getElementById('smart-matches-loading').classList.add('hidden');
+        const notNeededEl = document.getElementById('smart-matches-not-needed');
+        const notNeededText = document.getElementById('smart-matches-not-needed-text');
+
+        const statusLabels = {
+            in_progress: 'Việc này đang được thực hiện.',
+            completed: 'Việc này đã hoàn thành.',
+            cancelled: 'Việc này đã bị hủy.'
+        };
+        notNeededText.textContent = statusLabels[currentTask.status] || 'Việc này không ở trạng thái mở nên không cần gợi ý thêm.';
+        notNeededEl.classList.remove('hidden');
+        smartMatchesLoaded = true;
+        return;
+    }
+
+    // Check if task already has accepted candidates
+    const hasAccepted = candidatesList && candidatesList.some(c => c.status === 'accepted');
+    if (hasAccepted) {
+        document.getElementById('smart-matches-loading').classList.add('hidden');
+        const notNeededEl = document.getElementById('smart-matches-not-needed');
+        const notNeededText = document.getElementById('smart-matches-not-needed-text');
+        notNeededText.textContent = 'Việc này đã có CarePartner được chấp nhận. Không cần gợi ý thêm.';
+        notNeededEl.classList.remove('hidden');
+        smartMatchesLoaded = true;
+        return;
+    }
+
+    try {
+        const resp = await apiFetch(API_BASE + '/parent/tasks/' + taskId + '/smart-matches/');
+
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            throw new Error(errData.error || errData.message || 'Lỗi server');
+        }
+
+        const data = await resp.json();
+        smartMatchesLoaded = true;
+        document.getElementById('smart-matches-loading').classList.add('hidden');
+
+        const matches = data.matches || data.results || data.recommendations || [];
+        smartMatchesEmptyMsg = data.message || data.detail || '';
+
+        renderSmartMatches(matches);
+
+    } catch (e) {
+        console.error('Smart matches error:', e);
+        document.getElementById('smart-matches-loading').classList.add('hidden');
+        document.getElementById('smart-matches-error').classList.remove('hidden');
+    }
+}
+
 // ==================== INIT ====================
 async function init() {
     try {
@@ -1006,6 +1295,9 @@ async function init() {
 
         // Fetch candidates
         await fetchCandidates();
+
+        // Show smart matches section
+        document.getElementById('smart-matches-section').classList.remove('hidden');
 
     } catch (e) {
         console.error('Init error:', e);

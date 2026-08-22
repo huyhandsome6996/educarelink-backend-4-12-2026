@@ -21,6 +21,7 @@ urlpatterns = [
     path('worker/task-detail/', TaskDetailView.as_view(), name='task_detail'),
     path('worker/my-jobs/', WorkerJobsView.as_view(), name='worker_jobs'),
     path('worker/profile/', WorkerProfileView.as_view(), name='worker_profile'),
+    path('worker/availability/', WorkerAvailabilityView.as_view(), name='worker_availability'),
     path('worker/chatbot/', WorkerChatbotView.as_view(), name='worker_chatbot'),
     path('worker/help-center/', HelpCenterView.as_view(), name='help_center'),
     path('parent/tracking/', LiveTrackingView.as_view(), name='live_tracking'),
