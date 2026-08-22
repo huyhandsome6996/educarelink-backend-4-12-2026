@@ -602,3 +602,11 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
   kiến trúc scheduler đổi sang Render Cron Job — cần cấu hình tay copy
   SECRET_KEY + DATABASE_URL từ web service sang Cron Job. Xem QA_FIX_7_HANDOFF.md
   phần "Quy trình deploy an toàn 5 bước".
+
+---
+
+## A2 — Ghép việc thông minh theo lịch rảnh CarePartner (2026-08-22)
+
+- Merged feature/a2-smart-availability vào main (merge commit de4f4d1)
+- QA passed: 225/225 tests, web+mobile+backend đồng bộ
+- Remote branch feature/a2-smart-availability đã xoá
