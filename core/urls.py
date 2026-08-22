@@ -23,6 +23,9 @@ from .views import (
     CategoryListAPIView,
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
+    # A2
+    WorkerAvailabilityListCreateAPIView, WorkerAvailabilityDetailAPIView,
+    SmartMatchAPIView,
 )
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
@@ -113,4 +116,10 @@ urlpatterns = [
 
     # Keep-Alive Scheduler Stats (xem trạng thái tự ping)
     path('admin/keepalive-stats/', KeepAliveStatsAPIView.as_view(), name='keepalive-stats'),
+
+    # A2 — Lịch rảnh CarePartner
+    path('worker/availability/', WorkerAvailabilityListCreateAPIView.as_view(), name='worker-availability-list'),
+    path('worker/availability/<int:pk>/', WorkerAvailabilityDetailAPIView.as_view(), name='worker-availability-detail'),
+    # A2 — Gợi ý CarePartner cho parent
+    path('parent/tasks/<int:task_id>/smart-matches/', SmartMatchAPIView.as_view(), name='smart-matches'),
 ]

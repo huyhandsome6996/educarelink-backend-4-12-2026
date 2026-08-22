@@ -63,6 +63,7 @@ export default function WorkerProfileScreen() {
     { icon: 'wallet-outline', label: 'Thu nhập của tôi', color: COLORS.success, action: 'view_earnings' },
     // QA-FIX-GAP-4: Entry point vào WorkerScreeningStatus (Nhóm B)
     { icon: 'shield-checkmark-outline', label: 'Trạng thái thẩm định hồ sơ', color: COLORS.primary, action: 'view_screening_status' },
+    { icon: 'calendar-outline', label: 'Khung giờ rảnh', color: COLORS.primary, action: 'view_availability' },
     { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
     { icon: 'documents-outline', label: 'Khiếu nại của tôi', color: COLORS.error, action: 'view_my_complaints' },
     { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
@@ -147,6 +148,8 @@ export default function WorkerProfileScreen() {
     } else if (action === 'view_screening_status') {
       // QA-FIX-GAP-4: Entry point vào WorkerScreeningStatus (Nhóm B)
       navigation.navigate('WorkerScreeningStatus');
+    } else if (action === 'view_availability') {
+      navigation.navigate('WorkerAvailability');
     } else if (action === 'view_my_complaints') {
       navigation.navigate('MyComplaints');
     } else if (action === 'help_center') {

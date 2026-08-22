@@ -1,0 +1,875 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>Quản lý lịch rảnh - EduCareLink</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+
+        /* Custom scrollbar for main content */
+        .main-scroll::-webkit-scrollbar { width: 6px; }
+        .main-scroll::-webkit-scrollbar-track { background: transparent; }
+        .main-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 6px; }
+
+        /* Toast animation */
+        @keyframes toast-in {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes toast-out {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-20px); opacity: 0; }
+        }
+        .toast-enter { animation: toast-in 0.3s ease-out forwards; }
+        .toast-exit { animation: toast-out 0.3s ease-in forwards; }
+
+        /* Modal animation */
+        @keyframes modal-bg-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes modal-content-in {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .modal-bg-enter { animation: modal-bg-in 0.2s ease-out forwards; }
+        .modal-content-enter { animation: modal-content-in 0.3s ease-out forwards; }
+
+        /* Sidebar nav item hover */
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { background: rgba(242, 101, 34, 0.08); }
+        .nav-item.active { background: rgba(242, 101, 34, 0.12); color: #F26522; }
+        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+
+        /* Skeleton loading */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(0,0,0,0.1);
+            border-top-color: #F26522;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Window card hover */
+        .window-card { transition: all 0.2s ease; }
+        .window-card:hover { box-shadow: 0 4px 15px rgba(242, 101, 34, 0.08); }
+
+        /* Bottom nav for mobile */
+        @media (max-width: 767px) {
+            .sidebar { display: none !important; }
+            .main-area { margin-left: 0 !important; }
+            .mobile-bottom-nav { display: flex !important; }
+        }
+        @media (min-width: 768px) {
+            .mobile-bottom-nav { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-bg text-textPrimary antialiased">
+
+    <!-- ========== TOAST CONTAINER ========== -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="max-width: 400px;"></div>
+
+    <!-- ========== CONFIRM MODAL ========== -->
+    <div id="confirm-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center p-4">
+        <div id="confirm-modal-bg" class="absolute inset-0 bg-black/40 modal-bg-enter" onclick="closeConfirmModal(false)"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-content-enter">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-error text-2xl filled">delete</span>
+                </div>
+                <div>
+                    <h3 id="confirm-title" class="font-manrope font-bold text-lg text-textPrimary">Xác nhận</h3>
+                    <p id="confirm-message" class="text-textSecondary text-sm mt-0.5">Bạn có chắc chắn?</p>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeConfirmModal(false)" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
+                    Hủy bỏ
+                </button>
+                <button onclick="closeConfirmModal(true)" class="flex-1 px-4 py-2.5 rounded-xl bg-error text-white font-semibold text-sm hover:bg-red-600 transition-all duration-200">
+                    Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SIDEBAR (Desktop) ========== -->
+    <aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
+        <!-- Logo -->
+        <div class="px-6 py-6 border-b border-gray-50">
+            <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
+                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+                <div>
+                    <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 sidebar-scroll overflow-y-auto">
+            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{% url 'frontend:worker_feed' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">search</span>
+                        Tìm việc
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:worker_jobs' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">assignment</span>
+                        Việc của tôi
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:worker_profile' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">person</span>
+                        Hồ sơ
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:worker_availability' %}" class="nav-item active flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold">
+                        <span class="material-symbols-outlined text-xl">schedule</span>
+                        Lịch rảnh
+                    </a>
+                </li>
+                <li>
+                    <a href="/onboarding/worker/" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">help</span>
+                        Hướng dẫn
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:help_center' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">help_center</span>
+                        Trung tâm trợ giúp
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- User section at bottom -->
+        <div class="px-4 py-4 border-t border-gray-100">
+            <div class="flex items-center gap-3 px-2">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
+                    <img id="sidebar-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
+                    <p class="text-xs text-textSecondary">Carepartner</p>
+                </div>
+                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
+                    <span class="material-symbols-outlined text-xl">logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="main-area md:ml-[260px] min-h-screen pb-24 md:pb-8">
+        <!-- Top header bar -->
+        <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
+            <div class="max-w-4xl mx-auto px-4 md:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <!-- Mobile logo -->
+                        <div class="md:hidden w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white text-lg filled" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        </div>
+                        <div>
+                            <h1 class="font-manrope font-extrabold text-2xl text-textPrimary">Lịch rảnh</h1>
+                            <p class="text-sm text-textSecondary mt-0.5">Quản lý khung giờ bạn có thể nhận việc</p>
+                        </div>
+                    </div>
+                    <button id="btn-add-window" onclick="toggleAddForm()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                        <span class="material-symbols-outlined text-lg">add</span>
+                        <span class="hidden sm:inline">Thêm khung giờ</span>
+                        <span class="sm:hidden">Thêm</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
+
+            <!-- ========== INFO BANNER ========== -->
+            <div class="bg-primaryLight/50 border border-primary/10 rounded-2xl p-4 flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: 'FILL' 1;">info</span>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-sm text-textPrimary mb-0.5">Tại sao cần cập nhật lịch rảnh?</h3>
+                    <p class="text-xs text-textSecondary leading-relaxed">
+                        Phụ huynh sẽ dễ dàng tìm thấy bạn khi khung giờ của bạn khớp với lịch họ cần. Hãy cập nhật thường xuyên để nhận nhiều việc hơn!
+                    </p>
+                </div>
+            </div>
+
+            <!-- ========== ADD / EDIT FORM (inline, hidden by default) ========== -->
+            <div id="add-form-section" class="hidden">
+                <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 id="form-title" class="font-manrope font-bold text-lg text-textPrimary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-xl">add_circle</span>
+                            Thêm khung giờ mới
+                        </h3>
+                        <button onclick="toggleAddForm()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-textSecondary hover:text-textPrimary transition-all duration-200">
+                            <span class="material-symbols-outlined text-xl">close</span>
+                        </button>
+                    </div>
+
+                    <form id="availability-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                        <input type="hidden" id="edit-window-id" value="">
+
+                        <!-- Weekday select -->
+                        <div>
+                            <label for="form-weekday" class="block text-sm font-semibold text-textPrimary mb-1.5">Thứ trong tuần</label>
+                            <select id="form-weekday" required
+                                class="w-full bg-bg text-textPrimary px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium text-sm transition-all">
+                                <option value="">-- Chọn ngày --</option>
+                                <option value="1">Thứ Hai</option>
+                                <option value="2">Thứ Ba</option>
+                                <option value="3">Thứ Tư</option>
+                                <option value="4">Thứ Năm</option>
+                                <option value="5">Thứ Sáu</option>
+                                <option value="6">Thứ Bảy</option>
+                                <option value="0">Chủ Nhật</option>
+                            </select>
+                        </div>
+
+                        <!-- Time range -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="form-start" class="block text-sm font-semibold text-textPrimary mb-1.5">Giờ bắt đầu</label>
+                                <input type="time" id="form-start" required
+                                    class="w-full bg-bg text-textPrimary px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium text-sm transition-all"/>
+                            </div>
+                            <div>
+                                <label for="form-end" class="block text-sm font-semibold text-textPrimary mb-1.5">Giờ kết thúc</label>
+                                <input type="time" id="form-end" required
+                                    class="w-full bg-bg text-textPrimary px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium text-sm transition-all"/>
+                            </div>
+                        </div>
+
+                        <!-- Local validation error -->
+                        <div id="form-error" class="hidden text-error text-sm font-medium flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-base">error</span>
+                            <span id="form-error-text"></span>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="toggleAddForm()" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
+                                Hủy bỏ
+                            </button>
+                            <button id="form-submit-btn" type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 shadow-sm shadow-primary/20 flex items-center justify-center gap-2">
+                                <span id="form-submit-text">Thêm khung giờ</span>
+                                <div id="form-submit-spinner" class="spinner hidden"></div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ========== LOADING STATE ========== -->
+            <div id="loading-state" class="space-y-4">
+                <div class="skeleton h-5 w-32 rounded-lg mb-4"></div>
+                <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="skeleton w-14 h-14 rounded-xl flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="skeleton h-5 w-28 rounded-lg"></div>
+                            <div class="skeleton h-4 w-48 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="skeleton w-14 h-14 rounded-xl flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="skeleton h-5 w-32 rounded-lg"></div>
+                            <div class="skeleton h-4 w-40 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="skeleton w-14 h-14 rounded-xl flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="skeleton h-5 w-24 rounded-lg"></div>
+                            <div class="skeleton h-4 w-44 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== ERROR STATE ========== -->
+            <div id="error-state" class="hidden">
+                <div class="bg-white rounded-2xl p-10 border border-gray-100 text-center">
+                    <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                        <span class="material-symbols-outlined text-error text-4xl">cloud_off</span>
+                    </div>
+                    <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Không thể tải dữ liệu</h3>
+                    <p class="text-textSecondary text-sm mb-5">Vui lòng kiểm tra kết nối mạng và thử lại</p>
+                    <button onclick="loadAvailability()" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-primaryDark transition-all duration-200">
+                        <span class="material-symbols-outlined text-lg">refresh</span>
+                        Thử lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========== AVAILABILITY WINDOWS LIST ========== -->
+            <div id="availability-list" class="hidden space-y-6">
+                <!-- Will be populated by renderAvailability() -->
+            </div>
+
+            <!-- ========== EMPTY STATE ========== -->
+            <div id="empty-state" class="hidden">
+                <div class="bg-white rounded-2xl p-10 border border-dashed border-gray-200 text-center">
+                    <div class="w-20 h-20 rounded-full bg-primaryLight flex items-center justify-center mx-auto mb-4">
+                        <span class="material-symbols-outlined text-primary text-4xl filled" style="font-variation-settings: 'FILL' 1;">event_available</span>
+                    </div>
+                    <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Chưa có khung giờ nào</h3>
+                    <p class="text-textSecondary text-sm mb-6 max-w-sm mx-auto">
+                        Bạn chưa thiết lập lịch rảnh. Hãy thêm khung giờ để phụ huynh dễ dàng tìm thấy bạn!
+                    </p>
+                    <button onclick="toggleAddForm()" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-primaryDark transition-all duration-200 shadow-sm shadow-primary/20">
+                        <span class="material-symbols-outlined text-lg">add</span>
+                        Thêm khung giờ đầu tiên
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ========== MOBILE BOTTOM NAV ========== -->
+    <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 shadow-lg" style="display: none;">
+        <div class="flex justify-around items-center px-2 pt-2 pb-6">
+            <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center justify-center px-4 py-2 rounded-xl text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">search</span>
+                <span class="text-[11px] font-semibold mt-1">Tìm việc</span>
+            </a>
+            <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">assignment</span>
+                <span class="text-[11px] font-semibold mt-1">Việc của tôi</span>
+            </a>
+            <a href="{% url 'frontend:worker_availability' %}" class="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-primaryLight text-primary transition-all">
+                <span class="material-symbols-outlined text-2xl filled" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                <span class="text-[11px] font-bold mt-1">Lịch rảnh</span>
+            </a>
+            <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
+                <span class="material-symbols-outlined text-2xl">person</span>
+                <span class="text-[11px] font-semibold mt-1">Hồ sơ</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        const API_BASE = "/api";
+        const LOGIN_URL = "{% url 'frontend:login' %}";
+
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = LOGIN_URL;
+                return new Response(null, { status: 401 });
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return new Response(null, { status: 401 });
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
+                        return new Response(null, { status: 401 });
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = LOGIN_URL;
+                    return new Response(null, { status: 401 });
+                }
+            }
+            return response;
+        }
+
+        // Auth check
+        if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
+
+        // ===== GLOBAL STATE =====
+        let allWindows = [];
+        let confirmResolve = null;
+
+        // ===== WEEKDAY MAP =====
+        const WEEKDAY_NAMES = {
+            1: 'Thứ Hai',
+            2: 'Thứ Ba',
+            3: 'Thứ Tư',
+            4: 'Thứ Năm',
+            5: 'Thứ Sáu',
+            6: 'Thứ Bảy',
+            0: 'Chủ Nhật'
+        };
+
+        const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+        const WEEKDAY_ICONS = {
+            1: 'looks_one',
+            2: 'looks_two',
+            3: 'looks_3',
+            4: 'looks_4',
+            5: 'looks_5',
+            6: 'looks_6',
+            0: 'event'
+        };
+
+        const WEEKDAY_COLORS = {
+            1: 'bg-blue-50 text-blue-600 border-blue-100',
+            2: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+            3: 'bg-amber-50 text-amber-600 border-amber-100',
+            4: 'bg-purple-50 text-purple-600 border-purple-100',
+            5: 'bg-pink-50 text-pink-600 border-pink-100',
+            6: 'bg-teal-50 text-teal-600 border-teal-100',
+            0: 'bg-orange-50 text-orange-600 border-orange-100'
+        };
+
+        // ===== ESCAPE HTML =====
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ===== TOAST SYSTEM =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const icons = {
+                success: 'check_circle',
+                error: 'error',
+                info: 'info',
+                warning: 'warning'
+            };
+            const colors = {
+                success: 'bg-emerald-500',
+                error: 'bg-red-500',
+                info: 'bg-primary',
+                warning: 'bg-amber-500'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-white text-sm font-medium toast-enter ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-xl filled" style="font-variation-settings: 'FILL' 1;">${icons[type] || icons.info}</span>
+                <span class="flex-1">${escapeHtml(message)}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ===== CONFIRM MODAL =====
+        function showConfirmModal(title, message) {
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+                const titleEl = document.getElementById('confirm-title');
+                const msgEl = document.getElementById('confirm-message');
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                const modal = document.getElementById('confirm-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+        }
+
+        function closeConfirmModal(result) {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+
+        // ===== TOGGLE ADD/EDIT FORM =====
+        function toggleAddForm() {
+            const section = document.getElementById('add-form-section');
+            const isHidden = section.classList.contains('hidden');
+
+            if (isHidden) {
+                section.classList.remove('hidden');
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                section.classList.add('hidden');
+                resetForm();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('availability-form').reset();
+            document.getElementById('edit-window-id').value = '';
+            document.getElementById('form-error').classList.add('hidden');
+            document.getElementById('form-title').innerHTML = '<span class="material-symbols-outlined text-primary text-xl">add_circle</span> Thêm khung giờ mới';
+            document.getElementById('form-submit-text').textContent = 'Thêm khung giờ';
+            document.getElementById('form-submit-spinner').classList.add('hidden');
+            document.getElementById('form-submit-btn').disabled = false;
+        }
+
+        // ===== FORMAT TIME (HH:MM -> HH:MM) =====
+        function formatTime(timeStr) {
+            if (!timeStr) return '';
+            // Ensure HH:MM format
+            const parts = timeStr.split(':');
+            if (parts.length >= 2) {
+                return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+            }
+            return timeStr;
+        }
+
+        // ===== GROUP WINDOWS BY WEEKDAY =====
+        function groupByWeekday(windows) {
+            const groups = {};
+            WEEKDAY_ORDER.forEach(d => { groups[d] = []; });
+            windows.forEach(w => {
+                const day = parseInt(w.day_of_week);
+                if (groups[day]) {
+                    groups[day].push(w);
+                }
+            });
+            // Sort windows within each day by start_time
+            Object.keys(groups).forEach(d => {
+                groups[d].sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+            });
+            return groups;
+        }
+
+        // ===== RENDER AVAILABILITY =====
+        function renderAvailability(windows) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+
+            if (!windows || windows.length === 0) {
+                document.getElementById('availability-list').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('empty-state').classList.add('hidden');
+            const container = document.getElementById('availability-list');
+            container.classList.remove('hidden');
+
+            const grouped = groupByWeekday(windows);
+            const dayColors = WEEKDAY_COLORS;
+            const dayIcons = WEEKDAY_ICONS;
+
+            let html = '';
+
+            WEEKDAY_ORDER.forEach(day => {
+                const dayWindows = grouped[day];
+                if (!dayWindows || dayWindows.length === 0) return;
+
+                const dayName = WEEKDAY_NAMES[day];
+                const colorClass = dayColors[day];
+                const icon = dayIcons[day];
+
+                html += `
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg ${colorClass} border flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-lg">${icon}</span>
+                        </div>
+                        <h3 class="font-manrope font-bold text-base text-textPrimary">${escapeHtml(dayName)}</h3>
+                        <span class="text-xs font-semibold text-textSecondary bg-gray-100 px-2 py-0.5 rounded-full">${dayWindows.length} khung giờ</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-0 sm:ml-10">
+                        ${dayWindows.map(w => `
+                            <div class="window-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex items-center gap-3" data-window-id="${escapeHtml(String(w.id))}">
+                                <div class="w-11 h-11 rounded-xl bg-primaryLight/50 flex items-center justify-center flex-shrink-0">
+                                    <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: 'FILL' 1;">access_time</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-sm text-textPrimary">${escapeHtml(formatTime(w.start_time))} - ${escapeHtml(formatTime(w.end_time))}</p>
+                                    <p class="text-xs text-textSecondary mt-0.5" id="window-status-${w.id}"></p>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <button onclick="startEdit(${w.id})" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-textSecondary hover:text-primary transition-all duration-200" title="Chỉnh sửa">
+                                        <span class="material-symbols-outlined text-lg">edit</span>
+                                    </button>
+                                    <button onclick="deleteWindow(${w.id})" class="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Xóa">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ===== LOAD AVAILABILITY =====
+        async function loadAvailability() {
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('availability-list').classList.add('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+
+            try {
+                const resp = await apiFetch(API_BASE + '/worker/availability/');
+                if (!resp.ok) {
+                    throw new Error('Không thể tải danh sách khung giờ');
+                }
+                const data = await resp.json();
+                const windows = Array.isArray(data) ? data : (data.results || data.windows || []);
+                allWindows = windows;
+                renderAvailability(windows);
+            } catch (e) {
+                console.error('Load availability error:', e);
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('error-state').classList.remove('hidden');
+                showToast('Không thể tải danh sách khung giờ', 'error');
+            }
+        }
+
+        // ===== FORM SUBMIT (CREATE / UPDATE) =====
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const weekday = document.getElementById('form-weekday').value;
+            const startTime = document.getElementById('form-start').value;
+            const endTime = document.getElementById('form-end').value;
+            const editId = document.getElementById('edit-window-id').value;
+            const errorEl = document.getElementById('form-error');
+            const errorTextEl = document.getElementById('form-error-text');
+
+            // Local validation: start < end
+            if (startTime && endTime && startTime >= endTime) {
+                errorTextEl.textContent = 'Giờ kết thúc phải sau giờ bắt đầu.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            // Local validation: all fields required
+            if (!weekday || !startTime || !endTime) {
+                errorTextEl.textContent = 'Vui lòng điền đầy đủ thông tin.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            errorEl.classList.add('hidden');
+            const submitBtn = document.getElementById('form-submit-btn');
+            const submitText = document.getElementById('form-submit-text');
+            const submitSpinner = document.getElementById('form-submit-spinner');
+
+            submitBtn.disabled = true;
+            submitText.textContent = editId ? 'Đang cập nhật...' : 'Đang thêm...';
+            submitSpinner.classList.remove('hidden');
+
+            try {
+                const body = {
+                    weekday: parseInt(weekday),
+                    start_time: startTime,
+                    end_time: endTime
+                };
+
+                let resp;
+                if (editId) {
+                    resp = await apiFetch(API_BASE + '/worker/availability/' + editId + '/', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                } else {
+                    resp = await apiFetch(API_BASE + '/worker/availability/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                }
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    // Server validation errors (e.g., overlap detection)
+                    const errMsg = data.error || data.message || data.detail
+                        || (data.non_field_errors && data.non_field_errors.join(', '))
+                        || (data.day_of_week && data.day_of_week.join(', '))
+                        || (data.start_time && data.start_time.join(', '))
+                        || (data.end_time && data.end_time.join(', '))
+                        || 'Có lỗi xảy ra. Vui lòng thử lại.';
+                    errorTextEl.textContent = errMsg;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                showToast(editId ? 'Đã cập nhật khung giờ thành công!' : 'Đã thêm khung giờ mới thành công!', 'success');
+                toggleAddForm();
+                await loadAvailability();
+
+            } catch (e) {
+                console.error('Submit error:', e);
+                errorTextEl.textContent = 'Lỗi kết nối mạng. Vui lòng thử lại.';
+                errorEl.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = editId ? 'Cập nhật' : 'Thêm khung giờ';
+                submitSpinner.classList.add('hidden');
+            }
+        }
+
+        // ===== EDIT WINDOW =====
+        function startEdit(windowId) {
+            const win = allWindows.find(w => w.id === windowId);
+            if (!win) {
+                showToast('Không tìm thấy khung giờ', 'error');
+                return;
+            }
+
+            document.getElementById('edit-window-id').value = windowId;
+            document.getElementById('form-weekday').value = String(win.day_of_week);
+            document.getElementById('form-start').value = win.start_time || '';
+            document.getElementById('form-end').value = win.end_time || '';
+
+            document.getElementById('form-title').innerHTML = '<span class="material-symbols-outlined text-primary text-xl">edit</span> Chỉnh sửa khung giờ';
+            document.getElementById('form-submit-text').textContent = 'Cập nhật';
+
+            const section = document.getElementById('add-form-section');
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+            }
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ===== DELETE WINDOW =====
+        async function deleteWindow(windowId) {
+            const confirmed = await showConfirmModal(
+                'Xóa khung giờ',
+                'Bạn có chắc chắn muốn xóa khung giờ này? Hành động này không thể hoàn tác.'
+            );
+
+            if (!confirmed) return;
+
+            try {
+                const resp = await apiFetch(API_BASE + '/worker/availability/' + windowId + '/', {
+                    method: 'DELETE'
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    showToast(data.error || data.message || data.detail || 'Không thể xóa khung giờ', 'error');
+                    return;
+                }
+
+                showToast('Đã xóa khung giờ thành công!', 'success');
+                await loadAvailability();
+            } catch (e) {
+                console.error('Delete error:', e);
+                showToast('Lỗi kết nối mạng. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        // ===== LOGOUT =====
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = LOGIN_URL;
+        }
+
+        // ===== LOAD USER INFO =====
+        async function loadUserInfo() {
+            try {
+                const resp = await apiFetch(API_BASE + '/profile/');
+                if (resp && resp.ok) {
+                    const prof = await resp.json();
+                    const fullName = (prof.first_name && prof.last_name)
+                        ? prof.first_name + ' ' + prof.last_name
+                        : prof.username || 'Carepartner';
+                    const avatarUrl = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(prof.username || 'W') + '&background=F26522&color=fff';
+
+                    const nameEl = document.getElementById('sidebar-name');
+                    if (nameEl) nameEl.textContent = fullName;
+                    const avatarEl = document.getElementById('sidebar-avatar');
+                    if (avatarEl) avatarEl.src = avatarUrl;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        // ===== INIT =====
+        loadUserInfo();
+        loadAvailability();
+    </script>
+</body>
+</html>

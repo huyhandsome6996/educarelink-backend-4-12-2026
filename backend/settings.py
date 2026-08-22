@@ -382,3 +382,7 @@ PAYOS_WEBHOOK_URL = os.environ.get(
 
 # Bật/tắt PayOS (nếu chưa config credentials → fallback MoMo)
 PAYOS_ENABLED = bool(PAYOS_CLIENT_ID and PAYOS_API_KEY and PAYOS_CHECKSUM_KEY)
+
+# ── A2: Ghép việc thông minh theo lịch rảnh ──────────────────
+# Bán kính tìm kiếm CarePartner quanh vị trí công việc (mét)
+SMART_MATCH_RADIUS_METERS = int(os.environ.get('SMART_MATCH_RADIUS_METERS', '5000'))

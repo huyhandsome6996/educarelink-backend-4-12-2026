@@ -312,10 +312,18 @@ export default function CreateTaskScreen() {
         }
       }
 
-      await createTask(taskData);
-      Alert.alert('Thành công!', 'Đã đăng việc lên cộng đồng.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      const res = await createTask(taskData);
+      const newTaskId = res.data?.id;
+      if (newTaskId) {
+        Alert.alert('Thành công!', 'Đã đăng việc lên cộng đồng.', [
+          { text: 'Xem gợi ý phù hợp', onPress: () => navigation.replace('SmartMatches', { taskId: newTaskId, taskTitle: taskData.title }) },
+          { text: 'Quay lại', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert('Thành công!', 'Đã đăng việc lên cộng đồng.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      }
     } catch (error) {
       const data = error.response?.data;
       const msg = typeof data === 'object' ? JSON.stringify(data) : 'Đăng việc thất bại.';
