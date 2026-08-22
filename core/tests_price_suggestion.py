@@ -227,3 +227,44 @@ class PriceSuggestionA1TestCase(TestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.data['suggested_price'])
+
+    def test_latitude_100_rejected_as_invalid(self):
+        """latitude=100 nằm trong [-180,180] nhưng NGOÀI [-90,90] → phải bị coi là không hợp lệ.
+        Bug cũ dùng 'or' nên 100 pass do nằm trong [-180,180]."""
+        resp = self.client.post('/api/tasks/price-suggestion/', {
+            'category_id': self.cat_distance.id,
+            'latitude': 100,
+            'longitude': 106.7,
+            'reference_latitude': 10.76,
+            'reference_longitude': 106.66,
+        })
+        self.assertEqual(resp.status_code, 200)
+        # latitude=100 là vô lý (vĩ độ chỉ -90..90) → phải bị bỏ qua
+        self.assertIsNone(resp.data['suggested_price'])
+        # Phải trả price_range thay vì giá tính toán sai
+        self.assertIsNotNone(resp.data.get('price_range'))
+
+    def test_longitude_200_rejected_as_invalid(self):
+        """longitude=200 NGOÀI [-180,180] → phải bị coi là không hợp lệ."""
+        resp = self.client.post('/api/tasks/price-suggestion/', {
+            'category_id': self.cat_distance.id,
+            'latitude': 10.76,
+            'longitude': 200,
+            'reference_latitude': 10.7626,
+            'reference_longitude': 106.6602,
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data['suggested_price'])
+        self.assertIsNotNone(resp.data.get('price_range'))
+
+    def test_reference_latitude_100_rejected(self):
+        """reference_latitude=100 (sai phạm vi lat) → thiếu toạ độ hợp lệ → trả range."""
+        resp = self.client.post('/api/tasks/price-suggestion/', {
+            'category_id': self.cat_distance.id,
+            'latitude': 10.76,
+            'longitude': 106.7,
+            'reference_latitude': 100,
+            'reference_longitude': 106.66,
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data['suggested_price'])

@@ -20,6 +20,7 @@ from .views import (
     WorkerChatbotAPIView, HelpCenterAPIView,
     DistanceCalculationAPIView,
     PriceSuggestionAPIView,
+    CategoryListAPIView,
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
 )
@@ -100,6 +101,9 @@ urlpatterns = [
 
     # Tính khoảng cách (Haversine + Gemini AI)
     path('distance/', DistanceCalculationAPIView.as_view(), name='distance-calculation'),
+
+    # A1 — Danh mục dịch vụ (cho mobile/web render dynamic)
+    path('categories/', CategoryListAPIView.as_view(), name='category-list'),
 
     # A1 — Gợi ý giá tự động
     path('tasks/price-suggestion/', PriceSuggestionAPIView.as_view(), name='price-suggestion'),

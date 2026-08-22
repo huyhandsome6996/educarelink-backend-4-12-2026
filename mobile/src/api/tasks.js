@@ -114,3 +114,6 @@ export const calculateDistance = (payload) =>
 // Body: { category_id, latitude?, longitude?, reference_latitude?, reference_longitude?, estimated_duration_hours? }
 export const getPriceSuggestion = (payload) =>
   apiClient.post('/tasks/price-suggestion/', payload);
+
+// === A1 — DANH MỤC DỊCH VỤ (từ DB thật) ===
+export const getCategories = () => apiClient.get('/categories/');

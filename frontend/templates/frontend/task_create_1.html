@@ -35,6 +35,8 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
         h1, h2, h3, h4 {
             font-family: 'Manrope', sans-serif;
         }
@@ -362,6 +364,21 @@
                             <span class="material-symbols-outlined text-3xl">shopping_bag</span>
                             <span class="text-sm font-medium">Mua sắm hộ</span>
                         </button>
+                        <!-- Nấu ăn -->
+                        <button data-cat="6" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">restaurant</span>
+                            <span class="text-sm font-medium">Nấu ăn</span>
+                        </button>
+                        <!-- Hỗ trợ AI -->
+                        <button data-cat="7" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">smart_toy</span>
+                            <span class="text-sm font-medium">Hỗ trợ AI</span>
+                        </button>
+                        <!-- Khác -->
+                        <button data-cat="8" class="cat-card">
+                            <span class="material-symbols-outlined text-3xl">more_horiz</span>
+                            <span class="text-sm font-medium">Khác</span>
+                        </button>
                     </div>
                 </section>
 
@@ -545,10 +562,33 @@
                                 />
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary font-semibold text-sm">VNĐ / buổi</span>
                             </div>
-                            <p class="mt-3 text-xs text-textSecondary flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-sm text-amber-500" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
-                                Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn
-                            </p>
+                            <!-- Số giờ dự kiến (chỉ hiện khi category hourly) -->
+                            <div id="duration-section" class="mt-3 hidden">
+                                <label for="estimated-hours" class="block text-xs font-semibold text-textPrimary mb-1.5">
+                                    Số giờ dự kiến
+                                </label>
+                                <div class="relative w-40">
+                                    <input
+                                        id="estimated-hours"
+                                        type="number"
+                                        class="form-input text-sm font-bold text-primary pr-14"
+                                        placeholder="2"
+                                        min="0.5"
+                                        step="0.5"
+                                        value="2"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary font-semibold text-xs">giờ</span>
+                                </div>
+                            </div>
+
+                            <!-- Gợi ý giá động (A1) -->
+                            <div id="price-hint-box" class="mt-3 flex items-center gap-1.5 text-xs text-textSecondary">
+                                <span id="price-hint-icon" class="material-symbols-outlined text-sm text-amber-500" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+                                <span id="price-hint-text">Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn</span>
+                                <button type="button" id="apply-price-btn" class="hidden ml-auto px-2.5 py-1 rounded-full bg-primary text-white text-xs font-bold hover:bg-primaryDark transition-colors">
+                                    Dùng giá gợi ý
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1066,6 +1106,209 @@
         // Expose globally để onchange handler trong HTML có thể gọi
         window.toggleGeofence = toggleGeofence;
         window.useTaskLocationAsGeofence = useTaskLocationAsGeofence;
+
+        // ===== A1: GỢI Ý GIÁ TỰ ĐỘNG =====
+        // Category loại hourly: Gia sư(1), Dọn dẹp(3), Trông trẻ(4), Nấu ăn(6)
+        const HOURLY_CATEGORIES = new Set([1, 3, 4, 6]);
+        let priceDebounceTimer = null;
+        let priceAbortController = null;
+
+        function getHourlyCategories() {
+            // Ưu tiên dùng DB categories nếu có, fallback set cứng
+            // (Web dùng data-cat = DB ID thật, nên set cứng ổn định)
+            return HOURLY_CATEGORIES;
+        }
+
+        function updateDurationVisibility() {
+            const section = document.getElementById('duration-section');
+            if (getHourlyCategories().has(selectedCat)) {
+                section.classList.remove('hidden');
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        function showPriceHintLoading() {
+            const icon = document.getElementById('price-hint-icon');
+            icon.textContent = 'progress_activity';
+            icon.classList.add('animate-spin');
+            icon.style.color = '#9CA3AF';
+            document.getElementById('price-hint-text').textContent = 'Đang tính gợi ý giá...';
+            document.getElementById('apply-price-btn').classList.add('hidden');
+        }
+
+        function showPriceHintStatic() {
+            const icon = document.getElementById('price-hint-icon');
+            icon.textContent = 'lightbulb';
+            icon.classList.remove('animate-spin');
+            icon.style.color = '';
+            icon.style.fontVariationSettings = "'FILL' 1";
+            icon.classList.add('text-amber-500');
+            document.getElementById('price-hint-text').textContent = 'Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn';
+            document.getElementById('apply-price-btn').classList.add('hidden');
+        }
+
+        function showPriceHintData(data) {
+            const icon = document.getElementById('price-hint-icon');
+            icon.textContent = 'lightbulb';
+            icon.classList.remove('animate-spin');
+            icon.style.color = '';
+            icon.style.fontVariationSettings = "'FILL' 1";
+            icon.classList.add('text-amber-500');
+
+            const hintEl = document.getElementById('price-hint-text');
+            const applyBtn = document.getElementById('apply-price-btn');
+
+            if (data.message) {
+                hintEl.textContent = data.message;
+                applyBtn.classList.add('hidden');
+                return;
+            }
+            if (data.reason) {
+                let txt = data.reason;
+                if (data.price_range) {
+                    txt += ` (${data.price_range.min.toLocaleString('vi-VN')}đ - ${data.price_range.max.toLocaleString('vi-VN')}đ)`;
+                }
+                hintEl.textContent = txt;
+                applyBtn.classList.add('hidden');
+                return;
+            }
+            if (data.suggested_price != null) {
+                let txt = `Gợi ý: ${data.suggested_price.toLocaleString('vi-VN')}đ`;
+                if (data.pricing_type === 'distance' && data.breakdown?.distance_km) {
+                    txt += ` (${data.breakdown.distance_km}km)`;
+                } else if (data.pricing_type === 'hourly' && data.breakdown?.estimated_hours) {
+                    txt += ` (${data.breakdown.estimated_hours}h)`;
+                }
+                hintEl.textContent = txt;
+                applyBtn.classList.remove('hidden');
+                applyBtn.dataset.price = data.suggested_price;
+                return;
+            }
+            if (data.price_range) {
+                hintEl.textContent = `Khoảng: ${data.price_range.min.toLocaleString('vi-VN')}đ - ${data.price_range.max.toLocaleString('vi-VN')}đ`;
+                applyBtn.classList.add('hidden');
+                return;
+            }
+
+            // Fallback
+            hintEl.textContent = 'Gợi ý: 150.000đ - 200.000đ/buổi cho khu vực của bạn';
+            applyBtn.classList.add('hidden');
+        }
+
+        async function fetchPriceSuggestion() {
+            if (!selectedCat) return;
+
+            if (priceAbortController) {
+                try { priceAbortController.abort(); } catch(e) {}
+            }
+            priceAbortController = new AbortController();
+
+            showPriceHintLoading();
+
+            const payload = { category_id: selectedCat };
+
+            // Toạ độ công việc (nếu có)
+            const lat = parseFloat(document.getElementById('task-lat').value);
+            const lng = parseFloat(document.getElementById('task-lng').value);
+            if (lat && lng) {
+                payload.latitude = lat;
+                payload.longitude = lng;
+                // Toạ độ tham chiếu cho distance: Ưu tiên vị trí user, fallback HCM center
+                const userLat = parseFloat(localStorage.getItem('educarelink_user_lat'));
+                const userLng = parseFloat(localStorage.getItem('educarelink_user_lng'));
+                if (userLat && userLng) {
+                    payload.reference_latitude = userLat;
+                    payload.reference_longitude = userLng;
+                } else {
+                    payload.reference_latitude = 10.7626;
+                    payload.reference_longitude = 106.6602;
+                }
+            }
+
+            // Số giờ cho hourly
+            if (getHourlyCategories().has(selectedCat)) {
+                const hours = parseFloat(document.getElementById('estimated-hours').value);
+                if (hours > 0) payload.estimated_duration_hours = hours;
+            }
+
+            try {
+                const resp = await apiFetch(API_BASE + '/tasks/price-suggestion/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: priceAbortController.signal,
+                });
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    showPriceHintData(data);
+                } else {
+                    showPriceHintStatic();
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    showPriceHintStatic();
+                }
+            }
+        }
+
+        function schedulePriceSuggestion() {
+            if (priceDebounceTimer) clearTimeout(priceDebounceTimer);
+            priceDebounceTimer = setTimeout(fetchPriceSuggestion, 450);
+        }
+
+        // Override category click to also trigger price suggestion
+        document.querySelectorAll('.cat-card').forEach(card => {
+            card.addEventListener('click', () => {
+                selectedCat = parseInt(card.dataset.cat);
+                updateDurationVisibility();
+                schedulePriceSuggestion();
+            });
+        });
+
+        // Watch for coordinate changes (map click / geocode)
+        const latInput = document.getElementById('task-lat');
+        const lngInput = document.getElementById('task-lng');
+        let lastLat = latInput.value;
+        let lastLng = lngInput.value;
+        setInterval(() => {
+            if (latInput.value !== lastLat || lngInput.value !== lastLng) {
+                lastLat = latInput.value;
+                lastLng = lngInput.value;
+                schedulePriceSuggestion();
+            }
+        }, 500);
+
+        // Watch for estimated hours change
+        document.getElementById('estimated-hours').addEventListener('input', () => {
+            schedulePriceSuggestion();
+        });
+
+        // Nút "Dùng giá gợi ý" — điền vào #task-price
+        document.getElementById('apply-price-btn').addEventListener('click', () => {
+            const price = document.getElementById('apply-price-btn').dataset.price;
+            if (price) {
+                document.getElementById('task-price').value = price;
+            }
+        });
+
+        // Lưu user coords khi load profile (để dùng làm reference)
+        (async function cacheUserCoords() {
+            try {
+                const resp = await apiFetch(API_BASE + '/profile/');
+                if (resp && resp.ok) {
+                    const prof = await resp.json();
+                    if (prof.latitude && prof.longitude) {
+                        localStorage.setItem('educarelink_user_lat', prof.latitude);
+                        localStorage.setItem('educarelink_user_lng', prof.longitude);
+                    }
+                }
+            } catch(e) { /* ignore */ }
+        })();
+
+        // Initial: check duration visibility + fetch initial suggestion
+        updateDurationVisibility();
+        schedulePriceSuggestion();
     </script>
 
 
