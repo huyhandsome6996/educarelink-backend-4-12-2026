@@ -691,3 +691,14 @@ Bổ sung theo spec gốc: "Parents can review this history to monitor their chi
 - `frontend/urls.py`: 3 URL mới.
 - Entry points: sidebar "Nhật ký chăm sóc" trong `parent_home.html` + `parent_tasks.html` (sidebar + header button); nút "Ghi nhật ký" trong `worker_jobs.html` cho accepted + completed tasks.
 - 6 test mới `WebPageTests`: verify 200 + HTML content cho 3 trang mới + link presence trong 2 trang có entry point. Full suite: 279/279 pass.
+
+---
+
+## B1 (Care Diary) merged vào main (2026-08-23)
+
+- **Merge commit**: `f9751ec` (--no-ff, theo AGENTS.md §19)
+- **QA PASS**: 279/279 tests trên main sau merge, không regression.
+- **Đầy đủ parity mobile + web**: 3 màn mobile (form, detail, history) + 3 trang web tương ứng + entry points.
+- **BUG-01 đến BUG-10**: toàn bộ đã sửa và verify bằng test.
+- **Remote branch đã xoá**: `feature/b1-nhat-ky-cham-soc`
+- **Chuyển sang B5.**
