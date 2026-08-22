@@ -19,7 +19,7 @@ import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { createTask, getPriceSuggestion } from '../../api/tasks';
+import { createTask, getPriceSuggestion, getCategories } from '../../api/tasks';
 import {COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapPickerModal from '../../components/MapPickerModal';
@@ -29,23 +29,6 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-// === A1: Category local → DB ServiceCategory ID mapping ===
-// Local CATEGORIES dùng id 1-8 để UI hoạt động (chip selection, submit).
-// DB ServiceCategory có thể khác thứ tự do get_or_create.
-// Mapping này dùng riêng cho getPriceSuggestion API (cần DB ID thật).
-// Lưu ý: id=7 ('Chuyển đồ') không tồn tại trong DB → map sang 'Hỗ trợ AI' (id thực tế tùy seed).
-// TODO: Tương lai fetch categories từ API thật thay vì hardcode.
-const DB_CATEGORY_IDS = {
-  1: 'Gia sư',
-  2: 'Đón trẻ',
-  3: 'Dọn dẹp nhà cửa',
-  4: 'Trông trẻ',
-  5: 'Mua sắm hộ',
-  6: 'Nấu ăn',
-  7: 'Hỗ trợ AI',
-  8: 'Khác',
-};
-
 const CATEGORIES = [
   { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi', pricingType: 'hourly' },
   { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần', pricingType: 'distance' },
@@ -53,7 +36,7 @@ const CATEGORIES = [
   { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
   { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần', pricingType: 'fixed' },
   { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần', pricingType: 'hourly' },
-  { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần', pricingType: 'fixed' },
+  { id: 7, iconName: 'hardware-chip', name: 'Hỗ trợ AI', hint: 'Thoả thuận', pricingType: 'fixed' },
   { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận', pricingType: 'fixed' },
 ];
 
@@ -69,8 +52,30 @@ export default function CreateTaskScreen() {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // === A1: Fetch categories từ DB thật khi mount ===
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getCategories();
+        if (!cancelled && res.data?.length > 0) {
+          setDbCategories(res.data);
+          // Mặc định chọn category đầu tiên
+          if (!selectedCat) setSelectedCat(res.data[0].id);
+        }
+      } catch (e) {
+        console.warn('[A1] Failed to fetch categories:', e?.message || e);
+        // Fallback: dùng local CATEGORIES nếu API lỗi
+        if (!selectedCat) setSelectedCat(1);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const insets = useSafeAreaInsets();
-  const [selectedCat, setSelectedCat] = useState(1);
+  const [selectedCat, setSelectedCat] = useState(null); // DB ID thật, fetch từ API
+  const [dbCategories, setDbCategories] = useState([]); // danh sách từ DB
+  const [estimatedHours, setEstimatedHours] = useState('2'); // input số giờ cho hourly
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -140,7 +145,12 @@ export default function CreateTaskScreen() {
     }
   };
 
-  const cat = CATEGORIES.find(c => c.id === selectedCat);
+  // Tìm category info: ưu tiên DB name, fallback local CATEGORIES
+  const dbCat = dbCategories.find(c => c.id === selectedCat);
+  const localCat = CATEGORIES.find(c => c.id === selectedCat);
+  const cat = localCat || { id: selectedCat, pricingType: 'fixed' };
+  // Map DB icon_name → Ionicons name (fallback cho mobile)
+  const catDisplayName = dbCat ? dbCat.name : (localCat?.name || '');
 
   // === A1: Gợi ý giá tự động ===
   const [priceSuggestion, setPriceSuggestion] = useState(null);
@@ -149,6 +159,7 @@ export default function CreateTaskScreen() {
   const abortRef = useRef(null);
 
   const fetchPriceSuggestion = useCallback(async (categoryId) => {
+    if (!categoryId) return;
     setPriceLoading(true);
     try {
       if (abortRef.current) { try { abortRef.current.abort(); } catch(e) {} }
@@ -164,7 +175,8 @@ export default function CreateTaskScreen() {
         payload.reference_longitude = 106.6602;
       }
       if (cat?.pricingType === 'hourly') {
-        payload.estimated_duration_hours = 2;
+        const hours = parseFloat(estimatedHours);
+        if (hours > 0) payload.estimated_duration_hours = hours;
       }
 
       const res = await getPriceSuggestion(payload);
@@ -177,7 +189,7 @@ export default function CreateTaskScreen() {
     } finally {
       setPriceLoading(false);
     }
-  }, [pickedCoords, cat?.pricingType]);
+  }, [pickedCoords, cat?.pricingType, estimatedHours]);
 
   useEffect(() => {
     if (!selectedCat) { setPriceSuggestion(null); return; }
@@ -186,7 +198,7 @@ export default function CreateTaskScreen() {
       fetchPriceSuggestion(selectedCat);
     }, 400);
     return () => { if (priceDebounceRef.current) clearTimeout(priceDebounceRef.current); };
-  }, [selectedCat, pickedCoords, fetchPriceSuggestion]);
+  }, [selectedCat, pickedCoords, fetchPriceSuggestion, estimatedHours]);
 
   const applySuggestedPrice = () => {
     if (priceSuggestion?.suggested_price) {
@@ -343,7 +355,11 @@ export default function CreateTaskScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Loại dịch vụ</Text>
           <View style={styles.chipRow}>
-            {CATEGORIES.map((c) => (
+            {CATEGORIES.map((c) => {
+              // Ưu tiên tên từ DB khi đã fetch, fallback local name
+              const dbMatch = dbCategories.find(db => db.id === c.id);
+              const displayName = dbMatch ? dbMatch.name : c.name;
+              return (
               <TouchableOpacity
                 key={c.id}
                 style={[styles.chip, selectedCat === c.id && styles.chipActive]}
@@ -357,10 +373,11 @@ export default function CreateTaskScreen() {
                   style={{ marginRight: 6 }}
                 />
                 <Text style={[styles.chipText, selectedCat === c.id && styles.chipTextActive]}>
-                  {c.name}
+                  {displayName}
                 </Text>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
 
           {/* Gợi ý giá (A1 — động) */}
@@ -371,7 +388,7 @@ export default function CreateTaskScreen() {
               <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
             )}
             <Text style={styles.priceHintText} numberOfLines={2}>
-              {cat?.name ? `Gợi ý cho ${cat.name}: ` : ''}{priceHintContent}
+              {catDisplayName ? `Gợi ý cho ${catDisplayName}: ` : ''}{priceHintContent}
             </Text>
             {priceSuggestion?.suggested_price != null && !priceLoading && (
               <TouchableOpacity onPress={applySuggestedPrice} style={styles.applyPriceBtn} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
@@ -533,6 +550,24 @@ export default function CreateTaskScreen() {
             </View>
             {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
           </View>
+
+          {/* Số giờ dự kiến — chỉ hiện khi category loại hourly */}
+          {cat?.pricingType === 'hourly' && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Số giờ dự kiến</Text>
+              <View style={[styles.inputWrapper, styles.durationInputWrapper]}>
+                <TextInput
+                  style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
+                  placeholder="2"
+                  placeholderTextColor={COLORS.outline}
+                  value={estimatedHours}
+                  onChangeText={setEstimatedHours}
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.currencyUnit}>giờ</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Section: Vùng an toàn (Geofence) */}
@@ -788,6 +823,7 @@ const styles = StyleSheet.create({
   inputPlaceholder: {
     color: COLORS.outline,
   },
+  durationInputWrapper: { width: 140 },
   currencyUnit: {
     ...TYPO.caption,
     color: COLORS.onSurfaceVariant,

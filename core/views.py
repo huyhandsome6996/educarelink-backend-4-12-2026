@@ -2307,22 +2307,35 @@ class PriceSuggestionAPIView(APIView):
             'breakdown': None,
         }
 
-        # --- Validate toạ độ ---
-        def _valid_coord(val):
+        # --- Validate toạ độ (tách riêng lat/lng) ---
+        def _valid_lat(val):
+            """Validate vĩ độ: phải nằm trong [-90, 90]."""
             if val is None:
                 return None
             try:
                 v = float(val)
-                if -90 <= v <= 90 or -180 <= v <= 180:
+                if -90 <= v <= 90:
                     return v
             except (TypeError, ValueError):
                 pass
             return None
 
-        lat = _valid_coord(request.data.get('latitude'))
-        lng = _valid_coord(request.data.get('longitude'))
-        ref_lat = _valid_coord(request.data.get('reference_latitude'))
-        ref_lng = _valid_coord(request.data.get('reference_longitude'))
+        def _valid_lng(val):
+            """Validate kinh độ: phải nằm trong [-180, 180]."""
+            if val is None:
+                return None
+            try:
+                v = float(val)
+                if -180 <= v <= 180:
+                    return v
+            except (TypeError, ValueError):
+                pass
+            return None
+
+        lat = _valid_lat(request.data.get('latitude'))
+        lng = _valid_lng(request.data.get('longitude'))
+        ref_lat = _valid_lat(request.data.get('reference_latitude'))
+        ref_lng = _valid_lng(request.data.get('reference_longitude'))
         est_hours = request.data.get('estimated_duration_hours')
         if est_hours is not None:
             try:
@@ -2378,6 +2391,18 @@ class PriceSuggestionAPIView(APIView):
         result['breakdown'] = breakdown if breakdown else None
 
         return Response(result)
+
+
+class CategoryListAPIView(APIView):
+    """Trả về danh sách ServiceCategory (id, name, icon_name).
+    Dùng cho mobile/web render danh mục từ DB thật thay vì hardcode.
+    GET /api/categories/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        cats = ServiceCategory.objects.order_by('id').values('id', 'name', 'icon_name')
+        return Response(list(cats))
 
 
 class DistanceCalculationAPIView(APIView):
