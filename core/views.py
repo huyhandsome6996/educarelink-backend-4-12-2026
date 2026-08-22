@@ -1,3 +1,5 @@
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status, serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -2946,3 +2948,39 @@ class SmartMatchAPIView(APIView):
         from core.services.smart_match import find_smart_matches
         result = find_smart_matches(task)
         return Response(result)
+
+
+# ────────────────────────────────────────────────────────────
+# Geocoding proxy — resolve DNS server-side to avoid
+# ERR_NAME_NOT_RESOLVED on client networks that block OSM.
+# ────────────────────────────────────────────────────────────
+@csrf_exempt
+def geocode_proxy(request):
+    """Proxy geocoding requests to Nominatim (server-side DNS)."""
+    import json as _json
+    q = request.GET.get('q', '')
+    lat = request.GET.get('lat', '')
+    lon = request.GET.get('lon', '')
+    if not q and not (lat and lon):
+        return JsonResponse({'error': 'Missing q or lat/lon parameters'}, status=400)
+    headers = {'User-Agent': 'EduCareLink/1.0 (geocode proxy)'}
+    try:
+        if q:
+            url = (
+                'https://nominatim.openstreetmap.org/search'
+                f'?format=json&q={requests.utils.quote(q)}'
+                '&limit=5&accept-language=vi'
+            )
+        else:
+            url = (
+                'https://nominatim.openstreetmap.org/reverse'
+                f'?format=json&lat={lat}&lon={lon}&accept-language=vi'
+            )
+        resp = requests.get(url, headers=headers, timeout=8)
+        resp.raise_for_status()
+        data = resp.json()
+        return JsonResponse(data, safe=False)
+    except requests.Timeout:
+        return JsonResponse({'error': 'Geocoding server timeout'}, status=504)
+    except requests.RequestException as exc:
+        return JsonResponse({'error': f'Geocoding failed: {exc}'}, status=502)

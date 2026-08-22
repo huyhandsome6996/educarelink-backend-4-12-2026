@@ -916,8 +916,8 @@
 
     function initRegMap() {
         regMapInstance = L.map('reg-location-map').setView([REG_DEFAULT_LAT, REG_DEFAULT_LNG], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
         }).addTo(regMapInstance);
         regMapInstance.on('click', function(e) {
             setRegMapPin(e.latlng.lat, e.latlng.lng);
@@ -944,7 +944,7 @@
     }
 
     function reverseGeocodeReg(lat, lng) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`)
+        fetch(`/api/geocode/?lat=${lat}&lon=${lng}`)
             .then(r => r.json())
             .then(data => {
                 if (data.display_name) {
@@ -957,7 +957,7 @@
     function searchAddressReg() {
         const query = document.getElementById('address').value.trim();
         if (!query) return;
-        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&accept-language=vi&limit=1`)
+        fetch(`/api/geocode/?q=${encodeURIComponent(query)}`)
             .then(r => r.json())
             .then(data => {
                 if (data.length > 0) {

@@ -26,6 +26,7 @@ from .views import (
     # A2
     WorkerAvailabilityListCreateAPIView, WorkerAvailabilityDetailAPIView,
     SmartMatchAPIView,
+    geocode_proxy,
 )
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
@@ -122,4 +123,7 @@ urlpatterns = [
     path('worker/availability/<int:pk>/', WorkerAvailabilityDetailAPIView.as_view(), name='worker-availability-detail'),
     # A2 — Gợi ý CarePartner cho parent
     path('parent/tasks/<int:task_id>/smart-matches/', SmartMatchAPIView.as_view(), name='smart-matches'),
+
+    # Geocoding proxy (server-side DNS for OSM Nominatim)
+    path('geocode/', geocode_proxy, name='geocode-proxy'),
 ]
