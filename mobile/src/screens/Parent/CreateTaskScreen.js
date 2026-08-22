@@ -145,11 +145,16 @@ export default function CreateTaskScreen() {
     }
   };
 
-  // Tìm category info: ưu tiên DB name, fallback local CATEGORIES
+  // Tìm category info: ưu tiên DB (name + pricingType), fallback local CATEGORIES
   const dbCat = dbCategories.find(c => c.id === selectedCat);
   const localCat = CATEGORIES.find(c => c.id === selectedCat);
-  const cat = localCat || { id: selectedCat, pricingType: 'fixed' };
-  // Map DB icon_name → Ionicons name (fallback cho mobile)
+  // Ưu tiên pricingType từ DB (source of truth), fallback local hard-code
+  const cat = {
+    id: selectedCat,
+    pricingType: dbCat?.pricing_type || localCat?.pricingType || 'fixed',
+    ...dbCat,
+    ...localCat,
+  };
   const catDisplayName = dbCat ? dbCat.name : (localCat?.name || '');
 
   // === A1: Gợi ý giá tự động ===

@@ -1108,15 +1108,22 @@
         window.useTaskLocationAsGeofence = useTaskLocationAsGeofence;
 
         // ===== A1: GỢI Ý GIÁ TỰ ĐỘNG =====
-        // Category loại hourly: Gia sư(1), Dọn dẹp(3), Trông trẻ(4), Nấu ăn(6)
-        const HOURLY_CATEGORIES = new Set([1, 3, 4, 6]);
+        // Fallback cứng khi API lỗi — KHÔNG dùng làm nguồn chính.
+        const FALLBACK_HOURLY_IDS = new Set([1, 3, 4, 6]);
+        let dbCategoriesMap = null; // { categoryId: pricing_type } từ API
         let priceDebounceTimer = null;
         let priceAbortController = null;
 
         function getHourlyCategories() {
-            // Ưu tiên dùng DB categories nếu có, fallback set cứng
-            // (Web dùng data-cat = DB ID thật, nên set cứng ổn định)
-            return HOURLY_CATEGORIES;
+            // Ưu tiên DB pricing_type, fallback set cứng khi API lỗi
+            if (dbCategoriesMap) {
+                return new Set(
+                    Object.entries(dbCategoriesMap)
+                        .filter(([_, pt]) => pt === 'hourly')
+                        .map(([id]) => parseInt(id))
+                );
+            }
+            return FALLBACK_HOURLY_IDS;
         }
 
         function updateDurationVisibility() {
@@ -1291,6 +1298,22 @@
                 document.getElementById('task-price').value = price;
             }
         });
+
+        // Fetch categories từ DB để lấy pricing_type (source of truth)
+        (async function fetchCategoryPricingTypes() {
+            try {
+                const resp = await apiFetch(API_BASE + '/categories/');
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        dbCategoriesMap = {};
+                        data.forEach(c => { dbCategoriesMap[c.id] = c.pricing_type; });
+                        // Re-evaluate duration visibility khi có data thật
+                        updateDurationVisibility();
+                    }
+                }
+            } catch(e) { /* giữ fallback */ }
+        })();
 
         // Lưu user coords khi load profile (để dùng làm reference)
         (async function cacheUserCoords() {

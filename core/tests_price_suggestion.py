@@ -268,3 +268,84 @@ class PriceSuggestionA1TestCase(TestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.data['suggested_price'])
+
+
+class CategoryListPricingTypeTestCase(TestCase):
+    """Test GET /api/categories/ trả đúng pricing_type từ DB."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='cat_viewer', password='pass', role='parent'
+        )
+        self.client.force_authenticate(user=self.user)
+
+        # Category CÓ PricingRule hourly
+        self.cat_hourly = ServiceCategory.objects.create(
+            name='Cat hourly test', icon_name='BookOpen'
+        )
+        PricingRule.objects.create(
+            category=self.cat_hourly,
+            pricing_type='hourly',
+            base_fee=0, unit_price=50000,
+            min_price=100000, max_price=200000,
+        )
+
+        # Category CÓ PricingRule distance
+        self.cat_distance = ServiceCategory.objects.create(
+            name='Cat distance test', icon_name='Baby'
+        )
+        PricingRule.objects.create(
+            category=self.cat_distance,
+            pricing_type='distance',
+            base_fee=10000, unit_price=10000,
+            min_price=50000, max_price=100000,
+        )
+
+        # Category KHÔNG có PricingRule → mặc định 'fixed'
+        self.cat_no_rule = ServiceCategory.objects.create(
+            name='Cat no rule test', icon_name='MoreHoriz'
+        )
+
+    def test_categories_api_includes_pricing_type(self):
+        """Response phải chứa field pricing_type cho mỗi category."""
+        resp = self.client.get('/api/categories/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.data
+        self.assertIsInstance(data, list)
+        # Tìm 3 category đã tạo trong response
+        ids_found = {item['id'] for item in data}
+        self.assertIn(self.cat_hourly.id, ids_found)
+        self.assertIn(self.cat_distance.id, ids_found)
+        self.assertIn(self.cat_no_rule.id, ids_found)
+        # Mỗi item phải có pricing_type
+        for item in data:
+            self.assertIn('pricing_type', item)
+            self.assertIn(item['pricing_type'], ('hourly', 'distance', 'fixed'))
+
+    def test_category_without_pricing_rule_defaults_to_fixed(self):
+        """Category không có PricingRule → pricing_type mặc định 'fixed', không 500."""
+        resp = self.client.get('/api/categories/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.data
+        # Tìm category không có rule
+        no_rule_item = next(
+            (item for item in data if item['id'] == self.cat_no_rule.id),
+            None
+        )
+        self.assertIsNotNone(no_rule_item)
+        self.assertEqual(no_rule_item['pricing_type'], 'fixed')
+
+    def test_category_pricing_type_matches_db(self):
+        """pricing_type trong response khớp với giá trị trong DB."""
+        resp = self.client.get('/api/categories/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.data
+        hourly_item = next(
+            (item for item in data if item['id'] == self.cat_hourly.id), None
+        )
+        distance_item = next(
+            (item for item in data if item['id'] == self.cat_distance.id), None
+        )
+        self.assertEqual(hourly_item['pricing_type'], 'hourly')
+        self.assertEqual(distance_item['pricing_type'], 'distance')
