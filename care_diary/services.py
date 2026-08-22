@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied
 
 from core.models import Task, TaskApplication
 
-from .models import CareDiaryActivity
+from .models import CareDiaryActivity, CareDiaryEntry
 
 
 def _get_accepted_application(*, task_id, worker):
@@ -69,6 +69,44 @@ def parse_completion_percent(raw):
     if val < 0 or val > 100:
         raise ValueError('completion_percent phải nằm trong khoảng 0-100.')
     return val
+
+
+def get_parent_diary_history(*, parent):
+    """Lấy danh sách rút gọn nhật ký của phụ huynh, sắp xếp mới nhất trước.
+
+    Sắp xếp theo task.scheduled_time DESC (thời gian buổi chăm sóc thực tế),
+    không phải entry.created_at. Lý do: phụ huynh muốn theo dõi tiến bộ
+    theo thứ tự các buổi diễn ra, chứ không phải theo lúc CarePartner ghi.
+    """
+    from django.utils import timezone as django_tz
+
+    entries = CareDiaryEntry.objects.filter(
+        task__parent=parent,
+    ).select_related('task', 'worker').order_by('-task__scheduled_time', '-created_at')
+
+    weekday_names = [
+        'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm',
+        'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật',
+    ]
+    result = []
+    for entry in entries:
+        local_created = django_tz.localtime(entry.created_at)
+        date_str = (
+            f"{weekday_names[local_created.weekday()]}, "
+            f"{local_created.day} Tháng {local_created.month}, {local_created.year}"
+        )
+        result.append({
+            'task_id': entry.task_id,
+            'task_title': entry.task.title,
+            'date': date_str,
+            'mood': {
+                'icon': entry.mood_icon or 'happy',
+                'label': entry.mood_label,
+            },
+            'completion_percent': entry.completion_percent,
+            'worker_name': entry.worker.get_full_name() or entry.worker.username,
+        })
+    return result
 
 
 def build_entry_response(*, entry, request=None):

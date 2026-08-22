@@ -23,4 +23,10 @@ urlpatterns = [
         views.WorkerCareDiaryAttachmentAPIView.as_view(),
         name='worker-care-diary-attachments',
     ),
+    # Parent: lịch sử nhật ký (danh sách rút gọn)
+    path(
+        'parent/care-diary-history/',
+        views.ParentCareDiaryHistoryAPIView.as_view(),
+        name='parent-care-diary-history',
+    ),
 ]

@@ -650,13 +650,6 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
 - `python manage.py migrate`
 - `python manage.py test --verbosity=2` → 254/254 OK
 
-### Lưu ý cho agent tiếp theo
-- **Web frontend KHÔNG làm trong lượt này.** Lý do: mock data gốc và toàn bộ entry point hiện có đều chỉ ở mobile, không có tín hiệu nào cho thấy web cần tính năng này ngay. Nếu Huy muốn có bản web → đó là 1 task riêng.
-- **Cho phép sửa nhật ký sau khi task completed.** Quyết định chủ động: CarePartner có thể bổ sung ghi chú sau ca làm (docstring trong WorkerCareDiaryAPIView.patch).
-- **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
-- **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
-- **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.
-
 ### Bug fix lượt QA (commit trên branch feature/b1-nhat-ky-cham-soc)
 Sửa 9 bug do QA Agent phát hiện:
 - **BUG-01 (CRITICAL)**: `CareDiaryFormScreen.js` crash khi mount do dùng `Animated.Value`/`Animated.timing` mà không import `Animated`. Xoá toàn bộ đoạn `fadeAnim`/`useRef`/`Animated.timing` dead code (màn hình form không cần animation này), xoá luôn import `ANIM` và `useRef` thừa.
@@ -667,3 +660,19 @@ Sửa 9 bug do QA Agent phát hiện:
 - **BUG-08 (MEDIUM)**: Xem ảnh đính kèm luôn báo "Không có ảnh" do `ImagePreview` nhận `{ uri, title }` nhưng code gửi `{ imageUrl }`. Đổi thành `{ uri: att.url, title: 'Ảnh đính kèm nhật ký' }`.
 - **BUG-09 (LOW)**: Nút "Ghi nhật ký" hiện trùng lặp cho task completed do `showTrackingUI` không loại trừ `task_status === 'completed'`. Thêm điều kiện `app.task_status !== 'completed'` vào khối `showTrackingUI`.
 - **Tests mới**: 11 test cases trong class `EdgeCaseValidationTests` bao phủ BUG-02 đến BUG-07. Full suite: 265/265 pass (254 cũ + 11 mới).
+
+### Lịch sử nhật ký (commit 74ea516)
+Bổ sung theo spec gốc: "Parents can review this history to monitor their child's progress from session to session."
+- **Backend**: `GET /api/parent/care-diary-history/` — trả danh sách rút gọn (task_id, task_title, date, mood, completion_percent, worker_name). Sắp xếp theo `task.scheduled_time DESC` (thời gian buổi chăm sóc thực tế, không phải lúc ghi). Không phân trang (codebase chưa có pattern, số lượng task/phụ huynh có giới hạn tự nhiên).
+- **Service**: `get_parent_diary_history()` trong `care_diary/services.py`.
+- **Mobile**: `CareDiaryHistoryScreen.js` — FlatList card tóm tắt với mood chip, % hoàn thành, tên CarePartner. Loading/error/empty states đầy đủ.
+- **Entry point**: nút icon clock trong header MyTasksScreen (tab "Nhật ký"), rõ ràng, không mồ côi.
+- **Route**: `CareDiaryHistory` đăng ký trong `AppNavigator.js` (Parent section).
+- **API client**: `getCareDiaryHistory()` trong `mobile/src/api/careDiary.js`.
+- **Tests**: 6 test mới (`DiaryHistoryTests`) — empty, parent isolation, sort order, response contract, worker 403, anonymous 401. Full suite: 271/271 pass.
+### Lưu ý cho agent tiếp theo
+- **Web frontend KHÔNG làm trong lượt này.** Lý do: mock data gốc và toàn bộ entry point hiện có đều chỉ ở mobile, không có tín hiệu nào cho thấy web cần tính năng này ngay. Nếu Huy muốn có bản web → đó là 1 task riêng.
+- **Cho phép sửa nhật ký sau khi task completed.** Quyết định chủ động: CarePartner có thể bổ sung ghi chú sau ca làm (docstring trong WorkerCareDiaryAPIView.patch).
+- **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
+- **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
+- **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.
