@@ -28,6 +28,7 @@ import CandidateProfileScreen from '../screens/Parent/CandidateProfileScreen';
 import UpgradeToCarepartnerScreen from '../screens/Parent/UpgradeToCarepartnerScreen';
 import ParentProfileScreen from '../screens/Parent/ParentProfileScreen';
 import CareDiaryDetailScreen from '../screens/Parent/CareDiaryDetailScreen';
+import CareDiaryHistoryScreen from '../screens/Parent/CareDiaryHistoryScreen';
 import RewardPointsScreen from '../screens/Parent/RewardPointsScreen';
 
 // Worker Screens
@@ -73,6 +74,9 @@ import MyComplaintsScreen from '../screens/Worker/MyComplaintsScreen';
 // A2 — Smart Job Matching
 import WorkerAvailabilityScreen from '../screens/Worker/WorkerAvailabilityScreen';
 import SmartMatchesScreen from '../screens/Parent/SmartMatchesScreen';
+
+// B1 — Care Diary
+import CareDiaryFormScreen from '../screens/Worker/CareDiaryFormScreen';
 
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
@@ -229,6 +233,7 @@ export default function AppNavigator() {
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
             {/* ParentProfile giờ là tab trong ParentTabs — không cần Stack.Screen riêng */}
             <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+            <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
             <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
@@ -248,6 +253,7 @@ export default function AppNavigator() {
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
+            <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />

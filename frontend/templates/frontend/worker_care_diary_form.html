@@ -1,0 +1,535 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+<link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+<title>Ghi nhật ký chăm sóc - EduCareLink</title>
+<link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  html { scroll-behavior: smooth; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .nav-item { transition: all 0.2s ease; }
+  .nav-item:hover { background: rgba(242,101,34,0.08); }
+  .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
+  .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+  @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+  .toast-in { animation: slideInRight 0.35s ease forwards; }
+  .toast-out { animation: slideOutRight 0.3s ease forwards; }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  .mood-option { transition: all 0.15s ease; cursor: pointer; }
+  .mood-option:hover { transform: scale(1.05); }
+  .mood-option.selected { ring: 2px solid #F26522; background: rgba(242,101,34,0.08); }
+  @media (max-width: 767px) {
+    .sidebar { display: none !important; }
+    .main-area { margin-left: 0 !important; }
+    .mobile-bottom-nav { display: flex !important; }
+  }
+  @media (min-width: 768px) {
+    .mobile-bottom-nav { display: none !important; }
+  }
+</style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="max-width:400px;"></div>
+
+<!-- SIDEBAR (Desktop) -->
+<aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
+  <div class="px-6 py-6 border-b border-gray-50">
+    <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
+      <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+      <div>
+        <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
+      </div>
+    </a>
+  </div>
+  <nav class="flex-1 px-4 py-6 overflow-y-auto">
+    <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
+    <ul class="space-y-1">
+      <li><a href="{% url 'frontend:worker_feed' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary"><span class="material-symbols-outlined text-xl">search</span>Tìm việc</a></li>
+      <li><a href="{% url 'frontend:worker_jobs' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary"><span class="material-symbols-outlined text-xl">assignment</span>Việc của tôi</a></li>
+      <li><a href="{% url 'frontend:worker_profile' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary"><span class="material-symbols-outlined text-xl">person</span>Hồ sơ</a></li>
+      <li><a href="{% url 'frontend:worker_availability' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary"><span class="material-symbols-outlined text-xl">schedule</span>Lịch rảnh</a></li>
+    </ul>
+  </nav>
+  <div class="px-4 py-4 border-t border-gray-100">
+    <div class="flex items-center gap-3 px-2">
+      <div class="w-10 h-10 rounded-full bg-primaryLight flex-shrink-0"><img id="sidebar-avatar" class="w-full h-full object-cover rounded-full" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/></div>
+      <div class="flex-1 min-w-0"><p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">CarePartner</p><p class="text-xs text-textSecondary">CarePartner</p></div>
+      <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all" title="Đăng xuất"><span class="material-symbols-outlined text-xl">logout</span></button>
+    </div>
+  </div>
+</aside>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 justify-around items-center px-2 py-2">
+  <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">search</span><span class="text-[10px] font-medium">Tìm việc</span></a>
+  <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">assignment</span><span class="text-[10px] font-medium">Việc</span></a>
+  <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">person</span><span class="text-[10px] font-medium">Hồ sơ</span></a>
+  <button onclick="handleLogout()" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">logout</span><span class="text-[10px] font-medium">Đăng xuất</span></button>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main-area lg:ml-[260px] min-h-screen pb-20 lg:pb-0">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-textSecondary mb-6">
+      <a href="{% url 'frontend:worker_jobs' %}" class="hover:text-primary transition-colors">Việc của tôi</a>
+      <span class="material-symbols-outlined text-base">chevron_right</span>
+      <span class="text-textPrimary font-medium">Ghi nhật ký</span>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="space-y-4">
+      <div class="skeleton h-8 w-48"></div>
+      <div class="skeleton h-4 w-64"></div>
+      <div class="skeleton h-40 w-full mt-4"></div>
+      <div class="skeleton h-40 w-full"></div>
+      <div class="skeleton h-32 w-full"></div>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="hidden">
+      <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+        <span class="material-symbols-outlined text-5xl text-error mb-4 block">error</span>
+        <h3 class="font-manrope font-bold text-xl text-textPrimary mb-2">Không thể tải thông tin</h3>
+        <p id="error-message" class="text-textSecondary text-sm mb-6">Đã có lỗi xảy ra.</p>
+        <a href="{% url 'frontend:worker_jobs' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all">
+          <span class="material-symbols-outlined text-lg">arrow_back</span>Quay lại
+        </a>
+      </div>
+    </div>
+
+    <!-- Form State -->
+    <div id="form-state" class="hidden space-y-6">
+      <div>
+        <h1 class="font-manrope font-bold text-2xl text-textPrimary" id="page-title">Ghi nhật ký chăm sóc</h1>
+        <p class="text-textSecondary text-sm mt-1" id="task-title-display">Đang tải...</p>
+      </div>
+
+      <form id="diary-form" class="space-y-6" onsubmit="handleSubmit(event)">
+        <!-- Mood -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
+          <h3 class="font-manrope font-bold text-base text-textPrimary mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">mood</span>Tâm trạng của bé
+          </h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="mood-options">
+            <button type="button" onclick="selectMood('happy','Vui vẻ')" data-mood="happy" class="mood-option flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30">
+              <span class="material-symbols-outlined text-3xl text-emerald-500 filled">sentiment_very_satisfied</span>
+              <span class="text-xs font-semibold text-textSecondary">Vui vẻ</span>
+            </button>
+            <button type="button" onclick="selectMood('neutral','Bình thường')" data-mood="neutral" class="mood-option flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30">
+              <span class="material-symbols-outlined text-3xl text-amber-500 filled">sentiment_neutral</span>
+              <span class="text-xs font-semibold text-textSecondary">Bình thường</span>
+            </button>
+            <button type="button" onclick="selectMood('sad','Buồn')" data-mood="sad" class="mood-option flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30">
+              <span class="material-symbols-outlined text-3xl text-red-400 filled">sentiment_dissatisfied</span>
+              <span class="text-xs font-semibold text-textSecondary">Buồn</span>
+            </button>
+            <button type="button" onclick="selectMood('excited','Hào hứng')" data-mood="excited" class="mood-option flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30">
+              <span class="material-symbols-outlined text-3xl text-blue-500 filled">celebration</span>
+              <span class="text-xs font-semibold text-textSecondary">Hào hứng</span>
+            </button>
+          </div>
+          <input type="hidden" id="mood_icon" name="mood_icon" value="">
+          <input type="hidden" id="mood_label" name="mood_label" value="">
+          <div class="mt-3">
+            <label class="text-sm font-medium text-textSecondary">Ghi chú tâm trạng</label>
+            <input type="text" id="mood_note" name="mood_note" class="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Ví dụ: Bé vui vì được chơi ngoài trời...">
+          </div>
+        </div>
+
+        <!-- Completion -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
+          <h3 class="font-manrope font-bold text-base text-textPrimary mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">task_alt</span>Mức độ hoàn thành
+          </h3>
+          <div class="flex items-center gap-4">
+            <input type="range" id="completion_percent" name="completion_percent" min="0" max="100" value="0" class="flex-1 h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-primary" oninput="document.getElementById('pct-display').textContent = this.value + '%'">
+            <span id="pct-display" class="font-manrope font-bold text-xl text-primary w-16 text-right">0%</span>
+          </div>
+        </div>
+
+        <!-- Activities -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-manrope font-bold text-base text-textPrimary flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">checklist</span>Hoạt động
+            </h3>
+            <button type="button" onclick="addActivityRow()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primaryLight text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
+              <span class="material-symbols-outlined text-sm">add</span>Thêm hoạt động
+            </button>
+          </div>
+          <div id="activities-list" class="space-y-3">
+            <!-- Dynamic activity rows -->
+          </div>
+          <div id="activities-empty" class="hidden text-center py-8 text-textSecondary text-sm">
+            <span class="material-symbols-outlined text-3xl text-gray-300 block mb-2">playlist_add</span>
+            Chưa có hoạt động. Nhấn "Thêm hoạt động" để bắt đầu.
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
+          <h3 class="font-manrope font-bold text-base text-textPrimary mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">edit_note</span>Ghi chú chung
+          </h3>
+          <textarea id="note" name="note" rows="4" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none" placeholder="Tổng kết chung về buổi chăm sóc..."></textarea>
+        </div>
+
+        <!-- Photo Upload -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
+          <h3 class="font-manrope font-bold text-base text-textPrimary mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">photo_camera</span>Ảnh đính kèm
+          </h3>
+          <div id="photo-upload-section" class="hidden">
+            <input type="file" id="photo-input" multiple accept="image/*" class="hidden" onchange="handlePhotoSelect(event)">
+            <button type="button" onclick="document.getElementById('photo-input').click()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-textSecondary hover:border-primary/40 hover:text-primary transition-all w-full justify-center">
+              <span class="material-symbols-outlined">cloud_upload</span>Chọn ảnh để tải lên
+            </button>
+            <div id="photo-preview" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3"></div>
+            <div id="photo-upload-progress" class="hidden mt-2 text-sm text-textSecondary">Đang tải ảnh...</div>
+          </div>
+          <div id="photo-no-diary" class="text-center py-4 text-textSecondary text-sm">Tạo nhật ký trước, sau đó tải ảnh lên.</div>
+        </div>
+
+        <!-- Form Error -->
+        <div id="form-error" class="hidden bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 flex items-center gap-2">
+          <span class="material-symbols-outlined text-lg">error</span>
+          <span id="form-error-text"></span>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex items-center gap-3">
+          <button type="submit" id="submit-btn" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primaryDark transition-all active:scale-[0.98] shadow-sm shadow-primary/20">
+            <span id="submit-text">Lưu nhật ký</span>
+            <span id="submit-spinner" class="hidden"><svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></span>
+          </button>
+          <a href="{% url 'frontend:worker_jobs' %}" class="px-6 py-3 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all">Hủy bỏ</a>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const API_BASE = '/api';
+const LOGIN_URL = "{% url 'frontend:login' %}";
+let taskId = null;
+let isEdit = false;
+let selectedMoodIcon = '';
+let selectedMoodLabel = '';
+let activityCounter = 0;
+
+async function apiFetch(url, options = {}) {
+  let token = localStorage.getItem('token');
+  if (!token) { window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+  options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+  let response = await fetch(url, options);
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh: refreshToken })
+        });
+        if (refreshResp.ok) {
+          const rd = await refreshResp.json();
+          localStorage.setItem('token', rd.access);
+          if (rd.refresh) localStorage.setItem('refresh_token', rd.refresh);
+          options.headers['Authorization'] = 'Bearer ' + rd.access;
+          response = await fetch(url, options);
+        } else { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+      } catch (e) { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+    } else { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+  }
+  return response;
+}
+
+function escapeHtml(v) {
+  if (v == null) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
+  const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-primary', warning: 'bg-amber-500' };
+  const toast = document.createElement('div');
+  toast.className = `pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-white text-sm font-medium toast-in ${colors[type] || colors.info}`;
+  toast.innerHTML = `<span class="material-symbols-outlined text-xl filled" style="font-variation-settings:'FILL'1;">${icons[type]||icons.info}</span><span class="flex-1">${escapeHtml(message)}</span><button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80"><span class="material-symbols-outlined text-lg">close</span></button>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.remove('toast-in'); toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+function selectMood(icon, label) {
+  selectedMoodIcon = icon;
+  selectedMoodLabel = label;
+  document.getElementById('mood_icon').value = icon;
+  document.getElementById('mood_label').value = label;
+  document.querySelectorAll('.mood-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.mood === icon);
+    el.classList.toggle('border-primary', el.dataset.mood === icon);
+    el.classList.toggle('bg-primaryLight/30', el.dataset.mood === icon);
+  });
+}
+
+function addActivityRow(time = '', title = '', desc = '', status = 'done') {
+  const list = document.getElementById('activities-list');
+  const idx = activityCounter++;
+  const row = document.createElement('div');
+  row.className = 'activity-row bg-gray-50 rounded-xl p-4 space-y-3';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <div class="flex items-start gap-3">
+      <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs font-medium text-textSecondary">Thời gian</label>
+          <input type="time" class="act-time mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value="${escapeHtml(time)}">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-textSecondary">Tên hoạt động</label>
+          <input type="text" class="act-title mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Ví dụ: Học Toán" value="${escapeHtml(title)}">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-textSecondary">Trạng thái</label>
+          <select class="act-status mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="done" ${status==='done'?'selected':''}>Hoàn thành</option>
+            <option value="partial" ${status==='partial'?'selected':''}>Một phần</option>
+            <option value="skipped" ${status==='skipped'?'selected':''}>Bỏ qua</option>
+          </select>
+        </div>
+      </div>
+      <button type="button" onclick="this.closest('.activity-row').remove(); toggleActivitiesEmpty();" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all flex-shrink-0 mt-5" title="Xóa">
+        <span class="material-symbols-outlined text-lg">delete</span>
+      </button>
+    </div>
+    <div>
+      <label class="text-xs font-medium text-textSecondary">Mô tả</label>
+      <input type="text" class="act-desc w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Chi tiết (không bắt buộc)" value="${escapeHtml(desc)}">
+    </div>
+  `;
+  list.appendChild(row);
+  toggleActivitiesEmpty();
+}
+
+function toggleActivitiesEmpty() {
+  const rows = document.querySelectorAll('.activity-row');
+  document.getElementById('activities-empty').classList.toggle('hidden', rows.length > 0);
+  document.getElementById('activities-list').classList.toggle('hidden', rows.length === 0);
+}
+
+function getFormData() {
+  const activities = [];
+  document.querySelectorAll('.activity-row').forEach((row, i) => {
+    activities.push({
+      time: row.querySelector('.act-time').value || '',
+      title: row.querySelector('.act-title').value || '',
+      description: row.querySelector('.act-desc').value || '',
+      status: row.querySelector('.act-status').value,
+      order: i
+    });
+  });
+  return {
+    mood_icon: document.getElementById('mood_icon').value,
+    mood_label: document.getElementById('mood_label').value,
+    mood_note: document.getElementById('mood_note').value,
+    completion_percent: document.getElementById('completion_percent').value,
+    note: document.getElementById('note').value,
+    activities: activities
+  };
+}
+
+function showFormError(msg) {
+  document.getElementById('form-error-text').textContent = msg;
+  document.getElementById('form-error').classList.remove('hidden');
+}
+
+function hideFormError() {
+  document.getElementById('form-error').classList.add('hidden');
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  hideFormError();
+  const btn = document.getElementById('submit-btn');
+  const btnText = document.getElementById('submit-text');
+  const spinner = document.getElementById('submit-spinner');
+  btn.disabled = true;
+  btnText.textContent = isEdit ? 'Đang cập nhật...' : 'Đang lưu...';
+  spinner.classList.remove('hidden');
+
+  try {
+    const data = getFormData();
+    const method = isEdit ? 'PATCH' : 'POST';
+    const resp = await apiFetch(API_BASE + '/worker/tasks/' + taskId + '/care-diary/', {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+
+    if (!resp.ok) {
+      showFormError(result.error || 'Có lỗi xảy ra. Vui lòng thử lại.');
+      return;
+    }
+
+    showToast(isEdit ? 'Đã cập nhật nhật ký thành công!' : 'Đã lưu nhật ký thành công!', 'success');
+
+    // Nếu là tạo mới → chuyển sang edit mode (hiện upload ảnh)
+    if (!isEdit) {
+      isEdit = true;
+      document.getElementById('submit-text').textContent = 'Cập nhật nhật ký';
+      document.getElementById('photo-upload-section').classList.remove('hidden');
+      document.getElementById('photo-no-diary').classList.add('hidden');
+    }
+  } catch (err) {
+    showFormError('Lỗi kết nối mạng. Vui lòng thử lại.');
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = isEdit ? 'Cập nhật nhật ký' : 'Lưu nhật ký';
+    spinner.classList.add('hidden');
+  }
+}
+
+async function handlePhotoSelect(e) {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+  const progress = document.getElementById('photo-upload-progress');
+  progress.classList.remove('hidden');
+  e.target.value = '';
+
+  try {
+    const formData = new FormData();
+    files.forEach(f => formData.append('images', f));
+    const resp = await apiFetch(API_BASE + '/worker/tasks/' + taskId + '/care-diary/attachments/', {
+      method: 'POST',
+      body: formData
+    });
+    const result = await resp.json();
+    if (!resp.ok) {
+      showToast(result.error || 'Không thể tải ảnh lên.', 'error');
+      return;
+    }
+    showToast('Đã tải lên ' + (result.attachments ? result.attachments.length : 0) + ' ảnh!', 'success');
+  } catch (err) {
+    showToast('Lỗi kết nối khi tải ảnh.', 'error');
+  } finally {
+    progress.classList.add('hidden');
+  }
+}
+
+async function loadExistingDiary() {
+  if (!taskId) return;
+  try {
+    const resp = await apiFetch(API_BASE + '/tasks/' + taskId + '/care-diary/');
+    if (resp.ok) {
+      const d = await resp.json();
+      isEdit = true;
+      document.getElementById('page-title').textContent = 'Sửa nhật ký chăm sóc';
+      document.getElementById('submit-text').textContent = 'Cập nhật nhật ký';
+      if (d.mood) {
+        selectMood(d.mood.icon || '', d.mood.label || '');
+        if (d.mood.note) document.getElementById('mood_note').value = d.mood.note;
+      }
+      if (d.completion) document.getElementById('completion_percent').value = d.completion.percent;
+      document.getElementById('pct-display').textContent = (d.completion ? d.completion.percent : 0) + '%';
+      if (d.note) document.getElementById('note').value = d.note;
+      if (d.activities && d.activities.length > 0) {
+        document.getElementById('activities-list').classList.remove('hidden');
+        document.getElementById('activities-empty').classList.add('hidden');
+        d.activities.forEach(a => addActivityRow(a.time, a.title, a.desc, a.status));
+      }
+      // Hiện upload ảnh
+      document.getElementById('photo-upload-section').classList.remove('hidden');
+      document.getElementById('photo-no-diary').classList.add('hidden');
+      // Hiện ảnh đã upload
+      if (d.attachments && d.attachments.length > 0) {
+        const preview = document.getElementById('photo-preview');
+        d.attachments.forEach(att => {
+          const img = document.createElement('div');
+          img.className = 'relative rounded-xl overflow-hidden border border-gray-100';
+          img.innerHTML = `<img src="${escapeHtml(att.url)}" class="w-full h-24 object-cover" alt="Ảnh đính kèm"><a href="${escapeHtml(att.url)}" target="_blank" class="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all flex items-center justify-center"><span class="material-symbols-outlined text-white text-2xl opacity-0 hover:opacity-100">open_in_new</span></a>`;
+          preview.appendChild(img);
+        });
+      }
+    } else if (resp.status === 404) {
+      // Chưa có nhật ký → form tạo mới
+      isEdit = false;
+      toggleActivitiesEmpty();
+    }
+  } catch (e) { /* ignore — để form trống */ }
+}
+
+async function loadTaskInfo() {
+  const params = new URLSearchParams(window.location.search);
+  taskId = params.get('task_id');
+  if (!taskId) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('error-message').textContent = 'Không tìm thấy ID công việc.';
+    document.getElementById('error-state').classList.remove('hidden');
+    return;
+  }
+
+  try {
+    // Thử tải nhật ký trước để xác định task title + edit mode
+    const resp = await apiFetch(API_BASE + '/tasks/' + taskId + '/care-diary/');
+    if (resp.ok) {
+      const d = await resp.json();
+      // Lấy task title từ API my-jobs hoặc dùng URL param
+      const params2 = new URLSearchParams(window.location.search);
+      document.getElementById('task-title-display').textContent = params2.get('task_title') || 'Công việc #' + taskId;
+    }
+  } catch(e) { /* ignore */ }
+
+  // Dùng query param nếu có
+  const params3 = new URLSearchParams(window.location.search);
+  const tt = params3.get('task_title');
+  if (tt) document.getElementById('task-title-display').textContent = tt;
+
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('form-state').classList.remove('hidden');
+
+  toggleActivitiesEmpty();
+  await loadExistingDiary();
+}
+
+function handleLogout() {
+  localStorage.clear();
+  window.location.href = LOGIN_URL;
+}
+
+if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
+loadTaskInfo();
+</script>
+</body>
+</html>

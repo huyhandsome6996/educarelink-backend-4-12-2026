@@ -613,3 +613,81 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
 - **Fix lỗi công bằng phân việc**: workload_day/week giờ tính đúng cả task đã completed, không còn xếp ngang hàng ưu tiên với worker chưa có việc. Merged vào main (2a476cc), QA passed 228/228 tests.
 - Remote branch fix/a2-workload-completed-tasks đã xoá sau merge.
 - A2 hoàn thiện và ổn định trên toàn hệ thống (backend + web + mobile). Chuyển sang B1.
+
+## B1 — Nhật ký chăm sóc thật (Care Diary) (2026-08-22)
+
+### Công việc đã làm
+- Tạo module Django mới `care_diary/` theo đúng §16.3 AGENTS.md (module isolation, chỉ phụ thuộc core).
+- 3 models: CareDiaryEntry (OneToOne Task), CareDiaryActivity (timeline), CareDiaryAttachment (ảnh).
+- 4 API endpoints: POST/PATCH worker tạo/sửa nhật ký, GET xem nhật ký, POST upload ảnh đính kèm.
+- Service layer (`care_diary/services.py`) theo §15.3: business logic tách biệt khỏi views.
+- Stats (đếm activities theo status) tính động, không lưu field riêng.
+- Mobile Parent: sửa CareDiaryDetailScreen nối API thật, xoá mock data + comingSoonBanner, thêm loading/empty/error states.
+- Mobile Worker: tạo CareDiaryFormScreen hoàn chỉnh (mood, activities động, upload ảnh), thêm entry point nút "Ghi nhật ký chăm sóc" trong MyJobsScreen.
+- Đăng ký route CareDiaryForm trong AppNavigator (worker section).
+- 26 test cases bao phủ: happy path, permission, response contract, stats, upload ảnh.
+
+### File đã sửa/thêm
+- `backend/settings.py`: thêm 'care_diary' vào INSTALLED_APPS
+- `backend/urls.py`: include care_diary.urls
+- `care_diary/models.py`: 3 models (CareDiaryEntry, CareDiaryActivity, CareDiaryAttachment)
+- `care_diary/admin.py`: đăng ký 3 models trong Django admin
+- `care_diary/services.py`: check_worker_can_write, check_can_read, build_entry_response
+- `care_diary/views.py`: 3 APIView (WorkerCareDiaryAPIView, CareDiaryDetailAPIView, WorkerCareDiaryAttachmentAPIView)
+- `care_diary/urls.py`: 3 URL patterns
+- `care_diary/tests.py`: 26 test cases trong 6 class
+- `care_diary/migrations/0001_initial.py`: migration cho 3 models
+- `mobile/src/api/careDiary.js`: 4 hàm API client
+- `mobile/src/screens/Parent/CareDiaryDetailScreen.js`: nối API thật, xoá mock
+- `mobile/src/screens/Worker/CareDiaryFormScreen.js`: MỚI — form ghi/sửa nhật ký
+- `mobile/src/screens/Worker/MyJobsScreen.js`: thêm nút "Ghi nhật ký chăm sóc"
+- `mobile/src/navigation/AppNavigator.js`: thêm route CareDiaryForm
+- `mobile/src/mocks/careDiaryMock.js`: XOÁ — không còn dùng
+
+### Lệnh đã chạy
+- `python manage.py startapp care_diary`
+- `python manage.py makemigrations care_diary`
+- `python manage.py migrate`
+- `python manage.py test --verbosity=2` → 254/254 OK
+
+### Bug fix lượt QA (commit trên branch feature/b1-nhat-ky-cham-soc)
+Sửa 9 bug do QA Agent phát hiện:
+- **BUG-01 (CRITICAL)**: `CareDiaryFormScreen.js` crash khi mount do dùng `Animated.Value`/`Animated.timing` mà không import `Animated`. Xoá toàn bộ đoạn `fadeAnim`/`useRef`/`Animated.timing` dead code (màn hình form không cần animation này), xoá luôn import `ANIM` và `useRef` thừa.
+- **BUG-02/03/04 (HIGH)**: `completion_percent` không validate → crash 500 khi giá trị âm (IntegrityError) hoặc không phải số (ValueError). Thêm `parse_completion_percent()` trong `services.py`, gọi ở cả `post()` và `patch()` trong `views.py`, bắt `ValueError` trả 400 với message tiếng Việt.
+- **BUG-05 (MEDIUM)**: `PATCH` không truncate `mood_icon`/`mood_label` (khác với `post()` đã có `[:30]`/`[:100]`), có thể crash 500 trên PostgreSQL. Thêm `FIELD_MAX_LENGTH` dict trong `patch()` để truncate đồng nhất.
+- **BUG-06 (MEDIUM)**: `activities[].status` không validate theo `STATUS_CHOICES`. Thêm validate trước khi tạo `CareDiaryActivity` ở cả `post()` và `patch()`, trả 400 liệt kê giá trị hợp lệ.
+- **BUG-07 (MEDIUM)**: Worker accepted nhưng chưa tạo entry nhận 403 thay vì 404 khi tự GET. Sửa `check_can_read()` kiểm tra `TaskApplication` accepted thay vì kiểm tra entry đã tồn tại → worker accepted chưa có entry nhận đúng 404.
+- **BUG-08 (MEDIUM)**: Xem ảnh đính kèm luôn báo "Không có ảnh" do `ImagePreview` nhận `{ uri, title }` nhưng code gửi `{ imageUrl }`. Đổi thành `{ uri: att.url, title: 'Ảnh đính kèm nhật ký' }`.
+- **BUG-09 (LOW)**: Nút "Ghi nhật ký" hiện trùng lặp cho task completed do `showTrackingUI` không loại trừ `task_status === 'completed'`. Thêm điều kiện `app.task_status !== 'completed'` vào khối `showTrackingUI`.
+- **Tests mới**: 11 test cases trong class `EdgeCaseValidationTests` bao phủ BUG-02 đến BUG-07. Full suite: 265/265 pass (254 cũ + 11 mới).
+
+### Lịch sử nhật ký (commit 74ea516)
+Bổ sung theo spec gốc: "Parents can review this history to monitor their child's progress from session to session."
+- **Backend**: `GET /api/parent/care-diary-history/` — trả danh sách rút gọn (task_id, task_title, date, mood, completion_percent, worker_name). Sắp xếp theo `task.scheduled_time DESC` (thời gian buổi chăm sóc thực tế, không phải lúc ghi). Không phân trang (codebase chưa có pattern, số lượng task/phụ huynh có giới hạn tự nhiên).
+- **Service**: `get_parent_diary_history()` trong `care_diary/services.py`.
+- **Mobile**: `CareDiaryHistoryScreen.js` — FlatList card tóm tắt với mood chip, % hoàn thành, tên CarePartner. Loading/error/empty states đầy đủ.
+- **Entry point**: nút icon clock trong header MyTasksScreen (tab "Nhật ký"), rõ ràng, không mồ côi.
+- **Route**: `CareDiaryHistory` đăng ký trong `AppNavigator.js` (Parent section).
+- **API client**: `getCareDiaryHistory()` trong `mobile/src/api/careDiary.js`.
+- **Tests**: 6 test mới (`DiaryHistoryTests`) — empty, parent isolation, sort order, response contract, worker 403, anonymous 401. Full suite: 271/271 pass.
+### Lưu ý cho agent tiếp theo
+- **Web frontend KHÔNG làm trong lượt này.** Lý do: mock data gốc và toàn bộ entry point hiện có đều chỉ ở mobile, không có tín hiệu nào cho thấy web cần tính năng này ngay. Nếu Huy muốn có bản web → đó là 1 task riêng.
+- **Cho phép sửa nhật ký sau khi task completed.** Quyết định chủ động: CarePartner có thể bổ sung ghi chú sau ca làm (docstring trong WorkerCareDiaryAPIView.patch).
+- **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
+- **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
+- **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.
+
+### BUG-10 fix + Web frontend parity (commit 509069c)
+**PHẦN 1 — BUG-10 (MEDIUM):**
+- `get_parent_diary_history()`: field `date` build từ `entry.created_at` → SỬA thành `entry.task.scheduled_time`. Đúng theo comment docstring ("sắp xếp theo task.scheduled_time") nhưng code lại dùng sai.
+- `build_entry_response()`: cùng bug, cùng fix.
+- 2 test mới `Bug10DateFieldTests`: tạo task với `scheduled_time` 3-5 ngày trước, ghi nhật ký hôm nay, assert `date` phản ánh đúng ngày của `scheduled_time` (không chỉ check tồn tại field).
+
+**PHẦN 2 — Web frontend parity (yêu cầu chuẩn từ nay):**
+- `frontend/templates/frontend/worker_care_diary_form.html`: Form CarePartner ghi/sửa nhật ký (mood picker, completion slider, activities add/remove, note, upload ảnh multipart). Gọi POST/PATCH/attachment API thật qua apiFetch.
+- `frontend/templates/frontend/parent_care_diary_detail.html`: Xem chi tiết nhật ký (carepartner info, mood, completion stats+bar, activities timeline, note, attachments gallery). Field contract khớp mobile (`desc`, `avatarInitial`...). 404 empty state thân thiện.
+- `frontend/templates/frontend/parent_care_diary_history.html`: Danh sách card tóm tắt mới nhất trước. Mood chip, % badge, worker name. Loading/error/empty states.
+- `frontend/views.py`: 3 TemplateView mới.
+- `frontend/urls.py`: 3 URL mới.
+- Entry points: sidebar "Nhật ký chăm sóc" trong `parent_home.html` + `parent_tasks.html` (sidebar + header button); nút "Ghi nhật ký" trong `worker_jobs.html` cho accepted + completed tasks.
+- 6 test mới `WebPageTests`: verify 200 + HTML content cho 3 trang mới + link presence trong 2 trang có entry point. Full suite: 279/279 pass.
