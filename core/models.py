@@ -235,7 +235,48 @@ class ProfileChangeRequest(models.Model):
         return f"{self.worker.username} - Yêu cầu thay đổi hồ sơ - {self.get_status_display()}"
 
 
-# 8. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
+# 9. BẢNG QUY TẮC GIÁ GỢI Ý (A1 — Tính năng gợi ý giá tự động)
+# Mỗi ServiceCategory có 1 PricingRule quy định loại tính giá
+# (distance=theo km, hourly=theo giờ, fixed=cố định) và các thông số
+class PricingRule(models.Model):
+    PRICING_TYPE_CHOICES = (
+        ('distance', 'Theo khoảng cách (km)'),
+        ('hourly', 'Theo thời lượng (giờ)'),
+        ('fixed', 'Cố định / Thoả thuận'),
+    )
+    category = models.OneToOneField(
+        ServiceCategory, on_delete=models.CASCADE,
+        related_name='pricing_rule',
+        help_text='Mỗi danh mục chỉ có 1 quy tắc giá'
+    )
+    pricing_type = models.CharField(max_length=20, choices=PRICING_TYPE_CHOICES, default='fixed')
+    base_fee = models.DecimalField(
+        max_digits=10, decimal_places=0, default=0,
+        help_text='Phí mở đầu (VNĐ)'
+    )
+    unit_price = models.DecimalField(
+        max_digits=10, decimal_places=0, default=0,
+        help_text='Đơn giá mỗi km hoặc mỗi giờ (VNĐ)'
+    )
+    min_price = models.DecimalField(
+        max_digits=10, decimal_places=0, default=0,
+        help_text='Giá tối thiểu trong khoảng gợi ý (VNĐ)'
+    )
+    max_price = models.DecimalField(
+        max_digits=10, decimal_places=0, default=0,
+        help_text='Giá tối đa trong khoảng gợi ý (VNĐ)'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Quy tắc giá gợi ý'
+        verbose_name_plural = 'Quy tắc giá gợi ý'
+
+    def __str__(self):
+        return f'{self.category.name} ({self.get_pricing_type_display()})'
+
+
+# 10. BẢNG THÔNG BÁO (Admin gửi thông báo cho Carepartner)
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True, help_text="Null = gửi cho tất cả Carepartner")
     title = models.CharField(max_length=255)
