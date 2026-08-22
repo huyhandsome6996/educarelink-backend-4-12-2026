@@ -1,0 +1,84 @@
+{% load static %}
+<!-- ===== PARENT SIDEBAR PARTIAL ===== -->
+<!-- active_tab: home | tasks | diary | create | chatbot | help -->
+<style>
+  .psb-scroll::-webkit-scrollbar { width: 0; }
+  .psb-scroll { scrollbar-width: none; }
+  .psb-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 500; font-size: 0.875rem; transition: all 0.2s ease; color: #6B7280; }
+  .psb-item:hover { background: rgba(242,101,34,0.08); color: #1A1A2E; }
+  .psb-item:hover .psb-icon { color: #F26522; }
+  .psb-item.active { background: rgba(242,101,34,0.12); color: #F26522; font-weight: 600; }
+  .psb-item.active .psb-icon { color: #F26522; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .psb-icon { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; transition: color 0.2s ease; }
+</style>
+
+<!-- Logo -->
+<div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+  <div class="w-10 h-10 flex items-center justify-center">
+    <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+  </div>
+  <div>
+    <h1 style="font-family:Manrope,sans-serif;font-weight:800;font-size:1.15rem;color:#1A1A2E;line-height:1.2;">EduCareLink</h1>
+    <p style="font-size:10px;color:#6B7280;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Phụ huynh</p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<nav class="flex-1 px-3 py-4 psb-scroll overflow-y-auto">
+  <div class="space-y-1">
+    <!-- 1. Trang chủ -->
+    <a href="{% url 'frontend:parent_home' %}" class="psb-item{% if active_tab == 'home' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">home</span>
+      <span>Trang chủ</span>
+    </a>
+
+    <!-- 2. Việc của tôi -->
+    <a href="{% url 'frontend:parent_tasks' %}" class="psb-item{% if active_tab == 'tasks' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">assignment</span>
+      <span>Việc của tôi</span>
+    </a>
+
+    <!-- 3. Nhật ký chăm sóc -->
+    <a href="{% url 'frontend:parent_care_diary_history' %}" class="psb-item{% if active_tab == 'diary' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">book</span>
+      <span>Nhật ký chăm sóc</span>
+    </a>
+
+    <!-- 4. Đăng việc mới -->
+    <a href="{% url 'frontend:task_create_1' %}" class="psb-item{% if active_tab == 'create' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">add_circle</span>
+      <span>Đăng việc mới</span>
+    </a>
+
+    <!-- 5. AI Trợ lý -->
+    <a href="{% url 'frontend:chatbot' %}" class="psb-item{% if active_tab == 'chatbot' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">smart_toy</span>
+      <span>AI Trợ lý</span>
+    </a>
+
+    <!-- 6. Hướng dẫn -->
+    <a href="/onboarding/parent/" class="psb-item{% if active_tab == 'help' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">help</span>
+      <span>Hướng dẫn</span>
+    </a>
+  </div>
+</nav>
+
+<!-- User Info + Logout (Bottom) -->
+<div class="px-4 py-4 border-t border-gray-100">
+  <div class="flex items-center gap-3 mb-3 px-1">
+    <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center overflow-hidden ring-2 ring-orange-100 flex-shrink-0">
+      <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+           src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p id="sidebar-name" class="font-semibold text-sm text-gray-900 truncate">Đang tải...</p>
+      <p style="font-size:11px;color:#6B7280;">Phụ huynh</p>
+    </div>
+  </div>
+  <button onclick="handleLogout()"
+          class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all text-sm font-medium">
+    <span class="material-symbols-outlined text-lg">logout</span>
+    <span>Đăng xuất</span>
+  </button>
+</div>

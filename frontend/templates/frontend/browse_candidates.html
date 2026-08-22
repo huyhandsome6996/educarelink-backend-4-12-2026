@@ -29,21 +29,13 @@
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
 
-        /* Sidebar scroll */
-        .sidebar-scroll::-webkit-scrollbar { width: 0; }
-        .sidebar-scroll { scrollbar-width: none; }
-
         /* Custom scrollbar for main content */
         .custom-scroll::-webkit-scrollbar { width: 5px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-        /* Nav item */
-        .nav-item { transition: all 0.2s ease; }
-        .nav-item:hover { background: rgba(242,101,34,0.08); }
-        .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
-        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+
 
         /* Toast animation */
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -116,66 +108,7 @@
 <!-- SIDEBAR (Desktop ≥1024px)                    -->
 <!-- ============================================ -->
 <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
-
-    <!-- Logo -->
-    <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
-        <img src="/static/images/logo.png" alt="EduCareLink" class="h-10 w-10 rounded-xl object-contain shadow-md shadow-primary/20">
-        <div>
-            <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
-        </div>
-    </div>
-
-    <!-- Navigation -->
-    <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
-        <div class="space-y-1">
-            <!-- Trang chủ -->
-            <a href="{% url 'frontend:parent_home' %}"
-               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
-                <span class="material-symbols-outlined text-xl">home</span>
-                <span>Trang chủ</span>
-            </a>
-
-            <!-- Việc của tôi - ACTIVE (this is a sub-page of Việc của tôi) -->
-            <a href="{% url 'frontend:parent_tasks' %}"
-               class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm">
-                <span class="material-symbols-outlined text-xl">assignment</span>
-                <span>Việc của tôi</span>
-            </a>
-
-            <!-- Đăng việc mới -->
-            <a href="{% url 'frontend:task_create_1' %}"
-               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
-                <span class="material-symbols-outlined text-xl">add_circle</span>
-                <span>Đăng việc mới</span>
-            </a>
-
-            <!-- AI Trợ lý -->
-            <a href="{% url 'frontend:chatbot' %}"
-               class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
-                <span class="material-symbols-outlined text-xl">smart_toy</span>
-                <span>AI Trợ lý</span>
-            </a>
-        </div>
-    </nav>
-
-    <!-- User Section (Bottom) -->
-    <div class="border-t border-border px-4 py-4">
-        <div class="flex items-center gap-3 mb-3 px-2">
-            <div class="w-10 h-10 rounded-full bg-primaryLight ring-2 ring-primarySoft flex-shrink-0 overflow-hidden">
-                <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
-                     src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
-            </div>
-            <div class="flex-1 min-w-0">
-                <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
-                <p class="text-[11px] text-textMuted">Phụ huynh</p>
-            </div>
-        </div>
-        <button onclick="handleLogout()"
-                class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-all duration-200 text-sm font-medium">
-            <span class="material-symbols-outlined text-lg">logout</span>
-            Đăng xuất
-        </button>
-    </div>
+{% include 'frontend/_parent_sidebar.html' with active_tab='tasks' %}
 </aside>
 
 <!-- ============================================ -->
