@@ -2394,15 +2394,28 @@ class PriceSuggestionAPIView(APIView):
 
 
 class CategoryListAPIView(APIView):
-    """Trả về danh sách ServiceCategory (id, name, icon_name).
+    """Trả về danh sách ServiceCategory (id, name, icon_name, pricing_type).
     Dùng cho mobile/web render danh mục từ DB thật thay vì hardcode.
     GET /api/categories/
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        cats = ServiceCategory.objects.order_by('id').values('id', 'name', 'icon_name')
-        return Response(list(cats))
+        from core.models import PricingRule
+        cats = ServiceCategory.objects.order_by('id').select_related('pricing_rule')
+        result = []
+        for c in cats:
+            try:
+                pt = c.pricing_rule.pricing_type
+            except PricingRule.DoesNotExist:
+                pt = 'fixed'
+            result.append({
+                'id': c.id,
+                'name': c.name,
+                'icon_name': c.icon_name,
+                'pricing_type': pt,
+            })
+        return Response(result)
 
 
 class DistanceCalculationAPIView(APIView):
