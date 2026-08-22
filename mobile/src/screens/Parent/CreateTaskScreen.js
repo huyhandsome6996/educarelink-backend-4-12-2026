@@ -146,14 +146,16 @@ export default function CreateTaskScreen() {
   };
 
   // Tìm category info: ưu tiên DB (name + pricingType), fallback local CATEGORIES
+  // Gán tường minh từng field — KHÔNG dùng spread vì
+  // dbCat dùng snake_case (pricing_type), localCat dùng camelCase (pricingType)
+  // → spread ...localCat sẽ ghi đè pricingType đúng từ DB bằng giá trị hard-code.
   const dbCat = dbCategories.find(c => c.id === selectedCat);
   const localCat = CATEGORIES.find(c => c.id === selectedCat);
-  // Ưu tiên pricingType từ DB (source of truth), fallback local hard-code
   const cat = {
     id: selectedCat,
-    pricingType: dbCat?.pricing_type || localCat?.pricingType || 'fixed',
-    ...dbCat,
-    ...localCat,
+    name: dbCat?.name ?? localCat?.name,
+    hint: localCat?.hint,
+    pricingType: dbCat?.pricing_type ?? localCat?.pricingType ?? 'fixed',
   };
   const catDisplayName = dbCat ? dbCat.name : (localCat?.name || '');
 
