@@ -2264,6 +2264,122 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return round(R * c, 2)
 
 
+# ═══════════════════════════════════════════════════════════════
+# A1 — GỢI Ý GIÁ TỰ ĐỘNG
+# ═══════════════════════════════════════════════════════════════
+class PriceSuggestionAPIView(APIView):
+    """Gợi ý giá tự động khi phụ huynh đăng việc.
+
+    POST /api/tasks/price-suggestion/
+    Body: { category_id, latitude?, longitude?, reference_latitude?, reference_longitude?, estimated_duration_hours? }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # --- Validate category_id ---
+        category_id = request.data.get('category_id')
+        if not category_id:
+            return Response({'error': 'Thiếu category_id.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            category = ServiceCategory.objects.get(id=int(category_id))
+        except (ValueError, ServiceCategory.DoesNotExist):
+            return Response({'error': 'category_id không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Lấy PricingRule ---
+        from core.models import PricingRule
+        try:
+            rule = category.pricing_rule
+        except PricingRule.DoesNotExist:
+            return Response({
+                'category': category.name,
+                'pricing_type': 'fixed',
+                'suggested_price': None,
+                'price_range': None,
+                'message': 'Thoả thuận trực tiếp',
+            })
+
+        pricing_type = rule.pricing_type
+        result = {
+            'category': category.name,
+            'pricing_type': pricing_type,
+            'suggested_price': None,
+            'price_range': {'min': int(rule.min_price), 'max': int(rule.max_price)} if rule.max_price > 0 else None,
+            'breakdown': None,
+        }
+
+        # --- Validate toạ độ ---
+        def _valid_coord(val):
+            if val is None:
+                return None
+            try:
+                v = float(val)
+                if -90 <= v <= 90 or -180 <= v <= 180:
+                    return v
+            except (TypeError, ValueError):
+                pass
+            return None
+
+        lat = _valid_coord(request.data.get('latitude'))
+        lng = _valid_coord(request.data.get('longitude'))
+        ref_lat = _valid_coord(request.data.get('reference_latitude'))
+        ref_lng = _valid_coord(request.data.get('reference_longitude'))
+        est_hours = request.data.get('estimated_duration_hours')
+        if est_hours is not None:
+            try:
+                est_hours = float(est_hours)
+                if est_hours <= 0:
+                    est_hours = None
+            except (TypeError, ValueError):
+                est_hours = None
+
+        # --- Tính giá theo loại ---
+        suggested = None
+        breakdown = {}
+
+        if pricing_type == 'distance':
+            if lat is not None and lng is not None and ref_lat is not None and ref_lng is not None:
+                from performance.spatial import haversine_distance_optimized
+                distance_m = haversine_distance_optimized(lat, lng, ref_lat, ref_lng)
+                distance_km = round(distance_m / 1000, 1)
+                raw_price = float(rule.base_fee) + distance_km * float(rule.unit_price)
+                # Clamp vào [min_price, max_price] nếu có
+                if rule.min_price > 0:
+                    raw_price = max(raw_price, float(rule.min_price))
+                if rule.max_price > 0:
+                    raw_price = min(raw_price, float(rule.max_price))
+                suggested = int(round(raw_price))
+                breakdown = {
+                    'base_fee': int(rule.base_fee),
+                    'distance_km': distance_km,
+                    'unit_price': int(rule.unit_price),
+                }
+            else:
+                result['reason'] = 'Chưa có đủ toạ độ để tính giá theo khoảng cách. Hiển thị khoảng giá tham khảo.'
+
+        elif pricing_type == 'hourly':
+            if est_hours is not None:
+                raw_price = float(rule.base_fee) + est_hours * float(rule.unit_price)
+                if rule.min_price > 0:
+                    raw_price = max(raw_price, float(rule.min_price))
+                if rule.max_price > 0:
+                    raw_price = min(raw_price, float(rule.max_price))
+                suggested = int(round(raw_price))
+                breakdown = {
+                    'base_fee': int(rule.base_fee),
+                    'estimated_hours': est_hours,
+                    'unit_price': int(rule.unit_price),
+                }
+            else:
+                result['reason'] = 'Chưa nhập thời lượng dự kiến. Hiển thị khoảng giá tham khảo.'
+
+        # fixed: không tính gì thêm
+
+        result['suggested_price'] = suggested
+        result['breakdown'] = breakdown if breakdown else None
+
+        return Response(result)
+
+
 class DistanceCalculationAPIView(APIView):
     """Tính khoảng cách giữa 2 người dùng hoặc giữa người dùng và công việc.
     Sử dụng Haversine cho khoảng cách chính xác + Gemini AI để ước tính thời gian di chuyển."""

@@ -109,3 +109,8 @@ export const updateProfile = (payload) => apiClient.patch('/profile/', payload);
 // Body: { parent_lat, parent_lng, worker_lat, worker_lng }
 export const calculateDistance = (payload) =>
   apiClient.post('/distance/', payload);
+
+// === A1 — GỢI Ý GIÁ TỰ ĐỘNG ===
+// Body: { category_id, latitude?, longitude?, reference_latitude?, reference_longitude?, estimated_duration_hours? }
+export const getPriceSuggestion = (payload) =>
+  apiClient.post('/tasks/price-suggestion/', payload);

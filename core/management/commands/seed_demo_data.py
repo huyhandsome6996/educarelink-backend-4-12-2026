@@ -126,6 +126,37 @@ class Command(BaseCommand):
                 created_cats += 1
         self.stdout.write(f"   + Tao {created_cats} danh muc moi. Tong: {ServiceCategory.objects.count()}")
 
+        # --- Seed PricingRule cho mỗi category (A1 — gợi ý giá tự động) ---
+        from core.models import PricingRule
+        pricing_rules_data = [
+            {"name": "Gia sư",           "pricing_type": "hourly", "base_fee": 0,     "unit_price": 80000,  "min_price": 150000, "max_price": 300000},
+            {"name": "Đón trẻ",          "pricing_type": "distance","base_fee": 20000, "unit_price": 15000,  "min_price": 80000,  "max_price": 150000},
+            {"name": "Dọn dẹp nhà cửa", "pricing_type": "hourly", "base_fee": 0,     "unit_price": 100000, "min_price": 200000, "max_price": 400000},
+            {"name": "Trông trẻ",         "pricing_type": "hourly", "base_fee": 0,     "unit_price": 60000,  "min_price": 100000, "max_price": 200000},
+            {"name": "Mua sắm hộ",       "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 50000,  "max_price": 100000},
+            {"name": "Nấu ăn",           "pricing_type": "hourly", "base_fee": 0,     "unit_price": 80000,  "min_price": 100000, "max_price": 200000},
+            {"name": "Hỗ trợ AI",        "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 100000, "max_price": 300000},
+            {"name": "Khác",             "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 0,      "max_price": 0},
+        ]
+        created_rules = 0
+        for rule_data in pricing_rules_data:
+            try:
+                cat = ServiceCategory.objects.get(name=rule_data["name"])
+                PricingRule.objects.update_or_create(
+                    category=cat,
+                    defaults={
+                        "pricing_type": rule_data["pricing_type"],
+                        "base_fee": rule_data["base_fee"],
+                        "unit_price": rule_data["unit_price"],
+                        "min_price": rule_data["min_price"],
+                        "max_price": rule_data["max_price"],
+                    },
+                )
+                created_rules += 1
+            except ServiceCategory.DoesNotExist:
+                self.stdout.write(self.style.WARNING(f"   ! Khong tim thay category: {rule_data['name']}"))
+        self.stdout.write(f"   + Tao/update {created_rules} PricingRule. Tong: {PricingRule.objects.count()}")
+
         # ═══════════════════════════════════════════════════════════════
         #  PHẦN 2: KIỂM TRA 3 TÀI KHOẢN BẢO VỆ (không tạo mới, không sửa)
         # ═══════════════════════════════════════════════════════════════
