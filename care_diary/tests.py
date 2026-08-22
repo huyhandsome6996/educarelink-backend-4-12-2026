@@ -484,3 +484,163 @@ class CancelledTaskTests(TestCase):
         )
         # Task cancelled → task không còn in_progress/completed → 400
         self.assertIn(resp.status_code, (400, 403))
+
+
+@override_settings(DEBUG=True)
+class EdgeCaseValidationTests(TestCase):
+    """Test các edge case validation — BUG-02 đến BUG-07."""
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+
+    # === BUG-02: completion_percent không phải số → 400 ===
+    def test_post_completion_percent_not_number_400(self):
+        """completion_percent = 'abc' → 400, không 500."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(completion_percent='abc'),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('số nguyên', resp.data['error'])
+
+    # === BUG-03: completion_percent âm → 400 ===
+    def test_post_completion_percent_negative_400(self):
+        """completion_percent = -5 → 400, không 500 IntegrityError."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(completion_percent=-5),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('0-100', resp.data['error'])
+
+    # === BUG-04: completion_percent > 100 → 400 ===
+    def test_post_completion_percent_over_100_400(self):
+        """completion_percent = 150 → 400."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(completion_percent=150),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('0-100', resp.data['error'])
+
+    # === BUG-02/03/04: PATCH cũng validate completion_percent ===
+    def test_patch_completion_percent_negative_400(self):
+        """PATCH completion_percent = -1 → 400."""
+        # Tạo entry trước
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'completion_percent': -1},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('0-100', resp.data['error'])
+
+    def test_patch_completion_percent_not_number_400(self):
+        """PATCH completion_percent = 'xyz' → 400."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'completion_percent': 'xyz'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('số nguyên', resp.data['error'])
+
+    def test_patch_completion_percent_over_100_400(self):
+        """PATCH completion_percent = 999 → 400."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'completion_percent': 999},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('0-100', resp.data['error'])
+
+    # === BUG-05: PATCH truncate mood_label dài ===
+    def test_patch_mood_label_truncated_to_100(self):
+        """PATCH mood_label 500 ký tự → response trả về đúng 100 ký tự (cắt ngắn)."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        long_label = 'A' * 500
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'mood_label': long_label},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data['mood']['label']), 100)
+
+    def test_patch_mood_icon_truncated_to_30(self):
+        """PATCH mood_icon 100 ký tự → response trả về đúng 30 ký tự (cắt ngắn)."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        long_icon = 'B' * 100
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'mood_icon': long_icon},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data['mood']['icon']), 30)
+
+    # === BUG-06: activities[].status không hợp lệ → 400 ===
+    def test_post_activity_invalid_status_400(self):
+        """POST activity status='invalid' → 400, không âm thầm lưu."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(activities=[
+                {'time': '15:30', 'title': 'Test', 'description': '', 'status': 'invalid_status', 'order': 0},
+            ]),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('không hợp lệ', resp.data['error'])
+
+    def test_patch_activity_invalid_status_400(self):
+        """PATCH activity status='bị_lỗi' → 400."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'activities': [
+                {'time': '08:00', 'title': 'Mới', 'description': '', 'status': 'bị_lỗi', 'order': 0},
+            ]},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('không hợp lệ', resp.data['error'])
+
+    # === BUG-07: Worker accepted, chưa tạo entry, GET → 404 (không phải 403) ===
+    def test_worker_accepted_no_entry_get_404_not_403(self):
+        """Worker đã accepted nhưng chưa tạo entry → GET trả 404, không phải 403."""
+        # Không tạo entry — chỉ accept worker
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 404)
+        self.assertIn('chưa có nhật ký', resp.data['error'].lower())
+

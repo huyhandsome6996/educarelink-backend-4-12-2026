@@ -656,3 +656,14 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
 - **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
 - **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
 - **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.
+
+### Bug fix lượt QA (commit trên branch feature/b1-nhat-ky-cham-soc)
+Sửa 9 bug do QA Agent phát hiện:
+- **BUG-01 (CRITICAL)**: `CareDiaryFormScreen.js` crash khi mount do dùng `Animated.Value`/`Animated.timing` mà không import `Animated`. Xoá toàn bộ đoạn `fadeAnim`/`useRef`/`Animated.timing` dead code (màn hình form không cần animation này), xoá luôn import `ANIM` và `useRef` thừa.
+- **BUG-02/03/04 (HIGH)**: `completion_percent` không validate → crash 500 khi giá trị âm (IntegrityError) hoặc không phải số (ValueError). Thêm `parse_completion_percent()` trong `services.py`, gọi ở cả `post()` và `patch()` trong `views.py`, bắt `ValueError` trả 400 với message tiếng Việt.
+- **BUG-05 (MEDIUM)**: `PATCH` không truncate `mood_icon`/`mood_label` (khác với `post()` đã có `[:30]`/`[:100]`), có thể crash 500 trên PostgreSQL. Thêm `FIELD_MAX_LENGTH` dict trong `patch()` để truncate đồng nhất.
+- **BUG-06 (MEDIUM)**: `activities[].status` không validate theo `STATUS_CHOICES`. Thêm validate trước khi tạo `CareDiaryActivity` ở cả `post()` và `patch()`, trả 400 liệt kê giá trị hợp lệ.
+- **BUG-07 (MEDIUM)**: Worker accepted nhưng chưa tạo entry nhận 403 thay vì 404 khi tự GET. Sửa `check_can_read()` kiểm tra `TaskApplication` accepted thay vì kiểm tra entry đã tồn tại → worker accepted chưa có entry nhận đúng 404.
+- **BUG-08 (MEDIUM)**: Xem ảnh đính kèm luôn báo "Không có ảnh" do `ImagePreview` nhận `{ uri, title }` nhưng code gửi `{ imageUrl }`. Đổi thành `{ uri: att.url, title: 'Ảnh đính kèm nhật ký' }`.
+- **BUG-09 (LOW)**: Nút "Ghi nhật ký" hiện trùng lặp cho task completed do `showTrackingUI` không loại trừ `task_status === 'completed'`. Thêm điều kiện `app.task_status !== 'completed'` vào khối `showTrackingUI`.
+- **Tests mới**: 11 test cases trong class `EdgeCaseValidationTests` bao phủ BUG-02 đến BUG-07. Full suite: 265/265 pass (254 cũ + 11 mới).

@@ -5,12 +5,12 @@
 // Nếu chưa có → form trống (POST).
 // ============================================================
 
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
+import {COLORS, SHADOWS, SIZES, TYPO} from '../../theme/colors';
 import { createCareDiaryEntry, updateCareDiaryEntry, getCareDiaryEntry, uploadCareDiaryAttachments } from '../../api/careDiary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -32,11 +32,6 @@ export default function CareDiaryFormScreen() {
   const route = useRoute();
   const { taskId, taskTitle } = route.params || {};
   const insets = useSafeAreaInsets();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: ANIM.timingNormal, useNativeDriver: true }).start();
-  }, [fadeAnim]);
 
   // === FORM STATE ===
   const [moodIcon, setMoodIcon] = useState('happy');
