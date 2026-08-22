@@ -33,6 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const DEFAULT_LAT = 10.8231;  // TP.HCM
 const DEFAULT_LNG = 106.6297;
 const DEFAULT_ZOOM = 13;
+const GEOCODE_BASE = 'https://educarelink-backend.onrender.com/api/geocode/';
 
 // ============================================================
 // HTML cho WebView — Leaflet + OpenStreetMap (same as web)
@@ -113,8 +114,8 @@ const MAP_HTML = `
   </div>
   <script>
     var map = L.map('map').setView([${DEFAULT_LAT}, ${DEFAULT_LNG}], ${DEFAULT_ZOOM});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
       maxZoom: 19
     }).addTo(map);
 
@@ -142,7 +143,7 @@ const MAP_HTML = `
     }
 
     function reverseGeocode(lat, lng) {
-      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=vi')
+      fetch('${GEOCODE_BASE}?lat=' + lat + '&lon=' + lng)
         .then(function(r) { return r.json(); })
         .then(function(data) {
           currentAddress = data.display_name || ('Vị trí ' + lat.toFixed(4) + ', ' + lng.toFixed(4));
@@ -235,7 +236,7 @@ export default function MapPickerModal({
     setIsSearching(true);
     try {
       const resp = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=vi`
+        `${GEOCODE_BASE}?q=${encodeURIComponent(query)}`
       );
       const results = await resp.json();
       if (results && results.length > 0) {
