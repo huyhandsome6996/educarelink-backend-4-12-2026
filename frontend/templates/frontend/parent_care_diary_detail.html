@@ -1,0 +1,346 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+<link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+<title>Chi tiết nhật ký - EduCareLink</title>
+<link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  html { scroll-behavior: smooth; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .nav-item { transition: all 0.2s ease; }
+  .nav-item:hover { background: rgba(242,101,34,0.08); }
+  .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
+  .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+  @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+  .toast-in { animation: slideInRight 0.35s ease forwards; }
+  .toast-out { animation: slideOutRight 0.3s ease forwards; }
+  @media (max-width: 767px) {
+    .sidebar { display: none !important; }
+    .main-area { margin-left: 0 !important; }
+    .mobile-bottom-nav { display: flex !important; }
+  }
+  @media (min-width: 768px) { .mobile-bottom-nav { display: none !important; } }
+</style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- TOAST -->
+<div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="max-width:400px;"></div>
+
+<!-- SIDEBAR (Desktop) -->
+<aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 z-50 flex flex-col">
+  <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+    <div class="w-10 h-10 flex items-center justify-center"><img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain"></div>
+    <div><h1 class="font-manrope font-bold text-lg text-textPrimary leading-tight">EduCareLink</h1><p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase">Phụ huynh</p></div>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-1">
+    <a href="{% url 'frontend:parent_home' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">home</span>Trang chủ</a>
+    <a href="{% url 'frontend:parent_tasks' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">assignment</span>Việc của tôi</a>
+    <a href="{% url 'frontend:parent_care_diary_history' %}" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm"><span class="material-symbols-outlined text-xl">book</span>Lịch sử nhật ký</a>
+    <a href="{% url 'frontend:task_create_1' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">add_circle</span>Đăng việc mới</a>
+    <a href="{% url 'frontend:chatbot' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">smart_toy</span>AI Trợ lý</a>
+  </nav>
+  <div class="px-4 py-4 border-t border-gray-100">
+    <div class="flex items-center gap-3 mb-3 px-2">
+      <div class="w-10 h-10 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden"><img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/></div>
+      <div class="flex-1 min-w-0"><p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p><p class="text-[11px] text-textSecondary">Phụ huynh</p></div>
+    </div>
+    <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-all text-sm font-medium">
+      <span class="material-symbols-outlined text-lg">logout</span>Đăng xuất
+    </button>
+  </div>
+</aside>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 justify-around items-center px-2 py-2">
+  <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">home</span><span class="text-[10px] font-medium">Trang chủ</span></a>
+  <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">assignment</span><span class="text-[10px] font-medium">Việc</span></a>
+  <a href="{% url 'frontend:parent_care_diary_history' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-primary"><span class="material-symbols-outlined text-xl">book</span><span class="text-[10px] font-semibold">Nhật ký</span></a>
+  <button onclick="handleLogout()" class="flex flex-col items-center gap-0.5 px-3 py-1 text-textSecondary"><span class="material-symbols-outlined text-xl">logout</span><span class="text-[10px] font-medium">Đăng xuất</span></button>
+</nav>
+
+<!-- MAIN -->
+<main class="main-area lg:ml-[260px] min-h-screen pb-20 lg:pb-0">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-textSecondary mb-6">
+      <a href="{% url 'frontend:parent_care_diary_history' %}" class="hover:text-primary transition-colors">Lịch sử nhật ký</a>
+      <span class="material-symbols-outlined text-base">chevron_right</span>
+      <span class="text-textPrimary font-medium">Chi tiết</span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-state" class="space-y-4">
+      <div class="skeleton h-8 w-48"></div>
+      <div class="skeleton h-32 w-full"></div>
+      <div class="skeleton h-48 w-full"></div>
+      <div class="skeleton h-40 w-full"></div>
+    </div>
+
+    <!-- Error/Empty -->
+    <div id="error-state" class="hidden">
+      <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+        <span id="error-icon" class="material-symbols-outlined text-5xl text-textSecondary/50 mb-4 block">book</span>
+        <h3 id="error-title" class="font-manrope font-bold text-xl text-textPrimary mb-2">Không có nhật ký</h3>
+        <p id="error-message" class="text-textSecondary text-sm mb-6">CarePartner chưa ghi nhật ký cho buổi này.</p>
+        <a href="{% url 'frontend:parent_care_diary_history' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all">
+          <span class="material-symbols-outlined text-lg">arrow_back</span>Quay lại lịch sử
+        </a>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content-state" class="hidden space-y-6">
+      <h1 class="font-manrope font-bold text-2xl text-textPrimary">Chi tiết nhật ký</h1>
+
+      <!-- CarePartner Card -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+        <div class="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+          <span id="cp-initial" class="font-manrope font-bold text-xl text-white">?</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <h2 id="cp-name" class="font-manrope font-bold text-base text-textPrimary truncate">CarePartner</h2>
+            <span id="cp-verified" class="hidden"><span class="material-symbols-outlined text-sm text-secondary filled" style="font-variation-settings:'FILL'1;">verified</span></span>
+          </div>
+          <p id="cp-role" class="text-xs font-bold text-secondary">CarePartner</p>
+          <p id="cp-date" class="text-sm text-textSecondary mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Mood + Completion Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Mood -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+          <h3 class="font-manrope font-bold text-sm text-textPrimary mb-4 text-left">Tâm trạng của bé</h3>
+          <div id="mood-icon-display" class="w-20 h-20 rounded-full bg-primaryLight/50 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-4xl text-primary filled" style="font-variation-settings:'FILL'1;">sentiment_satisfied</span>
+          </div>
+          <p id="mood-label" class="font-manrope font-bold text-lg text-primary"></p>
+          <p id="mood-note" class="text-sm text-textSecondary mt-1"></p>
+        </div>
+        <!-- Completion -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          <h3 class="font-manrope font-bold text-sm text-textPrimary mb-4">Mức độ hoàn thành</h3>
+          <p id="completion-pct" class="font-manrope font-extrabold text-4xl text-secondary mb-1">0%</p>
+          <p class="text-xs text-textSecondary mb-3">Mục tiêu ngày</p>
+          <div class="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden mb-4">
+            <div id="completion-bar" class="h-full bg-secondary rounded-full transition-all" style="width:0%"></div>
+          </div>
+          <div id="completion-stats" class="grid grid-cols-3 gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Activities -->
+      <div id="activities-section" class="bg-white rounded-2xl border border-gray-100 p-5">
+        <h3 class="font-manrope font-bold text-sm text-textPrimary mb-4">Hoạt động đã thực hiện</h3>
+        <div id="activities-list" class="space-y-0"></div>
+      </div>
+
+      <!-- Note -->
+      <div id="note-section" class="hidden bg-primaryLight/30 rounded-2xl border border-primary/10 p-5">
+        <h3 class="font-manrope font-bold text-sm text-textPrimary mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-lg">chatbubble</span>Ghi chú thêm
+        </h3>
+        <p id="note-text" class="text-sm text-textPrimary leading-relaxed italic"></p>
+      </div>
+
+      <!-- Attachments -->
+      <div id="attachments-section" class="hidden">
+        <h3 class="font-manrope font-bold text-sm text-textPrimary mb-3">Ảnh đính kèm (<span id="att-count">0</span>)</h3>
+        <div id="attachments-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3"></div>
+      </div>
+
+      <!-- Back button -->
+      <div class="pt-4">
+        <a href="{% url 'frontend:parent_care_diary_history' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all">
+          <span class="material-symbols-outlined text-lg">arrow_back</span>Quay lại lịch sử
+        </a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const API_BASE = '/api';
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+async function apiFetch(url, options = {}) {
+  let token = localStorage.getItem('token');
+  if (!token) { window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+  options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+  let response = await fetch(url, options);
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const rr = await fetch(API_BASE + '/auth/token/refresh/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh: refreshToken }) });
+        if (rr.ok) { const rd = await rr.json(); localStorage.setItem('token', rd.access); if (rd.refresh) localStorage.setItem('refresh_token', rd.refresh); options.headers['Authorization'] = 'Bearer ' + rd.access; response = await fetch(url, options); }
+        else { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+      } catch(e) { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+    } else { localStorage.clear(); window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+  }
+  return response;
+}
+
+function escapeHtml(v) { if (v == null) return ''; return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+const STATUS_CONFIG = {
+  done: { icon: 'check_circle', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Hoàn thành' },
+  partial: { icon: 'pending', color: 'text-primary', bg: 'bg-primaryLight/30', border: 'border-primary/20', label: 'Một phần' },
+  skipped: { icon: 'cancel', color: 'text-gray-400', bg: 'bg-gray-50', border: 'border-gray-200', label: 'Bỏ qua' }
+};
+
+const MOOD_ICONS = {
+  happy: 'sentiment_very_satisfied',
+  neutral: 'sentiment_neutral',
+  sad: 'sentiment_dissatisfied',
+  excited: 'celebration',
+  'alert-circle': 'warning',
+  'thumbs-up': 'thumb_up'
+};
+
+async function loadDiary() {
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('task_id');
+  if (!taskId) {
+    showError('book', 'Thiếu thông tin', 'Không tìm thấy ID công việc.');
+    return;
+  }
+
+  try {
+    const resp = await apiFetch(API_BASE + '/tasks/' + taskId + '/care-diary/');
+    if (resp.status === 404) {
+      showError('book', 'Chưa có nhật ký', 'CarePartner chưa ghi nhật ký cho buổi này.');
+      return;
+    }
+    if (!resp.ok) {
+      const d = await resp.json().catch(() => ({}));
+      showError('error', 'Lỗi', d.error || 'Không thể tải nhật ký.');
+      return;
+    }
+    const d = await resp.json();
+    renderDiary(d);
+  } catch (e) {
+    showError('cloud_off', 'Lỗi kết nối', 'Không thể tải nhật ký. Vui lòng thử lại.');
+  }
+}
+
+function showError(icon, title, message) {
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('error-state').classList.remove('hidden');
+  document.getElementById('error-icon').textContent = icon;
+  document.getElementById('error-title').textContent = title;
+  document.getElementById('error-message').textContent = message;
+}
+
+function renderDiary(d) {
+  // CarePartner info
+  document.getElementById('cp-initial').textContent = (d.carepartner && d.carepartner.avatarInitial) || '?';
+  document.getElementById('cp-name').textContent = (d.carepartner && d.carepartner.name) || 'CarePartner';
+  document.getElementById('cp-role').textContent = (d.carepartner && d.carepartner.role) || 'CarePartner';
+  document.getElementById('cp-date').textContent = d.date || '';
+  const verified = d.carepartner && d.carepartner.verified;
+  document.getElementById('cp-verified').classList.toggle('hidden', !verified);
+
+  // Mood
+  const moodIconName = MOOD_ICONS[d.mood && d.mood.icon] || 'sentiment_satisfied';
+  document.getElementById('mood-icon-display').innerHTML = `<span class="material-symbols-outlined text-4xl text-primary filled" style="font-variation-settings:'FILL'1;">${moodIconName}</span>`;
+  document.getElementById('mood-label').textContent = (d.mood && d.mood.label) || '';
+  document.getElementById('mood-note').textContent = (d.mood && d.mood.note) || '';
+
+  // Completion
+  const pct = d.completion ? d.completion.percent : 0;
+  document.getElementById('completion-pct').textContent = pct + '%';
+  document.getElementById('completion-bar').style.width = pct + '%';
+  if (d.completion && d.completion.stats) {
+    document.getElementById('completion-stats').innerHTML = d.completion.stats.map(s => `
+      <div class="text-center bg-gray-50 rounded-lg p-2 border border-gray-100">
+        <p class="font-manrope font-black text-lg" style="color:${s.color}">${s.value}</p>
+        <p class="text-[10px] text-textSecondary mt-0.5">${escapeHtml(s.label)}</p>
+      </div>
+    `).join('');
+  }
+
+  // Activities
+  if (d.activities && d.activities.length > 0) {
+    const actsList = document.getElementById('activities-list');
+    actsList.innerHTML = d.activities.map((a, i) => {
+      const st = STATUS_CONFIG[a.status] || STATUS_CONFIG.done;
+      const isLast = i === d.activities.length - 1;
+      return `
+      <div class="flex gap-3 ${isLast ? '' : 'pb-4'}">
+        <div class="flex flex-col items-center">
+          <div class="w-8 h-8 rounded-full border-2 ${st.border} ${st.bg} flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-sm ${st.color}" ${a.status==='done' ? 'style="font-variation-settings:\'FILL\' 1;"' : ''}>${st.icon}</span>
+          </div>
+          ${!isLast ? '<div class="w-0.5 flex-1 bg-gray-100 mt-1 mb-1 min-h-[16px]"></div>' : ''}
+        </div>
+        <div class="flex-1 pb-1">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-primary">${escapeHtml(a.time)}</span>
+            <span class="text-[10px] font-bold ${st.color} ${st.bg} px-2 py-0.5 rounded-full ${st.border} border">${st.label}</span>
+          </div>
+          <p class="font-semibold text-sm text-textPrimary mb-0.5">${escapeHtml(a.title)}</p>
+          ${a.desc ? `<p class="text-xs text-textSecondary leading-relaxed">${escapeHtml(a.desc)}</p>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('activities-section').classList.remove('hidden');
+  } else {
+    document.getElementById('activities-section').classList.add('hidden');
+  }
+
+  // Note
+  if (d.note) {
+    document.getElementById('note-text').textContent = d.note;
+    document.getElementById('note-section').classList.remove('hidden');
+  } else {
+    document.getElementById('note-section').classList.add('hidden');
+  }
+
+  // Attachments
+  if (d.attachments && d.attachments.length > 0) {
+    document.getElementById('att-count').textContent = d.attachments.length;
+    document.getElementById('attachments-grid').innerHTML = d.attachments.map(att => `
+      <a href="${escapeHtml(att.url)}" target="_blank" class="block rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-all">
+        <img src="${escapeHtml(att.url)}" class="w-full h-24 object-cover" alt="Ảnh đính kèm" loading="lazy">
+      </a>
+    `).join('');
+    document.getElementById('attachments-section').classList.remove('hidden');
+  } else {
+    document.getElementById('attachments-section').classList.add('hidden');
+  }
+
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('content-state').classList.remove('hidden');
+}
+
+function handleLogout() { localStorage.clear(); window.location.href = LOGIN_URL; }
+
+if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
+loadDiary();
+</script>
+</body>
+</html>

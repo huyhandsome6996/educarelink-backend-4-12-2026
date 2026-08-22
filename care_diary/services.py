@@ -90,10 +90,12 @@ def get_parent_diary_history(*, parent):
     ]
     result = []
     for entry in entries:
-        local_created = django_tz.localtime(entry.created_at)
+        # BUG-10 fix: dùng task.scheduled_time (thời gian buổi chăm sóc),
+        # không phải entry.created_at (thời gian ghi nhật ký).
+        local_scheduled = django_tz.localtime(entry.task.scheduled_time)
         date_str = (
-            f"{weekday_names[local_created.weekday()]}, "
-            f"{local_created.day} Tháng {local_created.month}, {local_created.year}"
+            f"{weekday_names[local_scheduled.weekday()]}, "
+            f"{local_scheduled.day} Tháng {local_scheduled.month}, {local_scheduled.year}"
         )
         result.append({
             'task_id': entry.task_id,
@@ -125,15 +127,15 @@ def build_entry_response(*, entry, request=None):
     partial_count = acts.filter(status='partial').count()
     skipped_count = acts.filter(status='skipped').count()
 
-    # Format date tiếng Việt
-    local_created = django_tz.localtime(entry.created_at)
+    # Format date tiếng Việt — BUG-10 fix: dùng scheduled_time, không phải created_at
+    local_scheduled = django_tz.localtime(entry.task.scheduled_time)
     weekday_names = [
         'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm',
         'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật',
     ]
     date_str = (
-        f"{weekday_names[local_created.weekday()]}, "
-        f"{local_created.day} Tháng {local_created.month}, {local_created.year}"
+        f"{weekday_names[local_scheduled.weekday()]}, "
+        f"{local_scheduled.day} Tháng {local_scheduled.month}, {local_scheduled.year}"
     )
 
     # Ảnh đính kèm — trả absolute URL

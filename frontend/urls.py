@@ -24,6 +24,9 @@ urlpatterns = [
     path('worker/availability/', WorkerAvailabilityView.as_view(), name='worker_availability'),
     path('worker/chatbot/', WorkerChatbotView.as_view(), name='worker_chatbot'),
     path('worker/help-center/', HelpCenterView.as_view(), name='help_center'),
+    path('worker/care-diary/', WorkerCareDiaryFormView.as_view(), name='worker_care_diary'),
+    path('parent/care-diary/', ParentCareDiaryDetailView.as_view(), name='parent_care_diary_detail'),
+    path('parent/care-diary-history/', ParentCareDiaryHistoryView.as_view(), name='parent_care_diary_history'),
     path('parent/tracking/', LiveTrackingView.as_view(), name='live_tracking'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]
