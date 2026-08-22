@@ -32,9 +32,6 @@
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
 
-        /* Sidebar scroll */
-        .sidebar-scroll::-webkit-scrollbar { width: 0; }
-        .sidebar-scroll { scrollbar-width: none; }
 
         /* Toast animation */
         @keyframes slideInRight {
@@ -116,108 +113,8 @@
     <!-- SIDEBAR (Desktop ≥1024px)                    -->
     <!-- ============================================ -->
     <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
-
-        <!-- Logo -->
-        <div class="flex items-center gap-3 px-6 py-6 border-b border-border">
-            <div class="w-10 h-10 flex items-center justify-center">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-            </div>
-            <div>
-                <span class="font-headline font-extrabold text-xl text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
-            </div>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 px-3 py-4 sidebar-scroll overflow-y-auto">
-            <div class="space-y-1">
-                <!-- Trang chủ - ACTIVE -->
-                <a href="{% url 'frontend:parent_home' %}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primaryLight text-primary font-semibold transition-all group">
-                    <span class="material-symbols-outlined filled text-primary">home</span>
-                    <span>Trang chủ</span>
-                </a>
-
-                <!-- Việc của tôi -->
-                <a href="{% url 'frontend:parent_tasks' %}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
-                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">assignment</span>
-                    <span>Việc của tôi</span>
-                </a>
-
-                <!-- Nhật ký chăm sóc -->
-                <a href="{% url 'frontend:parent_care_diary_history' %}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
-                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">book</span>
-                    <span>Nhật ký chăm sóc</span>
-                </a>
-
-                <!-- Đăng việc mới -->
-                <a href="{% url 'frontend:task_create_1' %}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
-                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">add_circle</span>
-                    <span>Đăng việc mới</span>
-                </a>
-
-                <!-- AI Trợ lý -->
-                <a href="{% url 'frontend:chatbot' %}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
-                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">smart_toy</span>
-                    <span>AI Trợ lý</span>
-                </a>
-
-                <!-- Hướng dẫn sử dụng -->
-                <a href="/onboarding/parent/"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
-                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">help</span>
-                    <span>Hướng dẫn</span>
-                </a>
-            </div>
-
-            <!-- Nâng cấp Carepartner (chỉ hiện cho parent social auth) -->
-            <div id="upgrade-section" class="mt-6 hidden">
-                <div class="mx-2 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primaryLight/50">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <span class="material-symbols-outlined filled text-primary text-xl">workspace_premium</span>
-                        <span class="font-semibold text-sm text-primary">Trở thành Carepartner</span>
-                    </div>
-                    <p class="text-xs text-textSecondary mb-3 leading-relaxed">Nâng cấp tài khoản để nhận việc và kiếm thu nhập</p>
-                    <button onclick="openUpgradeModal()"
-                            class="w-full py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primaryDark transition-all active:scale-95">
-                        Nộp hồ sơ nâng cấp
-                    </button>
-                </div>
-            </div>
-            <!-- Đang chờ duyệt nâng cấp -->
-            <div id="upgrade-pending-section" class="mt-6 hidden">
-                <div class="mx-2 p-4 rounded-2xl border border-warning/30 bg-yellow-50">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <span class="material-symbols-outlined filled text-warning text-xl">hourglass_top</span>
-                        <span class="font-semibold text-sm text-warning">Đang chờ duyệt</span>
-                    </div>
-                    <p class="text-xs text-textSecondary leading-relaxed">Hồ sơ nâng cấp Carepartner của bạn đang được Admin xem xét</p>
-                </div>
-            </div>
-        </nav>
-
-        <!-- User Section (Bottom) -->
-        <div class="border-t border-border px-4 py-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft flex-shrink-0">
-                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
-                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p id="sidebar-user-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
-                    <p class="text-xs text-textMuted">Phụ huynh</p>
-                </div>
-                <button onclick="handleLogout()"
-                        class="w-9 h-9 rounded-lg flex items-center justify-center text-textMuted hover:bg-errorBg hover:text-error transition-all"
-                        title="Đăng xuất">
-                    <span class="material-symbols-outlined text-xl">logout</span>
-                </button>
-            </div>
-        </div>
-    </aside>
+{% include 'frontend/_parent_sidebar.html' with active_tab='home' %}
+</aside>
 
     <!-- ============================================ -->
     <!-- MOBILE HEADER (<1024px)                      -->

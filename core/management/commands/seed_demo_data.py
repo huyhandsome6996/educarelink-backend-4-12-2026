@@ -84,6 +84,22 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(f"   ! Tracking module khong san sang: {e}")
 
+        # Care Diary (B1)
+        try:
+            from care_diary.models import CareDiaryActivity, CareDiaryAttachment, CareDiaryEntry
+            safe_delete("CareDiaryActivity", CareDiaryActivity.objects.all())
+            safe_delete("CareDiaryAttachment", CareDiaryAttachment.objects.all())
+            safe_delete("CareDiaryEntry", CareDiaryEntry.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! CareDiary module khong san sang: {e}")
+
+        # Worker Availability (A2)
+        try:
+            from core.models import WorkerAvailability
+            safe_delete("WorkerAvailability", WorkerAvailability.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! WorkerAvailability seed loi: {e}")
+
         # Core
         safe_delete("Review", Review.objects.all())
         safe_delete("TaskApplication", TaskApplication.objects.all())
@@ -689,6 +705,120 @@ class Command(BaseCommand):
             self.stdout.write("   + Tao 2 Complaint (1 pending + 1 investigating)")
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"   ! Complaint seed loi: {e}"))
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 11: WORKER AVAILABILITY (A2 — Lịch rảnh CarePartner)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[11/12] Dang tao Worker Availability (lich ranh)...")
+
+        try:
+            from core.models import WorkerAvailability
+
+            avail_data = [
+                {"worker": w1, "weekday": 2, "start_time": "14:00", "end_time": "20:00"},
+                {"worker": w1, "weekday": 4, "start_time": "14:00", "end_time": "20:00"},
+                {"worker": w1, "weekday": 6, "start_time": "08:00", "end_time": "17:00"},
+                {"worker": w2, "weekday": 1, "start_time": "07:00", "end_time": "18:00"},
+                {"worker": w2, "weekday": 3, "start_time": "07:00", "end_time": "18:00"},
+                {"worker": w2, "weekday": 5, "start_time": "07:00", "end_time": "18:00"},
+                {"worker": w3, "weekday": 2, "start_time": "10:00", "end_time": "14:00"},
+                {"worker": w3, "weekday": 4, "start_time": "10:00", "end_time": "14:00"},
+                {"worker": w4, "weekday": 1, "start_time": "13:00", "end_time": "17:00"},
+                {"worker": w4, "weekday": 3, "start_time": "13:00", "end_time": "17:00"},
+                {"worker": w4, "weekday": 5, "start_time": "08:00", "end_time": "12:00"},
+            ]
+            if w_test:
+                avail_data += [
+                    {"worker": w_test, "weekday": 1, "start_time": "08:00", "end_time": "20:00"},
+                    {"worker": w_test, "weekday": 2, "start_time": "08:00", "end_time": "20:00"},
+                    {"worker": w_test, "weekday": 3, "start_time": "08:00", "end_time": "20:00"},
+                    {"worker": w_test, "weekday": 4, "start_time": "08:00", "end_time": "20:00"},
+                    {"worker": w_test, "weekday": 5, "start_time": "08:00", "end_time": "20:00"},
+                ]
+            avail_count = 0
+            for ad in avail_data:
+                WorkerAvailability.objects.update_or_create(
+                    worker=ad["worker"], weekday=ad["weekday"],
+                    defaults={"start_time": ad["start_time"], "end_time": ad["end_time"]},
+                )
+                avail_count += 1
+            self.stdout.write(f"   + Tao {avail_count} WorkerAvailability (lich ranh cho 5 carepartner)")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! WorkerAvailability seed loi: {e}"))
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 12: CARE DIARY ENTRIES (B1 — Nhật ký chăm sóc)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[12/12] Dang tao Care Diary entries (nhat ky cham soc)...")
+
+        try:
+            from care_diary.models import CareDiaryEntry, CareDiaryActivity
+
+            diary_count = 0
+            activity_count = 0
+            # COMPLETED tasks có accepted worker → tạo diary entries
+            for idx, t in enumerate(completed_tasks):
+                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
+                if not acc:
+                    continue
+
+                # Task đã completed trong quá khứ → diary có scheduled_time = task.scheduled_time
+                mood_icons = ["😊", "😐", "😔", "🙅"]
+                mood_labels = ["Vui vẻ", "Bình thường", "Hài lòng", "Tủ chức"]
+                entry = CareDiaryEntry.objects.create(
+                    task=t, worker=acc.worker,
+                    mood_icon=mood_icons[idx % 4],
+                    mood_label=mood_labels[idx % 4],
+                    completion_percent=100,
+                    note=[
+                        "Hoan thanh tot. Be hoc tiep nhanh, co tien bo ve nha. Phu huynh hai long.",
+                        "Mua sam day du, giao hang dung hen. Se lien lac lai tuan sau.",
+                        "Cham soc tot, be thich co. Nen chu y them ve gio ngu va an vat.",
+                        "Don be dung gio, giau thuan. Nen nac nhe them ve an toan giao thong.",
+                        "Nau an ngon, be an nhieu hon binh thuong. Con chua duoc mo, lan sau se cai thien.",
+                    ][min(idx, 4)],
+                )
+                diary_count += 1
+
+                # Tạo activities cho mỗi entry
+                act_templates = [
+                    ["15:00", "Dạy bài tập", "completed"],
+                    ["16:00", "Cho bé ăn vặt", "completed"],
+                    ["16:30", "Vận động ngoài trời", "completed"],
+                    ["17:00", "Tắm rửa", "completed"],
+                    ["17:30", "Dỗ bé ngủ", "completed"],
+                ]
+                for j, (act_time, act_title, act_status) in enumerate(act_templates):
+                    CareDiaryActivity.objects.create(
+                        entry=entry,
+                        time=act_time,
+                        title=act_title,
+                        status=act_status if j < (idx + 1) else "skipped",
+                        order=j,
+                    )
+                    activity_count += 1
+
+            # IN_PROGRESS tasks → tạo diary entry cho carepartner đang làm
+            for t in in_progress_tasks:
+                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
+                if not acc:
+                    continue
+                entry = CareDiaryEntry.objects.create(
+                    task=t, worker=acc.worker,
+                    mood_icon="😊",
+                    mood_label="Vui vẻ",
+                    completion_percent=60 if t.id == in_progress_tasks[0].id else 30,
+                    note="Dang thuc hien viec, se cap nhat sau khi hoan thanh.",
+                )
+                diary_count += 1
+                CareDiaryActivity.objects.create(entry=entry, time="14:00", title="Bắt đầu dạy", status="done", order=0)
+                CareDiaryActivity.objects.create(entry=entry, time="15:30", title="Cho bé ăn vặt", status="partial", order=1)
+                activity_count += 2
+
+            # OPEN tasks → chưa có diary (đúng logic)
+            self.stdout.write(f"   + Tao {diary_count} CareDiaryEntry + {activity_count} CareDiaryActivity")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"   ! CareDiary seed loi: {e}"))
 
         # ═══════════════════════════════════════════════════════════════
         #  TỔNG KẾT

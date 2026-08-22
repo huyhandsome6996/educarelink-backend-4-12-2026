@@ -22,10 +22,7 @@
     vertical-align: middle;
   }
   .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  .nav-item { transition: all 0.2s ease; }
-  .nav-item:hover { background: rgba(242,101,34,0.08); }
-  .nav-item.active { background: rgba(242,101,34,0.12); color: #F26522; }
-  .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; color: #F26522; }
+
   @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
   @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -33,7 +30,6 @@
   .toast-in { animation: slideInRight 0.35s ease forwards; }
   .toast-out { animation: slideOutRight 0.3s ease forwards; }
   @media (max-width: 767px) {
-    .sidebar { display: none !important; }
     .main-area { margin-left: 0 !important; }
     .mobile-bottom-nav { display: flex !important; }
   }
@@ -47,27 +43,8 @@
 <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="max-width:400px;"></div>
 
 <!-- SIDEBAR (Desktop) -->
-<aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 z-50 flex flex-col">
-  <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-    <div class="w-10 h-10 flex items-center justify-center"><img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain"></div>
-    <div><h1 class="font-manrope font-bold text-lg text-textPrimary leading-tight">EduCareLink</h1><p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase">Phụ huynh</p></div>
-  </div>
-  <nav class="flex-1 px-3 py-4 space-y-1">
-    <a href="{% url 'frontend:parent_home' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">home</span>Trang chủ</a>
-    <a href="{% url 'frontend:parent_tasks' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">assignment</span>Việc của tôi</a>
-    <a href="{% url 'frontend:parent_care_diary_history' %}" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm"><span class="material-symbols-outlined text-xl">book</span>Lịch sử nhật ký</a>
-    <a href="{% url 'frontend:task_create_1' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">add_circle</span>Đăng việc mới</a>
-    <a href="{% url 'frontend:chatbot' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm"><span class="material-symbols-outlined text-xl">smart_toy</span>AI Trợ lý</a>
-  </nav>
-  <div class="px-4 py-4 border-t border-gray-100">
-    <div class="flex items-center gap-3 mb-3 px-2">
-      <div class="w-10 h-10 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden"><img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/></div>
-      <div class="flex-1 min-w-0"><p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p><p class="text-[11px] text-textSecondary">Phụ huynh</p></div>
-    </div>
-    <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-textSecondary hover:bg-red-50 hover:text-error transition-all text-sm font-medium">
-      <span class="material-symbols-outlined text-lg">logout</span>Đăng xuất
-    </button>
-  </div>
+<aside class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-white lg:border-r lg:border-gray-100 lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab='diary' %}
 </aside>
 
 <!-- MOBILE BOTTOM NAV -->
