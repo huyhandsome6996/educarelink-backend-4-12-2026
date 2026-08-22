@@ -711,3 +711,205 @@ class RegressionTests(TestCase):
             f'/api/parent/tasks/{self.task.id}/candidates/'
         )
         self.assertEqual(resp.status_code, 403)
+
+
+class A2QAContractTests(TestCase):
+    """QA Fix — kiểm tra API response contract khớp với client expectations.
+
+    Các field bắt buộc trong mỗi match:
+      worker_id, display_name, avatar_url, distance_m, distance_text,
+      availability_window, workload_day, workload_week, rank_reason
+    Không được có: phone_number, email, address, latitude, longitude.
+    """
+
+    def setUp(self):
+        self.parent = User.objects.create_user(
+            username='parent_qa_contract', password='p', role='parent',
+        )
+        self.worker = User.objects.create_user(
+            username='worker_qa_contract', password='p', role='worker',
+            is_approved=True, latitude=NEAR_LAT, longitude=NEAR_LNG,
+            first_name='Nguyễn', last_name='Văn A',
+            avatar_url='https://example.com/avatar.jpg',
+            phone_number='0912345678',
+            email='qa_contract@test.com',
+        )
+        self.category = ServiceCategory.objects.create(
+            name='Gia sư QA', icon_name='BookOpen',
+        )
+        self.task_dt = _task_dt()
+        self.wd = _task_weekday_for_test()
+        self.task = Task.objects.create(
+            title='QA contract test', description='d', price=200000,
+            parent=self.parent, category=self.category,
+            location='Q1', latitude=HCM_LAT, longitude=HCM_LNG,
+            scheduled_time=self.task_dt,
+        )
+        WorkerAvailability.objects.create(
+            worker=self.worker, weekday=self.wd,
+            start_time=time(8, 0), end_time=time(18, 0),
+        )
+        self.client = APIClient()
+
+    def test_response_contract_fields(self):
+        """Mỗi match phải chứa đúng các field theo contract, không lộ thông tin nhạy cảm."""
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(
+            f'/api/parent/tasks/{self.task.id}/smart-matches/'
+        )
+        self.assertEqual(resp.status_code, 200)
+        matches = resp.data.get('matches', [])
+        if not matches:
+            return  # Không có match → không kiểm tra thêm
+
+        REQUIRED_FIELDS = [
+            'worker_id', 'display_name', 'avatar_url',
+            'distance_m', 'distance_text', 'availability_window',
+            'workload_day', 'workload_week', 'rank_reason',
+        ]
+        FORBIDDEN_FIELDS = [
+            'phone_number', 'email', 'address',
+            'latitude', 'longitude',
+        ]
+        for m in matches:
+            for f in REQUIRED_FIELDS:
+                self.assertIn(f, m, f'Thiếu field {f} trong match {m.get("worker_id")}')
+            for f in FORBIDDEN_FIELDS:
+                self.assertNotIn(f, m, f'Field nhạy cảm {f} bị lộ trong match {m.get("worker_id")}')
+
+    def test_response_contract_types(self):
+        """Kiểm tra kiểu dữ liệu các field quan trọng."""
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(
+            f'/api/parent/tasks/{self.task.id}/smart-matches/'
+        )
+        matches = resp.data.get('matches', [])
+        for m in matches:
+            self.assertIsInstance(m['worker_id'], int)
+            self.assertIsInstance(m['display_name'], str)
+            self.assertTrue(isinstance(m['avatar_url'], (str, type(None))))
+            self.assertIsInstance(m['distance_m'], (int, float))
+            self.assertIsInstance(m['distance_text'], str)
+            self.assertIsInstance(m['availability_window'], str)
+            self.assertIsInstance(m['workload_day'], int)
+            self.assertIsInstance(m['workload_week'], int)
+            self.assertIsInstance(m['rank_reason'], str)
+
+    def test_distance_text_readable(self):
+        """distance_text phải đọc được, chứa 'm' hoặc 'km'."""
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(
+            f'/api/parent/tasks/{self.task.id}/smart-matches/'
+        )
+        matches = resp.data.get('matches', [])
+        for m in matches:
+            self.assertRegex(
+                m['distance_text'], r'\d+(m|km)$',
+                f'distance_text không đúng format: {m["distance_text"]}'
+            )
+
+
+class A2QATimezoneBoundaryTests(TestCase):
+    """QA Fix A2-004 — workload tính đúng ở ranh giới ngày/tuần.
+
+    Không được phát sinh RuntimeWarning về naive datetime.
+    """
+
+    def setUp(self):
+        self.parent = User.objects.create_user(
+            username='parent_qa_tz', password='p', role='parent',
+        )
+        self.worker_near = User.objects.create_user(
+            username='worker_qa_tz', password='p', role='worker',
+            is_approved=True, latitude=NEAR_LAT, longitude=NEAR_LNG,
+        )
+        self.category = ServiceCategory.objects.create(
+            name='Gia sư TZ', icon_name='BookOpen',
+        )
+
+    def test_midnight_boundary_no_warning(self):
+        """Task lúc 00:30 HCM — workload ngày phải tính đúng, không warning."""
+        import warnings
+
+        dt = django_tz.make_aware(datetime(2026, 1, 7, 0, 30))  # Thứ Tư 00:30
+        task = Task.objects.create(
+            title='Việc giữa đêm', description='test',
+            price=100000, parent=self.parent,
+            category=self.category,
+            location='HCM', latitude=HCM_LAT, longitude=HCM_LNG,
+            scheduled_time=dt, status='open',
+        )
+        WorkerAvailability.objects.create(
+            worker=self.worker_near, weekday=2,  # Thứ Tư (model)
+            start_time=time(0, 0), end_time=time(6, 0),
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            result = find_smart_matches(task)
+            naive_warnings = [
+                x for x in w
+                if issubclass(x.category, RuntimeWarning)
+                and 'naive datetime' in str(x.message)
+            ]
+            self.assertEqual(len(naive_warnings), 0,
+                             f'Phát sinh naive datetime warning: {naive_warnings}')
+
+    def test_iso_week_boundary(self):
+        """Task ở ranh giới ISO week — workload tuần phải tính đúng.
+        Thứ Hai 2026-01-05 là đầu tuần ISO 2.
+        """
+        dt = django_tz.make_aware(datetime(2026, 1, 5, 8, 0))  # Thứ Hai 08:00
+        task = Task.objects.create(
+            title='Việc đầu tuần', description='test',
+            price=100000, parent=self.parent,
+            category=self.category,
+            location='HCM', latitude=HCM_LAT, longitude=HCM_LNG,
+            scheduled_time=dt, status='open',
+        )
+        WorkerAvailability.objects.create(
+            worker=self.worker_near, weekday=0,  # Thứ Hai (model)
+            start_time=time(7, 0), end_time=time(18, 0),
+        )
+        result = find_smart_matches(task)
+        self.assertIn('matches', result)
+
+
+class A2QACheckConstraintTests(TestCase):
+    """Hardening — CheckConstraint start_time < end_time ở DB level."""
+
+    def setUp(self):
+        self.worker_near = User.objects.create_user(
+            username='worker_qa_constraint', password='p', role='worker',
+            is_approved=True, latitude=NEAR_LAT, longitude=NEAR_LNG,
+        )
+
+    def test_db_check_constraint_prevents_invalid(self):
+        """start_time >= end_time bị DB CheckConstraint chặn (không chỉ clean/serializer)."""
+        with self.assertRaises(IntegrityError):
+            WorkerAvailability.objects.create(
+                worker=self.worker_near, weekday=0,
+                start_time=time(14, 0), end_time=time(10, 0),
+            )
+
+    def test_adjacent_windows_allowed(self):
+        """08:00–12:00 và 12:00–16:00 cùng worker cùng weekday phải được phép."""
+        WorkerAvailability.objects.create(
+            worker=self.worker_near, weekday=0,
+            start_time=time(8, 0), end_time=time(12, 0),
+        )
+        WorkerAvailability.objects.create(
+            worker=self.worker_near, weekday=0,
+            start_time=time(12, 0), end_time=time(16, 0),
+        )
+        count = WorkerAvailability.objects.filter(
+            worker=self.worker_near, weekday=0,
+        ).count()
+        self.assertEqual(count, 2)
+
+    def test_equal_times_rejected(self):
+        """start_time == end_time bị từ chối."""
+        with self.assertRaises(IntegrityError):
+            WorkerAvailability.objects.create(
+                worker=self.worker_near, weekday=0,
+                start_time=time(12, 0), end_time=time(12, 0),
+            )

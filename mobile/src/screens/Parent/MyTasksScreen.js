@@ -242,28 +242,43 @@ export default function MyTasksScreen() {
 
             {/* Action buttons theo trạng thái */}
             {task.status === 'open' && (
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.btnOutline}
-                  onPress={() => navigation.navigate('Candidates', { taskId: task.id, taskTitle: task.title })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.btnOutlineText}>Xem ứng viên</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.btnGhost}
-                  onPress={() => handleStatusChange(task.id, 'cancelled', task.title)}
-                  disabled={isCancelling}
-                  activeOpacity={0.85}
-                >
-                  {isCancelling ? (
-                    <ActivityIndicator size="small" color={COLORS.error} />
-                  ) : (
-                    <Text style={styles.btnGhostText}>Huỷ</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.btnOutline}
+                    onPress={() => navigation.navigate('SmartMatches', { taskId: task.id, taskTitle: task.title })}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="sparkles-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.btnOutlineText}>Gợi ý phù hợp</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.btnGhost}
+                    onPress={() => navigation.navigate('Candidates', { taskId: task.id, taskTitle: task.title })}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnGhostText}>Xem ứng viên</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* Nút huỷ việc trên secondary actions row */}
+                <View style={styles.secondaryActions}>
+                  <TouchableOpacity
+                    style={styles.secondaryBtn}
+                    onPress={() => handleStatusChange(task.id, 'cancelled', task.title)}
+                    disabled={isCancelling}
+                    activeOpacity={0.85}
+                  >
+                    {isCancelling ? (
+                      <ActivityIndicator size="small" color={COLORS.error} />
+                    ) : (
+                      <>
+                        <Ionicons name="close-circle-outline" size={14} color={COLORS.error} />
+                        <Text style={[styles.secondaryBtnText, { color: COLORS.error }]}>Huỷ việc</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
 
             {task.status === 'in_progress' && (
