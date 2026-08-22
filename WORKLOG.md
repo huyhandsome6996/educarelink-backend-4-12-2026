@@ -610,3 +610,6 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
 - Merged feature/a2-smart-availability vào main (merge commit de4f4d1)
 - QA passed: 225/225 tests, web+mobile+backend đồng bộ
 - Remote branch feature/a2-smart-availability đã xoá
+- **Fix lỗi công bằng phân việc**: workload_day/week giờ tính đúng cả task đã completed, không còn xếp ngang hàng ưu tiên với worker chưa có việc. Merged vào main (2a476cc), QA passed 228/228 tests.
+- Remote branch fix/a2-workload-completed-tasks đã xoá sau merge.
+- A2 hoàn thiện và ổn định trên toàn hệ thống (backend + web + mobile). Chuyển sang B1.
