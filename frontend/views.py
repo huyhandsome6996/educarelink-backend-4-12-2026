@@ -84,3 +84,18 @@ class HelpCenterView(TemplateView):
 class LiveTrackingView(TemplateView):
     """Trang theo dõi vị trí Carepartner real-time (parent)."""
     template_name = "frontend/tracking.html"
+
+
+class WorkerCareDiaryFormView(TemplateView):
+    """Trang ghi/sửa nhật ký chăm sóc (CarePartner web)."""
+    template_name = "frontend/worker_care_diary_form.html"
+
+
+class ParentCareDiaryDetailView(TemplateView):
+    """Trang xem chi tiết nhật ký (Phụ huynh web)."""
+    template_name = "frontend/parent_care_diary_detail.html"
+
+
+class ParentCareDiaryHistoryView(TemplateView):
+    """Trang lịch sử nhật ký (Phụ huynh web)."""
+    template_name = "frontend/parent_care_diary_history.html"
