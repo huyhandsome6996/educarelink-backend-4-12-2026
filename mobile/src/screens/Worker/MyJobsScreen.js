@@ -242,9 +242,31 @@ export default function MyJobsScreen() {
           </View>
         )}
 
+        {/* === B1 — NÚT GHI NHẬT KÝ CHO TASK HOÀN THÀNH (history tab) === */}
+        {app.status === 'accepted' && (app.task_status === 'completed') && (
+          <TouchableOpacity
+            style={styles.diaryBtn}
+            onPress={() => navigation.navigate('CareDiaryForm', { taskId: app.task, taskTitle: app.task_title })}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="book-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
+          </TouchableOpacity>
+        )}
+
         {/* === LIVE TRACKING UI === */}
         {showTrackingUI && (
           <>
+            {/* === B1 — NÚT GHI NHẬT KÝ CHĂM SÓC === */}
+            <TouchableOpacity
+              style={styles.diaryBtn}
+              onPress={() => navigation.navigate('CareDiaryForm', { taskId: app.task, taskTitle: app.task_title })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="book-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
+            </TouchableOpacity>
+
             {isCurrentlyTracking ? (
               <ActiveTrackingBanner
                 taskId={app.task}
@@ -593,4 +615,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error, ...SHADOWS.small,
   },
   sosSendText: { ...TYPO.button, color: '#fff', fontWeight: '800' },
+  // B1 — Care Diary
+  diaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight, borderWidth: 1, borderColor: COLORS.primarySoft,
+    marginTop: 8,
+  },
+  diaryBtnText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
 });

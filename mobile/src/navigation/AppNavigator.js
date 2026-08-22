@@ -74,6 +74,9 @@ import MyComplaintsScreen from '../screens/Worker/MyComplaintsScreen';
 import WorkerAvailabilityScreen from '../screens/Worker/WorkerAvailabilityScreen';
 import SmartMatchesScreen from '../screens/Parent/SmartMatchesScreen';
 
+// B1 — Care Diary
+import CareDiaryFormScreen from '../screens/Worker/CareDiaryFormScreen';
+
 // Chatbot (Parent)
 import ChatbotScreen from '../screens/ChatbotScreen';
 
@@ -248,6 +251,7 @@ export default function AppNavigator() {
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
+            <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />

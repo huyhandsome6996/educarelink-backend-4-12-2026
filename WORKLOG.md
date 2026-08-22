@@ -613,3 +613,46 @@ thật của app cũ → test PASS nhưng chức năng không hoạt động.
 - **Fix lỗi công bằng phân việc**: workload_day/week giờ tính đúng cả task đã completed, không còn xếp ngang hàng ưu tiên với worker chưa có việc. Merged vào main (2a476cc), QA passed 228/228 tests.
 - Remote branch fix/a2-workload-completed-tasks đã xoá sau merge.
 - A2 hoàn thiện và ổn định trên toàn hệ thống (backend + web + mobile). Chuyển sang B1.
+
+## B1 — Nhật ký chăm sóc thật (Care Diary) (2026-08-22)
+
+### Công việc đã làm
+- Tạo module Django mới `care_diary/` theo đúng §16.3 AGENTS.md (module isolation, chỉ phụ thuộc core).
+- 3 models: CareDiaryEntry (OneToOne Task), CareDiaryActivity (timeline), CareDiaryAttachment (ảnh).
+- 4 API endpoints: POST/PATCH worker tạo/sửa nhật ký, GET xem nhật ký, POST upload ảnh đính kèm.
+- Service layer (`care_diary/services.py`) theo §15.3: business logic tách biệt khỏi views.
+- Stats (đếm activities theo status) tính động, không lưu field riêng.
+- Mobile Parent: sửa CareDiaryDetailScreen nối API thật, xoá mock data + comingSoonBanner, thêm loading/empty/error states.
+- Mobile Worker: tạo CareDiaryFormScreen hoàn chỉnh (mood, activities động, upload ảnh), thêm entry point nút "Ghi nhật ký chăm sóc" trong MyJobsScreen.
+- Đăng ký route CareDiaryForm trong AppNavigator (worker section).
+- 26 test cases bao phủ: happy path, permission, response contract, stats, upload ảnh.
+
+### File đã sửa/thêm
+- `backend/settings.py`: thêm 'care_diary' vào INSTALLED_APPS
+- `backend/urls.py`: include care_diary.urls
+- `care_diary/models.py`: 3 models (CareDiaryEntry, CareDiaryActivity, CareDiaryAttachment)
+- `care_diary/admin.py`: đăng ký 3 models trong Django admin
+- `care_diary/services.py`: check_worker_can_write, check_can_read, build_entry_response
+- `care_diary/views.py`: 3 APIView (WorkerCareDiaryAPIView, CareDiaryDetailAPIView, WorkerCareDiaryAttachmentAPIView)
+- `care_diary/urls.py`: 3 URL patterns
+- `care_diary/tests.py`: 26 test cases trong 6 class
+- `care_diary/migrations/0001_initial.py`: migration cho 3 models
+- `mobile/src/api/careDiary.js`: 4 hàm API client
+- `mobile/src/screens/Parent/CareDiaryDetailScreen.js`: nối API thật, xoá mock
+- `mobile/src/screens/Worker/CareDiaryFormScreen.js`: MỚI — form ghi/sửa nhật ký
+- `mobile/src/screens/Worker/MyJobsScreen.js`: thêm nút "Ghi nhật ký chăm sóc"
+- `mobile/src/navigation/AppNavigator.js`: thêm route CareDiaryForm
+- `mobile/src/mocks/careDiaryMock.js`: XOÁ — không còn dùng
+
+### Lệnh đã chạy
+- `python manage.py startapp care_diary`
+- `python manage.py makemigrations care_diary`
+- `python manage.py migrate`
+- `python manage.py test --verbosity=2` → 254/254 OK
+
+### Lưu ý cho agent tiếp theo
+- **Web frontend KHÔNG làm trong lượt này.** Lý do: mock data gốc và toàn bộ entry point hiện có đều chỉ ở mobile, không có tín hiệu nào cho thấy web cần tính năng này ngay. Nếu Huy muốn có bản web → đó là 1 task riêng.
+- **Cho phép sửa nhật ký sau khi task completed.** Quyết định chủ động: CarePartner có thể bổ sung ghi chú sau ca làm (docstring trong WorkerCareDiaryAPIView.patch).
+- **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
+- **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
+- **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'ai_recommendations',  # AI gợi ý việc + đánh giá ứng viên (Gemini)
     'moderation',  # Kiểm duyệt công việc + Khiếu nại (AI)
     'performance',  # ⚡ Tối ưu hiệu năng (LRU cache, connection pool, spatial index)
+    'care_diary',  # B1 — Nhật ký chăm sóc (Care Diary)
 ]
 
 MIDDLEWARE = [
