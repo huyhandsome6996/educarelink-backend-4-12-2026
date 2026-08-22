@@ -43,16 +43,6 @@ const CATEGORIES = [
 export default function CreateTaskScreen() {
   const navigation = useNavigation();
 
-  // QA-FIX-UI 3.2: fade-in animation khi mount (opacity 0→1)
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: ANIM.timingNormal,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
   // === A1: Fetch categories từ DB thật khi mount ===
   useEffect(() => {
     let cancelled = false;
@@ -89,11 +79,6 @@ export default function CreateTaskScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [titleFocused, setTitleFocused] = useState(false);
-  const [descFocused, setDescFocused] = useState(false);
-  const [locationFocused, setLocationFocused] = useState(false);
-  const [priceFocused, setPriceFocused] = useState(false);
-
   const [enableGeofence, setEnableGeofence] = useState(false);
 
   // QA-FIX-UI 3.3: errors state cho inline validation theo field
@@ -105,6 +90,37 @@ export default function CreateTaskScreen() {
   // Map picker state — lưu toạ độ đã chọn trên bản đồ
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [pickedCoords, setPickedCoords] = useState(null); // { latitude, longitude, address }
+  const [locatingLoading, setLocatingLoading] = useState(false);
+
+  // Chọn vị trí hiện tại — tự động định vị GPS + reverse geocode
+  const handleUseCurrentLocation = async () => {
+    try {
+      setLocatingLoading(true);
+      const LocationModule = await import('expo-location');
+      const { status } = await LocationModule.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Cần cấp quyền vị trí', 'Vui lòng cấp quyền vị trí trong cài đặt để sử dụng tính năng này.');
+        return;
+      }
+      const loc = await LocationModule.getCurrentPositionAsync({ accuracy: LocationModule.Accuracy.High });
+      const { latitude, longitude } = loc.coords;
+
+      // Reverse geocode để lấy địa chỉ
+      const [addr] = await LocationModule.reverseGeocodeAsync({ latitude, longitude });
+      const address = addr ? [addr.name, addr.street, addr.district, addr.city, addr.region].filter(Boolean).join(', ') : '';
+
+      setPickedCoords({ latitude, longitude, address });
+      if (address) {
+        setLocation(address);
+        clearError('location');
+      }
+    } catch (e) {
+      console.warn('Lỗi định vị hiện tại:', e);
+      Alert.alert('Lỗi', 'Không thể lấy vị trí hiện tại. Vui lòng thử lại.');
+    } finally {
+      setLocatingLoading(false);
+    }
+  };
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -334,7 +350,7 @@ export default function CreateTaskScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { opacity: fadeAnim }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
       {/* Top App Bar — trắng, back + title + spacer */}
@@ -371,9 +387,6 @@ export default function CreateTaskScreen() {
           <Text style={styles.sectionTitle}>Loại dịch vụ</Text>
           <View style={styles.chipRow}>
             {CATEGORIES.map((c) => {
-              // Ưu tiên tên từ DB khi đã fetch, fallback local name
-              const dbMatch = dbCategories.find(db => db.id === c.id);
-              const displayName = dbMatch ? dbMatch.name : c.name;
               return (
               <TouchableOpacity
                 key={c.id}
@@ -388,7 +401,7 @@ export default function CreateTaskScreen() {
                   style={{ marginRight: 6 }}
                 />
                 <Text style={[styles.chipText, selectedCat === c.id && styles.chipTextActive]}>
-                  {displayName}
+                  {c.name}
                 </Text>
               </TouchableOpacity>
               );
@@ -403,7 +416,7 @@ export default function CreateTaskScreen() {
               <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
             )}
             <Text style={styles.priceHintText} numberOfLines={2}>
-              {catDisplayName ? `Gợi ý cho ${catDisplayName}: ` : ''}{priceHintContent}
+              {catDisplayName ? `Gợi ý cho ${localCat?.name || catDisplayName}: ` : ''}{priceHintContent}
             </Text>
             {priceSuggestion?.suggested_price != null && !priceLoading && (
               <TouchableOpacity onPress={applySuggestedPrice} style={styles.applyPriceBtn} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
@@ -420,15 +433,13 @@ export default function CreateTaskScreen() {
           {/* Title */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Tiêu đề công việc *</Text>
-            <View style={[styles.inputWrapper, titleFocused && styles.inputWrapperFocused, errors.title && styles.inputWrapperError]}>
+            <View style={[styles.inputWrapper, errors.title && styles.inputWrapperError]}>
               <TextInput
                 style={styles.input}
                 placeholder="VD: Gia sư Toán lớp 5 mỗi tối 7h"
                 placeholderTextColor={COLORS.outline}
                 value={title}
                 onChangeText={(v) => { setTitle(v); clearError('title'); }}
-                onFocus={() => setTitleFocused(true)}
-                onBlur={() => setTitleFocused(false)}
               />
             </View>
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
@@ -437,7 +448,7 @@ export default function CreateTaskScreen() {
           {/* Description */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Mô tả chi tiết *</Text>
-            <View style={[styles.inputWrapper, styles.textareaWrapper, descFocused && styles.inputWrapperFocused, errors.description && styles.inputWrapperError]}>
+            <View style={[styles.inputWrapper, styles.textareaWrapper, errors.description && styles.inputWrapperError]}>
               <TextInput
                 style={[styles.input, styles.textarea]}
                 placeholder="Mô tả nhu cầu, yêu cầu cụ thể, thời lượng..."
@@ -447,8 +458,6 @@ export default function CreateTaskScreen() {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
-                onFocus={() => setDescFocused(true)}
-                onBlur={() => setDescFocused(false)}
               />
             </View>
             {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
@@ -457,11 +466,11 @@ export default function CreateTaskScreen() {
           {/* Location */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Địa điểm *</Text>
-            <View style={[styles.inputWrapper, locationFocused && styles.inputWrapperFocused, errors.location && styles.inputWrapperError]}>
+            <View style={[styles.inputWrapper, errors.location && styles.inputWrapperError]}>
               <Ionicons
                 name="location-outline"
                 size={18}
-                color={locationFocused ? COLORS.primary : COLORS.outlineVariant}
+                color={COLORS.outlineVariant}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -470,8 +479,6 @@ export default function CreateTaskScreen() {
                 placeholderTextColor={COLORS.outline}
                 value={location}
                 onChangeText={(v) => { setLocation(v); clearError('location'); }}
-                onFocus={() => setLocationFocused(true)}
-                onBlur={() => setLocationFocused(false)}
               />
               <TouchableOpacity
                 style={styles.mapPickerBtn}
@@ -484,6 +491,21 @@ export default function CreateTaskScreen() {
                 <Text style={styles.mapPickerBtnText}>Bản đồ</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={styles.currentLocBtn}
+              onPress={handleUseCurrentLocation}
+              disabled={locatingLoading}
+              activeOpacity={0.85}
+            >
+              {locatingLoading ? (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              ) : (
+                <Ionicons name="navigate" size={16} color={COLORS.primary} />
+              )}
+              <Text style={styles.currentLocBtnText}>
+                {locatingLoading ? 'Đang định vị...' : 'Chọn vị trí hiện tại'}
+              </Text>
+            </TouchableOpacity>
             {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
             {pickedCoords && (
               <View style={styles.pickedCoordsInfo}>
@@ -550,7 +572,7 @@ export default function CreateTaskScreen() {
           {/* Price */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Giá thỏa thuận (VNĐ)</Text>
-            <View style={[styles.inputWrapper, priceFocused && styles.inputWrapperFocused, errors.price && styles.inputWrapperError]}>
+            <View style={[styles.inputWrapper, errors.price && styles.inputWrapperError]}>
               <TextInput
                 style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
                 placeholder="0"
@@ -558,8 +580,6 @@ export default function CreateTaskScreen() {
                 value={price}
                 onChangeText={(v) => { setPrice(v); clearError('price'); }}
                 keyboardType="numeric"
-                onFocus={() => setPriceFocused(true)}
-                onBlur={() => setPriceFocused(false)}
               />
               <Text style={styles.currencyUnit}>VNĐ</Text>
             </View>
@@ -921,6 +941,24 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   mapPickerBtnText: {
+    ...TYPO.caption,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  currentLocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  currentLocBtnText: {
     ...TYPO.caption,
     color: COLORS.primary,
     fontWeight: '600',
