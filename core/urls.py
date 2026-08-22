@@ -5,15 +5,14 @@ from .views import (
     RegisterAPIView, LoginAPIView, UserProfileAPIView,
     TaskListCreateAPIView, TaskDetailAPIView, TaskUpdateStatusAPIView, ParentTasksAPIView, TaskCandidatesAPIView,
     ApproveCandidateAPIView, ReviewCreateAPIView,
-    ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
+    ApplyTaskAPIView, WorkerJobsAPIView,
     ChatbotAPIView,
-    AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
+    AdminPendingWorkersAPIView,
     AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
     AdminSeedDemoDataAPIView,
     AdminAllTasksAPIView, AdminModerateTaskAPIView,
     CompleteOnboardingAPIView,
-    WorkerSubmitCredentialAPIView,
-    AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
+    AdminCredentialSubmissionsAPIView,
     AdminSendNotificationAPIView,
     UserNotificationsAPIView, UnreadNotificationCountAPIView, MarkNotificationsReadAPIView,
     WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
@@ -22,7 +21,15 @@ from .views import (
     AdminChatbotAPIView,
     KeepAliveStatsAPIView,
 )
-from .tier_views import AdminSetWorkerTierAPIView, AdminRecomputeWorkerTierAPIView
+from .tier_views import (
+    AdminSetWorkerTierAPIView,
+    AdminRecomputeWorkerTierAPIView,
+    WorkerProfileDetailAPIView,
+    AdminApproveWorkerAPIView,
+    AdminAllWorkersAPIView,
+    WorkerSubmitCredentialAPIView,
+    AdminReviewCredentialAPIView,
+)
 
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
