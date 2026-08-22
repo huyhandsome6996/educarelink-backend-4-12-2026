@@ -283,3 +283,23 @@ class WorkerCareDiaryAttachmentAPIView(APIView):
             })
 
         return Response({'attachments': created}, status=status.HTTP_201_CREATED)
+
+
+class ParentCareDiaryHistoryAPIView(APIView):
+    """Danh sách rút gọn nhật ký của phụ huynh — sắp xếp mới nhất trước.
+
+    Phụ huynh xem lịch sử các buổi chăm sóc đã có nhật ký,
+    bấm vào từng item để xem chi tiết (CareDiaryDetail).
+    Không phân trang: số lượng task/phụ huynh có giới hạn tự nhiên,
+    và codebase chưa có pattern phân trang nào để theo.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Chỉ phụ huynh mới xem được lịch sử nhật ký.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        history = services.get_parent_diary_history(parent=request.user)
+        return Response(history, status=status.HTTP_200_OK)

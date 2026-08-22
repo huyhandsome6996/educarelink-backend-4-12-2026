@@ -419,6 +419,14 @@ export default function MyTasksScreen() {
           <Text style={styles.headerSubtitle}>Quản lý và theo dõi các dịch vụ chăm sóc.</Text>
         </View>
         <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CareDiaryHistory')}
+            style={styles.historyBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button" accessibilityLabel="Lịch sử nhật ký"
+          >
+            <Ionicons name="time" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
           <NotificationBell color={COLORS.primary} />
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateTask')}
@@ -507,6 +515,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  historyBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,

@@ -644,3 +644,91 @@ class EdgeCaseValidationTests(TestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertIn('chưa có nhật ký', resp.data['error'].lower())
 
+
+@override_settings(DEBUG=True)
+class DiaryHistoryTests(TestCase):
+    """Kiểm tra API lịch sử nhật ký — GET /api/parent/care-diary-history/."""
+
+    def setUp(self):
+        self.parent_a = _make_parent('parent_a')
+        self.parent_b = _make_parent('parent_b')
+        self.worker_a = _make_worker('worker_a')
+        self.worker_b = _make_worker('worker_b')
+        self.category = _make_category()
+        self.client = APIClient()
+
+    def _create_diary(self, parent, worker, task_title, scheduled_offset_days=0, **payload_kw):
+        """Helper: tạo task + accept + tạo diary. Trả về task."""
+        from django.utils import timezone as django_tz
+        scheduled = django_tz.now() - django_tz.timedelta(days=scheduled_offset_days)
+        task = _make_task(parent, self.category, status='in_progress',
+                          title=task_title, scheduled_time=scheduled)
+        _accept_worker(task, worker)
+        self.client.force_authenticate(user=worker)
+        self.client.post(
+            f'/api/worker/tasks/{task.id}/care-diary/',
+            _diary_payload(**payload_kw), format='json',
+        )
+        return task
+
+    def test_parent_empty_history_returns_empty_list(self):
+        """Phụ huynh chưa có nhật ký nào → trả mảng rỗng, không 500."""
+        self.client.force_authenticate(user=self.parent_a)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [])
+
+    def test_parent_only_sees_own_diaries(self):
+        """Parent A không thấy nhật ký của parent B trong danh sách."""
+        self._create_diary(self.parent_a, self.worker_a, 'Task A1', scheduled_offset_days=2)
+        self._create_diary(self.parent_b, self.worker_b, 'Task B1', scheduled_offset_days=1)
+
+        self.client.force_authenticate(user=self.parent_a)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]['task_title'], 'Task A1')
+
+    def test_history_sorted_newest_first(self):
+        """Sắp xếp mới nhất trước (theo task.scheduled_time DESC)."""
+        self._create_diary(self.parent_a, self.worker_a, 'Buổi cũ', scheduled_offset_days=5,
+                           mood_label='Bình thường', completion_percent=60)
+        self._create_diary(self.parent_a, self.worker_a, 'Buổi mới', scheduled_offset_days=1,
+                           mood_label='Vui vẻ', completion_percent=90)
+        self._create_diary(self.parent_a, self.worker_a, 'Buổi giữa', scheduled_offset_days=3,
+                           mood_label='Cần chú ý', completion_percent=70)
+
+        self.client.force_authenticate(user=self.parent_a)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 3)
+        titles = [item['task_title'] for item in resp.data]
+        self.assertEqual(titles, ['Buổi mới', 'Buổi giữa', 'Buổi cũ'])
+
+    def test_history_response_contract(self):
+        """Mỗi item có đúng field mobile cần: task_id, task_title, date, mood, completion_percent, worker_name."""
+        self._create_diary(self.parent_a, self.worker_a, 'Contract test')
+
+        self.client.force_authenticate(user=self.parent_a)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        item = resp.data[0]
+        # Required fields cho CareDiaryHistoryScreen.js
+        for field in ('task_id', 'task_title', 'date', 'mood', 'completion_percent', 'worker_name'):
+            self.assertIn(field, item, f'Thiếu field {field}')
+        # mood có icon + label
+        self.assertIn('icon', item['mood'])
+        self.assertIn('label', item['mood'])
+        self.assertEqual(item['worker_name'], 'Nguyễn Thị Lan')
+
+    def test_worker_cannot_access_history(self):
+        """Worker gọi API lịch sử → 403."""
+        self.client.force_authenticate(user=self.worker_a)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_anonymous_cannot_access_history(self):
+        """Chưa đăng nhập → 401."""
+        self.client.force_authenticate(user=None)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 401)

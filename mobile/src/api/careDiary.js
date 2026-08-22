@@ -23,3 +23,7 @@ export const uploadCareDiaryAttachments = (taskId, formData) =>
   apiClient.post(`/worker/tasks/${taskId}/care-diary/attachments/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+
+// Parent: lịch sử nhật ký (danh sách rút gọn)
+export const getCareDiaryHistory = () =>
+  apiClient.get('/parent/care-diary-history/');
