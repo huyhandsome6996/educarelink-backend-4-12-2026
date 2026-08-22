@@ -104,6 +104,10 @@
       <span class="material-symbols-outlined text-xl">assignment</span>
       Việc của tôi
     </a>
+    <a href="{% url 'frontend:parent_care_diary_history' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
+      <span class="material-symbols-outlined text-xl">book</span>
+      Nhật ký chăm sóc
+    </a>
     <a href="{% url 'frontend:task_create_1' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary font-medium text-sm">
       <span class="material-symbols-outlined text-xl">add_circle</span>
       Đăng việc mới
@@ -155,6 +159,9 @@
     <div class="mb-6">
       <div class="hidden lg:flex items-center gap-3 mb-1">
         <h2 class="font-headline font-bold text-2xl text-textPrimary">Việc của tôi</h2>
+        <a href="{% url 'frontend:parent_care_diary_history' %}" class="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primaryLight text-primary text-xs font-bold hover:bg-primary/20 transition-all">
+          <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">book</span>Lịch sử nhật ký
+        </a>
       </div>
       <!-- Stats Summary -->
       <div class="grid grid-cols-3 gap-3 mt-4">

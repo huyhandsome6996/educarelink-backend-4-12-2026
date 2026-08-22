@@ -610,15 +610,18 @@
                     `;
                 } else if (a.status === 'accepted') {
                     actionButtons = `
-                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
-                            Xem chi tiết
+                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${a.task_id || a.task}&task_title=${encodeURIComponent(a.task_title || '')}'" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                            <span class="material-symbols-outlined text-sm align-middle" style="font-variation-settings: 'FILL' 1;">edit_note</span> Ghi nhật ký
                         </button>
-                        <button data-parent-username="${escapeHtml(a.parent_username)}" class="contact-parent-btn px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
-                            Nhắn tin
+                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
+                            Chi tiết
                         </button>
                     `;
                 } else if (a.status === 'completed') {
                     actionButtons = `
+                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${a.task_id || a.task}&task_title=${encodeURIComponent(a.task_title || '')}'" class="px-4 py-2 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-all duration-200 active:scale-95">
+                            <span class="material-symbols-outlined text-sm align-middle">edit_note</span> Nhật ký
+                        </button>
                         <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
                             Xem lại
                         </button>

@@ -732,3 +732,80 @@ class DiaryHistoryTests(TestCase):
         self.client.force_authenticate(user=None)
         resp = self.client.get('/api/parent/care-diary-history/')
         self.assertEqual(resp.status_code, 401)
+
+
+class Bug10DateFieldTests(TestCase):
+    """BUG-10: field 'date' phải phản ánh task.scheduled_time, không phải entry.created_at.
+
+    Tạo task với scheduled_time cách đây N ngày, ghi nhật ký "hôm nay"
+    (entry.created_at khác scheduled_time), rồi assert field 'date'
+    chứa đúng nội dung ngày của scheduled_time.
+    """
+
+    def setUp(self):
+        self.parent = _make_parent('parent_b10')
+        self.worker = _make_worker('worker_b10')
+        self.category = _make_category()
+        self.client = APIClient()
+
+    def test_history_date_uses_scheduled_time_not_created_at(self):
+        """Lịch sử: field 'date' = scheduled_time (3 ngày trước), KHÔNG phải created_at."""
+        scheduled = django_tz.now() - django_tz.timedelta(days=3)
+        task = _make_task(
+            self.parent, self.category, status='in_progress',
+            title='Buổi 3 ngày trước', scheduled_time=scheduled,
+        )
+        _accept_worker(task, self.worker)
+        self.client.force_authenticate(user=self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+
+        # scheduled_time = 3 ngày trước → date phải chứa ngày của 3 ngày trước
+        local_scheduled = django_tz.localtime(scheduled)
+        expected_day = local_scheduled.day
+        expected_month = local_scheduled.month
+        expected_year = local_scheduled.year
+
+        date_str = resp.data[0]['date']
+        # Kiểm tra nội dung ngày, không chỉ tồn tại field
+        self.assertIn(str(expected_day), date_str,
+                        f"date '{date_str}' phải chứa ngày {expected_day} (scheduled_time)")
+        self.assertIn(f'Tháng {expected_month}', date_str,
+                        f"date '{date_str}' phải chứa Tháng {expected_month}")
+        self.assertIn(str(expected_year), date_str,
+                        f"date '{date_str}' phải chứa năm {expected_year}")
+
+    def test_detail_date_uses_scheduled_time_not_created_at(self):
+        """Chi tiết: field 'date' = scheduled_time (5 ngày trước), KHÔNG phải created_at."""
+        scheduled = django_tz.now() - django_tz.timedelta(days=5)
+        task = _make_task(
+            self.parent, self.category, status='in_progress',
+            title='Buổi 5 ngày trước', scheduled_time=scheduled,
+        )
+        _accept_worker(task, self.worker)
+        self.client.force_authenticate(user=self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(f'/api/tasks/{task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+
+        local_scheduled = django_tz.localtime(scheduled)
+        expected_day = local_scheduled.day
+        expected_month = local_scheduled.month
+
+        date_str = resp.data['date']
+        self.assertIn(str(expected_day), date_str,
+                        f"date '{date_str}' phải chứa ngày {expected_day} (scheduled_time)")
+        self.assertIn(f'Tháng {expected_month}', date_str,
+                        f"date '{date_str}' phải chứa Tháng {expected_month}")

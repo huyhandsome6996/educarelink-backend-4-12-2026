@@ -144,6 +144,13 @@
                     <span>Việc của tôi</span>
                 </a>
 
+                <!-- Nhật ký chăm sóc -->
+                <a href="{% url 'frontend:parent_care_diary_history' %}"
+                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">book</span>
+                    <span>Nhật ký chăm sóc</span>
+                </a>
+
                 <!-- Đăng việc mới -->
                 <a href="{% url 'frontend:task_create_1' %}"
                    class="flex items-center gap-3 px-4 py-3 rounded-xl text-textSecondary hover:bg-gray-50 hover:text-textPrimary font-medium transition-all group">
