@@ -151,14 +151,14 @@ def find_smart_matches(task, radius_m=None):
     day_wl = dict(
         TaskApplication.objects.filter(
             worker_id__in=worker_ids, status='accepted',
-            task__status__in=('open', 'in_progress'),
+            task__status__in=('open', 'in_progress', 'completed'),
             task__scheduled_time__range=(day_start, day_end),
         ).values('worker_id').annotate(c=Count('id')).values_list('worker_id', 'c')
     )
     week_wl = dict(
         TaskApplication.objects.filter(
             worker_id__in=worker_ids, status='accepted',
-            task__status__in=('open', 'in_progress'),
+            task__status__in=('open', 'in_progress', 'completed'),
             task__scheduled_time__range=(week_start, week_end),
         ).values('worker_id').annotate(c=Count('id')).values_list('worker_id', 'c')
     )
