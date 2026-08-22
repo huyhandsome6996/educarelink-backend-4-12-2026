@@ -25,7 +25,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 
 // Hoàn thành auth session khi quay lại từ browser (bắt buộc cho OAuth)
-WebBrowser.maybeCompleteAuthSession();
+try { WebBrowser.maybeCompleteAuthSession(); } catch (e) { /* no session to complete */ }
 
 const showAlert = (title, message) => {
   if (Platform.OS === 'web') {
@@ -66,7 +66,9 @@ export default function LoginScreen() {
 
   // === GOOGLE OAUTH ===
   const googleAuthConfig = useMemo(() => {
-    if (!oauthConfig?.google?.enabled || !oauthConfig?.google?.client_id) return null;
+    if (!oauthConfig?.google?.enabled || !oauthConfig?.google?.client_id) {
+      return { clientId: 'disabled', redirectUri: AuthSession.makeRedirectUri() };
+    }
     return {
       clientId: oauthConfig.google.client_id,
       scopes: ['openid', 'email', 'profile'],
@@ -84,7 +86,9 @@ export default function LoginScreen() {
 
   // === FACEBOOK OAUTH ===
   const fbAuthConfig = useMemo(() => {
-    if (!oauthConfig?.facebook?.enabled || !oauthConfig?.facebook?.app_id) return null;
+    if (!oauthConfig?.facebook?.enabled || !oauthConfig?.facebook?.app_id) {
+      return { clientId: 'disabled', redirectUri: AuthSession.makeRedirectUri() };
+    }
     return {
       clientId: oauthConfig.facebook.app_id,
       scopes: ['email', 'public_profile'],
