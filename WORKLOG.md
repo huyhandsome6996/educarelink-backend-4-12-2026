@@ -676,3 +676,18 @@ Bổ sung theo spec gốc: "Parents can review this history to monitor their chi
 - **Kiến trúc module riêng `care_diary/`** thay vì đặt trong `core`. Theo đúng §15.1 Module Isolation và §16.3 (thêm module Django mới). Chỉ phụ thuộc core (1 chiều), không sửa core/models.py hay core/views.py.
 - **expo-image-picker đã có sẵn** trong package.json (~17.0.11), không cần thêm dependency mới.
 - **Response contract** đã đối chiếu trực tiếp code mobile: field `desc` (không phải `description`) trong activities, `avatarInitial` trong carepartner — đây là lỗi #1 từng gặp ở A2, đã kiểm tra kỹ.
+
+### BUG-10 fix + Web frontend parity (commit 509069c)
+**PHẦN 1 — BUG-10 (MEDIUM):**
+- `get_parent_diary_history()`: field `date` build từ `entry.created_at` → SỬA thành `entry.task.scheduled_time`. Đúng theo comment docstring ("sắp xếp theo task.scheduled_time") nhưng code lại dùng sai.
+- `build_entry_response()`: cùng bug, cùng fix.
+- 2 test mới `Bug10DateFieldTests`: tạo task với `scheduled_time` 3-5 ngày trước, ghi nhật ký hôm nay, assert `date` phản ánh đúng ngày của `scheduled_time` (không chỉ check tồn tại field).
+
+**PHẦN 2 — Web frontend parity (yêu cầu chuẩn từ nay):**
+- `frontend/templates/frontend/worker_care_diary_form.html`: Form CarePartner ghi/sửa nhật ký (mood picker, completion slider, activities add/remove, note, upload ảnh multipart). Gọi POST/PATCH/attachment API thật qua apiFetch.
+- `frontend/templates/frontend/parent_care_diary_detail.html`: Xem chi tiết nhật ký (carepartner info, mood, completion stats+bar, activities timeline, note, attachments gallery). Field contract khớp mobile (`desc`, `avatarInitial`...). 404 empty state thân thiện.
+- `frontend/templates/frontend/parent_care_diary_history.html`: Danh sách card tóm tắt mới nhất trước. Mood chip, % badge, worker name. Loading/error/empty states.
+- `frontend/views.py`: 3 TemplateView mới.
+- `frontend/urls.py`: 3 URL mới.
+- Entry points: sidebar "Nhật ký chăm sóc" trong `parent_home.html` + `parent_tasks.html` (sidebar + header button); nút "Ghi nhật ký" trong `worker_jobs.html` cho accepted + completed tasks.
+- 6 test mới `WebPageTests`: verify 200 + HTML content cho 3 trang mới + link presence trong 2 trang có entry point. Full suite: 279/279 pass.
