@@ -362,7 +362,7 @@
                     </div>
                     <div class="min-w-0">
                         <h3 class="font-headline font-bold text-base text-textPrimary">Gợi ý CarePartner thông minh</h3>
-                        <p class="text-xs text-textSecondary mt-0.5">AI tìm kiếm CarePartner phù hợp nhất cho việc của bạn</p>
+                        <p class="text-xs text-textSecondary mt-0.5">Hệ thống tìm CarePartner phù hợp nhất theo khoảng cách, khung giờ rảnh và tải việc</p>
                     </div>
                 </div>
                 <span id="smart-matches-chevron" class="material-symbols-outlined text-textSecondary text-xl transition-transform duration-200 flex-shrink-0 ml-2">expand_more</span>
@@ -403,7 +403,7 @@
 
                 <!-- Disclaimer -->
                 <p id="smart-matches-disclaimer" class="hidden text-xs text-textMuted mt-3 italic px-1">
-                    * Gợi ý AI chỉ mang tính tham khảo. Quyền quyết định cuối cùng thuộc về bạn.
+                    * Gợi ý chỉ mang tính tham khảo, dựa trên khoảng cách, khung giờ rảnh và tải việc. Quyết định cuối cùng thuộc về bạn.
                 </p>
             </div>
         </section>
@@ -1086,23 +1086,21 @@ function renderSmartMatches(matches) {
         const rank = m.rank || (idx + 1);
         const rankCls = getRankClass(rank);
         const displayName = m.display_name || m.name || 'CarePartner';
-        const avatarSrc = m.avatar
-            ? escapeHtml(m.avatar)
+        const avatarSrc = m.avatar_url
+            ? escapeHtml(m.avatar_url)
             : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=F26522&color=fff&size=128';
         const workerId = m.worker_id || m.id || '';
 
-        // Distance
+        // Distance — dùng distance_text hoặc distance_m từ API
         let distanceHtml = '';
-        if (m.distance_km != null) {
-            const distLabel = typeof m.distance_km === 'number'
-                ? m.distance_km < 1
-                    ? Math.round(m.distance_km * 1000) + ' m'
-                    : m.distance_km.toFixed(1) + ' km'
-                : escapeHtml(String(m.distance_km));
+        const distText = m.distance_text || (m.distance_m != null
+            ? (m.distance_m < 1000 ? Math.round(m.distance_m) + ' m' : (m.distance_m / 1000).toFixed(1) + ' km')
+            : '');
+        if (distText) {
             distanceHtml = `
                 <div class="flex items-center gap-1.5 text-xs text-blue-600">
                     <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">straight</span>
-                    <span class="font-medium">${distLabel}</span>
+                    <span class="font-medium">${escapeHtml(distText)}</span>
                 </div>`;
         }
 
@@ -1116,13 +1114,18 @@ function renderSmartMatches(matches) {
                 </div>`;
         }
 
-        // Workload info
+        // Workload — từ workload_day và workload_week của API
         let workloadHtml = '';
-        if (m.workload_info) {
+        const wd = m.workload_day || 0;
+        const ww = m.workload_week || 0;
+        if (wd > 0 || ww > 0) {
+            let parts = [];
+            if (wd > 0) parts.push(wd + ' việc hôm nay');
+            if (ww > 0) parts.push(ww + ' việc tuần này');
             workloadHtml = `
                 <div class="flex items-center gap-1.5 text-xs text-textSecondary">
                     <span class="material-symbols-outlined text-sm">work</span>
-                    <span>${escapeHtml(m.workload_info)}</span>
+                    <span>${parts.join(', ')}</span>
                 </div>`;
         }
 

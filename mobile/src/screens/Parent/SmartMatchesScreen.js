@@ -1,13 +1,14 @@
 // ============================================================
 // SmartMatchesScreen — Feature A2: Smart Job Matching
-// Phụ huynh xem danh sách CarePartner được AI đề xuất cho 1 task
+// Phụ huynh xem danh sách CarePartner được hệ thống gợi ý cho 1 task
+// Dựa trên khoảng cách, khung giờ rảnh và tải việc hiện tại.
 // Pattern: CandidatesScreen styling + Warm Professionalism
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar,
-  ActivityIndicator, Alert, Animated, Pressable,
+  ActivityIndicator, Alert, Animated, Pressable, Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,25 +84,42 @@ export default function SmartMatchesScreen() {
     if (taskId) fetchMatches();
   }, [taskId]);
 
-  // Get display name from worker data
-  const getDisplayName = (worker) => {
-    if (!worker) return 'CarePartner';
-    if (worker.first_name || worker.last_name) {
-      return `${worker.first_name || ''} ${worker.last_name || ''}`.trim();
+  // Avatar fallback: hiện chữ cái đầu + icon nếu không có avatar_url
+  const renderAvatar = (item) => {
+    const avatarUrl = item.avatar_url;
+    const name = item.display_name || 'C';
+    if (avatarUrl) {
+      return (
+        <View style={styles.avatar}>
+          <Image
+            source={{ uri: avatarUrl }}
+            style={styles.avatarImage}
+            onError={() => {}}
+          />
+          <View style={styles.avatarOverlay}>
+            <Text style={styles.avatarText}>{name[0]?.toUpperCase() || '?'}</Text>
+          </View>
+        </View>
+      );
     }
-    return worker.username || 'CarePartner';
+    return (
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{name[0]?.toUpperCase() || '?'}</Text>
+      </View>
+    );
   };
 
-  // Render a single match card
+  // Render một match card — dùng đúng contract từ backend:
+  // worker_id, display_name, avatar_url, distance_m, distance_text,
+  // availability_window, workload_day, workload_week, rank_reason
   const renderMatch = ({ item, index }) => {
-    const worker = item.worker || item;
-    const displayName = getDisplayName(worker);
+    const displayName = item.display_name || 'CarePartner';
     const rank = index + 1;
     const medal = RANK_CONFIG[index] || null;
-    const distance = item.distance_m != null ? formatDistance(item.distance_m) : '';
-    const availability = item.availability_text || '';
-    const todayJobs = item.tasks_today ?? 0;
-    const weekJobs = item.tasks_this_week ?? 0;
+    const distance = item.distance_text || (item.distance_m != null ? formatDistance(item.distance_m) : '');
+    const availability = item.availability_window || '';
+    const dayJobs = item.workload_day ?? 0;
+    const weekJobs = item.workload_week ?? 0;
     const reason = item.rank_reason || '';
 
     return (
@@ -120,16 +138,8 @@ export default function SmartMatchesScreen() {
             )}
           </View>
 
-          {/* Avatar (initials) or placeholder */}
-          {worker?.avatar ? (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{displayName[0]?.toUpperCase() || '?'}</Text>
-            </View>
-          ) : (
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={22} color={COLORS.textOnPrimary} />
-            </View>
-          )}
+          {/* Avatar — dùng avatar_url từ API, fallback initials */}
+          {renderAvatar(item)}
 
           {/* Name + distance */}
           <View style={styles.cardInfo}>
@@ -143,11 +153,11 @@ export default function SmartMatchesScreen() {
                   <Text style={styles.metaChipText}>{distance}</Text>
                 </View>
               ) : null}
-              {todayJobs > 0 || weekJobs > 0 ? (
+              {dayJobs > 0 || weekJobs > 0 ? (
                 <View style={styles.metaChip}>
                   <Ionicons name="briefcase-outline" size={12} color={COLORS.onSurfaceVariant} />
                   <Text style={styles.metaChipText}>
-                    {todayJobs} việc hôm nay, {weekJobs} việc tuần này
+                    {dayJobs} việc hôm nay{weekJobs > 0 ? `, ${weekJobs} việc tuần này` : ''}
                   </Text>
                 </View>
               ) : null}
@@ -175,7 +185,7 @@ export default function SmartMatchesScreen() {
         <TouchableOpacity
           style={styles.viewProfileBtn}
           onPress={() => {
-            const workerId = worker?.id || item.worker_id;
+            const workerId = item.worker_id;
             if (workerId) {
               navigation.navigate('CandidateProfile', {
                 workerId,
@@ -208,6 +218,7 @@ export default function SmartMatchesScreen() {
           <Ionicons name="arrow-back" size={22} color={COLORS.onSurface} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>Gợi ý phù hợp</Text>
+        <Text style={styles.appBarSubtitle} numberOfLines={1}>{route.params?.taskTitle || ''}</Text>
         <TouchableOpacity
           onPress={fetchMatches}
           style={styles.appBarBtn}
@@ -224,14 +235,14 @@ export default function SmartMatchesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* AI info banner */}
+      {/* Banner thông tin matching */}
       <View style={styles.aiBanner}>
         <View style={styles.aiBannerLeft}>
           <Ionicons name="sparkles" size={16} color={COLORS.primary} />
           <Text style={styles.aiBannerTitle}>Smart Matching</Text>
         </View>
         <Text style={styles.aiBannerText}>
-          AI đề xuất dựa trên khoảng cách, khung giờ rảnh và tải việc hiện tại.
+          Hệ thống gợi ý dựa trên khoảng cách, khung giờ rảnh và tải việc hiện tại.
         </Text>
       </View>
 
@@ -239,7 +250,7 @@ export default function SmartMatchesScreen() {
       {isLoading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>AI đang tìm CarePartner phù hợp...</Text>
+          <Text style={styles.loadingText}>Đang tìm CarePartner phù hợp...</Text>
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
@@ -266,7 +277,7 @@ export default function SmartMatchesScreen() {
       ) : (
         <FlatList
           data={matches}
-          keyExtractor={(item, idx) => item.worker?.id?.toString() || item.worker_id?.toString() || `match_${idx}`}
+          keyExtractor={(item, idx) => item.worker_id?.toString() || `match_${idx}`}
           renderItem={renderMatch}
           contentContainerStyle={styles.list}
         />
@@ -299,6 +310,15 @@ const styles = StyleSheet.create({
   appBarTitle: {
     ...TYPO.h3,
     color: COLORS.onSurface,
+    flex: 1,
+  },
+  appBarSubtitle: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+    position: 'absolute',
+    bottom: 2,
+    left: 58,
+    right: 58,
   },
   // === AI BANNER ===
   aiBanner: {
@@ -437,6 +457,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.small,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: {
     color: COLORS.textOnPrimary,

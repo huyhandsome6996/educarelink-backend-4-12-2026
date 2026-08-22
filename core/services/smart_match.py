@@ -38,34 +38,29 @@ def _task_time_only(task_time):
     return timezone.localtime(task_time).time()
 
 
-def _count_workload(worker_id, target_date, period='day'):
-    """Đếm số việc accepted/in_progress của worker trong ngày hoặc tuần.
+def _make_tz_aware(date_val, time_val):
+    """Kết hợp date + time thành timezone-aware datetime trong Asia/Ho_Chi_Minh."""
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo('Asia/Ho_Chi_Minh')
+    return timezone.datetime.combine(date_val, time_val).replace(tzinfo=tz)
 
-    'day' — đếm Task có scheduled_time rơi vào target_date (ngày)
-    'week' — đếm Task có scheduled_time rơi trong cùng ISO week
 
-    Chỉ đếm việc mà worker đã được CHỐI NHẬN (application.status='accepted')
-    VÀ task chưa hoàn thành/hủy (status in ('open', 'in_progress')).
-    """
-    if period == 'day':
-        day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start.replace(hour=23, minute=59, second=59, microsecond=999999)
-        time_filter = Q(task__scheduled_time__range=(day_start, day_end))
-    else:
-        iso_week = target_date.isocalendar()[1]
-        iso_year = target_date.isocalendar()[0]
-        monday = timezone.datetime.fromisocalendar(iso_year, iso_week, 1).date()
-        sunday = monday + timezone.timedelta(days=6)
-        day_start = timezone.datetime.combine(monday, timezone.datetime.min.time())
-        day_end = timezone.datetime.combine(sunday, timezone.datetime.max.time())
-        time_filter = Q(task__scheduled_time__range=(day_start, day_end))
+def _get_day_range(task_local_dt):
+    """Trả về (day_start, day_end) timezone-aware cho ngày của task."""
+    day_date = task_local_dt.date()
+    day_start = _make_tz_aware(day_date, timezone.datetime.min.time())
+    day_end = _make_tz_aware(day_date, timezone.datetime.max.time())
+    return day_start, day_end
 
-    return TaskApplication.objects.filter(
-        time_filter,
-        worker_id=worker_id,
-        status='accepted',
-        task__status__in=('open', 'in_progress'),
-    ).count()
+
+def _get_week_range(task_local_dt):
+    """Trả về (week_start, week_end) timezone-aware cho ISO week của task."""
+    iso_year, iso_week, _ = task_local_dt.isocalendar()
+    monday = timezone.datetime.fromisocalendar(iso_year, iso_week, 1).date()
+    sunday = monday + timezone.timedelta(days=6)
+    week_start = _make_tz_aware(monday, timezone.datetime.min.time())
+    week_end = _make_tz_aware(sunday, timezone.datetime.max.time())
+    return week_start, week_end
 
 
 def find_smart_matches(task, radius_m=None):
@@ -147,16 +142,11 @@ def find_smart_matches(task, radius_m=None):
             'message': f'Không có CarePartner nào trong bán kính {radius_m/1000:.0f}km.',
         }
 
-    # 4. Batch workload counting — tránh N+1
+    # 4. Batch workload counting — timezone-aware bounds
     worker_ids = [c['id'] for c in in_radius]
 
-    day_start = task_local.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = task_local.replace(hour=23, minute=59, second=59, microsecond=999999)
-    iso_year, iso_week, _ = task_local.isocalendar()
-    monday = timezone.datetime.fromisocalendar(iso_year, iso_week, 1).date()
-    sunday = monday + timezone.timedelta(days=6)
-    week_start_dt = timezone.datetime.combine(monday, timezone.datetime.min.time())
-    week_end_dt = timezone.datetime.combine(sunday, timezone.datetime.max.time())
+    day_start, day_end = _get_day_range(task_local)
+    week_start, week_end = _get_week_range(task_local)
 
     day_wl = dict(
         TaskApplication.objects.filter(
@@ -169,7 +159,7 @@ def find_smart_matches(task, radius_m=None):
         TaskApplication.objects.filter(
             worker_id__in=worker_ids, status='accepted',
             task__status__in=('open', 'in_progress'),
-            task__scheduled_time__range=(week_start_dt, week_end_dt),
+            task__scheduled_time__range=(week_start, week_end),
         ).values('worker_id').annotate(c=Count('id')).values_list('worker_id', 'c')
     )
 

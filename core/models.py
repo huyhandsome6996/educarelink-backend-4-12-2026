@@ -325,7 +325,12 @@ class WorkerAvailability(models.Model):
             models.UniqueConstraint(
                 fields=['worker', 'weekday', 'start_time', 'end_time'],
                 name='unique_availability_window',
-            )
+            ),
+            models.CheckConstraint(
+                check=models.Q(start_time__lt=models.F('end_time')),
+                name='check_start_before_end',
+                violation_error_message='Giờ kết thúc phải sau giờ bắt đầu.',
+            ),
         ]
         indexes = [
             models.Index(fields=['worker', 'weekday'], name='idx_worker_weekday'),
