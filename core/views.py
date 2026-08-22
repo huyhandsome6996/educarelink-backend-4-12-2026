@@ -10,7 +10,7 @@ import os
 import logging
 import requests
 from django.db import models as db_models
-from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest
+from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability
 
 logger = logging.getLogger('educarelink.core.views')
 
@@ -59,7 +59,8 @@ def build_absolute_uri(request, url):
 
 from .serializers import (
     UserSerializer, TaskSerializer, TaskApplicationSerializer, 
-    ServiceCategorySerializer, ReviewSerializer
+    ServiceCategorySerializer, ReviewSerializer,
+    WorkerAvailabilitySerializer
 )
 
 def get_tokens_for_user(user):
@@ -2878,3 +2879,70 @@ Hãy sử dụng thông tin này khi cần để trả lời admin."""
             else:
                 detail = f"Lỗi kết nối AI: {error_msg}"
             return Response({"response": detail, "type": "error"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# ═══════════════════════════════════════════════════════════════
+# A2 — Ghép việc thông minh theo lịch rảnh
+# ═══════════════════════════════════════════════════════════════
+
+class IsWorkerPermission(IsAuthenticated):
+    """Chỉ cho phép user có role='worker'."""
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.role == 'worker'
+
+
+class IsParentPermission(IsAuthenticated):
+    """Chỉ cho phép user có role='parent'."""
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.role == 'parent'
+
+
+class WorkerAvailabilityListCreateAPIView(generics.ListCreateAPIView):
+    """CRUD khung giờ rảnh — chỉ worker được truy cập.
+    GET/POST /api/worker/availability/
+    """
+    permission_classes = [IsWorkerPermission]
+    serializer_class = WorkerAvailabilitySerializer
+
+    def get_queryset(self):
+        return WorkerAvailability.objects.filter(worker=self.request.user).order_by('weekday', 'start_time')
+
+    def perform_create(self, serializer):
+        serializer.save(worker=self.request.user)
+
+
+class WorkerAvailabilityDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """Sửa/xoá 1 khung giờ rảnh — chỉ owner.
+    GET/PUT/DELETE /api/worker/availability/<id>/
+    """
+    permission_classes = [IsWorkerPermission]
+    serializer_class = WorkerAvailabilitySerializer
+
+    def get_queryset(self):
+        return WorkerAvailability.objects.filter(worker=self.request.user)
+
+
+class SmartMatchAPIView(APIView):
+    """Gợi ý CarePartner phù hợp cho 1 công việc — chỉ parent sở hữu việc.
+    GET /api/parent/tasks/<task_id>/smart-matches/
+    """
+    permission_classes = [IsParentPermission]
+
+    def get(self, request, task_id):
+        try:
+            task = Task.objects.select_related('parent').get(pk=task_id)
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'}, status=404)
+
+        if task.parent != request.user:
+            return Response({'error': 'Bạn không có quyền xem gợi ý cho công việc này.'}, status=403)
+
+        if task.status != 'open':
+            return Response({
+                'matches': [],
+                'message': f'Công việc này đã {task.get_status_display().lower()}, không cần gợi ý thêm.',
+            })
+
+        from core.services.smart_match import find_smart_matches
+        result = find_smart_matches(task)
+        return Response(result)

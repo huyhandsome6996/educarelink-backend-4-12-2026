@@ -70,6 +70,10 @@ class ParentOnboardingView(TemplateView):
 class WorkerOnboardingView(TemplateView):
     template_name = "frontend/onboarding_worker.html"
 
+class WorkerAvailabilityView(TemplateView):
+    template_name = "frontend/worker_availability.html"
+
+
 class WorkerChatbotView(TemplateView):
     template_name = "frontend/worker_chatbot.html"
 

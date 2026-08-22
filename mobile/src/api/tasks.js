@@ -117,3 +117,13 @@ export const getPriceSuggestion = (payload) =>
 
 // === A1 — DANH MỤC DỊCH VỤ (từ DB thật) ===
 export const getCategories = () => apiClient.get('/categories/');
+
+// === A2 — SMART JOB MATCHING ===
+// Worker availability CRUD
+export const getWorkerAvailability = () => apiClient.get('/worker/availability/');
+export const createWorkerAvailability = (data) => apiClient.post('/worker/availability/', data);
+export const updateWorkerAvailability = (id, data) => apiClient.put(`/worker/availability/${id}/`, data);
+export const deleteWorkerAvailability = (id) => apiClient.delete(`/worker/availability/${id}/`);
+
+// Parent: smart matches cho 1 task
+export const getSmartMatches = (taskId) => apiClient.get(`/parent/tasks/${taskId}/smart-matches/`);
