@@ -14,12 +14,12 @@
 // permission flow, 8 categories, AI moderation message
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useRef, useEffect} from 'react-native';
+  StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Animated} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { createTask } from '../../api/tasks';
+import { createTask, getPriceSuggestion, getCategories } from '../../api/tasks';
 import {COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS, ANIM} from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapPickerModal from '../../components/MapPickerModal';
@@ -30,14 +30,14 @@ if (Platform.OS !== 'web') {
 }
 
 const CATEGORIES = [
-  { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi' },
-  { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần' },
-  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca' },
-  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi' },
-  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần' },
-  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần' },
-  { id: 7, iconName: 'cube', name: 'Chuyển đồ', hint: '150.000đ - 300.000đ/lần' },
-  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận' },
+  { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi', pricingType: 'hourly' },
+  { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần', pricingType: 'distance' },
+  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca', pricingType: 'hourly' },
+  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
+  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần', pricingType: 'fixed' },
+  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần', pricingType: 'hourly' },
+  { id: 7, iconName: 'hardware-chip', name: 'Hỗ trợ AI', hint: 'Thoả thuận', pricingType: 'fixed' },
+  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận', pricingType: 'fixed' },
 ];
 
 export default function CreateTaskScreen() {
@@ -52,8 +52,30 @@ export default function CreateTaskScreen() {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // === A1: Fetch categories từ DB thật khi mount ===
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getCategories();
+        if (!cancelled && res.data?.length > 0) {
+          setDbCategories(res.data);
+          // Mặc định chọn category đầu tiên
+          if (!selectedCat) setSelectedCat(res.data[0].id);
+        }
+      } catch (e) {
+        console.warn('[A1] Failed to fetch categories:', e?.message || e);
+        // Fallback: dùng local CATEGORIES nếu API lỗi
+        if (!selectedCat) setSelectedCat(1);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const insets = useSafeAreaInsets();
-  const [selectedCat, setSelectedCat] = useState(1);
+  const [selectedCat, setSelectedCat] = useState(null); // DB ID thật, fetch từ API
+  const [dbCategories, setDbCategories] = useState([]); // danh sách từ DB
+  const [estimatedHours, setEstimatedHours] = useState('2'); // input số giờ cho hourly
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -123,7 +145,93 @@ export default function CreateTaskScreen() {
     }
   };
 
-  const cat = CATEGORIES.find(c => c.id === selectedCat);
+  // Tìm category info: ưu tiên DB (name + pricingType), fallback local CATEGORIES
+  // Gán tường minh từng field — KHÔNG dùng spread vì
+  // dbCat dùng snake_case (pricing_type), localCat dùng camelCase (pricingType)
+  // → spread ...localCat sẽ ghi đè pricingType đúng từ DB bằng giá trị hard-code.
+  const dbCat = dbCategories.find(c => c.id === selectedCat);
+  const localCat = CATEGORIES.find(c => c.id === selectedCat);
+  const cat = {
+    id: selectedCat,
+    name: dbCat?.name ?? localCat?.name,
+    hint: localCat?.hint,
+    pricingType: dbCat?.pricing_type ?? localCat?.pricingType ?? 'fixed',
+  };
+  const catDisplayName = dbCat ? dbCat.name : (localCat?.name || '');
+
+  // === A1: Gợi ý giá tự động ===
+  const [priceSuggestion, setPriceSuggestion] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const priceDebounceRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const fetchPriceSuggestion = useCallback(async (categoryId) => {
+    if (!categoryId) return;
+    setPriceLoading(true);
+    try {
+      if (abortRef.current) { try { abortRef.current.abort(); } catch(e) {} }
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const payload = { category_id: categoryId };
+      if (pickedCoords) {
+        payload.latitude = pickedCoords.latitude;
+        payload.longitude = pickedCoords.longitude;
+        // Cho distance: dùng fallback HCM center làm reference
+        payload.reference_latitude = 10.7626;
+        payload.reference_longitude = 106.6602;
+      }
+      if (cat?.pricingType === 'hourly') {
+        const hours = parseFloat(estimatedHours);
+        if (hours > 0) payload.estimated_duration_hours = hours;
+      }
+
+      const res = await getPriceSuggestion(payload);
+      setPriceSuggestion(res.data);
+    } catch (e) {
+      if (e.name !== 'AbortError' && e.name !== 'CanceledError') {
+        console.warn('[A1] Price suggestion error:', e?.message || e);
+        setPriceSuggestion(null);
+      }
+    } finally {
+      setPriceLoading(false);
+    }
+  }, [pickedCoords, cat?.pricingType, estimatedHours]);
+
+  useEffect(() => {
+    if (!selectedCat) { setPriceSuggestion(null); return; }
+    if (priceDebounceRef.current) clearTimeout(priceDebounceRef.current);
+    priceDebounceRef.current = setTimeout(() => {
+      fetchPriceSuggestion(selectedCat);
+    }, 400);
+    return () => { if (priceDebounceRef.current) clearTimeout(priceDebounceRef.current); };
+  }, [selectedCat, pickedCoords, fetchPriceSuggestion, estimatedHours]);
+
+  const applySuggestedPrice = () => {
+    if (priceSuggestion?.suggested_price) {
+      setPrice(String(priceSuggestion.suggested_price));
+      clearError('price');
+    }
+  };
+
+  const priceHintContent = (() => {
+    if (priceSuggestion) {
+      const { suggested_price, price_range, pricing_type, reason, message } = priceSuggestion;
+      if (message) return message;
+      if (reason) return reason;
+      if (suggested_price != null) {
+        let txt = `Gợi ý: ${suggested_price.toLocaleString('vi-VN')}đ`;
+        if (pricing_type === 'distance' && priceSuggestion.breakdown?.distance_km) {
+          txt += ` (${priceSuggestion.breakdown.distance_km}km)`;
+        } else if (pricing_type === 'hourly' && priceSuggestion.breakdown?.estimated_hours) {
+          txt += ` (${priceSuggestion.breakdown.estimated_hours}h)`;
+        }
+        return txt;
+      }
+      if (price_range) return `Khoảng: ${price_range.min.toLocaleString('vi-VN')}đ - ${price_range.max.toLocaleString('vi-VN')}đ`;
+    }
+    return cat?.hint || '';
+  })();
 
   const handleSubmit = async () => {
     // QA-FIX-UI 3.3: validate theo field, set errors state để hiển thị inline
@@ -254,7 +362,11 @@ export default function CreateTaskScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Loại dịch vụ</Text>
           <View style={styles.chipRow}>
-            {CATEGORIES.map((c) => (
+            {CATEGORIES.map((c) => {
+              // Ưu tiên tên từ DB khi đã fetch, fallback local name
+              const dbMatch = dbCategories.find(db => db.id === c.id);
+              const displayName = dbMatch ? dbMatch.name : c.name;
+              return (
               <TouchableOpacity
                 key={c.id}
                 style={[styles.chip, selectedCat === c.id && styles.chipActive]}
@@ -268,18 +380,28 @@ export default function CreateTaskScreen() {
                   style={{ marginRight: 6 }}
                 />
                 <Text style={[styles.chipText, selectedCat === c.id && styles.chipTextActive]}>
-                  {c.name}
+                  {displayName}
                 </Text>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
 
-          {/* Gợi ý giá */}
+          {/* Gợi ý giá (A1 — động) */}
           <View style={styles.priceHintBox}>
-            <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.priceHintText}>
-              Gợi ý mức giá cho {cat?.name}: {cat?.hint}
+            {priceLoading ? (
+              <ActivityIndicator size='small' color={COLORS.primary} />
+            ) : (
+              <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
+            )}
+            <Text style={styles.priceHintText} numberOfLines={2}>
+              {catDisplayName ? `Gợi ý cho ${catDisplayName}: ` : ''}{priceHintContent}
             </Text>
+            {priceSuggestion?.suggested_price != null && !priceLoading && (
+              <TouchableOpacity onPress={applySuggestedPrice} style={styles.applyPriceBtn} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+                <Text style={styles.applyPriceBtnText}>Dùng giá gợi ý</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -435,6 +557,24 @@ export default function CreateTaskScreen() {
             </View>
             {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
           </View>
+
+          {/* Số giờ dự kiến — chỉ hiện khi category loại hourly */}
+          {cat?.pricingType === 'hourly' && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Số giờ dự kiến</Text>
+              <View style={[styles.inputWrapper, styles.durationInputWrapper]}>
+                <TextInput
+                  style={[styles.input, { fontWeight: '700', color: COLORS.primary }]}
+                  placeholder="2"
+                  placeholderTextColor={COLORS.outline}
+                  value={estimatedHours}
+                  onChangeText={setEstimatedHours}
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.currencyUnit}>giờ</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Section: Vùng an toàn (Geofence) */}
@@ -690,6 +830,7 @@ const styles = StyleSheet.create({
   inputPlaceholder: {
     color: COLORS.outline,
   },
+  durationInputWrapper: { width: 140 },
   currencyUnit: {
     ...TYPO.caption,
     color: COLORS.onSurfaceVariant,
@@ -808,6 +949,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     ...SHADOWS.large,
+  },
+  applyPriceBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  applyPriceBtnText: {
+    ...TYPO.caption,
+    color: COLORS.textOnPrimary,
+    fontWeight: '700',
   },
   submitText: {
     ...TYPO.h4,
