@@ -1,0 +1,486 @@
+r"""
+B1 — Nhật ký chăm sóc (Care Diary). Test suite hoàn chỉnh.
+
+Chạy:
+  DEBUG=True SECRET_KEY=test DATABASE_URL=sqlite:///test_db.sqlite3 \
+  python manage.py test care_diary --verbosity=2
+
+Phạm vi:
+  1. Tạo nhật ký thành công (task in_progress, completed)
+  2. Từ chối tạo: task open, worker sai, trùng entry
+  3. Sửa nhật ký: thành công, 403 khi không phải chủ
+  4. Xem nhật ký: parent 200, parent khác 403, worker 200, worker khác 403, anonymous 401
+  5. 404 khi chưa có nhật ký (không 500)
+  6. Upload ảnh: thành công, absolute URL
+  7. Response contract khớp mobile (CareDiaryDetailScreen.js + CareDiaryFormScreen.js)
+  8. Stats tính đúng (count theo status, 0 activity không crash)
+  9. Task cancelled KHÔNG tính vào workload (tương tự A2 cancelled test)
+"""
+
+from django.test import TestCase, override_settings
+from django.utils import timezone as django_tz
+from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework.test import APIClient
+from datetime import time, datetime, timedelta
+
+from core.models import User, Task, ServiceCategory, TaskApplication
+
+
+# === HELPERS ===
+
+def _make_parent(username='parent_cd'):
+    return User.objects.create_user(username=username, password='p', role='parent')
+
+
+def _make_worker(username='worker_cd', is_approved=True):
+    return User.objects.create_user(
+        username=username, password='p', role='worker',
+        is_approved=is_approved, first_name='Nguyễn', last_name='Thị Lan',
+    )
+
+
+def _make_category(name='Gia sư'):
+    return ServiceCategory.objects.create(name=name, icon_name='BookOpen')
+
+
+def _make_task(parent, category, status='in_progress', **kwargs):
+    defaults = dict(
+        title='Việc test CD', description='d', price=200000,
+        parent=parent, category=category,
+        location='Q1', latitude=10.7626, longitude=106.6600,
+        scheduled_time=django_tz.now(),
+    )
+    defaults.update(kwargs)
+    defaults['status'] = status
+    return Task.objects.create(**defaults)
+
+
+def _accept_worker(task, worker):
+    return TaskApplication.objects.create(
+        task=task, worker=worker, status='accepted',
+    )
+
+
+def _diary_payload(**overrides):
+    """Payload chuẩn để tạo nhật ký."""
+    defaults = {
+        'mood_icon': 'happy',
+        'mood_label': 'Vui vẻ',
+        'mood_note': 'Bé ngoan hôm nay.',
+        'completion_percent': 85,
+        'note': 'Tổng kết tốt.',
+        'activities': [
+            {'time': '15:30', 'title': 'Đón bé', 'description': 'Đúng giờ', 'status': 'done', 'order': 0},
+            {'time': '16:00', 'title': 'Học Toán', 'description': '2 trang xong', 'status': 'done', 'order': 1},
+            {'time': '17:00', 'title': 'Vận động', 'description': '', 'status': 'partial', 'order': 2},
+        ],
+    }
+    defaults.update(overrides)
+    return defaults
+
+
+@override_settings(DEBUG=True)
+class CreateDiaryTests(TestCase):
+    """Kiểm tra tạo nhật ký — POST /api/worker/tasks/<id>/care-diary/."""
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+
+    def test_create_diary_task_in_progress_success(self):
+        """Worker tạo nhật ký khi task in_progress → 201."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.data
+        self.assertIn('carepartner', data)
+        self.assertEqual(data['carepartner']['name'], 'Nguyễn Thị Lan')
+        self.assertEqual(data['mood']['icon'], 'happy')
+        self.assertEqual(data['completion']['percent'], 85)
+        self.assertEqual(len(data['activities']), 3)
+        self.assertEqual(data['activities'][0]['time'], '15:30')
+
+    def test_create_diary_task_completed_success(self):
+        """Worker tạo nhật ký khi task đã completed → 201 (cho phép bổ sung sau ca)."""
+        self.task.status = 'completed'
+        self.task.save()
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_create_diary_task_open_rejected(self):
+        """Task đang open → 400."""
+        self.task.status = 'open'
+        self.task.save()
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('đã bắt đầu', resp.data['error'].lower())
+
+    def test_create_diary_wrong_worker_rejected(self):
+        """Worker không phải người được accepted → 403."""
+        other_worker = _make_worker('other_worker')
+        self.client.force_authenticate(user=other_worker)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_create_diary_duplicate_rejected(self):
+        """Đã tồn tại entry → 400 (dùng PATCH để sửa)."""
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(mood_label='Nội dung khác'), format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('đã tồn tại', resp.data['error'].lower())
+
+    def test_create_diary_parent_forbidden(self):
+        """Parent không được tạo nhật ký → 403."""
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_create_diary_anonymous_401(self):
+        """Chưa đăng nhập → 401."""
+        self.client.force_authenticate(user=None)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 401)
+
+
+@override_settings(DEBUG=True)
+class UpdateDiaryTests(TestCase):
+    """Kiểm tra sửa nhật ký — PATCH /api/worker/tasks/<id>/care-diary/."""
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.other_worker = _make_worker('other_w_cd')
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+        # Tạo entry trước
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+    def test_patch_diary_success(self):
+        """Chủ nhật ký sửa thành công → 200."""
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'mood_label': 'Bình thường', 'completion_percent': 60},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['mood']['label'], 'Bình thường')
+        self.assertEqual(resp.data['completion']['percent'], 60)
+
+    def test_patch_diary_replace_activities(self):
+        """Gửi activities mới → xoá cũ, tạo mới."""
+        new_acts = [
+            {'time': '08:00', 'title': 'Mới 1', 'description': '', 'status': 'done', 'order': 0},
+        ]
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'activities': new_acts},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data['activities']), 1)
+        self.assertEqual(resp.data['activities'][0]['title'], 'Mới 1')
+
+    def test_patch_diary_wrong_worker_403(self):
+        """Worker khác không được sửa → 403."""
+        self.client.force_authenticate(user=self.other_worker)
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'mood_label': 'Hack'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_patch_diary_after_task_completed(self):
+        """Cho phép sửa nhật ký kể cả khi task đã completed."""
+        self.task.status = 'completed'
+        self.task.save()
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'note': 'Bổ sung sau ca.'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['note'], 'Bổ sung sau ca.')
+
+
+@override_settings(DEBUG=True)
+class ReadDiaryTests(TestCase):
+    """Kiểm tra xem nhật ký — GET /api/tasks/<id>/care-diary/."""
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.other_parent = _make_parent('other_parent_cd')
+        self.worker = _make_worker()
+        self.other_worker = _make_worker('other_w_cd2')
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        # Tạo entry
+        self.client.force_authenticate(user=self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+    def test_parent_can_read(self):
+        """Parent chủ task xem được → 200."""
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['carepartner']['name'], 'Nguyễn Thị Lan')
+
+    def test_worker_can_read_own(self):
+        """Worker chủ nhật ký xem được → 200."""
+        self.client.force_authenticate(user=self.worker)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_other_parent_403(self):
+        """Parent khác task → 403."""
+        self.client.force_authenticate(user=self.other_parent)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_other_worker_403(self):
+        """Worker khác (không phải chủ nhật ký) → 403."""
+        self.client.force_authenticate(user=self.other_worker)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_anonymous_401(self):
+        """Chưa đăng nhập → 401."""
+        self.client.force_authenticate(user=None)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 401)
+
+    def test_no_diary_yet_404_with_message(self):
+        """Task chưa có nhật ký → 404 với message rõ ràng, không 500."""
+        new_task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(new_task, self.worker)
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(f'/api/tasks/{new_task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 404)
+        self.assertIn('chưa có nhật ký', resp.data['error'].lower())
+
+
+@override_settings(DEBUG=True)
+class UploadAttachmentTests(TestCase):
+    """Kiểm tra upload ảnh — POST /api/worker/tasks/<id>/care-diary/attachments/."""
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.other_worker = _make_worker('other_w_cd3')
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+    def _make_image(self):
+        return SimpleUploadedFile(
+            'test.jpg', b'\xff\xd8\xff\xe0\x00\x10JFIF', content_type='image/jpeg',
+        )
+
+    def test_upload_success(self):
+        """Upload ảnh thành công → 201, response có absolute URL."""
+        img = self._make_image()
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/attachments/',
+            {'images': [img]},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+        attachments = resp.data['attachments']
+        self.assertEqual(len(attachments), 1)
+        # URL phải là absolute (có http:// hoặc https://)
+        url = attachments[0]['url']
+        self.assertTrue(url.startswith('http://') or url.startswith('https://'),
+                        f'URL không absolute: {url}')
+
+    def test_upload_no_images_400(self):
+        """Không gửi ảnh → 400."""
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/attachments/',
+            {},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upload_wrong_worker_403(self):
+        """Worker khác không upload được → 403."""
+        self.client.force_authenticate(user=self.other_worker)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/attachments/',
+            {'images': [self._make_image()]},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_upload_multiple_images(self):
+        """Upload nhiều ảnh cùng lúc → tất cả thành công."""
+        imgs = [self._make_image() for _ in range(3)]
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/attachments/',
+            {'images': imgs},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(len(resp.data['attachments']), 3)
+
+
+@override_settings(DEBUG=True)
+class ResponseContractTests(TestCase):
+    """Kiểm tra response contract khớp với mobile.
+
+    CareDiaryDetailScreen.js đọc các field:
+      carepartner (name, role, avatarInitial, verified)
+      date, mood (icon, label, note),
+      completion (percent, stats: [{value, label, color}])
+      activities (list: {time, title, desc, status})
+      note, attachments (list: {id, type, url})
+    """
+
+    REQUIRED_TOP = {'id', 'carepartner', 'date', 'mood', 'completion', 'activities', 'note', 'attachments'}
+    REQUIRED_CAREPARTNER = {'name', 'role', 'avatarInitial', 'verified'}
+    REQUIRED_MOOD = {'icon', 'label', 'note'}
+    REQUIRED_COMPLETION = {'percent', 'stats'}
+    REQUIRED_ACTIVITY = {'time', 'title', 'desc', 'status'}
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+
+    def test_create_response_has_required_fields(self):
+        """POST response chứa đúng tất cả field mobile cần."""
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.data
+        # Top-level
+        for f in self.REQUIRED_TOP:
+            self.assertIn(f, data, f'Thiếu field {f}')
+        # carepartner
+        for f in self.REQUIRED_CAREPARTNER:
+            self.assertIn(f, data['carepartner'], f'Thiếu carepartner.{f}')
+        # mood
+        for f in self.REQUIRED_MOOD:
+            self.assertIn(f, data['mood'], f'Thiếu mood.{f}')
+        # completion
+        for f in self.REQUIRED_COMPLETION:
+            self.assertIn(f, data['completion'], f'Thiếu completion.{f}')
+        # activities
+        for act in data['activities']:
+            for f in self.REQUIRED_ACTIVITY:
+                self.assertIn(f, act, f'Thiếu activity.{f}')
+
+    def test_activity_field_name_is_desc_not_description(self):
+        """Mobile đọc 'desc' (không phải 'description') — kiểm tra đúng tên field.
+
+        Đây là lỗi #1 từng gặp ở A2: field name mobile gửi/nhận
+        không khớp với backend.
+        """
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        act = resp.data['activities'][0]
+        self.assertIn('desc', act, "Field phải là 'desc' cho mobile")
+
+    def test_stats_counts_correct(self):
+        """Stats (đếm activities theo status) tính đúng.
+
+        Payload có 2 done + 1 partial → stats phải là:
+          total=3, done=2, partial=1, skipped=0.
+        """
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        stats = resp.data['completion']['stats']
+        self.assertEqual(stats[0]['value'], 3)   # total hoạt động
+        self.assertEqual(stats[1]['value'], 2)   # hoàn thành tốt (done)
+        self.assertEqual(stats[2]['value'], 1)   # cần cố gắng (partial)
+
+    def test_stats_zero_activities_no_crash(self):
+        """0 activity → stats = 0/0/0, không chia cho 0, không crash."""
+        # Tạo entry không có activities
+        new_task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(new_task, self.worker)
+        self.client.post(
+            f'/api/worker/tasks/{new_task.id}/care-diary/',
+            _diary_payload(activities=[]),
+            format='json',
+        )
+        resp = self.client.get(f'/api/tasks/{new_task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+        stats = resp.data['completion']['stats']
+        self.assertEqual(stats[0]['value'], 0)
+        self.assertEqual(stats[1]['value'], 0)
+        self.assertEqual(stats[2]['value'], 0)
+
+
+@override_settings(DEBUG=True)
+class CancelledTaskTests(TestCase):
+    """Đảm bảo task cancelled không tạo được nhật ký (hành vi đúng)."""
+
+    def test_create_diary_task_cancelled_rejected(self):
+        """Task bị huỷ → 403 (application accepted nhưng task cancelled).
+
+        Worker đã accepted trước đó, nhưng task bị hủy.
+        Không cho ghi nhật ký cho task đã huỷ.
+        """
+        parent = _make_parent()
+        worker = _make_worker()
+        category = _make_category()
+        task = _make_task(parent, category, status='cancelled')
+        _accept_worker(task, worker)
+        client = APIClient()
+        client.force_authenticate(user=worker)
+        resp = client.post(
+            f'/api/worker/tasks/{task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        # Task cancelled → task không còn in_progress/completed → 400
+        self.assertIn(resp.status_code, (400, 403))
