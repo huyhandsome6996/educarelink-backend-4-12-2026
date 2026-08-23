@@ -702,3 +702,54 @@ Bổ sung theo spec gốc: "Parents can review this history to monitor their chi
 - **BUG-01 đến BUG-10**: toàn bộ đã sửa và verify bằng test.
 - **Remote branch đã xoá**: `feature/b1-nhat-ky-cham-soc`
 - **Chuyển sang B5.**
+
+## B5 — Xác thực bằng ảnh trong ca làm (2026-08-23)
+
+**Branch**: `feature/b5-xac-thuc-anh-trong-ca` (từ main `9c14b8c` — không merge vào main, chờ QA)
+
+### Khảo sát trước khi code (theo spec mục 1)
+- Đọc toàn bộ AGENTS.md (1482 dòng) — §15 module isolation, service layer, Tiếng Việt everywhere.
+- Đọc WORKLOG.md: lịch sử tracking module (Phần 1 GPS, Phần 2 SOS/device-offline, Phần 3 Random Verification PIN) + QA-FIX-1..8.
+- Đọc tracking/models.py, services.py, views.py, verification_scheduler.py + toàn bộ tests_qa_fix_*.py, tests_pin_enforcement.py, tests_safety_module.py.
+- Khảo sát cơ chế upload ảnh hiện có: ImageField + upload_to convention (id_cards/, selfies/, care_diary_attachments/), care_diary attachment dùng request.FILES.getlist + _build_absolute_uri.
+- Khảo sát expo_push: send_expo_push_notification (core/views.py) với ALERT_CONFIG theo data.type + _notify_user helper trả (result, reason).
+- Khảo sát mobile: RandomVerificationModal (poll 5s), EmergencyAlarmService (expo-av + Vibration), expo-image-picker đã có trong package.json (~17.0.11), app.json đã có cameraPermission (expo-image-picker plugin).
+- Khảo sát web: tracking.html có section verification history (fetch + render + cancel).
+- Grep check_in/verification toàn repo: không có cơ chế check-in/verification nào trùng lặp ngoài RandomVerificationCheck.
+
+### Phương án kiến trúc: A — mở rộng RandomVerificationCheck
+Lý do chọn A (không chọn B - model VerificationPhoto 1-1):
+1. Mỗi check chỉ cần đúng 1 ảnh → field ảnh trực tiếp trên model tự nhiên nhất.
+2. State machine pending/confirmed/wrong_code/timeout/cancelled tái sử dụng 100%: ảnh hợp lệ nộp trong hạn = "câu trả lời đúng" → confirmed; quá hạn → timeout; huỷ → cancelled. Không cần state mới.
+3. Unique constraint (task, worker) WHERE pending, deadline, push/retry 5 lần/30s, chống spam parent_alert_sent, auto-cancel khi task kết thúc — toàn bộ tái sử dụng, không viết song song.
+4. Photo timeout nhập chung streak anti-spam với PIN (cùng tín hiệu "worker không phản hồi").
+
+### Backend
+- Migration `0010_b5_photo_verification.py`: 4 field mới (verification_type default 'pin' — data cũ không đổi; photo ImageField 'verification_photos/'; photo_submitted_at; parent_photo_notification_sent). Chạy sạch trên DB đã có data + DB rỗng (test DB migrate từ đầu OK).
+- Scheduler: PHOTO_CHECK_RATIO (0.3, env), PHOTO_RESPOND_TIMEOUT_SECONDS (180s, env), VERIFICATION_PHOTO_MAX_MB (5MB, env). _create_check random loại check theo ratio (server quyết định — không phải app). trigger_verification_check_now mặc định 'pin' (deterministic cho debug + test cũ). Push title/message + data.verification_type riêng cho photo. Retry push message riêng cho photo.
+- Services: validate_verification_photo (size + MIME THẬT bằng Pillow verify — chống giả mạo đuôi/content_type, chỉ JPEG/PNG/WebP), submit_verification_photo (state machine chặn transition sai + ownership + task in_progress + assignee accepted + chặn nộp trùng + notify parent 1 lần qua parent_photo_notification_sent), get_verification_photo (quyền: worker check / parent task / admin).
+- respond_verification_check: chặn nhập PIN cho check photo (400 rõ ràng).
+- Views: POST/GET /api/tracking/verification-checks/<id>/photo/ (1 URL — POST nộp ảnh multipart, GET serve bytes ảnh CÓ AUTH qua FieldFile API, KHÔNG public /media/; ?format=json trả metadata; Cache-Control: private, no-store). Pending + history + admin endpoints trả thêm verification_type/has_photo/photo_submitted_at.
+
+### Mobile (expo-av + Vibration + expo-image-picker — KHÔNG thêm dependency mới)
+- RandomVerificationModal: phân nhánh theo verification_type. Photo mode: UI chụp ảnh (mở camera qua launchCameraAsync + requestCameraPermissionsAsync, xử lý quyền bị từ chối + mở Settings, xử lý camera không mở được), xem lại ảnh, chụp lại, gửi (multipart + tọa độ), trạng thái đang upload, upload lỗi + retry (offline → báo lỗi rõ ràng, KHÔNG tự thêm queue — app chưa có hạ tầng queue ảnh), âm thanh + rung qua EmergencyAlarmService (tái sử dụng, dọn dẹp khi unmount/timeout/thành công).
+- PIN mode giữ nguyên hành vi cũ (Vibration như trước — tránh regression luồng đã QA).
+- api/tracking.js: submitVerificationPhoto (FormData + timeout 30s), getVerificationPhotoUrl.
+- ImagePreviewScreen: hỗ trợ param headers (ảnh auth) — backward compatible.
+- LiveTrackingScreen (Parent): status label riêng cho photo check, thời điểm nộp ảnh, nút "Xem ảnh" → ImagePreview với Authorization header.
+- Push: KHÔNG viết handler riêng — dùng poll pending 5s hiện có; push data có verification_type cho app mới. Ghi rõ giới hạn nền tảng trong comment: iOS background restriction + Android battery optimization → không đảm bảo 100% push tới; fallback = poll 5s tự phát hiện check pending khi mở lại app.
+
+### Web (frontend/templates/frontend/tracking.html)
+- Phụ huynh xem: lịch sử xác minh hiển thị badge 📷 Ảnh + label riêng (Đã gửi ảnh / Không gửi ảnh / Đang chờ ảnh...) + nút "Xem ảnh" → modal load blob qua authFetch (Authorization header) → objectURL + revoke khi đóng (không leak memory) + nút tải về + loading/error/retry states.
+- Quyết định: KHÔNG làm luồng NỘP ảnh trên web cho CarePartner — tính năng chụp ảnh xác minh chỉ có ý nghĩa trên mobile app (cần camera + push + alarm). Phụ huynh (người xem kết quả) có đầy đủ UI xem ảnh trên web. Đã giải thích ở đây theo yêu cầu spec mục 6.
+
+### Tests
+- `tracking/tests_b5_photo_verification.py`: 43 tests (7 class) — happy path (JPEG/PNG/WebP), 403 check người khác, timeout auto-mark, cancelled/timeout/confirmed chặn nộp, nộp trùng, task completed (signal auto-cancel), worker bị thay assignee, nộp ảnh cho check PIN / nhập PIN cho check photo, file quá lớn (ảnh noise thật >5MB), MIME giả mạo (text giả .jpg), file rỗng/thiếu, GIF từ chối, ảnh bị từ chối giữ pending + nộp lại thành công, parent/worker/admin xem ảnh OK, người không liên quan 403, anonymous 401, ?format=json, không lộ /media/, notify parent 1 lần + không trùng, scheduler deadline photo/pin, admin trigger API type photo/invalid, pending endpoint verification_type, history fields + isolation, admin filter type, legacy row default pin, regression PIN respond đúng/sai.
+- `frontend/tests.py`: +2 tests B5WebPageTests (trang 200 + phần tử ảnh trong tracking.html).
+- Đã chạy thật toàn bộ regression tracking: tests_qa_fixes, qa_fix_2..8, pin_enforcement, safety_module — 164 test PASS không đổi. Full suite: xem commit message.
+
+### Lưu ý cho agent tiếp theo (QA Agent)
+- Ảnh xác minh KHÔNG truy cập được qua /media/ URL (dù media vẫn serve public cho ảnh khác) — phải qua GET API có auth.
+- Admin trigger debug: POST /api/tracking/admin/trigger-verification-check/ {task_id, verification_type:'photo'} (chỉ DEBUG=True).
+- App cũ (chưa update) nhận photo check: hiện modal PIN, nhập PIN bị 400 — chấp nhận trong giai đoạn chuyển tiếp, không làm hỏng state machine.
+- Test UI camera trên thiết bị thật cần EAS build (Expo Go không có custom sound + một số máy không có camera).
