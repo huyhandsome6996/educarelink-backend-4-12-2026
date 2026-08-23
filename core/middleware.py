@@ -14,6 +14,14 @@ class SiteAccessGateMiddleware:
 
     Mật khẩu lấy từ biến môi trường SITE_GATE_PASSWORD (khuyến nghị set trên Render).
     Nếu không set, sẽ dùng giá trị mặc định bên dưới (chỉ nên dùng tạm cho demo).
+
+    ⚡ CÔNG TẮC MỞ/KHOÁ (2026-08-23 — mở khoá công khai cho nộp sản phẩm):
+    Set SITE_GATE_ENABLED=false (hoặc bỏ biến này) → gate TẮT hoàn toàn,
+    ai cũng truy cập web trực tiếp không cần mật khẩu.
+    Muốn bật lại sau demo: set SITE_GATE_ENABLED=true trên Render.
+    Vô hiệu qua env thay vì xoá middleware khỏi MIDDLEWARE list để:
+      - Không phá các test đã set session bypass (frontend/tests.py)
+      - Bật lại được ngay không cần deploy code
     """
 
     EXEMPT_PREFIXES = ("/api/", "/static/", "/media/")
@@ -22,8 +30,15 @@ class SiteAccessGateMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
+        self.enabled = (
+            os.environ.get("SITE_GATE_ENABLED", "false").lower() == "true"
+        )
 
     def __call__(self, request):
+        # Gate đang TẮT → cho qua mọi request (không redirect, không session)
+        if not self.enabled:
+            return self.get_response(request)
+
         path = request.path
 
         if path.startswith(self.EXEMPT_PREFIXES) or path == self.GATE_PATH:

@@ -306,3 +306,43 @@ class WebParityPagesTests(TestCase):
             pass
         finally:
             os.unlink(tmp_path)
+
+
+class SiteGateDisabledTests(TestCase):
+    """Site gate phải TẮT mặc định (mở khoá công khai cho nộp sản phẩm).
+
+    Huy yêu cầu 2026-08-23: xoá/khoá màn nhập mật khẩu để mọi người cùng
+    truy cập. Middleware giữ nguyên nhưng mặc định disabled qua
+    SITE_GATE_ENABLED (mặc định false khi không set env).
+    Test KHÔNG set session bypass — vào thẳng trang phải thấy 200.
+    """
+
+    def test_home_accessible_without_gate(self):
+        """Vào trang chủ KHÔNG bị redirect sang /site-gate/."""
+        resp = self.client.get('/')
+        self.assertNotEqual(resp.status_code, 302, 'Không được redirect')
+        self.assertNotIn('site-gate', resp.get('Location', '') if resp.status_code == 302 else '')
+
+    def test_login_page_accessible_without_gate(self):
+        resp = self.client.get('/login/')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_admin_dashboard_not_redirected_to_gate(self):
+        resp = self.client.get('/admin-dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotEqual(resp.status_code, 302)
+
+    def test_gate_enabled_still_works(self):
+        """Bật lại SITE_GATE_ENABLED=true → redirect sang gate (công tắc
+        hoạt động đúng chiều — không phá khả năng khoá lại sau demo)."""
+        import os
+        from django.test import override_settings
+        # Middleware đọc env lúc __init__ — override qua client handler
+        os.environ['SITE_GATE_ENABLED'] = 'true'
+        try:
+            client = self.client_class()
+            resp = client.get('/login/')
+            self.assertEqual(resp.status_code, 302)
+            self.assertIn('/site-gate/', resp['Location'])
+        finally:
+            os.environ.pop('SITE_GATE_ENABLED', None)
