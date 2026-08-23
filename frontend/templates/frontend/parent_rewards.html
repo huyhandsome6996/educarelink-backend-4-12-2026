@@ -145,7 +145,7 @@
         </h2>
         <ul class="text-sm text-textSecondary space-y-1.5">
           <li>• Mỗi <strong class="text-textPrimary">5.000đ</strong> giá trị việc hoàn thành = <strong class="text-primary">1 điểm</strong></li>
-          <li>• Đánh giá CarePartner <strong class="text-textPrimary">5 sao</strong> = <strong class="text-primary">+20 điểm</strong> bonus</li>
+          <li>• Đánh giá CarePartner <strong class="text-textPrimary">5 sao</strong> = <strong class="text-primary">+5 điểm</strong> bonus</li>
           <li>• Hạng dựa trên điểm tích lũy trọn đời (không bị tụt khi đổi quà)</li>
         </ul>
       </section>
@@ -242,8 +242,8 @@ const LOGIN_URL = "{% url 'frontend:login' %}";
 function escapeHtml(v) {
   if (v == null) return '';
   return String(v)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>')
+    .replace(/\"/g, '"').replace(/'/g, '&#39;');
 }
 
 function showToast(message, type = 'info') {
@@ -251,7 +251,7 @@ function showToast(message, type = 'info') {
   const icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
   const toast = document.createElement('div');
   toast.className = `fixed top-4 right-4 z-[9999] ${colors[type] || colors.info} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-slide-in max-w-sm`;
-  toast.innerHTML = `<span class="material-symbols-outlined filled text-xl">${icons[type] || icons.info}</span><span class="text-sm font-medium">${escapeHtml(message)}</span>`;
+  toast.innerHTML = `<span class=\"material-symbols-outlined filled text-xl\">${icons[type] || icons.info}</span><span class=\"text-sm font-medium\">${escapeHtml(message)}</span>`;
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3200);
 }
@@ -329,10 +329,6 @@ function renderSummary(data) {
 
   let pct = 0;
   if (tier.next_tier_threshold != null && tier.points_to_next != null) {
-    const currentFloor = tier.next_tier_threshold - (TIER_META[tier.code]?.next ? (TIER_META[tier.code].next === tier.next_tier_threshold ? (
-      tier.code === 'bronze' ? 0 : tier.code === 'silver' ? 500 : 1500
-    ) : 0) : 0);
-    // Simpler progress: how far into current band
     const floors = { bronze: 0, silver: 500, gold: 1500, platinum: 3000 };
     const floor = floors[tier.code] || 0;
     const ceiling = tier.next_tier_threshold;
@@ -349,7 +345,6 @@ function renderSummary(data) {
   }
   document.getElementById('tier-bar').style.width = pct + '%';
 
-  // Transactions
   const txs = data.transactions || [];
   const txList = document.getElementById('tx-list');
   const txEmpty = document.getElementById('tx-empty');
@@ -362,19 +357,19 @@ function renderSummary(data) {
     txList.innerHTML = txs.map(tx => {
       const positive = tx.points > 0;
       return `
-        <div class="flex items-center justify-between px-4 py-3.5">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-lg ${positive ? 'bg-green-50' : 'bg-red-50'} flex items-center justify-center flex-shrink-0">
-              <span class="material-symbols-outlined text-lg ${positive ? 'text-green-600' : 'text-red-500'}">${positive ? 'add' : 'remove'}</span>
+        <div class=\"flex items-center justify-between px-4 py-3.5\">
+          <div class=\"flex items-center gap-3 min-w-0\">
+            <div class=\"w-9 h-9 rounded-lg ${positive ? 'bg-green-50' : 'bg-red-50'} flex items-center justify-center flex-shrink-0\">
+              <span class=\"material-symbols-outlined text-lg ${positive ? 'text-green-600' : 'text-red-500'}\">${positive ? 'add' : 'remove'}</span>
             </div>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-textPrimary truncate">${escapeHtml(tx.reason_display || tx.reason)}</p>
-              <p class="text-xs text-textMuted truncate">${escapeHtml(tx.note || tx.task_title || formatDate(tx.created_at))}</p>
+            <div class=\"min-w-0\">
+              <p class=\"text-sm font-semibold text-textPrimary truncate\">${escapeHtml(tx.reason_display || tx.reason)}</p>
+              <p class=\"text-xs text-textMuted truncate\">${escapeHtml(tx.note || tx.task_title || formatDate(tx.created_at))}</p>
             </div>
           </div>
-          <div class="text-right flex-shrink-0 ml-3">
-            <p class="font-headline font-bold text-sm ${positive ? 'text-green-600' : 'text-red-500'}">${positive ? '+' : ''}${formatPoints(tx.points)}</p>
-            <p class="text-[10px] text-textMuted">${formatDate(tx.created_at)}</p>
+          <div class=\"text-right flex-shrink-0 ml-3\">
+            <p class=\"font-headline font-bold text-sm ${positive ? 'text-green-600' : 'text-red-500'}\">${positive ? '+' : ''}${formatPoints(tx.points)}</p>
+            <p class=\"text-[10px] text-textMuted\">${formatDate(tx.created_at)}</p>
           </div>
         </div>`;
     }).join('');
@@ -398,24 +393,24 @@ function renderVouchers(payload) {
   list.innerHTML = vouchers.map(v => {
     const can = v.can_redeem;
     return `
-      <div class="voucher-card bg-surface rounded-2xl border border-border p-5 flex flex-col">
-        <div class="flex items-start justify-between mb-3">
-          <div class="w-11 h-11 rounded-xl bg-primaryLight flex items-center justify-center">
-            <span class="material-symbols-outlined filled text-primary text-2xl">card_giftcard</span>
+      <div class=\"voucher-card bg-surface rounded-2xl border border-border p-5 flex flex-col\">
+        <div class=\"flex items-start justify-between mb-3\">
+          <div class=\"w-11 h-11 rounded-xl bg-primaryLight flex items-center justify-center\">
+            <span class=\"material-symbols-outlined filled text-primary text-2xl\">card_giftcard</span>
           </div>
-          <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold">
+          <span class=\"px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold\">
             ${formatPoints(v.points_required)} điểm
           </span>
         </div>
-        <h3 class="font-headline font-bold text-base text-textPrimary mb-1">${escapeHtml(v.title)}</h3>
-        <p class="text-sm text-textSecondary mb-1 line-clamp-2">${escapeHtml(v.description || 'Voucher giảm giá')}</p>
-        <p class="text-sm font-semibold text-primary mb-4">Trị giá ${formatPoints(v.discount_value)}đ</p>
+        <h3 class=\"font-headline font-bold text-base text-textPrimary mb-1\">${escapeHtml(v.title)}</h3>
+        <p class=\"text-sm text-textSecondary mb-1 line-clamp-2\">${escapeHtml(v.description || 'Voucher giảm giá')}</p>
+        <p class=\"text-sm font-semibold text-primary mb-4\">Trị giá ${formatPoints(v.discount_value)}đ</p>
         <button
-          onclick="openRedeemModal(${v.id}, '${escapeHtml(v.title).replace(/'/g, "\\'")}', ${v.points_required})"
+          onclick=\"openRedeemModal(${v.id}, '${escapeHtml(v.title).replace(/'/g, "\\\\'")}', ${v.points_required})\"
           ${can ? '' : 'disabled'}
-          class="mt-auto w-full py-2.5 rounded-xl text-sm font-bold transition-all ${can
+          class=\"mt-auto w-full py-2.5 rounded-xl text-sm font-bold transition-all ${can
             ? 'bg-primary text-white hover:bg-primaryDark'
-            : 'bg-gray-100 text-textMuted cursor-not-allowed'}">
+            : 'bg-gray-100 text-textMuted cursor-not-allowed'}\">
           ${can ? 'Đổi ngay' : 'Chưa đủ điểm'}
         </button>
       </div>`;
@@ -432,15 +427,15 @@ function renderRedemptions(items) {
   }
   empty.classList.add('hidden');
   list.innerHTML = items.map(r => `
-    <div class="bg-surface rounded-xl border border-border p-4 flex items-center justify-between gap-3">
-      <div class="min-w-0">
-        <p class="font-semibold text-sm text-textPrimary truncate">${escapeHtml(r.voucher_title)}</p>
-        <p class="text-xs text-textMuted mt-0.5">Mã: <span class="font-mono font-bold text-textPrimary tracking-wider">${escapeHtml(r.code)}</span></p>
-        <p class="text-[11px] text-textMuted mt-0.5">${formatDate(r.redeemed_at)} · ${escapeHtml(r.status_display || r.status)}</p>
+    <div class=\"bg-surface rounded-xl border border-border p-4 flex items-center justify-between gap-3\">
+      <div class=\"min-w-0\">
+        <p class=\"font-semibold text-sm text-textPrimary truncate\">${escapeHtml(r.voucher_title)}</p>
+        <p class=\"text-xs text-textMuted mt-0.5\">Mã: <span class=\"font-mono font-bold text-textPrimary tracking-wider\">${escapeHtml(r.code)}</span></p>
+        <p class=\"text-[11px] text-textMuted mt-0.5\">${formatDate(r.redeemed_at)} · ${escapeHtml(r.status_display || r.status)}</p>
       </div>
-      <div class="text-right flex-shrink-0">
-        <p class="text-xs text-textMuted">-${formatPoints(r.points_spent)} điểm</p>
-        <p class="text-sm font-bold text-primary">${formatPoints(r.discount_value)}đ</p>
+      <div class=\"text-right flex-shrink-0\">
+        <p class=\"text-xs text-textMuted\">-${formatPoints(r.points_spent)} điểm</p>
+        <p class=\"text-sm font-bold text-primary\">${formatPoints(r.discount_value)}đ</p>
       </div>
     </div>`).join('');
 }
@@ -465,7 +460,7 @@ async function confirmRedeem() {
   if (!pendingVoucherId) return;
   const btn = document.getElementById('modal-confirm-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">progress_activity</span> Đang đổi...';
+  btn.innerHTML = '<span class=\"material-symbols-outlined animate-spin text-lg\">progress_activity</span> Đang đổi...';
   try {
     const resp = await apiFetch(API_BASE + `/rewards/vouchers/${pendingVoucherId}/redeem/`, {
       method: 'POST',
@@ -483,7 +478,7 @@ async function confirmRedeem() {
     showToast('Lỗi kết nối. Thử lại sau.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="material-symbols-outlined text-lg">check</span> Đổi ngay';
+    btn.innerHTML = '<span class=\"material-symbols-outlined text-lg\">check</span> Đổi ngay';
   }
 }
 
@@ -511,7 +506,6 @@ async function loadAll() {
     renderVouchers(vouchers);
     renderRedemptions(redemptions);
 
-    // Sidebar name from profile (best-effort)
     try {
       const pr = await apiFetch(API_BASE + '/profile/');
       if (pr.ok) {
