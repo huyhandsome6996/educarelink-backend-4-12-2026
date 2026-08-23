@@ -259,3 +259,50 @@ class WebParityPagesTests(TestCase):
         positions = [content.index(f"switchTab('{t}')") for t in order]
         self.assertEqual(positions, sorted(positions),
                          'Thứ tự nav items admin bị xáo trộn — index cũ sẽ sai')
+
+    def test_admin_dashboard_js_syntax_valid(self):
+        """REGRESSION (bug QA vòng 4): JS trong admin-dashboard phải hợp lệ.
+
+        Lỗi thật đã xảy ra: chèn 3 tab mới để thừa 1 dấu '}' → SyntaxError
+        → TOÀN BỘ JS trang chết (không tương tác gì, bảng loading vô tận).
+        Test trích JS và chạy node --check; đồng thời assert pattern lỗi
+        cũ không quay lại.
+        """
+        import re
+        import subprocess
+        import tempfile
+        import os
+
+        resp = self.client.get('/admin-dashboard/')
+        content = resp.content.decode()
+
+        # Pattern lỗi cũ: return; } } else if — dấu } thừa giữa các case
+        self.assertNotIn(
+            'return;\n            }\n            } else if',
+            content,
+            'Phát hiện dấu } thừa trong switchTab — sẽ làm SyntaxError chết cả trang',
+        )
+
+        # Trích JS và syntax-check bằng node (bỏ qua nếu môi trường không có node)
+        scripts = re.findall(r'<script>([\s\S]*?)</script>', content)
+        self.assertGreaterEqual(len(scripts), 1, 'Trang phải có <script>')
+        js = '\n'.join(scripts)
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.js', delete=False, encoding='utf-8',
+        ) as tmp:
+            tmp.write(js)
+            tmp_path = tmp.name
+        try:
+            r = subprocess.run(
+                ['node', '--check', tmp_path],
+                capture_output=True, text=True, timeout=30,
+            )
+            if r.returncode != 0:
+                self.fail(f'JS admin-dashboard SYNTAX ERROR (chết cả trang): '
+                          f'{r.stderr[:400]}')
+        except FileNotFoundError:
+            # node không có trong môi trường — bỏ qua phần check node,
+            # pattern check phía trên vẫn chạy
+            pass
+        finally:
+            os.unlink(tmp_path)
