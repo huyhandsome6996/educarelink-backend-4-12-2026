@@ -16,6 +16,8 @@ from .views import (
     AdminVerificationSchedulerStatsAPIView,
     # QA-FIX-1 / Spec 2.4 — Parent verification history + Cancel check
     ParentVerificationHistoryAPIView, CancelVerificationCheckAPIView,
+    # B5 — Xác thực bằng ảnh trong ca (nộp ảnh + xem ảnh có auth)
+    SubmitVerificationPhotoAPIView, VerificationPhotoAPIView,
     # Phan 1 — Batch location (offline cache sync)
     BatchLocationAPIView,
     # QA-FIX-3 / C — Scheduler health monitoring endpoint
@@ -60,6 +62,11 @@ urlpatterns = [
     path('tracking/verification-checks/pending/', PendingVerificationCheckAPIView.as_view(), name='tracking-pending-verification-check'),
     # Carepartner phản hồi check
     path('tracking/verification-checks/<int:check_id>/respond/', RespondVerificationCheckAPIView.as_view(), name='tracking-respond-verification-check'),
+    # === B5 — Xác thực bằng ảnh trong ca ===
+    # 1 URL cho cả 2 method: POST = worker nộp ảnh (multipart),
+    # GET = xem ảnh có auth (worker của check / parent của task / admin).
+    # SubmitVerificationPhotoAPIView kế thừa get() từ VerificationPhotoAPIView.
+    path('tracking/verification-checks/<int:check_id>/photo/', SubmitVerificationPhotoAPIView.as_view(), name='tracking-verification-photo'),
     # QA-FIX-1 / Spec 2.4 — Parent huỷ check pending (admin cũng được)
     path('tracking/verification-checks/<int:check_id>/cancel/', CancelVerificationCheckAPIView.as_view(), name='tracking-cancel-verification-check'),
     # QA-FIX-1 / Spec 2.4 — Parent xem lịch sử verification checks của task

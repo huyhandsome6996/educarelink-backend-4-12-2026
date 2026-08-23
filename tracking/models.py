@@ -464,6 +464,15 @@ class RandomVerificationCheck(models.Model):
     Xác minh ngẫu nhiên trong ca làm — hệ thống bất ngờ yêu cầu CarePartner
     nhập mã cá nhân để chứng minh vẫn đang cầm máy, không báo trước lịch.
 
+    B5 — Xác thực bằng ảnh trong ca (bổ sung cho PIN):
+      - verification_type='photo': thay vì nhập PIN, CarePartner phải chụp
+        1 ảnh (selfie tại chỗ) để chứng minh vẫn đang cầm máy. Ảnh hợp lệ
+        được nộp → status='confirmed' (tái sử dụng state machine, không
+        thêm state mới — ảnh là "câu trả lời đúng" của check).
+      - Ảnh không public qua /media/ — chỉ xem qua API có auth
+        (GET /api/tracking/verification-checks/<id>/photo/) dành cho
+        worker của check, phụ huynh của task, và admin.
+
     QA-FIX-1 / Bug 1.3: thêm 2 field để chống spam push phụ huynh khi
     CarePartner liên tục timeout:
       - parent_alert_sent: đã gửi alert cho phụ huynh chưa (1 lần/streak).
@@ -481,6 +490,13 @@ class RandomVerificationCheck(models.Model):
         # check pending chỉ có thể chờ timeout → không có cách chủ động dừng.
         ('cancelled',  'Đã bị huỷ bởi admin/parent (không tính vào streak)'),
     )
+    # B5 — loại xác minh: 'pin' (nhập mã PIN) hoặc 'photo' (chụp ảnh).
+    # Mặc định 'pin' để mọi row hiện có (data cũ) vẫn là PIN check —
+    # migration thêm field với default không phá dữ liệu cũ.
+    VERIFICATION_TYPE_CHOICES = (
+        ('pin',   'Nhập mã PIN cá nhân'),
+        ('photo', 'Chụp ảnh xác minh tại chỗ'),
+    )
     task = models.ForeignKey('core.Task', on_delete=models.CASCADE, related_name='verification_checks')
     worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='verification_checks')
 
@@ -490,6 +506,33 @@ class RandomVerificationCheck(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     attempts = models.IntegerField(default=0, help_text="Số lần nhập sai")
     responded_at = models.DateTimeField(blank=True, null=True)
+
+    # B5 — loại check (pin/photo). Có index để scheduler + admin filter nhanh.
+    verification_type = models.CharField(
+        max_length=10, choices=VERIFICATION_TYPE_CHOICES, default='pin', db_index=True,
+        help_text="B5: loại xác minh — 'pin' (nhập mã) hoặc 'photo' (chụp ảnh).",
+    )
+
+    # B5 — ảnh xác minh (chỉ đúng 1 ảnh/check nên đặt field trực tiếp trên
+    # model theo Phương án A). Lưu theo convention upload_to của dự án.
+    # ⚠️ KHÔNG serve qua /media/ public — chỉ qua API endpoint có auth.
+    photo = models.ImageField(
+        upload_to='verification_photos/', blank=True, null=True,
+        help_text="B5: ảnh xác minh CarePartner chụp tại chỗ.",
+    )
+    photo_submitted_at = models.DateTimeField(
+        blank=True, null=True,
+        help_text="B5: thời điểm ảnh hợp lệ được nộp (check chuyển 'confirmed').",
+    )
+
+    # B5 — chống gửi trùng thông báo "ảnh đã được nộp" cho phụ huynh
+    # (giống cơ chế parent_alert_sent chống spam timeout alert).
+    # Mỗi check chỉ có 1 ảnh → chỉ gửi 1 lần; flag là lớp phòng vệ khi
+    # client retry request nộp ảnh.
+    parent_photo_notification_sent = models.BooleanField(
+        default=False,
+        help_text="B5: đã gửi thông báo 'ảnh đã nộp' cho phụ huynh chưa (1 lần/check).",
+    )
 
     # Vị trí lúc phản hồi (đối chiếu chéo với LiveLocation, tận dụng lại logic phần 1)
     response_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)

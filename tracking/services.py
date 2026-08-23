@@ -889,6 +889,264 @@ def _get_verification_constants():
     return RESPOND_TIMEOUT_SECONDS, MAX_WRONG_ATTEMPTS
 
 
+def _get_b5_photo_constants():
+    """B5 — hằng số xác minh ảnh (lazy import tránh circular import)."""
+    from .verification_scheduler import (
+        PHOTO_RESPOND_TIMEOUT_SECONDS, VERIFICATION_PHOTO_MAX_MB,
+    )
+    return PHOTO_RESPOND_TIMEOUT_SECONDS, VERIFICATION_PHOTO_MAX_MB
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  B5 — XÁC THỰC BẰNG ẢNH TRONG CA LÀM
+#  (bổ sung cho RandomVerificationCheck PIN hiện có — Phương án A:
+#   thêm field lên model, tái sử dụng state machine + scheduler)
+# ═══════════════════════════════════════════════════════════════════
+
+# Format ảnh hợp lệ — kiểm tra bằng Pillow đọc THẬT nội dung byte
+# (không tin content_type client khai báo hay đuôi file).
+ALLOWED_PHOTO_FORMATS = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}
+
+
+def validate_verification_photo(photo_file):
+    """
+    B5 — Validate ảnh xác minh TRƯỚC khi lưu:
+      1. File tồn tại, không rỗng
+      2. Dung lượng <= VERIFICATION_PHOTO_MAX_MB (mặc định 5MB)
+      3. MIME type THẬT (đọc bytes bằng Pillow + verify) — từ chối file
+         giả mạo đuôi .jpg / content_type image/* nhưng nội dung không
+         phải ảnh hợp lệ.
+      4. Format trong danh sách cho phép: JPEG / PNG / WebP
+
+    Trả về (True, '') nếu hợp lệ, (False, '<lỗi tiếng Việt>') nếu không.
+    Không raise — để caller quyết định trả 400 với message rõ ràng.
+    """
+    if photo_file is None:
+        return False, "Thiếu file ảnh. Vui lòng gửi field 'photo' (multipart/form-data)."
+
+    # (1) + (2) Kiểm tra dung lượng
+    _, MAX_MB = _get_b5_photo_constants()
+    max_bytes = int(MAX_MB * 1024 * 1024)
+    try:
+        size = photo_file.size
+    except (AttributeError, OSError):
+        return False, "Không đọc được file ảnh."
+    if not size:
+        return False, "File ảnh rỗng."
+    if size > max_bytes:
+        return False, (
+            f"Ảnh quá lớn ({size / 1024 / 1024:.1f}MB). "
+            f"Giới hạn {MAX_MB:.0f}MB — vui lòng chụp lại."
+        )
+
+    # (3) Đọc nội dung thật bằng Pillow — detect format từ bytes, KHÔNG
+    # tin content_type client khai báo (chống MIME giả mạo).
+    try:
+        from PIL import Image
+        # seek(0) đề phòng file đã bị đọc một phần
+        if hasattr(photo_file, 'seek'):
+            try:
+                photo_file.seek(0)
+            except Exception:
+                pass
+        img = Image.open(photo_file)
+        img.verify()  # verify ép Pillow kiểm tra toàn bộ cấu trúc file
+        # Sau verify() con trỏ file đã tiêu thụ — seek lại cho handler save
+        if hasattr(photo_file, 'seek'):
+            try:
+                photo_file.seek(0)
+            except Exception:
+                pass
+        real_format = img.format
+    except Exception:
+        return False, "File không phải ảnh hợp lệ (nội dung không đọc được bằng bộ giải mã ảnh)."
+
+    # (4) Format cho phép
+    if real_format not in ALLOWED_PHOTO_FORMATS:
+        return False, (
+            f"Định dạng ảnh không được hỗ trợ ({real_format}). "
+            f"Chỉ chấp nhận JPEG, PNG hoặc WebP."
+        )
+
+    return True, ''
+
+
+def submit_verification_photo(*, check_id: int, requester: User,
+                               photo_file, latitude: float = None,
+                               longitude: float = None) -> 'RandomVerificationCheck':
+    """
+    B5 — CarePartner nộp ảnh xác minh cho RandomVerificationCheck
+    (verification_type='photo').
+
+    State machine (tái sử dụng nguyên của PIN — không state mới):
+      - Chỉ nộp được khi status='pending' + còn hạn respond_deadline
+      - Ảnh hợp lệ → status='confirmed' + responded_at + response_lat/lng
+        + reset streak counters (giống nhập đúng PIN)
+      - Quá deadline → status='timeout' + raise ValueError (giống PIN)
+      - Check đã kết thúc (confirmed/timeout/cancelled/wrong_code) →
+        raise ValueError — chặn transition không hợp lệ + chặn nộp trùng
+      - Check loại 'pin' → raise ValueError (không nộp ảnh cho check PIN)
+
+    Quyền:
+      - Chỉ worker sở hữu check (check.worker == requester)
+      - Task phải đang in_progress VÀ requester phải là worker được
+        accept cho task đó (đối chiếu TaskApplication status='accepted')
+
+    Side effect: thông báo phụ huynh (in-app + Expo push) khi ảnh hợp lệ
+    được nộp — CHỈ 1 LẦN/check (parent_photo_notification_sent flag,
+    chống spam giống cơ chế parent_alert_sent).
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.select_related('task', 'worker', 'task__parent').get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    # ── Quyền: chỉ chủ sở hữu check ──────────────────────────────────
+    if check.worker_id != requester.id:
+        raise PermissionError("Bạn không phải là carepartner được yêu cầu xác minh.")
+
+    # ── Loại check phải là photo ─────────────────────────────────────
+    if check.verification_type != 'photo':
+        raise ValueError(
+            "Yêu cầu này là xác minh bằng mã PIN — vui lòng nhập mã thay vì nộp ảnh."
+        )
+
+    now = timezone.now()
+
+    # ── State machine: chặn transition không hợp lệ ──────────────────
+    if check.status != 'pending':
+        # Bao gồm đã có ảnh (confirmed) → chặn nộp trùng với lỗi rõ ràng.
+        if check.status == 'confirmed' and check.photo:
+            raise ValueError("Bạn đã nộp ảnh cho yêu cầu này rồi.")
+        raise ValueError(
+            f"Yêu cầu xác minh đã kết thúc với trạng thái: {check.get_status_display()}."
+        )
+
+    # ── Deadline: quá hạn → timeout (giống respond_verification_check) ──
+    if now > check.respond_deadline:
+        check.status = 'timeout'
+        check.save(update_fields=['status'])
+        raise ValueError("Đã hết thời gian phản hồi. Yêu cầu xác minh đã chuyển trạng thái timeout.")
+
+    # ── Task phải đang diễn ra + requester là worker được assign ─────
+    task = check.task
+    if task.status != 'in_progress':
+        raise ValueError(
+            f"Công việc hiện không đang thực hiện (trạng thái: {task.get_status_display()}). "
+            "Không thể nộp ảnh xác minh."
+        )
+    accepted_app = TaskApplication.objects.filter(
+        task=task, worker=requester, status='accepted'
+    ).exists()
+    if not accepted_app:
+        raise ValueError("Bạn không phải carepartner đang thực hiện công việc này.")
+
+    # ── Validate file (size + MIME thật) TRƯỚC khi lưu ───────────────
+    is_valid, error_msg = validate_verification_photo(photo_file)
+    if not is_valid:
+        # Ảnh bị từ chối → check vẫn giữ nguyên trạng thái 'pending'
+        # (giống nhập sai PIN chưa đủ MAX_WRONG_ATTEMPTS).
+        logger.info(
+            f"[tracking] B5 photo rejected for Check#{check.id}: {error_msg}"
+        )
+        raise ValueError(error_msg)
+
+    # ── Lưu ảnh + chuyển confirmed (giống nhập đúng PIN) ─────────────
+    check.photo = photo_file
+    check.photo_submitted_at = now
+    check.status = 'confirmed'
+    check.responded_at = now
+    check.response_lat = Decimal(str(latitude)) if latitude is not None else None
+    check.response_lng = Decimal(str(longitude)) if longitude is not None else None
+    # Chấm dứt streak timeout (giống PIN confirm — Bug 1.3)
+    check.parent_alert_sent = False
+    check.consecutive_timeouts_count = 0
+    check.save(update_fields=[
+        'photo', 'photo_submitted_at', 'status', 'responded_at',
+        'response_lat', 'response_lng',
+        'parent_alert_sent', 'consecutive_timeouts_count',
+    ])
+
+    logger.info(
+        f"[tracking] B5 photo submitted for Check#{check.id} by User#{requester.id} "
+        f"(Task#{task.id}, size={photo_file.size})"
+    )
+
+    # ── Thông báo phụ huynh: ảnh hợp lệ đã được nộp (chỉ 1 lần) ─────
+    # Chống gửi trùng bằng parent_photo_notification_sent (giống
+    # parent_alert_sent chống spam timeout alert). Notification in-app
+    # gần như không fail (DB write); push Expo best-effort — sau khi đã
+    # set flag thì không retry (phụ huynh vẫn thấy ảnh trong lịch sử
+    # xác minh trên web/mobile).
+    if not check.parent_photo_notification_sent:
+        try:
+            _notify_user(
+                task.parent,
+                title="📷 Ảnh xác minh đã được gửi",
+                message=(
+                    f"CarePartner {requester.username} đã gửi ảnh xác minh cho công việc "
+                    f"'{task.title}'. Vào trang theo dõi để xem ảnh."
+                ),
+                data={
+                    'type': 'photo_verification_submitted',
+                    'task_id': task.id,
+                    'check_id': check.id,
+                    'worker_id': requester.id,
+                }
+            )
+        except Exception as e:
+            logger.warning(
+                f"[tracking] B5 parent photo notification failed for Check#{check.id}: {e}"
+            )
+        finally:
+            # Set flag trong mọi trường hợp — 1 lần/check, không spam.
+            RandomVerificationCheck.objects.filter(pk=check.pk).update(
+                parent_photo_notification_sent=True
+            )
+
+    return check
+
+
+def get_verification_photo(*, check_id: int, requester: User) -> 'RandomVerificationCheck':
+    """
+    B5 — Lấy ảnh xác minh (kèm permission check) để view serve bytes.
+
+    Quyền xem ảnh (chỉ 3 đối tượng):
+      - Worker sở hữu check (chụp ảnh — xem lại ảnh mình đã nộp)
+      - Phụ huynh của task
+      - Admin (is_superuser/is_staff)
+
+    KHÔNG trả URL /media/ public — view sẽ đọc bytes từ storage và trả
+    qua HTTP response có auth (xem VerificationPhotoAPIView).
+
+    Raise:
+      - ValueError: không tìm thấy check / check chưa có ảnh
+      - PermissionError: người không liên quan
+    """
+    from .models import RandomVerificationCheck
+
+    try:
+        check = RandomVerificationCheck.objects.select_related('task').get(pk=check_id)
+    except RandomVerificationCheck.DoesNotExist:
+        raise ValueError("Không tìm thấy yêu cầu xác minh.")
+
+    is_owner_worker = (check.worker_id == requester.id)
+    is_parent = (check.task.parent_id == requester.id)
+    is_admin = requester.is_superuser or requester.is_staff
+
+    if not (is_owner_worker or is_parent or is_admin):
+        # Không tiết lộ sự tồn tại của check cho người ngoài — trả 403
+        # (đồng bộ permission error convention với respond/cancel).
+        raise PermissionError("Bạn không có quyền xem ảnh xác minh này.")
+
+    if not check.photo:
+        raise ValueError("Yêu cầu xác minh này chưa có ảnh.")
+
+    return check
+
+
 def set_verification_pin(*, user: User, pin: str, current_password: str = None) -> User:
     """
     CarePartner đặt/đổi mã cá nhân (PIN 4-6 số).
@@ -986,6 +1244,12 @@ def respond_verification_check(*, check_id: int, requester: User,
     # Verify requester là worker của check
     if check.worker_id != requester.id:
         raise PermissionError("Bạn không phải là carepartner được yêu cầu xác minh.")
+
+    # B5 — check loại photo phải nộp ẢNH, không nhập PIN.
+    if check.verification_type == 'photo':
+        raise ValueError(
+            "Yêu cầu này là xác minh bằng ảnh — vui lòng chụp ảnh để xác nhận thay vì nhập mã."
+        )
 
     now = timezone.now()
 
@@ -1195,6 +1459,13 @@ def get_verification_history_for_parent(*, task: Task, requester: User,
             'response_lng': float(c.response_lng) if c.response_lng else None,
             'parent_alert_sent': c.parent_alert_sent,
             'consecutive_timeouts_count': c.consecutive_timeouts_count,
+            # B5 — field xác minh ảnh: type + có ảnh + thời điểm nộp.
+            # Ảnh KHÔNG trả URL public — frontend dùng check_id gọi
+            # GET /api/tracking/verification-checks/<id>/photo/ (có auth).
+            'verification_type': c.verification_type,
+            'verification_type_display': c.get_verification_type_display(),
+            'has_photo': bool(c.photo),
+            'photo_submitted_at': c.photo_submitted_at.isoformat() if c.photo_submitted_at else None,
         }
         for c in qs
     ]

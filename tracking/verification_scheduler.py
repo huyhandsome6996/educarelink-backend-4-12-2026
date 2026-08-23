@@ -61,6 +61,21 @@ CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT = int(
 # Số lần nhập sai tối đa trước khi chuyển 'wrong_code' + báo admin
 MAX_WRONG_ATTEMPTS = int(os.environ.get('VERIFICATION_MAX_WRONG_ATTEMPTS', '3'))
 
+# B5 — Xác thực bằng ảnh trong ca:
+# Tỷ lệ check là photo (0.0 = 100% PIN, 1.0 = 100% photo). Mặc định 0.3 —
+# trung bình cứ 10 lần xác minh thì 3 lần yêu cầu ảnh, 7 lần PIN.
+PHOTO_CHECK_RATIO = float(os.environ.get('VERIFICATION_PHOTO_CHECK_RATIO', '0.3'))
+
+# B5 — thời gian phản hồi cho check ảnh (giây). Dài hơn PIN (90s) vì
+# worker cần: mở app → mở camera → chụp → xem lại → upload (ảnh có thể
+# vài MB trên mạng chậm).
+PHOTO_RESPOND_TIMEOUT_SECONDS = int(
+    os.environ.get('VERIFICATION_PHOTO_RESPOND_TIMEOUT_SECONDS', '180')
+)
+
+# B5 — dung lượng ảnh tối đa (MB)
+VERIFICATION_PHOTO_MAX_MB = float(os.environ.get('VERIFICATION_PHOTO_MAX_MB', '5'))
+
 # Interval scheduler (phút)
 CHECK_INTERVAL_MINUTES = int(os.environ.get('VERIFICATION_CHECK_INTERVAL_MINUTES', '1'))
 
@@ -148,29 +163,55 @@ def _notify_user(user, title, message, data=None):
 
 
 @transaction.atomic
-def _create_check(task, worker):
-    """Tạo RandomVerificationCheck mới + push yêu cầu nhập mã cho worker.
+def _create_check(task, worker, verification_type=None):
+    """Tạo RandomVerificationCheck mới + push yêu cầu xác minh cho worker.
+
+    B5: verification_type ('pin' | 'photo') — nếu None thì random theo
+    PHOTO_CHECK_RATIO (server quyết định, không phải app tự chọn).
 
     QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True
     (trước đây fire-and-forget → set True sai khi Expo reject).
     """
     now = timezone.now()
-    deadline = now + timedelta(seconds=RESPOND_TIMEOUT_SECONDS)
+
+    # B5 — chọn loại check: server random theo PHOTO_CHECK_RATIO.
+    # Worker offline lúc trigger / app background / push bị từ chối đều
+    # được xử lý bằng cơ chế retry push + timeout y hệt PIN (bên dưới).
+    if verification_type not in ('pin', 'photo'):
+        verification_type = 'photo' if random.random() < PHOTO_CHECK_RATIO else 'pin'
+
+    timeout_seconds = (
+        PHOTO_RESPOND_TIMEOUT_SECONDS if verification_type == 'photo'
+        else RESPOND_TIMEOUT_SECONDS
+    )
+    deadline = now + timedelta(seconds=timeout_seconds)
 
     check = RandomVerificationCheck.objects.create(
         task=task,
         worker=worker,
         respond_deadline=deadline,
         status='pending',
+        verification_type=verification_type,
     )
 
-    # Push yêu cầu nhập mã cho CarePartner — channel emergency-alerts (còi to)
+    # Push yêu cầu xác minh cho CarePartner — channel emergency-alerts (còi to)
+    if verification_type == 'photo':
+        push_title = "📸 Xác minh bằng ảnh"
+        push_message = "Chụp 1 ảnh tại chỗ để xác nhận vẫn đang cầm máy"
+    else:
+        push_title = "🔐 Xác minh bảo mật"
+        push_message = "Vui lòng nhập mã cá nhân để xác nhận"
+
     push_result, push_reason = _notify_user(
         worker,
-        title="🔐 Xác minh bảo mật",
-        message="Vui lòng nhập mã cá nhân để xác nhận",
+        title=push_title,
+        message=push_message,
         data={
             'type': 'random_verification',
+            # B5: app mới đọc verification_type để hiện UI chụp ảnh hoặc nhập PIN.
+            # App cũ không biết field này → vẫn hiện modal PIN (poll pending
+            # check) — chấp nhận được trong giai đoạn chuyển tiếp.
+            'verification_type': verification_type,
             'task_id': task.id,
             'check_id': check.id,
             'priority': 'high',
@@ -184,7 +225,10 @@ def _create_check(task, worker):
     check.push_retry_count = 1 if push_result is True else 0
     check.save(update_fields=['push_sent', 'push_retry_count'])
 
-    logger.info(f"[Verification] Created check #{check.id} for Task#{task.id} (deadline={deadline:%H:%M:%S}, push_sent={check.push_sent})")
+    logger.info(
+        f"[Verification] Created check #{check.id} for Task#{task.id} "
+        f"(type={verification_type}, deadline={deadline:%H:%M:%S}, push_sent={check.push_sent})"
+    )
     return check
 
 
@@ -360,12 +404,20 @@ def run_verification_check():
             if estimated_last_push > now:
                 continue  # chưa đủ 30s từ lần push cuối
         try:
+            # B5 — message retry khác nhau theo loại check
+            if check.verification_type == 'photo':
+                retry_title = f"📸 Xác minh bằng ảnh (lần {check.push_retry_count + 1}/5)"
+                retry_message = "Chụp 1 ảnh tại chỗ để xác nhận — đang đợi phản hồi!"
+            else:
+                retry_title = f"🔐 Xác minh bảo mật (lần {check.push_retry_count + 1}/5)"
+                retry_message = "Vui lòng nhập mã cá nhân để xác nhận — đang đợi phản hồi!"
             _notify_user(
                 check.worker,
-                title=f"🔐 Xác minh bảo mật (lần {check.push_retry_count + 1}/5)",
-                message="Vui lòng nhập mã cá nhân để xác nhận — đang đợi phản hồi!",
+                title=retry_title,
+                message=retry_message,
                 data={
                     'type': 'random_verification',
+                    'verification_type': check.verification_type,
                     'task_id': check.task.id,
                     'check_id': check.id,
                     'retry': check.push_retry_count + 1,
@@ -387,10 +439,15 @@ def run_verification_check():
     return stats
 
 
-def trigger_verification_check_now(task_id):
+def trigger_verification_check_now(task_id, verification_type='pin'):
     """
     Admin trigger thủ công tạo check cho 1 task (debug, chỉ khi DEBUG=True).
     Bypass random check + min interval — tạo ngay lập tức.
+
+    B5: verification_type ('pin' | 'photo') — mặc định 'pin' để DETERMINISTIC
+    (debug helper + test cũ của luồng PIN không bị random ảnh hưởng).
+    Randomization theo PHOTO_CHECK_RATIO chỉ nằm trong scheduler thật
+    (run_verification_check → _create_check không truyền type).
     """
     try:
         task = Task.objects.get(pk=task_id, status='in_progress')
@@ -411,7 +468,7 @@ def trigger_verification_check_now(task_id):
     if has_pending:
         raise ValueError("Task đã có check pending — vui lòng đợi xử lý xong.")
 
-    return _create_check(task, worker)
+    return _create_check(task, worker, verification_type=verification_type)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -441,6 +498,10 @@ def get_stats():
             'RESPOND_TIMEOUT_SECONDS': RESPOND_TIMEOUT_SECONDS,
             'CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT': CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT,
             'MAX_WRONG_ATTEMPTS': MAX_WRONG_ATTEMPTS,
+            # B5 — hằng số xác minh ảnh
+            'PHOTO_CHECK_RATIO': PHOTO_CHECK_RATIO,
+            'PHOTO_RESPOND_TIMEOUT_SECONDS': PHOTO_RESPOND_TIMEOUT_SECONDS,
+            'VERIFICATION_PHOTO_MAX_MB': VERIFICATION_PHOTO_MAX_MB,
         },
         'stats': _stats.copy(),
     }
