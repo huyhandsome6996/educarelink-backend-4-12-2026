@@ -313,24 +313,10 @@
 
     <script>
         const API_BASE = '/api';
+        const LOGIN_URL = '{% url "frontend:login" %}';
         let currentProfile = null;
 
-        function getCookie(name) {
-            let v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return v ? v.pop() : '';
-        }
-
-        function apiFetch(url, options = {}) {
-            const headers = { ...(options.headers || {}) };
-            if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
-                headers['Content-Type'] = 'application/json';
-            }
-            const token = localStorage.getItem('access_token');
-            if (token) headers['Authorization'] = 'Bearer ' + token;
-            const opts = { ...options, headers, credentials: 'include' };
-            return fetch(url, opts);
-        }
-
+        // ---- Toast ----
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
@@ -342,10 +328,62 @@
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
         }
 
+        // ---- Auth Check & Token Refresh (same as parent_home.html) ----
+        async function apiFetch(url, options = {}) {
+            let token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = LOGIN_URL;
+                return new Response(null, { status: 401 });
+            }
+            options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+            let response = await fetch(url, options);
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    try {
+                        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh: refreshToken })
+                        });
+                        if (refreshResp.ok) {
+                            const refreshData = await refreshResp.json();
+                            localStorage.setItem('token', refreshData.access);
+                            if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                            response = await fetch(url, options);
+                        } else {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refresh_token');
+                            window.location.href = LOGIN_URL;
+                            return new Response(null, { status: 401 });
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = LOGIN_URL;
+                        return new Response(null, { status: 401 });
+                    }
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = LOGIN_URL;
+                    return new Response(null, { status: 401 });
+                }
+            }
+            return response;
+        }
+
+        if (!localStorage.getItem('token')) {
+            window.location.href = LOGIN_URL;
+        }
+
+        // ---- Logout ----
         function handleLogout() {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            window.location.href = '/login/?next=/parent/';
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.clear();
+                showToast('Đã đăng xuất thành công', 'success');
+                setTimeout(() => { window.location.href = LOGIN_URL; }, 500);
+            }
         }
 
         function getGreeting() {
@@ -415,7 +453,7 @@
             try {
                 const profResp = await apiFetch(API_BASE + '/profile/');
                 if (!profResp || !profResp.ok) {
-                    if (profResp && profResp.status === 401) { handleLogout(); return; }
+                    if (profResp && profResp.status === 401) { return; }
                     throw new Error('Không thể tải thông tin người dùng');
                 }
                 const prof = await profResp.json();
