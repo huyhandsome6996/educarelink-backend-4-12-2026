@@ -41,22 +41,16 @@
     }
   },
   "submit": {
-    "production": {
+    "internal_demo": {
       "android": {
-        "serviceAccountKeyPath": "./google-service-account-key.json",
-        "track": "internal",
-        "releaseStatus": "draft"
-      },
-      "ios": {
-        "appleId": "your-apple-id@email.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "YOUR-APPLE-TEAM-ID"
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
       }
     },
-    "preview": {
+    "closed_production_path": {
       "android": {
-        "serviceAccountKeyPath": "./google-service-account-key.json",
-        "track": "internal"
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "alpha"
       }
     }
   }
