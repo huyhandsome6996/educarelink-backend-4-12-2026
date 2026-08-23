@@ -15,6 +15,30 @@ logger = logging.getLogger(__name__)
 
 from .models import User, Review, CredentialSubmission, Notification, TaskApplication
 
+# B4 — Validate ảnh minh chứng bằng cấp khi upload (WorkerSubmitCredentialAPIView)
+# Dự án chưa có helper validate upload dùng chung (id_card_front/id_card_back trên
+# RegisterAPIView cũng chỉ check sự tồn tại) → định nghĩa hằng + hàm kiểm tra tại đây,
+# theo convention §15.4 (UPPER_SNAKE) + §15.6 (error message tiếng Việt).
+ALLOWED_CREDENTIAL_IMAGE_TYPES = ('image/jpeg', 'image/png', 'image/webp')
+MAX_CREDENTIAL_IMAGE_SIZE_MB = 5
+MAX_CREDENTIAL_IMAGE_SIZE = MAX_CREDENTIAL_IMAGE_SIZE_MB * 1024 * 1024
+
+
+def validate_credential_image(file):
+    """Kiểm tra MIME type + dung lượng ảnh minh chứng. Trả None nếu hợp lệ,
+    ngược lại trả (error_message, status_code) cho view trả về 400."""
+    if file.content_type not in ALLOWED_CREDENTIAL_IMAGE_TYPES:
+        return (
+            'Ảnh bằng cấp không hợp lệ. Chỉ nhận định dạng JPEG, PNG hoặc WebP.',
+            status.HTTP_400_BAD_REQUEST,
+        )
+    if file.size is not None and file.size > MAX_CREDENTIAL_IMAGE_SIZE:
+        return (
+            f'Ảnh bằng cấp quá lớn (tối đa {MAX_CREDENTIAL_IMAGE_SIZE_MB}MB).',
+            status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
 
 def build_absolute_uri(request, path):
     if not path:
@@ -211,6 +235,11 @@ class WorkerSubmitCredentialAPIView(APIView):
         description = request.data.get('description', '').strip()
         if not certificate_photo and not description:
             return Response({'error': 'Vui lòng tải lên ảnh hoặc viết mô tả về bằng cấp.'}, status=status.HTTP_400_BAD_REQUEST)
+        # B4 — chặn file sai định dạng/quá nặng TRƯỚC khi lưu vào storage
+        if certificate_photo:
+            invalid = validate_credential_image(certificate_photo)
+            if invalid:
+                return Response({'error': invalid[0]}, status=invalid[1])
         submission = CredentialSubmission.objects.create(
             worker=request.user,
             certificate_photo=certificate_photo if certificate_photo else None,

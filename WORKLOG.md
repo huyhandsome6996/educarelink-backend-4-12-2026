@@ -789,3 +789,87 @@ delta B4 thật lên main `9c14b8c`.
 - Endpoint mới cho QA smoke-test:
   `POST /api/admin/workers/<id>/set-tier/` (body `{"tier":"silver"}`),
   `POST /api/admin/workers/<id>/recompute-tier/`.
+
+---
+
+## B4 — Hoàn thiện mobile + hardening trước khi merge (2026-08-23, lượt 2)
+
+**Coding Agent**: theo yêu cầu QA sau khi review commit `7cbde23` (rebase B4). Backend giữ
+nguyên (334/334, phân quyền/migration/signal/API contract QA đã pass). Việc duy nhất: khôi
+phục chức năng mobile bị mất khi gắn badge tier + hardening upload + dọn code chết.
+
+### 1. Khôi phục chức năng bị mất trên mobile (giữ nguyên tier badge)
+Phát hiện: nhánh B4 cũ thay `CandidatesScreen.js`/`CandidateProfileScreen.js` bằng bản
+rewrite tối giản (comment `// SEE ARTIFACTS - temporary minimal fix`) — mất AI insights,
+search/filter, và **bước xác nhận trước khi chấp nhận ứng viên** (hành động không thể hoàn
+tác — tự động từ chối ứng viên khác).
+
+Cách làm: lấy bản `origin/main` làm base cho cả 2 screen, graft ĐÚNG phần tier của B4
+vào (2 việc độc lập, không xung đột):
+- `CandidatesScreen.js`: khôi phục toàn bộ AI insights panel (`aiInsights`, `aiLoading`,
+  `getCandidateRecommendations`, `reloadAIInsights`), search bar + filter chips
+  (`FILTER_CHIPS`, `activeFilter`, `searchQuery`, `filteredCandidates`), confirm dialog.
+  Thêm duy nhất 1 dòng badge `<CarePartnerTierBadge user={c} size="sm" />` trong card
+  (đọc `worker_tier`/`worker_tier_label` có sẵn trong response candidates API — B4
+  serializer đã trả, không cần fetch thêm).
+- `CandidateProfileScreen.js`: khôi phục confirm + mọi section gốc (Kinh nghiệm & Kỹ
+  năng, Bằng cấp, AI summary, Lịch rảnh mock, Đánh giá). Thay tier badge MOCK (theo
+  review_count ≥ 20/50) bằng tier THẬT từ API qua component — luôn hiển thị, mặc định
+  Hạng Đồng.
+- Confirm luồng approve (xác nhận bằng tay — đọc code, không chỉ chạy test): cả 2 screen
+  đều wrap `approveCandidate` trong `startApprove()`, chỉ được gọi khi:
+  web: `window.confirm('Xác nhận: Chấp nhận ... Các ứng viên khác sẽ tự động bị từ chối.')`
+  trả true; native: `Alert.alert('Xác nhận', ..., [{text:'Huỷ', style:'cancel'},
+  {text:'Chấp nhận', onPress: startApprove}])`. Không có đường gọi API nào bypass confirm.
+
+### 2. Dọn code chết — phương án (b): dùng CarePartnerTierBadge component
+- Trước lượt này `CarePartnerTierBadge.js` không được import nơi nào (2 screen tự viết
+  badge inline trùng lặp logic). Giờ cả 2 screen đều import + dùng component; badge
+  inline bị xoá. Component thêm prop `size` (`sm` cho card danh sách, `md` cho profile
+  header) để dùng được ở cả 2 bối cảnh mà không cần style override.
+- Xoá `mobile/src/screens/Parent/CandidatesScreen.styles.js` — placeholder rỗng
+  (`export {}`) do B4 cũ để lại, không file nào import (styles sống trong chính
+  CandidatesScreen.js theo pattern main).
+
+### 3. Hardening upload — validate MIME + dung lượng certificate_photo
+`core/tier_views.py` → `WorkerSubmitCredentialAPIView.post`: thêm
+`validate_credential_image()` + hằng `ALLOWED_CREDENTIAL_IMAGE_TYPES`
+(jpeg/png/webp), `MAX_CREDENTIAL_IMAGE_SIZE_MB = 5`. Chặn TRƯỚC khi lưu storage, lỗi
+trả 400 message tiếng Việt theo §15.6. Ghi chú: dự án chưa có helper validate upload
+dùng chung (RegisterAPIView với id_card_front/back cũng chỉ check tồn tại) → định nghĩa
+tại chỗ theo convention §15.4, comment giải thích rõ.
+
+### 4. Ghi chú design choice — badge tier trên web qua runtime patch
+Web hiển thị badge hạng ở `browse_candidates.html` bằng cách **patch runtime
+`window.renderCandidates`** (`frontend/static/js/browse_candidates_tier_patch_b4.js`,
+include qua `_b4_tier_scripts.html`): đây là lựa chọn CÓ CHỦ ĐÍCH để tránh đụng code
+gốc của trang (bản rewrite 277 dòng của B4 cũ đã từng làm mất sidebar 6-tab + rank
+badge A2 + spinner đã QA — không lặp lại). Script wrap `renderCandidates`, sau khi hàm
+gốc render xong thì inject badge vào từng `article.candidate-card` (guard
+`data-b4-tier` chống double-inject, poll 100ms × 40 chờ hàm được định nghĩa).
+**Rủi ro đã biết**: nếu sau này `renderCandidates` bị đổi tên/refactor (hoặc đổi cấu
+trúc card `.flex-1.min-w-0` / thứ tự card khớp index mảng candidates), patch sẽ im
+lặng không hiện badge — KHÔNG crash trang (an toàn về functional, chỉ mất hiển thị
+hạng). Khi refactor trang này, nên chuyển badge vào chính `renderCandidates` trong
+template và xoá patch script.
+
+### 5. Kết quả
+- Full suite: **341/341 PASS** (334 cũ + 7 test mới cho validate upload:
+  jpeg/png/webp pass, PDF → 400, >5MB → 400, đúng 5MB boundary → 201, chỉ mô tả
+  không ảnh → 201). `manage.py check` 0 lỗi.
+- Test JS mobile (`__tests__/CreateTaskScreen.pricingType.test.js`, pure logic): 6/6
+  PASS. (Test QA5 flush-isolation ở `mobile/scripts/` cần @babel/register + mock
+  expo — không liên quan các file lượt này, không chạy lại.)
+- Syntax check JSX 4 file sửa (babel parser): OK.
+- `git diff origin/main` mobile: chỉ còn tier — AI insights / search / filter /
+  confirm / mọi section profile nguyên trạng.
+
+### Lưu ý cho QA
+- Endpoint `POST /api/worker/submit-credential/` giờ trả 400 kèm
+  `'Ảnh bằng cấp không hợp lệ. Chỉ nhận định dạng JPEG, PNG hoặc WebP.'` hoặc
+  `'Ảnh bằng cấp quá lớn (tối đa 5MB).'` — mobile/web form submit nên đọc field
+  `error` như cũ.
+- CandidateProfileScreen badge giờ LUÔN hiển thị (mặc định Hạng Đồng) thay vì chỉ
+  hiện khi ≥ 20 review như mock cũ — đúng ý nghĩa B4 (mọi CarePartner đều có hạng).
+- Worker tự xem hạng của mình trên mobile (WorkerProfileScreen) KHÔNG thuộc phạm vi
+  lượt này — B4 mobile scope chỉ 2 screen parent-side theo yêu cầu QA.

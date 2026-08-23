@@ -22,10 +22,13 @@ Phạm vi (theo yêu cầu QA):
   6. Signal: task completed → refresh tier; review tạo mới → refresh tier
   7. Response contract: profile / worker profile / candidates / all-workers
      đều trả tier + tier_label (badge web + mobile đọc các field này).
+  8. Validate upload ảnh minh chứng: MIME (JPEG/PNG/WebP) + giới hạn 5MB,
+     boundary đúng 5MB vẫn chấp nhận, chỉ mô tả (không ảnh) không bị chặn.
 """
 
 from django.test import TestCase, override_settings
 from django.utils import timezone as django_tz
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from core.models import User, Task, ServiceCategory, TaskApplication, Review, CredentialSubmission
@@ -754,3 +757,106 @@ class TierResponseContractTests(TestCase):
         self.assertEqual(w.tier, 'bronze')
         self.assertFalse(w.tier_override)
         self.assertEqual(w.tier_meta, {})
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 9. VALIDATE UPLOAD ẢNH MINH CHỨNG BẰNG CẤP (B4 hardening)
+# ─────────────────────────────────────────────────────────────────────
+@override_settings(DEBUG=True)
+class CredentialUploadValidationTests(TestCase):
+    """WorkerSubmitCredentialAPIView validate MIME type + dung lượng ảnh."""
+
+    def setUp(self):
+        self.worker = _make_worker()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.worker)
+
+    def _jpeg(self, size_kb=1):
+        """Ảnh JPEG giả (content đúng MIME, dung lượng nhỏ)."""
+        return SimpleUploadedFile(
+            'cert.jpg', b'\xff\xd8\xff' + b'x' * (size_kb * 1024),
+            content_type='image/jpeg',
+        )
+
+    def test_upload_jpeg_success(self):
+        """Ảnh JPEG hợp lệ → 201, submission được tạo kèm ảnh."""
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': self._jpeg(), 'description': 'Chứng chỉ test'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+        cred = CredentialSubmission.objects.get(worker=self.worker)
+        self.assertTrue(cred.certificate_photo)
+
+    def test_upload_png_success(self):
+        """Ảnh PNG hợp lệ → 201."""
+        png = SimpleUploadedFile('cert.png', b'\x89PNG' + b'x' * 100, content_type='image/png')
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': png, 'description': 'Chứng chỉ PNG'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_webp_success(self):
+        """Ảnh WebP hợp lệ → 201."""
+        webp = SimpleUploadedFile('cert.webp', b'RIFF' + b'x' * 100, content_type='image/webp')
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': webp, 'description': 'Chứng chỉ WebP'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_pdf_rejected(self):
+        """File PDF (không phải ảnh) → 400 với message tiếng Việt, không tạo submission."""
+        pdf = SimpleUploadedFile('cert.pdf', b'%PDF-1.4' + b'x' * 100, content_type='application/pdf')
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': pdf, 'description': 'File PDF'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('JPEG, PNG hoặc WebP', resp.data['error'])
+        self.assertEqual(CredentialSubmission.objects.filter(worker=self.worker).count(), 0)
+
+    def test_upload_oversize_rejected(self):
+        """Ảnh JPEG > 5MB → 400 với message giới hạn dung lượng."""
+        # 6MB — vượt MAX_CREDENTIAL_IMAGE_SIZE (5MB)
+        big = SimpleUploadedFile(
+            'big.jpg', b'\xff\xd8\xff' + b'x' * (6 * 1024 * 1024),
+            content_type='image/jpeg',
+        )
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': big, 'description': 'Ảnh quá lớn'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('5MB', resp.data['error'])
+        self.assertEqual(CredentialSubmission.objects.filter(worker=self.worker).count(), 0)
+
+    def test_description_only_skips_image_validation(self):
+        """Chỉ mô tả (không ảnh) → 201 — validate ảnh không can thiệp."""
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'description': 'Mô tả kinh nghiệm không kèm ảnh'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
+        cred = CredentialSubmission.objects.get(worker=self.worker)
+        self.assertFalse(cred.certificate_photo)
+
+    def test_boundary_exactly_5mb_accepted(self):
+        """Ảnh đúng 5MB (boundary) → 201 — 5MB vẫn được chấp nhận."""
+        from core.tier_views import MAX_CREDENTIAL_IMAGE_SIZE
+        payload = b'\xff\xd8\xff' + b'x' * (MAX_CREDENTIAL_IMAGE_SIZE - 3)
+        self.assertEqual(len(payload), MAX_CREDENTIAL_IMAGE_SIZE)  # đúng 5MB
+        ok = SimpleUploadedFile('edge.jpg', payload, content_type='image/jpeg')
+        resp = self.client.post(
+            '/api/worker/submit-credential/',
+            {'certificate_photo': ok, 'description': 'Ảnh 5MB boundary'},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 201)
