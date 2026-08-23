@@ -15,6 +15,7 @@
 // - Logout: long-press avatar (giữ chức năng, không phá design)
 // Giữ nguyên: fetchTasks (getMyTasksAsParent), refresh control,
 // navigation CreateTask/MyTasks/Chatbot
+// B2: card Điểm thưởng & Voucher trên trang chủ
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -26,6 +27,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
+import { getRewardsSummary } from '../../api/rewards';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,25 +41,21 @@ const STATUS_MAPPING = {
   cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
-// Bento grid — 3 dịch vụ chính (theo design HTML)
-// 2 ô vuông (Đưa đón, Đồng hành) + 1 ô wide (Gia sư)
 const BENTO_CATEGORIES = [
   {
     id: 1,
     iconName: 'car',
     name: 'Đưa đón',
     desc: '',
-    // Tertiary palette (blue) — theo design HTML
-    iconBg: '#cae6ff',  // tertiary-fixed
-    iconColor: '#006492', // tertiary
-    span: 1, // 1 ô
+    iconBg: '#cae6ff',
+    iconColor: '#006492',
+    span: 1,
   },
   {
     id: 2,
     iconName: 'people',
     name: 'Đồng hành',
     desc: '',
-    // Secondary palette (green) — CarePartner identity
     iconBg: COLORS.secondaryLight,
     iconColor: COLORS.secondaryDark,
     span: 1,
@@ -67,15 +65,12 @@ const BENTO_CATEGORIES = [
     iconName: 'school',
     name: 'Gia sư',
     desc: 'Hỗ trợ bài tập về nhà & ôn tập',
-    // Primary palette (orange)
     iconBg: COLORS.primaryLight,
     iconColor: COLORS.primary,
-    span: 2, // wide — 2 ô
+    span: 2,
   },
 ];
 
-// Mock CarePartner gợi ý — chưa có API thật
-// TODO: thay bằng API getSuggestedCarepartners() khi backend sẵn sàng
 const MOCK_CAREPARTNERS = [
   {
     id: 1,
@@ -120,6 +115,8 @@ export default function ParentHomeScreen() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pointsBalance, setPointsBalance] = useState(null);
+  const [tierLabel, setTierLabel] = useState('');
 
   const pulseAnimRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -152,6 +149,14 @@ export default function ParentHomeScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
+    // B2: load điểm thưởng (không chặn UI nếu lỗi)
+    try {
+      const r = await getRewardsSummary();
+      setPointsBalance(r.data?.balance ?? 0);
+      setTierLabel(r.data?.tier?.label || '');
+    } catch (e) {
+      setPointsBalance(null);
+    }
   };
 
   useEffect(() => { fetchTasks(); }, []);
@@ -171,7 +176,6 @@ export default function ParentHomeScreen() {
     }
   };
 
-  // Long-press avatar → logout (giữ chức năng, không phá design)
   const handleAvatarLongPress = () => {
     if (Platform.OS === 'web') {
       handleLogout();
@@ -187,7 +191,6 @@ export default function ParentHomeScreen() {
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
 
-  // Lấy task gần nhất để hiển thị ở 'Hoạt động gần đây'
   const recentTask = tasks[0];
   const recentStatus = recentTask ? (STATUS_MAPPING[recentTask.status] || STATUS_MAPPING.open) : null;
 
@@ -195,7 +198,6 @@ export default function ParentHomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
-      {/* Top App Bar — trắng, avatar + brand + bell + profile shortcut */}
       <View style={[styles.appBar, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
         <TouchableOpacity
           style={styles.avatar}
@@ -225,19 +227,36 @@ export default function ParentHomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
-        {/* Greeting */}
         <View style={styles.greetingSection}>
           <Text style={styles.greetingTitle}>{getGreeting()}, {displayName}!</Text>
           <Text style={styles.greetingSubtitle}>Sẵn sàng cho một ngày tuyệt vời?</Text>
         </View>
 
-        {/* Promo Banner — primary-container bg, thay thế AI banner */}
+        {/* B2 — Điểm thưởng shortcut */}
+        <TouchableOpacity
+          style={styles.rewardsCard}
+          onPress={() => navigation.navigate('RewardPoints')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.rewardsIconBox}>
+            <Ionicons name="gift" size={22} color={COLORS.primary} />
+          </View>
+          <View style={styles.rewardsTextBlock}>
+            <Text style={styles.rewardsTitle}>Điểm thưởng & Voucher</Text>
+            <Text style={styles.rewardsSubtitle}>
+              {pointsBalance == null
+                ? 'Xem điểm và đổi quà'
+                : `${Number(pointsBalance).toLocaleString('vi-VN')} pts${tierLabel ? ` · Hạng ${tierLabel}` : ''}`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.onSurfaceVariant} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.promoBanner}
           onPress={() => navigation.navigate('Chatbot')}
           activeOpacity={0.9}
         >
-          {/* Decorative blurred circle */}
           <View style={styles.promoDecorCircle} />
           <View style={styles.promoContent}>
             <Text style={styles.promoTitle}>Giảm 20% tháng này!</Text>
@@ -250,7 +269,6 @@ export default function ParentHomeScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Service Categories — Bento grid (2 small + 1 wide) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Dịch vụ</Text>
           <View style={styles.bentoGrid}>
@@ -282,7 +300,6 @@ export default function ParentHomeScreen() {
           </View>
         </View>
 
-        {/* Suggested CarePartners — horizontal scroll */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>CarePartner Gợi ý</Text>
@@ -297,7 +314,6 @@ export default function ParentHomeScreen() {
           >
             {MOCK_CAREPARTNERS.map((cp) => (
               <View key={cp.id} style={styles.carepartnerCard}>
-                {/* Top: avatar + name + rating + verified badge */}
                 <View style={styles.cpCardTop}>
                   <View style={styles.cpInfoRow}>
                     <View style={[styles.cpAvatar, { backgroundColor: cp.avatarColor }]}>
@@ -317,7 +333,6 @@ export default function ParentHomeScreen() {
                   )}
                 </View>
 
-                {/* Category chips */}
                 <View style={styles.cpChipRow}>
                   {cp.categories.map((cat) => (
                     <View key={cat} style={styles.cpChip}>
@@ -326,7 +341,6 @@ export default function ParentHomeScreen() {
                   ))}
                 </View>
 
-                {/* Bottom: price + Đặt lịch button */}
                 <View style={styles.cpCardFooter}>
                   <View style={styles.cpPriceBlock}>
                     <Text style={styles.cpPriceLabel}>Từ</Text>
@@ -348,7 +362,6 @@ export default function ParentHomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Recent Activity — card nền primaryLight + status chip */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
           {isLoading ? (
@@ -398,7 +411,6 @@ export default function ParentHomeScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB — Đăng việc nhanh */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('CreateTask')}
@@ -410,7 +422,6 @@ export default function ParentHomeScreen() {
   );
 }
 
-// Helper — show coming soon cho 'Xem tất cả' CarePartner
 function showComingSoonCarePartnerList() {
   Alert.alert('Thông báo', 'Tính năng "Xem tất cả CarePartner" đang được phát triển. Vui lòng quay lại sau!', [
     { text: 'Đã hiểu', style: 'default' },
@@ -419,27 +430,26 @@ function showComingSoonCarePartnerList() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
-  // === APP BAR (white header) ===
   appBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20, // margin-mobile
-    paddingBottom: 12, // py-sm (paddingTop moved inline for safe area)
-    backgroundColor: COLORS.surface, // surface (trắng)
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: COLORS.surface,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surfaceContainer, // surface-variant
+    backgroundColor: COLORS.surfaceContainer,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.small,
   },
   appBarTitle: {
     ...TYPO.h1,
-    color: COLORS.primary, // primary-container (cam)
+    color: COLORS.primary,
     letterSpacing: -0.5,
   },
   appBarRight: {
@@ -455,13 +465,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // === SCROLL ===
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
-  // === GREETING ===
   greetingSection: {
-    marginTop: 16, // mt-md
-    marginBottom: 24, // mb-lg
+    marginTop: 16,
+    marginBottom: 16,
     paddingHorizontal: 20,
   },
   greetingTitle: {
@@ -473,11 +481,41 @@ const styles = StyleSheet.create({
     ...TYPO.body,
     color: COLORS.onSurfaceVariant,
   },
-  // === PROMO BANNER ===
+  rewardsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.outlineVariant,
+    ...SHADOWS.small,
+  },
+  rewardsIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rewardsTextBlock: { flex: 1 },
+  rewardsTitle: {
+    ...TYPO.h4,
+    color: COLORS.onSurface,
+    marginBottom: 2,
+  },
+  rewardsSubtitle: {
+    ...TYPO.caption,
+    color: COLORS.onSurfaceVariant,
+  },
   promoBanner: {
-    backgroundColor: COLORS.primary, // primary-container
-    borderRadius: 14, // xl radius
-    padding: 16, // p-md
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    padding: 16,
     marginBottom: 24,
     marginHorizontal: 20,
     flexDirection: 'row',
@@ -522,9 +560,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...SHADOWS.small,
   },
-  // === SECTIONS ===
   section: {
-    marginBottom: 24, // mb-xl
+    marginBottom: 24,
     paddingHorizontal: 20,
   },
   sectionHeader: {
@@ -543,28 +580,26 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginBottom: 16,
   },
-  // === BENTO GRID ===
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16, // gap-md
+    gap: 16,
   },
   bentoCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.outlineVariant,
-    borderRadius: 14, // xl
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     ...SHADOWS.small,
-    // Mặc định 1 ô (calc 50% - gap/2)
     width: (SCREEN_WIDTH - 40 - 16) / 2,
     minHeight: 110,
   },
   bentoCardWide: {
-    width: '100%', // full row
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
@@ -590,7 +625,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  // === CAREPARTNER SUGGESTIONS ===
   carepartnerScroll: {
     paddingHorizontal: 20,
     gap: 16,
@@ -652,7 +686,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cpChip: {
-    backgroundColor: COLORS.surfaceContainer, // surface-variant
+    backgroundColor: COLORS.surfaceContainer,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
@@ -690,19 +724,18 @@ const styles = StyleSheet.create({
     color: COLORS.onSurfaceVariant,
   },
   cpBookBtn: {
-    backgroundColor: COLORS.surfaceContainerHigh, // surface-container-high
+    backgroundColor: COLORS.surfaceContainerHigh,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8, // lg
+    borderRadius: 8,
     ...SHADOWS.small,
   },
   cpBookBtnText: {
     ...TYPO.caption,
     color: COLORS.primary,
   },
-  // === RECENT ACTIVITY ===
   recentCard: {
-    backgroundColor: COLORS.primaryLight, // #FFF4ED
+    backgroundColor: COLORS.primaryLight,
     borderWidth: 1,
     borderColor: 'rgba(242, 101, 34, 0.2)',
     borderRadius: 20,
@@ -754,7 +787,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  // === EMPTY STATE ===
   emptyBox: {
     alignItems: 'center',
     paddingVertical: 36,
@@ -796,11 +828,10 @@ const styles = StyleSheet.create({
     color: COLORS.textOnPrimary,
     ...TYPO.button,
   },
-  // === FAB ===
   fab: {
     position: 'absolute',
-    bottom: 90, // room for bottom tab bar
-    right: 20, // margin-mobile
+    bottom: 90,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -808,6 +839,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.large,
-    elevation: 8, // Android shadow
+    elevation: 8,
   },
 });
