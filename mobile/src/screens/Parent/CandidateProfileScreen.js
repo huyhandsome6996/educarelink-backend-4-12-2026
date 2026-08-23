@@ -12,6 +12,9 @@
 // - Section 'Đánh giá từ phụ huynh': card nhỏ với reviewer info
 // - Sticky footer: 'Chấp nhận bạn này làm việc' button (pending only)
 // Giữ nguyên: getWorkerProfile, approveCandidate, navigation
+// B4 (rebase): tier badge dùng hạng THẬT từ API (profile.tier /
+//   profile.tier_label — WorkerProfileDetailAPIView) thay cho mock
+//   theo review_count trước đây. Luôn hiển thị (mặc định Hạng Đồng).
 // ============================================================
 
 import React, {useState, useEffect, useRef} from 'react';
@@ -21,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getWorkerProfile, approveCandidate } from '../../api/tasks';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import CarePartnerTierBadge from '../../components/CarePartnerTierBadge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // QA-FIX-UI 2.1: Mock data lịch rảnh trong tuần.
@@ -105,13 +109,8 @@ export default function CandidateProfileScreen() {
   const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username;
   const rating = profile.avg_rating || 0;
   const reviewCount = profile.review_count || 0;
-
-  // Tier badge dựa trên review_count (mock logic — không có API thật)
-  // QA-FIX-UI 3.1: dùng token tierGold/tierSilver (tông be/vàng ấm) thay
-  // cho hex #B8860B/#6B7280 chói/lạnh không thuộc Warm Professionalism.
-  const tier = reviewCount >= 50 ? { label: 'Hạng Vàng', color: COLORS.tierGold, bg: COLORS.tierGoldBg }
-             : reviewCount >= 20 ? { label: 'Hạng Bạc', color: COLORS.tierSilver, bg: COLORS.tierSilverBg }
-             : null;
+  // B4 — không còn mock tier theo review_count: badge dưới dùng hạng thật
+  // từ API (tier / tier_label), luôn hiển thị, mặc định Hạng Đồng.
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -159,12 +158,8 @@ export default function CandidateProfileScreen() {
             <Text style={styles.verifiedText}>CarePartner Được Chứng Nhận</Text>
           </View>
 
-          {tier && (
-            <View style={[styles.tierBadge, { backgroundColor: tier.bg, borderColor: tier.color }]}>
-              <Ionicons name="star" size={14} color={tier.color} />
-              <Text style={[styles.tierText, { color: tier.color }]}>{tier.label}</Text>
-            </View>
-          )}
+          {/* B4 — Hạng CarePartner thật từ API (luôn hiển thị, mặc định Hạng Đồng) */}
+          <CarePartnerTierBadge user={profile} style={styles.tierBadge} />
 
           {/* Stats row — 3 cột: rating, hours, families */}
           <View style={styles.statsRow}>
@@ -477,18 +472,9 @@ const styles = StyleSheet.create({
     ...TYPO.body,
     color: COLORS.onSurfaceVariant,
   },
+  // B4 — spacing cho CarePartnerTierBadge (màu/viền nằm trong component)
   tierBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  tierText: {
-    ...TYPO.caption,
-    fontWeight: '700',
+    marginBottom: 8,
   },
   // === STATS ROW ===
   statsRow: {

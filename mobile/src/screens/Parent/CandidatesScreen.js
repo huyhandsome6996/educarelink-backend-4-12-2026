@@ -12,6 +12,9 @@
 // - Background: surfaceWarm
 // Giữ nguyên: logic getCandidates, approveCandidate, getWorkerProfile,
 //   AI insights, refresh, navigation sang CandidateProfile
+// B4 (rebase): thêm badge hạng CarePartner (Đồng/Bạc/Vàng/Kim cương)
+//   vào card ứng viên — đọc worker_tier/worker_tier_label có sẵn trong
+//   response /api/parent/tasks/<id>/candidates/ (TaskApplicationSerializer).
 // ============================================================
 
 import React, {useState, useEffect, useRef} from 'react';
@@ -22,6 +25,7 @@ import { getCandidates, approveCandidate, getWorkerProfile } from '../../api/tas
 import { getCandidateRecommendations } from '../../api/ai_recommendations';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import CarePartnerTierBadge from '../../components/CarePartnerTierBadge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Filter chips — cosmetic (không thay đổi logic filter hiện tại)
@@ -166,6 +170,8 @@ export default function CandidatesScreen() {
               <Text style={styles.cardName} numberOfLines={1} ellipsizeMode="tail">{c.worker_name}</Text>
               <Ionicons name="shield-checkmark" size={14} color={COLORS.secondary} />
             </View>
+            {/* B4 — Hạng CarePartner thật từ API (worker_tier/worker_tier_label) */}
+            <CarePartnerTierBadge user={c} size="sm" />
             <View style={styles.cardRatingRow}>
               {[1,2,3,4,5].map(i => (
                 <Ionicons
@@ -541,6 +547,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+  },
+  // B4 — khoảng thở giữa badge hạng và hàng rating
+  cardTierRow: {
+    marginTop: 2,
+    marginBottom: 2,
   },
   cardRatingText: {
     ...TYPO.caption,
