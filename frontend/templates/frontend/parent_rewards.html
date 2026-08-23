@@ -1,0 +1,543 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+<link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+<title>Tích điểm đổi quà - EduCareLink</title>
+<link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  h1, h2, h3, h4, .font-headline { font-family: 'Manrope', sans-serif; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .animate-slide-in { animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+  .voucher-card { transition: transform 0.15s ease, box-shadow 0.2s ease; }
+  .voucher-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(242,101,34,0.1); }
+  .tier-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: #F3F4F6;
+    overflow: hidden;
+  }
+  .tier-progress > div {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #F26522, #F59E0B);
+    transition: width 0.5s ease;
+  }
+  @media (max-width: 1023px) {
+    .main-content { padding-bottom: 5.5rem; }
+  }
+</style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- SIDEBAR Desktop -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab='rewards' %}
+</aside>
+
+<!-- Mobile header -->
+<header class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
+  <div class="flex items-center justify-between px-4 h-14">
+    <div class="flex items-center gap-2.5">
+      <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+      <span class="font-headline font-bold text-base">Edu<span class="text-primary">Care</span>Link</span>
+    </div>
+    <button onclick="loadAll()" class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
+      <span class="material-symbols-outlined text-textSecondary text-xl">refresh</span>
+    </button>
+  </div>
+</header>
+
+<main class="lg:ml-[260px] min-h-screen main-content">
+  <!-- Desktop top bar -->
+  <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+    <div>
+      <h1 class="font-headline font-bold text-2xl text-textPrimary">Tích điểm đổi quà</h1>
+      <p class="text-textSecondary text-sm mt-0.5">Tích điểm khi hoàn thành việc · Đổi voucher bất kỳ lúc nào</p>
+    </div>
+    <button onclick="loadAll()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-50 text-sm font-medium text-textSecondary hover:bg-gray-100 transition-all">
+      <span class="material-symbols-outlined text-lg">refresh</span> Làm mới
+    </button>
+  </div>
+
+  <div class="px-4 lg:px-8 pt-16 lg:pt-8 pb-8 space-y-6 max-w-5xl mx-auto">
+
+    <!-- Loading skeleton -->
+    <div id="loading-state" class="space-y-4">
+      <div class="skeleton h-36 w-full rounded-2xl"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="skeleton h-40 rounded-2xl"></div>
+        <div class="skeleton h-40 rounded-2xl"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state" class="hidden">
+      <div class="bg-surface rounded-2xl border border-border p-10 text-center">
+        <span class="material-symbols-outlined filled text-error text-5xl mb-3 block">cloud_off</span>
+        <h3 class="font-headline font-bold text-lg mb-2">Không thể tải dữ liệu</h3>
+        <p class="text-textSecondary text-sm mb-5">Vui lòng kiểm tra kết nối và thử lại.</p>
+        <button onclick="loadAll()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark">
+          <span class="material-symbols-outlined text-lg">refresh</span> Thử lại
+        </button>
+      </div>
+    </div>
+
+    <div id="content-state" class="hidden space-y-6">
+
+      <!-- Balance + Tier card -->
+      <section class="relative overflow-hidden rounded-2xl p-6 lg:p-8 text-white"
+               style="background: linear-gradient(135deg, #F26522 0%, #D4541E 55%, #B8431A 100%);">
+        <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/10 rounded-full"></div>
+        <div class="absolute bottom-0 left-1/3 w-24 h-24 bg-white/5 rounded-full"></div>
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+          <div>
+            <p class="text-white/80 text-sm font-medium mb-1">Điểm khả dụng</p>
+            <p id="balance-value" class="font-headline font-extrabold text-4xl lg:text-5xl tracking-tight">0</p>
+            <p class="text-white/70 text-xs mt-2">Tích lũy trọn đời: <span id="lifetime-value" class="font-semibold text-white">0</span> điểm</p>
+          </div>
+          <div class="bg-white/15 backdrop-blur-sm rounded-xl px-5 py-4 min-w-[200px]">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined filled text-amber-200">workspace_premium</span>
+              <span id="tier-label" class="font-headline font-bold text-lg">Đồng</span>
+            </div>
+            <div class="tier-progress mb-2"><div id="tier-bar" style="width:0%"></div></div>
+            <p id="tier-next" class="text-white/75 text-xs">—</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How points work -->
+      <section class="bg-surface rounded-2xl border border-border p-5">
+        <h2 class="font-headline font-bold text-base mb-3 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary filled">info</span>
+          Cách tích điểm
+        </h2>
+        <ul class="text-sm text-textSecondary space-y-1.5">
+          <li>• Mỗi <strong class="text-textPrimary">5.000đ</strong> giá trị việc hoàn thành = <strong class="text-primary">1 điểm</strong></li>
+          <li>• Đánh giá CarePartner <strong class="text-textPrimary">5 sao</strong> = <strong class="text-primary">+20 điểm</strong> bonus</li>
+          <li>• Hạng dựa trên điểm tích lũy trọn đời (không bị tụt khi đổi quà)</li>
+        </ul>
+      </section>
+
+      <!-- Vouchers -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-headline font-bold text-xl text-textPrimary">Đổi voucher</h2>
+          <span id="voucher-count" class="text-sm text-textSecondary"></span>
+        </div>
+        <div id="voucher-empty" class="hidden bg-surface rounded-2xl border border-dashed border-border p-10 text-center">
+          <span class="material-symbols-outlined text-4xl text-textMuted mb-3 block">card_giftcard</span>
+          <p class="font-headline font-bold text-textPrimary mb-1">Chưa có voucher</p>
+          <p class="text-textSecondary text-sm">Admin sẽ thêm quà đổi điểm sớm. Hãy tiếp tục tích điểm nhé!</p>
+        </div>
+        <div id="voucher-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- My redemptions -->
+      <section>
+        <h2 class="font-headline font-bold text-xl text-textPrimary mb-4">Voucher của tôi</h2>
+        <div id="redemption-empty" class="hidden text-sm text-textSecondary bg-surface rounded-xl border border-border p-5 text-center">
+          Bạn chưa đổi voucher nào.
+        </div>
+        <div id="redemption-list" class="space-y-3"></div>
+      </section>
+
+      <!-- Transaction history -->
+      <section>
+        <h2 class="font-headline font-bold text-xl text-textPrimary mb-4">Lịch sử điểm</h2>
+        <div id="tx-empty" class="hidden text-sm text-textSecondary bg-surface rounded-xl border border-border p-5 text-center">
+          Chưa có giao dịch điểm.
+        </div>
+        <div id="tx-list" class="bg-surface rounded-2xl border border-border divide-y divide-border overflow-hidden"></div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<!-- Mobile bottom nav -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-border">
+  <div class="flex justify-around items-center px-2 pt-2 pb-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+    <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center rounded-xl px-3 py-2 text-textMuted">
+      <span class="material-symbols-outlined text-xl">home</span>
+      <span class="text-[11px] mt-0.5">Trang chủ</span>
+    </a>
+    <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center rounded-xl px-3 py-2 text-textMuted">
+      <span class="material-symbols-outlined text-xl">assignment</span>
+      <span class="text-[11px] mt-0.5">Việc</span>
+    </a>
+    <a href="{% url 'frontend:parent_rewards' %}" class="flex flex-col items-center rounded-xl px-3 py-2 bg-primaryLight text-primary font-bold">
+      <span class="material-symbols-outlined filled text-xl">stars</span>
+      <span class="text-[11px] mt-0.5 font-bold">Điểm</span>
+    </a>
+    <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center rounded-xl px-3 py-2 text-textMuted">
+      <span class="material-symbols-outlined text-xl">smart_toy</span>
+      <span class="text-[11px] mt-0.5">AI</span>
+    </a>
+  </div>
+</nav>
+
+<!-- Redeem confirm modal -->
+<div id="redeem-modal" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeRedeemModal()"></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-2xl w-full max-w-md shadow-2xl p-6" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-xl bg-primaryLight flex items-center justify-center">
+          <span class="material-symbols-outlined filled text-primary text-2xl">card_giftcard</span>
+        </div>
+        <div>
+          <h3 class="font-headline font-bold text-lg">Xác nhận đổi voucher</h3>
+          <p class="text-xs text-textSecondary">Điểm sẽ bị trừ ngay, không hoàn lại</p>
+        </div>
+      </div>
+      <p class="text-sm text-textPrimary mb-1">Bạn sắp đổi:</p>
+      <p id="modal-voucher-title" class="font-headline font-bold text-base text-primary mb-1"></p>
+      <p id="modal-voucher-cost" class="text-sm text-textSecondary mb-5"></p>
+      <div class="flex gap-3">
+        <button onclick="closeRedeemModal()" class="flex-1 py-3 rounded-xl bg-gray-50 text-textSecondary font-semibold text-sm hover:bg-gray-100">Hủy</button>
+        <button id="modal-confirm-btn" onclick="confirmRedeem()" class="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primaryDark flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-lg">check</span> Đổi ngay
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '/api';
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+function escapeHtml(v) {
+  if (v == null) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function showToast(message, type = 'info') {
+  const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-amber-500', info: 'bg-orange-500' };
+  const icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
+  const toast = document.createElement('div');
+  toast.className = `fixed top-4 right-4 z-[9999] ${colors[type] || colors.info} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-slide-in max-w-sm`;
+  toast.innerHTML = `<span class="material-symbols-outlined filled text-xl">${icons[type] || icons.info}</span><span class="text-sm font-medium">${escapeHtml(message)}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3200);
+}
+
+async function apiFetch(url, options = {}) {
+  let token = localStorage.getItem('token');
+  if (!token) { window.location.href = LOGIN_URL; return new Response(null, { status: 401 }); }
+  options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+  let response = await fetch(url, options);
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const rr = await fetch(API_BASE + '/auth/token/refresh/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh: refreshToken })
+        });
+        if (rr.ok) {
+          const rd = await rr.json();
+          localStorage.setItem('token', rd.access);
+          if (rd.refresh) localStorage.setItem('refresh_token', rd.refresh);
+          options.headers['Authorization'] = 'Bearer ' + rd.access;
+          response = await fetch(url, options);
+        } else {
+          localStorage.clear();
+          window.location.href = LOGIN_URL;
+          return new Response(null, { status: 401 });
+        }
+      } catch (e) {
+        localStorage.clear();
+        window.location.href = LOGIN_URL;
+        return new Response(null, { status: 401 });
+      }
+    } else {
+      localStorage.clear();
+      window.location.href = LOGIN_URL;
+      return new Response(null, { status: 401 });
+    }
+  }
+  return response;
+}
+
+function handleLogout() {
+  if (confirm('Bạn có chắc muốn đăng xuất?')) {
+    localStorage.clear();
+    window.location.href = LOGIN_URL;
+  }
+}
+
+const TIER_META = {
+  bronze: { label: 'Đồng', icon: 'military_tech', next: 500 },
+  silver: { label: 'Bạc', icon: 'military_tech', next: 1500 },
+  gold: { label: 'Vàng', icon: 'workspace_premium', next: 3000 },
+  platinum: { label: 'Bạch Kim', icon: 'diamond', next: null },
+};
+
+function formatPoints(n) {
+  return new Intl.NumberFormat('vi-VN').format(n || 0);
+}
+
+function formatDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch { return iso; }
+}
+
+function renderSummary(data) {
+  document.getElementById('balance-value').textContent = formatPoints(data.balance);
+  document.getElementById('lifetime-value').textContent = formatPoints(data.lifetime_points);
+
+  const tier = data.tier || {};
+  document.getElementById('tier-label').textContent = tier.label || 'Đồng';
+
+  let pct = 0;
+  if (tier.next_tier_threshold != null && tier.points_to_next != null) {
+    const currentFloor = tier.next_tier_threshold - (TIER_META[tier.code]?.next ? (TIER_META[tier.code].next === tier.next_tier_threshold ? (
+      tier.code === 'bronze' ? 0 : tier.code === 'silver' ? 500 : 1500
+    ) : 0) : 0);
+    // Simpler progress: how far into current band
+    const floors = { bronze: 0, silver: 500, gold: 1500, platinum: 3000 };
+    const floor = floors[tier.code] || 0;
+    const ceiling = tier.next_tier_threshold;
+    if (ceiling) {
+      pct = Math.min(100, Math.max(0, ((data.lifetime_points - floor) / (ceiling - floor)) * 100));
+    } else {
+      pct = 100;
+    }
+    document.getElementById('tier-next').textContent =
+      `Còn ${formatPoints(tier.points_to_next)} điểm → ${tier.next_tier_label}`;
+  } else {
+    pct = 100;
+    document.getElementById('tier-next').textContent = 'Đã đạt hạng cao nhất';
+  }
+  document.getElementById('tier-bar').style.width = pct + '%';
+
+  // Transactions
+  const txs = data.transactions || [];
+  const txList = document.getElementById('tx-list');
+  const txEmpty = document.getElementById('tx-empty');
+  if (!txs.length) {
+    txEmpty.classList.remove('hidden');
+    txList.classList.add('hidden');
+  } else {
+    txEmpty.classList.add('hidden');
+    txList.classList.remove('hidden');
+    txList.innerHTML = txs.map(tx => {
+      const positive = tx.points > 0;
+      return `
+        <div class="flex items-center justify-between px-4 py-3.5">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-lg ${positive ? 'bg-green-50' : 'bg-red-50'} flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-lg ${positive ? 'text-green-600' : 'text-red-500'}">${positive ? 'add' : 'remove'}</span>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-textPrimary truncate">${escapeHtml(tx.reason_display || tx.reason)}</p>
+              <p class="text-xs text-textMuted truncate">${escapeHtml(tx.note || tx.task_title || formatDate(tx.created_at))}</p>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0 ml-3">
+            <p class="font-headline font-bold text-sm ${positive ? 'text-green-600' : 'text-red-500'}">${positive ? '+' : ''}${formatPoints(tx.points)}</p>
+            <p class="text-[10px] text-textMuted">${formatDate(tx.created_at)}</p>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+function renderVouchers(payload) {
+  const vouchers = payload.vouchers || [];
+  const list = document.getElementById('voucher-list');
+  const empty = document.getElementById('voucher-empty');
+  document.getElementById('voucher-count').textContent =
+    vouchers.length ? `${vouchers.length} quà` : '';
+
+  if (!vouchers.length) {
+    empty.classList.remove('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  list.innerHTML = vouchers.map(v => {
+    const can = v.can_redeem;
+    return `
+      <div class="voucher-card bg-surface rounded-2xl border border-border p-5 flex flex-col">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-11 h-11 rounded-xl bg-primaryLight flex items-center justify-center">
+            <span class="material-symbols-outlined filled text-primary text-2xl">card_giftcard</span>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold">
+            ${formatPoints(v.points_required)} điểm
+          </span>
+        </div>
+        <h3 class="font-headline font-bold text-base text-textPrimary mb-1">${escapeHtml(v.title)}</h3>
+        <p class="text-sm text-textSecondary mb-1 line-clamp-2">${escapeHtml(v.description || 'Voucher giảm giá')}</p>
+        <p class="text-sm font-semibold text-primary mb-4">Trị giá ${formatPoints(v.discount_value)}đ</p>
+        <button
+          onclick="openRedeemModal(${v.id}, '${escapeHtml(v.title).replace(/'/g, "\\'")}', ${v.points_required})"
+          ${can ? '' : 'disabled'}
+          class="mt-auto w-full py-2.5 rounded-xl text-sm font-bold transition-all ${can
+            ? 'bg-primary text-white hover:bg-primaryDark'
+            : 'bg-gray-100 text-textMuted cursor-not-allowed'}">
+          ${can ? 'Đổi ngay' : 'Chưa đủ điểm'}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+function renderRedemptions(items) {
+  const list = document.getElementById('redemption-list');
+  const empty = document.getElementById('redemption-empty');
+  if (!items || !items.length) {
+    empty.classList.remove('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  empty.classList.add('hidden');
+  list.innerHTML = items.map(r => `
+    <div class="bg-surface rounded-xl border border-border p-4 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="font-semibold text-sm text-textPrimary truncate">${escapeHtml(r.voucher_title)}</p>
+        <p class="text-xs text-textMuted mt-0.5">Mã: <span class="font-mono font-bold text-textPrimary tracking-wider">${escapeHtml(r.code)}</span></p>
+        <p class="text-[11px] text-textMuted mt-0.5">${formatDate(r.redeemed_at)} · ${escapeHtml(r.status_display || r.status)}</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="text-xs text-textMuted">-${formatPoints(r.points_spent)} điểm</p>
+        <p class="text-sm font-bold text-primary">${formatPoints(r.discount_value)}đ</p>
+      </div>
+    </div>`).join('');
+}
+
+let pendingVoucherId = null;
+
+function openRedeemModal(id, title, cost) {
+  pendingVoucherId = id;
+  document.getElementById('modal-voucher-title').textContent = title;
+  document.getElementById('modal-voucher-cost').textContent = `Chi phí: ${formatPoints(cost)} điểm`;
+  document.getElementById('redeem-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRedeemModal() {
+  pendingVoucherId = null;
+  document.getElementById('redeem-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function confirmRedeem() {
+  if (!pendingVoucherId) return;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">progress_activity</span> Đang đổi...';
+  try {
+    const resp = await apiFetch(API_BASE + `/rewards/vouchers/${pendingVoucherId}/redeem/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      showToast(data.error || 'Đổi voucher thất bại', 'error');
+      return;
+    }
+    showToast(`Đổi thành công! Mã: ${data.redemption?.code || ''}`, 'success');
+    closeRedeemModal();
+    await loadAll();
+  } catch (e) {
+    showToast('Lỗi kết nối. Thử lại sau.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-lg">check</span> Đổi ngay';
+  }
+}
+
+async function loadAll() {
+  document.getElementById('loading-state').classList.remove('hidden');
+  document.getElementById('error-state').classList.add('hidden');
+  document.getElementById('content-state').classList.add('hidden');
+
+  try {
+    const [sumResp, vouchResp, redResp] = await Promise.all([
+      apiFetch(API_BASE + '/rewards/summary/'),
+      apiFetch(API_BASE + '/rewards/vouchers/'),
+      apiFetch(API_BASE + '/rewards/redemptions/'),
+    ]);
+
+    if (!sumResp.ok || !vouchResp.ok) {
+      throw new Error('API error');
+    }
+
+    const summary = await sumResp.json();
+    const vouchers = await vouchResp.json();
+    const redemptions = redResp.ok ? await redResp.json() : [];
+
+    renderSummary(summary);
+    renderVouchers(vouchers);
+    renderRedemptions(redemptions);
+
+    // Sidebar name from profile (best-effort)
+    try {
+      const pr = await apiFetch(API_BASE + '/profile/');
+      if (pr.ok) {
+        const p = await pr.json();
+        const name = ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.username || 'Phụ huynh';
+        const el = document.getElementById('sidebar-name');
+        if (el) el.textContent = name;
+        const av = document.getElementById('sidebar-avatar');
+        if (av) av.src = p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26522&color=fff`;
+      }
+    } catch (_) {}
+
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('content-state').classList.remove('hidden');
+  } catch (e) {
+    console.error(e);
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+}
+
+if (!localStorage.getItem('token')) {
+  window.location.href = LOGIN_URL;
+} else {
+  loadAll();
+}
+</script>
+</body>
+</html>

@@ -99,3 +99,8 @@ class ParentCareDiaryDetailView(TemplateView):
 class ParentCareDiaryHistoryView(TemplateView):
     """Trang lịch sử nhật ký (Phụ huynh web)."""
     template_name = "frontend/parent_care_diary_history.html"
+
+
+class ParentRewardsView(TemplateView):
+    """B2 — Trang tích điểm đổi quà (Phụ huynh web)."""
+    template_name = "frontend/parent_rewards.html"

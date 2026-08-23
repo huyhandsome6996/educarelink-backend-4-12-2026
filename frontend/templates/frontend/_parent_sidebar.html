@@ -1,6 +1,6 @@
 {% load static %}
 <!-- ===== PARENT SIDEBAR PARTIAL ===== -->
-<!-- active_tab: home | tasks | diary | create | chatbot | help -->
+<!-- active_tab: home | tasks | diary | rewards | create | chatbot | help -->
 <style>
   .psb-scroll::-webkit-scrollbar { width: 0; }
   .psb-scroll { scrollbar-width: none; }
@@ -44,19 +44,25 @@
       <span>Nhật ký chăm sóc</span>
     </a>
 
-    <!-- 4. Đăng việc mới -->
+    <!-- 4. Tích điểm đổi quà (B2) -->
+    <a href="{% url 'frontend:parent_rewards' %}" class="psb-item{% if active_tab == 'rewards' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">stars</span>
+      <span>Tích điểm</span>
+    </a>
+
+    <!-- 5. Đăng việc mới -->
     <a href="{% url 'frontend:task_create_1' %}" class="psb-item{% if active_tab == 'create' %} active{% endif %}">
       <span class="material-symbols-outlined psb-icon text-xl">add_circle</span>
       <span>Đăng việc mới</span>
     </a>
 
-    <!-- 5. AI Trợ lý -->
+    <!-- 6. AI Trợ lý -->
     <a href="{% url 'frontend:chatbot' %}" class="psb-item{% if active_tab == 'chatbot' %} active{% endif %}">
       <span class="material-symbols-outlined psb-icon text-xl">smart_toy</span>
       <span>AI Trợ lý</span>
     </a>
 
-    <!-- 6. Hướng dẫn -->
+    <!-- 7. Hướng dẫn -->
     <a href="/onboarding/parent/" class="psb-item{% if active_tab == 'help' %} active{% endif %}">
       <span class="material-symbols-outlined psb-icon text-xl">help</span>
       <span>Hướng dẫn</span>

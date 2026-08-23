@@ -17,6 +17,7 @@ urlpatterns = [
     path('parent/browse-candidates/', BrowseCandidatesView.as_view(), name='browse_candidates'),
     path('parent/chatbot/', ChatbotView.as_view(), name='chatbot'),
     path('parent/review/', ReviewView.as_view(), name='review'),
+    path('parent/rewards/', ParentRewardsView.as_view(), name='parent_rewards'),
     path('worker/', WorkerFeedView.as_view(), name='worker_feed'),
     path('worker/task-detail/', TaskDetailView.as_view(), name='task_detail'),
     path('worker/my-jobs/', WorkerJobsView.as_view(), name='worker_jobs'),
