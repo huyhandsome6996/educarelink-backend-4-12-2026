@@ -66,7 +66,7 @@
 
 <!-- User Info + Logout (Bottom) -->
 <div class="px-4 py-4 border-t border-gray-100">
-  <div class="flex items-center gap-3 mb-3 px-1">
+  <a href="{% url 'frontend:parent_profile' %}" class="flex items-center gap-3 mb-3 px-1 rounded-xl hover:bg-orange-50 transition-all duration-200 cursor-pointer">
     <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center overflow-hidden ring-2 ring-orange-100 flex-shrink-0">
       <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
            src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
@@ -75,7 +75,8 @@
       <p id="sidebar-name" class="font-semibold text-sm text-gray-900 truncate">Đang tải...</p>
       <p style="font-size:11px;color:#6B7280;">Phụ huynh</p>
     </div>
-  </div>
+    <span class="material-symbols-outlined text-gray-300 text-lg">chevron_right</span>
+  </a>
   <button onclick="handleLogout()"
           class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all text-sm font-medium">
     <span class="material-symbols-outlined text-lg">logout</span>
