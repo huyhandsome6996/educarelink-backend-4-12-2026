@@ -1,0 +1,38 @@
+EduCareLink — Nền tảng kết nối Phụ huynh và CarePartner cho dịch vụ chăm sóc trẻ em an toàn, minh bạch tại Việt Nam.
+
+Bạn cần tìm người trông trẻ, đưa đón con, gia sư tại nhà? EduCareLink giúp bạn kết nối với các CarePartner (sinh viên, người chăm sóc chuyên nghiệp) đã được xác minh danh tính, với cơ chế giám sát an toàn dành riêng cho trẻ em.
+
+【TÌM VÀ NHẬN VIỆC NHANH CHÓNG】
+- Phụ huynh đăng công việc (trông trẻ, đưa đón, gia sư, dọn dẹp, nấu ăn, mua sắm) chỉ trong vài phút
+- AI gợi ý mức giá hợp lý tự động dựa trên thị trường
+- Ghép việc thông minh theo lịch rảnh hàng tuần của CarePartner
+- Xếp hạng CarePartner theo hạng Đồng - Bạc - Vàng - Kim cương dựa trên lịch sử làm việc
+
+【AN TOÀN TRẺ EM LÀ ƯU TIÊN SỐ 1】
+- Xác minh danh tính: CarePartner nộp ảnh CCCD và ảnh chân dung, admin duyệt trước khi hoạt động
+- Xác thực trong ca làm bằng mã PIN cá nhân hoặc chụp ảnh tại chỗ (hệ thống ngẫu nhiên yêu cầu — chống để máy lại rồi bỏ đi)
+- Theo dõi vị trí trực tiếp trên bản đồ với vùng an toàn (geofence) — phụ huynh nhận cảnh báo ngay khi Carepartner rời vùng
+- Cảnh báo khẩn cấp SOS hai chiều và cảnh báo khi thiết bị CarePartner mất kết nối
+- Nhật ký chăm sóc: CarePartner ghi lại hoạt động, bữa ăn, giấc ngủ của bé kèm ảnh — phụ huynh theo dõi mỗi ngày
+
+【CHAT TRỰC TIẾP TRONG THỜI GIAN CẦN THIẾT】
+- Cuộc trò chuyện giữa phụ huynh và CarePartner tự động mở khi công việc bắt đầu
+- Tự đóng sau khi công việc hoàn thành 24 giờ — giữ không gian liên lạc đúng lúc, lịch sử chat được lưu lại cho mục đích an toàn và giải quyết tranh chấp
+- Nội dung tin nhắn được kiểm duyệt tự động
+
+【THANH TOÁN MINH BẠCH】
+- Bảo lưu tiền qua ví MoMo hoặc chuyển khoản VietQR — tiền chỉ chuyển cho CarePartner khi công việc hoàn thành
+- Hoặc thanh toán tiền mặt với bảng kê hoa hồng rõ ràng cuối tháng
+- CarePartner theo dõi thu nhập và các kỳ thanh toán ngay trong app
+
+【AI TRỢ LÝ THÔNG MINH】
+- Phụ huynh chỉ cần nói "Tôi cần gia sư Toán lớp 5 tối thứ 3 ở Quận 1" — AI tự tạo công việc
+- Trợ lý riêng cho CarePartner hỗ trợ tìm việc phù hợp
+
+【ĐỐI TƯỢNG SỬ DỤNG】
+- Phụ huynh cần dịch vụ chăm sóc, đưa đón, dạy học cho con em mình
+- Sinh viên, người chăm sóc chuyên nghiệp muốn tìm việc làm linh hoạt, uy tín
+
+Tải EduCareLink ngay để trải nghiệm dịch vụ chăm sóc trẻ em an toàn và đáng tin cậy!
+
+Ghi chú: Ứng dụng hiện đang trong giai đoạn thử nghiệm. Vui lòng gửi phản hồi để chúng tôi hoàn thiện tốt hơn.
