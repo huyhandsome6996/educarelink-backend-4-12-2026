@@ -873,3 +873,23 @@ template và xoá patch script.
   hiện khi ≥ 20 review như mock cũ — đúng ý nghĩa B4 (mọi CarePartner đều có hạng).
 - Worker tự xem hạng của mình trên mobile (WorkerProfileScreen) KHÔNG thuộc phạm vi
   lượt này — B4 mobile scope chỉ 2 screen parent-side theo yêu cầu QA.
+
+---
+
+## B4 (CarePartner Tier) merged vào main (2026-08-23, 08:35 +07)
+
+- **Merge commit**: `3531140` (--no-ff, không squash — giữ lịch sử 2 commit QA-reviewed
+  `7cbde23` rebase + `7b648cc` hoàn thiện mobile/hardening).
+- **Không conflict**: branch đã rebase đúng lên main `9c14b8c` trước khi merge.
+- **Test sau merge trên main**: 341/341 PASS (279 test main gốc + 62 test tier B4
+  gồm 55 rebase + 7 validate upload). Không mất test cũ nào, không regression.
+- **Migration**: `core.0019_user_tier_and_credential_fields` áp dụng sạch — verify bằng
+  migrate từ đầu trên DB trắng (toàn bộ 0016 A1 → 0017/0018 A2 → care_diary 0001 B1 →
+  0019 B4 đều OK), `migrate --check` exit=0, `makemigrations --check` no changes.
+- **Phạm vi diff so với main cũ**: 23 file toàn bộ thuộc B4 (tier fields, tier_service,
+  tier_views, signals, migration 0019, badge web runtime-patch + mobile component,
+  validate upload bằng cấp). 0 file xoá, không đụng tests_smart_match /
+  tests_price_suggestion / care_diary / screen-template A2/B1.
+- **Push**: `9c14b8c..3531140` lên origin/main, không force-push.
+- B4 hoàn tất. Chuyển sang tính năng tiếp theo (B5 đã có nhánh
+  `feature/b5-xac-thuc-anh-trong-ca` trên remote).
