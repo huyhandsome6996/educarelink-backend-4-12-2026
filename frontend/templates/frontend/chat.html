@@ -30,7 +30,7 @@
 <header class="bg-[#F26522] text-white shadow-lg sticky top-0 z-20">
   <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3 min-w-0">
-      <a id="back-link" href="#" class="bg-white/20 hover:bg-white/30 rounded-lg w-9 h-9 flex items-center justify-center transition shrink-0">
+      <a id="back-link" href="/parent/tasks/" class="bg-white/20 hover:bg-white/30 rounded-lg w-9 h-9 flex items-center justify-center transition shrink-0" aria-label="Quay lại">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -255,9 +255,16 @@ function renderHeader(conv) {
     avatarEl.textContent = (conv.other_party.username || '?').charAt(0).toUpperCase();
   }
   document.getElementById('task-title').textContent = conv.task_title;
-  // Phụ huynh quay về danh sách việc; worker quay về việc của tôi
+}
+
+// FIX back button (QA vòng 3): set href NGAY khi trang load — không đợi
+// fetch conversation. Trước đây href chỉ được set trong renderHeader() (chỉ
+// chạy khi conversation tồn tại) → task chưa có conversation (404) hoặc lỗi
+// mạng thì back-link giữ href="#" → bấm không đi đâu (chỉ thêm # vào URL).
+function initBackLink() {
   const role = localStorage.getItem('role');
-  document.getElementById('back-link').href = role === 'worker' ? '/worker/my-jobs/' : '/parent/tasks/';
+  document.getElementById('back-link').href =
+    role === 'worker' ? '/worker/my-jobs/' : '/parent/tasks/';
 }
 
 function messageBubbleHtml(m) {
@@ -404,6 +411,8 @@ function updateSendBtn() {
 async function init() {
   showState('loading');
   stopPolling();
+  // FIX back button: gắn href trước mọi await — bấm back luôn hoạt động
+  initBackLink();
   const params = new URLSearchParams(window.location.search);
   taskId = params.get('task_id');
   if (!taskId) {
