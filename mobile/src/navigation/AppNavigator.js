@@ -128,8 +128,7 @@ function ParentTabs() {
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
-        // ⚠️ tabBarHideOnKeyboard: BẮT BUỘC GIỮ — fix lỗi bàn phím đè lên content (handoff)
-        tabBarHideOnKeyboard: true,
+        tabBarHideOnKeyboard: false,
       })}
     >
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
@@ -160,8 +159,7 @@ function WorkerTabs() {
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
-        // ⚠️ tabBarHideOnKeyboard: BẮT BUỘC GIỮ — fix lỗi bàn phím đè lên content (handoff)
-        tabBarHideOnKeyboard: true,
+        tabBarHideOnKeyboard: false,
       })}
     >
       <Tab.Screen name="WorkerFeed" component={WorkerFeedScreen} options={{ tabBarLabel: 'Tìm việc' }} />

@@ -40,7 +40,25 @@ export default function ReviewScreen() {
         { text: 'OK', onPress: () => navigation.popToTop() }
       ]);
     } catch (e) {
-      Alert.alert('Lỗi', e.response?.data?.detail || 'Gửi đánh giá thất bại.');
+      const data = e.response?.data;
+      // Lấy lỗi chi tiết từ backend
+      let msg = 'Gửi đánh giá thất bại.';
+      if (data) {
+        if (typeof data === 'string') {
+          msg = data;
+        } else if (data.detail) {
+          msg = data.detail;
+        } else if (data.task) {
+          msg = Array.isArray(data.task) ? data.task[0] : data.task;
+        } else if (data.rating) {
+          msg = Array.isArray(data.rating) ? data.rating[0] : data.rating;
+        } else if (data.comment) {
+          msg = Array.isArray(data.comment) ? data.comment[0] : data.comment;
+        } else if (data.error) {
+          msg = data.error;
+        }
+      }
+      Alert.alert('Lỗi', msg);
     } finally {
       setIsLoading(false);
     }

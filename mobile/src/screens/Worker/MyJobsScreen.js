@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, Animated, Alert, Platform, Modal, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
 import { checkConsent, grantConsent, triggerSOS, getSOSAlerts, resolveSOS } from '../../api/tracking';
@@ -22,6 +23,7 @@ const STATUS_STYLE = {
 };
 
 export default function MyJobsScreen() {
+  const navigation = useNavigation();
   const [applications, setApplications] = useState([]);
   const [activeTab, setActiveTab] = useState('accepted');
   const [isLoading, setIsLoading] = useState(true);
