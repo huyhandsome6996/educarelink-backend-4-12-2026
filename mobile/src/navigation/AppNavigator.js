@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+// N — imperative navigation handle cho notification listener (App.js)
+import { setRootNavigator } from './RootNavigation';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,6 +85,7 @@ import ChatbotScreen from '../screens/ChatbotScreen';
 
 // Image Preview (shared)
 import ImagePreviewScreen from '../screens/ImagePreviewScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -187,7 +190,9 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={setRootNavigator}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           // Chưa đăng nhập → hiện màn hình Auth
@@ -238,6 +243,7 @@ export default function AppNavigator() {
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)
@@ -254,6 +260,7 @@ export default function AppNavigator() {
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
             <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />

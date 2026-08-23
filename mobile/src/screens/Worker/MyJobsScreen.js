@@ -244,14 +244,28 @@ export default function MyJobsScreen() {
 
         {/* === B1 — NÚT GHI NHẬT KÝ CHO TASK HOÀN THÀNH (history tab) === */}
         {app.status === 'accepted' && (app.task_status === 'completed') && (
-          <TouchableOpacity
-            style={styles.diaryBtn}
-            onPress={() => navigation.navigate('CareDiaryForm', { taskId: app.task, taskTitle: app.task_title })}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="book-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.diaryBtn}
+              onPress={() => navigation.navigate('CareDiaryForm', { taskId: app.task, taskTitle: app.task_title })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="book-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
+            </TouchableOpacity>
+
+            {/* === N — CHAT (24h) CHO TASK HOÀN THÀNH — parity với web worker_jobs === */}
+            <TouchableOpacity
+              style={styles.chatBtn}
+              onPress={() => navigation.navigate('Chat', { taskId: app.task, taskTitle: app.task_title })}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Xem chat với phụ huynh (còn 24 giờ sau khi hoàn thành)"
+            >
+              <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+              <Text style={styles.chatBtnText}>Chat với phụ huynh (24h)</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {/* === LIVE TRACKING UI === */}
@@ -265,6 +279,18 @@ export default function MyJobsScreen() {
             >
               <Ionicons name="book-outline" size={16} color={COLORS.primary} />
               <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
+            </TouchableOpacity>
+
+            {/* === N — NHẮN TIN VỚI PHỤ HUYNH (cửa sổ còn hiệu lực) === */}
+            <TouchableOpacity
+              style={styles.chatBtn}
+              onPress={() => navigation.navigate('Chat', { taskId: app.task, taskTitle: app.task_title })}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Nhắn tin với phụ huynh"
+            >
+              <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+              <Text style={styles.chatBtnText}>Nhắn tin với phụ huynh</Text>
             </TouchableOpacity>
 
             {isCurrentlyTracking ? (
@@ -623,4 +649,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   diaryBtnText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
+  // N — nút chat với phụ huynh
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: SIZES.radiusSm,
+    backgroundColor: '#3B82F6',
+    marginTop: 8,
+  },
+  chatBtnText: { ...TYPO.buttonSmall, color: '#fff', fontWeight: '700' },
 });

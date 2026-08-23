@@ -29,5 +29,7 @@ urlpatterns = [
     path('parent/care-diary/', ParentCareDiaryDetailView.as_view(), name='parent_care_diary_detail'),
     path('parent/care-diary-history/', ParentCareDiaryHistoryView.as_view(), name='parent_care_diary_history'),
     path('parent/tracking/', LiveTrackingView.as_view(), name='live_tracking'),
+    # N — Cửa sổ chat Parent ↔ CarePartner (dùng chung cả 2 role)
+    path('chat/', ChatView.as_view(), name='chat'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]

@@ -181,6 +181,15 @@ class Task(models.Model):
         help_text="Lưu lại câu chat của phụ huynh nếu việc này tạo qua AI."
     )
 
+    # N — Cửa sổ chat Parent↔CarePartner: thời điểm task THẬT SỰ hoàn thành.
+    # Set tại nguồn trong TaskUpdateStatusAPIView khi status → 'completed'.
+    # Chat module (conversation) dựa vào field này để tính closes_at = completed_at + 24h.
+    # Null với task cũ (pre-migration) — chat signal dùng fallback timezone.now().
+    completed_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="N: thời điểm task chuyển 'completed' (chat đóng tại completed_at + 24h).",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
