@@ -1,1 +1,2533 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>Educarelink Admin - Quản lý hệ thống</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html { scroll-behavior: smooth; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        h1, h2, h3, h4, h5, h6,
+        .page-title, .sidebar-logo, .stat-value, .table-title,
+        .edit-modal-title, .empty-title {
+            font-family: 'Manrope', sans-serif;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex; flex-direction: column;
+            z-index: 50;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid #334155;
+        }
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .sidebar-logo img {
+            width: 40px; height: 40px; border-radius: 10px; object-fit: contain;
+        }
+        .sidebar-logo-text {
+            font-size: 20px; font-weight: 900; color: #F26522;
+        }
+        .sidebar-logo-text span { color: #94a3b8; font-weight: 500; font-size: 12px; display: block; margin-top: 2px; }
+        .sidebar-nav { padding: 16px 12px; flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-radius: 10px;
+            cursor: pointer; margin-bottom: 4px;
+            font-size: 14px; font-weight: 600; color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .nav-item:hover { background: #334155; color: #e2e8f0; }
+        .nav-item.active { background: #F26522; color: #fff; }
+        .nav-item .icon { width: 20px; text-align: center; }
+        .nav-badge {
+            margin-left: auto; background: #ef4444; color: #fff;
+            font-size: 10px; font-weight: 800; border-radius: 10px;
+            padding: 2px 8px; min-width: 20px; text-align: center;
+        }
+
+        /* === MAIN === */
+        .main { margin-left: 260px; padding: 32px; min-height: 100vh; }
+        .page-header, .stats-row, .table-container {
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 28px;
+        }
+        .page-title { font-size: 26px; font-weight: 900; color: #f1f5f9; }
+        .page-subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .refresh-btn {
+            background: #334155; border: 1px solid #475569; color: #e2e8f0;
+            padding: 10px 20px; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .refresh-btn:hover { background: #475569; transform: translateY(-1px); }
+
+        /* === HEADER ACTIONS (Bell + Logout) === */
+        .header-actions {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .notification-bell {
+            position: relative; width: 42px; height: 42px;
+            border-radius: 12px; background: #1e293b;
+            border: 1px solid #334155; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: all 0.2s;
+            color: #94a3b8;
+        }
+        .notification-bell:hover { background: #334155; color: #F26522; border-color: rgba(242,101,34,0.3); }
+        .notification-bell.has-unread { border-color: rgba(239,68,68,0.5); }
+        .notification-badge {
+            position: absolute; top: -4px; right: -4px;
+            min-width: 18px; height: 18px; border-radius: 9px;
+            background: #ef4444; color: #fff; font-size: 10px;
+            font-weight: 800; display: flex; align-items: center;
+            justify-content: center; padding: 0 4px;
+            border: 2px solid #0f172a;
+        }
+        .notification-badge:empty { display: none; }
+
+        /* Notification Dropdown */
+        .notification-dropdown {
+            display: none; position: absolute; top: 50px; right: 0;
+            width: 380px; max-height: 500px; overflow-y: auto;
+            background: #1e293b; border: 1px solid #334155;
+            border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            z-index: 200; padding: 0;
+        }
+        .notification-dropdown.show { display: block; }
+        .notification-dropdown-header {
+            padding: 16px 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .notification-dropdown-header h3 {
+            font-size: 14px; font-weight: 800; color: #f1f5f9;
+        }
+        .notification-mark-all {
+            font-size: 12px; color: #F26522; cursor: pointer;
+            font-weight: 700; background: none; border: none;
+        }
+        .notification-mark-all:hover { text-decoration: underline; }
+        .notification-list { padding: 8px; }
+        .notification-item {
+            padding: 12px 14px; border-radius: 10px; margin-bottom: 4px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .notification-item:hover { background: #334155; }
+        .notification-item.unread { background: rgba(242,101,34,0.08); border-left: 3px solid #F26522; }
+        .notification-item-title {
+            font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 3px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .notification-item-title .ai-tag {
+            font-size: 9px; background: rgba(242,101,34,0.2); color: #F26522;
+            padding: 1px 6px; border-radius: 4px; font-weight: 800;
+        }
+        .notification-item-msg {
+            font-size: 12px; color: #94a3b8; line-height: 1.5;
+        }
+        .notification-item-time {
+            font-size: 11px; color: #475569; margin-top: 4px;
+        }
+        .notification-empty {
+            padding: 40px 20px; text-align: center; color: #64748b;
+            font-size: 13px;
+        }
+        .notification-empty-icon { font-size: 32px; margin-bottom: 8px; }
+
+        .logout-btn {
+            padding: 10px 18px; border-radius: 10px;
+            background: rgba(239,68,68,0.12); color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.25);
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: #ef4444; color: #fff; transform: translateY(-1px); }
+
+        /* === STATS === */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+            padding: 20px; display: flex; align-items: center; gap: 16px;
+            transition: all 0.2s ease;
+        }
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(242, 101, 34, 0.15);
+            border-color: rgba(242, 101, 34, 0.3);
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .stat-icon.pending { background: rgba(242,101,34,0.15); color: #F26522; }
+        .stat-icon.approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .stat-icon.total { background: rgba(99,102,241,0.15); color: #6366f1; }
+        .stat-icon.locked { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .stat-value { font-size: 28px; font-weight: 900; color: #f1f5f9; }
+        .stat-label { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
+
+        /* === TABLE === */
+        .table-container {
+            background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 16px 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .table-title { font-size: 15px; font-weight: 800; color: #f1f5f9; }
+        .tab-row { display: flex; gap: 8px; }
+        .tab {
+            padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
+            cursor: pointer; border: 1px solid #334155; color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .tab.active { background: #F26522; border-color: #F26522; color: #fff; }
+        .tab:hover:not(.active) { background: #334155; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left; padding: 12px 20px; font-size: 11px; font-weight: 800;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1px solid #334155;
+        }
+        td {
+            padding: 14px 20px; font-size: 14px; border-bottom: 1px solid #1e293b;
+            vertical-align: middle;
+        }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .user-cell {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .user-avatar {
+            width: 40px; height: 40px; border-radius: 12px;
+            overflow: hidden; border: 2px solid #334155; flex-shrink: 0;
+        }
+        .user-avatar img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .user-avatar-placeholder {
+            width: 100%; height: 100%; background: #334155;
+            display: flex; align-items: center; justify-content: center;
+            color: #64748b; font-size: 14px; font-weight: 800;
+        }
+        .user-name { font-weight: 700; color: #f1f5f9; }
+        .user-username { font-size: 12px; color: #64748b; }
+        .badge {
+            padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+            display: inline-block; transition: all 0.3s ease;
+        }
+        .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .badge-approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-locked { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-parent { background: rgba(99,102,241,0.15); color: #6366f1; }
+        .badge-worker { background: rgba(242,101,34,0.15); color: #F26522; }
+        .badge-active { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-inactive { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .photo-thumbs { display: flex; gap: 6px; }
+        .photo-thumb {
+            width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+            border: 2px solid #334155; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .photo-thumb:hover { border-color: #F26522; transform: scale(1.1); }
+        .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
+            cursor: pointer; border: none; transition: all 0.2s ease;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-approve { background: #22c55e; color: #fff; }
+        .btn-approve:hover { background: #16a34a; box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
+        .btn-reject { background: #334155; color: #ef4444; border: 1px solid #475569; }
+        .btn-reject:hover { background: #ef4444; color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+        .btn-lock { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .btn-lock:hover { background: #ef4444; color: #fff; }
+        .btn-unlock { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .btn-unlock:hover { background: #22c55e; color: #fff; }
+        .btn-revoke { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+        .btn-revoke:hover { background: #f59e0b; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 11px; }
+
+        .empty-state {
+            padding: 60px 20px; text-align: center;
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 16px; font-weight: 800; color: #64748b; margin-bottom: 4px; }
+        .empty-text { font-size: 13px; color: #475569; }
+
+        /* Modal for viewing photos */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); z-index: 100;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            max-width: 90vw; max-height: 90vh; border-radius: 16px;
+            overflow: hidden; position: relative;
+        }
+        .modal-content img { max-width: 100%; max-height: 85vh; object-fit: contain; }
+        .modal-close {
+            position: absolute; top: 12px; right: 12px;
+            width: 36px; height: 36px; border-radius: 18px;
+            background: rgba(0,0,0,0.6); color: #fff; border: none;
+            font-size: 18px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .modal-label {
+            text-align: center; padding: 12px; color: #94a3b8;
+            font-size: 13px; font-weight: 600;
+        }
+
+        /* Loading */
+        .loading-spinner {
+            display: flex; justify-content: center; padding: 60px;
+        }
+        .spinner {
+            width: 36px; height: 36px; border: 3px solid #334155;
+            border-top-color: #F26522; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            padding: 14px 24px; border-radius: 12px;
+            font-size: 14px; font-weight: 700; z-index: 200;
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-success { background: #22c55e; color: #fff; }
+        .toast-error { background: #ef4444; color: #fff; }
+
+        /* Custom Edit Modal */
+        .edit-modal {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.85); z-index: 150;
+            justify-content: center; align-items: center;
+        }
+        .edit-modal.show { display: flex; }
+        .edit-modal-content {
+            background: #1e293b; width: 500px; border-radius: 16px;
+            border: 1px solid #334155; overflow: hidden;
+        }
+        .edit-modal-header {
+            padding: 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .edit-modal-title { font-size: 18px; font-weight: 800; color: #f1f5f9; }
+        .edit-modal-body { padding: 20px; }
+        .edit-modal-photos { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px;}
+        .edit-modal-photo { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid #334155; cursor: pointer; }
+        .edit-modal-photo:hover { border-color: #F26522; }
+        .edit-modal-textarea {
+            width: 100%; height: 100px; background: #0f172a; border: 1px solid #334155;
+            border-radius: 10px; padding: 12px; color: #f1f5f9; font-family: inherit;
+            resize: vertical; font-size: 14px;
+        }
+        .edit-modal-footer {
+            padding: 16px 20px; border-top: 1px solid #334155; background: #0f172a;
+            display: flex; justify-content: flex-end; gap: 12px;
+        }
+        .edit-modal-btn {
+            padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 14px;
+            cursor: pointer; border: none;
+        }
+        .btn-cancel { background: #334155; color: #e2e8f0; }
+        .btn-save { background: #F26522; color: #fff; }
+
+        /* === HAMBURGER BUTTON === */
+        .hamburger-btn {
+            display: none;
+            position: fixed; top: 16px; left: 16px; z-index: 60;
+            width: 44px; height: 44px; border-radius: 12px;
+            background: #1e293b; border: 1px solid #334155;
+            color: #e2e8f0; font-size: 20px;
+            cursor: pointer; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .hamburger-btn:hover { background: #334155; transform: translateY(-1px); }
+
+        /* === SIDEBAR OVERLAY === */
+        .sidebar-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); z-index: 40;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .sidebar-overlay.active { display: block; opacity: 1; }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 1023px) {
+            .hamburger-btn { display: flex; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; padding-top: 72px; }
+            .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+        }
+        @media (max-width: 767px) {
+            .stats-row { grid-template-columns: 1fr; }
+            .main { padding: 16px; padding-top: 72px; }
+            .action-btns { flex-direction: column; }
+            .btn { width: 100%; text-align: center; }
+            .page-title { font-size: 20px; }
+            table { font-size: 13px; }
+            td, th { padding: 10px 12px; }
+            .notification-dropdown { width: calc(100vw - 32px); right: -80px; }
+            .header-actions { gap: 6px; }
+            .logout-btn span { display: none; }
+            .refresh-btn { padding: 8px 12px; font-size: 12px; }
+        }
+
+        /* === AI CHAT PANEL === */
+        .ai-chat-panel {
+            display: none;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .ai-chat-panel.active { display: flex; flex-direction: column; }
+        .ai-chat-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+            min-height: 400px;
+            overflow: hidden;
+        }
+        .ai-chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .ai-chat-header-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: rgba(242,101,34,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .ai-chat-header-title {
+            font-size: 16px; font-weight: 800; color: #f1f5f9;
+            font-family: 'Manrope', sans-serif;
+        }
+        .ai-chat-header-sub {
+            font-size: 12px; color: #64748b; margin-top: 2px;
+        }
+        .ai-chat-header-badge {
+            margin-left: auto;
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            font-size: 11px; font-weight: 700;
+            padding: 4px 10px; border-radius: 20px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .ai-chat-header-badge::before {
+            content: '';
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #22c55e;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .ai-chat-messages::-webkit-scrollbar { width: 6px; }
+        .ai-chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .ai-chat-messages::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .ai-chat-messages::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .ai-chat-msg {
+            display: flex;
+            gap: 10px;
+            max-width: 85%;
+            animation: chatMsgIn 0.3s ease;
+        }
+        @keyframes chatMsgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-chat-msg.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        .ai-chat-msg-avatar {
+            width: 32px; height: 32px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .ai-chat-msg.ai .ai-chat-msg-avatar {
+            background: rgba(242,101,34,0.15);
+        }
+        .ai-chat-msg.user .ai-chat-msg-avatar {
+            background: rgba(99,102,241,0.15);
+        }
+        .ai-chat-msg-bubble {
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .ai-chat-msg.ai .ai-chat-msg-bubble {
+            background: #334155;
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+        }
+        .ai-chat-msg.user .ai-chat-msg-bubble {
+            background: #F26522;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .ai-chat-msg-bubble p { margin: 0 0 8px 0; }
+        .ai-chat-msg-bubble p:last-child { margin-bottom: 0; }
+        .ai-chat-msg-bubble ul, .ai-chat-msg-bubble ol { margin: 4px 0; padding-left: 20px; }
+        .ai-chat-msg-bubble li { margin: 2px 0; }
+        .ai-chat-msg-bubble strong { font-weight: 700; }
+        .ai-chat-msg-bubble code {
+            background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 4px;
+            font-size: 13px;
+        }
+        .ai-chat-msg-bubble pre {
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;
+            overflow-x: auto; margin: 8px 0;
+        }
+        .ai-chat-msg-bubble pre code {
+            background: transparent; padding: 0;
+        }
+        .ai-chat-typing {
+            display: flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .ai-chat-typing span {
+            width: 7px; height: 7px;
+            background: #64748b;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+        .ai-chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .ai-chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+        .ai-chat-input-area {
+            padding: 12px 16px 16px 16px;
+            border-top: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ai-chat-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .ai-chat-image-preview {
+            display: none;
+            position: relative;
+            padding: 8px;
+            background: #1e293b;
+            border-radius: 10px;
+            border: 1px dashed #475569;
+        }
+        .ai-chat-image-preview.visible {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ai-chat-image-preview img {
+            max-height: 60px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+        .ai-chat-image-preview .remove-image {
+            position: absolute;
+            top: 2px;
+            right: 6px;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 20px; height: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .ai-chat-image-preview .image-label {
+            font-size: 12px;
+            color: #94a3b8;
+            flex: 1;
+        }
+        .ai-chat-upload-btn {
+            width: 44px; height: 44px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .ai-chat-upload-btn:hover {
+            border-color: #F26522;
+            color: #F26522;
+            background: rgba(242,101,34,0.08);
+        }
+        .ai-chat-action-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .ai-chat-action-btn.approve {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.approve:hover {
+            background: rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.reject {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.reject:hover {
+            background: rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.ban {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.ban:hover {
+            background: rgba(239,68,68,0.3);
+        }
+        .ai-chat-action-btn.unban {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.unban:hover {
+            background: rgba(34,197,94,0.3);
+        }
+        .ai-chat-action-btn.stats {
+            background: rgba(99,102,241,0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99,102,241,0.3);
+        }
+        .ai-chat-action-btn.stats:hover {
+            background: rgba(99,102,241,0.3);
+        }
+        .ai-action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .ai-chat-input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #f1f5f9;
+            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .ai-chat-input:focus { border-color: #F26522; }
+        .ai-chat-input::placeholder { color: #64748b; }
+        .ai-chat-send-btn {
+            width: 44px; height: 44px;
+            background: #F26522;
+            border: none; border-radius: 12px;
+            color: #fff; font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .ai-chat-send-btn:hover { background: #e05518; transform: translateY(-1px); }
+        .ai-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .ai-chat-suggestions {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding: 0 20px 12px 20px;
+        }
+        .ai-chat-suggestion {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        .ai-chat-suggestion:hover {
+            border-color: #F26522;
+            color: #F26522;
+            background: rgba(242,101,34,0.08);
+        }
+        .ai-chat-welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            flex: 1;
+        }
+        .ai-chat-welcome-icon {
+            width: 64px; height: 64px;
+            border-radius: 18px;
+            background: rgba(242,101,34,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+        }
+        .ai-chat-welcome-title {
+            font-size: 20px; font-weight: 800; color: #f1f5f9;
+            font-family: 'Manrope', sans-serif;
+        }
+        .ai-chat-welcome-text {
+            font-size: 14px; color: #64748b;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        @media (max-width: 767px) {
+            .ai-chat-container { height: calc(100vh - 160px); }
+            .ai-chat-msg { max-width: 92%; }
+            .ai-chat-input-area { padding: 12px; }
+            .ai-chat-suggestions { padding: 0 12px 10px 12px; }
+            .ai-action-buttons { gap: 4px; }
+            .ai-chat-action-btn { font-size: 11px; padding: 5px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hamburger Button -->
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">&#9776;</button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <img src="/static/images/logo.png" alt="EduCareLink">
+                <div class="sidebar-logo-text">
+                    EduCareLink
+                    <span>Admin Dashboard</span>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="switchTab('pending')">
+                <span class="icon">&#9203;</span>
+                Ch&#7901; duy&#7879;t
+                <span class="nav-badge" id="pendingBadge">0</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('all')">
+                <span class="icon">&#128101;</span>
+                T&#7845;t c&#7843; Carepartner
+            </div>
+            <div class="nav-item" onclick="switchTab('tasks')">
+                <span class="icon">&#128203;</span>
+                T&#7845;t c&#7843; c&#244;ng vi&#7879;c
+                <span class="nav-badge" id="taskPendingBadge" style="display:none;">0</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('users')">
+                <span class="icon">&#128274;</span>
+                Qu&#7843;n l&#253; t&#224;i kho&#7843;n
+            </div>
+            <div class="nav-item" onclick="switchTab('credentials')">
+                <span class="icon">&#127942;</span>
+                B&#7857;ng c&#7845;p CP
+                <span class="nav-badge" id="credentialBadge" style="display:none;">0</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('notifications')">
+                <span class="icon">&#128276;</span>
+                G&#7917;i th&#244;ng b&#225;o
+            </div>
+            <div class="nav-item" onclick="switchTab('profile_changes')">
+                <span class="icon">&#9998;</span>
+                Y&#234;u c&#7847;u s&#7917;a h&#7891; s&#417;
+                <span class="nav-badge" id="profileChangeBadge" style="display:none;">0</span>
+            </div>
+            <div class="nav-item" data-tab="rewards" onclick="switchTab('rewards')">
+                <span class="icon">🎁</span>
+                Voucher / Tích điểm
+            </div>
+            <div class="nav-item" onclick="switchTab('ai_chat')">
+                <span class="icon">&#129302;</span>
+                AI Tr&#7907; l&#253;
+            </div>
+        </div>
+        <div style="padding: 12px 12px; border-top: 1px solid #334155;">
+            <button class="btn" style="width:100%;background:#F26522;color:#fff;font-weight:800;font-size:13px;padding:12px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;" onclick="seedDemoData()" id="seedBtn">
+                &#127793; T&#7841;o d&#7919; li&#7879;u m&#7851;u
+            </button>
+            <div style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">T&#7841;o t&#224;i kho&#7843;n demo cho BGK</div>
+        </div>
+        <div style="padding: 16px 12px; border-top: 1px solid #334155;">
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="adminName">Admin</div>
+            <div class="nav-item" onclick="logoutAdmin()" style="color: #ef4444;">
+                <span class="icon">&#128682;</span>
+                &#272;&#259;ng xu&#7845;t
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title" id="pageTitle">Qu&#7843;n l&#253; Carepartner</h1>
+                <p class="page-subtitle" id="pageSubtitle">Duy&#7879;t &#273;&#259;ng k&#253; v&#224; qu&#7843;n l&#253; t&#224;i kho&#7843;n sinh vi&#234;n</p>
+            </div>
+            <div class="header-actions">
+                <button class="refresh-btn" onclick="loadData()">&#128260; L&#224;m m&#7899;i</button>
+                <!-- Chu&#244;ng th&#244;ng b&#225;o AI -->
+                <div style="position:relative;">
+                    <button class="notification-bell" id="notifBell" onclick="toggleNotifDropdown()">
+                        &#128276;
+                        <span class="notification-badge" id="notifBadge"></span>
+                    </button>
+                    <div class="notification-dropdown" id="notifDropdown">
+                        <div class="notification-dropdown-header">
+                            <h3>&#129302; Th&#244;ng b&#225;o AI</h3>
+                            <button class="notification-mark-all" onclick="markAllNotifRead()">&#272;&#227; &#273;&#7885;c t&#7845;t c&#7843;</button>
+                        </div>
+                        <div class="notification-list" id="notifList">
+                            <div class="notification-empty">
+                                <div class="notification-empty-icon">&#128276;</div>
+                                Kh&#244;ng c&#243; th&#244;ng b&#225;o m&#7899;i
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- N&#250;t &#273;&#259;ng xu&#7845;t -->
+                <button class="logout-btn" onclick="logoutAdmin()">
+                    &#128682; &#272;&#259;ng xu&#7845;t
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card">
+                <div class="stat-icon pending">&#9203;</div>
+                <div>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-label">Ch&#7901; duy&#7879;t</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon approved">&#9989;</div>
+                <div>
+                    <div class="stat-value" id="statApproved">0</div>
+                    <div class="stat-label">&#272;&#227; duy&#7879;t</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon total">&#128101;</div>
+                <div>
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">T&#7893;ng c&#7897;ng</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <span class="table-title" id="tableTitle">Danh s&#225;ch ch&#7901; duy&#7879;t</span>
+            </div>
+            <div id="tableBody">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- AI Chat Panel -->
+        <div class="ai-chat-panel" id="aiChatPanel">
+            <div class="ai-chat-container">
+                <div class="ai-chat-header">
+                    <div class="ai-chat-header-icon">&#129302;</div>
+                    <div>
+                        <div class="ai-chat-header-title">AI Tr&#7907; l&#253; Qu&#7843;n tr&#7883;</div>
+                        <div class="ai-chat-header-sub">Thống kê · Phát hiện bất thường · Hành động · Phân tích ảnh</div>
+                    </div>
+                    <div class="ai-chat-header-badge">Gemini AI</div>
+                </div>
+                <div class="ai-chat-messages" id="aiChatMessages">
+                    <div class="ai-chat-welcome" id="aiChatWelcome">
+                        <div class="ai-chat-welcome-icon">&#129302;</div>
+                        <div class="ai-chat-welcome-title">Xin ch&#224;o, T&#244;i l&#224; AI Tr&#7907; l&#253;</div>
+                        <div class="ai-chat-welcome-text">Tôi có thể thống kê dữ liệu, phát hiện bất thường, duyệt/khóa tài khoản, phân tích ảnh bằng cấp và nhiều hơn nữa. Thử gõ lệnh: "duyệt user 5" hoặc "cấm user 3".</div>
+                    </div>
+                </div>
+                <div class="ai-chat-suggestions" id="aiChatSuggestions">
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Thống kê tình hình nền tảng')">Thống kê nền tảng</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Kiểm tra bất thường')">Kiểm tra bất thường</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Viết mẫu thông báo cho Carepartner')">Viết thông báo</div>
+                    <div class="ai-chat-suggestion" onclick="sendSuggestion('Gợi ý cải thiện quy trình duyệt hồ sơ')">Cải thiện quy trình</div>
+                </div>
+                <div class="ai-chat-input-area">
+                    <div class="ai-chat-image-preview" id="aiImagePreview">
+                        <img id="aiImagePreviewImg" src="" alt="Preview">
+                        <span class="image-label" id="aiImageLabel">Ảnh bằng cấp</span>
+                        <button class="remove-image" onclick="removeAiImage()">&#10005;</button>
+                    </div>
+                    <div class="ai-chat-input-row">
+                        <label class="ai-chat-upload-btn" title="Tải ảnh bằng cấp">
+                            &#128206;
+                            <input type="file" id="aiImageInput" accept="image/*" style="display:none" onchange="handleAiImageUpload(event)">
+                        </label>
+                        <textarea class="ai-chat-input" id="aiChatInput" placeholder="Nhập câu hỏi, hoặc lệnh: duyệt user 5, cấm user 3..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeInput(this)"></textarea>
+                        <button class="ai-chat-send-btn" id="aiChatSendBtn" onclick="sendAiMessage()">&#10148;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div class="modal-overlay" id="photoModal" onclick="closeModal()" style="z-index: 200;">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">&#10005;</button>
+            <img id="modalImg" src="" alt="Preview" />
+            <div class="modal-label" id="modalLabel"></div>
+        </div>
+    </div>
+
+    <!-- Edit Qualifications Modal -->
+    <div class="edit-modal" id="editModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title" id="editModalTitle">C&#7853;p nh&#7853;t b&#7857;ng c&#7845;p</div>
+                <button class="modal-close" style="position:static" onclick="closeEditModal()">&#10005;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px">&#7842;nh x&#225;c minh c&#7911;a &#7913;ng vi&#234;n:</div>
+                <div class="edit-modal-photos" id="editModalPhotos"></div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px; margin-top:16px;">B&#7857;ng c&#7845;p/Ch&#7913;ng ch&#7881; (c&#225;ch nhau b&#7873;i d&#7845;u ph&#7849;y):</div>
+                <textarea class="edit-modal-textarea" id="editModalInput" placeholder="V&#237; d&#7909;: &#272;&#7841;i h&#7885;c B&#225;ch Khoa, Ch&#7913;ng ch&#7881; s&#432; ph&#7841;m"></textarea>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeEditModal()">Hu&#7927;</button>
+                <button class="edit-modal-btn btn-save" id="editModalSaveBtn">L&#432;u thay &#273;&#7893;i</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Credential Review Modal -->
+    <div class="edit-modal" id="credentialModal">
+        <div class="edit-modal-content" style="width: 550px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title" id="credentialModalTitle">Duyệt bằng cấp</div>
+                <button class="modal-close" style="position:static" onclick="closeCredentialModal()">✕</button>
+            </div>
+            <div class="edit-modal-body" id="credentialModalBody">
+                <!-- Dynamic content -->
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeCredentialModal()">Đóng</button>
+                <button class="edit-modal-btn btn-reject" id="rejectCredBtn" onclick="reviewCredential('reject')">Từ chối</button>
+                <button class="edit-modal-btn btn-approve" id="approveCredBtn" onclick="reviewCredential('approve')">Duyệt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Notification Modal -->
+    <div class="edit-modal" id="notifModal">
+        <div class="edit-modal-content" style="width: 500px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title">Gửi thông báo</div>
+                <button class="modal-close" style="position:static" onclick="closeNotifModal()">✕</button>
+            </div>
+            <div class="edit-modal-body">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Người nhận:</div>
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="notif-target" value="all" checked onchange="toggleNotifRecipient()"> Gửi cho tất cả Carepartner
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="notif-target" value="single" onchange="toggleNotifRecipient()"> Gửi cho 1 người
+                        </label>
+                    </div>
+                    <select id="notifRecipient" style="display:none;width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;">
+                        <option value="">-- Chọn Carepartner --</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Tiêu đề:</div>
+                    <input type="text" id="notifTitle" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;" placeholder="Nhập tiêu đề thông báo"/>
+                </div>
+                <div>
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Nội dung:</div>
+                    <textarea id="notifMessage" class="edit-modal-textarea" placeholder="Nhập nội dung thông báo" style="height:120px;"></textarea>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeNotifModal()">Hủy</button>
+                <button class="edit-modal-btn btn-save" onclick="sendNotification()">Gửi thông báo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Change Review Modal -->
+    <div class="edit-modal" id="profileChangeModal">
+        <div class="edit-modal-content" style="width: 500px;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title">Duyệt yêu cầu thay đổi hồ sơ</div>
+                <button class="modal-close" style="position:static" onclick="closeProfileChangeModal()">✕</button>
+            </div>
+            <div class="edit-modal-body">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Carepartner:</div>
+                    <div style="font-weight:700; font-size:15px; color:#f1f5f9;" id="profileChangeWorkerName">-</div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">Đánh giá / Ghi chú (tuỳ chọn):</div>
+                    <textarea id="profileChangeAdminReview" class="edit-modal-textarea" placeholder="Nhập lý do duyệt hoặc từ chối..." style="height:100px;"></textarea>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn" onclick="reviewProfileChange('reject')" style="background:#ef4444;color:#fff;border:none;padding:10px 24px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">Từ chối</button>
+                <button class="edit-modal-btn btn-save" onclick="reviewProfileChange('approve')">Duyệt thay đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentTab = 'pending';
+
+        // ===== AUTH =====
+        function getAuthToken() { return localStorage.getItem('token'); }
+
+        async function apiFetch(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            const token = getAuthToken();
+            if (token) options.headers['Authorization'] = `Bearer ${token}`;
+            if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+            let response = await fetch(url, options);
+            if (response.status === 401) {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (!refreshToken) { handleAuthError(response); return response; }
+                try {
+                    const refreshRes = await fetch(`${API_BASE}/auth/token/refresh/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refresh: refreshToken })
+                    });
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        localStorage.setItem('token', data.access);
+                        if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+                        options.headers['Authorization'] = `Bearer ${data.access}`;
+                        response = await fetch(url, options);
+                    } else { handleAuthError(response); }
+                } catch (e) { handleAuthError(response); }
+            }
+            return response;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function checkAdminAuth() {
+            const token = getAuthToken();
+            if (!token) { window.location.href = '/login/?next=/admin-dashboard/'; return false; }
+            return true;
+        }
+
+        // Fix M21: kiểm tra is_staff client-side để redirect user không phải
+        // admin về login ngay, thay vì để user thấy page skeleton rồi bị 403.
+        // Backend đã bảo vệ API (IsAdminUser) — đây chỉ là UX improvement.
+        async function checkAdminRole() {
+            try {
+                const res = await apiFetch(`${API_BASE}/profile/`);
+                if (!res.ok) { window.location.href = '/login/?next=/admin-dashboard/'; return false; }
+                const user = await res.json();
+                if (!user.is_staff && !user.is_superuser) {
+                    document.getElementById('tableBody').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">&#128683;</div>
+                            <div class="empty-title">Không có quyền truy cập</div>
+                            <div class="empty-text">Tài khoản của bạn không phải Admin.<br><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập bằng tài khoản Admin</a></div>
+                        </div>`;
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.error('Admin role check failed:', e);
+                return false;
+            }
+        }
+
+        // ===== LOAD DATA =====
+        async function loadData() {
+            if (currentTab === 'rewards') { 
+                loadRewardsAdmin(); 
+                return; 
+            }
+            if (!checkAdminAuth()) return;
+            try {
+                if (currentTab === 'pending') {
+                    const res = await apiFetch(`${API_BASE}/admin/pending-workers/`);
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
+                    const pending = await res.json();
+                    renderPendingTable(pending);
+                    const allRes = await apiFetch(`${API_BASE}/admin/all-workers/`);
+                    if (allRes.status === 401 || allRes.status === 403) { handleAuthError(allRes); return; }
+                    const allWorkers = await allRes.json();
+                    const approved = allWorkers.filter(w => w.is_approved).length;
+                    document.getElementById('statPending').textContent = pending.length;
+                    document.getElementById('statApproved').textContent = approved;
+                    document.getElementById('statTotal').textContent = allWorkers.length;
+                    document.getElementById('pendingBadge').textContent = pending.length;
+                } else if (currentTab === 'all') {
+                    const res = await apiFetch(`${API_BASE}/admin/all-workers/`);
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
+                    const allWorkers = await res.json();
+                    renderAllTable(allWorkers);
+                    const pending = allWorkers.filter(w => !w.is_approved).length;
+                    const approved = allWorkers.filter(w => w.is_approved).length;
+                    document.getElementById('statPending').textContent = pending;
+                    document.getElementById('statApproved').textContent = approved;
+                    document.getElementById('statTotal').textContent = allWorkers.length;
+                    document.getElementById('pendingBadge').textContent = pending;
+                } else if (currentTab === 'users') {
+                    const res = await apiFetch(`${API_BASE}/admin/all-users/`);
+                    if (res.status === 401 || res.status === 403) { handleAuthError(res); return; }
+                    const allUsers = await res.json();
+                    renderUsersTable(allUsers);
+                    const locked = allUsers.filter(u => !u.is_active).length;
+                    const workers = allUsers.filter(u => u.role === 'worker').length;
+                    document.getElementById('statPending').textContent = locked;
+                    document.querySelector('#statsRow .stat-icon.pending').textContent = '🔒';
+                    document.querySelectorAll('.stat-label')[0].textContent = 'Đã khoá';
+                    document.getElementById('statApproved').textContent = workers;
+                    document.querySelector('#statsRow .stat-icon.approved').textContent = '👥';
+                    document.querySelectorAll('.stat-label')[1].textContent = 'Carepartner';
+                    document.getElementById('statTotal').textContent = allUsers.length;
+                    document.querySelectorAll('.stat-label')[2].textContent = 'Tổng người dùng';
+                }
+            } catch (e) {
+                console.error('Error loading data:', e);
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#10060;</div>
+                        <div class="empty-title">Không thể kết nối đến server</div>
+                        <div class="empty-text">Kiểm tra backend Django có đang chạy không</div>
+                    </div>`;
+            }
+        }
+
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#128274;</div>
+                        <div class="empty-title">Phiên đăng nhập hết hạn</div>
+                        <div class="empty-text"><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập lại</a></div>
+                    </div>`;
+                localStorage.removeItem('token');
+            } else if (response.status === 403) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#128683;</div>
+                        <div class="empty-title">Không có quyền truy cập</div>
+                        <div class="empty-text">Bạn cần đăng nhập bằng tài khoản Admin để truy cập trang này.<br><a href="/login/?next=/admin-dashboard/" style="color:#F26522;font-weight:700">Đăng nhập bằng tài khoản Admin</a></div>
+                    </div>`;
+            }
+        }
+
+        // ===== RENDER TABLES =====
+        function renderPendingTable(workers) {
+            resetStatsIcons();
+            if (workers.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#127881;</div>
+                        <div class="empty-title">Không có yêu cầu chờ duyệt</div>
+                        <div class="empty-text">Tất cả Carepartner đã được xét duyệt</div>
+                    </div>`;
+                return;
+            }
+            let html = `<table><thead><tr>
+                <th>Carepartner</th><th>Liên hệ</th><th>Ảnh xác minh</th><th>Ngày đăng ký</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
+            workers.forEach(w => {
+                const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
+                const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                const qualsStr = escapeHtml((w.qualifications || []).join(', '));
+                html += `<tr>
+                    <td><div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
+                        <div class="user-avatar">${w.selfie_photo ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` : `<div class="user-avatar-placeholder">${initial}</div>`}</div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(w.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(w.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div></td>
+                    <td><div class="photo-thumbs">
+                        ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="Mặt trước CCCD" title="CCCD trước" />` : ''}
+                        ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="Mặt sau CCCD" title="CCCD sau" />` : ''}
+                        ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Ảnh chân dung" title="Chân dung" />` : ''}
+                        ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp/Chứng chỉ" title="Bằng cấp" />` : ''}
+                    </div></td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
+                    <td><div class="action-btns">
+                        <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${w.id}','_blank')">&#128065; Xem hồ sơ</button>
+                        <button class="btn btn-approve" data-action="approve" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9989; Duyệt</button>
+                        <button class="btn btn-reject" data-action="reject" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#10005; Từ chối</button>
+                    </div></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+            attachTableEventListeners();
+        }
+
+        function renderAllTable(workers) {
+            resetStatsIcons();
+            if (workers.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#128237;</div>
+                        <div class="empty-title">Chưa có Carepartner nào</div>
+                        <div class="empty-text">Chờ sinh viên đăng ký nhé</div>
+                    </div>`;
+                return;
+            }
+            let html = `<table><thead><tr>
+                <th>Carepartner</th><th>Liên hệ</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Ảnh xác minh</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
+            workers.forEach(w => {
+                const name = `${escapeHtml(w.last_name || '')} ${escapeHtml(w.first_name || '')}`.trim() || escapeHtml(w.username);
+                const initial = (w.first_name || w.username || '?')[0].toUpperCase();
+                const qualsStr = escapeHtml((w.qualifications || []).join(', '));
+                html += `<tr>
+                    <td><div class="user-cell" style="cursor:pointer;" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">
+                        <div class="user-avatar">${w.selfie_photo ? `<img src="${escapeHtml(w.selfie_photo)}" alt="${name}" />` : `<div class="user-avatar-placeholder">${initial}</div>`}</div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(w.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(w.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(w.phone_number || '—')}</div></td>
+                    <td><span class="badge ${w.is_approved ? 'badge-approved' : 'badge-pending'}">${w.is_approved ? '&#9989; Đã duyệt' : '&#9203; Chờ duyệt'}</span></td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(w.date_joined)}</td>
+                    <td><div class="photo-thumbs">
+                        ${w.id_card_front ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_front)}" data-action="photo" data-src="${escapeHtml(w.id_card_front)}" data-label="CCCD trước" />` : ''}
+                        ${w.id_card_back ? `<img class="photo-thumb" src="${escapeHtml(w.id_card_back)}" data-action="photo" data-src="${escapeHtml(w.id_card_back)}" data-label="CCCD sau" />` : ''}
+                        ${w.selfie_photo ? `<img class="photo-thumb" src="${escapeHtml(w.selfie_photo)}" data-action="photo" data-src="${escapeHtml(w.selfie_photo)}" data-label="Chân dung" />` : ''}
+                        ${w.certificate_photo ? `<img class="photo-thumb" src="${escapeHtml(w.certificate_photo)}" data-action="photo" data-src="${escapeHtml(w.certificate_photo)}" data-label="Bằng cấp" />` : ''}
+                    </div></td>
+                    <td><div class="action-btns">
+                        <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${w.id}','_blank')">&#128065; Xem hồ sơ</button>
+                        <button class="btn btn-approve btn-sm" style="background:#0284c7" data-action="edit" data-id="${w.id}" data-username="${escapeHtml(w.username)}" data-quals="${qualsStr}" data-idfront="${escapeHtml(w.id_card_front||'')}" data-idback="${escapeHtml(w.id_card_back||'')}" data-selfie="${escapeHtml(w.selfie_photo||'')}" data-cert="${escapeHtml(w.certificate_photo||'')}">&#9998; Sửa bằng cấp</button>
+                        <button class="btn btn-revoke btn-sm" data-action="revoke" data-id="${w.id}" data-username="${escapeHtml(w.username)}">&#9888; Tước quyền</button>
+                    </div></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+            attachTableEventListeners();
+        }
+
+        function renderUsersTable(users) {
+            if (users.length === 0) {
+                document.getElementById('tableBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#128237;</div>
+                        <div class="empty-title">Chưa có người dùng nào</div>
+                    </div>`;
+                return;
+            }
+            let html = `<table><thead><tr>
+                <th>Người dùng</th><th>Liên hệ</th><th>Vai trò</th><th>Đăng nhập</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Thao tác</th>
+            </tr></thead><tbody>`;
+            users.forEach(u => {
+                const name = `${escapeHtml(u.last_name || '')} ${escapeHtml(u.first_name || '')}`.trim() || escapeHtml(u.username);
+                const roleLabel = u.role === 'worker' ? 'Carepartner' : 'Phụ huynh';
+                const roleClass = u.role === 'worker' ? 'badge-worker' : 'badge-parent';
+                const activeLabel = u.is_active ? 'Hoạt động' : 'Đã khoá';
+                const activeClass = u.is_active ? 'badge-active' : 'badge-inactive';
+                const authProvider = u.auth_provider || 'email';
+                const authLabels = { 'email': 'Email/Mật khẩu', 'google': 'Google', 'facebook': 'Facebook' };
+                const authColors = { 'email': '#64748b', 'google': '#4285F4', 'facebook': '#1877F2' };
+                const authLabel = authLabels[authProvider] || 'Email/Mật khẩu';
+                const authColor = authColors[authProvider] || '#64748b';
+                html += `<tr>
+                    <td><div class="user-cell">
+                        <div class="user-avatar"><div class="user-avatar-placeholder">${(u.first_name || u.username || '?')[0].toUpperCase()}</div></div>
+                        <div><div class="user-name">${name}</div><div class="user-username">@${escapeHtml(u.username)}</div></div>
+                    </div></td>
+                    <td><div style="font-size:13px">${escapeHtml(u.email || '—')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(u.phone_number || '—')}</div></td>
+                    <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+                    <td><span class="badge" style="background:${authColor}20;color:${authColor};font-size:11px;">${authLabel}</span></td>
+                    <td><span class="badge ${activeClass}">${activeLabel}</span></td>
+                    <td style="font-size:13px;color:#94a3b8">${escapeHtml(u.date_joined)}</td>
+                    <td><div class="action-btns">
+                        ${u.is_active
+                            ? `<button class="btn btn-lock btn-sm" data-action="toggle-active" data-id="${u.id}" data-username="${escapeHtml(u.username)}" data-active="true">&#128274; Khoá</button>`
+                            : `<button class="btn btn-unlock btn-sm" data-action="toggle-active" data-id="${u.id}" data-username="${escapeHtml(u.username)}" data-active="false">&#128275; Mở khoá</button>`
+                        }
+                        ${u.role === 'worker' ? `<button class="btn btn-revoke btn-sm" data-action="revoke" data-id="${u.id}" data-username="${escapeHtml(u.username)}">&#9888; Tước quyền CP</button>` : ''}
+                    </div></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('tableBody').innerHTML = html;
+            attachTableEventListeners();
+        }
+
+        function resetStatsIcons() {
+            document.querySelector('#statsRow .stat-icon.pending').textContent = '⏳';
+            document.querySelector('#statsRow .stat-icon.approved').textContent = '✅';
+            document.querySelectorAll('.stat-label')[0].textContent = 'Chờ duyệt';
+            document.querySelectorAll('.stat-label')[1].textContent = 'Đã duyệt';
+            document.querySelectorAll('.stat-label')[2].textContent = 'Tổng cộng';
+        }
+
+        // ===== EVENT DELEGATION =====
+        function attachTableEventListeners() {
+            document.querySelectorAll('[data-action="edit"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openEditModal(parseInt(this.dataset.id), this.dataset.username, this.dataset.quals,
+                        this.dataset.idfront, this.dataset.idback, this.dataset.selfie, this.dataset.cert,
+                        this.dataset.action === 'edit' && this.textContent.includes('Duyệt'));
+                });
+            });
+            document.querySelectorAll('[data-action="approve"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openEditModal(parseInt(this.dataset.id), this.dataset.username, this.dataset.quals,
+                        this.dataset.idfront, this.dataset.idback, this.dataset.selfie, this.dataset.cert, true);
+                });
+            });
+            document.querySelectorAll('[data-action="reject"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    rejectWorker(parseInt(this.dataset.id), this.dataset.username);
+                });
+            });
+            document.querySelectorAll('[data-action="photo"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openModal(this.dataset.src, this.dataset.label);
+                });
+            });
+            document.querySelectorAll('[data-action="toggle-active"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    toggleUserActive(parseInt(this.dataset.id), this.dataset.username, this.dataset.active === 'true');
+                });
+            });
+            document.querySelectorAll('[data-action="revoke"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    revokeCarepartner(parseInt(this.dataset.id), this.dataset.username);
+                });
+            });
+            // Task moderation buttons (approve/reject task)
+            document.querySelectorAll('[data-action="approve_task"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    adminTaskAction(parseInt(this.dataset.taskId), 'approve_task');
+                });
+            });
+            document.querySelectorAll('[data-action="reject_task"]').forEach(el => {
+                el.addEventListener('click', function() {
+                    adminTaskAction(parseInt(this.dataset.taskId), 'reject_task');
+                });
+            });
+        }
+
+        let editingUserId = null;
+        let isApprovingMode = false;
+
+        function openEditModal(userId, username, currentQuals, idFront, idBack, selfie, cert, isApprove = false) {
+            editingUserId = userId;
+            isApprovingMode = isApprove;
+            document.getElementById('editModalTitle').textContent = isApprove ? `Duyệt tài khoản @${escapeHtml(username)}` : `Cập nhật bằng cấp @${escapeHtml(username)}`;
+            document.getElementById('editModalInput').value = currentQuals;
+            document.getElementById('editModalSaveBtn').textContent = isApprove ? '✅ Lưu & Duyệt' : 'Lưu thay đổi';
+            let photosHtml = '';
+            if (idFront) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idFront)}" data-action="modal-photo" data-src="${escapeHtml(idFront)}" data-label="CCCD trước" />`;
+            if (idBack) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(idBack)}" data-action="modal-photo" data-src="${escapeHtml(idBack)}" data-label="CCCD sau" />`;
+            if (selfie) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(selfie)}" data-action="modal-photo" data-src="${escapeHtml(selfie)}" data-label="Chân dung" />`;
+            if (cert) photosHtml += `<img class="edit-modal-photo" src="${escapeHtml(cert)}" data-action="modal-photo" data-src="${escapeHtml(cert)}" data-label="Bằng cấp" />`;
+            if (!photosHtml) photosHtml = '<div style="font-size:12px;color:#64748b">Không có ảnh xác minh</div>';
+            document.getElementById('editModalPhotos').innerHTML = photosHtml;
+            document.querySelectorAll('[data-action="modal-photo"]').forEach(el => {
+                el.addEventListener('click', function() { openModal(this.dataset.src, this.dataset.label); });
+            });
+            document.getElementById('editModal').classList.add('show');
+            document.getElementById('editModalSaveBtn').onclick = async function() {
+                const val = document.getElementById('editModalInput').value;
+                const arr = val.split(',').map(s => s.trim()).filter(s => s !== '');
+                try {
+                    const res = await apiFetch(`${API_BASE}/admin/workers/${editingUserId}/action/`, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: isApprovingMode ? 'approve' : 'update_qualifications', qualifications: arr }),
+                    });
+                    const data = await res.json();
+                    showToast(data.message, 'success');
+                    closeEditModal();
+                    loadData();
+                } catch (e) { showToast('Lỗi khi thực hiện', 'error'); }
+            };
+        }
+
+        function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
+
+        async function rejectWorker(userId, username) {
+            if (!confirm(`Từ chối tài khoản @${username}? Tài khoản sẽ bị vô hiệu hoá.`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/workers/${userId}/action/`, {
+                    method: 'POST', body: JSON.stringify({ action: 'reject' }),
+                });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) { showToast('Lỗi khi từ chối tài khoản', 'error'); }
+        }
+
+        async function toggleUserActive(userId, username, currentlyActive) {
+            const action = currentlyActive ? 'khoá' : 'mở khoá';
+            if (!confirm(`Bạn có chắc muốn ${action} tài khoản @${username}?`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/users/${userId}/toggle-active/`, { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) { showToast('Lỗi khi thay đổi trạng thái tài khoản', 'error'); }
+        }
+
+        async function revokeCarepartner(userId, username) {
+            if (!confirm(`Tước quyền Carepartner của @${username}?\n\nTài khoản sẽ chuyển về vai trò Phụ huynh và mất tất cả quyền của Carepartner.`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/users/${userId}/revoke-carepartner/`, { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                loadData();
+            } catch (e) { showToast('Lỗi khi tước quyền Carepartner', 'error'); }
+        }
+
+        // ===== SIDEBAR TOGGLE =====
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        // ===== TAB SWITCHING =====
+        let currentCredSubmissionId = null;
+        let allWorkersList = [];
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            resetStatsIcons();
+            const navItems = document.querySelectorAll('.nav-item');
+            if (tab === 'pending') {
+                navItems[0].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Danh sách chờ duyệt';
+                document.getElementById('pageTitle').textContent = 'Quản lý Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Duyệt đăng ký và quản lý tài khoản sinh viên';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
+            } else if (tab === 'all') {
+                navItems[1].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Tất cả Carepartner';
+                document.getElementById('pageTitle').textContent = 'Tất cả Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Quản lý bằng cấp và tước quyền';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
+            } else if (tab === 'tasks') {
+                navItems[2].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Tất cả công việc đã đăng';
+                document.getElementById('pageTitle').textContent = 'Kiểm duyệt công việc';
+                document.getElementById('pageSubtitle').textContent = 'Xem và kiểm duyệt tất cả công việc phụ huynh đăng tải';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadAllTasks();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'users') {
+                navItems[3].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Quản lý tài khoản';
+                document.getElementById('pageTitle').textContent = 'Quản lý tài khoản';
+                document.getElementById('pageSubtitle').textContent = 'Khoá/mở tài khoản và tước quyền Carepartner';
+                document.querySelector('.stats-row').style.display = '';
+                document.querySelector('.table-container').style.display = '';
+            } else if (tab === 'credentials') {
+                navItems[4].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Bằng cấp chờ duyệt';
+                document.getElementById('pageTitle').textContent = 'Duyệt bằng cấp Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Xem minh chứng và viết đánh giá bằng cấp';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadCredentialSubmissions();
+                return;
+            } else if (tab === 'notifications') {
+                navItems[5].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Gửi thông báo';
+                document.getElementById('pageTitle').textContent = 'Gửi thông báo cho Carepartner';
+                document.getElementById('pageSubtitle').textContent = 'Gửi thông báo cho 1 hoặc tất cả Carepartner';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = 'none';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                openNotifModal();
+                return;
+            } else if (tab === 'profile_changes') {
+                navItems[6].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Yêu cầu thay đổi hồ sơ';
+                document.getElementById('pageTitle').textContent = 'Duyệt yêu cầu thay đổi hồ sơ';
+                document.getElementById('pageSubtitle').textContent = 'Xem và duyệt yêu cầu thay đổi thông tin từ Carepartner';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadProfileChangeRequests();
+                return;
+            } else if (tab === 'rewards') {
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    const isActive = (el.getAttribute('onclick') || '').includes("'rewards'") || el.dataset.tab === 'rewards';
+                    el.classList.toggle('active', isActive);
+                });
+                document.getElementById('pageTitle').textContent = 'Voucher / Tích điểm';
+            document.getElementById('pageSubtitle').textContent = 'Tạo voucher đổi quà và điều chỉnh điểm phụ huynh';
+            document.querySelector('.stats-row').style.display = 'none';
+            document.querySelector('.table-container').style.display = '';
+            document.getElementById('tableTitle').textContent = 'Quản lý voucher & điểm';
+            document.getElementById('aiChatPanel').classList.remove('active');
+            document.querySelector('.refresh-btn').style.display = '';
+            loadRewardsAdmin();
+            if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'ai_chat') {
+                nnavItems[8].classList.add('active');
+                document.getElementById('pageTitle').textContent = 'AI Trợ lý';
+                document.getElementById('pageSubtitle').textContent = 'Hỗ trợ quản lý nền tảng bằng trí tuệ nhân tạo';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = 'none';
+                document.getElementById('aiChatPanel').classList.add('active');
+                document.querySelector('.refresh-btn').style.display = 'none';
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            }
+            // Show refresh btn and hide chat panel for non-AI tabs
+            document.querySelector('.refresh-btn').style.display = '';
+            document.getElementById('aiChatPanel').classList.remove('active');
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            loadData();
+            if (window.innerWidth < 1024) closeSidebar();
+        }
+
+        // ===== ALL TASKS MODERATION =====
+        let allTasksFilter = 'all'; // all | pending | approved | rejected | needs_review
+
+        async function loadAllTasks() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-tasks/?moderation_status=${allTasksFilter}`);
+                if (!res.ok) {
+                    document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi tải dữ liệu</div></div>';
+                    return;
+                }
+                const tasks = await res.json();
+
+                // Update badge cho needs_review
+                const badge = document.getElementById('taskPendingBadge');
+                const needsReviewCount = tasks.filter(t => t.moderation_status === 'needs_review').length;
+                if (needsReviewCount > 0) { badge.style.display = ''; badge.textContent = needsReviewCount; }
+                else { badge.style.display = 'none'; }
+
+                // Render filter bar
+                let html = `
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="taskSearchInput" placeholder="Tìm theo tiêu đề, phụ huynh..." 
+                            style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;" 
+                            oninput="filterTasksTable()" />
+                        <select id="taskStatusFilter" onchange="changeTaskFilter(this.value)" 
+                            style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff;">
+                            <option value="all" ${allTasksFilter==='all'?'selected':''}>Tất cả trạng thái</option>
+                            <option value="pending" ${allTasksFilter==='pending'?'selected':''}>⏳ Chờ AI duyệt</option>
+                            <option value="approved" ${allTasksFilter==='approved'?'selected':''}>✅ Đã duyệt</option>
+                            <option value="needs_review" ${allTasksFilter==='needs_review'?'selected':''}>⚠️ Cần admin xem</option>
+                            <option value="rejected" ${allTasksFilter==='rejected'?'selected':''}>❌ Bị từ chối</option>
+                        </select>
+                        <button class="btn" style="padding:8px 14px;background:#F26522;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;" onclick="loadAllTasks()">🔄 Làm mới</button>
+                    </div>
+                `;
+
+                if (tasks.length === 0) {
+                    html += '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Không có công việc nào</div><div class="empty-text">Chưa có phụ huynh nào đăng việc</div></div>';
+                    document.getElementById('tableBody').innerHTML = html;
+                    return;
+                }
+
+                html += `<table id="tasksTable"><thead><tr>
+                    <th>Tiêu đề</th>
+                    <th>Phụ huynh</th>
+                    <th>Danh mục</th>
+                    <th>Giá</th>
+                    <th>Trạng thái task</th>
+                    <th>Kiểm duyệt AI</th>
+                    <th>Hành động</th>
+                </tr></thead><tbody>`;
+
+                for (const t of tasks) {
+                    const modStatus = t.moderation_status || 'pending';
+                    const modVerdict = (t.moderation_verdict || '').substring(0, 80);
+                    const modBadge = {
+                        'approved': '<span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">✅ Đã duyệt</span>',
+                        'rejected': '<span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">❌ Từ chối</span>',
+                        'needs_review': '<span style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">⚠️ Cần xem</span>',
+                        'pending': '<span style="background:#e0e7ff;color:#4f46e5;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">⏳ Chờ AI</span>',
+                    }[modStatus] || modStatus;
+
+                    const taskStatusBadge = {
+                        'open': '<span style="background:#fff7ed;color:#ea580c;padding:3px 8px;border-radius:6px;font-size:11px;">Đang tìm</span>',
+                        'in_progress': '<span style="background:#dbeafe;color:#2563eb;padding:3px 8px;border-radius:6px;font-size:11px;">Đang làm</span>',
+                        'completed': '<span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:6px;font-size:11px;">Hoàn thành</span>',
+                        'cancelled': '<span style="background:#f3f4f6;color:#6b7280;padding:3px 8px;border-radius:6px;font-size:11px;">Đã hủy</span>',
+                    }[t.status] || t.status;
+
+                    const hasGeofence = t.geofence_lat && t.geofence_lng;
+                    const geofenceIcon = hasGeofence ? ' 📍' : '';
+
+                    html += `<tr>
+                        <td>
+                            <div style="font-weight:600;font-size:13px;">${escapeHtml(t.title)}${geofenceIcon}</div>
+                            <div style="font-size:11px;color:#64748b;margin-top:2px;">${escapeHtml((t.description||'').substring(0,80))}${(t.description||'').length>80?'...':''}</div>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleDateString('vi-VN') : '—'} · 📍 ${escapeHtml(t.location||'—')}</div>
+                        </td>
+                        <td><div style="font-size:13px;">${escapeHtml(t.parent_name||'—')}</div><div style="font-size:11px;color:#64748b;">@${escapeHtml(t.parent_username||'')}</div></td>
+                        <td><span style="background:#f1f5f9;padding:3px 8px;border-radius:6px;font-size:11px;">${escapeHtml(t.category_name||'Khác')}</span></td>
+                        <td><div style="font-weight:600;color:#F26522;font-size:13px;">${parseInt(t.price||0).toLocaleString('vi-VN')}đ</div></td>
+                        <td>${taskStatusBadge}</td>
+                        <td>
+                            ${modBadge}
+                            ${modVerdict ? `<div style="font-size:10px;color:#64748b;margin-top:4px;max-width:200px;" title="${escapeHtml(t.moderation_verdict||'')}">${escapeHtml(modVerdict)}...</div>` : ''}
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                <button class="btn btn-approve" data-task-id="${t.id}" data-action="approve_task" title="Duyệt công việc">✅ Duyệt</button>
+                                <button class="btn btn-reject" data-task-id="${t.id}" data-action="reject_task" title="Từ chối & xóa công việc">❌ Xóa</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('tableBody').innerHTML = html;
+            } catch (err) {
+                document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi: ' + escapeHtml(err.message) + '</div></div>';
+            }
+        }
+
+        function changeTaskFilter(value) {
+            allTasksFilter = value;
+            loadAllTasks();
+        }
+
+        function filterTasksTable() {
+            const query = document.getElementById('taskSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#tasksTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        async function adminTaskAction(taskId, action) {
+            const confirmMsg = action === 'approve_task'
+                ? 'Duyệt công việc này? Công việc sẽ được duyệt thủ công bởi admin.'
+                : 'XÓA công việc này? Hành động không thể hoàn tác.';
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-tasks/${taskId}/moderate/`, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: action })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(data.message || 'Đã xử lý', 'success');
+                    loadAllTasks();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast(err.detail || err.error || 'Lỗi xử lý', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi mạng: ' + err.message, 'error');
+            }
+        }
+
+        // ===== CREDENTIAL SUBMISSIONS =====
+        async function loadCredentialSubmissions() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/?status=pending`);
+                if (!res.ok) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi tải dữ liệu</div></div>'; return; }
+                const submissions = await res.json();
+                
+                // Update badge
+                const badge = document.getElementById('credentialBadge');
+                if (submissions.length > 0) { badge.style.display = ''; badge.textContent = submissions.length; }
+                else { badge.style.display = 'none'; }
+                
+                if (submissions.length === 0) {
+                    document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-title">Không có bằng cấp chờ duyệt</div><div class="empty-text">Tất cả đã được xử lý</div></div>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>Carepartner</th><th>Ảnh minh chứng</th><th>Mô tả</th><th>Ngày gửi</th><th>Hành động</th></tr></thead><tbody>';
+                for (const s of submissions) {
+                    // Fix H6: thay inline onclick (dễ XSS qua photo URL) bằng
+                    // data attribute + event delegation. Photo URL có thể chứa
+                    // single quote → break JS string → injection.
+                    const photoData = s.certificate_photo ? escapeHtml(s.certificate_photo) : '';
+                    const reviewData = JSON.stringify({
+                        id: s.id,
+                        name: s.worker_name || '',
+                        username: s.worker_username || '',
+                        photo: s.certificate_photo || '',
+                        desc: s.description || '',
+                        worker_id: s.worker_id,
+                    }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;');
+                    html += `<tr>
+                        <td><div class="user-cell"><div class="user-avatar"><div class="user-avatar-placeholder">${(s.worker_username||'?')[0].toUpperCase()}</div></div><div><div class="user-name">${escapeHtml(s.worker_name)}</div><div class="user-username">@${escapeHtml(s.worker_username)}</div></div></div></td>
+                        <td>${s.certificate_photo ? `<img src="${photoData}" class="photo-thumb" data-photo-src="${photoData}" data-photo-label="Bằng cấp - ${escapeHtml(s.worker_username)}" alt="Bằng cấp"/>` : '<span style="color:#64748b">Không có ảnh</span>'}</td>
+                        <td style="max-width:250px;color:#94a3b8;font-size:13px;">${escapeHtml(s.description) || '<span style="color:#64748b">Không có mô tả</span>'}</td>
+                        <td style="color:#94a3b8;font-size:13px;">${s.created_at}</td>
+                        <td><div class="action-btns">
+                            <button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="window.open('/worker/profile/?worker_id=${s.worker_id}','_blank')">&#128065; Xem hồ sơ</button>
+                            <button class="btn btn-approve btn-sm" data-credential-review="${reviewData}">Duyệt & Đánh giá</button>
+                        </div></td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                document.getElementById('tableBody').innerHTML = html;
+                // Fix H6: gắn event delegation cho photo thumb và credential review button
+                document.querySelectorAll('#tableBody [data-photo-src]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        openModal(this.getAttribute('data-photo-src'), this.getAttribute('data-photo-label'));
+                    });
+                });
+                document.querySelectorAll('#tableBody [data-credential-review]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const data = JSON.parse(this.getAttribute('data-credential-review'));
+                        openCredentialReview(data.id, data.name, data.username, data.photo, data.desc, data.worker_id);
+                    });
+                });
+            } catch (e) { document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-title">Lỗi kết nối</div></div>'; }
+        }
+
+        function openCredentialReview(id, name, username, photo, desc, workerId) {
+            currentCredSubmissionId = id;
+            document.getElementById('credentialModalTitle').textContent = `Duyệt bằng cấp - ${name}`;
+            // Fix H6: escape photo URL và desc trước khi inject vào innerHTML.
+            const safePhoto = escapeHtml(photo);
+            const safeDesc = escapeHtml(desc);
+            const safeUsername = escapeHtml(username);
+            document.getElementById('credentialModalBody').innerHTML = `
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">@${safeUsername}</div>
+                ${photo ? `<img src="${safePhoto}" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #334155;margin-bottom:12px;cursor:pointer;" data-modal-src="${safePhoto}" data-modal-label="Bằng cấp - ${safeUsername}" alt="Bằng cấp"/>` : ''}
+                ${desc ? `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;color:#94a3b8;">${safeDesc}</div>` : ''}
+                <a href="/worker/profile/?worker_id=${workerId}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#6366f1;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:12px;">&#128065; Xem hồ sơ đầy đủ</a>
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">Đánh giá bằng cấp (Admin viết):</div>
+                <textarea id="credAdminReview" class="edit-modal-textarea" placeholder="Ví dụ: Bằng cử nhân Sư phạm Toán đã được xác minh." style="height:100px;"></textarea>
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;margin-top:12px;">Cập nhật bằng cấp cho Carepartner (cách nhau bởi dấu phẩy):</div>
+                <input type="text" id="credQualifications" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;color:#f1f5f9;font-size:14px;" placeholder="VD: Cử nhân Sư phạm, Chứng chỉ IELTS 7.0"/>
+            `;
+            // Fix H6: gắn event delegation cho ảnh trong modal (sau khi innerHTML set)
+            document.querySelectorAll('#credentialModalBody [data-modal-src]').forEach(el => {
+                el.addEventListener('click', function() {
+                    openModal(this.getAttribute('data-modal-src'), this.getAttribute('data-modal-label'));
+                });
+            });
+            document.getElementById('credentialModal').classList.add('show');
+        }
+
+        function closeCredentialModal() {
+            document.getElementById('credentialModal').classList.remove('show');
+            currentCredSubmissionId = null;
+        }
+
+        async function reviewCredential(action) {
+            if (!currentCredSubmissionId) return;
+            const adminReview = document.getElementById('credAdminReview').value.trim();
+            const qualsInput = document.getElementById('credQualifications').value.trim();
+            const qualifications = qualsInput ? qualsInput.split(',').map(q => q.trim()).filter(q => q) : [];
+            
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/${currentCredSubmissionId}/review/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, admin_review: adminReview, qualifications })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeCredentialModal();
+                    loadCredentialSubmissions();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        }
+
+        // ===== SEND NOTIFICATION =====
+        async function openNotifModal() {
+            document.getElementById('notifTitle').value = '';
+            document.getElementById('notifMessage').value = '';
+            document.querySelector('input[name="notif-target"][value="all"]').checked = true;
+            document.getElementById('notifRecipient').style.display = 'none';
+            
+            // Load workers list
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/all-workers/`);
+                if (res.ok) {
+                    allWorkersList = await res.json();
+                    const sel = document.getElementById('notifRecipient');
+                    sel.innerHTML = '<option value="">-- Chọn Carepartner --</option>';
+                    for (const w of allWorkersList) {
+                        sel.innerHTML += `<option value="${w.id}">${escapeHtml(w.first_name || '')} ${escapeHtml(w.last_name || '')} (@${w.username})</option>`;
+                    }
+                }
+            } catch (e) {}
+            
+            document.getElementById('notifModal').classList.add('show');
+        }
+
+        function closeNotifModal() {
+            document.getElementById('notifModal').classList.remove('show');
+        }
+
+        function toggleNotifRecipient() {
+            const val = document.querySelector('input[name="notif-target"]:checked').value;
+            document.getElementById('notifRecipient').style.display = val === 'single' ? 'block' : 'none';
+        }
+
+        async function sendNotification() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            const targetMode = document.querySelector('input[name="notif-target"]:checked').value;
+            const recipientId = document.getElementById('notifRecipient').value;
+            
+            if (!title || !message) { showToast('Vui lòng nhập tiêu đề và nội dung', 'error'); return; }
+            if (targetMode === 'single' && !recipientId) { showToast('Vui lòng chọn Carepartner', 'error'); return; }
+            
+            try {
+                const body = { title, message };
+                if (targetMode === 'all') body.send_to_all = true;
+                else body.recipient_id = parseInt(recipientId);
+                
+                const res = await apiFetch(`${API_BASE}/admin/send-notification/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeNotifModal();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        }
+
+        // ===== MODAL =====
+        function openModal(src, label) {
+            document.getElementById('modalImg').src = src;
+            document.getElementById('modalLabel').textContent = label;
+            document.getElementById('photoModal').classList.add('show');
+        }
+        function closeModal() { document.getElementById('photoModal').classList.remove('show'); }
+
+        // ===== LOGOUT =====
+        function logoutAdmin() {
+            localStorage.clear();
+            window.location.href = '/login/';
+        }
+
+        // ===== AI NOTIFICATION BELL =====
+        let notifDropdownOpen = false;
+        let adminNotifIds = []; // track notification IDs for mark-read
+
+        function toggleNotifDropdown() {
+            notifDropdownOpen = !notifDropdownOpen;
+            const dd = document.getElementById('notifDropdown');
+            if (notifDropdownOpen) {
+                dd.classList.add('show');
+                loadAdminNotifications();
+            } else {
+                dd.classList.remove('show');
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const bellArea = document.getElementById('notifBell')?.parentElement;
+            if (bellArea && !bellArea.contains(e.target)) {
+                notifDropdownOpen = false;
+                document.getElementById('notifDropdown')?.classList.remove('show');
+            }
+        });
+
+        async function loadAdminUnreadCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/notifications/unread-count/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('notifBadge');
+                    const bell = document.getElementById('notifBell');
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        bell.classList.add('has-unread');
+                    } else {
+                        badge.textContent = '';
+                        bell.classList.remove('has-unread');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function loadAdminNotifications() {
+            try {
+                const res = await apiFetch(`${API_BASE}/notifications/`);
+                if (res.ok) {
+                    const notifications = await res.json();
+                    adminNotifIds = notifications.map(n => n.id);
+                    renderNotifList(notifications);
+                }
+            } catch (e) {}
+        }
+
+        function renderNotifList(notifications) {
+            const list = document.getElementById('notifList');
+            if (!notifications || notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="notification-empty">
+                        <div class="notification-empty-icon">&#128276;</div>
+                        Không có thông báo mới
+                    </div>`;
+                return;
+            }
+
+            // Show most recent 20, AI alerts first
+            const sorted = [...notifications].sort((a, b) => {
+                const aIsAI = a.title && a.title.includes('[AI') ? 1 : 0;
+                const bIsAI = b.title && b.title.includes('[AI') ? 1 : 0;
+                if (aIsAI !== bIsAI) return bIsAI - aIsAI;
+                return new Date(b.created_at) - new Date(a.created_at);
+            }).slice(0, 20);
+
+            list.innerHTML = sorted.map(n => {
+                const isAI = n.title && n.title.includes('[AI');
+                const isUnread = !n.is_read && !n.is_broadcast || (n.is_broadcast && true);
+                const timeAgo = getTimeAgo(n.created_at);
+                return `
+                    <div class="notification-item ${isUnread ? 'unread' : ''}">
+                        <div class="notification-item-title">
+                            ${isAI ? '<span class="ai-tag">AI</span>' : ''}
+                            ${escapeHtml(n.title || 'Thông báo')}
+                        </div>
+                        <div class="notification-item-msg">${escapeHtml(n.message || '')}</div>
+                        <div class="notification-item-time">${timeAgo}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function markAllNotifRead() {
+            try {
+                await apiFetch(`${API_BASE}/notifications/mark-read/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notification_ids: null })
+                });
+                loadAdminUnreadCount();
+                loadAdminNotifications();
+            } catch (e) {}
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getTimeAgo(dateStr) {
+            const now = new Date();
+            const date = new Date(dateStr);
+            const diffMs = now - date;
+            const diffMin = Math.floor(diffMs / 60000);
+            if (diffMin < 1) return 'Vừa xong';
+            if (diffMin < 60) return diffMin + ' phút trước';
+            const diffHour = Math.floor(diffMin / 60);
+            if (diffHour < 24) return diffHour + ' giờ trước';
+            const diffDay = Math.floor(diffHour / 24);
+            return diffDay + ' ngày trước';
+        }
+
+        // ===== ADMIN NAME =====
+        function displayAdminName() {
+            const username = localStorage.getItem('admin_username') || 'Admin';
+            const el = document.getElementById('adminName');
+            if (el) el.textContent = '\uD83D\uDC4B ' + username;
+        }
+
+        // ===== TOAST =====
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ===== SEED DEMO DATA =====
+        async function seedDemoData() {
+            const btn = document.getElementById('seedBtn');
+            if (!confirm('T\u1ea1o d\u1eef li\u1ec7u m\u1eabu cho ban gi\u00e1m kh\u1ea3o?\n\nT\u1ea5t c\u1ea3 t\u00e0i kho\u1ea3n demo s\u1ebd \u0111\u01b0\u1ee3c t\u1ea1o (m\u1eadt kh\u1ea9u: Demo@2026).')) return;
+            btn.textContent = '\u23f3 \u0110ang t\u1ea1o...';
+            btn.disabled = true;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/seed-demo-data/`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    loadData();
+                } else {
+                    showToast(data.error || 'L\u1ed7i khi t\u1ea1o d\u1eef li\u1ec7u', 'error');
+                }
+            } catch (e) { showToast('L\u1ed7i k\u1ebft n\u1ed1i', 'error'); }
+            btn.innerHTML = '&#127793; T&#7841;o d&#7919; li&#7879;u m&#7851;u';
+            btn.disabled = false;
+        }
+
+        // ===== PROFILE CHANGE REQUESTS =====
+        let currentProfileChangeId = null;
+
+        async function loadProfileChangeRequests() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/?status=pending`);
+                if (res.ok) {
+                    const requests = await res.json();
+                    if (requests.length === 0) {
+                        tbody.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;margin-bottom:12px;">&#128203;</div><div style="font-size:16px;font-weight:700;">Không có yêu cầu nào</div><div style="font-size:13px;margin-top:4px;">Tất cả yêu cầu đã được xử lý</div></div>';
+                        return;
+                    }
+                    const fieldLabels = { first_name: 'Họ', last_name: 'Tên', phone_number: 'SĐT', address: 'Địa chỉ', email: 'Email' };
+                    tbody.innerHTML = requests.map(r => {
+                        const changesHtml = Object.entries(r.proposed_changes).map(([f, v]) => 
+                            `<span style="background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:6px;font-size:12px;margin:2px;">${fieldLabels[f] || f}: ${escapeHtml(String(v))}</span>`
+                        ).join(' ');
+                        return `<div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;margin-bottom:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <div>
+                                    <div style="font-weight:800;font-size:15px;color:#f1f5f9;">${escapeHtml(r.worker_name)}</div>
+                                    <div style="font-size:12px;color:#64748b;">@${escapeHtml(r.worker_username)} • ${r.created_at}</div>
+                                </div>
+                                <span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;">${escapeHtml(r.status_display)}</span>
+                            </div>
+                            <div style="margin-bottom:12px;"><div style="font-size:12px;color:#64748b;margin-bottom:6px;">Thay đổi yêu cầu:</div>${changesHtml}</div>
+                            <div style="display:flex;gap:8px;">
+                                <button onclick="window.open('/worker/profile/?worker_id=${r.worker_id}','_blank')" style="background:#6366f1;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;">&#128065; Xem hồ sơ</button>
+                                <button onclick="openProfileChangeReviewModal(${r.id}, '${escapeHtml(r.worker_name)}')" style="background:#22c55e;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;">Duyệt / Từ chối</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) { showToast('Lỗi tải yêu cầu', 'error'); }
+        }
+
+        function openProfileChangeReviewModal(requestId, workerName) {
+            currentProfileChangeId = requestId;
+            document.getElementById('profileChangeWorkerName').textContent = workerName;
+            document.getElementById('profileChangeAdminReview').value = '';
+            document.getElementById('profileChangeModal').classList.add('show');
+        }
+
+        function closeProfileChangeModal() {
+            document.getElementById('profileChangeModal').classList.remove('show');
+            currentProfileChangeId = null;
+        }
+
+        async function reviewProfileChange(action) {
+            if (!currentProfileChangeId) return;
+            const adminReview = document.getElementById('profileChangeAdminReview').value.trim();
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/${currentProfileChangeId}/review/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, admin_review: adminReview })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    closeProfileChangeModal();
+                    loadProfileChangeRequests();
+                    loadProfileChangeBadgeCount();
+                } else {
+                    showToast(data.error || 'Lỗi', 'error');
+                }
+            } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        }
+
+        async function loadProfileChangeBadgeCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/profile-change-requests/?status=pending`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('profileChangeBadge');
+                    if (data.length > 0) { badge.style.display = ''; badge.textContent = data.length; }
+                    else { badge.style.display = 'none'; }
+                }
+            } catch (e) {}
+        }
+
+        // ===== AI CHAT =====
+        let aiChatHistory = [];
+        let aiChatLoading = false;
+        let aiImageFile = null; // Lưu file ảnh bằng cấp để gửi kèm
+
+        function handleChatKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAiMessage();
+            }
+        }
+
+        function autoResizeInput(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        function sendSuggestion(text) {
+            document.getElementById('aiChatInput').value = text;
+            sendAiMessage();
+        }
+
+        // === Xử lý tải ảnh bằng cấp ===
+        function handleAiImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('Chỉ chấp nhận file ảnh (PNG, JPG, WEBP)');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('Ảnh quá lớn, tối đa 10MB');
+                return;
+            }
+            aiImageFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('aiImagePreviewImg').src = e.target.result;
+                document.getElementById('aiImageLabel').textContent = file.name;
+                document.getElementById('aiImagePreview').classList.add('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeAiImage() {
+            aiImageFile = null;
+            document.getElementById('aiImageInput').value = '';
+            document.getElementById('aiImagePreview').classList.remove('visible');
+            document.getElementById('aiImagePreviewImg').src = '';
+        }
+
+        function renderAiMessage(content, isUser, responseType) {
+            const welcome = document.getElementById('aiChatWelcome');
+            if (welcome) welcome.style.display = 'none';
+            const suggestions = document.getElementById('aiChatSuggestions');
+            if (suggestions) suggestions.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `ai-chat-msg ${isUser ? 'user' : 'ai'}`;
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'ai-chat-msg-avatar';
+            avatarDiv.textContent = isUser ? '👤' : '🤖';
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'ai-chat-msg-bubble';
+
+            if (isUser) {
+                bubbleDiv.textContent = content;
+            } else {
+                bubbleDiv.innerHTML = formatAiResponse(content);
+            }
+
+            msgDiv.appendChild(avatarDiv);
+            msgDiv.appendChild(bubbleDiv);
+
+            // Nếu AI gợi ý hành động → thêm nút bấm
+            if (!isUser && responseType === 'message') {
+                addActionButtons(content, bubbleDiv);
+            }
+            if (!isUser && responseType === 'action_result') {
+                bubbleDiv.style.borderLeft = '3px solid #22c55e';
+            }
+            if (!isUser && responseType === 'statistics') {
+                bubbleDiv.style.borderLeft = '3px solid #818cf8';
+            }
+            if (!isUser && responseType === 'image_analysis') {
+                bubbleDiv.style.borderLeft = '3px solid #F26522';
+            }
+
+            const messagesContainer = document.getElementById('aiChatMessages');
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            return msgDiv;
+        }
+
+        function addActionButtons(content, bubbleDiv) {
+            // Tìm lệnh gợi ý trong nội dung AI để tạo nút bấm nhanh
+            const actionContainer = document.createElement('div');
+            actionContainer.className = 'ai-action-buttons';
+            let hasActions = false;
+
+            // Tìm "cấm user X" hoặc "khóa user X"
+            const banMatches = content.match(/(cấm|khóa|ban)\s+user\s+(\d+)/gi);
+            if (banMatches) {
+                banMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn ban';
+                        btn.textContent = `Khóa user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "duyệt user X"
+            const approveMatches = content.match(/duyệt\s+user\s+(\d+)/gi);
+            if (approveMatches) {
+                approveMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn approve';
+                        btn.textContent = `Duyệt user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "mở user X" hoặc "mở khóa user X"
+            const unbanMatches = content.match(/(mở|mở khóa)\s+user\s+(\d+)/gi);
+            if (unbanMatches) {
+                unbanMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn unban';
+                        btn.textContent = `Mở khóa user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            // Tìm "từ chối user X"
+            const rejectMatches = content.match(/từ chối\s+user\s+(\d+)/gi);
+            if (rejectMatches) {
+                rejectMatches.forEach(match => {
+                    const idMatch = match.match(/(\d+)/);
+                    if (idMatch) {
+                        const btn = document.createElement('button');
+                        btn.className = 'ai-chat-action-btn reject';
+                        btn.textContent = `Từ chối user ${idMatch[1]}`;
+                        btn.onclick = () => {
+                            document.getElementById('aiChatInput').value = match;
+                            sendAiMessage();
+                        };
+                        actionContainer.appendChild(btn);
+                        hasActions = true;
+                    }
+                });
+            }
+
+            if (hasActions) {
+                bubbleDiv.appendChild(actionContainer);
+            }
+        }
+
+        function formatAiResponse(text) {
+            // Convert markdown-like formatting to HTML
+            if (!text) return '';
+            let html = escapeHtml(text);
+
+            // Code blocks
+            html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            // Headings
+            html = html.replace(/^###\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin-top:8px;">$1</strong>');
+            // Bold
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Italic (single asterisk, not **)
+            html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+            // Numbered lists
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;"><strong>$1.</strong> $2</div>');
+            // Bullet lists
+            html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<div style="margin-left:18px;margin-bottom:4px;display:flex;gap:6px;"><span style="color:#F26522;font-weight:700;">•</span><span>$1</span></div>');
+            // Line breaks
+            html = html.replace(/\n/g, '<br>');
+            // Clean up <br> before block elements
+            html = html.replace(/<br>(\s*<(?:div|strong|pre))/g, '$1');
+
+            return html;
+        }
+
+        function showAiTyping() {
+            const welcome = document.getElementById('aiChatWelcome');
+            if (welcome) welcome.style.display = 'none';
+            const suggestions = document.getElementById('aiChatSuggestions');
+            if (suggestions) suggestions.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'ai-chat-msg ai';
+            msgDiv.id = 'aiTypingIndicator';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'ai-chat-msg-avatar';
+            avatarDiv.textContent = '🤖';
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'ai-chat-msg-bubble';
+            bubbleDiv.innerHTML = '<div class="ai-chat-typing"><span></span><span></span><span></span></div>';
+
+            msgDiv.appendChild(avatarDiv);
+            msgDiv.appendChild(bubbleDiv);
+
+            const messagesContainer = document.getElementById('aiChatMessages');
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function removeAiTyping() {
+            const indicator = document.getElementById('aiTypingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function sendAiMessage() {
+            if (aiChatLoading) return;
+
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            if (!message && !aiImageFile) return;
+
+            input.value = '';
+            input.style.height = 'auto';
+            aiChatLoading = true;
+            document.getElementById('aiChatSendBtn').disabled = true;
+
+            // Hiển thị tin nhắn user (kèm ảnh nếu có)
+            const displayMsg = aiImageFile ? `[Ảnh: ${aiImageFile.name}] ${message}` : message;
+            renderAiMessage(displayMsg, true);
+            aiChatHistory.push({ role: 'user', text: message || 'Phân tích ảnh bằng cấp này' });
+
+            // Show typing indicator
+            showAiTyping();
+
+            try {
+                // Chuẩn bị FormData (hỗ trợ gửi ảnh + text)
+                const formData = new FormData();
+                if (message) formData.append('message', message);
+                if (aiImageFile) formData.append('image', aiImageFile);
+                // Gửi history dạng JSON string
+                formData.append('history', JSON.stringify(aiChatHistory.slice(-20).map(h => ({ role: h.role, text: h.text }))));
+
+                const res = await apiFetch(`${API_BASE}/admin/chatbot/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                removeAiTyping();
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const aiResponse = data.response || data.message || data.reply || 'Xin lỗi, tôi không thể xử lý yêu cầu này.';
+                    const responseType = data.type || 'message';
+                    renderAiMessage(aiResponse, false, responseType);
+                    aiChatHistory.push({ role: 'model', text: aiResponse });
+                } else {
+                    const errorData = await res.json().catch(() => ({}));
+                    renderAiMessage('Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại. ' + (errorData.error || ''), false);
+                }
+            } catch (e) {
+                removeAiTyping();
+                renderAiMessage('Xin lỗi, không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.', false);
+            }
+
+            // Xóa ảnh preview sau khi gửi
+            removeAiImage();
+            aiChatLoading = false;
+            document.getElementById('aiChatSendBtn').disabled = false;
+            input.focus();
+        }
+
+        // ===== INIT =====
+        displayAdminName();
+        // Fix M21: kiểm tra admin role client-side trước khi load data — nếu user
+        // không phải admin, hiển thị thông báo lỗi thay vì để API 403 tràn về.
+        (async () => {
+            if (await checkAdminRole()) {
+                loadData();
+                loadCredentialBadgeCount();
+                loadProfileChangeBadgeCount();
+                loadAdminUnreadCount();
+                setInterval(loadData, 30000);
+                setInterval(loadCredentialBadgeCount, 30000);
+                setInterval(loadProfileChangeBadgeCount, 30000);
+                setInterval(loadAdminUnreadCount, 30000);  // Poll notification badge every 30s
+            }
+        })();
+
+        async function loadCredentialBadgeCount() {
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/credential-submissions/?status=pending`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('credentialBadge');
+                    if (data.length > 0) { badge.style.display = ''; badge.textContent = data.length; }
+                    else { badge.style.display = 'none'; }
+                }
+            } catch (e) {}
+        }
+    </script>
+    <script src="/static/js/admin_rewards.js"></script>
+    <!-- Mobile App-like Transition -->
+    <style>
+        @media (max-width: 767px) {
+            body {
+                opacity: 0;
+                transform: translateY(15px) scale(0.98);
+                transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            body.page-loaded {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            body.page-exit {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.98);
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.innerWidth <= 767) {
+                requestAnimationFrame(() => { document.body.classList.add('page-loaded'); });
+                document.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        const href = link.getAttribute('href');
+                        const target = link.getAttribute('target');
+                        if (href && href.startsWith('/') && !href.startsWith('#') && target !== '_blank' && !e.ctrlKey && !e.metaKey) {
+                            e.preventDefault();
+                            document.body.classList.remove('page-loaded');
+                            document.body.classList.add('page-exit');
+                            setTimeout(() => { window.location.href = href; }, 300);
+                        }
+                    });
+                });
+            } else {
+                document.body.style.opacity = '1';
+                document.body.style.transform = 'none';
+            }
+        });
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted && window.innerWidth <= 767) {
+                document.body.classList.remove('page-exit');
+                document.body.classList.add('page-loaded');
+            }
+        });
+    </script>
+    <script src="/static/js/admin_rewards.js"></script>
+</body>
+</html>
