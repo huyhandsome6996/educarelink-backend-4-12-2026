@@ -12,3 +12,6 @@ class CoreConfig(AppConfig):
 
         from .anomaly_scheduler import start_anomaly_scheduler
         start_anomaly_scheduler()
+
+        # B4 — signal refresh tier khi task completed / review mới
+        from . import signals  # noqa: F401

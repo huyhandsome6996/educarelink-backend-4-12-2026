@@ -12,6 +12,13 @@ class User(AbstractUser):
         ('google', 'Google'),
         ('facebook', 'Facebook'),
     )
+    # B4 — Phân hạng CarePartner (Đồng / Bạc / Vàng / Kim cương)
+    class CarePartnerTier(models.TextChoices):
+        BRONZE = 'bronze', 'Hạng Đồng'
+        SILVER = 'silver', 'Hạng Bạc'
+        GOLD = 'gold', 'Hạng Vàng'
+        DIAMOND = 'diamond', 'Hạng Kim cương'
+
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='parent')
     auth_provider = models.CharField(max_length=20, choices=AUTH_PROVIDER_CHOICES, default='email', help_text="Phương thức đăng ký/đăng nhập")
     avatar_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL ảnh đại diện từ Google/Facebook")
@@ -23,7 +30,26 @@ class User(AbstractUser):
     
     # Trạng thái duyệt tài khoản (Admin duyệt cho Carepartner)
     is_approved = models.BooleanField(default=False, help_text="Admin duyệt tài khoản Carepartner")
-    
+
+    # B4 — Phân hạng CarePartner
+    tier = models.CharField(
+        max_length=20,
+        choices=CarePartnerTier.choices,
+        default=CarePartnerTier.BRONZE,
+        db_index=True,
+        help_text="Hạng CarePartner: bronze/silver/gold/diamond (chỉ meaningful khi role=worker & is_approved)",
+    )
+    tier_updated_at = models.DateTimeField(null=True, blank=True, help_text="Lần cuối hạng được cập nhật")
+    tier_override = models.BooleanField(
+        default=False,
+        help_text="True = admin đã set hạng thủ công; không tự tính lại trừ khi force",
+    )
+    tier_meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Snapshot số liệu khi tính hạng: completed_jobs, avg_rating, review_count, has_cert, has_specialized",
+    )
+
     # Ảnh xác minh danh tính (dành cho Carepartner)
     id_card_front = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt trước CCCD")
     id_card_back = models.ImageField(upload_to='id_cards/', blank=True, null=True, help_text="Ảnh mặt sau CCCD")
@@ -201,9 +227,21 @@ class CredentialSubmission(models.Model):
         ('approved', 'Đã duyệt'),
         ('rejected', 'Bị từ chối'),
     )
+    # B4 — Loại minh chứng bằng cấp (phục vụ phân hạng CarePartner)
+    CREDENTIAL_TYPE_CHOICES = (
+        ('certificate', 'Chứng chỉ'),
+        ('degree', 'Bằng cấp'),
+        ('license', 'Giấy phép / license'),
+        ('other', 'Khác'),
+    )
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='credential_submissions')
     certificate_photo = models.ImageField(upload_to='credential_submissions/', blank=True, null=True, help_text="Ảnh bằng cấp/chứng chỉ minh chứng")
     description = models.TextField(blank=True, null=True, help_text="Mô tả về bằng cấp, kinh nghiệm")
+    # B4 — Phân hạng CarePartner: metadata bằng cấp + flag chuyên ngành (điều kiện Hạng Kim cương)
+    credential_type = models.CharField(max_length=30, choices=CREDENTIAL_TYPE_CHOICES, default='certificate', help_text="Loại minh chứng: chứng chỉ / bằng cấp / license")
+    title = models.CharField(max_length=200, blank=True, default='', help_text="Tên chứng chỉ/bằng cấp (VD: Chứng chỉ Sư phạm)")
+    field = models.CharField(max_length=100, blank=True, default='', help_text="Lĩnh vực (VD: Toán, Tiếng Anh, Mầm non)")
+    is_specialized = models.BooleanField(default=False, help_text="True = bằng cấp chuyên ngành — điều kiện Hạng Kim cương (admin đánh dấu khi duyệt)")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     admin_review = models.TextField(blank=True, null=True, help_text="Admin viết đánh giá bằng cấp cho Carepartner")
     reviewed_at = models.DateTimeField(blank=True, null=True)

@@ -702,3 +702,174 @@ Bổ sung theo spec gốc: "Parents can review this history to monitor their chi
 - **BUG-01 đến BUG-10**: toàn bộ đã sửa và verify bằng test.
 - **Remote branch đã xoá**: `feature/b1-nhat-ky-cham-soc`
 - **Chuyển sang B5.**
+
+---
+
+## B4 — Rebase B4-Rank-CarePartner lên main mới nhất (2026-08-23)
+
+**Coding Agent**: thực hiện theo yêu cầu QA Agent — nhánh `B4-Rank-CarePartner` cũ được code trên
+snapshot `e7ab6c0` (trước khi A1/A2/B1 merge vào main), nếu merge thẳng sẽ **xoá sạch A2 + B1**
+(979 dòng tests_smart_match, 351 dòng tests_price_suggestion, 811 dòng care_diary/tests,
+toàn bộ UI A2/B1 mobile + web, parent_profile.html...). Rebase bằng cách tái áp dụng
+delta B4 thật lên main `9c14b8c`.
+
+### Phương pháp (thay vì git rebase thuần)
+- Delta thật của B4 so với base `e7ab6c0` = 24 file; chỉ 7 file trùng vùng main đã đổi
+  (settings, core/models, core/serializers, core/urls, services/__init__,
+  browse_candidates.html, worker_profile.html). Lịch sử 30 commit của B4 chứa nhiều
+  vòng "rewrite → restore" trên cùng file → rebase thuần sẽ conflict lặp và kết quả
+  cuối vẫn mang bản rewrite cũ che mất fix của main.
+- **Cách làm**: nhánh mới `B4-Rank-CarePartner-rebased` từ `origin/main` (9c14b8c):
+  - Copy nguyên vẹn 14 file B4-only: `core/services/tier_service.py`, `core/tier_views.py`,
+    `core/signals.py`, `core/admin.py`, `core/apps.py`, `backend/tier_config.py`,
+    3 file JS badge web + `_b4_tier_scripts.html`, `CarePartnerTierBadge.js`,
+    `carePartnerTier.js`, `CandidatesScreen.js` + `CandidateProfileScreen.js` +
+    `CandidatesScreen.styles.js` (2 screen này main không đổi từ base → phần redesign
+    + badge là scope B4 hợp lệ).
+  - Ghép tay 7 file chia sẻ: chỉ thêm hunks tier (giữ 100% comment/docstring + code
+    A2/B1/A1 của main). B4 cũ xoá docstring PIN verification + comment geofence →
+    **bỏ qua**, không mang theo.
+  - Migration `0016_user_tier_and_credential_fields` → **đánh số lại 0019**, dependency
+    nối sau `0018_add_availability_check_constraint` (A2) của main. Bỏ migration
+    `0017_alter_profilechangerequest...` (chỉ chứa help_text changes — phụ tác của
+    việc xoá comment, không thuộc scope B4).
+  - `browse_candidates.html`: giữ nguyên bản main (sidebar 6-tab, smart-match rank
+    badge, spinner) + `{% include 'frontend/_b4_tier_scripts.html' %}` trước `</body>`
+    — runtime patch `window.renderCandidates` inject badge hạng, không đụng logic
+    trang gốc. Bản rewrite 277 dòng của B4 cũ bị loại (mất fix main + escapeHtml lỗi).
+  - `core/urls.py`: 5 view gốc (WorkerProfileDetail, AdminApproveWorker, AdminAllWorkers,
+    WorkerSubmitCredential, AdminReviewCredential) trỏ sang `tier_views` (bản override
+    có tier — main không sửa 5 class này nên override an toàn), thêm 2 URL
+    `admin/workers/<id>/set-tier/` + `recompute-tier/`. Giữ nguyên comment section
+    + toàn bộ URL A1/A2 của main.
+
+### Test mới — `core/tests_tier.py` (55 tests, 8 class)
+1. **ComputeTierLevelTests** (7): đúng hạng từng mức bronze/silver/gold/diamond,
+   precedence diamond > gold, worker chưa duyệt luôn bronze, parent không xếp hạng.
+2. **ComputeTierBoundaryTests** (11): đủ jobs thiếu rating; đủ jobs+rating thiếu reviews;
+   4/5 jobs; rating đúng 4.0 (boundary inclusive); credential pending/rejected không
+   lên gold; credential chuyên ngành thiếu 1 job (9/10) chỉ gold; đủ jobs nhưng
+   rating 4.33 < 4.5 chỉ gold; credential thường không bao giờ diamond; application
+   pending không tính completed_job; task cancelled không tính.
+3. **DowngradeTests** (4): thu hồi credential gold→bronze, gold→silver; rating tụt
+   silver→bronze; tier_meta snapshot đúng (completed_jobs, avg_rating, review_count,
+   has_cert, has_specialized).
+4. **TierOverrideTests** (6): override chặn refresh thường; force=True bỏ override;
+   manual_set_by/manual_set_at vào tier_meta; hạng không hợp lệ ValueError;
+   refresh trên non-worker no-op; tier_label đủ 4 mã + fallback.
+5. **TierAPIPermissionTests** (12): worker/parent/anonymous KHÔNG set-tier hay
+   recompute (403/401); admin set hợp lệ 200 + tier_override=True; hạng sai 400
+   (message tiếng Việt); thiếu field 400; non-worker 404; user không tồn tại 404;
+   recompute bỏ override về hạng đúng rule.
+6. **ProfileTierReadOnlyTests** (3): GET profile trả tier/tier_label/tier_updated_at;
+   PATCH tier bị bỏ qua (read-only) — worker không tự nâng hạng.
+7. **TierSignalTests** (4): task completed → tự lên silver khi đủ điều kiện; review
+   mới → tự lên silver; tín hiệu tôn trọng tier_override; task open không refresh.
+8. **TierResponseContractTests** (8): worker profile trả tier/tier_label/tier_meta;
+   candidates trả worker_tier/worker_tier_label (badge web+mobile đọc);
+   admin all-workers trả tier+tier_override; approve worker → bronze;
+   duyệt credential → gold; duyệt credential is_specialized + đủ điều kiện → diamond;
+   submit-credential nhận field mới (credential_type/title/field).
+
+### Kết quả
+- Full suite: **334/334 PASS** (279 của main + 55 mới), không mất test cũ nào.
+- `manage.py check` 0 lỗi; `makemigrations --check`: No changes detected.
+- `git diff origin/main --stat`: chỉ còn scope B4 — 0 file bị xoá, không dòng nào
+  đụng tests_smart_match / tests_price_suggestion / care_diary / screen-template A2/B1.
+- Không force-push nhánh cũ, không tự merge vào main (nhánh mới: 
+  `B4-Rank-CarePartner-rebased`).
+
+### Lưu ý cho QA / agent tiếp theo
+- `backend/tier_config.py` là module config dead (B4 định nghĩa rules trực tiếp trong
+  `settings.CAREPARTNER_TIER_RULES`, tier_service đọc từ settings). Giữ nguyên để
+  đúng trạng thái B4; có thể dọn ở lượt QA.
+- `CandidatesScreen.js`/`CandidateProfileScreen.js` là bản redesign của B4 (comment
+  "temporary minimal fix" từ tác giả B4) — main không đổi 2 file này từ base nên
+  lấy nguyên bản B4. QA cần kiểm tra UI thật trên mobile.
+- Endpoint mới cho QA smoke-test:
+  `POST /api/admin/workers/<id>/set-tier/` (body `{"tier":"silver"}`),
+  `POST /api/admin/workers/<id>/recompute-tier/`.
+
+---
+
+## B4 — Hoàn thiện mobile + hardening trước khi merge (2026-08-23, lượt 2)
+
+**Coding Agent**: theo yêu cầu QA sau khi review commit `7cbde23` (rebase B4). Backend giữ
+nguyên (334/334, phân quyền/migration/signal/API contract QA đã pass). Việc duy nhất: khôi
+phục chức năng mobile bị mất khi gắn badge tier + hardening upload + dọn code chết.
+
+### 1. Khôi phục chức năng bị mất trên mobile (giữ nguyên tier badge)
+Phát hiện: nhánh B4 cũ thay `CandidatesScreen.js`/`CandidateProfileScreen.js` bằng bản
+rewrite tối giản (comment `// SEE ARTIFACTS - temporary minimal fix`) — mất AI insights,
+search/filter, và **bước xác nhận trước khi chấp nhận ứng viên** (hành động không thể hoàn
+tác — tự động từ chối ứng viên khác).
+
+Cách làm: lấy bản `origin/main` làm base cho cả 2 screen, graft ĐÚNG phần tier của B4
+vào (2 việc độc lập, không xung đột):
+- `CandidatesScreen.js`: khôi phục toàn bộ AI insights panel (`aiInsights`, `aiLoading`,
+  `getCandidateRecommendations`, `reloadAIInsights`), search bar + filter chips
+  (`FILTER_CHIPS`, `activeFilter`, `searchQuery`, `filteredCandidates`), confirm dialog.
+  Thêm duy nhất 1 dòng badge `<CarePartnerTierBadge user={c} size="sm" />` trong card
+  (đọc `worker_tier`/`worker_tier_label` có sẵn trong response candidates API — B4
+  serializer đã trả, không cần fetch thêm).
+- `CandidateProfileScreen.js`: khôi phục confirm + mọi section gốc (Kinh nghiệm & Kỹ
+  năng, Bằng cấp, AI summary, Lịch rảnh mock, Đánh giá). Thay tier badge MOCK (theo
+  review_count ≥ 20/50) bằng tier THẬT từ API qua component — luôn hiển thị, mặc định
+  Hạng Đồng.
+- Confirm luồng approve (xác nhận bằng tay — đọc code, không chỉ chạy test): cả 2 screen
+  đều wrap `approveCandidate` trong `startApprove()`, chỉ được gọi khi:
+  web: `window.confirm('Xác nhận: Chấp nhận ... Các ứng viên khác sẽ tự động bị từ chối.')`
+  trả true; native: `Alert.alert('Xác nhận', ..., [{text:'Huỷ', style:'cancel'},
+  {text:'Chấp nhận', onPress: startApprove}])`. Không có đường gọi API nào bypass confirm.
+
+### 2. Dọn code chết — phương án (b): dùng CarePartnerTierBadge component
+- Trước lượt này `CarePartnerTierBadge.js` không được import nơi nào (2 screen tự viết
+  badge inline trùng lặp logic). Giờ cả 2 screen đều import + dùng component; badge
+  inline bị xoá. Component thêm prop `size` (`sm` cho card danh sách, `md` cho profile
+  header) để dùng được ở cả 2 bối cảnh mà không cần style override.
+- Xoá `mobile/src/screens/Parent/CandidatesScreen.styles.js` — placeholder rỗng
+  (`export {}`) do B4 cũ để lại, không file nào import (styles sống trong chính
+  CandidatesScreen.js theo pattern main).
+
+### 3. Hardening upload — validate MIME + dung lượng certificate_photo
+`core/tier_views.py` → `WorkerSubmitCredentialAPIView.post`: thêm
+`validate_credential_image()` + hằng `ALLOWED_CREDENTIAL_IMAGE_TYPES`
+(jpeg/png/webp), `MAX_CREDENTIAL_IMAGE_SIZE_MB = 5`. Chặn TRƯỚC khi lưu storage, lỗi
+trả 400 message tiếng Việt theo §15.6. Ghi chú: dự án chưa có helper validate upload
+dùng chung (RegisterAPIView với id_card_front/back cũng chỉ check tồn tại) → định nghĩa
+tại chỗ theo convention §15.4, comment giải thích rõ.
+
+### 4. Ghi chú design choice — badge tier trên web qua runtime patch
+Web hiển thị badge hạng ở `browse_candidates.html` bằng cách **patch runtime
+`window.renderCandidates`** (`frontend/static/js/browse_candidates_tier_patch_b4.js`,
+include qua `_b4_tier_scripts.html`): đây là lựa chọn CÓ CHỦ ĐÍCH để tránh đụng code
+gốc của trang (bản rewrite 277 dòng của B4 cũ đã từng làm mất sidebar 6-tab + rank
+badge A2 + spinner đã QA — không lặp lại). Script wrap `renderCandidates`, sau khi hàm
+gốc render xong thì inject badge vào từng `article.candidate-card` (guard
+`data-b4-tier` chống double-inject, poll 100ms × 40 chờ hàm được định nghĩa).
+**Rủi ro đã biết**: nếu sau này `renderCandidates` bị đổi tên/refactor (hoặc đổi cấu
+trúc card `.flex-1.min-w-0` / thứ tự card khớp index mảng candidates), patch sẽ im
+lặng không hiện badge — KHÔNG crash trang (an toàn về functional, chỉ mất hiển thị
+hạng). Khi refactor trang này, nên chuyển badge vào chính `renderCandidates` trong
+template và xoá patch script.
+
+### 5. Kết quả
+- Full suite: **341/341 PASS** (334 cũ + 7 test mới cho validate upload:
+  jpeg/png/webp pass, PDF → 400, >5MB → 400, đúng 5MB boundary → 201, chỉ mô tả
+  không ảnh → 201). `manage.py check` 0 lỗi.
+- Test JS mobile (`__tests__/CreateTaskScreen.pricingType.test.js`, pure logic): 6/6
+  PASS. (Test QA5 flush-isolation ở `mobile/scripts/` cần @babel/register + mock
+  expo — không liên quan các file lượt này, không chạy lại.)
+- Syntax check JSX 4 file sửa (babel parser): OK.
+- `git diff origin/main` mobile: chỉ còn tier — AI insights / search / filter /
+  confirm / mọi section profile nguyên trạng.
+
+### Lưu ý cho QA
+- Endpoint `POST /api/worker/submit-credential/` giờ trả 400 kèm
+  `'Ảnh bằng cấp không hợp lệ. Chỉ nhận định dạng JPEG, PNG hoặc WebP.'` hoặc
+  `'Ảnh bằng cấp quá lớn (tối đa 5MB).'` — mobile/web form submit nên đọc field
+  `error` như cũ.
+- CandidateProfileScreen badge giờ LUÔN hiển thị (mặc định Hạng Đồng) thay vì chỉ
+  hiện khi ≥ 20 review như mock cũ — đúng ý nghĩa B4 (mọi CarePartner đều có hạng).
+- Worker tự xem hạng của mình trên mobile (WorkerProfileScreen) KHÔNG thuộc phạm vi
+  lượt này — B4 mobile scope chỉ 2 screen parent-side theo yêu cầu QA.

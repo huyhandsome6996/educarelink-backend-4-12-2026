@@ -5,15 +5,14 @@ from .views import (
     RegisterAPIView, LoginAPIView, UserProfileAPIView,
     TaskListCreateAPIView, TaskDetailAPIView, TaskUpdateStatusAPIView, ParentTasksAPIView, TaskCandidatesAPIView, 
     ApproveCandidateAPIView, ReviewCreateAPIView,
-    ApplyTaskAPIView, WorkerJobsAPIView, WorkerProfileDetailAPIView,
+    ApplyTaskAPIView, WorkerJobsAPIView,
     ChatbotAPIView,
-    AdminPendingWorkersAPIView, AdminApproveWorkerAPIView, AdminAllWorkersAPIView,
+    AdminPendingWorkersAPIView,
     AdminToggleUserActiveAPIView, AdminRevokeCarepartnerAPIView, AdminAllUsersAPIView,
     AdminSeedDemoDataAPIView,
     AdminAllTasksAPIView, AdminModerateTaskAPIView,
     CompleteOnboardingAPIView,
-    WorkerSubmitCredentialAPIView,
-    AdminCredentialSubmissionsAPIView, AdminReviewCredentialAPIView,
+    AdminCredentialSubmissionsAPIView,
     AdminSendNotificationAPIView,
     UserNotificationsAPIView, UnreadNotificationCountAPIView, MarkNotificationsReadAPIView,
     WorkerProfileChangeRequestAPIView, AdminProfileChangeRequestsAPIView, AdminReviewProfileChangeRequestAPIView,
@@ -27,6 +26,18 @@ from .views import (
     WorkerAvailabilityListCreateAPIView, WorkerAvailabilityDetailAPIView,
     SmartMatchAPIView,
     geocode_proxy,
+)
+# B4 — Phân hạng CarePartner: các view dưới đây là bản override của view gốc
+# (trong core.views) có bổ sung field tier, trỏ URL về tier_views để không
+# phải sửa core/views.py. Hai view set-tier/recompute-tier là endpoint mới.
+from .tier_views import (
+    AdminSetWorkerTierAPIView,
+    AdminRecomputeWorkerTierAPIView,
+    WorkerProfileDetailAPIView,
+    AdminApproveWorkerAPIView,
+    AdminAllWorkersAPIView,
+    WorkerSubmitCredentialAPIView,
+    AdminReviewCredentialAPIView,
 )
 from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
 
@@ -126,4 +137,9 @@ urlpatterns = [
 
     # Geocoding proxy (server-side DNS for OSM Nominatim)
     path('geocode/', geocode_proxy, name='geocode-proxy'),
+
+    # B4 — Admin set hạng CarePartner thủ công (bật tier_override)
+    path('admin/workers/<int:user_id>/set-tier/', AdminSetWorkerTierAPIView.as_view(), name='admin-set-worker-tier'),
+    # B4 — Admin tính lại hạng theo rule (bỏ override)
+    path('admin/workers/<int:user_id>/recompute-tier/', AdminRecomputeWorkerTierAPIView.as_view(), name='admin-recompute-worker-tier'),
 ]
