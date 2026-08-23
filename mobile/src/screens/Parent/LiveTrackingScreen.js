@@ -8,7 +8,9 @@ import {
   getLiveLocation, getLocationHistory, triggerSOS, revokeConsent,
   getDeviceStatus, getOfflineAlerts, acknowledgeOfflineAlert,
   getVerificationHistory, cancelVerificationCheck,
+  getVerificationPhotoUrl,
 } from '../../api/tracking';
+import { storage } from '../../utils/storage';
 import {
   playEmergencyAlarm, stopEmergencyAlarm, unloadEmergencyAlarm,
 } from '../../services/EmergencyAlarmService';
@@ -345,6 +347,23 @@ export default function LiveTrackingScreen() {
     }
   }, [taskId]);
 
+  // B5 — phụ huynh xem ảnh xác minh CarePartner đã nộp.
+  // Ảnh KHÔNG public qua /media/ — phải load qua API có auth.
+  // expo-image hỗ trợ headers trong source → truyền Authorization header
+  // xuống ImagePreviewScreen (screen nhận param headers, B5).
+  const handleViewVerificationPhoto = useCallback(async (check) => {
+    try {
+      const token = await storage.getItem('access_token');
+      navigation.navigate('ImagePreview', {
+        uri: getVerificationPhotoUrl(check.id),
+        title: `Ảnh xác minh — ${new Date(check.triggered_at).toLocaleString('vi-VN')}`,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không tải được ảnh xác minh. Vui lòng thử lại.');
+    }
+  }, [navigation]);
+
   useEffect(() => {
     if (taskId && isTracking) {
       fetchVerificationHistory();
@@ -360,13 +379,24 @@ export default function LiveTrackingScreen() {
     } catch (e) { /* silent */ }
   };
 
-  const getStatusConfig = (status) => {
+  const getStatusConfig = (status, verificationType) => {
+    // B5 — label khác nhau cho check ảnh: 'Đúng mã' → 'Đã gửi ảnh'
+    const isPhoto = verificationType === 'photo';
     switch (status) {
-      case 'confirmed': return { icon: '✅', label: 'Đúng mã', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' };
+      case 'confirmed':
+        return isPhoto
+          ? { icon: '📷', label: 'Đã gửi ảnh', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' }
+          : { icon: '✅', label: 'Đúng mã', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' };
       case 'wrong_code': return { icon: '❌', label: 'Sai mã', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
-      case 'timeout': return { icon: '⏰', label: 'Timeout', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+      case 'timeout':
+        return isPhoto
+          ? { icon: '⏰', label: 'Không gửi ảnh', color: '#d97706', bg: '#fffbeb', border: '#fde68a' }
+          : { icon: '⏰', label: 'Timeout', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
       case 'cancelled': return { icon: '🚫', label: 'Đã huỷ', color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
-      default: return { icon: '⏳', label: 'Đang chờ', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
+      default:
+        return isPhoto
+          ? { icon: '⏳', label: 'Đang chờ ảnh...', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' }
+          : { icon: '⏳', label: 'Đang chờ', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
     }
   };
 
@@ -622,7 +652,7 @@ export default function LiveTrackingScreen() {
           {verificationExpanded && (
             <View style={styles.verificationList}>
               {verificationChecks.map((check) => {
-                const sc = getStatusConfig(check.status);
+                const sc = getStatusConfig(check.status, check.verification_type);
                 return (
                   <View key={check.id} style={[styles.verificationItem, { backgroundColor: sc.bg, borderColor: sc.border }]}>
                     <View style={{ flex: 1 }}>
@@ -643,7 +673,25 @@ export default function LiveTrackingScreen() {
                           Timeout liên tiếp: {check.consecutive_timeouts_count}
                         </Text>
                       )}
+                      {/* B5 — thời điểm nộp ảnh (check loại photo đã xác nhận) */}
+                      {check.verification_type === 'photo' && check.photo_submitted_at && (
+                        <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                          Gửi ảnh lúc: {new Date(check.photo_submitted_at).toLocaleTimeString('vi-VN')}
+                        </Text>
+                      )}
                     </View>
+                    {/* B5 — nút xem ảnh CarePartner đã nộp (chỉ hiện khi có ảnh) */}
+                    {check.has_photo && (
+                      <TouchableOpacity
+                        style={styles.viewPhotoBtn}
+                        onPress={() => handleViewVerificationPhoto(check)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Xem ảnh xác minh"
+                      >
+                        <Ionicons name="image" size={14} color="#fff" />
+                        <Text style={styles.viewPhotoBtnText}>Xem ảnh</Text>
+                      </TouchableOpacity>
+                    )}
                     {check.status === 'pending' && (
                       <TouchableOpacity
                         style={styles.verificationCancelBtn}
@@ -1118,5 +1166,14 @@ const styles = StyleSheet.create({
   },
   verificationCancelText: {
     fontSize: 11, fontWeight: '700', color: '#92400e',
+  },
+  // B5 — nút xem ảnh xác minh CarePartner đã nộp
+  viewPhotoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.primary || '#F26522', borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  viewPhotoBtnText: {
+    fontSize: 11, fontWeight: '700', color: '#fff',
   },
 });
