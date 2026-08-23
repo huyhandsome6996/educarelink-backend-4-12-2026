@@ -1232,3 +1232,19 @@ ChatScreen.js/chat api (đúng phạm vi yêu cầu).
 
 **Test sau fix**: 454/454 PASS (444 cũ + 10 gating mới; frontend 23, chat 44,
 core 126, tracking 216, others 45). Không test nào fail/giảm.
+
+## N (Cửa sổ chat) merged vào main (2026-08-23)
+
+- **Merge commit**: `41ce787` (--no-ff, theo convention B1 `61b7f5c` / B5 `681ec92`)
+- **QA 2 vòng đều PASS**: vòng 1 — backend/web/mobile logic ĐÚNG, 3 bug entry point
+  (N-001/002/003) đã fix tại `3049ea4` kèm 10 gating tests mới; vòng 2 — phê duyệt
+  merge commit `3049ea4`.
+- **Pre-merge checklist đã chạy đủ**: branch đúng + HEAD 3049ea4 + working tree sạch;
+  full suite 454/454 PASS (67 chat+frontend + 126 core + 216 tracking + 45 others);
+  makemigrations --check "No changes detected"; diff review 34 file — tất cả trong
+  phạm vi feature N (chat/ app mới + Task.completed_at + web/mobile entry points),
+  không file lạ; grep sạch console.log/debugger/TODO/secret; main đã nằm trong
+  feature (base cfd179e không đổi) — merge "Already up to date", 0 conflict.
+- **Post-merge**: test lại trên main — 454/454 PASS, makemigrations --check sạch.
+- **Push main**: không force-push. Branch `feature/n-cua-so-chat` GIỮ NGUYÊN trên
+  remote (theo chỉ đạo: không xoá trừ khi được yêu cầu).
