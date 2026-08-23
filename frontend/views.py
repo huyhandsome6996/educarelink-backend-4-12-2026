@@ -91,6 +91,10 @@ class WorkerCareDiaryFormView(TemplateView):
     template_name = "frontend/worker_care_diary_form.html"
 
 
+class ParentProfileView(TemplateView):
+    template_name = "frontend/parent_profile.html"
+
+
 class ParentCareDiaryDetailView(TemplateView):
     """Trang xem chi tiết nhật ký (Phụ huynh web)."""
     template_name = "frontend/parent_care_diary_detail.html"

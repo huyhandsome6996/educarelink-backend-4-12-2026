@@ -1,0 +1,487 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>Hồ sơ cá nhân - EduCareLink</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in { animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+
+        .profile-card { transition: all 0.25s ease; }
+        .profile-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(242, 101, 34, 0.08); }
+
+        .menu-item { transition: all 0.2s ease; }
+        .menu-item:hover { background: #F7F7F7; }
+        .menu-item:active { transform: scale(0.98); }
+
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        .skeleton {
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            border-radius: 0.5rem;
+        }
+
+        /* Modal animation */
+        @keyframes modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-content-in { from { transform: scale(0.9) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .modal-bg-enter { animation: modal-bg-in 0.2s ease-out forwards; }
+        .modal-content-enter { animation: modal-content-in 0.3s ease-out forwards; }
+
+        @media (max-width: 1023px) {
+            .main-content { padding-bottom: 2rem; }
+        }
+    </style>
+</head>
+<body class="bg-background text-textPrimary min-h-screen">
+
+    <!-- SIDEBAR (Desktop ≥1024px) -->
+    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab='profile' %}
+</aside>
+
+    <!-- MOBILE HEADER (<1024px) -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
+        <div class="flex items-center justify-between px-4 h-14">
+            <div class="flex items-center gap-2.5">
+                <a href="{% url 'frontend:parent_home' %}" class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-textSecondary text-xl">arrow_back</span>
+                </a>
+                <span class="font-headline font-bold text-base text-textPrimary">Hồ sơ cá nhân</span>
+            </div>
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft">
+                <img id="mobile-avatar" alt="Avatar" class="w-full h-full object-cover"
+                     src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="lg:ml-[260px] min-h-screen main-content">
+
+        <!-- TOP HEADER BAR (Desktop) -->
+        <div class="hidden lg:flex items-center justify-between px-8 py-5 bg-surface border-b border-border sticky top-0 z-30">
+            <div>
+                <h1 class="font-headline font-bold text-2xl text-textPrimary">Hồ sơ cá nhân</h1>
+                <p class="text-textSecondary text-sm mt-0.5">Quản lý thông tin cá nhân của bạn</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft">
+                    <img id="header-avatar" alt="Avatar" class="w-full h-full object-cover"
+                         src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="max-w-3xl mx-auto px-4 md:px-8 py-6 lg:py-8 space-y-6 mt-14 lg:mt-0">
+
+            <!-- SKELETON LOADING -->
+            <div id="loading-state" class="space-y-6">
+                <div class="bg-surface rounded-2xl p-8 border border-border shadow-sm">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="skeleton w-28 h-28 rounded-full mb-4"></div>
+                        <div class="skeleton w-48 h-7 mb-3"></div>
+                        <div class="skeleton w-32 h-5"></div>
+                    </div>
+                </div>
+                <div class="bg-surface rounded-2xl p-6 border border-border shadow-sm space-y-4">
+                    <div class="skeleton w-36 h-6 mb-2"></div>
+                    <div class="skeleton w-full h-14"></div>
+                    <div class="skeleton w-full h-14"></div>
+                    <div class="skeleton w-full h-14"></div>
+                </div>
+            </div>
+
+            <!-- ACTUAL CONTENT (hidden until loaded) -->
+            <div id="profile-content" class="space-y-6" style="display:none;">
+
+                <!-- Profile Header Card -->
+                <section class="profile-card bg-surface rounded-2xl p-8 border border-border shadow-sm">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="relative mb-5">
+                            <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-orange-100 shadow-md">
+                                <img id="profile-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff" alt="Avatar"/>
+                            </div>
+                            <div id="verify-badge" class="absolute -bottom-1 -right-1 w-9 h-9 rounded-full flex items-center justify-center border-[3px] border-white shadow-md" style="display:none;">
+                                <span class="material-symbols-outlined text-green-500 text-lg filled">check_circle</span>
+                            </div>
+                        </div>
+                        <h2 id="profile-name" class="font-headline font-extrabold text-2xl text-textPrimary mb-2">Phụ huynh</h2>
+                        <div class="inline-flex items-center gap-1.5 bg-orange-50 text-primary px-4 py-1.5 rounded-full text-xs font-bold mb-3">
+                            <span class="material-symbols-outlined text-sm filled">family_restroom</span>
+                            Phụ huynh
+                        </div>
+                        <div id="verify-status" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold mb-3" style="display:none;"></div>
+                    </div>
+                </section>
+
+                <!-- Stats Card -->
+                <section class="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+                    <div class="grid grid-cols-3 divide-x divide-border">
+                        <div class="text-center px-4">
+                            <p id="stat-total" class="font-headline font-extrabold text-2xl text-primary">0</p>
+                            <p class="text-textSecondary text-xs mt-1">Việc đã đăng</p>
+                        </div>
+                        <div class="text-center px-4">
+                            <p id="stat-completed" class="font-headline font-extrabold text-2xl text-green-500">0</p>
+                            <p class="text-textSecondary text-xs mt-1">Hoàn thành</p>
+                        </div>
+                        <div class="text-center px-4">
+                            <p id="stat-rating" class="font-headline font-extrabold text-2xl text-blue-500">0</p>
+                            <p class="text-textSecondary text-xs mt-1">Đánh giá</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Personal Info Card -->
+                <section class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+                        <h3 class="font-headline font-bold text-lg text-textPrimary">Thông tin cá nhân</h3>
+                        <button onclick="openEditModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 text-primary text-xs font-bold hover:bg-orange-100 transition-all duration-200">
+                            <span class="material-symbols-outlined text-sm">edit</span>
+                            Sửa
+                        </button>
+                    </div>
+                    <div class="divide-y divide-border">
+                        <!-- Email -->
+                        <div class="flex items-center gap-4 px-6 py-4">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">mail</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-textSecondary text-xs">Email</p>
+                                <p id="info-email" class="text-textPrimary text-sm font-semibold truncate">Chưa cập nhật</p>
+                            </div>
+                        </div>
+                        <!-- Phone -->
+                        <div class="flex items-center gap-4 px-6 py-4">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">call</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-textSecondary text-xs">Số điện thoại</p>
+                                <p id="info-phone" class="text-textPrimary text-sm font-semibold truncate">Chưa cập nhật</p>
+                            </div>
+                        </div>
+                        <!-- Address -->
+                        <div class="flex items-center gap-4 px-6 py-4">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">location_on</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-textSecondary text-xs">Địa chỉ</p>
+                                <p id="info-address" class="text-textPrimary text-sm font-semibold">Chưa cập nhật</p>
+                            </div>
+                        </div>
+                        <!-- Username -->
+                        <div class="flex items-center gap-4 px-6 py-4">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">account_circle</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-textSecondary text-xs">Tên đăng nhập</p>
+                                <p id="info-username" class="text-textPrimary text-sm font-semibold truncate">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Menu Card -->
+                <section class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <a href="/parent/" class="menu-item flex items-center gap-4 px-6 py-4 border-b border-border cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-textSecondary text-lg">dashboard</span>
+                        </div>
+                        <span class="flex-1 text-textPrimary text-sm font-semibold">Quản lý việc</span>
+                        <span class="material-symbols-outlined text-gray-300 text-lg">chevron_right</span>
+                    </a>
+                    <a href="/parent/care-diary-history/" class="menu-item flex items-center gap-4 px-6 py-4 border-b border-border cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-textSecondary text-lg">book</span>
+                        </div>
+                        <span class="flex-1 text-textPrimary text-sm font-semibold">Nhật ký chăm sóc</span>
+                        <span class="material-symbols-outlined text-gray-300 text-lg">chevron_right</span>
+                    </a>
+                    <a href="/parent/chatbot/" class="menu-item flex items-center gap-4 px-6 py-4 border-b border-border cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-textSecondary text-lg">smart_toy</span>
+                        </div>
+                        <span class="flex-1 text-textPrimary text-sm font-semibold">AI Trợ lý</span>
+                        <span class="material-symbols-outlined text-gray-300 text-lg">chevron_right</span>
+                    </a>
+                    <a href="/onboarding/parent/" class="menu-item flex items-center gap-4 px-6 py-4 cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-textSecondary text-lg">help</span>
+                        </div>
+                        <span class="flex-1 text-textPrimary text-sm font-semibold">Hướng dẫn sử dụng</span>
+                        <span class="material-symbols-outlined text-gray-300 text-lg">chevron_right</span>
+                    </a>
+                </section>
+
+                <!-- Upgrade CTA -->
+                <section id="upgrade-section" class="bg-green-50 rounded-2xl p-5 border border-green-200 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all duration-200" style="display:none;">
+                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined text-green-600 text-2xl filled">school</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-headline font-bold text-green-800 text-sm">Trở thành CarePartner</p>
+                        <p class="text-green-600 text-xs mt-0.5">Kiếm thêm thu nhập linh hoạt</p>
+                    </div>
+                    <span class="material-symbols-outlined text-green-400 text-xl">arrow_forward</span>
+                </section>
+
+                <!-- Logout -->
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface border border-red-100 text-red-600 font-bold text-sm hover:bg-red-50 transition-all duration-200">
+                    <span class="material-symbols-outlined text-lg">logout</span>
+                    Đăng xuất
+                </button>
+
+                <!-- Version -->
+                <p class="text-center text-xs text-gray-400 mt-4">EduCareLink v1.1.0</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ====== EDIT PROFILE MODAL ====== -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex items-end md:items-center justify-center" style="display:none;">
+        <div class="absolute inset-0 bg-black/50 modal-bg-enter" onclick="closeEditModal()"></div>
+        <div class="relative bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-2xl p-6 modal-content-enter max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-headline font-extrabold text-lg text-textPrimary">Yêu cầu sửa hồ sơ</h3>
+                <button onclick="closeEditModal()" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all">
+                    <span class="material-symbols-outlined text-gray-500">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textSecondary mb-1.5">Họ</label>
+                    <input id="edit-last-name" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textSecondary mb-1.5">Tên</label>
+                    <input id="edit-first-name" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textSecondary mb-1.5">Số điện thoại</label>
+                    <input id="edit-phone" type="tel" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textSecondary mb-1.5">Email</label>
+                    <input id="edit-email" type="email" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textSecondary mb-1.5">Địa chỉ</label>
+                    <textarea id="edit-address" rows="2" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all resize-none"></textarea>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-2 mt-4 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                <span class="material-symbols-outlined text-primary text-lg flex-shrink-0" style="margin-top:1px;">info</span>
+                <p class="text-xs text-orange-700 leading-relaxed">Yêu cầu sẽ được Admin duyệt trong 1-2 ngày. Bạn vẫn dùng thông tin cũ cho đến khi được duyệt.</p>
+            </div>
+
+            <button id="edit-submit-btn" onclick="submitEditProfile()" class="w-full mt-5 py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primaryDark transition-all duration-200 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">send</span>
+                Gửi yêu cầu
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] space-y-2" style="max-width:calc(100vw - 2rem);"></div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentProfile = null;
+
+        function getCookie(name) {
+            let v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return v ? v.pop() : '';
+        }
+
+        function apiFetch(url, options = {}) {
+            const headers = { ...(options.headers || {}) };
+            if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+                headers['Content-Type'] = 'application/json';
+            }
+            const token = localStorage.getItem('access_token');
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const opts = { ...options, headers, credentials: 'include' };
+            return fetch(url, opts);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+            const icons = { success: 'check_circle', error: 'error', info: 'info' };
+            const toast = document.createElement('div');
+            toast.className = `animate-slide-in ${colors[type] || colors.info} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium`;
+            toast.innerHTML = `<span class="material-symbols-outlined text-lg filled">${icons[type] || icons.info}</span>${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login/?next=/parent/';
+        }
+
+        function getGreeting() {
+            const h = new Date().getHours();
+            if (h < 12) return 'Chào buổi sáng';
+            if (h < 18) return 'Chào buổi chiều';
+            return 'Chào buổi tối';
+        }
+
+        function openEditModal() {
+            if (!currentProfile) return;
+            document.getElementById('edit-last-name').value = currentProfile.last_name || '';
+            document.getElementById('edit-first-name').value = currentProfile.first_name || '';
+            document.getElementById('edit-phone').value = currentProfile.phone_number || '';
+            document.getElementById('edit-email').value = currentProfile.email || '';
+            document.getElementById('edit-address').value = currentProfile.address || '';
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        async function submitEditProfile() {
+            const btn = document.getElementById('edit-submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span>Đang gửi...';
+            try {
+                const changes = {};
+                const fields = [
+                    { key: 'last_name', id: 'edit-last-name' },
+                    { key: 'first_name', id: 'edit-first-name' },
+                    { key: 'phone_number', id: 'edit-phone' },
+                    { key: 'email', id: 'edit-email' },
+                    { key: 'address', id: 'edit-address' },
+                ];
+                fields.forEach(f => {
+                    const newVal = (document.getElementById(f.id).value || '').trim();
+                    const oldVal = (currentProfile[f.key] || '').trim();
+                    if (newVal && newVal !== oldVal) changes[f.key] = newVal;
+                });
+                if (Object.keys(changes).length === 0) {
+                    showToast('Không có thay đổi nào', 'info');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-symbols-outlined text-lg">send</span>Gửi yêu cầu';
+                    return;
+                }
+                const resp = await apiFetch(API_BASE + '/worker/profile-change-request/', {
+                    method: 'POST',
+                    body: JSON.stringify(changes),
+                });
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    throw new Error(data.error || data.detail || 'Gửi yêu cầu thất bại');
+                }
+                showToast('Đã gửi yêu cầu! Admin sẽ duyệt trong 1-2 ngày.', 'success');
+                closeEditModal();
+            } catch (e) {
+                showToast(e.message || 'Gửi yêu cầu thất bại', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-lg">send</span>Gửi yêu cầu';
+            }
+        }
+
+        async function init() {
+            try {
+                const profResp = await apiFetch(API_BASE + '/profile/');
+                if (!profResp || !profResp.ok) {
+                    if (profResp && profResp.status === 401) { handleLogout(); return; }
+                    throw new Error('Không thể tải thông tin người dùng');
+                }
+                const prof = await profResp.json();
+                currentProfile = prof;
+                const fullName = (prof.first_name && prof.last_name)
+                    ? `${prof.first_name} ${prof.last_name}`
+                    : prof.username || 'Người dùng';
+                const avatarUrl = prof.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'User')}&background=F26522&color=fff`;
+
+                // Update sidebar
+                const sidebarName = document.getElementById('sidebar-name');
+                if (sidebarName) sidebarName.textContent = fullName;
+                ['sidebar-avatar', 'header-avatar', 'mobile-avatar', 'profile-avatar'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.src = avatarUrl;
+                });
+
+                // Profile card
+                document.getElementById('profile-name').textContent = fullName;
+
+                // Verification badge
+                if (prof.is_verified) {
+                    document.getElementById('verify-badge').style.display = 'flex';
+                    const vs = document.getElementById('verify-status');
+                    vs.style.display = 'inline-flex';
+                    vs.className = 'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-600';
+                    vs.innerHTML = '<span class="material-symbols-outlined text-sm filled">verified</span>Đã xác thực';
+                }
+
+                // Info fields
+                document.getElementById('info-email').textContent = prof.email || 'Chưa cập nhật';
+                document.getElementById('info-phone').textContent = prof.phone_number || 'Chưa cập nhật';
+                document.getElementById('info-address').textContent = prof.address || 'Chưa cập nhật';
+                document.getElementById('info-username').textContent = prof.username || '-';
+
+                // Upgrade CTA (show if parent)
+                if (prof.role === 'parent') {
+                    document.getElementById('upgrade-section').style.display = 'flex';
+                }
+
+                // Show content, hide skeleton
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('profile-content').style.display = 'block';
+
+            } catch (e) {
+                console.error('Profile load error:', e);
+                showToast('Không thể tải thông tin cá nhân', 'error');
+            }
+
+            // Load task stats
+            try {
+                const taskResp = await apiFetch(API_BASE + '/parent/my-tasks/');
+                if (taskResp.ok) {
+                    const tasks = await taskResp.json();
+                    document.getElementById('stat-total').textContent = tasks.length;
+                    document.getElementById('stat-completed').textContent = tasks.filter(t => t.status === 'completed').length;
+                    // Count reviews given
+                    const reviewCount = tasks.filter(t => t.parent_review_given).length;
+                    document.getElementById('stat-rating').textContent = reviewCount;
+                }
+            } catch (e) {
+                console.error('Stats load error:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
