@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 
+from rest_framework.parsers import MultiPartParser, FormParser
 from core.models import Task
 from .models import LocationConsent, LiveLocation, LocationHistory, SOSAlert, DeviceHeartbeat, DeviceOfflineAlert
 from .serializers import (
@@ -47,6 +48,8 @@ from .services import (
     set_verification_pin, respond_verification_check,
     # QA-FIX-1 / Spec 2.4: parent history + cancel
     get_verification_history_for_parent, cancel_verification_check,
+    # B5 — xác thực bằng ảnh trong ca
+    submit_verification_photo, get_verification_photo,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -649,7 +652,128 @@ class PendingVerificationCheckAPIView(APIView):
             'respond_deadline': check.respond_deadline.isoformat(),
             'seconds_remaining': seconds_remaining,
             'attempts': check.attempts,
+            # B5 — loại check để mobile hiện UI chụp ảnh ('photo') hay nhập mã ('pin')
+            'verification_type': check.verification_type,
         })
+
+
+class VerificationPhotoAPIView(APIView):
+    """
+    GET /api/tracking/verification-checks/<check_id>/photo/
+
+    B5 — Xem ảnh xác minh (serve bytes ảnh QUA API CÓ AUTH — KHÔNG dùng
+    URL /media/ public, chống truy cập trái phép cho link bị lộ).
+
+    Quyền: chỉ (1) worker sở hữu check, (2) phụ huynh của task, (3) admin.
+
+    Response:
+      - 200: bytes ảnh (Content-Type: image/jpeg|png|webp) — client dùng
+        <img src=objectURL> (web, fetch blob + Authorization header) hoặc
+        Image source có headers (mobile expo-image).
+      - 400: check chưa có ảnh
+      - 403: người không liên quan
+
+    ?format=json — trả metadata JSON thay vì bytes (tiện debug/test).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, check_id):
+        import mimetypes
+        import os
+        from django.http import HttpResponse
+
+        try:
+            check = get_verification_photo(check_id=check_id, requester=request.user)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+        # Metadata JSON mode (debug/test)
+        if request.query_params.get('format') == 'json':
+            return Response({
+                'check_id': check.id,
+                'task_id': check.task_id,
+                'status': check.status,
+                'verification_type': check.verification_type,
+                'photo_submitted_at': check.photo_submitted_at.isoformat() if check.photo_submitted_at else None,
+                'file_name': os.path.basename(check.photo.name) if check.photo else None,
+            })
+
+        # Serve bytes ảnh — đọc từ storage qua FieldFile API (hoạt động cả
+        # local FS lẫn S3 sau này, không hardcode path).
+        try:
+            photo_file = check.photo
+            photo_file.open('rb')
+            content_type = mimetypes.guess_type(photo_file.name)[0] or 'application/octet-stream'
+            response = HttpResponse(photo_file.read(), content_type=content_type)
+            photo_file.close()
+            # Không cache aggressively — ảnh xác minh là dữ liệu nhạy cảm,
+            # tránh browser/CDN giữ bản sao khi đã hết quyền truy cập.
+            response['Cache-Control'] = 'private, no-store'
+            return response
+        except (FileNotFoundError, OSError, ValueError) as e:
+            logger.warning(f"[tracking] B5 photo read failed for Check#{check_id}: {e}")
+            return Response(
+                {'error': 'Không đọc được file ảnh từ bộ nhớ.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class SubmitVerificationPhotoAPIView(VerificationPhotoAPIView):
+    """
+    POST /api/tracking/verification-checks/<check_id>/photo/
+
+    B5 — CarePartner nộp ảnh xác minh cho check loại verification_type='photo'.
+
+    Request: multipart/form-data
+      - photo: file ảnh (bắt buộc — JPEG/PNG/WebP, <= VERIFICATION_PHOTO_MAX_MB)
+      - latitude / longitude: tọa độ lúc chụp (optional, form fields)
+
+    Response:
+      - 200: { status: 'confirmed', check_id, photo_submitted_at, responded_at }
+      - 400: file không hợp lệ / check đã kết thúc / hết hạn / sai loại check /
+             không đang tham gia task / nộp trùng
+      - 403: người khác cố nộp (không phải worker của check)
+
+    GET (kế thừa từ VerificationPhotoAPIView) — xem ảnh có auth.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, check_id):
+        photo_file = request.FILES.get('photo')
+
+        # latitude/longitude gửi kèm qua form fields (multipart) — parse an toàn
+        def _parse_coord(value):
+            if value is None or value == '':
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        try:
+            check = submit_verification_photo(
+                check_id=check_id,
+                requester=request.user,
+                photo_file=photo_file,
+                latitude=_parse_coord(request.data.get('latitude')),
+                longitude=_parse_coord(request.data.get('longitude')),
+            )
+            return Response({
+                'status': 'confirmed',
+                'check_id': check.id,
+                'task_id': check.task_id,
+                'photo_submitted_at': check.photo_submitted_at.isoformat() if check.photo_submitted_at else None,
+                'responded_at': check.responded_at.isoformat() if check.responded_at else None,
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            # File không hợp lệ / hết hạn / đã nộp / sai loại check — trả 400
+            # để mobile hiển thị message tiếng Việt.
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RespondVerificationCheckAPIView(APIView):
@@ -710,6 +834,11 @@ class AdminListVerificationChecksAPIView(APIView):
         if status_filter:
             qs = qs.filter(status=status_filter)
 
+        # B5 — filter theo loại check (pin/photo)
+        type_filter = request.query_params.get('verification_type')
+        if type_filter:
+            qs = qs.filter(verification_type=type_filter)
+
         limit = int(request.query_params.get('limit', 100))
         qs = qs[:limit]
 
@@ -724,7 +853,8 @@ class AdminTriggerVerificationCheckAPIView(APIView):
     POST /api/tracking/admin/trigger-verification-check/
 
     Admin trigger manual tạo verification check cho 1 task (debug).
-    Body: { task_id }
+    Body: { task_id, verification_type? }  — verification_type: 'pin' | 'photo'
+    (B5: truyền 'photo' để test luồng ảnh; bỏ trống thì random như scheduler).
     Chỉ hoạt động khi DEBUG=True.
     """
     permission_classes = [IsAdminUser]
@@ -741,13 +871,22 @@ class AdminTriggerVerificationCheckAPIView(APIView):
         if not task_id:
             return Response({'error': 'task_id là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # B5 — cho phép chỉ định loại check để test thủ công
+        verification_type = request.data.get('verification_type')
+        if verification_type not in (None, 'pin', 'photo'):
+            return Response(
+                {'error': "verification_type chỉ nhận 'pin' hoặc 'photo'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         from .verification_scheduler import trigger_verification_check_now
         try:
-            check = trigger_verification_check_now(task_id)
+            check = trigger_verification_check_now(task_id, verification_type=verification_type)
             return Response({
                 'status': 'created',
                 'check_id': check.id,
                 'task_id': check.task_id,
+                'verification_type': check.verification_type,
                 'respond_deadline': check.respond_deadline.isoformat(),
             })
         except ValueError as e:

@@ -90,6 +90,12 @@ class RandomVerificationCheckSerializer(serializers.ModelSerializer):
     task_title = serializers.CharField(source='task.title', read_only=True)
     worker_name = serializers.CharField(source='worker.username', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    verification_type_display = serializers.CharField(source='get_verification_type_display', read_only=True)
+    # B5 — has_photo là computed field (không phải DB field)
+    has_photo = serializers.SerializerMethodField()
+
+    def get_has_photo(self, obj) -> bool:
+        return bool(obj.photo)
 
     class Meta:
         from .models import RandomVerificationCheck
@@ -100,6 +106,9 @@ class RandomVerificationCheckSerializer(serializers.ModelSerializer):
             'status', 'status_display', 'attempts', 'responded_at',
             'response_lat', 'response_lng',
             'push_sent', 'push_retry_count',
+            # B5 — field xác minh ảnh
+            'verification_type', 'verification_type_display',
+            'has_photo', 'photo_submitted_at',
         ]
         read_only_fields = fields
 
