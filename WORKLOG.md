@@ -1342,3 +1342,22 @@ merge main) — không tính gap.
   makemigrations --check sạch, verify runserver thật 9/9 PASS từ lượt trước
   (script scripts/verify_chat_back_fix.py).
 - Không có regression — push main, tiếp tục build APK (EAS Build).
+
+## Build APK nộp sản phẩm — EduCareLink v1.3.0 (2026-08-23)
+
+- **Merge**: fix/chat-back-va-web-parity → main (`d7e260f`, self-test 464/464
+  PASS trước merge — chat 44 + frontend 33 + core 126 + tracking 216 + others 45).
+- **Version bump**: 1.2.0 → 1.3.0 (app.json + package.json) — bản đầy đủ:
+  N chat, B5 ảnh xác minh, B4 tier, A2 ghép việc, B1 nhật ký, thanh toán MoMo/PayOS.
+- **EAS project mới**: @huybodoi123/educarelink (ID dc42297f) — project cũ
+  3e841ddf thuộc account khác, không có quyền build bằng token hiện tại.
+- **Fix build**: thêm NPM_CONFIG_LEGACY_PEER_DEPS=true vào 3 profile eas.json
+  (build đầu lỗi "Install dependencies" — npm peer conflicts, cùng lý do
+  local script dùng --legacy-peer-deps).
+- **KẾT QUẢ BUILD APK THÀNH CÔNG**:
+  - Build ID: e45538d8-f650-4c81-ae1c-6b77e4788000
+  - File: EduCareLink v1.3.0 (89MB, APK hợp lệ: 4 classes.dex + manifest,
+    config app đầy đủ camera/location permissions)
+  - Tải trực tiếp: https://expo.dev/artifacts/eas/B-ZzcfMrBHy0SG7jxekE_G-ssZ-nAIHrODtHrOqqTvs.apk
+  - Dashboard: https://expo.dev/accounts/huybodoi123/projects/educarelink/builds
+  - App trỏ API production: https://educarelink-backend.onrender.com/api
