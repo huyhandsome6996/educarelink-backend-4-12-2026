@@ -534,6 +534,10 @@ function renderTasks() {
           <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
           Đánh giá
         </button>
+        <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+          Chat với Carepartner (24h)
+        </button>
       `;
     } else if (t.status === 'cancelled') {
       actionHTML = `
