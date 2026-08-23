@@ -1,0 +1,466 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat với {{ other_label|default:"đối tác" }} — EduCareLink</title>
+  <link rel="stylesheet" href="{% static 'css/tailwind-plain.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Manrope', sans-serif; }
+    body { margin: 0; padding: 0; background: #f7f7f7; color: #1a1a2e; }
+    #chat-scroll { scroll-behavior: smooth; }
+    .typing-dot { animation: blink 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; max-width: 90%;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body class="bg-[#F7F7F7]">
+
+<!-- Header -->
+<header class="bg-[#F26522] text-white shadow-lg sticky top-0 z-20">
+  <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3 min-w-0">
+      <a id="back-link" href="#" class="bg-white/20 hover:bg-white/30 rounded-lg w-9 h-9 flex items-center justify-center transition shrink-0">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <div id="other-avatar" class="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center font-bold shrink-0">?</div>
+      <div class="min-w-0">
+        <h1 id="other-name" class="text-base font-bold truncate">Đang tải...</h1>
+        <p id="task-title" class="text-xs text-white/80 truncate">Đang tải...</p>
+      </div>
+    </div>
+  </div>
+  <!-- Trạng thái cửa sổ chat -->
+  <div id="window-status-bar" class="max-w-3xl mx-auto px-4 pb-2">
+    <div id="window-open-badge" class="hidden text-[11px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/25 text-white font-semibold">
+      <span class="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse"></span>
+      <span id="window-open-text">Cửa sổ chat đang mở</span>
+    </div>
+    <div id="window-closed-badge" class="hidden text-[11px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-white/90 font-semibold">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 018 0v4"/>
+      </svg>
+      <span>Cuộc trò chuyện đã hết hiệu lực — chỉ xem lại lịch sử</span>
+    </div>
+  </div>
+</header>
+
+<!-- Chat area -->
+<main class="max-w-3xl mx-auto px-4 pt-4 pb-28">
+  <!-- Loading -->
+  <div id="loading-state" class="text-center py-16">
+    <div class="w-10 h-10 border-4 border-[#F26522]/30 border-t-[#F26522] rounded-full animate-spin mx-auto"></div>
+    <p class="text-sm text-gray-500 mt-3">Đang tải cuộc trò chuyện...</p>
+  </div>
+
+  <!-- Error + retry -->
+  <div id="error-state" class="hidden text-center py-12">
+    <div class="text-4xl mb-3">⚠️</div>
+    <p id="error-text" class="text-sm text-gray-600 mb-4">Không tải được cuộc trò chuyện.</p>
+    <button onclick="init()" class="px-5 py-2.5 rounded-xl bg-[#F26522] text-white text-sm font-semibold hover:bg-[#D4541E] transition">
+      Thử lại
+    </button>
+  </div>
+
+  <!-- Chưa có hội thoại (task chưa từng in_progress) -->
+  <div id="no-conversation-state" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+    <div class="text-4xl mb-3">💬</div>
+    <p class="text-sm text-gray-600 px-6">
+      Công việc này chưa có cuộc trò chuyện.<br>
+      <span class="text-xs text-gray-400">Chat mở khi công việc bắt đầu được thực hiện.</span>
+    </p>
+  </div>
+
+  <!-- Danh sách tin nhắn -->
+  <div id="chat-scroll" class="space-y-3"></div>
+</main>
+
+<!-- Composer (input) — ẩn khi cửa sổ đóng -->
+<div id="composer" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] hidden">
+  <div class="max-w-3xl mx-auto px-4 py-3 flex items-end gap-2">
+    <textarea id="message-input" rows="1" placeholder="Nhập tin nhắn..."
+      class="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F26522] max-h-28"
+      maxlength="2000"></textarea>
+    <button id="send-btn" onclick="sendMessage()" disabled
+      class="bg-[#F26522] hover:bg-[#D4541E] disabled:opacity-40 text-white w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+  <p id="send-error" class="max-w-3xl mx-auto px-4 pb-2 text-xs text-red-600 hidden"></p>
+</div>
+
+<!-- Banner read-only khi cửa sổ đóng -->
+<div id="readonly-banner" class="hidden fixed bottom-0 left-0 right-0 bg-gray-800 text-white text-center text-xs py-3 font-semibold">
+  🔒 Cuộc trò chuyện đã hết hiệu lực — bạn chỉ có thể xem lại lịch sử.
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ====================================================================
+// N — Chat Parent ↔ CarePartner (cửa sổ còn hiệu lực)
+// Backend: chat/views.py — /api/chat/conversations/<task_id>/...
+// Pattern: authFetch + polling (giống tracking.html); polling 4s khi
+// màn hình mở, dừng khi rời trang (visibilitychange + beforeunload).
+// ====================================================================
+const API_BASE = '/api';
+const POLL_INTERVAL_MS = 4000;
+
+let taskId = null;
+let currentUserId = null;   // để phân biệt bong bóng trái/phải
+let lastMessageId = null;   // mốc ?since=<id> cho polling
+let pollTimer = null;
+let conversationStatus = null; // 'open' | 'closed'
+let sending = false;
+
+// ====================================================================
+// AUTH (pattern tracking.html — key 'token' đồng bộ login.html)
+// ====================================================================
+function getAuthToken() {
+  return localStorage.getItem('token');
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  if (!token) {
+    window.location.href = '/login/';
+    throw new Error('No auth token');
+  }
+  const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+  if (options.body && typeof options.body === 'object') {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) return authFetch(url, options);
+    window.location.href = '/login/';
+    throw new Error('Auth expired');
+  }
+  return resp;
+}
+
+async function tryRefreshToken() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const r = await fetch(`${API_BASE}/auth/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    localStorage.setItem('token', data.access);
+    if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+    return true;
+  } catch (e) { return false; }
+}
+
+// ====================================================================
+// HELPERS
+// ====================================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Escape HTML trước khi innerHTML — CHỐNG XSS (bài học escapeHtml fix-loi)
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function timeLabel(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const hm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  return sameDay ? hm : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+}
+
+function hoursLeftLabel(closesAt) {
+  if (!closesAt) return '';
+  const ms = new Date(closesAt) - new Date();
+  if (ms <= 0) return 'đã hết hạn';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 1) return `còn ~${h} giờ`;
+  return `còn ~${m} phút`;
+}
+
+function scrollBottom(smooth = true) {
+  const el = document.getElementById('chat-scroll');
+  el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+// ====================================================================
+// RENDER
+// ====================================================================
+function renderWindowStatus(conv) {
+  conversationStatus = conv.status;
+  const openBadge = document.getElementById('window-open-badge');
+  const closedBadge = document.getElementById('window-closed-badge');
+  const composer = document.getElementById('composer');
+  const readonlyBanner = document.getElementById('readonly-banner');
+
+  if (conv.status === 'open') {
+    openBadge.classList.remove('hidden');
+    closedBadge.classList.add('hidden');
+    document.getElementById('window-open-text').textContent =
+      'Cửa sổ chat đang mở · ' + (conv.closes_at ? hoursLeftLabel(conv.closes_at) : 'trong suốt ca làm');
+    composer.classList.remove('hidden');
+    readonlyBanner.classList.add('hidden');
+  } else {
+    openBadge.classList.add('hidden');
+    closedBadge.classList.remove('hidden');
+    composer.classList.add('hidden');
+    readonlyBanner.classList.remove('hidden');
+  }
+}
+
+function renderHeader(conv) {
+  document.getElementById('other-name').textContent =
+    (conv.other_party.first_name || conv.other_party.last_name)
+      ? `${conv.other_party.first_name} ${conv.other_party.last_name}`.trim()
+      : conv.other_party.username;
+  const avatarUrl = conv.other_party.avatar_url;
+  const avatarEl = document.getElementById('other-avatar');
+  if (avatarUrl) {
+    avatarEl.outerHTML = `<img id="other-avatar" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-full object-cover shrink-0" alt="avatar" />`;
+  } else {
+    avatarEl.textContent = (conv.other_party.username || '?').charAt(0).toUpperCase();
+  }
+  document.getElementById('task-title').textContent = conv.task_title;
+  // Phụ huynh quay về danh sách việc; worker quay về việc của tôi
+  const role = localStorage.getItem('role');
+  document.getElementById('back-link').href = role === 'worker' ? '/worker/my-jobs/' : '/parent/tasks/';
+}
+
+function messageBubbleHtml(m) {
+  const isMine = m.sender_id === currentUserId;
+  const bubbleBg = isMine ? 'bg-[#F26522] text-white' : 'bg-white text-gray-800';
+  const align = isMine ? 'justify-end' : 'justify-start';
+  const readTick = isMine && m.read_at
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" class="ml-1 shrink-0"><path d="M1 13l4 4L13 7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 13l4 4L21 7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '';
+  return `
+    <div class="flex ${align}">
+      <div class="${bubbleBg} rounded-2xl px-4 py-2.5 max-w-[78%] shadow-sm">
+        <p class="text-sm leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(m.content)}</p>
+        <div class="flex items-center justify-end gap-0.5 mt-0.5">
+          <span class="text-[10px] ${isMine ? 'text-white/70' : 'text-gray-400'}">${timeLabel(m.created_at)}</span>
+          ${readTick}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMessages(messages, append = false) {
+  const scroll = document.getElementById('chat-scroll');
+  if (!append) scroll.innerHTML = '';
+  if (!messages.length) return;
+  scroll.insertAdjacentHTML('beforeend', messages.map(messageBubbleHtml).join(''));
+  lastMessageId = Math.max(lastMessageId || 0, ...messages.map(m => m.id));
+  scrollBottom(!append ? false : true);
+}
+
+// ====================================================================
+// DATA
+// ====================================================================
+async function fetchDetail() {
+  const r = await authFetch(`${API_BASE}/chat/conversations/${taskId}/`);
+  if (r.status === 404) {
+    showState('no-conversation');
+    stopPolling();
+    return null;
+  }
+  if (!r.ok) throw new Error('detail ' + r.status);
+  const conv = await r.json();
+  renderHeader(conv);
+  renderWindowStatus(conv);
+  return conv;
+}
+
+async function fetchMessages(since = null) {
+  const url = since != null
+    ? `${API_BASE}/chat/conversations/${taskId}/messages/?since=${since}`
+    : `${API_BASE}/chat/conversations/${taskId}/messages/`;
+  const r = await authFetch(url);
+  if (!r.ok) throw new Error('messages ' + r.status);
+  const data = await r.json();
+  return data.messages;
+}
+
+async function pollNewMessages() {
+  try {
+    const messages = await fetchMessages(lastMessageId);
+    if (messages.length) {
+      renderMessages(messages, true);
+      // Đánh dấu đã đọc (mở màn hình = đã xem tin mới)
+      authFetch(`${API_BASE}/chat/conversations/${taskId}/read/`, { method: 'POST', body: {} }).catch(() => {});
+    }
+    // Lazy-close cập nhật UI ngay khi hết hạn (không cần F5)
+    const conv = await fetchDetail();
+    if (conv && conv.status !== conversationStatus) renderWindowStatus(conv);
+  } catch (e) { /* silent — poll tiếp chu kỳ sau */ }
+}
+
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(pollNewMessages, POLL_INTERVAL_MS);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function showState(name) {
+  document.getElementById('loading-state').classList.toggle('hidden', name !== 'loading');
+  document.getElementById('error-state').classList.toggle('hidden', name !== 'error');
+  document.getElementById('no-conversation-state').classList.toggle('hidden', name !== 'no-conversation');
+  document.getElementById('composer').classList.toggle('hidden', name !== 'ok' || conversationStatus !== 'open');
+  if (name === 'ok') document.getElementById('chat-scroll').classList.remove('hidden');
+}
+
+// ====================================================================
+// SEND
+// ====================================================================
+async function sendMessage() {
+  const input = document.getElementById('message-input');
+  const btn = document.getElementById('send-btn');
+  const errEl = document.getElementById('send-error');
+  const content = input.value.trim();
+  if (!content || sending) return;
+
+  sending = true;
+  btn.disabled = true;
+  errEl.classList.add('hidden');
+  try {
+    const r = await authFetch(`${API_BASE}/chat/conversations/${taskId}/messages/send/`, {
+      method: 'POST',
+      body: { content },
+    });
+    if (r.status === 201) {
+      const msg = await r.json();
+      input.value = '';
+      input.style.height = 'auto';
+      renderMessages([{
+        id: msg.id, sender_id: msg.sender_id, content: msg.content,
+        created_at: msg.created_at, read_at: null,
+      }], true);
+    } else {
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 403) {
+        // Cửa sổ đóng — cập nhật UI read-only
+        showToast('🔒 ' + (data.error || 'Cuộc trò chuyện đã hết hiệu lực'));
+        await fetchDetail();
+      } else {
+        errEl.textContent = data.error || 'Không gửi được tin nhắn.';
+        errEl.classList.remove('hidden');
+      }
+    }
+  } catch (e) {
+    errEl.textContent = 'Lỗi mạng — không gửi được tin nhắn.';
+    errEl.classList.remove('hidden');
+  } finally {
+    sending = false;
+    updateSendBtn();
+  }
+}
+
+function updateSendBtn() {
+  const input = document.getElementById('message-input');
+  const btn = document.getElementById('send-btn');
+  btn.disabled = sending || !input.value.trim();
+}
+
+// ====================================================================
+// INIT
+// ====================================================================
+async function init() {
+  showState('loading');
+  stopPolling();
+  const params = new URLSearchParams(window.location.search);
+  taskId = params.get('task_id');
+  if (!taskId) {
+    document.getElementById('error-text').textContent = 'Thiếu task_id.';
+    showState('error');
+    return;
+  }
+  try {
+    // currentUserId từ /profile/ (phân biệt bong bóng trái/phải)
+    const profResp = await authFetch(`${API_BASE}/profile/`);
+    if (profResp.ok) {
+      const prof = await profResp.json();
+      currentUserId = prof.id;
+    }
+
+    const conv = await fetchDetail();
+    if (!conv) return; // no-conversation state
+
+    const messages = await fetchMessages();
+    renderMessages(messages);
+    showState('ok');
+    scrollBottom(false);
+    if (messages.length) {
+      authFetch(`${API_BASE}/chat/conversations/${taskId}/read/`, { method: 'POST', body: {} }).catch(() => {});
+    }
+    startPolling();
+  } catch (e) {
+    console.error('init chat error:', e);
+    document.getElementById('error-text').textContent = 'Không tải được cuộc trò chuyện. Vui lòng thử lại.';
+    showState('error');
+  }
+}
+
+// Dừng polling khi tab ẩn (tiết kiệm — pattern cleanup giống B5 mobile)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (taskId && conversationStatus !== null) startPolling();
+  } else {
+    stopPolling();
+  }
+});
+window.addEventListener('beforeunload', stopPolling);
+
+// Input events
+document.getElementById('message-input').addEventListener('input', function () {
+  updateSendBtn();
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 112) + 'px';
+});
+document.getElementById('message-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+init();
+</script>
+</body>
+</html>

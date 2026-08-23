@@ -267,6 +267,18 @@ export default function MyJobsScreen() {
               <Text style={styles.diaryBtnText}>Ghi nhật ký chăm sóc</Text>
             </TouchableOpacity>
 
+            {/* === N — NHẮN TIN VỚI PHỤ HUYNH (cửa sổ còn hiệu lực) === */}
+            <TouchableOpacity
+              style={styles.chatBtn}
+              onPress={() => navigation.navigate('Chat', { taskId: app.task, taskTitle: app.task_title })}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Nhắn tin với phụ huynh"
+            >
+              <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+              <Text style={styles.chatBtnText}>Nhắn tin với phụ huynh</Text>
+            </TouchableOpacity>
+
             {isCurrentlyTracking ? (
               <ActiveTrackingBanner
                 taskId={app.task}
@@ -623,4 +635,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   diaryBtnText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
+  // N — nút chat với phụ huynh
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: SIZES.radiusSm,
+    backgroundColor: '#3B82F6',
+    marginTop: 8,
+  },
+  chatBtnText: { ...TYPO.buttonSmall, color: '#fff', fontWeight: '700' },
 });

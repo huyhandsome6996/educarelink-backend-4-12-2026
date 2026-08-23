@@ -103,3 +103,13 @@ class ParentCareDiaryDetailView(TemplateView):
 class ParentCareDiaryHistoryView(TemplateView):
     """Trang lịch sử nhật ký (Phụ huynh web)."""
     template_name = "frontend/parent_care_diary_history.html"
+
+
+class ChatView(TemplateView):
+    """N — Trang chat Parent ↔ CarePartner (cửa sổ còn hiệu lực).
+
+    Dùng chung cho cả parent lẫn worker — role phân biệt bằng JWT trong
+    localStorage (pattern authFetch), API tự check ownership.
+    Query param: ?task_id=<id>
+    """
+    template_name = "frontend/chat.html"
