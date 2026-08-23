@@ -1,7 +1,7 @@
 """B2 — Business logic tích điểm / đổi voucher.
 
 Công thức: points = floor(task.price / 5000)
-Bonus: +20 điểm khi review 5 sao.
+Bonus: +5 điểm khi review 5 sao.
 Hạng dựa trên lifetime (tổng điểm đã cộng, không trừ khi đổi voucher).
 """
 
@@ -20,7 +20,7 @@ logger = logging.getLogger('educarelink.rewards')
 
 # --- Hằng số theo đặc tả B2 ---
 POINTS_PER_PRICE_UNIT = 5000  # floor(price / 5000)
-REVIEW_BONUS_POINTS = 20
+REVIEW_BONUS_POINTS = 5
 
 TIER_THRESHOLDS = [
     # (min_lifetime, code, label)
@@ -148,7 +148,7 @@ def award_points_for_task(task) -> PointTransaction | None:
 
 @transaction.atomic
 def award_review_bonus(review) -> PointTransaction | None:
-    """+20 điểm khi phụ huynh đánh giá CarePartner 5 sao. Idempotent."""
+    """+5 điểm khi phụ huynh đánh giá CarePartner 5 sao. Idempotent."""
     if review is None:
         return None
     if int(getattr(review, 'rating', 0) or 0) != 5:

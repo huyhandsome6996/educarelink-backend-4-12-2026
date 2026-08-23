@@ -118,7 +118,7 @@ class ReviewBonusTests(TestCase):
             review=review, reason=PointTransaction.REASON_REVIEW_BONUS,
         )
         self.assertEqual(bonus_qs.count(), 1)
-        self.assertEqual(bonus_qs.first().points, 20)
+        self.assertEqual(bonus_qs.first().points, 5)
 
     def test_four_star_no_bonus(self):
         review = Review.objects.create(
