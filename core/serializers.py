@@ -21,6 +21,8 @@ class UserSerializer(serializers.ModelSerializer):
             'auth_provider', 'avatar_url',
             # Phần 3 — boolean flag (không expose hash)
             'has_verification_pin',
+            # Admin dashboard cần is_staff / is_superuser để check quyền client-side
+            'is_staff', 'is_superuser',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -33,6 +35,8 @@ class UserSerializer(serializers.ModelSerializer):
             'role': {'read_only': True},  # Ngăn chặn role escalation qua API
             'auth_provider': {'read_only': True},  # Không cho thay đổi provider qua API
             'avatar_url': {'read_only': True},
+            'is_staff': {'read_only': True},
+            'is_superuser': {'read_only': True},
             'id_card_front': {'required': False},
             'id_card_back': {'required': False},
             'selfie_photo': {'required': False},
