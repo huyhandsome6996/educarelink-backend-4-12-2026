@@ -366,6 +366,29 @@ SOSAlert
 └─ created_at
 ```
 
+> **[2026-08-23 — B5 Coding Agent]** Bổ sung schema tracking module (Phần 2-3 + B5 chưa kịp cập nhật ở đây):
+>
+> **`tracking.DeviceHeartbeat`** (OneToOne Task) + **`tracking.DeviceOfflineAlert`** (Phần 2 — chống tắt máy):
+> heartbeat mỗi 30s, scheduler quét mỗi 1 phút, offline > 60s → alert active + push phụ huynh.
+>
+> **`tracking.RandomVerificationCheck`** (Phần 3 + **B5 — xác thực bằng ảnh**):
+> ```
+> RandomVerificationCheck
+> ├─ task: FK → Task, worker: FK → User
+> ├─ triggered_at, respond_deadline
+> ├─ status: 'pending' | 'confirmed' | 'wrong_code' | 'timeout' | 'cancelled'
+> ├─ attempts, responded_at, response_lat/lng
+> ├─ verification_type: 'pin' | 'photo'   ← B5 (default 'pin', data cũ không đổi)
+> ├─ photo: ImageField ('verification_photos/')   ← B5 (ảnh KHÔNG public qua /media/)
+> ├─ photo_submitted_at   ← B5
+> ├─ parent_photo_notification_sent: bool   ← B5 (chống spam thông báo phụ huynh)
+> ├─ push_sent, push_retry_count
+> ├─ parent_alert_sent, consecutive_timeouts_count (chống spam timeout alert)
+> └─ UniqueConstraint(task, worker) WHERE status='pending'
+> ```
+> State machine B5 tái sử dụng nguyên của PIN: ảnh hợp lệ nộp trong hạn →
+> 'confirmed'; quá hạn → 'timeout'; admin/parent huỷ → 'cancelled'. Không state mới.
+
 ### 5.16. `moderation.TaskModeration` (OneToOne với Task)
 ```
 TaskModeration
@@ -536,6 +559,20 @@ Tất cả API nằm dưới prefix `/api/`. Auth: header `Authorization: Bearer
 | GET | `/api/tracking/sos/<task_id>/` | IsAuthenticated | List SOS alerts của task |
 | POST | `/api/tracking/sos/<sos_id>/resolve/` | IsAuthenticated | Đánh dấu SOS đã giải quyết |
 | GET | `/api/tracking/admin/overview/` | IsAdminUser | Stats tổng quan tracking |
+
+> **[2026-08-23 — B5 Coding Agent]** Module tracking còn các endpoint Phần 1-3 (heartbeat,
+> offline-alerts, verification PIN, batch location, scheduler-health — xem `tracking/urls.py`)
+> và **B5 — xác thực bằng ảnh**:
+>
+> | Method | Endpoint | Permission | Mô tả |
+> |---|---|---|---|
+> | POST | `/api/tracking/verification-checks/<check_id>/photo/` | IsAuthenticated (worker sở hữu check) | **B5** — nộp ảnh xác minh (multipart: `photo` + `latitude?/longitude?`); validate size ≤ 5MB + MIME thật (Pillow) JPEG/PNG/WebP; ảnh hợp lệ → check `confirmed` + notify parent 1 lần |
+> | GET | `/api/tracking/verification-checks/<check_id>/photo/` | IsAuthenticated (worker check / parent task / admin) | **B5** — xem ảnh (serve bytes QUA API có auth, KHÔNG dùng URL `/media/` public). `?format=json` trả metadata |
+>
+> Scheduler (Phần 3 + B5): mỗi phút random tạo check theo `VERIFICATION_TARGET_CHECKS_PER_SHIFT`
+> / `VERIFICATION_PHOTO_CHECK_RATIO` (30% là check ảnh). Check ảnh có deadline riêng
+> `VERIFICATION_PHOTO_RESPOND_TIMEOUT_SECONDS` (180s), limit ảnh `VERIFICATION_PHOTO_MAX_MB` (5MB).
+> Timeout photo check nhập chung streak anti-spam alert phụ huynh với PIN.
 
 ### 6.11. AI Recommendations (`ai_recommendations/urls.py`)
 
@@ -953,6 +990,16 @@ File mẫu: `.env.example`. Trên Render: cấu hình qua Dashboard → Settings
 |---|---|---|
 | `TRACKING_GEOFENCE_RADIUS` | `500` | Bán kính geofence mặc định (mét) |
 | `TRACKING_UPDATE_INTERVAL` | `10` | Giây — dùng cho frontend biết tần suất gửi |
+
+> **[2026-08-23 — B5 Coding Agent]** Env vars xác minh ngẫu nhiên (Phần 3 + B5 — xem
+> `tracking/verification_scheduler.py`): `VERIFICATION_TARGET_CHECKS_PER_SHIFT` (2),
+> `VERIFICATION_ESTIMATED_SHIFT_MINUTES` (180), `VERIFICATION_MIN_MINUTES_BETWEEN_CHECKS` (15),
+> `VERIFICATION_RESPOND_TIMEOUT_SECONDS` (90), `VERIFICATION_CONSECUTIVE_TIMEOUTS_BEFORE_PARENT_ALERT` (2),
+> `VERIFICATION_MAX_WRONG_ATTEMPTS` (3), `VERIFICATION_CHECK_INTERVAL_MINUTES` (1),
+> `VERIFICATION_CHECK_ENABLED` (true).
+> **B5 (ảnh):** `VERIFICATION_PHOTO_CHECK_RATIO` (0.3 — tỷ lệ check là ảnh),
+> `VERIFICATION_PHOTO_RESPOND_TIMEOUT_SECONDS` (180 — deadline chụp+nộp ảnh),
+> `VERIFICATION_PHOTO_MAX_MB` (5 — giới hạn dung lượng ảnh).
 
 > **Sandbox MoMo test credentials** (công khai, có thể đã bị MoMo vô hiệu): `MOMO/F8BBA842ECF85/K951B6PE1waDMi640xX08PD3vg6EkVlz`. Để go-live cần đăng ký business riêng tại https://business.momo.vn/.
 

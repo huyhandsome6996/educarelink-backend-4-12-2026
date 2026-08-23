@@ -60,3 +60,30 @@ class WebPageTests(TestCase):
         resp = self.client.get('/parent/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Nhật ký chăm sóc')
+
+
+class B5WebPageTests(TestCase):
+    """B5 — trang tracking.html có phần tử xác minh ảnh cho phụ huynh."""
+
+    def setUp(self):
+        # Bỏ qua SiteAccessGateMiddleware trong test
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_tracking_page_200(self):
+        """GET /parent/tracking/ → 200, HTML."""
+        resp = self.client.get('/parent/tracking/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/html', resp['Content-Type'])
+
+    def test_tracking_contains_photo_verification_elements(self):
+        """tracking.html chứa: mô tả ảnh + modal xem ảnh + hàm viewVerificationPhoto."""
+        resp = self.client.get('/parent/tracking/')
+        self.assertContains(resp, 'chụp ảnh tại chỗ')
+        self.assertContains(resp, 'verification-photo-modal')
+        self.assertContains(resp, 'viewVerificationPhoto')
+        self.assertContains(resp, 'closeVerificationPhotoModal')
+        # History render có nút Xem ảnh + badge loại ảnh
+        self.assertContains(resp, 'Xem ảnh')
+        self.assertContains(resp, 'verification_type')
