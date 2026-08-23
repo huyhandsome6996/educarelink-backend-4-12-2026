@@ -172,25 +172,58 @@ async function createVoucher() {
         points_required: points_required,
         discount_value: discount_value,
         description: description,
-        expiry_date: expiry_date,
+        expiry_date: expiry_date || null,
         is_active: true,
       }),
     });
+    // Đọc body 1 lần dạng text — tránh lỗi khi body rỗng / non-JSON
+    var raw = '';
+    try { raw = await res.text(); } catch (readErr) { raw = ''; }
     var data = {};
-    try { data = await res.json(); } catch (parseErr) {
-      showToast('Server trả về lỗi (HTTP ' + res.status + ')', 'error');
-      return;
+    if (raw) {
+      try { data = JSON.parse(raw); } catch (parseErr) {
+        // HTTP 2xx nhưng body không phải JSON → vẫn coi là thành công nếu voucher đã lưu
+        if (res.ok) {
+          showToast('Đã tạo voucher', 'success');
+          _rewardsFormDirty = false;
+          loadRewardsAdmin(true);
+          return;
+        }
+        showToast('Server trả về lỗi (HTTP ' + res.status + ')', 'error');
+        return;
+      }
     }
     if (!res.ok) {
-      showToast(data.error || data.detail || ('Tạo thất bại HTTP ' + res.status), 'error');
+      var errMsg = data.error || data.detail;
+      if (!errMsg && typeof data === 'object') {
+        // DRF field errors: {title: ["..."], points_required: ["..."]}
+        var parts = [];
+        Object.keys(data).forEach(function(k) {
+          var v = data[k];
+          if (Array.isArray(v)) parts.push(k + ': ' + v.join(', '));
+          else if (typeof v === 'string') parts.push(v);
+        });
+        errMsg = parts.join('; ') || ('Tạo thất bại HTTP ' + res.status);
+      }
+      showToast(errMsg || ('Tạo thất bại HTTP ' + res.status), 'error');
+      // Vẫn reload list — trường hợp tạo xong nhưng response lỗi lạ
+      loadRewardsAdmin(true);
       return;
     }
-    showToast('Đã tạo voucher', 'success');
+    showToast('Đã tạo voucher' + (data.title ? (': ' + data.title) : ''), 'success');
     _rewardsFormDirty = false;
+    // Clear form
+    if (titleEl) titleEl.value = '';
+    if (pointsEl) pointsEl.value = '';
+    if (discountEl) discountEl.value = '';
+    if (descEl) descEl.value = '';
+    if (expiryEl) expiryEl.value = '';
     loadRewardsAdmin(true);
   } catch (e) {
     console.error('createVoucher error:', e);
-    showToast('Lỗi kết nối: ' + (e.message || e), 'error');
+    showToast('Lỗi kết nối: ' + (e.message || e) + ' — F5 để kiểm tra danh sách', 'error');
+    // Có thể server đã tạo xong dù client mất response
+    try { loadRewardsAdmin(true); } catch (ignore) {}
   }
 }
 
