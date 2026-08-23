@@ -513,6 +513,10 @@ function renderTasks() {
             <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">location_on</span>
             Theo dõi vị trí Carepartner
           </button>
+          <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+            Nhắn tin với Carepartner
+          </button>
           <div class="flex gap-2">
             <button onclick="completeTask(${t.id})" class="flex-1 py-3 bg-emerald-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
               <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
@@ -529,6 +533,10 @@ function renderTasks() {
         <button onclick="goToReview(${t.id})" class="w-full py-3 bg-success/10 text-success font-headline font-bold text-sm rounded-xl hover:bg-success/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 border border-success/20">
           <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
           Đánh giá
+        </button>
+        <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+          Chat với Carepartner (24h)
         </button>
       `;
     } else if (t.status === 'cancelled') {

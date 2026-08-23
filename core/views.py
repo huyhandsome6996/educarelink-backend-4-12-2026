@@ -12,6 +12,7 @@ import os
 import logging
 import requests
 from django.db import models as db_models
+from django.utils import timezone
 from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability
 
 logger = logging.getLogger('educarelink.core.views')
@@ -522,6 +523,12 @@ class TaskUpdateStatusAPIView(APIView):
             return Response({"error": f"Không thể chuyển từ '{task.status}' sang '{new_status}'."}, status=status.HTTP_400_BAD_REQUEST)
 
         task.status = new_status
+        # N — Cửa sổ chat: set thời điểm hoàn thành THẬT tại nguồn (chỉ chỗ này
+        # set 'completed' trong flow thật). Chat signal đọc field này để tính
+        # closes_at = completed_at + 24h. Cancelled không cần completed_at —
+        # chat signal đóng chat ngay khi cancelled (không có ca làm thật).
+        if new_status == 'completed':
+            task.completed_at = timezone.now()
         task.save()
 
         # ⚡ Notify carepartner rằng task đã kết thúc → app tự clear tracking

@@ -87,3 +87,53 @@ class B5WebPageTests(TestCase):
         # History render có nút Xem ảnh + badge loại ảnh
         self.assertContains(resp, 'Xem ảnh')
         self.assertContains(resp, 'verification_type')
+
+
+class NChatWebPageTests(TestCase):
+    """N — Cửa sổ chat: trang chat + entry points parent/worker không mồ côi."""
+
+    def setUp(self):
+        # Bỏ qua SiteAccessGateMiddleware trong test
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_chat_page_200(self):
+        """GET /chat/ → 200, HTML."""
+        resp = self.client.get('/chat/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/html', resp['Content-Type'])
+
+    def test_chat_page_contains_core_elements(self):
+        """chat.html chứa: polling, composer, trạng thái cửa sổ, escapeHtml."""
+        resp = self.client.get('/chat/')
+        # Entry + polling + states
+        self.assertContains(resp, 'POLL_INTERVAL_MS')
+        self.assertContains(resp, 'message-input')
+        self.assertContains(resp, 'window-open-badge')
+        self.assertContains(resp, 'window-closed-badge')
+        self.assertContains(resp, 'readonly-banner')
+        # API endpoints đúng contract backend
+        self.assertContains(resp, '/api/chat/conversations/')
+        self.assertContains(resp, 'messages/send/')
+        self.assertContains(resp, 'read/')
+
+    def test_parent_tasks_contains_chat_link(self):
+        """parent_tasks.html có nút Nhắn tin với Carepartner (entry point parent)."""
+        resp = self.client.get('/parent/tasks/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "location.href='/chat/?task_id=")
+        self.assertContains(resp, 'Nhắn tin với Carepartner')
+
+    def test_worker_jobs_contains_chat_link(self):
+        """worker_jobs.html có nút chat (entry point worker)."""
+        resp = self.client.get('/worker/my-jobs/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "location.href='/chat/?task_id=")
+        self.assertContains(resp, 'Nhắn tin phụ huynh')
+
+    def test_tracking_message_button_links_chat(self):
+        """tracking.html nút Nhắn dẫn sang /chat/ (không còn toast placeholder)."""
+        resp = self.client.get('/parent/tracking/')
+        self.assertContains(resp, "messageCarepartner")
+        self.assertNotContains(resp, 'Tính năng nhắn tin đang phát triển')

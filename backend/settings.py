@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'moderation',  # Kiểm duyệt công việc + Khiếu nại (AI)
     'performance',  # ⚡ Tối ưu hiệu năng (LRU cache, connection pool, spatial index)
     'care_diary',  # B1 — Nhật ký chăm sóc (Care Diary)
+    'chat',  # N — Cửa sổ chat Parent ↔ CarePartner (mở khi in_progress, đóng completed+24h)
 ]
 
 MIDDLEWARE = [
