@@ -73,6 +73,8 @@ urlpatterns = [
     path('api/', include('performance.urls')),
     # B1 — Nhật ký chăm sóc (Care Diary)
     path('api/', include('care_diary.urls')),
+    # N — Cửa sổ chat Parent ↔ CarePartner
+    path('api/', include('chat.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

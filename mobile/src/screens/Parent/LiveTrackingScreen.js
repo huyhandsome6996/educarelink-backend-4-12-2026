@@ -841,7 +841,15 @@ export default function LiveTrackingScreen() {
               <Ionicons name="call" size={16} color="#fff" />
               <Text style={styles.actionBtnTextWhite}>Gọi</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionMsg]}>
+            {/* N — nút chat thật (cửa sổ còn hiệu lực) — thay placeholder */}
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionMsg]}
+              onPress={() => navigation.navigate('Chat', {
+                taskId: Number(taskId),
+                taskTitle,
+              })}
+              accessibilityRole="button"
+              accessibilityLabel="Nhắn tin với CarePartner">
               <Ionicons name="chatbubble" size={16} color="#fff" />
               <Text style={styles.actionBtnTextWhite}>Nhắn</Text>
             </TouchableOpacity>

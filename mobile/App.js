@@ -177,6 +177,8 @@ function useAutoResumeTracking() {
 // ====================================================================
 // Hook: Lắng nghe notification task_ended → clear tracking storage
 // PHẢI được gọi INSIDE AuthProvider (feature version uses useAuth to check user)
+// N — chat: thêm nhánh new_chat_message → điều hướng sang màn Chat
+// (tái dùng listener này, KHÔNG đăng ký listener push riêng cho chat).
 // ====================================================================
 function useTaskEndedListener() {
   const { user } = useAuth();
@@ -196,6 +198,21 @@ function useTaskEndedListener() {
             }
           } catch (e) {
             console.warn('[App] Clear tracking on task_ended failed:', e);
+          }
+        }
+        // N — push tin nhắn chat mới: điều hướng sang màn Chat khi app mở.
+        // KHÔNG điều hướng tự động nếu user đang ở màn Chat khác task (tránh
+        // gián đoạn) — chỉ navigate khi có navigation ref khả dụng.
+        if (data.type === 'new_chat_message' && data.task_id) {
+          try {
+            const { getRootNavigator } = await import('./src/navigation/RootNavigation');
+            getRootNavigator()?.navigate('Chat', {
+              taskId: data.task_id,
+              taskTitle: data.task_title,
+            });
+          } catch (e) {
+            // RootNavigation chưa sẵn sàng (màn splash/loading) — user vẫn
+            // thấy banner hệ thống của notification; bỏ qua lỗi navigate.
           }
         }
       });

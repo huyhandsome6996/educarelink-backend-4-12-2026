@@ -1043,3 +1043,132 @@ Giữ lại phần cải tiến hợp lý (implement LẠI, không copy file):
   upgrade-pending-section.
 - **escapeHtml() GIỮ NGUYÊN 100%** (&amp;/&lt;/&gt;/&quot;/&#39; — đã verify sau sửa).
 - Test: frontend 8/8 pass. Đây là hotfix nhỏ theo AGENTS.md §19 (commit trực tiếp main).
+
+## N — Cửa sổ chat còn hiệu lực (2026-08-23)
+
+**Branch**: `feature/n-cua-so-chat` (từ main `cfd179e` — không merge, chờ QA)
+
+### Quyết định thiết kế 3 khoảng trống spec (bắt buộc chọn rõ + lý do)
+
+**(A) Thời điểm mở chat — LỰA CHỌN 1**: coi `task.status → 'in_progress'`
+(lúc phụ huynh duyệt đơn ở ApproveCandidateAPIView) LÀ thời điểm mở chat.
+- Lý do: tái dùng nguyên Task state machine sẵn có (open→in_progress→completed/
+  cancelled), KHÔNG thêm state/action mới; nhất quán với cách tracking/B5 coi
+  'in_progress' là "đang trong ca". Spec cho phép mặc định lựa chọn này khi
+  không có chỉ đạo khác.
+- Thiết kế sẵn cho Lựa chọn 2: toàn bộ việc mở đi qua MỘT hàm duy nhất
+  `chat_service.open_conversation_for_task(task)` gọi từ signal post_save —
+  nếu sau này thêm "CarePartner xác nhận bắt đầu ca" (field shift_started_at),
+  chỉ đổi ĐIỂM GỌI signal, không sửa logic bên trong.
+
+**(B) Thời điểm đóng chat**: `Task.completed_at + 24 giờ`. Đã thêm field
+`completed_at` (migration core/0020) — set TẠI NGUỒN trong
+TaskUpdateStatusAPIView lúc status → 'completed' (không patch nhiều nơi).
+- **Task cancelled → đóng chat NGAY** (không có 24h buffer). Lý do: task bị
+  huỷ = không có ca làm thật sự diễn ra → không có gì cần "wrap-up" sau ca;
+  giữ kênh mở sau huỷ chỉ tạo cơ hội tranh chấp/quấy rối mà không phục vụ
+  trao đổi về việc chăm sóc.
+- Task cũ pre-migration (completed_at NULL) → fallback timezone.now().
+
+**(C) Sau khi đóng**: READ-ONLY — KHÔNG xoá message, KHÔNG ẩn khỏi danh
+sách. Lý do: nền tảng liên quan trẻ em, lịch sử chat có thể cần tra cứu
+sau này cho mục đích an toàn/tranh chấp; chỉ chặn gửi tin mới (API 403
+"Cuộc trò chuyện đã hết hiệu lực"). Đóng = lazy-close tại MỌI API
+read/write (bảo đảm đúng kể cả scheduler chưa chạy) + scheduler quét 5
+phút đóng hàng loạt.
+
+### Kiến trúc (AGENTS.md §15)
+- App `chat/` độc lập, chỉ phụ thuộc core (module isolation). Tích hợp Task
+  lifecycle qua signal post_save (chat/signals.py — copy pattern
+  tracking/signals.py cache old status ở pre_save; KHÔNG sửa core/views.py
+  để gọi chat — chỉ thêm dòng set completed_at tại nguồn TaskUpdateStatus).
+- Chat fail KHÔNG chặn luồng task chính (handler bọc try/except).
+- Service layer: toàn bộ business logic trong chat/services.py —
+  open/close_conversation_for_task, send_message (permission + moderation
+  TRƯỚC khi lưu + window check + notify), get_messages (?since polling),
+  mark_messages_read, serialize_conversation (last_message + unread_count),
+  get_conversation_messages_for_admin (tranh chấp/an toàn).
+- Scheduler chat/scheduler.py: quét 5 phút đóng Conversation 'open' quá hạn
+  (pattern verification_scheduler; chỉ chạy trên Render, local SKIPPED,
+  env CHAT_CLOSE_CHECK_INTERVAL_MINUTES/CHAT_SCHEDULER_ENABLED).
+- Model: Conversation (OneToOne Task, status open/closed — KHÔNG tạo record
+  cho task chưa in_progress, tránh rác data), Message (read_at nullable
+  pattern Notification.is_read; Message chỉ tồn tại khi đã qua kiểm duyệt —
+  bị chặn thì KHÔNG tạo row nên không cần field moderation_status).
+
+### Kiểm duyệt nội dung (bắt buộc — trẻ em)
+`moderate_message(content)` tái dùng BANNED_KEYWORDS + bộ anti-bypass
+(homoglyph/zero-width/leetspeak/spelled-out) của moderation/services.py —
+single source of truth, không nhân bản danh sách (lý do bất khả kháng
+§15.1 có comment trong code: lệch bộ lọc trên nền tảng trẻ em là rủi ro
+an toàn thật). KHÔNG gọi Gemini cho mỗi tin (chat tần suất cao hơn tạo
+task nhiều lần — từ khoá cấm chặn đồng bộ là đủ). Tin bị chặn → 400 rõ
+ràng, không lưu DB, log warning cho admin đối chiếu.
+
+### API
+- GET /api/chat/conversations/ — danh sách (kèm last_message + unread_count)
+- GET /api/chat/conversations/<task_id>/ — chi tiết + open/closed + closes_at
+- GET /api/chat/conversations/<task_id>/messages/?since=<id> — polling
+- POST /api/chat/conversations/<task_id>/messages/send/ — gửi (kiểm duyệt + window)
+- POST /api/chat/conversations/<task_id>/read/ — đánh dấu đã đọc
+- GET /api/chat/admin/conversations/<task_id>/messages/ — admin xem (tranh chấp)
+Lưu ý: endpoint gửi dùng /messages/send/ riêng (không chồng với GET /messages/).
+
+### Web (frontend/templates/frontend/chat.html — dùng chung parent/worker)
+- Pattern tracking.html: authFetch (key 'token' + refresh), polling 4s chỉ
+  khi tab visible (visibilitychange + beforeunload dọn interval), đủ
+  loading/error/empty/no-conversation states, escapeHtml đầy đủ 5 ký tự
+  (bài học fix-loi), banner read-only + badge "còn ~X giờ" khi mở.
+- Entry points (không mồ côi): tracking.html nút "Nhắn" → /chat/?task_id=
+  (thay toast "đang phát triển"); parent_tasks.html nút "Nhắn tin với
+  Carepartner" cạnh nút Theo dõi vị trí; worker_jobs.html nút "Nhắn tin
+  phụ huynh" (accepted) + "Chat (24h)" (completed) cạnh nút Nhật ký.
+- Route /chat/ (frontend/urls.py name='chat', ChatView).
+
+### Mobile (Expo)
+- src/screens/ChatScreen.js DÙNG CHUNG parent/worker (role không đổi logic
+  chat — API check ownership; currentUserId từ /profile/ phân bong bóng).
+- src/api/chat.js — 5 hàm API đúng contract backend.
+- Polling 4s chỉ khi màn hình FOCUS (useFocusEffect) — cleanup interval khi
+  blur/unmount (pattern dọn dẹp B5 RandomVerificationModal).
+- Push new_chat_message: tái dùng useTaskEndedListener trong App.js (không
+  listener riêng) + RootNavigation.js (navigation ref pattern chuẩn React
+  Navigation) để navigate('Chat') khi nhận push và app đang mở.
+- Entry points: LiveTrackingScreen nút "Nhắn" (parent, thay placeholder);
+  MyJobsScreen nút "Nhắn tin với phụ huynh" (worker, cạnh nút Ghi nhật ký).
+- Badge unread: CHƯA thêm — tab bar hiện không có pattern badge slot sẵn
+  (kiểm tra xong, theo yêu cầu không tự thêm UI slot mới).
+
+### Tests (chạy thật)
+- chat/tests_chat.py: 44 tests — lifecycle (mở khi in_progress, không tạo
+  cho task open, idempotent, không có worker accepted), biên 24h (23h59 mở
+  / 24h01 đóng lazy-close), cancelled đóng ngay, scheduler đóng hết hạn +
+  idempotent, gửi 2 chiều + Notification, content rỗng/quá dài, gửi khi
+  closed 403, hết hạn 403, chưa có conversation 404, giữ lịch sử sau đóng,
+  race 2 tin = 2 rows, kiểm duyệt (chặn + không lưu + anti-bypass 'đ.ị.t'
+  + KHÔNG chặn nhầm 'đưa bé đi trong công viên' — regression false-positive
+  'di trong'→'dit'), API đầy đủ (list/detail/polling/send/read/404/403/
+  anonymous 401/admin/non-admin), Task state machine nguyên vẹn
+  (completed_at set qua API thật, invalid transition vẫn 400, worker không
+  đổi status vẫn 403).
+- frontend/tests.py: +5 tests NChatWebPageTests (trang 200 + phần tử +
+  entry points 3 trang + không còn toast placeholder).
+- **Tổng regression: 444/444 PASS** (chat 44 + core 126 + tracking 216 +
+  care_diary/frontend/moderation/... 58). Baseline main 395 → 444 (+49, không
+  giảm). Đặc biệt core/tests_smart_match + tests_price_suggestion pass
+  nguyên vẹn (yêu cầu spec verify Task state machine).
+- makemigrations --check: No changes detected. migrate --check: exit=0.
+- Migration chạy sạch trên DB đã có data (migrate từ 0019 B4 + B5 0010/0011 OK).
+
+### File đã thêm/sửa
+- THÊM: chat/ (models, services, signals, scheduler, apps, views, urls, admin,
+  migrations/0001, tests_chat.py — 44 tests), frontend chat.html,
+  mobile ChatScreen.js + api/chat.js + RootNavigation.js
+- SỬA: core/models.py (Task.completed_at), core/views.py (set completed_at
+  tại nguồn + import timezone), core/migrations/0020_task_completed_at,
+  backend/settings.py (INSTALLED_APPS + 'chat'), backend/urls.py (include
+  chat.urls), frontend/{views,urls}.py (route /chat/),
+  frontend/templates: tracking.html + parent_tasks.html + worker_jobs.html
+  (entry points), mobile: App.js (push handler chat) + AppNavigator.js
+  (route Chat + navigation ref) + MyJobsScreen.js + LiveTrackingScreen.js
+  (nút chat), frontend/tests.py (+5), WORKLOG.md (section này)
