@@ -10,7 +10,12 @@ import { COLORS, TYPO } from '../theme/colors';
 // ====================================================================
 // Image Preview Screen — full screen image viewer
 // Sử dụng cho: certificate photo, ID card, complaint evidence, ...
-// Navigation params: { uri, title }
+// Navigation params: { uri, title, headers? }
+//
+// B5: thêm param `headers` (optional) — dùng cho ảnh cần auth (vd: ảnh
+// xác minh qua GET /api/tracking/verification-checks/<id>/photo/ phải kèm
+// Authorization: Bearer <token>). expo-image hỗ trợ headers trong source.
+// Backward compat: các màn hình cũ chỉ truyền { uri, title } — vẫn hoạt động.
 // ====================================================================
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -18,9 +23,12 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function ImagePreviewScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { uri, title } = route.params || {};
+  const { uri, title, headers } = route.params || {};
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // B5: source có thể kèm headers (ảnh cần auth) hoặc không (URL public)
+  const imageSource = headers ? { uri, headers } : { uri };
 
   if (!uri) {
     return (
@@ -62,7 +70,7 @@ export default function ImagePreviewScreen() {
           </View>
         ) : (
           <Image
-            source={{ uri }}
+            source={imageSource}
             style={styles.image}
             resizeMode="contain"
             onLoadStart={() => setIsLoading(true)}
