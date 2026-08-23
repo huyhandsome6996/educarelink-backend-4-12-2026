@@ -154,15 +154,59 @@ class AdminVoucherListCreateAPIView(APIView):
         if points_required <= 0 or discount_value <= 0:
             return Response({'error': 'points_required và discount_value phải > 0.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        voucher = Voucher.objects.create(
-            title=title,
-            description=(request.data.get('description') or '').strip(),
-            points_required=points_required,
-            discount_value=discount_value,
-            expiry_date=request.data.get('expiry_date') or None,
-            is_active=bool(request.data.get('is_active', True)),
-        )
-        return Response(VoucherSerializer(voucher).data, status=status.HTTP_201_CREATED)
+        # Parse expiry_date an toàn (tránh 500 khi chuỗi rỗng / sai format)
+        expiry_raw = request.data.get('expiry_date', None)
+        expiry_date = None
+        if expiry_raw not in (None, '', 'null', 'undefined'):
+            if hasattr(expiry_raw, 'isoformat'):
+                expiry_date = expiry_raw
+            else:
+                from datetime import date as _date
+                try:
+                    expiry_date = _date.fromisoformat(str(expiry_raw)[:10])
+                except ValueError:
+                    return Response(
+                        {'error': 'expiry_date không hợp lệ (YYYY-MM-DD).'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        is_active_raw = request.data.get('is_active', True)
+        if isinstance(is_active_raw, str):
+            is_active = is_active_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+        else:
+            is_active = bool(is_active_raw)
+
+        try:
+            voucher = Voucher.objects.create(
+                title=title[:200],
+                description=(request.data.get('description') or '').strip(),
+                points_required=points_required,
+                discount_value=discount_value,
+                expiry_date=expiry_date,
+                is_active=is_active,
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Không lưu được voucher: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            payload = VoucherSerializer(voucher).data
+        except Exception:
+            # Đã lưu DB — trả tối thiểu để frontend không báo fail oan
+            payload = {
+                'id': voucher.id,
+                'title': voucher.title,
+                'description': voucher.description,
+                'points_required': voucher.points_required,
+                'discount_value': voucher.discount_value,
+                'expiry_date': str(voucher.expiry_date) if voucher.expiry_date else None,
+                'is_active': voucher.is_active,
+                'is_expired': False,
+            }
+
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class AdminVoucherDetailAPIView(APIView):
