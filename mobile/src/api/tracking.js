@@ -81,12 +81,40 @@ export const setVerificationPin = (payload) =>
   apiClient.post('/tracking/verification-pin/set/', payload);
 
 // Carepartner poll lấy check pending của mình (khi nhận push hoặc poll định kỳ)
+// B5: response thêm verification_type ('pin' | 'photo') để UI render đúng
 export const getPendingVerificationCheck = () =>
   apiClient.get('/tracking/verification-checks/pending/');
 
 // Carepartner phản hồi check (body: { pin, latitude?, longitude? })
 export const respondVerificationCheck = (checkId, payload) =>
   apiClient.post(`/tracking/verification-checks/${checkId}/respond/`, payload);
+
+// === B5 — Xác thực bằng ảnh trong ca ===
+// Carepartner nộp ảnh xác minh (multipart: photo + latitude?/longitude?)
+// Backend: SubmitVerificationPhotoAPIView — POST /tracking/verification-checks/{check_id}/photo/
+// photo: { uri, name, type } từ expo-image-picker
+export const submitVerificationPhoto = (checkId, { photo, latitude, longitude }) => {
+  const formData = new FormData();
+  formData.append('photo', {
+    uri: photo.uri,
+    name: photo.name || `verification_${Date.now()}.jpg`,
+    type: photo.type || 'image/jpeg',
+  });
+  // Tọa độ 0 là hợp lệ → chỉ append khi != null/undefined (QA-FIX-2 / E)
+  if (latitude != null) formData.append('latitude', String(latitude));
+  if (longitude != null) formData.append('longitude', String(longitude));
+  return apiClient.post(`/tracking/verification-checks/${checkId}/photo/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    // Upload ảnh lớn hơn JSON — tăng timeout để 3G/4G không bị cắt giữa chừng
+    timeout: 30000,
+  });
+};
+
+// URL endpoint xem ảnh xác minh (CÓ AUTH — ảnh không public qua /media/).
+// Dùng cho expo-image: source={{ uri, headers: { Authorization } }}
+// (xem LiveTrackingScreen / ImagePreviewScreen — phải kèm Bearer token).
+export const getVerificationPhotoUrl = (checkId) =>
+  `${apiClient.defaults.baseURL}/tracking/verification-checks/${checkId}/photo/`;
 
 // Admin xem lịch sử verification checks
 export const getAdminVerificationChecks = (params = {}) =>
