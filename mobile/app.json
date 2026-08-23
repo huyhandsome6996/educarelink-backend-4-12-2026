@@ -103,8 +103,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "3e841ddf-23c3-42ce-a2e1-8827c06311a2"
+        "projectId": "dc42297f-2626-45ed-92e3-caaeb4248064"
       }
-    }
+    },
+    "owner": "huybodoi123"
   }
 }
