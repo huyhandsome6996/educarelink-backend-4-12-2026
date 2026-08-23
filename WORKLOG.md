@@ -1248,3 +1248,87 @@ core 126, tracking 216, others 45). Không test nào fail/giảm.
 - **Post-merge**: test lại trên main — 454/454 PASS, makemigrations --check sạch.
 - **Push main**: không force-push. Branch `feature/n-cua-so-chat` GIỮ NGUYÊN trên
   remote (theo chỉ đạo: không xoá trừ khi được yêu cầu).
+
+## Fix bug chat back button + Web parity (mobile ↔ web) (2026-08-23)
+
+**Branch**: `fix/chat-back-va-web-parity` (từ main `8a227c7`)
+
+### Bối cảnh
+Huy báo cáo sau loạt cập nhật mobile (commit 8a227c7 — 9 file UI/UX):
+1. **Bug**: phần chat không bấm nút quay lại được (screenshot: URL
+   `.../chat/?task_id=950#` — dấu `#` chứng tỏ bấm back chỉ nhảy anchor).
+2. **Chính sách parity bắt buộc**: mobile có tính năng gì thì web phải có
+   tương đương và ngược lại.
+
+### BUG FIX — chat back button (web)
+- **Root cause**: `back-link` href chỉ được set trong `renderHeader()` —
+  gọi DUY NHẤT khi fetch conversation thành công. Task chưa từng
+  in_progress (chưa có Conversation → API 404) hoặc lỗi mạng → href giữ
+  nguyên `href="#"` → bấm không đi đâu.
+- **Fix**: `initBackLink()` tách riêng, gọi ĐẦU TIÊN trong `init()` TRƯỚC
+  mọi await fetch + href mặc định trong HTML là `/parent/tasks/` (JS đổi
+  theo role ngay khi chạy). Verify runserver thật 9/9 PASS (script
+  `scripts/verify_chat_back_fix.py` — tái hiện đúng kịch bản task_id
+  không có conversation, vượt SiteAccessGate kèm CSRF).
+
+### Web parity — 4 trang mới (mobile có, web thiếu)
+| Trang | Route | Parity với mobile | Entry point web |
+|---|---|---|---|
+| notifications.html | `/notifications/` | NotificationsScreen | Nút chuông parent_home (2 chỗ — trước là NÚT CHẾT không href) + parent_tasks |
+| worker_complaints.html | `/worker/complaints/` | ComplaintScreen + MyComplaintsScreen | worker_profile menu "Khiếu nại" |
+| parent_payments.html | `/parent/payments/` | PaymentSetupScreen (MoMo escrow/PayOS VietQR/tiền mặt) + MyPayments | parent_tasks nút "Thanh toán" (nhánh in_progress) |
+| worker_earnings.html | `/worker/earnings/` | MyEarningsScreen + SettlementDetailScreen (QR hoa hồng) | worker_profile menu "Thu nhập của tôi" |
+
+Chi tiết:
+- **notifications.html**: list cá nhân + broadcast, badge chưa đọc, "Đọc
+  tất cả" (POST mark-read), icon phân loại theo loại thông báo, đủ
+  loading/error/empty states. Nút chuông parent_home trước đây là button
+  chết (chỉ icon đỏ trang trí) — giờ là link thật.
+- **worker_complaints.html**: form gửi khiếu nại (chọn task từ my-jobs →
+  lấy parent id từ task detail vì TaskApplicationSerializer không trả
+  parent id; 7 loại khiếu nại; upload bằng chứng multipart) + danh sách
+  khiếu nại của tôi kèm status/priority/ai_analysis/admin_response.
+- **parent_payments.html**: setup card khi có ?task_id= (3 phương thức:
+  MoMo escrow → redirect payUrl; PayOS VietQR → checkout_url; cash) +
+  lịch sử thanh toán + nút "Thanh toán ngay" cho payment pending.
+- **worker_earnings.html**: 3 stat cards (đã nhận/chờ giải ngân/hoa hồng
+  nợ) + 10 thanh toán gần đây + danh sách kỳ settlement (QR MoMo + nút
+  thanh toán).
+
+### Admin web — thêm 3 tab thiếu (parity mobile admin screens)
+admin_dashboard.html thêm nav items + switchTab cases + load functions
+(đặt SAU 8 tab cũ để không xê dịch index-based navItems[0..7]):
+- **Thanh toán** (parity AdminPaymentsScreen): bảng payments toàn nền
+  tảng + filter trạng thái + nút "Thử giải ngân" cho payout_failed
+  (POST retry-payout).
+- **Theo dõi an toàn** (parity AdminTrackingOverviewScreen): stats cards
+  consent/live/SOS/heartbeat/offline alerts.
+- **Kiểm duyệt AI** (parity AdminModerationScreen): bảng task
+  needs_review + badge số lượng + override Admin duyệt/chặn + ghi chú.
+
+### Kiểm tra chiều ngược lại (web → mobile)
+Các trang web đều đã có tương đương mobile (audit toàn bộ 30 templates ↔
+40+ screens). Mobile-only còn lại: TrackingOverviewScreen (parent) — web
+đã có tương đương chức năng (parent_tasks filter "Đang làm" + nút Theo
+dõi); WorkerScreeningStatusScreen — web hiển thị trạng thái duyệt trong
+worker_profile. B2 RewardPoints mobile là dead screen (branch B2 chưa
+merge main) — không tính gap.
+
+### Test
+- frontend/tests.py: +10 tests (WebParityPagesTests — back-link href thật
+  + initBackLink trước await [parse thứ tự JS], 4 trang 200 + contract
+  API, bells link /notifications/ [>= 2 trên parent_home], worker_profile
+  có 2 link menu, parent_tasks nhánh in_progress có nút Thanh toán [parse
+  theo nhánh], admin 3 tab mới + thứ tự nav index không xáo trộn).
+- Full suite: **464/464 PASS** (454 + 10 mới; chat 44, frontend 33, core
+  126, tracking 216, others 45). makemigrations --check sạch.
+- Verify runserver thật: 9/9 PASS (back button + 4 trang mới).
+
+### File đã sửa/thêm
+- THÊM: frontend/templates/frontend/{notifications,worker_complaints,
+  parent_payments,worker_earnings}.html
+- SỬA: chat.html (back button fix), parent_home.html (bell links),
+  parent_tasks.html (bell link + nút Thanh toán), worker_profile.html
+  (menu Khiếu nại + Thu nhập), admin_dashboard.html (3 tab admin),
+  frontend/{views,urls}.py (4 routes), frontend/tests.py (+10)
+- Script: scripts/verify_chat_back_fix.py (verify thủ công)
