@@ -1172,3 +1172,63 @@ Lưu ý: endpoint gửi dùng /messages/send/ riêng (không chồng với GET /
   (entry points), mobile: App.js (push handler chat) + AppNavigator.js
   (route Chat + navigation ref) + MyJobsScreen.js + LiveTrackingScreen.js
   (nút chat), frontend/tests.py (+5), WORKLOG.md (section này)
+
+### QA vòng 1 — fix 3 bug entry point (N-001, N-002, N-003) (2026-08-23)
+
+**QA kết luận**: backend + chat.html + ChatScreen.js ĐÚNG, KHÔNG sửa. Duy nhất
+lỗi thiếu entry point — vi phạm chính sách parity (mọi chức năng backend hỗ trợ
+phải có entry point tương đương trên CẢ web lẫn mobile, CẢ 2 vai trò).
+
+**BUG N-001 (HIGH) — parent_tasks.html nhánh completed thiếu nút chat**
+- Root cause: nút chat chỉ thêm nhánh in_progress; nhánh completed chỉ có
+  "Đánh giá" dù backend vẫn cho chat 24h sau hoàn thành — KHÔNG đối xứng với
+  worker_jobs.html (đã có "Chat (24h)").
+- Fix: thêm nút "Chat với Carepartner (24h)" vào nhánh completed — cùng UX
+  pattern worker_jobs (location.href='/chat/?task_id=${t.id}', trang /chat/ tự
+  xử lý hiển thị "đã khoá" qua ConversationDetailAPIView status/closes_at).
+
+**BUG N-002 (HIGH) — MyJobsScreen.js (worker mobile) khối completed thiếu nút**
+- Root cause: nút chat chỉ nằm trong khối showTrackingUI && task_status !==
+  'completed'; khối accepted+completed (nơi có nút Ghi nhật ký) không có chat.
+- Fix: thêm chatBtn (style có sẵn) vào khối completed, navigate('Chat', ...) —
+  bọc cả 2 nút trong Fragment <>...</>.
+
+**BUG N-003 (CRITICAL) — MyTasksScreen.js (parent mobile) KHÔNG có nút chat nào**
+- Root cause: entry point duy nhất là nút "Nhắn" trong LiveTrackingScreen —
+  phụ thuộc worker cấp consent + task có geofence. Task không tracking/worker
+  chưa cấp consent → phụ huynh KHÔNG có cách nào mở Chat trên mobile.
+- Fix: thêm nút chat ĐỘC LẬP vào secondaryActions (style secondaryBtn có sẵn):
+  khối in_progress ("Nhắn tin") + khối completed ("Chat (24h)") — onPress
+  navigate('Chat') trực tiếp, KHÔNG qua checkConsent/LiveTracking. Giữ nguyên
+  nút "Nhắn" trong LiveTrackingScreen (entry point phụ).
+
+**Test mới theo yêu cầu QA (frontend/tests_n_chat_entry_points.py — 10 tests)**
+- Thay cách assertContains toàn trang (đã pass oan khi N-001 tồn tại) bằng
+  PARSE JS TÁCH TỪNG NHÁNH: _extract_status_branches (brace-matching các
+  if/else if theo status cho web template) + _extract_jsx_condition_blocks
+  (các khối {cond && (...)} cho mobile JSX, xử lý điều kiện kép MyJobsScreen).
+- Verify test THẬT SỰ bắt được bug: git stash bỏ fix N-001 → test FAIL; khôi
+  phục → PASS (đã chạy thật, ghi trong quá trình fix).
+- Mobile JS: dự án chưa có hạ tầng test JS runtime cho screens → parse source
+  file trực tiếp (đọc file .js + regex điều kiện) + đã code review thủ công
+  từng nhánh (bảng dưới).
+
+**Bảng đối chiếu vai trò × nền tảng × trạng thái task → nút chat**
+(Chat khả dụng theo backend: suốt in_progress + 24h sau completed;
+cancelled đóng ngay; open chưa có conversation)
+
+| Vai trò | Nền tảng | open | in_progress | completed (≤24h) | cancelled |
+|---|---|---|---|---|---|
+| Parent | Web parent_tasks.html | — (chưa có conversation) | ✅ "Nhắn tin với Carepartner" | ✅ "Chat với Carepartner (24h)" [N-001] | — (không cần) |
+| Parent | Mobile MyTasksScreen.js | — | ✅ "Nhắn tin" secondaryActions [N-003] | ✅ "Chat (24h)" secondaryActions [N-003] | — |
+| Worker | Web worker_jobs.html | pending — chưa có conversation | ✅ "Nhắn tin phụ huynh" (accepted) | ✅ "Chat (24h)" | rejected — không cần |
+| Worker | Mobile MyJobsScreen.js | — | ✅ chatBtn (showTrackingUI=accepted, KHÔNG phụ thuộc consent) | ✅ "Chat với phụ huynh (24h)" [N-002] | — |
+
+Entry point phụ (giữ nguyên): web tracking.html nút "Nhắn"; mobile
+LiveTrackingScreen nút "Nhắn" (yêu cầu QA: không xoá).
+
+Không ô nào thiếu so với backend cho phép. Không sửa backend/chat.html/
+ChatScreen.js/chat api (đúng phạm vi yêu cầu).
+
+**Test sau fix**: 454/454 PASS (444 cũ + 10 gating mới; frontend 23, chat 44,
+core 126, tracking 216, others 45). Không test nào fail/giảm.

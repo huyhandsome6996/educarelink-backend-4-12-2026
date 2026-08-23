@@ -366,6 +366,17 @@ export default function MyTasksScreen() {
                 <Ionicons name="document-text-outline" size={14} color={COLORS.primary} />
                 <Text style={styles.secondaryBtnText}>Chính sách huỷ</Text>
               </TouchableOpacity>
+              {/* N — Chat với Carepartner (độc lập với tracking/consent — entry point chính cho parent mobile) */}
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('Chat', { taskId: task.id, taskTitle: task.title })}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Nhắn tin với Carepartner"
+              >
+                <Ionicons name="chatbubble-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.secondaryBtnText}>Nhắn tin</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -399,6 +410,17 @@ export default function MyTasksScreen() {
                 >
                   <Ionicons name="book-outline" size={14} color={COLORS.primary} />
                   <Text style={styles.secondaryBtnText}>Xem nhật ký chăm sóc</Text>
+                </TouchableOpacity>
+                {/* N — Chat (24h sau hoàn thành) — parity với web parent_tasks */}
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={() => navigation.navigate('Chat', { taskId: task.id, taskTitle: task.title })}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Xem chat với Carepartner (còn 24 giờ sau khi hoàn thành)"
+                >
+                  <Ionicons name="chatbubble-outline" size={14} color={COLORS.primary} />
+                  <Text style={styles.secondaryBtnText}>Chat (24h)</Text>
                 </TouchableOpacity>
               </View>
             </>
