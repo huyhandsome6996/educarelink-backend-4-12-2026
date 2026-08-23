@@ -387,3 +387,24 @@ PAYOS_ENABLED = bool(PAYOS_CLIENT_ID and PAYOS_API_KEY and PAYOS_CHECKSUM_KEY)
 # ── A2: Ghép việc thông minh theo lịch rảnh ──────────────────
 # Bán kính tìm kiếm CarePartner quanh vị trí công việc (mét)
 SMART_MATCH_RADIUS_METERS = int(os.environ.get('SMART_MATCH_RADIUS_METERS', '5000'))
+
+
+# ────────────────────────────────────────────────────────────────────
+# B4 — Phân hạng CarePartner (Hạng Đồng / Bạc / Vàng / Kim cương)
+# ────────────────────────────────────────────────────────────────────
+# Rule tự tính hạng (cho phép hạ hạng khi không đủ điều kiện, trừ tier_override).
+CAREPARTNER_TIER_RULES = {
+    "silver": {
+        "min_completed_jobs": 5,   # ≥ 5 buổi hoàn thành
+        "min_avg_rating": 4.0,     # rating TB ≥ 4.0
+        "min_reviews": 3,          # ít nhất 3 đánh giá
+    },
+    "gold": {
+        "require_approved_credential": True,  # ≥ 1 CredentialSubmission approved
+    },
+    "diamond": {
+        "require_specialized_degree": True,   # credential is_specialized=True
+        "min_completed_jobs": 10,
+        "min_avg_rating": 4.5,
+    },
+}

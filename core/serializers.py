@@ -7,6 +7,8 @@ class UserSerializer(serializers.ModelSerializer):
     # Phần 3 — Field boolean cho frontend biết user đã đặt PIN xác minh chưa.
     # KHÔNG expose verification_pin_hash (hash là thông tin nhạy cảm).
     has_verification_pin = serializers.SerializerMethodField()
+    # B4 — Nhãn hạng CarePartner (Đồng/Bạc/Vàng/Kim cương) cho frontend render badge
+    tier_label = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -21,6 +23,8 @@ class UserSerializer(serializers.ModelSerializer):
             'auth_provider', 'avatar_url',
             # Phần 3 — boolean flag (không expose hash)
             'has_verification_pin',
+            # B4 — hạng CarePartner (read-only, hệ thống tự tính)
+            'tier', 'tier_label', 'tier_updated_at',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -32,6 +36,8 @@ class UserSerializer(serializers.ModelSerializer):
             'ai_profile_summary': {'read_only': True},
             'role': {'read_only': True},  # Ngăn chặn role escalation qua API
             'auth_provider': {'read_only': True},  # Không cho thay đổi provider qua API
+            'tier': {'read_only': True},  # B4 — worker không tự sửa hạng của mình
+            'tier_updated_at': {'read_only': True},  # B4
             'avatar_url': {'read_only': True},
             'id_card_front': {'required': False},
             'id_card_back': {'required': False},
@@ -44,6 +50,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_has_verification_pin(self, obj):
         return bool(obj.verification_pin_hash)
+
+    # B4 — trả nhãn tiếng Việt của hạng (VD: 'Hạng Vàng')
+    def get_tier_label(self, obj):
+        from core.services.tier_service import tier_label
+        return tier_label(getattr(obj, 'tier', None) or 'bronze')
 
     def create(self, validated_data):
         # Tách password ra, dùng create_user để hash đúng cách
@@ -81,6 +92,9 @@ class TaskSerializer(serializers.ModelSerializer):
 class TaskApplicationSerializer(serializers.ModelSerializer):
     # Thông tin worker (sinh viên)
     worker_name = serializers.CharField(source='worker.username', read_only=True)
+    # B4 — hạng CarePartner cho parent xem khi duyệt ứng viên (web + mobile render badge)
+    worker_tier = serializers.CharField(source='worker.tier', read_only=True)
+    worker_tier_label = serializers.SerializerMethodField()
 
     # Thông tin task liên kết — fix lỗi frontend bị undefined
     task_title = serializers.CharField(source='task.title', read_only=True)
@@ -97,6 +111,11 @@ class TaskApplicationSerializer(serializers.ModelSerializer):
     # Thông tin phụ huynh đăng việc — hiển thị trong card của sinh viên
     parent_username = serializers.CharField(source='task.parent.username', read_only=True)
     parent_name = serializers.CharField(source='task.parent.first_name', read_only=True)
+
+    # B4 — nhãn tiếng Việt của hạng CarePartner (VD: 'Hạng Bạc')
+    def get_worker_tier_label(self, obj):
+        from core.services.tier_service import tier_label
+        return tier_label(getattr(obj.worker, 'tier', None) or 'bronze')
 
     class Meta:
         model = TaskApplication
