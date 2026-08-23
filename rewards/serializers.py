@@ -23,7 +23,7 @@ class PointTransactionSerializer(serializers.ModelSerializer):
 
 
 class VoucherSerializer(serializers.ModelSerializer):
-    is_expired = serializers.BooleanField(read_only=True)
+    is_expired = serializers.SerializerMethodField()
 
     class Meta:
         model = Voucher
@@ -31,6 +31,12 @@ class VoucherSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'points_required',
             'discount_value', 'expiry_date', 'is_active', 'is_expired',
         ]
+
+    def get_is_expired(self, obj):
+        try:
+            return bool(obj.is_expired)
+        except Exception:
+            return False
 
 
 class VoucherRedemptionSerializer(serializers.ModelSerializer):
