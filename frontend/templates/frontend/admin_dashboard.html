@@ -808,6 +808,10 @@
                 Y&#234;u c&#7847;u s&#7917;a h&#7891; s&#417;
                 <span class="nav-badge" id="profileChangeBadge" style="display:none;">0</span>
             </div>
+            <div class="nav-item" data-tab="rewards" onclick="switchTab('rewards')">
+                <span class="icon">🎁</span>
+                Voucher / Tích điểm
+            </div>
             <div class="nav-item" onclick="switchTab('ai_chat')">
                 <span class="icon">&#129302;</span>
                 AI Tr&#7907; l&#253;
@@ -1126,6 +1130,10 @@
 
         // ===== LOAD DATA =====
         async function loadData() {
+            if (currentTab === 'rewards') { 
+                loadRewardsAdmin(); 
+                return; 
+            }
             if (!checkAdminAuth()) return;
             try {
                 if (currentTab === 'pending') {
@@ -1544,6 +1552,21 @@
                 document.getElementById('aiChatPanel').classList.remove('active');
                 document.querySelector('.refresh-btn').style.display = '';
                 loadProfileChangeRequests();
+                return;
+            } else if (tab === 'rewards') {
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    const isActive = (el.getAttribute('onclick') || '').includes("'rewards'") || el.dataset.tab === 'rewards';
+                    el.classList.toggle('active', isActive);
+                });
+                document.getElementById('pageTitle').textContent = 'Voucher / Tích điểm';
+            document.getElementById('pageSubtitle').textContent = 'Tạo voucher đổi quà và điều chỉnh điểm phụ huynh';
+            document.querySelector('.stats-row').style.display = 'none';
+            document.querySelector('.table-container').style.display = '';
+            document.getElementById('tableTitle').textContent = 'Quản lý voucher & điểm';
+            document.getElementById('aiChatPanel').classList.remove('active');
+            document.querySelector('.refresh-btn').style.display = '';
+            loadRewardsAdmin();
+            if (window.innerWidth < 1024) closeSidebar();
                 return;
             } else if (tab === 'ai_chat') {
                 navItems[7].classList.add('active');
