@@ -598,6 +598,25 @@
             }
         }
 
+        // ---- Safe DOM helpers (null-safety) ----
+        // Tránh crash JS (TypeError: Cannot set properties of null) khi element
+        // bị thiếu/thay id sau redesign — trang vẫn render phần còn lại.
+        // ⚠️ Không đụng tới escapeHtml() ở trên — chỉ thêm guard cho DOM access.
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
+        function setSrc(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.src = value;
+        }
+
+        function setToggleHidden(id, hide) {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('hidden', hide);
+        }
+
         // ---- Main Init ----
         async function init() {
             try {
@@ -621,16 +640,14 @@
                 // Save auth_provider to localStorage for upgrade check
                 if (prof.auth_provider) localStorage.setItem('auth_provider', prof.auth_provider);
 
-                // Update all name displays
-                document.getElementById('sidebar-name').textContent = fullName;
-                document.getElementById('greeting-desktop').textContent = greeting;
-                document.getElementById('greeting-mobile').textContent = fullName;
+                // Update all name displays (null-safe — sidebar partial dùng
+                // id="sidebar-name", đã đúng trên main hiện tại)
+                setText('sidebar-name', fullName);
+                setText('greeting-desktop', greeting);
+                setText('greeting-mobile', fullName);
 
                 // Update all avatar images
-                ['sidebar-avatar', 'header-avatar', 'mobile-avatar'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.src = avatarUrl;
-                });
+                ['sidebar-avatar', 'header-avatar', 'mobile-avatar'].forEach(id => setSrc(id, avatarUrl));
 
             } catch (e) {
                 console.error('Profile fetch error:', e);
@@ -653,9 +670,14 @@
                 const openCount = tasks.filter(t => t.status === 'open').length;
                 const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
 
-                document.getElementById('stat-total').textContent = totalCount;
-                document.getElementById('stat-open').textContent = openCount;
-                document.getElementById('stat-inprogress').textContent = inProgressCount;
+                // Update stats (null-safe)
+                setText('stat-total', totalCount);
+                setText('stat-open', openCount);
+                setText('stat-inprogress', inProgressCount);
+
+                // Guard: container thiếu thì thoát sớm, không crash
+                // (stats phía trên vẫn đã update xong)
+                if (!container) return;
 
                 if (tasks.length === 0) {
                     container.innerHTML = `
@@ -692,7 +714,8 @@
                 console.error('Tasks fetch error:', e);
                 showToast('Không thể tải danh sách công việc', 'error');
                 const container = document.getElementById('task-list');
-                container.innerHTML = `
+                if (container) {
+                    container.innerHTML = `
                     <div class="col-span-full bg-errorBg rounded-2xl p-8 text-center">
                         <span class="material-symbols-outlined filled text-error text-4xl mb-3 block">cloud_off</span>
                         <h3 class="font-headline font-bold text-textPrimary text-lg mb-2">Không thể tải dữ liệu</h3>
@@ -703,6 +726,7 @@
                             Thử lại
                         </button>
                     </div>`;
+                }
             }
         }
 
@@ -925,9 +949,9 @@
                 if (resp.ok) {
                     showToast('Hồ sơ nâng cấp đã gửi thành công! Vui lòng đợi Admin duyệt.', 'success');
                     closeUpgradeModal();
-                    // Show pending section, hide upgrade section
-                    document.getElementById('upgrade-section').classList.add('hidden');
-                    document.getElementById('upgrade-pending-section').classList.remove('hidden');
+                    // Show pending section, hide upgrade section (null-safe)
+                    setToggleHidden('upgrade-section', true);
+                    setToggleHidden('upgrade-pending-section', false);
                 } else {
                     showToast(data.error || 'Gửi hồ sơ thất bại. Vui lòng thử lại.', 'error');
                 }
@@ -956,9 +980,9 @@
                 const data = await resp.json();
 
                 if (data.status === 'pending') {
-                    document.getElementById('upgrade-pending-section').classList.remove('hidden');
+                    setToggleHidden('upgrade-pending-section', false);
                 } else if (data.can_upgrade) {
-                    document.getElementById('upgrade-section').classList.remove('hidden');
+                    setToggleHidden('upgrade-section', false);
                 }
             } catch (e) {
                 console.warn('Could not check upgrade status:', e);

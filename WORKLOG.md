@@ -1018,3 +1018,28 @@ Thêm tearDown dọn file ảnh test trong PRIVATE_MEDIA_ROOT.
   → `makemigrations --check` no changes + `migrate --check` exit=0 → merge --no-ff vào main.
 - **Remote branch đã xoá**: `feature/b5-xac-thuc-anh-trong-ca`
 - QA Agent sẽ pull main + chạy lại test độc lập lần cuối trước khi xác nhận đóng tính năng.
+
+## Đánh giá branch fix-loi (648bcf3) — KHÔNG merge, đã xoá (2026-08-23)
+
+**Bối cảnh**: QA Agent kiểm tra branch `fix-loi` (commit `648bcf3`) → KẾT LUẬN: KHÔNG MERGE.
+
+- **Lỗi thời**: branch base từ `914017e` (trước B1/B4/B5) — merge trực tiếp sẽ xoá
+  3 tính năng lớn khỏi main. Diff thực chất so với base chỉ 1 file (parent_home.html).
+- **Mục tiêu fix đã có trên main**: lỗi id 'sidebar-user-name' null đã được sửa đúng
+  từ lâu trên main (sidebar partial dùng id="sidebar-name").
+- **Regression nghiêm trọng trong chính commit 648bcf3**: escapeHtml() bị làm hỏng —
+  4/5 ký tự escape (&, <, >, ") thành no-op (chỉ còn ' → &#39;). Hàm này escape
+  task.title trước innerHTML (Fix C6 chống stored XSS) → lỗ hổng XSS lưu trữ thật.
+  Coding Agent đã verify độc lập bằng `git show origin/fix-loi:...parent_home.html`.
+- **Hành động**: KHÔNG merge dưới mọi hình thức (kể cả cherry-pick — file chứa bug
+  XSS mới). Đã xoá branch `fix-loi` trên remote.
+
+### Null-safety tái implement từ đầu trên main (theo đề xuất tuỳ chọn của QA)
+Giữ lại phần cải tiến hợp lý (implement LẠI, không copy file):
+- Helper `setText()` / `setSrc()` / `setToggleHidden()` — guard null trước khi ghi DOM,
+  tránh crash JS khi element thiếu/đổi id sau redesign.
+- `if (container)` guard trước innerHTML task-list (cả happy path lẫn error path).
+- Áp dụng cho: sidebar-name, greeting-*, stat-*, avatar ids, upgrade-section /
+  upgrade-pending-section.
+- **escapeHtml() GIỮ NGUYÊN 100%** (&amp;/&lt;/&gt;/&quot;/&#39; — đã verify sau sửa).
+- Test: frontend 8/8 pass. Đây là hotfix nhỏ theo AGENTS.md §19 (commit trực tiếp main).
