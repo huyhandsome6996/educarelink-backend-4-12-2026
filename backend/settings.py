@@ -176,6 +176,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# B5 — Storage riêng cho ảnh xác minh (dữ liệu nhạy cảm về an toàn trẻ em).
+# File lưu NGOÀI MEDIA_ROOT để không route static/media công khai nào chạm
+# tới được (xem tracking/storages.py + khối B5 SECURITY trong backend/urls.py).
+# Chỉ đọc được qua API có auth: /api/tracking/verification-checks/<id>/photo/
+PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
+
 CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
 CORS_ALLOWED_ORIGINS = [
     'https://educarelink-backend.onrender.com',

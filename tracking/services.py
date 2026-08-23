@@ -1119,7 +1119,10 @@ def get_verification_photo(*, check_id: int, requester: User) -> 'RandomVerifica
       - Admin (is_superuser/is_staff)
 
     KHÔNG trả URL /media/ public — view sẽ đọc bytes từ storage và trả
-    qua HTTP response có auth (xem VerificationPhotoAPIView).
+    qua HTTP response có auth. File vật lý cũng nằm NGOÀI MEDIA_ROOT
+    (PrivateVerificationPhotoStorage → PRIVATE_MEDIA_ROOT) nên kể cả khi
+    biết tên file cũng không thể tự dựng URL /media/ để lấy (backend/urls.py
+    còn chặn 403 ^media/verification_photos/ làm lớp phòng thủ thứ 2).
 
     Raise:
       - ValueError: không tìm thấy check / check chưa có ảnh

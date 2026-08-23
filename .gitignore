@@ -42,3 +42,4 @@ db.sqlite3
 # Stitch design source assets (extracted locally for reference, not part of repo)
 .design-source/
 stitch_educarelink_redesign_system.zip
+private_media/
