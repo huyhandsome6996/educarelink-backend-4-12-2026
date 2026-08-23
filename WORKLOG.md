@@ -1388,3 +1388,23 @@ stash bỏ fix → test FAIL; khôi phục → PASS.
 
 Frontend: 34/34 pass. Hotfix commit trực tiếp main (đang cháy production,
 theo AGENTS.md §19 hotfix).
+
+## Mở khoá Site Gate — web truy cập công khai (2026-08-23)
+
+**Yêu cầu Huy**: xoá màn hình nhập mật khẩu (site-gate) để mọi người cùng
+truy cập web khi nộp sản phẩm.
+
+**Cách làm (công tắc, không xoá code)**:
+- SiteAccessGateMiddleware thêm flag `enabled`: đọc env
+  `SITE_GATE_ENABLED` — **mặc định false** (không set = TẮT) → mọi request
+  đi thẳng, không redirect sang /site-gate/, không cần session.
+- .env.example: thêm SITE_GATE_ENABLED=false + hướng dẫn.
+- Giữ middleware trong MIDDLEWARE list (không xoá) vì: bật lại sau demo chỉ
+  cần set SITE_GATE_ENABLED=true trên Render (không cần deploy lại code),
+  và không phá các test cũ đang set session bypass.
+- Lưu ý môi trường Render: KHÔNG set SITE_GATE_ENABLED ở dashboard → gate
+  mặc định tắt. Nếu Render có set biến này từ trước, phải xoá/sửa = false.
+
+**Test**: +4 SiteGateDisabledTests — vào thẳng trang chủ/login/admin
+không redirect; bật true → redirect gate (công tắc hoạt động 2 chiều).
+Frontend 38/38 pass.
