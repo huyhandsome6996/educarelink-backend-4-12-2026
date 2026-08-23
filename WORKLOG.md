@@ -1408,3 +1408,45 @@ truy cập web khi nộp sản phẩm.
 **Test**: +4 SiteGateDisabledTests — vào thẳng trang chủ/login/admin
 không redirect; bật true → redirect gate (công tắc hoạt động 2 chiều).
 Frontend 38/38 pass.
+
+## Play Store — build AAB production + chuẩn bị submit 2 track + Store listing (2026-08-23)
+
+### Build AAB v1.3.1 THÀNH CÔNG
+- version 1.3.1 / versionCode 11, package com.educarelink.app
+- Build ID: 5aa39a01 (EAS profile production, app-bundle)
+- Link .aab: https://expo.dev/artifacts/eas/ULpnUy466oLbge5mCgCpqVyLnMW3kfTMppueqPNQj6c.aab
+- Đã tải về verify: /home/z/my-project/download/EduCareLink-v1.3.1-production.aab (61MB, BundleConfig.pb + manifest hợp lệ)
+
+### Submit — BỊ CHẶN ở 1 bước thủ công (giới hạn Google, không phải lỗi code)
+- eas.json: 2 submit profile — internal_demo (track internal) + closed_production_path (track alpha)
+- Service account key copy vào mobile/google-service-account.json (chmod 600, .gitignore 2 rule, verify KHÔNG vào git)
+- Submit internal_demo lỗi: PERMISSION_DENIED — "Google Play Android Developer API has not been used in project 1030594649175 before or it is disabled"
+- Đã thử bật API bằng service account qua Service Usage REST API → 403 (SA chỉ có quyền Play Console, không có serviceusage.services.enable)
+- → CHỦ TÀI KHOẢN phải tự mở link bật API (1 click), sau đó chạy lại submit là được (xem README store-listing)
+
+### Store listing — đã soạn 8 file (mobile/store-listing/)
+app-title.txt, short-description.txt, full-description.txt, data-safety-answers.md
+(đối chiếu từng model code), content-rating-notes.md, privacy-policy-draft.md
+(BẢN NHÁP cần rà), screenshots-checklist.md, README.md (checklist + timeline
+14 ngày/20 người + 2 link opt-in URL chờ điền).
+
+### Chú ý git
+- app.json projectId = dc42297f (project EAS @huybodoi123). Commit trước của Huy
+  (e7ab6c0) đã restore projectId cũ 3e841ddf → conflict khi pull, đã resolve
+  giữ projectId mới (account build được).
+
+## Play Store submit — chẩn đoán quyền SA (2026-08-23, lượt 2)
+
+- Owner đã bật Google Play Android Developer API (screenshot xác nhận Enabled).
+- Submit internal_demo lại bị lỗi: "The service account is missing the necessary
+  app permissions" (EAS/fastlane).
+- Chẩn đoán trực tiếp bằng REST API (scripts/diagnose_play_permissions.py):
+  token androidpublisher lấy OK (SA key hợp lệ), nhưng POST /edits →
+  403 "The caller does not have permission" → service account CHƯA được
+  mời/gắn đúng quyền với app EduCareLink trong Play Console (Users &
+  permissions). Đây là case fastlane#16164 — SA tồn tại trên GCP nhưng
+  không có quyền app trong Play Console.
+- Đã hướng dẫn owner: Play Console → Users & permissions → Invite new users
+  → email SA (educarelink-eas-deploy@educarelink.iam.gserviceaccount.com)
+  → role có Release management + chọn app EduCareLink. Chờ owner làm xong
+  rồi chạy lại 2 lệnh submit.
