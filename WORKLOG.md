@@ -1361,3 +1361,30 @@ merge main) — không tính gap.
   - Tải trực tiếp: https://expo.dev/artifacts/eas/B-ZzcfMrBHy0SG7jxekE_G-ssZ-nAIHrODtHrOqqTvs.apk
   - Dashboard: https://expo.dev/accounts/huybodoi123/projects/educarelink/builds
   - App trỏ API production: https://educarelink-backend.onrender.com/api
+
+## HOTFIX — admin dashboard chết toàn bộ tương tác (2026-08-23)
+
+**QA/Huy báo cáo (screenshot)**: `/admin-dashboard/` không dùng được gì —
+không tương tác, bảng loading vô tận, stats toàn 0.
+
+**Root cause**: lần chèn 3 tab admin (payments/tracking/moderation, commit
+8c3a92d) để THỪA 1 dấu `}` — case `ai_chat` kết thúc `return; }` rồi code
+chèn nối `} else if (tab === 'payments')` → SyntaxError ở dòng 504 →
+**TOÀN BỘ JS của trang chết** (một script block duyệt khai báo hoá invalid:
+apiFetch, switchTab, logout, load danh sách ban đầu — tất cả không chạy).
+
+Lỗi lọt qua vì: test trước đó chỉ assertContains chuỗi (không chạy JS) —
+chính là dạng test "pass oan" QA từng cảnh báo ở N-001. Bài học lặp lại:
+**template có JS lớn phải syntax-check bằng node, không chỉ grep chuỗi**.
+
+**Fix**: xoá dấu `}` thừa (1 dòng). Verify 22/22 PASS
+(scripts/verify_admin_dashboard_fix.py: node --check toàn bộ JS trang +
+11 tab đúng thứ tự + 3 hàm load + đầy đủ element ID).
+
+**Regression test mới**: `test_admin_dashboard_js_syntax_valid` — trích JS
+từ response HTML, chạy `node --check`, fail ngay khi có SyntaxError; kèm
+assert pattern lỗi `return; } } else if` không quay lại. Đã verify ngược:
+stash bỏ fix → test FAIL; khôi phục → PASS.
+
+Frontend: 34/34 pass. Hotfix commit trực tiếp main (đang cháy production,
+theo AGENTS.md §19 hotfix).
