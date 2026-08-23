@@ -234,55 +234,57 @@ export default function MyTasksScreen() {
             )}
           </View>
 
-          {/* Footer: price + actions */}
+          {/* Footer: actions */}
           <View style={styles.cardFooter}>
-            <Text style={styles.cardPrice}>
-              {parseInt(task.price).toLocaleString('vi-VN')}đ
-            </Text>
-
             {/* Action buttons theo trạng thái */}
             {task.status === 'open' && (
               <>
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={styles.btnOutline}
-                    onPress={() => navigation.navigate('SmartMatches', { taskId: task.id, taskTitle: task.title })}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="sparkles-outline" size={14} color={COLORS.primary} />
-                    <Text style={styles.btnOutlineText}>Gợi ý phù hợp</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.btnGhost}
-                    onPress={() => navigation.navigate('Candidates', { taskId: task.id, taskTitle: task.title })}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.btnGhostText}>Xem ứng viên</Text>
-                  </TouchableOpacity>
+                <View style={styles.cardActionsRow}>
+                  <Text style={styles.cardPrice}>
+                    {parseInt(task.price).toLocaleString('vi-VN')}đ
+                  </Text>
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.btnOutline}
+                      onPress={() => navigation.navigate('SmartMatches', { taskId: task.id, taskTitle: task.title })}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="sparkles-outline" size={14} color={COLORS.primary} />
+                      <Text style={styles.btnOutlineText}>Gợi ý phù hợp</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.btnGhost}
+                      onPress={() => navigation.navigate('Candidates', { taskId: task.id, taskTitle: task.title })}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.btnGhostText}>Xem ứng viên</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                {/* Nút huỷ việc trên secondary actions row */}
-                <View style={styles.secondaryActions}>
-                  <TouchableOpacity
-                    style={styles.secondaryBtn}
-                    onPress={() => handleStatusChange(task.id, 'cancelled', task.title)}
-                    disabled={isCancelling}
-                    activeOpacity={0.85}
-                  >
-                    {isCancelling ? (
-                      <ActivityIndicator size="small" color={COLORS.error} />
-                    ) : (
-                      <>
-                        <Ionicons name="close-circle-outline" size={14} color={COLORS.error} />
-                        <Text style={[styles.secondaryBtnText, { color: COLORS.error }]}>Huỷ việc</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
+                {/* Nút huỷ việc */}
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => handleStatusChange(task.id, 'cancelled', task.title)}
+                  disabled={isCancelling}
+                  activeOpacity={0.85}
+                >
+                  {isCancelling ? (
+                    <ActivityIndicator size="small" color={COLORS.error} />
+                  ) : (
+                    <>
+                      <Ionicons name="close-circle-outline" size={16} color={COLORS.error} />
+                      <Text style={styles.cancelBtnText}>Huỷ việc</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </>
             )}
 
             {task.status === 'in_progress' && (
-              <View style={styles.cardActions}>
+              <View style={styles.cardActionsRow}>
+                <Text style={styles.cardPrice}>
+                  {parseInt(task.price).toLocaleString('vi-VN')}đ
+                </Text>
                 <TouchableOpacity
                   style={styles.btnPrimary}
                   onPress={() => handleStatusChange(task.id, 'completed', task.title)}
@@ -382,25 +384,30 @@ export default function MyTasksScreen() {
 
           {task.status === 'completed' && (
             <>
-              <TouchableOpacity
-                style={styles.btnPrimary}
-                onPress={async () => {
-                  try {
-                    const candRes = await getCandidates(task.id);
-                    const accepted = candRes.data.find(c => c.status === 'accepted');
-                    navigation.navigate('Review', {
-                      taskId: task.id,
-                      revieweeId: accepted ? accepted.worker : null
-                    });
-                  } catch (e) {
-                    navigation.navigate('Review', { taskId: task.id });
-                  }
-                }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="star-outline" size={16} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Đánh giá Carepartner</Text>
-              </TouchableOpacity>
+              <View style={styles.cardActionsRow}>
+                <Text style={styles.cardPrice}>
+                  {parseInt(task.price).toLocaleString('vi-VN')}đ
+                </Text>
+                <TouchableOpacity
+                  style={styles.btnPrimary}
+                  onPress={async () => {
+                    try {
+                      const candRes = await getCandidates(task.id);
+                      const accepted = candRes.data.find(c => c.status === 'accepted');
+                      navigation.navigate('Review', {
+                        taskId: task.id,
+                        revieweeId: accepted ? accepted.worker : null
+                      });
+                    } catch (e) {
+                      navigation.navigate('Review', { taskId: task.id });
+                    }
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="star-outline" size={16} color="#fff" />
+                  <Text style={styles.btnPrimaryText}>Đánh giá Carepartner</Text>
+                </TouchableOpacity>
+              </View>
               {/* QA-FIX-GAP-4: Entry point vào CareDiaryDetail (Nhóm B) cho task đã hoàn thành */}
               <View style={styles.secondaryActions}>
                 <TouchableOpacity
@@ -674,9 +681,7 @@ const styles = StyleSheet.create({
   },
   // === FOOTER ===
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 12,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.outlineVariant,
@@ -684,6 +689,11 @@ const styles = StyleSheet.create({
   cardPrice: {
     ...TYPO.h3,
     color: COLORS.primary,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   cardActions: {
     flexDirection: 'row',
@@ -736,27 +746,44 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     fontWeight: '700',
   },
-  // === SECONDARY ACTIONS ===
-  secondaryActions: {
+  cancelBtn: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  secondaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
     borderRadius: 12,
+    backgroundColor: COLORS.errorBg,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  cancelBtnText: {
+    ...TYPO.caption,
+    color: COLORS.error,
+    fontWeight: '700',
+  },
+  // === SECONDARY ACTIONS ===
+  secondaryActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
     backgroundColor: COLORS.surfaceContainerLow,
     borderWidth: 1,
     borderColor: COLORS.outlineVariant,
   },
   secondaryBtnText: {
-    ...TYPO.caption,
-    color: COLORS.primary,
+    fontSize: 11,
     fontWeight: '700',
+    color: COLORS.primary,
   },
   // === EMPTY STATE ===
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },

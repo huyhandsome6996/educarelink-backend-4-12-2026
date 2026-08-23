@@ -207,15 +207,7 @@ export default function ParentHomeScreen() {
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>EduCareLink</Text>
         <View style={styles.appBarRight}>
-          <TouchableOpacity
-            style={styles.profileShortcut}
-            onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="person-circle-outline" size={26} color={COLORS.primary} />
-          </TouchableOpacity>
-          <NotificationBell />
+          <NotificationBell color={COLORS.primary} />
         </View>
       </View>
 
@@ -444,15 +436,6 @@ const styles = StyleSheet.create({
   },
   appBarRight: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minWidth: 80,
-  },
-  profileShortcut: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   // === SCROLL ===

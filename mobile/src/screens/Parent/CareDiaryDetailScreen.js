@@ -307,14 +307,14 @@ const styles = StyleSheet.create({
   cpRole: { ...TYPO.caption, color: COLORS.secondaryDark, fontWeight: '700' },
   cpDate: { ...TYPO.body, fontSize: 13, color: COLORS.onSurfaceVariant, marginTop: 2 },
   // === BENTO GRID ===
-  bentoGrid: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  bentoGrid: { flexDirection: 'row', gap: 12 },
   moodCard: {
-    width: '48%', backgroundColor: COLORS.surface, borderRadius: 20, padding: 16,
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: 20, padding: 16,
     borderWidth: 1, borderColor: COLORS.outlineVariant,
     alignItems: 'center', gap: 8, ...SHADOWS.small,
   },
   completionCard: {
-    width: '48%', backgroundColor: COLORS.surface, borderRadius: 20, padding: 16,
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: 20, padding: 16,
     borderWidth: 1, borderColor: COLORS.outlineVariant, ...SHADOWS.small,
   },
   cardTitle: { ...TYPO.h4, color: COLORS.onSurface, marginBottom: 12, alignSelf: 'flex-start' },

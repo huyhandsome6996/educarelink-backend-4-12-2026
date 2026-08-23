@@ -16,65 +16,16 @@ const INITIAL_MESSAGES = [
   },
 ];
 
-const renderMessage = ({ item }) => {
-  const isUser = item.role === 'user';
-  return (
-    <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
-      {!isUser && (
-        <View style={styles.botAvatar}>
-          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
-        </View>
-      )}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-        {isUser ? (
-          <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
-            {item.text}
-          </Text>
-        ) : (
-          <FormattedText
-            text={item.text}
-            style={[styles.bubbleText, styles.bubbleTextBot]}
-            baseColor={COLORS.textPrimary}
-          />
-        )}
-      </View>
-    </View>
-  );
-};
-
 export default function ChatbotScreen() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
   const flatListRef = useRef(null);
   const dot1Anim = useRef(new Animated.Value(0)).current;
   const dot2Anim = useRef(new Animated.Value(0)).current;
   const dot3Anim = useRef(new Animated.Value(0)).current;
 
-  // Lịch sử hội thoại để gửi kèm cho AI hiểu ngữ cảnh
-  // Chỉ lưu tối đa 20 tin nhắn gần nhất để tránh request quá lớn
   const chatHistoryRef = useRef([]);
-
-  // P0 FIX (v1.1.5): Move ListFooterComponent ra top-level useMemo
-  // Trước đây dùng React.useMemo inline trong JSX → tạo lại memo mỗi render,
-  // gây re-render không cần thiết + jank khi typing.
-  const TypingFooter = React.useMemo(() => {
-    if (!isTyping) return null;
-    return (
-      <View style={styles.typingRow}>
-        <View style={styles.botAvatar}>
-          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
-        </View>
-        <View style={styles.typingBubble}>
-          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
-          <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
-        </View>
-      </View>
-    );
-  }, [isTyping, dot1Anim, dot2Anim, dot3Anim]);
 
   // Typing dots animation
   useEffect(() => {
@@ -95,6 +46,14 @@ export default function ChatbotScreen() {
     }
   }, [isTyping]);
 
+  const scrollToBottom = () => {
+    setTimeout(() => flatListRef.current?.scrollToEnd?.({ animated: true }), 100);
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
@@ -104,34 +63,27 @@ export default function ChatbotScreen() {
     setInput('');
     setIsTyping(true);
 
-    // Lưu tin nhắn người dùng vào lịch sử
     chatHistoryRef.current.push({ role: 'user', text });
 
     try {
-      // Gửi lịch sử hội thoại cho backend (đổi 'assistant' → 'model' cho Gemini API)
       const historyForAPI = chatHistoryRef.current.map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         text: m.text
       }));
 
       const res = await sendChatMessage(text, historyForAPI);
-      // Backend returns: { response: "...", type: "message"|"task_created"|"clarification"|"error", task?: {...} }
       const botText = res.data.response || 'AI đang được tích hợp. Vui lòng thử lại sau!';
       const botMsg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         text: botText,
       };
-      // If AI created a task, append task info to the message
       if (res.data.task) {
         const t = res.data.task;
         botMsg.text += `\n\n📋 Công việc đã tạo:\n• ${t.title}\n• 💰 ${parseInt(t.price).toLocaleString('vi-VN')}đ\n• 📍 ${t.location || 'Chưa xác định'}\n• 📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleString('vi-VN') : 'Chưa xác định'}`;
       }
 
-      // Lưu phản hồi AI vào lịch sử
       chatHistoryRef.current.push({ role: 'assistant', text: botText });
-
-      // Giới hạn lịch sử tối đa 20 tin nhắn
       if (chatHistoryRef.current.length > 20) {
         chatHistoryRef.current = chatHistoryRef.current.slice(-20);
       }
@@ -148,19 +100,61 @@ export default function ChatbotScreen() {
     }
   };
 
-  // P0 FIX (v1.1.5): Gỡ onContentSizeChange khỏi FlatList — nó trigger scrollToEnd
-  // quá nhiều lần khi typing animation chạy, gây jank. Chỉ giữ useEffect scroll-to-end
-  // dựa trên [messages, isTyping] ở dưới (đã có setTimeout 100ms debounce).
-  useEffect(() => {
-    if (flatListRef.current) {
-      const timerId = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-      return () => clearTimeout(timerId);
-    }
-  }, [messages, isTyping]);
+  const renderMessage = ({ item }) => {
+    const isUser = item.role === 'user';
+    return (
+      <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
+        {!isUser && (
+          <View style={styles.botAvatar}>
+            <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+          </View>
+        )}
+        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
+          {isUser ? (
+            <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
+              {item.text}
+            </Text>
+          ) : (
+            <FormattedText
+              text={item.text}
+              style={[styles.bubbleText, styles.bubbleTextBot]}
+              baseColor={COLORS.textPrimary}
+            />
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderTyping = () => {
+    if (!isTyping) return null;
+    return (
+      <View style={styles.msgRow}>
+        <View style={styles.botAvatar}>
+          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+        </View>
+        <View style={styles.typingBubble}>
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} />
+          <Text style={styles.typingText}>AI đang suy nghĩ...</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Data cho FlatList = messages + typing indicator
+  const listData = isTyping ? [...messages, { id: 'typing', role: 'typing' }] : messages;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={88}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+    >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.botInfo}>
           <View style={styles.headerAvatar}>
@@ -176,23 +170,41 @@ export default function ChatbotScreen() {
         </View>
       </View>
 
-      <FlatList ref={flatListRef} data={messages} keyExtractor={i => i.id}
-        renderItem={renderMessage} contentContainerStyle={styles.list}
-        ListFooterComponent={TypingFooter}
+      {/* Danh sách tin nhắn */}
+      <FlatList
+        ref={flatListRef}
+        data={listData}
+        keyExtractor={i => i.id}
+        renderItem={({ item }) => {
+          if (item.role === 'typing') return renderTyping();
+          return renderMessage({ item });
+        }}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (listData.length) flatListRef.current?.scrollToEnd?.({ animated: false });
+        }}
       />
 
       {/* Input bar */}
-      <View style={styles.inputBar}>
-        <View style={[styles.inputWrap, inputFocused && styles.inputWrapFocused]}>
-          <TextInput style={styles.input} placeholder="Nhắn tin cho AI..." placeholderTextColor={COLORS.textMuted}
-            value={input} onChangeText={setInput} multiline maxLength={500}
-            onSubmitEditing={sendMessage}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)} />
-        </View>
-        <TouchableOpacity style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-          onPress={sendMessage} disabled={!input.trim() || isTyping}>
-          <Ionicons name="send" size={18} color={input.trim() ? '#fff' : COLORS.textMuted} />
+      <View style={styles.composer}>
+        <TextInput
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="Nhắn tin cho AI..."
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          maxLength={500}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || isTyping) && { opacity: 0.4 }]}
+          onPress={sendMessage}
+          disabled={!input.trim() || isTyping}
+        >
+          {isTyping
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Ionicons name="send" size={20} color="#fff" />}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -201,8 +213,10 @@ export default function ChatbotScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+
+  // Header
   header: {
-    backgroundColor: COLORS.surface, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16,
+    backgroundColor: COLORS.surface, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   botInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -211,85 +225,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
     ...SHADOWS.small,
   },
-  headerImage: { width: '100%', height: '100%' },
   headerName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statusDot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: COLORS.success,
-  },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.success },
   headerStatus: { ...TYPO.caption, color: COLORS.success, fontWeight: '600' },
-  list: { padding: SIZES.md, gap: 12, flexGrow: 1 },
-  msgRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+
+  // Messages
+  listContent: { padding: 14, paddingBottom: 20 },
+  msgRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', marginBottom: 10 },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowBot: { justifyContent: 'flex-start' },
   botAvatar: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primaryLight,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0, overflow: 'hidden',
   },
-  botImage: { width: '100%', height: '100%' },
-  bubble: { maxWidth: '78%', borderRadius: 18, padding: 12 },
+  bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleUser: {
     backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
-    ...SHADOWS.small,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
   },
   bubbleBot: {
     backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
-    ...SHADOWS.cardHover,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  bubbleText: { ...TYPO.body },
-  bubbleTextUser: { color: COLORS.textOnPrimary },
+  bubbleText: { fontSize: 14, lineHeight: 20 },
+  bubbleTextUser: { color: '#fff' },
   bubbleTextBot: { color: COLORS.textPrimary },
-  typingRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 4 },
+
+  // Typing
   typingBubble: {
     flexDirection: 'row', gap: 5, alignItems: 'center',
     backgroundColor: COLORS.surface, borderRadius: 18, padding: 12,
-    ...SHADOWS.small,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  typingDot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: COLORS.primarySoft,
-  },
+  typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.primarySoft },
   typingText: { ...TYPO.bodySmall, color: COLORS.textSecondary, fontStyle: 'italic', marginLeft: 4 },
-  inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 28,
-    backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border,
-  },
-  inputWrap: {
-    flex: 1, backgroundColor: COLORS.background, borderRadius: SIZES.radiusXl,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  inputWrapFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.surface,
-    ...SHADOWS.inputFocus,
+
+  // Composer — giống hệt ChatScreen
+  composer: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    padding: 10, backgroundColor: COLORS.surface,
+    borderTopWidth: 1, borderTopColor: COLORS.border,
   },
   input: {
-    ...TYPO.body, color: COLORS.textPrimary,
-    paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
+    flex: 1, minHeight: 42, maxHeight: 110, borderRadius: 21,
+    backgroundColor: '#F3F4F6', paddingHorizontal: 16, paddingVertical: 10,
+    fontSize: 14, color: COLORS.textPrimary, paddingTop: 12,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center', alignItems: 'center',
-    ...SHADOWS.small,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  sendBtnDisabled: {
-    backgroundColor: COLORS.divider,
-    shadowOpacity: 0,
-    elevation: 0,
+    width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
 });
