@@ -57,7 +57,9 @@ class AwardTaskPointsTests(TestCase):
         self.parent = _make_parent()
 
     def test_award_on_completed(self):
-        task = _make_task(self.parent, price=100000, status='completed')
+        # Tạo open để signal không cộng sẵn; gán completed in-memory rồi gọi service
+        task = _make_task(self.parent, price=100000, status='open')
+        task.status = 'completed'
         tx = services.award_points_for_task(task)
         self.assertIsNotNone(tx)
         self.assertEqual(tx.points, 20)
@@ -74,7 +76,8 @@ class AwardTaskPointsTests(TestCase):
         self.assertIsNone(services.award_points_for_task(task))
 
     def test_idempotent_no_double_award(self):
-        task = _make_task(self.parent, price=100000, status='completed')
+        task = _make_task(self.parent, price=100000, status='open')
+        task.status = 'completed'
         tx1 = services.award_points_for_task(task)
         tx2 = services.award_points_for_task(task)
         self.assertIsNotNone(tx1)
