@@ -753,3 +753,63 @@ Lý do chọn A (không chọn B - model VerificationPhoto 1-1):
 - Admin trigger debug: POST /api/tracking/admin/trigger-verification-check/ {task_id, verification_type:'photo'} (chỉ DEBUG=True).
 - App cũ (chưa update) nhận photo check: hiện modal PIN, nhập PIN bị 400 — chấp nhận trong giai đoạn chuyển tiếp, không làm hỏng state machine.
 - Test UI camera trên thiết bị thật cần EAS build (Expo Go không có custom sound + một số máy không có camera).
+
+## B5 — SECURITY FIX: chặn truy cập trực tiếp /media/verification_photos/ (2026-08-23)
+
+**Branch**: `feature/b5-xac-thuc-anh-trong-ca` (commit tiếp theo trên cùng nhánh, theo yêu cầu QA)
+
+### Vấn đề QA phát hiện
+Docstring/models tuyên bố "ảnh xác minh không public qua /media/" nhưng file ảnh lại lưu trong
+MEDIA_ROOT — nơi bị serve công khai bởi `static()` (DEBUG) và `re_path serve` (production).
+Biết tên file là đọc được ảnh → mâu thuẫn với tuyên bố bảo vệ.
+
+### Fix 3 lớp (làm cả hướng "tốt hơn" theo đề xuất của QA)
+1. **Vật lý (lớp mạnh nhất)**: field `RandomVerificationCheck.photo` chuyển sang
+   `PrivateVerificationPhotoStorage` (tracking/storages.py) — file lưu trong
+   `PRIVATE_MEDIA_ROOT` (`<repo>/private_media`, ngoài MEDIA_ROOT, đã thêm .gitignore).
+   Không route static/media nào chạm tới file kể cả khi sau này thêm route mới.
+   `storage.url()` raise ValueError — không thể vô tình sinh URL công khai.
+   Migration `0011_b5_photo_private_storage.py` (chỉ AlterField storage — không đổi DB schema).
+2. **Chặn URL**: backend/urls.py thêm `re_path ^media/verification_photos/ → 403`
+   đặt TRƯỚC mọi pattern serve media (cả nhánh DEBUG dùng `static()` lẫn production),
+   trả 403 kể cả khi file không tồn tại (không leak danh sách file).
+3. **Guard chống bypass**: `_serve_media_guarded` chuẩn hoá path (unquote + normpath)
+   trước khi serve — chặn cả `//`, `./`, `%2e%2f`, `..%2f` vào verification_photos/.
+   Nhánh DEBUG đổi từ `static(MEDIA_URL, document_root=...)` sang
+   `static(MEDIA_URL, view=_serve_media_guarded)` để guard áp dụng cho cả 2 nhánh.
+
+### Verify thủ công (script /home/z/my-project/scripts/verify_b5_media_block.py — runserver thật port 8765)
+- GET /media/verification_photos/<file JPEG thật> KHÔNG Authorization → **403** (không trả bytes ảnh) ✅
+- GET /media/verification_photos/<file không tồn tại> → **403** ✅
+- GET /media//verification_photos/... (slash đôi) → **403** ✅
+- GET /media/./verification_photos/... (dot segment) → **403** ✅
+- GET /media/%2e%2fverification_photos/... (URL-encoded) → **403** ✅
+- GET /media/id_cards/<file> → **200 image/jpeg** (media khác không bị ảnh hưởng) ✅
+Kết quả: 6/6 PASS.
+
+### Docstring cập nhật cho khớp cơ chế thực tế
+- tracking/models.py (class docstring + field comment): mô tả 3 lớp bảo vệ.
+- tracking/services.py get_verification_photo: mô tả file ngoài MEDIA_ROOT + 403 layer.
+
+### Test mới (phân biệt với ViewPhotoTests vốn test qua API có auth)
+`tracking/tests_b5_photo_verification.py` + class `DirectMediaAccessSecurityTests` (9 tests):
+403 không auth (production + DEBUG), 403 có auth (media bị chặn hoàn toàn), 403 file không
+tồn tại, 403 các biến thể bypass, media khác vẫn 200 (id_cards production + selfies DEBUG),
+ảnh nộp qua API phải nằm trong PRIVATE_MEDIA_ROOT ngoài MEDIA_ROOT, storage.url() raise.
+Thêm tearDown dọn file ảnh test trong PRIVATE_MEDIA_ROOT.
+
+### Kết quả test (chạy thật)
+- tracking: **216/216 OK** (164 regression cũ + 43 B5 + 9 security mới)
+- core: 64/64 OK — care_diary + frontend + moderation + payments + ai_recommendations + performance: 53/53 OK
+- Tổng: **333/333** (baseline main 279 → trước fix 324 → sau fix 333; không giảm test nào)
+
+### File đã sửa
+- backend/urls.py — pattern 403 + _serve_media_guarded + _reject_verification_media
+- backend/settings.py — PRIVATE_MEDIA_ROOT
+- tracking/storages.py (MỚI) — PrivateVerificationPhotoStorage
+- tracking/models.py — storage= + docstring 3 lớp bảo vệ
+- tracking/migrations/0011_b5_photo_private_storage.py (MỚI)
+- tracking/services.py — docstring get_verification_photo
+- tracking/tests_b5_photo_verification.py — +9 security tests + tearDown
+- .gitignore — private_media/
+- WORKLOG.md — section này

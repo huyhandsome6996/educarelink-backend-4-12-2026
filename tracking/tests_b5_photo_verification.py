@@ -28,6 +28,7 @@ Phủ các case:
 """
 
 import io
+import os
 from datetime import timedelta
 from decimal import Decimal
 
@@ -147,6 +148,23 @@ class B5PhotoVerificationTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(user=user)
         return client
+
+    def tearDown(self):
+        """Dọn file ảnh đã upload trong test.
+
+        Ảnh xác minh lưu trong PRIVATE_MEDIA_ROOT (ngoài MEDIA_ROOT) —
+        không nằm trong gitignored media/ của repo, không dọn sẽ đọng
+        file rác giữa các lần chạy test.
+        """
+        for check in RandomVerificationCheck.objects.all():
+            if check.photo and check.photo.name:
+                try:
+                    storage = check.photo.storage
+                    if storage.exists(check.photo.name):
+                        storage.delete(check.photo.name)
+                except Exception:
+                    pass
+        super().tearDown()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -830,3 +848,158 @@ class PinFlowRegressionTests(B5PhotoVerificationTestCase):
         pin_check.refresh_from_db()
         self.assertEqual(pin_check.attempts, 1)
         self.assertEqual(pin_check.status, 'pending')
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  8. SECURITY FIX — chặn truy cập trực tiếp /media/verification_photos/
+#  (QA phát hiện: docstring tuyên bố "không public qua /media/" nhưng
+#   MEDIA_ROOT serve công khai mọi file. Fix 3 lớp: storage ngoài
+#   MEDIA_ROOT + re_path 403 + guard chống bypass trong backend/urls.py)
+#
+#  Phân biệt với ViewPhotoTests (mục 3): mục đó test xem ảnh QUA API
+#  endpoint có auth; mục này test request TRỰC TIẾP vào /media/ URL.
+# ═══════════════════════════════════════════════════════════════════
+
+class DirectMediaAccessSecurityTests(B5PhotoVerificationTestCase):
+    """GET trực tiếp /media/verification_photos/<file thật> (kể cả khi
+    file vật lý tồn tại trong MEDIA_ROOT — giả lập file legacy) phải bị
+    chặn 403 — không auth, có auth, file tồn tại hay không đều như nhau.
+
+    Lưu ý: class cha có @override_settings(DEBUG=True) — test nào cần
+    nhánh production (DEBUG=False) sẽ override lại ở method.
+    """
+
+    def _write_legacy_media_file(self, relative_path):
+        """Tạo file JPEG THẬT tại MEDIA_ROOT/<relative_path> — giả lập file
+        legacy upload trước thời điểm chuyển sang private storage (nếu có).
+        Tự dọn file khi test xong bằng addCleanup."""
+        from django.conf import settings
+        full_path = os.path.join(str(settings.MEDIA_ROOT), relative_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, 'wb') as f:
+            f.write(make_real_image())
+
+        def _cleanup():
+            try:
+                os.remove(full_path)
+            except FileNotFoundError:
+                pass
+            # Xoá thư mục nếu rỗng — không để lại vết trong repo
+            try:
+                os.rmdir(os.path.dirname(full_path))
+            except OSError:
+                pass
+
+        self.addCleanup(_cleanup)
+        return relative_path
+
+    @override_settings(DEBUG=False)
+    def test_media_url_blocked_without_auth_production(self):
+        """GET /media/verification_photos/<file thật> KHÔNG auth → 403,
+        KHÔNG trả nội dung ảnh (nhánh production)."""
+        rel = self._write_legacy_media_file('verification_photos/legacy_check_1.jpg')
+        client = APIClient()  # anonymous — không Authorization header
+        resp = client.get(f'/media/{rel}')
+        self.assertEqual(resp.status_code, 403)
+        self.assertNotEqual(resp.get('Content-Type'), 'image/jpeg')
+        self.assertNotEqual(resp.content[:2], b'\xff\xd8', 'Không được trả bytes JPEG')
+
+    @override_settings(DEBUG=False)
+    def test_media_url_blocked_even_with_auth(self):
+        """Có Authorization (parent hợp lệ) cũng 403 — /media/ bị chặn hoàn
+        toàn, phải xem qua API endpoint riêng."""
+        rel = self._write_legacy_media_file('verification_photos/legacy_check_2.jpg')
+        client = self._login(self.parent)
+        resp = client.get(f'/media/{rel}')
+        self.assertEqual(resp.status_code, 403)
+
+    @override_settings(DEBUG=False)
+    def test_media_url_blocked_nonexistent_file(self):
+        """File không tồn tại vẫn 403 (không khác biệt 403/404 → không leak
+        thông tin file nào đang có trên server)."""
+        client = APIClient()
+        resp = client.get('/media/verification_photos/khong-ton-tai-xyz.jpg')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_media_url_blocked_debug_mode(self):
+        """Nhánh DEBUG=True (static() helper) cũng bị chặn — kế thừa
+        override DEBUG=True từ class cha."""
+        rel = self._write_legacy_media_file('verification_photos/legacy_check_3.jpg')
+        client = APIClient()
+        resp = client.get(f'/media/{rel}')
+        self.assertEqual(resp.status_code, 403)
+
+    @override_settings(DEBUG=False)
+    def test_media_url_bypass_variants_blocked(self):
+        """Biến thể bypass '//' (slash đôi), './' (dot segment), '%2e%2f'
+        (URL-encoded) đều bị guard chuẩn hoá path → 403."""
+        rel = self._write_legacy_media_file('verification_photos/legacy_bypass.jpg')
+        client = APIClient()
+        for url in (
+            f'/media//{rel}',                      # slash đôi
+            f'/media/./{rel}',                     # dot segment
+            f'/media/%2e%2f{rel}',                 # URL-encoded './'
+            '/media/..%2fverification_photos/legacy_bypass.jpg',  # encoded '../'
+        ):
+            resp = client.get(url)
+            self.assertEqual(
+                resp.status_code, 403,
+                f'Biến thể bypass {url!r} phải bị chặn 403, nhận {resp.status_code}',
+            )
+
+    @override_settings(DEBUG=False)
+    def test_other_media_still_served_production(self):
+        """Ảnh media KHÁC (id_cards — dùng bởi core.User.id_card_front)
+        vẫn serve công khai như cũ (nhánh production — FileResponse streaming)."""
+        rel = self._write_legacy_media_file('id_cards/id_card_front_test.jpg')
+        client = APIClient()
+        resp = client.get(f'/media/{rel}')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get('Content-Type'), 'image/jpeg')
+        # serve() trả FileResponse (streaming) — đọc bytes qua streaming_content
+        body = b''.join(resp.streaming_content)
+        self.assertEqual(body[:2], b'\xff\xd8')
+
+    def test_other_media_still_served_debug(self):
+        """Nhánh DEBUG=True: media khác (selfies/) vẫn serve như cũ."""
+        rel = self._write_legacy_media_file('selfies/selfie_test.jpg')
+        client = APIClient()
+        resp = client.get(f'/media/{rel}')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get('Content-Type'), 'image/jpeg')
+        body = b''.join(resp.streaming_content)
+        self.assertEqual(body[:2], b'\xff\xd8')
+
+    @override_settings(DEBUG=False)
+    def test_photo_saved_outside_media_root(self):
+        """Ảnh nộp qua API phải lưu trong PRIVATE_MEDIA_ROOT (ngoài
+        MEDIA_ROOT) — bảo vệ vật lý, không phụ thuộc urls.py."""
+        from django.conf import settings
+        client = self._login(self.worker)
+        resp = client.post(
+            f'/api/tracking/verification-checks/{self.photo_check.id}/photo/',
+            {'photo': self._photo_file()},
+            format='multipart',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.photo_check.refresh_from_db()
+
+        private_root = str(getattr(settings, 'PRIVATE_MEDIA_ROOT', ''))
+        media_root = str(settings.MEDIA_ROOT)
+        self.assertTrue(private_root, 'PRIVATE_MEDIA_ROOT phải được cấu hình trong settings')
+        self.assertTrue(
+            self.photo_check.photo.path.startswith(private_root),
+            f'Ảnh phải nằm trong {private_root}, thực tế: {self.photo_check.photo.path}',
+        )
+        self.assertFalse(
+            self.photo_check.photo.path.startswith(media_root),
+            f'Ảnh KHÔNG được nằm trong MEDIA_ROOT ({media_root}) — sẽ bị serve công khai',
+        )
+
+    def test_storage_url_raises_no_public_url(self):
+        """storage.url() raise ValueError — không thể vô tình sinh URL công
+        khai cho ảnh xác minh (fail to ngay trong dev thay vì lộ link)."""
+        from tracking.storages import PrivateVerificationPhotoStorage
+        storage = PrivateVerificationPhotoStorage()
+        with self.assertRaises(ValueError):
+            storage.url('verification_photos/x.jpg')
