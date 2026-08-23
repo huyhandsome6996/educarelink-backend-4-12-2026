@@ -1006,3 +1006,15 @@ Thêm tearDown dọn file ảnh test trong PRIVATE_MEDIA_ROOT.
 - tracking/tests_b5_photo_verification.py — +9 security tests + tearDown
 - .gitignore — private_media/
 - WORKLOG.md — section này
+
+## B5 (Xác thực bằng ảnh) merged vào main (2026-08-23)
+
+- **Merge commit**: `681ec92` (--no-ff, theo AGENTS.md §19 + pattern B1/B4)
+- **Verify bởi QA Agent**: PASS — SAFE TO MERGE (QA tự chạy 333/333 trên branch,
+  mô phỏng merge thật 395/395, xác nhận 3 lớp bảo vệ ảnh qua test + runserver thật).
+- **Coding Agent merge**: main (có B4/tier `3531140`) → merge vào feature → resolve
+  WORKLOG.md (giữ cả B4 + B5, B4 trước B5 sau — conflict docs duy nhất, 0 conflict code)
+  → test 395/395 trên kết quả merge (tracking 216 + core 126 gồm 62 tier B4 + 53 khác)
+  → `makemigrations --check` no changes + `migrate --check` exit=0 → merge --no-ff vào main.
+- **Remote branch đã xoá**: `feature/b5-xac-thuc-anh-trong-ca`
+- QA Agent sẽ pull main + chạy lại test độc lập lần cuối trước khi xác nhận đóng tính năng.
