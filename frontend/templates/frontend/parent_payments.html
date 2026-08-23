@@ -1,0 +1,315 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh toán — EduCareLink</title>
+  <link rel="stylesheet" href="{% static 'css/tailwind-plain.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Manrope', sans-serif; }
+    body { margin: 0; padding: 0; background: #f7f7f7; color: #1a1a2e; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; max-width: 90%;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body class="bg-[#F7F7F7]">
+
+<!-- Header -->
+<header class="bg-[#F26522] text-white shadow-lg sticky top-0 z-20">
+  <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="/parent/tasks/" class="bg-white/20 hover:bg-white/30 rounded-lg w-9 h-9 flex items-center justify-center transition shrink-0" aria-label="Quay lại">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-lg font-bold">Thanh toán</h1>
+        <p class="text-xs text-white/80">Quản lý thanh toán các công việc</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-4 pb-16">
+  <!-- ============ SETUP CHO TASK (?task_id=X) ============ -->
+  <div id="setup-card" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 hidden">
+    <h2 class="font-bold text-base mb-1">Thiết lập thanh toán</h2>
+    <p id="setup-task-title" class="text-sm text-gray-500 mb-4">Đang tải thông tin công việc...</p>
+
+    <div id="setup-methods" class="space-y-2">
+      <!-- MoMo Escrow -->
+      <button onclick="setupPayment('momo_escrow')" class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-[#F26522] hover:bg-orange-50/50 transition text-left">
+        <div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-xl shrink-0">💳</div>
+        <div class="flex-1">
+          <p class="font-bold text-sm">Ví MoMo (giữ tiền an toàn)</p>
+          <p class="text-xs text-gray-500 mt-0.5">Thanh toán qua MoMo — tiền được giữ đến khi công việc hoàn thành, rồi giải ngân cho CarePartner (80/20).</p>
+        </div>
+      </button>
+      <!-- PayOS VietQR -->
+      <button onclick="setupPayOS()" class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-[#F26522] hover:bg-orange-50/50 transition text-left">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl shrink-0">🏦</div>
+        <div class="flex-1">
+          <p class="font-bold text-sm">Chuyển khoản VietQR (PayOS)</p>
+          <p class="text-xs text-gray-500 mt-0.5">Quét QR chuyển khoản ngân hàng — tiền giữ trong PayOS đến khi công việc hoàn thành.</p>
+        </div>
+      </button>
+      <!-- Cash -->
+      <button onclick="setupPayment('cash')" class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-[#F26522] hover:bg-orange-50/50 transition text-left">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shrink-0">💵</div>
+        <div class="flex-1">
+          <p class="font-bold text-sm">Tiền mặt</p>
+          <p class="text-xs text-gray-500 mt-0.5">Trả tiền mặt cho CarePartner khi xong việc. Hoa hồng 20% tổng hợp cuối tháng.</p>
+        </div>
+      </button>
+    </div>
+    <p id="setup-error" class="text-xs text-red-600 mt-3 hidden"></p>
+  </div>
+
+  <!-- ============ DANH SÁCH THANH TOÁN ============ -->
+  <h2 class="font-bold text-base mb-3">Lịch sử thanh toán</h2>
+
+  <div id="loading-state" class="text-center py-16">
+    <div class="w-10 h-10 border-4 border-[#F26522]/30 border-t-[#F26522] rounded-full animate-spin mx-auto"></div>
+    <p class="text-sm text-gray-500 mt-3">Đang tải...</p>
+  </div>
+
+  <div id="error-state" class="hidden text-center py-12">
+    <div class="text-4xl mb-3">⚠️</div>
+    <p class="text-sm text-gray-600 mb-4">Không tải được danh sách thanh toán.</p>
+    <button onclick="loadPayments()" class="px-5 py-2.5 rounded-xl bg-[#F26522] text-white text-sm font-semibold hover:bg-[#D4541E] transition">
+      Thử lại
+    </button>
+  </div>
+
+  <div id="empty-state" class="hidden text-center py-14 bg-white rounded-2xl border border-dashed border-gray-200">
+    <div class="text-4xl mb-3">💳</div>
+    <p class="text-sm text-gray-600">Chưa có thanh toán nào.</p>
+    <p class="text-xs text-gray-400 mt-1">Chọn "Thanh toán" trên công việc đang thực hiện để bắt đầu.</p>
+  </div>
+
+  <div id="payment-list" class="space-y-3"></div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ====================================================================
+// TRANG THANH TOÁN PHỤ HUYNH (parity web ↔ mobile PaymentSetupScreen
+// + PaymentDetailScreen + MyPayments)
+// Backend: POST /api/payments/setup/ {task_id, method}
+//          POST /api/payments/payos-setup/ {task_id}  (VietQR)
+//          GET  /api/payments/my/
+// ?task_id=X → hiện setup card cho task đó.
+// ====================================================================
+const API_BASE = '/api';
+const METHOD_LABELS = {
+  momo_escrow: 'Ví MoMo (giữ tiền)',
+  payos: 'Chuyển khoản VietQR',
+  cash: 'Tiền mặt',
+};
+const STATUS_CONFIG = {
+  pending: { label: 'Chờ thanh toán', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  held: { label: 'Đang giữ tiền', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  completed: { label: 'Hoàn tất', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  cancelled: { label: 'Đã huỷ', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+  refunded: { label: 'Đã hoàn tiền', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+  payout_failed: { label: 'Giải ngân lỗi', cls: 'bg-red-50 text-red-700 border-red-200' },
+};
+const formatVnd = (v) => Number(v || 0).toLocaleString('vi-VN') + 'đ';
+
+function getAuthToken() { return localStorage.getItem('token'); }
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  if (!token) { window.location.href = '/login/'; throw new Error('No auth token'); }
+  const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+  if (options.body && typeof options.body === 'object') {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) return authFetch(url, options);
+    window.location.href = '/login/';
+    throw new Error('Auth expired');
+  }
+  return resp;
+}
+
+async function tryRefreshToken() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const r = await fetch(`${API_BASE}/auth/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    localStorage.setItem('token', data.access);
+    if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+    return true;
+  } catch (e) { return false; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function showState(name) {
+  document.getElementById('loading-state').classList.toggle('hidden', name !== 'loading');
+  document.getElementById('error-state').classList.toggle('hidden', name !== 'error');
+  document.getElementById('empty-state').classList.toggle('hidden', name !== 'empty');
+  document.getElementById('payment-list').classList.toggle('hidden', name !== 'list');
+}
+
+// ── Setup card khi có ?task_id ─────────────────────────────────────
+async function initSetupCard() {
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('task_id');
+  if (!taskId) return;
+  const card = document.getElementById('setup-card');
+  const titleEl = document.getElementById('setup-task-title');
+  card.classList.remove('hidden');
+  try {
+    const r = await authFetch(`${API_BASE}/tasks/${taskId}/`);
+    if (r.ok) {
+      const task = await r.json();
+      titleEl.textContent = `Công việc: "${task.title}" · Số tiền: ${formatVnd(task.price)}`;
+    } else {
+      titleEl.textContent = 'Không tải được thông tin công việc.';
+    }
+  } catch (e) {
+    titleEl.textContent = 'Không tải được thông tin công việc.';
+  }
+}
+
+function setupError(msg) {
+  const el = document.getElementById('setup-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+async function setupPayment(method) {
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('task_id');
+  if (!taskId) { showToast('Thiếu task_id.'); return; }
+  try {
+    const r = await authFetch(`${API_BASE}/payments/setup/`, {
+      method: 'POST',
+      body: { task_id: Number(taskId), method },
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      if (data.next_action === 'redirect_to_momo' && data.momo_pay_url) {
+        showToast('✅ Đang chuyển tới MoMo...');
+        window.location.href = data.momo_pay_url;
+      } else {
+        showToast('✅ Đã thiết lập thanh toán tiền mặt.');
+        loadPayments();
+      }
+    } else {
+      setupError(data.error || 'Thiết lập thanh toán thất bại.');
+    }
+  } catch (e) {
+    setupError('Lỗi mạng — vui lòng thử lại.');
+  }
+}
+
+async function setupPayOS() {
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('task_id');
+  if (!taskId) { showToast('Thiếu task_id.'); return; }
+  try {
+    const r = await authFetch(`${API_BASE}/payments/payos-setup/`, {
+      method: 'POST',
+      body: { task_id: Number(taskId) },
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok && data.checkout_url) {
+      showToast('✅ Đang mở trang chuyển khoản PayOS...');
+      window.location.href = data.checkout_url;
+    } else {
+      setupError(data.error || 'PayOS chưa sẵn sàng — vui lòng dùng MoMo hoặc tiền mặt.');
+    }
+  } catch (e) {
+    setupError('Lỗi mạng — vui lòng thử lại.');
+  }
+}
+
+// ── Danh sách thanh toán ───────────────────────────────────────────
+function paymentHtml(p) {
+  const st = STATUS_CONFIG[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
+  const method = METHOD_LABELS[p.method] || p.method;
+  const payUrl = p.momo_pay_url || p.payos_checkout_url;
+  return `
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-2 flex-wrap">
+        <div class="min-w-0">
+          <p class="text-sm font-bold truncate">${escapeHtml(p.task_title || 'Việc #' + p.task)}</p>
+          <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(method)}${p.worker_name ? ' · CarePartner: ' + escapeHtml(p.worker_name) : ''}</p>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full border ${st.cls} font-semibold whitespace-nowrap">${st.label}</span>
+      </div>
+      <div class="flex items-end justify-between mt-3 flex-wrap gap-2">
+        <div>
+          <p class="text-xs text-gray-400">Số tiền</p>
+          <p class="text-lg font-extrabold text-[#F26522]">${formatVnd(p.amount)}</p>
+        </div>
+        ${p.status === 'held' ? `
+          <div class="text-right">
+            <p class="text-xs text-gray-400">CarePartner nhận (80%)</p>
+            <p class="text-sm font-bold text-emerald-600">${formatVnd(p.worker_payout_amount)}</p>
+          </div>` : ''}
+      </div>
+      ${payUrl && (p.status === 'pending') ? `
+        <button onclick="window.open('${escapeHtml(payUrl)}', '_blank')"
+          class="mt-3 w-full py-2.5 rounded-xl bg-[#F26522] text-white text-sm font-semibold hover:bg-[#D4541E] transition">
+          Thanh toán ngay
+        </button>` : ''}
+      ${p.status === 'completed' ? `<p class="text-xs text-gray-400 mt-3">Hoàn tất: ${escapeHtml(new Date(p.completed_at).toLocaleString('vi-VN'))}</p>` : ''}
+    </div>`;
+}
+
+async function loadPayments() {
+  showState('loading');
+  try {
+    const r = await authFetch(`${API_BASE}/payments/my/`);
+    if (!r.ok) throw new Error('load ' + r.status);
+    const data = await r.json();
+    const list = Array.isArray(data) ? data : data.results || [];
+    if (!list.length) { showState('empty'); return; }
+    document.getElementById('payment-list').innerHTML = list.map(paymentHtml).join('');
+    showState('list');
+  } catch (e) {
+    console.error('loadPayments error:', e);
+    showState('error');
+  }
+}
+
+initSetupCard();
+loadPayments();
+</script>
+</body>
+</html>

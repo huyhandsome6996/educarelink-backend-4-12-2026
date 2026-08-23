@@ -91,9 +91,9 @@
       </div>
       <h1 class="font-headline font-bold text-base text-textPrimary">Việc của tôi</h1>
     </div>
-    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all duration-200 hover:bg-gray-200">
+    <a href="/notifications/" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all duration-200 hover:bg-gray-200" aria-label="Thông báo">
       <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
-    </button>
+    </a>
   </div>
 </header>
 
@@ -516,6 +516,10 @@ function renderTasks() {
           <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
             <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
             Nhắn tin với Carepartner
+          </button>
+          <button onclick="location.href='/parent/payments/?task_id=${t.id}'" class="w-full py-3 bg-indigo-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-indigo-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">payments</span>
+            Thanh toán
           </button>
           <div class="flex gap-2">
             <button onclick="completeTask(${t.id})" class="flex-1 py-3 bg-emerald-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">

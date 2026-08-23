@@ -812,6 +812,20 @@
                 <span class="icon">&#129302;</span>
                 AI Tr&#7907; l&#253;
             </div>
+            <!-- Parity web + mobile admin screens: Payments / Tracking / Moderation -->
+            <div class="nav-item" onclick="switchTab('payments')">
+                <span class="icon">&#128179;</span>
+                Thanh to&#225;n
+            </div>
+            <div class="nav-item" onclick="switchTab('tracking')">
+                <span class="icon">&#128225;</span>
+                Theo d&#245;i an to&#224;n
+            </div>
+            <div class="nav-item" onclick="switchTab('moderation')">
+                <span class="icon">&#128737;</span>
+                Ki&#7875;m duy&#7879;t AI
+                <span class="nav-badge" id="moderationBadge" style="display:none;">0</span>
+            </div>
         </div>
         <div style="padding: 12px 12px; border-top: 1px solid #334155;">
             <button class="btn" style="width:100%;background:#F26522;color:#fff;font-weight:800;font-size:13px;padding:12px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;" onclick="seedDemoData()" id="seedBtn">
@@ -1556,6 +1570,46 @@
                 if (window.innerWidth < 1024) closeSidebar();
                 return;
             }
+            } else if (tab === 'payments') {
+                // Parity mobile AdminPaymentsScreen
+                navItems[8].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Thanh toán toàn nền tảng';
+                document.getElementById('pageTitle').textContent = 'Quản lý thanh toán';
+                document.getElementById('pageSubtitle').textContent = 'MoMo escrow + tiền mặt, giải ngân & thử lại';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadAdminPayments();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'tracking') {
+                // Parity mobile AdminTrackingOverviewScreen
+                navItems[9].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Tổng quan theo dõi an toàn';
+                document.getElementById('pageTitle').textContent = 'Theo dõi an toàn';
+                document.getElementById('pageSubtitle').textContent = 'Consent, Live GPS, SOS, chống tắt máy';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadAdminTracking();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'moderation') {
+                // Parity mobile AdminModerationScreen
+                navItems[10].classList.add('active');
+                document.getElementById('tableTitle').textContent = 'Kiểm duyệt công việc (AI)';
+                document.getElementById('pageTitle').textContent = 'Kiểm duyệt AI';
+                document.getElementById('pageSubtitle').textContent = 'Task needs review, override AI, duyệt lại';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = '';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.querySelector('.refresh-btn').style.display = '';
+                loadAdminModeration();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            }
             // Show refresh btn and hide chat panel for non-AI tabs
             document.querySelector('.refresh-btn').style.display = '';
             document.getElementById('aiChatPanel').classList.remove('active');
@@ -2049,6 +2103,175 @@
 
         // ===== PROFILE CHANGE REQUESTS =====
         let currentProfileChangeId = null;
+
+        // ═══════════════════════════════════════════════════════════
+        //  PARITY WEB ↔ MOBILE — Admin Payments / Tracking / Moderation
+        //  (mobile có AdminPaymentsScreen, AdminTrackingOverviewScreen,
+        //   AdminModerationScreen — web bổ sung tương đương)
+        // ═══════════════════════════════════════════════════════════
+
+        const ADMIN_PAYMENT_STATUS = {
+            pending: { label: 'Chờ thanh toán', cls: 'background:#fef3c7;color:#92400e;' },
+            held: { label: 'Đang giữ tiền', cls: 'background:#dbeafe;color:#1d4ed8;' },
+            completed: { label: 'Hoàn tất', cls: 'background:#d1fae5;color:#065f46;' },
+            cancelled: { label: 'Đã huỷ', cls: 'background:#f3f4f6;color:#4b5563;' },
+            refunded: { label: 'Đã hoàn tiền', cls: 'background:#ede9fe;color:#5b21b6;' },
+            payout_failed: { label: 'Giải ngân lỗi', cls: 'background:#fee2e2;color:#991b1b;' },
+        };
+        let adminPaymentsFilter = '';
+
+        async function loadAdminPayments() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/payments/admin/all/${adminPaymentsFilter ? '?status=' + adminPaymentsFilter : ''}`);
+                if (!res.ok) throw new Error('load ' + res.status);
+                const data = await res.json();
+                const payments = (Array.isArray(data) ? data : data.results || data.payments || []);
+
+                const filterBar = `
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                        ${['', 'pending', 'held', 'completed', 'payout_failed', 'refunded', 'cancelled'].map(s => `
+                            <button onclick="setAdminPaymentsFilter('${s}')" style="padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:${adminPaymentsFilter === s ? '#F26522' : '#fff'};color:${adminPaymentsFilter === s ? '#fff' : '#475569'};font-size:12px;font-weight:600;cursor:pointer;">
+                                ${s === '' ? 'Tất cả' : (ADMIN_PAYMENT_STATUS[s] ? ADMIN_PAYMENT_STATUS[s].label : s)}
+                            </button>`).join('')}
+                    </div>`;
+
+                if (!payments.length) {
+                    document.getElementById('tableBody').innerHTML = filterBar + '<div class="empty-state"><div class="empty-icon">💳</div><div class="empty-title">Không có thanh toán nào</div></div>';
+                    return;
+                }
+                const rows = payments.map(p => {
+                    const st = ADMIN_PAYMENT_STATUS[p.status] || { label: p.status, cls: 'background:#f3f4f6;color:#4b5563;' };
+                    return `
+                    <tr>
+                        <td><div style="font-weight:700;">#${p.id} · ${escapeHtml(p.task_title || 'Task ' + p.task)}</div>
+                            <div style="font-size:11px;color:#64748b;">${p.method === 'momo_escrow' ? 'MoMo escrow' : 'Tiền mặt'} · ${escapeHtml(p.parent_name || '')} → ${escapeHtml(p.worker_name || '')}</div></td>
+                        <td style="font-weight:800;">${Number(p.amount || 0).toLocaleString('vi-VN')}đ</td>
+                        <td>${Number(p.commission_amount || 0).toLocaleString('vi-VN')}đ</td>
+                        <td><span style="padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;${st.cls}">${st.label}</span></td>
+                        <td>${p.status === 'payout_failed' ? `<button class="btn" style="background:#F26522;color:#fff;font-size:11px;padding:6px 10px;" onclick="retryPayout(${p.id})">Thử giải ngân</button>` : '—'}</td>
+                    </tr>`;
+                }).join('');
+                document.getElementById('tableBody').innerHTML = filterBar + `
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead><tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;">
+                            <th style="padding:10px;">Thanh toán</th><th>Số tiền</th><th>Hoa hồng</th><th>Trạng thái</th><th>Hành động</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>`;
+            } catch (e) {
+                document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi tải thanh toán</div></div>';
+            }
+        }
+
+        function setAdminPaymentsFilter(s) { adminPaymentsFilter = s; loadAdminPayments(); }
+
+        async function retryPayout(paymentId) {
+            if (!confirm('Thử giải ngân lại cho thanh toán #' + paymentId + '?')) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/payments/admin/${paymentId}/retry-payout/`, { method: 'POST' });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) { alert('✅ ' + (data.message || 'Đã thử giải ngân.')); loadAdminPayments(); }
+                else alert('❌ ' + (data.error || 'Thất bại.'));
+            } catch (e) { alert('❌ Lỗi mạng'); }
+        }
+
+        async function loadAdminTracking() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/tracking/admin/overview/`);
+                if (!res.ok) throw new Error('load ' + res.status);
+                const d = await res.json();
+                const card = (label, value, color, icon) => `
+                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;min-width:150px;flex:1;">
+                        <div style="font-size:22px;">${icon}</div>
+                        <div style="font-size:24px;font-weight:900;color:${color};margin-top:6px;">${value}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">${label}</div>
+                    </div>`;
+                document.getElementById('tableBody').innerHTML = `
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+                        ${card('Consent đang hoạt động', d.active_consents, '#059669', '🤝')}
+                        ${card('Vị trí live', d.active_live_locations, '#2563eb', '📍')}
+                        ${card('SOS đang hoạt động', d.active_sos, d.active_sos > 0 ? '#dc2626' : '#059669', '🆘')}
+                        ${card('Tổng điểm lịch sử', d.total_history_points, '#475569', '🗺️')}
+                    </div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        ${card('Thiết bị online', (d.device_heartbeats || {}).online || 0, '#059669', '📱')}
+                        ${card('Thiết bị offline', (d.device_heartbeats || {}).offline || 0, '#d97706', '📴')}
+                        ${card('Alert tắt máy active', (d.offline_alerts || {}).active || 0, ((d.offline_alerts || {}).active || 0) > 0 ? '#dc2626' : '#059669', '🚨')}
+                        ${card('Alert đã phục hồi', (d.offline_alerts || {}).recovered || 0, '#059669', '✅')}
+                    </div>
+                    <div style="margin-top:14px;font-size:12px;color:#64748b;">
+                        Ngưỡng offline: ${d.offline_threshold_seconds}s · Heartbeat mỗi ${d.heartbeat_interval_seconds}s · Geofence mặc định ${d.geofence_radius_meters}m
+                    </div>`;
+            } catch (e) {
+                document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi tải tổng quan tracking</div></div>';
+            }
+        }
+
+        const MOD_STATUS = {
+            pending: { label: 'Chờ AI', cls: 'background:#fef3c7;color:#92400e;' },
+            approved: { label: 'AI duyệt', cls: 'background:#d1fae5;color:#065f46;' },
+            rejected: { label: 'AI chặn', cls: 'background:#fee2e2;color:#991b1b;' },
+            needs_review: { label: 'Cần review', cls: 'background:#dbeafe;color:#1d4ed8;' },
+            admin_approved: { label: 'Admin duyệt', cls: 'background:#d1fae5;color:#065f46;' },
+            admin_rejected: { label: 'Admin chặn', cls: 'background:#fee2e2;color:#991b1b;' },
+        };
+
+        async function loadAdminModeration() {
+            document.getElementById('tableBody').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            try {
+                const res = await apiFetch(`${API_BASE}/moderation/admin/tasks/?status=needs_review`);
+                if (!res.ok) throw new Error('load ' + res.status);
+                const mods = await res.json();
+                const list = Array.isArray(mods) ? mods : mods.results || [];
+
+                const badge = document.getElementById('moderationBadge');
+                if (list.length > 0) { badge.style.display = ''; badge.textContent = list.length; }
+                else { badge.style.display = 'none'; }
+
+                if (!list.length) {
+                    document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">🛡️</div><div class="empty-title">Không có task nào cần review</div><div class="empty-subtitle">AI đã tự duyệt toàn bộ task mới</div></div>';
+                    return;
+                }
+                const rows = list.map(m => {
+                    const st = MOD_STATUS[m.status] || { label: m.status, cls: 'background:#f3f4f6;color:#4b5563;' };
+                    return `
+                    <tr>
+                        <td><div style="font-weight:700;">${escapeHtml(m.task_title || 'Task ' + m.task)}</div>
+                            <div style="font-size:11px;color:#64748b;">Phụ huynh: ${escapeHtml(m.task_parent_name || m.parent_name || '')} · ${new Date(m.created_at).toLocaleString('vi-VN')}</div></td>
+                        <td><span style="padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;${st.cls}">${st.label}</span></td>
+                        <td style="font-size:12px;color:#475569;max-width:260px;">${escapeHtml((m.ai_suggestion || m.ai_verdict || '').slice(0, 120))}</td>
+                        <td>
+                            <button class="btn" style="background:#059669;color:#fff;font-size:11px;padding:6px 10px;margin-right:4px;" onclick="overrideModeration(${m.id}, 'admin_approved')">Duyệt</button>
+                            <button class="btn" style="background:#dc2626;color:#fff;font-size:11px;padding:6px 10px;" onclick="overrideModeration(${m.id}, 'admin_rejected')">Chặn</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+                document.getElementById('tableBody').innerHTML = `
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead><tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;">
+                            <th style="padding:10px;">Task</th><th>Trạng thái</th><th>Gợi ý AI</th><th>Hành động</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>`;
+            } catch (e) {
+                document.getElementById('tableBody').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Lỗi tải kiểm duyệt</div></div>';
+            }
+        }
+
+        async function overrideModeration(modId, status) {
+            const note = prompt('Ghi chú của admin (tuỳ chọn):') || '';
+            try {
+                const res = await apiFetch(`${API_BASE}/moderation/admin/tasks/${modId}/override/`, {
+                    method: 'POST',
+                    body: JSON.stringify({ status, admin_note: note }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) { alert('✅ Đã ' + (status === 'admin_approved' ? 'duyệt' : 'chặn') + ' task.'); loadAdminModeration(); }
+                else alert('❌ ' + (data.error || 'Thất bại.'));
+            } catch (e) { alert('❌ Lỗi mạng'); }
+        }
 
         async function loadProfileChangeRequests() {
             const tbody = document.getElementById('tableBody');

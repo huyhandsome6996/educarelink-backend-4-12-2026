@@ -113,3 +113,27 @@ class ChatView(TemplateView):
     Query param: ?task_id=<id>
     """
     template_name = "frontend/chat.html"
+
+
+class NotificationsView(TemplateView):
+    """Trang thông báo (parity web ↔ mobile NotificationsScreen).
+    Dùng chung mọi role — API tự lọc theo JWT."""
+    template_name = "frontend/notifications.html"
+
+
+class WorkerComplaintsView(TemplateView):
+    """Trang khiếu nại của CarePartner (gửi + xem — parity mobile
+    ComplaintScreen + MyComplaintsScreen)."""
+    template_name = "frontend/worker_complaints.html"
+
+
+class ParentPaymentsView(TemplateView):
+    """Trang thanh toán của phụ huynh (setup MoMo/PayOS/tiền mặt +
+    lịch sử — parity mobile PaymentSetupScreen + MyPayments)."""
+    template_name = "frontend/parent_payments.html"
+
+
+class WorkerEarningsView(TemplateView):
+    """Trang thu nhập CarePartner (earnings + kỳ hoa hồng QR —
+    parity mobile MyEarningsScreen + SettlementDetailScreen)."""
+    template_name = "frontend/worker_earnings.html"

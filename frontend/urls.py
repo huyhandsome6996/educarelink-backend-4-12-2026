@@ -31,5 +31,12 @@ urlpatterns = [
     path('parent/tracking/', LiveTrackingView.as_view(), name='live_tracking'),
     # N — Cửa sổ chat Parent ↔ CarePartner (dùng chung cả 2 role)
     path('chat/', ChatView.as_view(), name='chat'),
+    # Parity web ↔ mobile — trang thông báo (mọi role)
+    path('notifications/', NotificationsView.as_view(), name='notifications'),
+    # Parity web ↔ mobile — khiếu nại CarePartner
+    path('worker/complaints/', WorkerComplaintsView.as_view(), name='worker_complaints'),
+    # Parity web ↔ mobile — thanh toán phụ huynh + thu nhập CarePartner
+    path('parent/payments/', ParentPaymentsView.as_view(), name='parent_payments'),
+    path('worker/earnings/', WorkerEarningsView.as_view(), name='worker_earnings'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 ]
