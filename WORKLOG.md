@@ -1332,3 +1332,13 @@ merge main) — không tính gap.
   (menu Khiếu nại + Thu nhập), admin_dashboard.html (3 tab admin),
   frontend/{views,urls}.py (4 routes), frontend/tests.py (+10)
 - Script: scripts/verify_chat_back_fix.py (verify thủ công)
+
+## fix/chat-back-va-web-parity merged vào main (2026-08-23)
+
+- **Merge commit**: `d7e260f` (--no-ff) — fix chat back button + web parity
+  4 trang (notifications/complaints/payments/earnings) + admin 3 tab.
+- **Self-test trước merge** (yêu cầu Huy): full suite 464/464 PASS trên kết quả
+  merge (chat 44 + frontend 33 + core 126 + tracking 216 + others 45),
+  makemigrations --check sạch, verify runserver thật 9/9 PASS từ lượt trước
+  (script scripts/verify_chat_back_fix.py).
+- Không có regression — push main, tiếp tục build APK (EAS Build).
