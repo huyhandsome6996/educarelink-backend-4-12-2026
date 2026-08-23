@@ -43,21 +43,17 @@ export default function NotificationBell({ dark = false, size = 22, color, style
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Resolve icon color: explicit color prop > dark mode > default white
   const iconColor = color || (dark ? COLORS.textPrimary : 'rgba(255,255,255,0.95)');
 
-  // Animation: badge pop khi có thông báo mới
   const badgeScale = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
-  // Lấy số lượng thông báo chưa đọc
   const fetchUnread = useCallback(async () => {
     try {
       const res = await getUnreadCount();
       const count = res.data?.unread_count ?? res.data?.count ?? 0;
       setUnread((prev) => {
         if (count !== prev) {
-          // Hiệu ứng pop khi số lượng thay đổi
           Animated.sequence([
             Animated.spring(badgeScale, { toValue: 1.2, tension: 80, friction: 4, useNativeDriver: true }),
             Animated.spring(badgeScale, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
@@ -66,18 +62,16 @@ export default function NotificationBell({ dark = false, size = 22, color, style
         return count;
       });
     } catch (e) {
-      // Lỗi âm thầm — không phá vỡ UX
+      // silent
     }
-  }, []);
+  }, [badgeScale]);
 
-  // Poll mỗi 30 giây
   useEffect(() => {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, [fetchUnread]);
 
-  // Mở panel + load danh sách + đánh dấu đã đọc
   const openPanel = async () => {
     setPanelVisible(true);
     Animated.timing(slideAnim, {
@@ -86,7 +80,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
       useNativeDriver: true,
     }).start();
     await fetchNotifications();
-    // Đánh dấu đã đọc tất cả (nếu có thông báo chưa đọc)
     if (unread > 0) {
       try {
         await markNotificationsRead({ mark_all: true });
@@ -107,13 +100,12 @@ export default function NotificationBell({ dark = false, size = 22, color, style
     setIsLoading(true);
     try {
       const res = await getNotifications();
-      // Sắp xếp mới nhất lên đầu + giới hạn 20 để perf tốt hơn
       const list = (res.data || []).slice().sort((a, b) =>
         new Date(b.created_at) - new Date(a.created_at)
       ).slice(0, 20);
       setNotifications(list);
     } catch (e) {
-      // Bỏ qua lỗi
+      // ignore
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -125,7 +117,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
     fetchNotifications();
   };
 
-  // Đánh dấu 1 thông báo đã đọc khi tap vào
   const handleTapNotif = async (item) => {
     if (!item.is_read) {
       try {
@@ -161,7 +152,9 @@ export default function NotificationBell({ dark = false, size = 22, color, style
         style={[styles.bellBtn, dark && styles.bellBtnDark, style]}
         onPress={openPanel}
         activeOpacity={0.7}
-       accessibilityRole="button" accessibilityLabel="Thông báo">
+        accessibilityRole="button"
+        accessibilityLabel="Thông báo"
+      >
         <Ionicons
           name={unread > 0 ? 'notifications' : 'notifications-outline'}
           size={size}
@@ -174,7 +167,6 @@ export default function NotificationBell({ dark = false, size = 22, color, style
         )}
       </TouchableOpacity>
 
-      {/* Slide-down panel */}
       <Modal visible={panelVisible} transparent animationType="none" onRequestClose={closePanel}>
         <View style={styles.overlay}>
           <TouchableOpacity style={styles.overlayTouchable} onPress={closePanel} activeOpacity={1} />
@@ -191,7 +183,13 @@ export default function NotificationBell({ dark = false, size = 22, color, style
                     </View>
                   )}
                 </View>
-                <TouchableOpacity onPress={closePanel} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Đóng"> size={20} color={COLORS.textSecondary} />
+                <TouchableOpacity
+                  onPress={closePanel}
+                  style={styles.closeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Đóng"
+                >
+                  <Ionicons name="close" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -271,7 +269,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  // === PANEL ===
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
