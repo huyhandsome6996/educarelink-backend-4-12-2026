@@ -127,10 +127,10 @@
                 </div>
                 <span class="font-headline font-bold text-base text-textPrimary">Edu<span class="text-primary">Care</span>Link</span>
             </div>
-            <button class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative transition-all duration-200">
+            <a href="/notifications/" class="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative transition-all duration-200 hover:bg-gray-100" aria-label="Thông báo">
                 <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
-                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-surface"></span>
-            </button>
+                <span id="notif-dot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-surface hidden"></span>
+            </a>
         </div>
     </header>
 
@@ -146,10 +146,10 @@
                 <p id="greeting-desktop" class="text-textSecondary text-sm mt-0.5">Chào buổi sáng, Đang tải...</p>
             </div>
             <div class="flex items-center gap-3">
-                <button class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-all duration-200 relative">
+                <a href="/notifications/" class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-all duration-200 relative" aria-label="Thông báo">
                     <span class="material-symbols-outlined text-textSecondary">notifications</span>
                     <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
-                </button>
+                </a>
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight ring-2 ring-primarySoft">
                     <img id="header-avatar" alt="Avatar" class="w-full h-full object-cover"
                          src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
