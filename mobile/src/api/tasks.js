@@ -1,7 +1,7 @@
 import apiClient from './client';
 
 // Timeout dài cho các endpoint gọi Gemini AI (chatbot / help-center).
-// TEST_REPORT_2026_07_21.md đo được /chatbot/ ~9.58s, /worker/chatbot/ ~11.79s
+// Benchmark 2026-07-21: /chatbot/ ~9.58s, /worker/chatbot/ ~11.79s (Gemini latency)
 // (Gemini latency) → timeout mặc định 10s của axios sẽ throw ECONNABORTED dù
 // backend vẫn xử lý thành công. Override per-request thay vì tăng global timeout.
 // (Cùng pattern với mobile/src/api/admin.js — AI_TIMEOUT = 60s cho /admin/chatbot/.)

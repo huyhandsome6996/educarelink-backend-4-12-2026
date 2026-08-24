@@ -88,7 +88,6 @@ educarelink-backend-4-12-2026/
 ├── docs/                 # Báo cáo + Hướng dẫn sử dụng (Word)
 ├── AGENTS.md             # Single source of truth cho AI agents — ĐỌC TRƯỚC KHI CODE
 ├── SYNC_PRINCIPLE.md     # Nguyên tắc đồng bộ web ↔ mobile
-├── SECURITY_AUDIT_CHECKLIST.md  # Security audit prompt
 ├── EDUCARELINK_REPO_ANALYSIS_AND_TESTING_GUIDE.md  # FILE NÀY
 ├── manage.py
 ├── requirements.txt
@@ -135,7 +134,6 @@ educarelink-backend-4-12-2026/
 # Đọc các file gốc TRƯỚC TIÊN (theo thứ tự ưu tiên)
 cat AGENTS.md                    # Single source of truth — ĐỌC TRƯỚC KHI CODE
 cat SYNC_PRINCIPLE.md            # Nguyên tắc đồng bộ web-mobile
-cat SECURITY_AUDIT_CHECKLIST.md  # Security audit prompt
 cat requirements.txt
 cat backend/settings.py
 cat backend/urls.py
@@ -461,7 +459,7 @@ Sau khi fix bất kỳ bug nào:
 
 ## 9. BÁO CÁO LỖI & FIX
 
-Mỗi bug tìm được, ghi vào `BUG_REPORT.md` theo format:
+Mỗi bug tìm được, ghi vào bug tracker (GitHub Issues) theo format:
 
 ```markdown
 ## BUG-001: [tên bug ngắn]
@@ -491,7 +489,7 @@ Mỗi bug tìm được, ghi vào `BUG_REPORT.md` theo format:
 - [ ] Design parity 100% (screenshot so sánh side-by-side)
 - [ ] Safety feature test pass (tất cả 7 test cases)
 - [ ] Sample data seeded thành công
-- [ ] Tất cả bugs documented trong `BUG_REPORT.md`
+- [ ] Tất cả bugs documented trong GitHub Issues
 - [ ] Tất cả fixes commit + push lên branch riêng (không phải main)
 - [ ] PR tạo sẵn để user review
 - [ ] `WORKLOG.md` cập nhật đầy đủ
@@ -502,24 +500,20 @@ Mỗi bug tìm được, ghi vào `BUG_REPORT.md` theo format:
 
 ## 11. CẤU TRÚC OUTPUT AGENT PHẢI TRẢ VỀ
 
-Agent phải tạo các file sau trong repo (KHÔNG overwrite AGENTS.md, SYNC_PRINCIPLE.md, SECURITY_AUDIT_CHECKLIST.md):
+Agent phải tạo các file sau trong repo (KHÔNG overwrite AGENTS.md, SYNC_PRINCIPLE.md):
 ```
 /ANALYSIS.md           # Phân tích chi tiết repo (cấu trúc, endpoints, models) — cập nhật mới
-/TEST_REPORT.md        # Báo cáo test từng feature (pass/fail) — thay thế TEST_RESULTS.md cũ
-/BUG_REPORT.md         # Danh sách bugs tìm được
 /FIX_LOG.md            # Log các fix đã thực hiện (commit hash + mô tả)
 /SYNC_PARITY.md        # Bảng so sánh web vs mobile (parity %) — cập nhật mới
-/SAFETY_FEATURE.md     # Document implement safety feature
 /WORKLOG.md            # Worklog ngày tháng
 ```
 
 ### Các file tham khảo PHẢI ĐỌC TRƯỚC KHI CODE:
 1. `AGENTS.md` — Single source of truth (73 KB) — ĐỌC TRƯỚC KHI SỬA BẤT KỲ DÒNG CODE NÀO
 2. `SYNC_PRINCIPLE.md` — Nguyên tắc đồng bộ web-mobile (15 KB)
-3. `SECURITY_AUDIT_CHECKLIST.md` — Security audit prompt (7.5 KB)
-4. `mobile/DEPLOY_GUIDE.md` — Hướng dẫn deploy mobile (9.6 KB)
-5. `payments/README.md` — Tài liệu module payment (14.5 KB)
-6. `performance/README.md` — Tài liệu module performance (8.6 KB)
+3. `mobile/DEPLOY_GUIDE.md` — Hướng dẫn deploy mobile (9.6 KB)
+4. `payments/README.md` — Tài liệu module payment (14.5 KB)
+5. `performance/README.md` — Tài liệu module performance (8.6 KB)
 
 ---
 
@@ -543,8 +537,6 @@ BƯỚC ĐẦU TIÊN — ĐỌC FILE NÀY TRƯỚC:
 1. `EDUCARELINK_REPO_ANALYSIS_AND_TESTING_GUIDE.md` (file hướng dẫn chính)
 2. `AGENTS.md` — Single source of truth cho AI agents
 3. `SYNC_PRINCIPLE.md` — Nguyên tắc đồng bộ web ↔ mobile
-4. `SECURITY_AUDIT_CHECKLIST.md` — Security audit prompt
-
 NGUYÊN TẮC TỐI THƯỢNG:
 1. KHÔNG làm sập web production Render (KHÔNG push lên main, KHÔNG modify production env)
 2. KHÔNG push code lỗi lên main
@@ -556,11 +548,10 @@ NGUYÊN TẮC TỐI THƯỢNG:
 
 OUTPUT BẮT BUỘC (tạo file .md trong root repo):
 - Phân tích chi tiết repo → `ANALYSIS.md`
-- Test tất cả flows (web + mobile) → `TEST_REPORT.md`
-- List bugs → `BUG_REPORT.md`
+- Test tất cả flows (web + mobile)
+- List bugs → GitHub Issues
 - Fix bugs → commit + push branch riêng + `FIX_LOG.md`
 - So sánh web vs mobile parity → `SYNC_PARITY.md`
-- Implement/verify safety feature → `SAFETY_FEATURE.md`
 - Worklog → `WORKLOG.md`
 
 ĐẶC BIỆT — SAFETY FEATURE (ưu tiên cao nhất):
