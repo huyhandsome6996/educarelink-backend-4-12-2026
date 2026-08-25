@@ -352,6 +352,15 @@ class DeviceHeartbeat(models.Model):
     offline_detected_at = models.DateTimeField(null=True, blank=True, help_text="Khi phát hiện offline")
     offline_alert_sent = models.BooleanField(default=False, help_text="Đã gửi push cho phụ huynh chưa")
 
+    # SAFETY-LOC-001: trạng thái quyền vị trí hiện tại trên thiết bị.
+    # Mobile gửi kèm mỗi heartbeat. Giá trị: 'granted' | 'denied' | 'unknown'.
+    # Backend chỉ lưu làm dữ liệu dự phòng — KHÔNG tự tạo alert ở đây
+    # (để tránh trộn logic với report_location_permission_revoked).
+    location_permission_status = models.CharField(
+        max_length=10, default='unknown',
+        help_text="Trạng thái quyền vị trí trên thiết bị: granted/denied/unknown"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -367,14 +376,27 @@ class DeviceHeartbeat(models.Model):
 
 class DeviceOfflineAlert(models.Model):
     """
-    Alert khi thiết bị carepartner ngoại tuyến quá lâu (> TRACKING_OFFLINE_THRESHOLD).
-    Đẩy chuông kêu (priority=high) cho phụ huynh.
+    Alert khi thiết bị carepartner ngoại tuyến quá lâu (> TRACKING_OFFLINE_THRESHOLD)
+    HOẶC carepartner tắt quyền vị trí trong lúc task đang active.
+
+    SAFETY-LOC-001: thêm alert_type để phân biệt 2 loại cảnh báo:
+      - 'device_offline': mất kết nối hoàn toàn (mất mạng, tắt máy, gỡ app)
+      - 'location_permission_revoked': carepartner tắt quyền vị trí/GPS
+
+    Cả 2 loại dùng chung model (same push retry, acknowledge flow) nhưng
+    khác nội dung push notification để phụ huynh hiểu đúng bản chất.
     """
     ALERT_STATUS_CHOICES = (
         ('active', 'Đang khẩn cấp — thiết bị vẫn offline'),
         ('recovered', 'Thiết bị đã online trở lại'),
         ('task_ended', 'Task đã kết thúc (completed/cancelled)'),
         ('false', 'Báo động sai (lỗi mạng backend)'),
+    )
+    # SAFETY-LOC-001: phân biệt loại alert. Default 'device_offline' để
+    # không phá vỡ dữ liệu/luồng cũ (tất cả row hiện có sẽ có giá trị này).
+    ALERT_TYPE_CHOICES = (
+        ('device_offline', 'Mất kết nối thiết bị (mạng/tắt máy/gỡ app)'),
+        ('location_permission_revoked', 'Carepartner tắt quyền vị trí/GPS'),
     )
 
     task = models.ForeignKey(
@@ -405,6 +427,15 @@ class DeviceOfflineAlert(models.Model):
     )
 
     status = models.CharField(max_length=20, choices=ALERT_STATUS_CHOICES, default='active', db_index=True)
+
+    # SAFETY-LOC-001: loại cảnh báo. Default 'device_offline' để dữ liệu cũ
+    # không bị ảnh hưởng. Mobile/web dùng field này để hiển thị icon/message
+    # khác nhau cho từng loại.
+    alert_type = models.CharField(
+        max_length=35, choices=ALERT_TYPE_CHOICES, default='device_offline',
+        db_index=True,
+        help_text="Loại cảnh báo: device_offline hoặc location_permission_revoked"
+    )
 
     # Push notification tracking
     push_sent = models.BooleanField(default=False, help_text="Đã gửi push cho phụ huynh")
@@ -438,12 +469,14 @@ class DeviceOfflineAlert(models.Model):
             models.Index(fields=['worker', 'status']),
             # Index cho scheduler retry — tìm alert active chưa acknowledged
             models.Index(fields=['status', 'acknowledged_at', 'push_sent_at']),
+            # SAFETY-LOC-001: index cho filter theo alert_type
+            models.Index(fields=['alert_type', 'status']),
         ]
-        # QA-FIX-2 / C: partial unique index — mỗi task chỉ có 1 alert
-        # active tại 1 thời điểm. Chống scheduler chạy 2 instance song
-        # song cùng tạo 2 alert cho cùng task.
-        # Condition: status='active' → các alert recovered/task_ended/
-        # false không bị constraint.
+        # QA-FIX-2 / C + SAFETY-LOC-001: partial unique index — mỗi task
+        # chỉ có 1 alert active tại 1 thời điểm (bất kể alert_type).
+        # Điều này đảm bảo không có 2 alert active đồng thời cho cùng task
+        # (ví dụ: 1 device_offline + 1 location_permission_revoked).
+        # Chỉ active alert bị constraint — recovered/task_ended/false không bị.
         constraints = [
             models.UniqueConstraint(
                 fields=['task'],
@@ -453,7 +486,7 @@ class DeviceOfflineAlert(models.Model):
         ]
 
     def __str__(self):
-        return f"OfflineAlert Task#{self.task_id} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
+        return f"Alert Task#{self.task_id} | {self.get_alert_type_display()} | {self.get_status_display()} | {self.created_at:%H:%M:%S}"
 
 
 # ═══════════════════════════════════════════════════════════════════

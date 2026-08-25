@@ -22,6 +22,8 @@ from .views import (
     BatchLocationAPIView,
     # QA-FIX-3 / C — Scheduler health monitoring endpoint
     SchedulerHealthAPIView,
+    # SAFETY-LOC-001 — Báo cáo quyền vị trí bị thu hồi
+    LocationPermissionStatusAPIView,
 )
 
 urlpatterns = [
@@ -49,6 +51,8 @@ urlpatterns = [
 
     # Device Heartbeat & Offline Alert (chống tắt máy)
     path('tracking/heartbeat/', HeartbeatAPIView.as_view(), name='tracking-heartbeat'),
+    # SAFETY-LOC-001 — Báo cáo quyền vị trí bị thu hồi/bật lại
+    path('tracking/location-permission-status/', LocationPermissionStatusAPIView.as_view(), name='tracking-location-permission-status'),
     path('tracking/<int:task_id>/device-status/', DeviceStatusAPIView.as_view(), name='tracking-device-status'),
     path('tracking/<int:task_id>/offline-alerts/', OfflineAlertsListAPIView.as_view(), name='tracking-offline-alerts'),
     # Phan 2 — Parent acknowledge offline alert (dừng retry push)

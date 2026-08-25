@@ -34,9 +34,10 @@ from .serializers import (
     LocationConsentSerializer, LiveLocationSerializer,
     LocationHistorySerializer, SOSAlertSerializer,
     GrantConsentSerializer, UpdateLocationSerializer, SOSSerializer,
-    HeartbeatSerializer,
+    HeartbeatSerializer, LocationPermissionStatusSerializer,
     RandomVerificationCheckSerializer, SetVerificationPinSerializer,
     RespondVerificationCheckSerializer, BatchLocationSerializer,
+    DeviceOfflineAlertSerializer,
 )
 from .services import (
     grant_consent, revoke_consent, update_worker_location,
@@ -50,6 +51,8 @@ from .services import (
     get_verification_history_for_parent, cancel_verification_check,
     # B5 — xác thực bằng ảnh trong ca
     submit_verification_photo, get_verification_photo,
+    # SAFETY-LOC-001
+    report_location_permission_revoked,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -384,7 +387,8 @@ class HeartbeatAPIView(APIView):
     POST /api/tracking/heartbeat/
     Body: {
         task_id, latitude?, longitude?,
-        battery_level?, app_state?, network_type?
+        battery_level?, app_state?, network_type?,
+        location_permission_status?  // SAFETY-LOC-001
     }
 
     Carepartner app gửi heartbeat mỗi 30s khi đang tracking.
@@ -411,13 +415,54 @@ class HeartbeatAPIView(APIView):
                 battery_level=data.get('battery_level'),
                 app_state=data.get('app_state', ''),
                 network_type=data.get('network_type', ''),
+                # SAFETY-LOC-001: truyền location_permission_status
+                location_permission_status=data.get('location_permission_status', 'unknown'),
             )
             return Response({
                 'status': 'ok',
                 'heartbeat_id': hb.id,
                 'last_seen': hb.last_seen.isoformat(),
                 'device_status': hb.device_status,
+                'location_permission_status': hb.location_permission_status,
             }, status=status.HTTP_200_OK)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LocationPermissionStatusAPIView(APIView):
+    """
+    POST /api/tracking/location-permission-status/
+    Body: { task_id, status: 'granted'|'denied' }
+
+    SAFETY-LOC-001: Mobile gọi NGAY khi phát hiện quyền vị trí thay đổi
+    (bị thu hồi hoặc được cấp lại). KHÔNG gọi mỗi 30s — chỉ khi thay đổi.
+
+    Backend:
+      - denied: tạo alert loại 'location_permission_revoked' + push KHẨN CẤP
+      - granted: resolve alert + push "đã bật lại vị trí"
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = LocationPermissionStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            task = Task.objects.get(pk=data['task_id'])
+        except Task.DoesNotExist:
+            return Response({'error': 'Không tìm thấy công việc.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = report_location_permission_revoked(
+                task=task,
+                worker=request.user,
+                permission_status=data['status'],
+            )
+            return Response(result, status=status.HTTP_200_OK)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except ValueError as e:

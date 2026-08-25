@@ -50,6 +50,11 @@ let appStateSubscription = null;
 let netInfoSubscription = null;
 let isFlushing = false;        // cờ chống flush chạy chồng lên nhau
 
+// SAFETY-LOC-001: theo dõi trạng thái quyền vị trí để debounce
+// Chỉ gọi API khi trạng thái THAY ĐỔI (không spam mỗi 30s)
+let lastReportedPermissionStatus = 'granted';
+let permissionCheckIntervalId = null;
+
 // ====================================================================
 // BACKGROUND TASK — location tracking (chạy khi app ở nền)
 // ====================================================================
@@ -113,6 +118,13 @@ try {
       lastKnownLocation = location.coords;
       console.log('[LocationService] Background location update sent');
     } catch (e) {
+      // SAFETY-LOC-001: phân biệt lỗi permission vs mạng
+      const isPermissionError = _isLocationPermissionError(e);
+      if (isPermissionError) {
+        console.warn('[LocationService] Background: location permission denied — triggering report');
+        _reportPermissionStatus(parseInt(taskId, 10), 'denied');
+      }
+
       const status = e?.response?.status;
       const isNetworkError = !e?.response && (
         e?.code === 'ERR_NETWORK' ||
@@ -134,7 +146,7 @@ try {
         } else {
           console.warn('[LocationService] Cannot enqueue — no userId (skip offline cache)');
         }
-      } else {
+      } else if (!isPermissionError) {
         // 4xx error — không queue (sẽ fail mãi)
         console.warn('[LocationService] Background location failed (4xx):', status, e?.response?.data);
       }
@@ -299,6 +311,10 @@ export async function startTracking(taskId: number, userId: number | null = null
     // Gửi heartbeat ngay lần đầu
     sendHeartbeatNow(taskId);
 
+    // SAFETY-LOC-001: Bắt đầu kiểm tra quyền vị trí định kỳ
+    lastReportedPermissionStatus = 'granted'; // Reset khi bắt đầu task mới
+    _startPermissionCheckInterval(taskId);
+
     // Phần 1 — Thử flush queue ngay (đề phòng có điểm chờ từ lần trước)
     // QA-FIX-2 / B2: chỉ flush queue của user hiện tại
     flushOfflineQueue(resolvedUserId);
@@ -310,6 +326,10 @@ export async function startTracking(taskId: number, userId: number | null = null
         if (currentTaskId && (nextAppState === 'background' || nextAppState === 'inactive')) {
           // App vừa vào nền — gửi heartbeat ngay để báo vẫn online
           sendHeartbeatNow(currentTaskId);
+        } else if (currentTaskId && nextAppState === 'active') {
+          // App vừa vào foreground — gửi heartbeat + kiểm tra quyền ngay
+          sendHeartbeatNow(currentTaskId);
+          _checkAndReportPermission(currentTaskId);
         }
       });
     }
@@ -537,6 +557,8 @@ export async function stopTracking(): Promise<void> {
   try {
     stopForegroundLocationInterval();
     stopForegroundHeartbeatInterval();
+    // SAFETY-LOC-001: dừng kiểm tra quyền vị trí
+    _stopPermissionCheckInterval();
 
     if (Platform.OS !== 'web') {
       // Stop location task
@@ -572,6 +594,8 @@ export async function stopTracking(): Promise<void> {
     currentTaskId = null;
     currentUserId = null;
     lastKnownLocation = null;
+    // SAFETY-LOC-001: reset permission status
+    lastReportedPermissionStatus = 'granted';
     isStarted = false;
     console.log('[LocationService] Stopped tracking + heartbeat');
   } catch (e) {
@@ -786,6 +810,14 @@ async function sendCurrentLocation(taskId: number, userId: number | null) {
     });
     lastKnownLocation = location.coords;
   } catch (e) {
+    // SAFETY-LOC-001: phân biệt lỗi permission vs mạng
+    const isPermErr = _isLocationPermissionError(e);
+    if (isPermErr) {
+      console.warn('[LocationService] FG: location permission denied — triggering report');
+      _reportPermissionStatus(taskId, 'denied');
+      return; // Không enqueue — permission error sẽ fail mãi
+    }
+
     const status = e?.response?.status;
     const isNetworkError = !e?.response && (
       e?.code === 'ERR_NETWORK' ||
@@ -826,6 +858,7 @@ async function sendHeartbeatNow(taskId: number) {
       if (battery >= 0) batteryLevel = Math.round(battery * 100);
     } catch (e) { /* ignore */ }
 
+    // SAFETY-LOC-001: kèm location_permission_status trong heartbeat
     await apiClient.post('/tracking/heartbeat/', {
       task_id: taskId,
       // QA-FIX-2 / E: dùng ?? null thay vì || null — tọa độ 0 hợp lệ
@@ -834,8 +867,132 @@ async function sendHeartbeatNow(taskId: number) {
       battery_level: batteryLevel,
       app_state: AppState.currentState || 'active',
       network_type: '',
+      location_permission_status: lastReportedPermissionStatus,
     });
   } catch (e) {
     console.warn('[HeartbeatService] Foreground heartbeat failed:', e?.response?.status || e.message);
+  }
+}
+
+// ====================================================================
+// SAFETY-LOC-001 — Kiểm tra quyền vị trí định kỳ
+// ====================================================================
+
+/**
+ * Phát hiện lỗi liên quan đến quyền vị trí từ expo-location.
+ * expo-location throw Error khi permission bị denied hoặc GPS tắt.
+ */
+function _isLocationPermissionError(e: any): boolean {
+  if (!e) return false;
+  const msg = (e.message || '').toLowerCase();
+  return (
+    msg.includes('location permissions') ||
+    msg.includes('permission') && msg.includes('location') ||
+    msg.includes('location services') ||
+    msg.includes('location provider') ||
+    msg.includes('gps') ||
+    msg.includes('not authorized') ||
+    msg.includes('location unavailable')
+  );
+}
+
+/**
+ * Lấy trạng thái quyền vị trí hiện tại.
+ * Trả về 'granted' hoặc 'denied'.
+ * Dùng getForegroundPermissionsAsync (không pop-up) + hasServicesEnabledAsync.
+ */
+async function _checkLocationPermissionStatus(): Promise<string> {
+  try {
+    if (Platform.OS === 'web') return 'granted';
+
+    // Kiểm tra foreground permission
+    const { status: fgStatus } = await Location.getForegroundPermissionsAsync();
+    if (fgStatus !== 'granted') {
+      return 'denied';
+    }
+
+    // Kiểm tra GPS Services (có thể tắt GPS toàn máy mà không thu hồi quyền app)
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    if (!servicesEnabled) {
+      return 'denied';
+    }
+
+    // Trên Android, cũng check background permission (cho tracking khi app ở nền)
+    if (Platform.OS === 'android') {
+      try {
+        const { status: bgStatus } = await Location.getBackgroundPermissionsAsync();
+        if (bgStatus !== 'granted') {
+          // Background denied nhưng foreground vẫn OK — vẫn gửi vị trí
+          // khi app foreground, nhưng không khi ở nền. Coi như 'denied'
+          // vì tracking cần background.
+          return 'denied';
+        }
+      } catch (e) {
+        // getBackgroundPermissionsAsync có thể throw trên một số thiết bị
+        console.warn('[SAFETY-LOC-001] getBackgroundPermissionsAsync failed:', e.message);
+      }
+    }
+
+    return 'granted';
+  } catch (e) {
+    console.warn('[SAFETY-LOC-001] _checkLocationPermissionStatus error:', e.message);
+    return 'unknown';
+  }
+}
+
+/**
+ * Gọi API báo cáo quyền vị trí cho backend.
+ * Debounce: chỉ gọi khi status THAY ĐỔI so với lastReportedPermissionStatus.
+ */
+async function _reportPermissionStatus(taskId: number, newStatus: string): Promise<void> {
+  if (newStatus === lastReportedPermissionStatus) return;
+
+  const prevStatus = lastReportedPermissionStatus;
+  lastReportedPermissionStatus = newStatus;
+
+  console.log(`[SAFETY-LOC-001] Permission changed: ${prevStatus} -> ${newStatus} for task #${taskId}`);
+
+  try {
+    await apiClient.post('/tracking/location-permission-status/', {
+      task_id: taskId,
+      status: newStatus,
+    });
+    console.log(`[SAFETY-LOC-001] Reported permission status '${newStatus}' to backend`);
+  } catch (e) {
+    console.warn('[SAFETY-LOC-001] Failed to report permission status:', e?.response?.status || e.message);
+    // Rollback để retry lần sau
+    lastReportedPermissionStatus = prevStatus;
+  }
+}
+
+/**
+ * Kiểm tra quyền vị trí và báo cáo nếu thay đổi.
+ * Được gọi:
+ *   - Mỗi heartbeat interval (30s) qua permissionCheckInterval
+ *   - Ngay khi app chuyển sang foreground (AppState listener)
+ */
+async function _checkAndReportPermission(taskId: number | null): Promise<void> {
+  if (!taskId) return;
+  const currentStatus = await _checkLocationPermissionStatus();
+  await _reportPermissionStatus(taskId, currentStatus);
+}
+
+/**
+ * Bắt đầu interval kiểm tra quyền vị trí định kỳ.
+ */
+function _startPermissionCheckInterval(taskId: number) {
+  _stopPermissionCheckInterval();
+  // Check ngay lần đầu
+  _checkAndReportPermission(taskId);
+  // Sau đó check mỗi 30s (cùng tần suất heartbeat)
+  permissionCheckIntervalId = setInterval(() => {
+    _checkAndReportPermission(currentTaskId);
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+function _stopPermissionCheckInterval() {
+  if (permissionCheckIntervalId) {
+    clearInterval(permissionCheckIntervalId);
+    permissionCheckIntervalId = null;
   }
 }

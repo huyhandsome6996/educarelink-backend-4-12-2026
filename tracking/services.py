@@ -421,12 +421,16 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 def update_heartbeat(*, task: Task, worker: User,
                       latitude: float = None, longitude: float = None,
                       battery_level: int = None, app_state: str = '',
-                      network_type: str = '') -> DeviceHeartbeat:
+                      network_type: str = '',
+                      location_permission_status: str = 'unknown') -> DeviceHeartbeat:
     """
     Carepartner app gửi heartbeat mỗi 30s khi đang tracking.
     - Verify consent granted + task in_progress
     - Update_or_create DeviceHeartbeat
     - Nếu có alert active (đã recovered) → tự resolve + push "đã online trở lại"
+    - SAFETY-LOC-001: lưu location_permission_status làm dữ liệu dự phòng.
+      KHÔNG tự tạo/xóa alert ở đây — logic alert nằm ở
+      report_location_permission_revoked() và check_offline_devices().
     """
     # Verify consent
     try:
@@ -447,6 +451,11 @@ def update_heartbeat(*, task: Task, worker: User,
 
     now = timezone.now()
 
+    # Validate location_permission_status
+    valid_statuses = {'granted', 'denied', 'unknown'}
+    if location_permission_status not in valid_statuses:
+        location_permission_status = 'unknown'
+
     with transaction.atomic():
         heartbeat, created = DeviceHeartbeat.objects.update_or_create(
             task=task,
@@ -461,10 +470,12 @@ def update_heartbeat(*, task: Task, worker: User,
                 'network_type': network_type,
                 'offline_detected_at': None,
                 'offline_alert_sent': False,
+                'location_permission_status': location_permission_status,
             }
         )
 
-        # Nếu có alert active → resolve + notify parent "thiết bị đã online trở lại"
+        # Nếu có alert active (BẤT KỂ alert_type) → resolve + notify parent
+        # "thiết bị đã online trở lại" hoặc "đã bật lại vị trí".
         active_alerts = DeviceOfflineAlert.objects.filter(
             task=task, worker=worker, status='active'
         )
@@ -476,21 +487,255 @@ def update_heartbeat(*, task: Task, worker: User,
                 alert.recovery_duration_seconds = int(duration)
             alert.save(update_fields=['status', 'recovered_at', 'recovery_duration_seconds'])
 
-            # Notify parent
+            # Notify parent — nội dung khác nhau theo alert_type
+            if alert.alert_type == 'location_permission_revoked':
+                title = "✅ Carepartner đã bật lại chia sẻ vị trí"
+                message = (f"Carepartner đã bật lại quyền vị trí cho công việc "
+                          f"'{task.title}'. Theo dõi vị trí đã hoạt động bình thường.")
+                data_type = 'location_permission_restored'
+            else:
+                title = "✅ Thiết bị Carepartner đã online trở lại"
+                message = (f"Thiết bị của carepartner đã kết nối lại cho công việc "
+                          f"'{task.title}'. "
+                          f"Đã ngoại tuyến khoảng {alert.recovery_duration_seconds}s.")
+                data_type = 'device_recovered'
+
             _notify_user(
                 task.parent,
-                title="✅ Thiết bị Carepartner đã online trở lại",
-                message=f"Thiết bị của carepartner đã kết nối lại cho công việc '{task.title}'. "
-                        f"Đã ngoại tuyến khoảng {alert.recovery_duration_seconds}s.",
+                title=title,
+                message=message,
                 data={
-                    'type': 'device_recovered',
+                    'type': data_type,
                     'task_id': task.id,
                     'alert_id': alert.id,
+                    'alert_type': alert.alert_type,
                     'priority': 'normal',
                 }
             )
 
     return heartbeat
+
+
+def report_location_permission_revoked(*, task: Task, worker: User,
+                                        permission_status: str) -> dict:
+    """SAFETY-LOC-001: Xử lý khi mobile báo cáo quyền vị trí bị thu hồi hoặc
+    được cấp lại. Mobile gọi API này NGAY khi phát hiện thay đổi (debounce —
+    chỉ khi trạng thái THAY ĐỔI, không gọi lặp mỗi 30s).
+
+    Flow:
+      1. Verify consent granted + task in_progress + worker đúng người.
+      2. Cập nhật DeviceHeartbeat.location_permission_status.
+      3. Nếu permission_status != 'granted':
+           - Tạo DeviceOfflineAlert(alert_type='location_permission_revoked', status='active')
+             nếu chưa có alert active cho task này.
+           - Push NGAY LẬP TỨC (priority=high) cho phụ huynh với nội dung
+             riêng biệt (khác với 'mất kết nối thiết bị').
+      4. Nếu permission_status == 'granted' VÀ có alert active loại
+         'location_permission_revoked' cho task này:
+           - Resolve alert (status='recovered') + notify parent "đã bật lại vị trí".
+
+    Lưu ý thiết kế:
+      - KHÔNG gọi revoke_consent() — đây là báo cáo bất thường, task vẫn
+        in_progress, worker vẫn có thể bật lại quyền.
+      - UniqueConstraint (unique_active_alert_per_task) đảm bảo mỗi task chỉ
+        có 1 alert active tại 1 thời điểm (bất kể alert_type). Nếu đang có
+        device_offline active, tạo location_permission_revoked sẽ fail constraint
+        → log warning, không tạo alert mới (device_offline quan trọng hơn).
+
+    Trả về dict chứa alert hiện tại (nếu có) để mobile/web hiển thị.
+    """
+    # Verify consent
+    try:
+        consent = LocationConsent.objects.get(task=task, worker=worker)
+        if consent.consent != 'granted':
+            raise PermissionError(
+                f"Consent hiện tại: {consent.consent} — không thể báo cáo quyền vị trí."
+            )
+    except LocationConsent.DoesNotExist:
+        raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
+
+    # Verify task đang in_progress
+    if task.status != 'in_progress':
+        raise ValueError(f"Task status='{task.status}' — chỉ báo cáo khi in_progress.")
+
+    # Verify worker là người được accept
+    accepted_worker = get_accepted_worker(task)
+    if not accepted_worker or accepted_worker.id != worker.id:
+        raise PermissionError("Bạn không phải là carepartner được chọn cho task này.")
+
+    now = timezone.now()
+    result = {'permission_status': permission_status, 'alert': None}
+
+    with transaction.atomic():
+        # Cập nhật DeviceHeartbeat.location_permission_status
+        heartbeat = DeviceHeartbeat.objects.filter(task=task).first()
+        if heartbeat:
+            heartbeat.location_permission_status = permission_status
+            heartbeat.save(update_fields=['location_permission_status'])
+
+        if permission_status != 'granted':
+            # ---- QUYỀN VỊ TRÍ BỊ TẮT ----
+            # Kiểm tra xem đã có alert active cho task này chưa
+            # (bất kể alert_type — unique constraint đảm bảo chỉ 1 active/task)
+            existing_active = DeviceOfflineAlert.objects.filter(
+                task=task, status='active'
+            ).first()
+
+            if existing_active:
+                if existing_active.alert_type == 'location_permission_revoked':
+                    # Đã báo rồi — không spam, chỉ trả về alert hiện tại
+                    result['alert'] = {
+                        'id': existing_active.id,
+                        'status': existing_active.status,
+                        'alert_type': existing_active.alert_type,
+                    }
+                    logger.info(
+                        f"[SAFETY-LOC-001] Alert#{existing_active.id} already active for "
+                        f"Task#{task.id} — skipping duplicate"
+                    )
+                else:
+                    # Đang có alert loại khác (device_offline) — không ghi đè
+                    # vì device_offline (mất kết nối hoàn toàn) quan trọng hơn.
+                    logger.warning(
+                        f"[SAFETY-LOC-001] Task#{task.id} already has active alert "
+                        f"type={existing_active.alert_type} — not creating permission alert"
+                    )
+                    result['alert'] = {
+                        'id': existing_active.id,
+                        'status': existing_active.status,
+                        'alert_type': existing_active.alert_type,
+                    }
+            else:
+                # Tạo alert mới
+                try:
+                    last_loc_lat = heartbeat.last_location_lat if heartbeat else None
+                    last_loc_lng = heartbeat.last_location_lng if heartbeat else None
+                    alert = DeviceOfflineAlert.objects.create(
+                        task=task,
+                        worker=worker,
+                        heartbeat=heartbeat,
+                        last_seen=heartbeat.last_seen if heartbeat else now,
+                        last_location_lat=last_loc_lat,
+                        last_location_lng=last_loc_lng,
+                        status='active',
+                        alert_type='location_permission_revoked',
+                    )
+
+                    # Push NGAY LẬP TỨC cho phụ huynh — nội dung riêng biệt
+                    push_result, push_reason = _notify_user(
+                        task.parent,
+                        title="🚨 CẢNH BÁO: Carepartner đã tắt chia sẻ vị trí!",
+                        message=(
+                            f"Carepartner đã tắt quyền vị trí hoặc GPS trong lúc "
+                            f"đang làm việc '{task.title}'. "
+                            f"Theo dõi vị trí hiện không khả dụng. "
+                            f"Vui lòng liên hệ carepartner NGAY!"
+                        ),
+                        data={
+                            'type': 'location_permission_revoked',
+                            'critical': True,
+                            'task_id': task.id,
+                            'alert_id': alert.id,
+                            'alert_type': 'location_permission_revoked',
+                            'priority': 'high',
+                            'sound': 'critical',
+                            'android_channel_id': 'emergency-alerts',
+                        }
+                    )
+
+                    alert.push_sent_at = now
+                    alert.push_retry_count = 1
+                    if push_result is True:
+                        alert.push_sent = True
+                    alert.save(
+                        update_fields=['push_sent', 'push_sent_at', 'push_retry_count']
+                    )
+
+                    result['alert'] = {
+                        'id': alert.id,
+                        'status': 'active',
+                        'alert_type': 'location_permission_revoked',
+                    }
+
+                    logger.info(
+                        f"[SAFETY-LOC-001] Created permission-revoked alert #{alert.id} "
+                        f"for Task#{task.id} (push={push_reason})"
+                    )
+
+                    # Notify admin
+                    try:
+                        admin_users = User.objects.filter(is_staff=True, is_active=True)
+                        for admin in admin_users:
+                            Notification.objects.create(
+                                recipient=admin,
+                                title=(
+                                    "🚨 Carepartner tắt quyền vị trí trong ca làm"
+                                ),
+                                message=(
+                                    f"Task '{task.title}' (#{task.id}) — carepartner "
+                                    f"{worker.username} đã tắt quyền vị trí/GPS. "
+                                    f"Parent {task.parent.username} đã được báo động."
+                                ),
+                            )
+                    except Exception:
+                        pass
+
+                except Exception as e:
+                    logger.error(
+                        f"[SAFETY-LOC-001] Failed to create permission alert for "
+                        f"Task#{task.id}: {e}"
+                    )
+                    raise
+
+        else:
+            # ---- QUYỀN VỊ TRÍ ĐÃ ĐƯỢC CẤP LẠI ----
+            # Tìm alert active loại location_permission_revoked cho task này
+            permission_alert = DeviceOfflineAlert.objects.filter(
+                task=task, status='active',
+                alert_type='location_permission_revoked'
+            ).first()
+
+            if permission_alert:
+                permission_alert.status = 'recovered'
+                permission_alert.recovered_at = now
+                if permission_alert.last_seen:
+                    duration = (now - permission_alert.last_seen).total_seconds()
+                    permission_alert.recovery_duration_seconds = int(duration)
+                permission_alert.save(
+                    update_fields=[
+                        'status', 'recovered_at', 'recovery_duration_seconds'
+                    ]
+                )
+
+                # Notify parent "đã bật lại vị trí"
+                _notify_user(
+                    task.parent,
+                    title="✅ Carepartner đã bật lại chia sẻ vị trí",
+                    message=(
+                        f"Carepartner đã bật lại quyền vị trí cho công việc "
+                        f"'{task.title}'. Theo dõi vị trí đã hoạt động bình thường."
+                    ),
+                    data={
+                        'type': 'location_permission_restored',
+                        'task_id': task.id,
+                        'alert_id': permission_alert.id,
+                        'alert_type': 'location_permission_revoked',
+                        'priority': 'normal',
+                    }
+                )
+
+                result['alert'] = {
+                    'id': permission_alert.id,
+                    'status': 'recovered',
+                    'alert_type': 'location_permission_revoked',
+                }
+
+                logger.info(
+                    f"[SAFETY-LOC-001] Recovered permission alert #{permission_alert.id} "
+                    f"for Task#{task.id}"
+                )
+
+    return result
 
 
 def check_offline_devices():

@@ -79,6 +79,21 @@ class HeartbeatSerializer(serializers.Serializer):
     battery_level = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=100)
     app_state = serializers.CharField(required=False, allow_blank=True, default='')
     network_type = serializers.CharField(required=False, allow_blank=True, default='')
+    # SAFETY-LOC-001: mobile gửi kèm trạng thái quyền vị trí mỗi heartbeat
+    location_permission_status = serializers.ChoiceField(
+        choices=['granted', 'denied', 'unknown'],
+        required=False, default='unknown',
+    )
+
+
+class LocationPermissionStatusSerializer(serializers.Serializer):
+    """Input cho API báo cáo trạng thái quyền vị trí (SAFETY-LOC-001).
+
+    Mobile gọi khi phát hiện quyền vị trí bị thu hồi hoặc được cấp lại.
+    Debounce ở mobile — chỉ gọi khi trạng thái THAY ĐỔI.
+    """
+    task_id = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=['granted', 'denied'])
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -181,3 +196,32 @@ class BatchLocationSerializer(serializers.Serializer):
                         f"Điểm #{i} có client_point_id không phải chuỗi."
                     )
         return value
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  SAFETY-LOC-001 — DeviceOfflineAlert serializer (bao gồm alert_type)
+# ═══════════════════════════════════════════════════════════════════
+
+class DeviceOfflineAlertSerializer(serializers.ModelSerializer):
+    """Serializer cho DeviceOfflineAlert — trả thêm alert_type để mobile/web
+    phân biệt hiển thị giữa 'device_offline' và 'location_permission_revoked'."""
+    alert_type_display = serializers.CharField(
+        source='get_alert_type_display', read_only=True
+    )
+    status_display = serializers.CharField(
+        source='get_status_display', read_only=True
+    )
+
+    class Meta:
+        from .models import DeviceOfflineAlert
+        model = DeviceOfflineAlert
+        fields = [
+            'id', 'task', 'worker', 'heartbeat',
+            'last_seen', 'last_location_lat', 'last_location_lng',
+            'status', 'status_display', 'alert_type', 'alert_type_display',
+            'push_sent', 'push_sent_at', 'push_retry_count',
+            'acknowledged_at', 'acknowledged_by',
+            'recovered_at', 'recovery_duration_seconds',
+            'created_at',
+        ]
+        read_only_fields = fields
