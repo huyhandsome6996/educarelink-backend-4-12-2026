@@ -525,10 +525,24 @@ class AlertTypeMigrationTests(TestCase):
 
     def test_alert_type_choices(self):
         """alert_type chỉ chấp nhận giá trị hợp lệ."""
+        # Tạo FK objects thật trong test DB để full_clean() validate FK thành công
+        parent = User.objects.create_user(
+            username='p_choices', password='p', role='parent', email='p_choices@test.com'
+        )
+        worker = User.objects.create_user(
+            username='w_choices', password='p', role='worker', email='w_choices@test.com'
+        )
+        cat = ServiceCategory.objects.create(name='C_choices')
+        task = Task.objects.create(
+            title='T_choices', description='T', price=100000,
+            status='in_progress', parent=parent, category=cat,
+            location='HCM', latitude=10.0, longitude=106.0,
+            scheduled_time=timezone.now(),
+        )
         valid_types = ['device_offline', 'location_permission_revoked']
         for t in valid_types:
             alert = DeviceOfflineAlert(
-                task_id=1, worker_id=1, last_seen=timezone.now(),
+                task=task, worker=worker, last_seen=timezone.now(),
                 alert_type=t,
             )
             alert.full_clean()  # Không raise

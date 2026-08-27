@@ -793,6 +793,11 @@ def check_offline_devices():
             status='active',
         )
 
+        # Đếm new_alerts NGAY KHI TẠO alert — không phụ thuộc push result.
+        # Trước đây (SAFETY-LOC-001 bug): chỉ đếm khi push_result is True →
+        # khi Expo reject token giả, stats.new_alerts = 0 dù alert đã tạo.
+        stats['new_alerts'] += 1
+
         # Push notification CHO PHỤ HUYNH — priority=high, chuông kêu
         #
         # QA-FIX-1 / Bug 1.4: chỉ set push_sent=True khi _notify_user trả True.
@@ -847,7 +852,6 @@ def check_offline_devices():
             if push_result is True:
                 alert.push_sent = True
                 alert.save(update_fields=['push_sent', 'push_sent_at', 'push_retry_count'])
-                stats['new_alerts'] += 1
             elif push_reason == 'no_token':
                 logger.warning(
                     f"[tracking] Alert#{alert.id}: parent {hb.task.parent.username} "
