@@ -54,7 +54,7 @@
 | **P3a** | expo-doctor 18/18 pass | ✅ |
 | **P3b** | eas.json preview profile (distribution=internal, buildType=apk, không Play Store) | ✅ |
 | **P3c** | Build APK thành công | ✅ |
-| **P3d** | `APK_TEST_CHECKLIST.md` manual test checklist | ✅ |
+| **P3d** | `mobile/APK_TEST_CHECKLIST.md` manual test checklist | ✅ |
 
 ### Mobile UX
 | Task | Status |
