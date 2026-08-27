@@ -184,7 +184,17 @@ export default function LoginScreen() {
   };
 
   const content = (
-    <View style={[styles.scroll, { paddingTop: insets.top + 48 }]}>
+    <View style={[styles.scroll, { paddingTop: insets.top + 16 }]}>
+      {/* Back button — quay lại GuestHome */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('GuestHome')}
+        activeOpacity={0.7}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Ionicons name="arrow-back" size={24} color={COLORS.onSurface} />
+      </TouchableOpacity>
+
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Text style={styles.title}>Chào mừng trở lại</Text>
         <Text style={styles.subtitle}>Đăng nhập để tiếp tục kết nối</Text>
@@ -337,6 +347,16 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    ...SHADOWS.small,
   },
   header: { alignItems: 'center', marginBottom: 32 },
   title: {

@@ -104,9 +104,9 @@ export default function SplashScreen() {
   }, [fadeAnim, logoScale, pulseAnim, barAnim, decorAnim, dotAnim]);
 
   useEffect(() => {
-    // Tự động chuyển sang Login sau 2.5 giây nếu chưa đăng nhập
+    // Tự động chuyển sang GuestHome sau 2.5 giây nếu chưa đăng nhập
     if (!user) {
-      const timer = setTimeout(() => navigation.replace('Login'), 2500);
+      const timer = setTimeout(() => navigation.replace('GuestHome'), 2500);
       return () => clearTimeout(timer);
     }
   }, [user, navigation]);
