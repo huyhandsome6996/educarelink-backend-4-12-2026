@@ -13,6 +13,7 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 
 // Auth Screens
 import SplashScreen from '../screens/Auth/SplashScreen';
+import GuestHomeScreen from '../screens/Auth/GuestHomeScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 
@@ -193,9 +194,10 @@ export default function AppNavigator() {
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
-          // Chưa đăng nhập → hiện màn hình Auth
+          // Chưa đăng nhập → hiện GuestHome (Stitch AI design)
           <>
             <Stack.Screen name="Splash" component={SplashScreen} />
+            <Stack.Screen name="GuestHome" component={GuestHomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
