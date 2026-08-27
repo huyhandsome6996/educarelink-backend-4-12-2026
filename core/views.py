@@ -77,6 +77,8 @@ def send_expo_push_notification(token, title, body, data=None):
 
     Loại alert được xác định qua data.type:
     - 'device_offline'    → critical_alerts channel, priority=high, iOS sound=critical
+    - 'location_permission_revoked' → emergency-alerts channel, priority=high (SAFETY-LOC-001)
+    - 'location_permission_restored' → recovery_alerts channel, priority=default
     - 'geofence_exit'     → geofence_alerts channel, priority=high, iOS sound=default
     - 'sos_alert'         → sos_alerts channel, priority=high, iOS sound=default
     - 'geofence_enter'    → recovery_alerts channel, priority=default
@@ -168,6 +170,21 @@ def send_expo_push_notification(token, title, body, data=None):
             'ios': {'sound': 'default', 'priority': 'default'},
         },
         'device_recovered': {
+            'android_channel_id': 'recovery_alerts',
+            'channel_id': 'recovery_alerts',
+            'priority': 'default',
+            'ios': {'sound': 'default', 'priority': 'default'},
+        },
+        # === SAFETY-LOC-001 — Carepartner tắt quyền vị trí/GPS ===
+        # Cùng mức độ khẩn cấp với device_offline (emergency-alerts channel,
+        # còi to, bypass DnD) vì đây có thể là hành vi cố ý.
+        'location_permission_revoked': {
+            'android_channel_id': 'emergency-alerts',
+            'channel_id': 'emergency-alerts',
+            'priority': 'high',
+            'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
+        },
+        'location_permission_restored': {
             'android_channel_id': 'recovery_alerts',
             'channel_id': 'recovery_alerts',
             'priority': 'default',

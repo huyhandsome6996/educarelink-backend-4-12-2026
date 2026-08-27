@@ -964,13 +964,31 @@ def retry_offline_alert_pushes():
             continue
 
         try:
-            push_result, push_reason = _notify_user(
-                alert.task.parent,
-                title=f"🚨🚨🚨 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}/{OFFLINE_PUSH_MAX_RETRIES})",
-                message=f"⚠️ Thiết bị carepartner VẪN mất kết nối cho công việc "
-                        f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
-                        f"Vui lòng kiểm tra NGAY!",
-                data={
+            # SAFETY-LOC-001: nội dung push khác nhau theo alert_type để phụ huynh
+            # hiểu đúng bản chất sự cố.
+            if alert.alert_type == 'location_permission_revoked':
+                push_title = (f"\U0001f6a8\U0001f6a8\U0001f6a8 CẢNH BÁO (lần {alert.push_retry_count + 1}"
+                              f"/{OFFLINE_PUSH_MAX_RETRIES}): Vẫn chưa bật lại vị trí!")
+                push_message = (f"\u26a0\ufe0f Carepartner VẪN chưa bật lại quyền vị trí cho "
+                                f"công việc '{alert.task.title}'. "
+                                f"Vui lòng liên hệ carepartner NGAY!")
+                push_data = {
+                    'type': 'location_permission_revoked',
+                    'critical': True,
+                    'task_id': alert.task.id,
+                    'alert_id': alert.id,
+                    'retry': alert.push_retry_count + 1,
+                    'priority': 'high',
+                    'sound': 'critical',
+                    'android_channel_id': 'emergency-alerts',
+                }
+            else:
+                push_title = (f"\U0001f6a8\U0001f6a8\U0001f6a8 CẢNH BÁO KHẨN CẤP (lần {alert.push_retry_count + 1}"
+                              f"/{OFFLINE_PUSH_MAX_RETRIES})")
+                push_message = (f"\u26a0\ufe0f Thiết bị carepartner VẪN mất kết nối cho công việc "
+                                f"'{alert.task.title}'. Lần cuối online: {alert.last_seen:%H:%M:%S}. "
+                                f"Vui lòng kiểm tra NGAY!")
+                push_data = {
                     'type': 'device_offline',
                     'critical': True,
                     'task_id': alert.task.id,
@@ -980,6 +998,12 @@ def retry_offline_alert_pushes():
                     'sound': 'critical',
                     'android_channel_id': 'emergency-alerts',
                 }
+
+            push_result, push_reason = _notify_user(
+                alert.task.parent,
+                title=push_title,
+                message=push_message,
+                data=push_data,
             )
 
             # QA-FIX-8 / Bug #1: LUÔN cập nhật push_sent_at và
@@ -1631,10 +1655,14 @@ def get_device_status(*, task: Task, requester: User) -> dict:
         'battery_level': hb.battery_level,
         'app_state': hb.app_state,
         'network_type': hb.network_type,
+        # SAFETY-LOC-001: heartbeat chứa trạng thái quyền vị trí hiện tại
+        'location_permission_status': hb.location_permission_status,
+        # SAFETY-LOC-001: thêm alert_type để frontend phân biệt hiển thị
         'active_alerts': [
             {
                 'id': a.id,
                 'status': a.status,
+                'alert_type': a.alert_type,
                 'last_seen': a.last_seen.isoformat() if a.last_seen else None,
                 'created_at': a.created_at.isoformat(),
                 'push_sent': a.push_sent,
@@ -1645,6 +1673,7 @@ def get_device_status(*, task: Task, requester: User) -> dict:
         ],
         'last_alert': {
             'id': active_alerts[0].id,
+            'alert_type': active_alerts[0].alert_type,
             'created_at': active_alerts[0].created_at.isoformat(),
             'last_seen': active_alerts[0].last_seen.isoformat() if active_alerts[0].last_seen else None,
         } if active_alerts else None,
@@ -1656,11 +1685,14 @@ def get_offline_alerts_for_task(*, task: Task, requester: User, limit: int = 50)
     if task.parent_id != requester.id and not requester.is_superuser:
         raise PermissionError("Bạn không sở hữu task này.")
 
+    # SAFETY-LOC-001: thêm alert_type + alert_type_display
     qs = DeviceOfflineAlert.objects.filter(task=task).order_by('-created_at')[:limit]
     return [
         {
             'id': a.id,
             'status': a.status,
+            'alert_type': a.alert_type,
+            'alert_type_display': a.get_alert_type_display(),
             'last_seen': a.last_seen.isoformat() if a.last_seen else None,
             'last_location': {
                 'latitude': float(a.last_location_lat) if a.last_location_lat else None,
