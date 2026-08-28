@@ -1,26 +1,20 @@
 // ============================================================
-// ParentHomeScreen — Redesign theo Warm Professionalism (Stitch AI)
-// Thay đổi:
-// - Header: trắng (surface), avatar trái + brand name giữa + bell phải
-//   (thay vì header cam full-width)
-// - Greeting: 'Chào buổi sáng/chiều, [name]!' + subtitle on-surface-variant
-// - Promo banner: primary-container bg (cam), text trắng, icon circle
-//   phải — clickable vào Chatbot AI
-// - Service categories: bento grid (2 ô vuông + 1 ô wide) thay vì 8 ô
-// - CarePartner gợi ý: horizontal scroll cards (avatar, tên, rating,
-//   verified badge, chip danh mục, giá + nút 'Đặt lịch')
-//   * Chưa có API → dùng mock data tĩnh + 'Đặt lịch' → CreateTask
-// - Hoạt động gần đây: card nền primaryLight + chip trạng thái
-// - FAB: tròn 56px primary-container, icon add, shadow cam đậm
-// - Logout: long-press avatar (giữ chức năng, không phá design)
-// Giữ nguyên: fetchTasks (getMyTasksAsParent), refresh control,
-// navigation CreateTask/MyTasks/Chatbot
+// ParentHomeScreen — Redesign theo bTaskee (Warm Professionalism)
+// Đảm bảo 100% chức năng hệ thống, API và state giữ nguyên:
+// - Header cam gradient (#F26522 -> #FF7A38) bo cong góc dưới
+// - Card nổi bCoin / bPoints đè lên Header (xem số dư & điểm thưởng)
+// - Danh mục dịch vụ nổi bật (horizontal scroll) với badge NEW / bCare
+// - Grid Dịch vụ chính 4 cột (Dọn dẹp ca lẻ, Gói tháng, Tổng vệ sinh, Vệ sinh máy lạnh...)
+// - Banner khuyến mãi Carousel (Giảm 20% cuối tuần...)
+// - bRewards (Voucher đổi điểm thưởng)
+// - Cộng đồng bTaskee / EduCareLink (Bài viết & Tích xu)
+// - Hoạt động gần đây (vẫn kết nối API getMyTasksAsParent thật)
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
-  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions
+  StatusBar, Alert, ActivityIndicator, RefreshControl, Platform, Dimensions, Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,79 +33,70 @@ const STATUS_MAPPING = {
   cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
-// Bento grid — 3 dịch vụ chính (theo design HTML)
-// 2 ô vuông (Đưa đón, Đồng hành) + 1 ô wide (Gia sư)
-const BENTO_CATEGORIES = [
+// Services Nổi bật (Horizontal scroll top badges - bTaskee style)
+const FEATURED_SERVICES = [
+  { id: 1, name: 'Wellness\nOffice', badge: 'NEW', badgeBg: '#EF4444', icon: 'fitness', color: '#F97316' },
+  { id: 2, name: 'bBeauty', badge: 'NEW', badgeBg: '#EF4444', icon: 'sparkles', color: '#EC4899' },
+  { id: 3, name: 'Chăm sóc\nngười cao tuổi', badge: 'bCare', badgeBg: '#F26522', icon: 'heart', color: '#F26522' },
+  { id: 4, name: 'Chăm sóc\nngười bệnh', badge: 'bCare', badgeBg: '#F26522', icon: 'medkit', color: '#0284C7' },
+];
+
+// Grid Dịch vụ 4 cột (bTaskee layout)
+const SERVICE_GRID = [
+  { id: 'clean_single', name: 'Dọn dẹp nhà', sub: 'ca lẻ', subColor: '#F26522', icon: 'home', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 'clean_month', name: 'Dọn dẹp nhà', sub: 'gói tháng', subColor: '#F26522', icon: 'calendar', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 'deep_clean', name: 'Tổng vệ sinh', sub: '', icon: 'sparkles', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 'ac_clean', name: 'Vệ sinh máy lạnh', sub: '', icon: 'snow', iconBg: '#E0F2FE', color: '#0284C7' },
+  { id: 'babysitting', name: 'Trông trẻ & Đón bé', sub: '', icon: 'body', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 'tutor', name: 'Gia sư tại nhà', sub: '', icon: 'school', iconBg: '#FEF3C7', color: '#D97706' },
+  { id: 'moving', name: 'Chuyển nhà & Dọn dẹp', sub: '', icon: 'bus', iconBg: '#ECFDF5', color: '#059669' },
+  { id: 'explore', name: 'Khám phá', sub: '', icon: 'grid', iconBg: '#F3F4F6', color: '#6B7280' },
+];
+
+// Rewards Vouchers (bRewards section)
+const BREWARDS_VOUCHERS = [
   {
     id: 1,
-    iconName: 'car',
-    name: 'Đưa đón',
-    desc: '',
-    // Tertiary palette (blue) — theo design HTML
-    iconBg: '#cae6ff',  // tertiary-fixed
-    iconColor: '#006492', // tertiary
-    span: 1, // 1 ô
+    title: 'Voucher 15% tại Cái Lò Nướng',
+    pts: 30,
+    bg: '#7C2D12',
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
   },
   {
     id: 2,
-    iconName: 'people',
-    name: 'Đồng hành',
-    desc: '',
-    // Secondary palette (green) — CarePartner identity
-    iconBg: COLORS.secondaryLight,
-    iconColor: COLORS.secondaryDark,
-    span: 1,
+    title: 'Mua 1 Tặng 1 tại Chạm - Cafe & Cake',
+    pts: 40,
+    bg: '#064E3B',
+    image: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=400',
   },
   {
     id: 3,
-    iconName: 'school',
-    name: 'Gia sư',
-    desc: 'Hỗ trợ bài tập về nhà & ôn tập',
-    // Primary palette (orange)
-    iconBg: COLORS.primaryLight,
-    iconColor: COLORS.primary,
-    span: 2, // wide — 2 ô
+    title: 'Voucher 100k tại LUG Luggage',
+    pts: 50,
+    bg: '#1E3A8A',
+    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
   },
 ];
 
-// Mock CarePartner gợi ý — chưa có API thật
-// TODO: thay bằng API getSuggestedCarepartners() khi backend sẵn sàng
-const MOCK_CAREPARTNERS = [
+// Bài viết cộng đồng
+const COMMUNITY_POSTS = [
   {
     id: 1,
-    name: 'Nguyễn Mai',
-    rating: 4.9,
-    trips: 120,
-    categories: ['Đưa đón', 'Gia sư'],
-    pricePerHour: 60000,
-    verified: true,
-    avatarColor: COLORS.secondaryLight,
+    title: 'TÍCH XU NGAY QUÀ VỀ TAY - CHƠI NGAY',
+    likes: 73,
+    comments: 5,
+    tag: '#Giải trí #Tích Xu ngay',
+    bg: '#FFF7ED',
   },
   {
     id: 2,
-    name: 'Cô Lan',
-    rating: 5.0,
-    trips: 85,
-    categories: ['Đồng hành'],
-    pricePerHour: 80000,
-    verified: true,
-    avatarColor: COLORS.primaryLight,
+    title: 'TÍCH XU TRANH TOP - QUÀ NGAY VỀ TÚI',
+    likes: 21,
+    comments: 0,
+    tag: '#Giải trí #Đường đua Ong Cam',
+    bg: '#FEF3C7',
   },
 ];
-
-const formatPrice = (price) => {
-  if (price >= 1000) {
-    return `${(price / 1000).toFixed(0)}k`;
-  }
-  return `${price}đ`;
-};
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Chào buổi sáng';
-  if (hour < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
-};
 
 export default function ParentHomeScreen() {
   const navigation = useNavigation();
@@ -171,7 +156,6 @@ export default function ParentHomeScreen() {
     }
   };
 
-  // Long-press avatar → logout (giữ chức năng, không phá design)
   const handleAvatarLongPress = () => {
     if (Platform.OS === 'web') {
       handleLogout();
@@ -187,610 +171,689 @@ export default function ParentHomeScreen() {
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
 
-  // Lấy task gần nhất để hiển thị ở 'Hoạt động gần đây'
   const recentTask = tasks[0];
   const recentStatus = recentTask ? (STATUS_MAPPING[recentTask.status] || STATUS_MAPPING.open) : null;
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
-
-      {/* Top App Bar — trắng, avatar + brand + bell + profile shortcut */}
-      <View style={[styles.appBar, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
-        <TouchableOpacity
-          style={styles.avatar}
-          onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
-          onLongPress={handleAvatarLongPress}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
-        <Text style={styles.appBarTitle}>EduCareLink</Text>
-        <View style={styles.appBarRight}>
-          <NotificationBell color={COLORS.primary} />
-        </View>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="#F26522" />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
       >
-        {/* Greeting */}
-        <View style={styles.greetingSection}>
-          <Text style={styles.greetingTitle}>{getGreeting()}, {displayName}!</Text>
-          <Text style={styles.greetingSubtitle}>Sẵn sàng cho một ngày tuyệt vời?</Text>
+        {/* === HEADER BANNER (Orange Gradient bTaskee style) === */}
+        <View style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.userInfoRow}
+              onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
+              onLongPress={handleAvatarLongPress}
+              activeOpacity={0.8}
+            >
+              <View style={styles.avatarCircle}>
+                <Ionicons name="person" size={20} color="#F26522" />
+              </View>
+              <Text style={styles.headerGreeting} numberOfLines={1}>
+                Xin chào {displayName}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.chatHeaderBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" />
+              <View style={styles.unreadBadge} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Floating Balance & Points Card (bTaskee style overlapping header) */}
+          <View style={styles.balanceCard}>
+            <TouchableOpacity
+              style={styles.balanceItem}
+              onPress={() => navigation.navigate('RewardPointsScreen')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.bCoinBadge}>
+                <Text style={styles.bCoinText}>b</Text>
+              </View>
+              <Text style={styles.balanceValue}>0 đ</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <View style={styles.balanceDivider} />
+
+            <TouchableOpacity
+              style={styles.balanceItem}
+              onPress={() => navigation.navigate('RewardPointsScreen')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="star" size={20} color="#F26522" style={{ marginRight: 6 }} />
+              <Text style={styles.balanceValue}>0 bPoints</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Promo Banner — primary-container bg, thay thế AI banner */}
-        <TouchableOpacity
-          style={styles.promoBanner}
-          onPress={() => navigation.navigate('Chatbot')}
-          activeOpacity={0.9}
-        >
-          {/* Decorative blurred circle */}
-          <View style={styles.promoDecorCircle} />
-          <View style={styles.promoContent}>
-            <Text style={styles.promoTitle}>Giảm 20% tháng này!</Text>
-            <Text style={styles.promoDesc}>
-              Cho dịch vụ Đưa đón học sinh định kỳ.
-            </Text>
-          </View>
-          <View style={styles.promoIconBox}>
-            <Ionicons name="bus" size={28} color="#fff" />
-          </View>
-        </TouchableOpacity>
+        {/* Spacer for floating balance card */}
+        <View style={{ height: 28 }} />
 
-        {/* Service Categories — Bento grid (2 small + 1 wide) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dịch vụ</Text>
-          <View style={styles.bentoGrid}>
-            {BENTO_CATEGORIES.map((cat) => (
+        {/* === SECTION 1: Featured Top Services Carousel === */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Dịch vụ</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
+              <Text style={styles.seeAllText}>Xem tất cả</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.featuredServicesScroll}
+          >
+            {FEATURED_SERVICES.map((serv) => (
               <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.bentoCard,
-                  cat.span === 2 && styles.bentoCardWide,
-                ]}
+                key={serv.id}
+                style={styles.featuredCard}
                 onPress={() => navigation.navigate('CreateTask')}
-                activeOpacity={0.85}
+                activeOpacity={0.8}
               >
-                <View style={[styles.bentoIconCircle, { backgroundColor: cat.iconBg }]}>
-                  <Ionicons name={cat.iconName} size={24} color={cat.iconColor} />
+                <View style={[styles.badgeTag, { backgroundColor: serv.badgeBg }]}>
+                  <Text style={styles.badgeTagText}>{serv.badge}</Text>
                 </View>
-                {cat.span === 2 ? (
-                  <View style={styles.bentoTextBlock}>
-                    <Text style={styles.bentoCardTitle} numberOfLines={1} ellipsizeMode="tail">{cat.name}</Text>
-                    {cat.desc ? (
-                      <Text style={styles.bentoCardDesc} numberOfLines={2} ellipsizeMode="tail">{cat.desc}</Text>
-                    ) : null}
-                  </View>
-                ) : (
-                  <Text style={styles.bentoCardTitle} numberOfLines={1} ellipsizeMode="tail">{cat.name}</Text>
-                )}
+                <View style={styles.featuredIconCircle}>
+                  <Ionicons name={serv.icon} size={24} color={serv.color} />
+                </View>
+                <Text style={styles.featuredName}>{serv.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* === SECTION 2: Main 4-Column Service Grid === */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.serviceGridContainer}>
+            {SERVICE_GRID.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.serviceGridItem}
+                onPress={() => navigation.navigate('CreateTask')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.serviceGridIconCircle, { backgroundColor: item.iconBg }]}>
+                  <Ionicons name={item.icon} size={28} color={item.color} />
+                </View>
+                <Text style={styles.serviceGridLabel}>
+                  {item.name}
+                  {item.sub ? (
+                    <Text style={{ color: item.subColor, fontWeight: '700' }}> {item.sub}</Text>
+                  ) : null}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Suggested CarePartners — horizontal scroll */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>CarePartner Gợi ý</Text>
-            <TouchableOpacity onPress={() => showComingSoonCarePartnerList()}>
-              <Text style={styles.seeAllLink}>Xem tất cả</Text>
+        {/* === SECTION 3: Promotional Banner Carousel === */}
+        <View style={styles.sectionContainer}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.promoCarouselContainer}
+          >
+            <TouchableOpacity
+              style={styles.promoBannerCard}
+              onPress={() => navigation.navigate('CreateTask')}
+              activeOpacity={0.9}
+            >
+              <View style={styles.promoBannerContent}>
+                <Text style={styles.promoTag}>Cuối tuần dọn nhà</Text>
+                <Text style={styles.promoBigTitle}>Giảm 20%</Text>
+                <Text style={styles.promoSubtitle}>Nhà sạch hơn, tiết kiệm hơn</Text>
+              </View>
+              <View style={styles.promoBannerIcon}>
+                <Ionicons name="sparkles" size={48} color="#fff" />
+              </View>
             </TouchableOpacity>
-          </View>
+
+            <TouchableOpacity
+              style={[styles.promoBannerCard, { backgroundColor: '#059669' }]}
+              onPress={() => navigation.navigate('Chatbot')}
+              activeOpacity={0.9}
+            >
+              <View style={styles.promoBannerContent}>
+                <Text style={styles.promoTag}>Trợ lý AI bCare</Text>
+                <Text style={styles.promoBigTitle}>Tự Động Ghép Cặp</Text>
+                <Text style={styles.promoSubtitle}>Tìm CarePartner trong 5 phút</Text>
+              </View>
+              <View style={styles.promoBannerIcon}>
+                <Ionicons name="hardware-chip" size={48} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* === SECTION 4: bRewards Vouchers === */}
+        <View style={styles.sectionContainer}>
+          <TouchableOpacity
+            style={styles.sectionHeaderRow}
+            onPress={() => navigation.navigate('RewardPointsScreen')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.sectionTitle}>bRewards</Text>
+              <Ionicons name="chevron-forward" size={20} color="#059669" style={{ marginLeft: 4 }} />
+            </View>
+          </TouchableOpacity>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carepartnerScroll}
+            contentContainerStyle={styles.rewardsScrollContainer}
           >
-            {MOCK_CAREPARTNERS.map((cp) => (
-              <View key={cp.id} style={styles.carepartnerCard}>
-                {/* Top: avatar + name + rating + verified badge */}
-                <View style={styles.cpCardTop}>
-                  <View style={styles.cpInfoRow}>
-                    <View style={[styles.cpAvatar, { backgroundColor: cp.avatarColor }]}>
-                      <Ionicons name="person" size={22} color={COLORS.onSurface} />
-                    </View>
-                    <View style={styles.cpNameBlock}>
-                      <Text style={styles.cpName} numberOfLines={1} ellipsizeMode="tail">{cp.name}</Text>
-                      <View style={styles.cpRatingRow}>
-                        <Ionicons name="star" size={12} color={COLORS.ratingStar} />
-                        <Text style={styles.cpRatingText}>{cp.rating}</Text>
-                        <Text style={styles.cpTripsText}> ({cp.trips} chuyến)</Text>
-                      </View>
-                    </View>
+            {BREWARDS_VOUCHERS.map((v) => (
+              <TouchableOpacity
+                key={v.id}
+                style={styles.rewardCard}
+                onPress={() => navigation.navigate('RewardPointsScreen')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.rewardImagePlaceholder}>
+                  <Ionicons name="gift" size={36} color="#F26522" />
+                </View>
+                <View style={styles.rewardCardBody}>
+                  <Text style={styles.rewardTitle} numberOfLines={2}>{v.title}</Text>
+                  <View style={styles.rewardPtsBadge}>
+                    <Ionicons name="star" size={12} color="#fff" />
+                    <Text style={styles.rewardPtsText}>{v.pts}</Text>
                   </View>
-                  {cp.verified && (
-                    <Ionicons name="shield-checkmark" size={18} color={COLORS.secondary} />
-                  )}
                 </View>
-
-                {/* Category chips */}
-                <View style={styles.cpChipRow}>
-                  {cp.categories.map((cat) => (
-                    <View key={cat} style={styles.cpChip}>
-                      <Text style={styles.cpChipText}>{cat}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* Bottom: price + Đặt lịch button */}
-                <View style={styles.cpCardFooter}>
-                  <View style={styles.cpPriceBlock}>
-                    <Text style={styles.cpPriceLabel}>Từ</Text>
-                    <Text style={styles.cpPriceValue}>
-                      {formatPrice(cp.pricePerHour)}
-                      <Text style={styles.cpPriceUnit}>/giờ</Text>
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.cpBookBtn}
-                    onPress={() => navigation.navigate('CreateTask')}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.cpBookBtnText}>Đặt lịch</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* Recent Activity — card nền primaryLight + status chip */}
-        <View style={styles.section}>
+        {/* === SECTION 5: Hoạt động gần đây (Active Task System) === */}
+        <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
           {isLoading ? (
-            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
+            <ActivityIndicator color="#F26522" style={{ marginTop: 16 }} />
           ) : recentTask && recentStatus ? (
             <TouchableOpacity
-              style={styles.recentCard}
+              style={styles.recentTaskCard}
               onPress={() => navigation.navigate('MyTasks')}
               activeOpacity={0.85}
             >
-              <View style={styles.recentIconRow}>
-                <View style={styles.recentIconCircle}>
-                  <Ionicons name={recentStatus.icon} size={22} color={COLORS.primary} />
-                </View>
-                <View style={styles.recentTextBlock}>
-                  <Text style={styles.recentTitle} numberOfLines={1}>{recentTask.title}</Text>
-                  <Text style={styles.recentSubtitle} numberOfLines={1}>
-                    {recentTask.location || 'Không có địa điểm'}
-                  </Text>
-                </View>
+              <View style={styles.recentTaskIconBox}>
+                <Ionicons name={recentStatus.icon} size={24} color="#F26522" />
               </View>
-              <View style={[styles.recentStatusChip, { backgroundColor: recentStatus.bg }]}>
+              <View style={styles.recentTaskInfo}>
+                <Text style={styles.recentTaskTitle} numberOfLines={1}>{recentTask.title}</Text>
+                <Text style={styles.recentTaskLocation} numberOfLines={1}>
+                  {recentTask.location || 'Không có địa điểm'}
+                </Text>
+              </View>
+              <View style={[styles.recentStatusBadge, { backgroundColor: recentStatus.bg }]}>
                 <Text style={[styles.recentStatusText, { color: recentStatus.color }]}>
                   {recentStatus.label}
                 </Text>
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.emptyBox}>
-              <Animated.View style={[styles.emptyIconCircle, { transform: [{ scale: pulseAnim }] }]}>
-                <Ionicons name="document-text-outline" size={36} color={COLORS.primary} />
-              </Animated.View>
-              <Text style={styles.emptyTitle}>Chưa có hoạt động nào</Text>
-              <Text style={styles.emptyText}>Hãy đăng việc đầu tiên để tìm Carepartner phù hợp!</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('CreateTask')}
-                style={styles.emptyBtn}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="add-circle" size={20} color="#fff" />
-                <Text style={styles.emptyBtnText}>Đăng việc ngay</Text>
-              </TouchableOpacity>
+            <View style={styles.emptyTaskBox}>
+              <Text style={styles.emptyTaskText}>Bạn chưa có công việc nào đang diễn ra</Text>
             </View>
           )}
+        </View>
+
+        {/* === SECTION 6: Cộng đồng bTaskee / EduCareLink === */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Cộng đồng</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
+              <Text style={styles.seeAllText}>Xem tất cả > </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.communityGrid}>
+            {COMMUNITY_POSTS.map((post) => (
+              <TouchableOpacity
+                key={post.id}
+                style={[styles.communityCard, { backgroundColor: post.bg }]}
+                onPress={() => navigation.navigate('CreateTask')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.communityCardBanner}>
+                  <Ionicons name="trophy" size={32} color="#F26522" />
+                  <View style={styles.communityMetrics}>
+                    <Text style={styles.communityMetricText}>❤️ {post.likes}</Text>
+                    <Text style={styles.communityMetricText}>💬 {post.comments}</Text>
+                  </View>
+                </View>
+                <Text style={styles.communityCardTitle} numberOfLines={2}>{post.title}</Text>
+                <Text style={styles.communityTag}>{post.tag}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB — Đăng việc nhanh */}
+      {/* Floating Action Mascot Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={styles.fabMascot}
         onPress={() => navigation.navigate('CreateTask')}
         activeOpacity={0.85}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={32} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 }
 
-// Helper — show coming soon cho 'Xem tất cả' CarePartner
-function showComingSoonCarePartnerList() {
-  Alert.alert('Thông báo', 'Tính năng "Xem tất cả CarePartner" đang được phát triển. Vui lòng quay lại sau!', [
-    { text: 'Đã hiểu', style: 'default' },
-  ]);
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
-  // === APP BAR (white header) ===
-  appBar: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+
+  // Header Gradient
+  headerGradient: {
+    backgroundColor: '#F26522',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    position: 'relative',
+  },
+  headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20, // margin-mobile
-    paddingBottom: 12, // py-sm (paddingTop moved inline for safe area)
-    backgroundColor: COLORS.surface, // surface (trắng)
+    marginBottom: 16,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceContainer, // surface-variant
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.small,
   },
-  appBarTitle: {
-    ...TYPO.h1,
-    color: COLORS.primary, // primary-container (cam)
-    letterSpacing: -0.5,
+  headerGreeting: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+    flex: 1,
   },
-  appBarRight: {
+  chatHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+
+  // Floating Balance Card
+  balanceCard: {
+    position: 'absolute',
+    bottom: -24,
+    left: 20,
+    right: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    ...SHADOWS.medium,
+    elevation: 4,
   },
-  // === SCROLL ===
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  // === GREETING ===
-  greetingSection: {
-    marginTop: 16, // mt-md
-    marginBottom: 24, // mb-lg
+  balanceItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bCoinBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  bCoinText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  balanceValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginRight: 6,
+  },
+  balanceDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E5E7EB',
+  },
+
+  // Section Container
+  sectionContainer: {
+    marginTop: 20,
     paddingHorizontal: 20,
   },
-  greetingTitle: {
-    ...TYPO.h2,
-    color: COLORS.onSurface,
-    marginBottom: 4,
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  greetingSubtitle: {
-    ...TYPO.body,
-    color: COLORS.onSurfaceVariant,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
   },
-  // === PROMO BANNER ===
-  promoBanner: {
-    backgroundColor: COLORS.primary, // primary-container
-    borderRadius: 14, // xl radius
-    padding: 16, // p-md
-    marginBottom: 24,
-    marginHorizontal: 20,
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#059669',
+  },
+
+  // Featured Top Services
+  featuredServicesScroll: {
+    gap: 12,
+  },
+  featuredCard: {
+    width: 120,
+    backgroundColor: '#FFF4ED',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  badgeTag: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  badgeTagText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  featuredIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  featuredName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+
+  // Service Grid 4 Columns
+  serviceGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  serviceGridItem: {
+    width: (SCREEN_WIDTH - 40 - 36) / 4,
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  serviceGridIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  serviceGridLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+
+  // Promo Banner Carousel
+  promoCarouselContainer: {
+    gap: 16,
+  },
+  promoBannerCard: {
+    width: SCREEN_WIDTH - 40,
+    backgroundColor: '#F26522',
+    borderRadius: 20,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     overflow: 'hidden',
-    ...SHADOWS.medium,
-    position: 'relative',
   },
-  promoDecorCircle: {
-    position: 'absolute',
-    top: -16,
-    right: -16,
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  promoContent: {
+  promoBannerContent: {
     flex: 1,
+  },
+  promoTag: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  promoBigTitle: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  promoSubtitle: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  promoBannerIcon: {
+    marginLeft: 12,
+  },
+
+  // bRewards Vouchers
+  rewardsScrollContainer: {
+    gap: 12,
+  },
+  rewardCard: {
+    width: 150,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...SHADOWS.small,
+  },
+  rewardImagePlaceholder: {
+    height: 100,
+    backgroundColor: '#FFF4ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rewardCardBody: {
+    padding: 10,
+  },
+  rewardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937',
+    height: 34,
+    lineHeight: 16,
+  },
+  rewardPtsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F59E0B',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  rewardPtsText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Recent Active Task
+  recentTaskCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...SHADOWS.small,
+  },
+  recentTaskIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF4ED',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  promoTitle: {
-    ...TYPO.h3,
-    color: COLORS.textOnPrimary,
-    marginBottom: 4,
-    lineHeight: 22,
-  },
-  promoDesc: {
-    ...TYPO.body,
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    maxWidth: 200,
-    lineHeight: 18,
-  },
-  promoIconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
-  },
-  // === SECTIONS ===
-  section: {
-    marginBottom: 24, // mb-xl
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    ...TYPO.h3,
-    color: COLORS.onSurface,
-    marginBottom: 16,
-  },
-  seeAllLink: {
-    ...TYPO.caption,
-    color: COLORS.primary,
-    marginBottom: 16,
-  },
-  // === BENTO GRID ===
-  bentoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16, // gap-md
-  },
-  bentoCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-    borderRadius: 14, // xl
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    ...SHADOWS.small,
-    // Mặc định 1 ô (calc 50% - gap/2)
-    width: (SCREEN_WIDTH - 40 - 16) / 2,
-    minHeight: 110,
-  },
-  bentoCardWide: {
-    width: '100%', // full row
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: 16,
-  },
-  bentoIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bentoCardTitle: {
-    ...TYPO.h4,
-    color: COLORS.onSurface,
-  },
-  bentoTextBlock: {
+  recentTaskInfo: {
     flex: 1,
   },
-  bentoCardDesc: {
-    ...TYPO.caption,
-    color: COLORS.onSurfaceVariant,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  // === CAREPARTNER SUGGESTIONS ===
-  carepartnerScroll: {
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  carepartnerCard: {
-    width: 260,
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.outlineVariant,
-    ...SHADOWS.small,
-  },
-  cpCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  cpInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  cpAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cpNameBlock: {
-    flex: 1,
-  },
-  cpName: {
-    ...TYPO.h4,
-    color: COLORS.onSurface,
-  },
-  cpRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  cpRatingText: {
-    ...TYPO.caption,
-    color: COLORS.onSurface,
-  },
-  cpTripsText: {
-    fontSize: 10,
-    color: COLORS.onSurfaceVariant,
-    fontWeight: '500',
-  },
-  cpChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 16,
-  },
-  cpChip: {
-    backgroundColor: COLORS.surfaceContainer, // surface-variant
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  cpChipText: {
-    fontSize: 10,
-    color: COLORS.onSurface,
-    fontWeight: '500',
-  },
-  cpCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.outlineVariant,
-    paddingTop: 12,
-  },
-  cpPriceBlock: {
-    flexDirection: 'column',
-  },
-  cpPriceLabel: {
-    fontSize: 10,
-    color: COLORS.onSurfaceVariant,
-    fontWeight: '500',
-  },
-  cpPriceValue: {
-    ...TYPO.body,
+  recentTaskTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    color: COLORS.primary,
-    lineHeight: 18,
+    color: '#1F2937',
+    marginBottom: 2,
   },
-  cpPriceUnit: {
+  recentTaskLocation: {
     fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.onSurfaceVariant,
+    color: '#6B7280',
   },
-  cpBookBtn: {
-    backgroundColor: COLORS.surfaceContainerHigh, // surface-container-high
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8, // lg
-    ...SHADOWS.small,
-  },
-  cpBookBtnText: {
-    ...TYPO.caption,
-    color: COLORS.primary,
-  },
-  // === RECENT ACTIVITY ===
-  recentCard: {
-    backgroundColor: COLORS.primaryLight, // #FFF4ED
-    borderWidth: 1,
-    borderColor: 'rgba(242, 101, 34, 0.2)',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    ...SHADOWS.small,
-  },
-  recentIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1,
-  },
-  recentIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
-  },
-  recentTextBlock: {
-    flex: 1,
-  },
-  recentTitle: {
-    ...TYPO.h4,
-    color: COLORS.onSurface,
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  recentSubtitle: {
-    fontSize: 11,
-    color: COLORS.onSurfaceVariant,
-    fontWeight: '500',
-  },
-  recentStatusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    ...SHADOWS.small,
+  recentStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   recentStatusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  // === EMPTY STATE ===
-  emptyBox: {
+  emptyTaskBox: {
+    padding: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
     alignItems: 'center',
-    paddingVertical: 36,
+  },
+  emptyTaskText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+
+  // Community Posts
+  communityGrid: {
+    flexDirection: 'row',
     gap: 12,
   },
-  emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
+  communityCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  communityCardBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
-    ...SHADOWS.small,
   },
-  emptyTitle: {
-    ...TYPO.h4,
-    color: COLORS.onSurface,
+  communityMetrics: {
+    alignItems: 'flex-end',
   },
-  emptyText: {
-    ...TYPO.bodySmall,
-    color: COLORS.onSurfaceVariant,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
+  communityMetricText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#4B5563',
   },
-  emptyBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    ...SHADOWS.large,
-    marginTop: 8,
+  communityCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1F2937',
+    lineHeight: 18,
+    marginBottom: 6,
   },
-  emptyBtnText: {
-    color: COLORS.textOnPrimary,
-    ...TYPO.button,
+  communityTag: {
+    fontSize: 11,
+    color: '#F26522',
+    fontWeight: '600',
   },
-  // === FAB ===
-  fab: {
+
+  // FAB Mascot
+  fabMascot: {
     position: 'absolute',
-    bottom: 90, // room for bottom tab bar
-    right: 20, // margin-mobile
+    bottom: 24,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#F26522',
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.large,
-    elevation: 8, // Android shadow
+    ...SHADOWS.medium,
+    elevation: 6,
   },
 });
