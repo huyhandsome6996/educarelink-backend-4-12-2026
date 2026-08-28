@@ -24,7 +24,7 @@ from tracking.models import (
 )
 from tracking.services import (
     update_heartbeat, report_location_permission_revoked,
-    check_offline_devices, AlreadyAcknowledgedError,
+    check_offline_devices, retry_offline_alert_pushes, AlreadyAcknowledgedError,
 )
 from tracking.serializers import (
     HeartbeatSerializer, LocationPermissionStatusSerializer,
@@ -590,3 +590,102 @@ class CheckOfflineDevicesRegressionTests(TestCase):
         self.assertEqual(stats['new_alerts'], 1)
         alert = DeviceOfflineAlert.objects.get(task=self.task, status='active')
         self.assertEqual(alert.alert_type, 'device_offline')
+
+
+@override_settings(DEBUG=True)
+class RetryPushAlertTypeTests(TestCase):
+    """SAFETY-LOC-001: retry_offline_alert_pushes() gửi đúng nội dung
+    theo alert_type — KHÔNG dùng chung 1 message cho cả 2 loại."""
+
+    def setUp(self):
+        self.parent = User.objects.create_user(
+            username='parent_rp', password='pass', role='parent',
+            email='parent_rp@test.com',
+            expo_push_token='ExponentPushToken[fake-rp]',
+        )
+        self.worker = User.objects.create_user(
+            username='worker_rp', password='pass', role='worker',
+            email='worker_rp@test.com',
+        )
+        self.cat = ServiceCategory.objects.create(name='TestRP')
+        self.task = Task.objects.create(
+            title='Task retry', description='Test',
+            price=100000, status='in_progress',
+            parent=self.parent, category=self.cat,
+            location='HCM', latitude=10.0, longitude=106.0,
+            scheduled_time=timezone.now(),
+        )
+        TaskApplication.objects.create(
+            task=self.task, worker=self.worker, status='accepted'
+        )
+        self.hb = DeviceHeartbeat.objects.create(
+            task=self.task, worker=self.worker,
+            last_seen=timezone.now() - timedelta(seconds=120),
+            device_status='offline',
+        )
+
+    @patch('tracking.services._notify_user')
+    def test_retry_permission_revoked_sends_correct_message(self, mock_notify):
+        """Retry cho location_permission_revoked: nội dung nói về vị trí,
+        KHÔNG chứa text 'mất kết nối'."""
+        mock_notify.return_value = (True, 'ok')
+        alert = DeviceOfflineAlert.objects.create(
+            task=self.task, worker=self.worker, heartbeat=self.hb,
+            last_seen=self.hb.last_seen, status='active',
+            alert_type='location_permission_revoked',
+            push_sent=False, push_sent_at=timezone.now() - timedelta(seconds=60),
+            push_retry_count=0,
+        )
+        stats = retry_offline_alert_pushes()
+        self.assertEqual(stats['retried_count'], 1)
+
+        # Verify _notify_user được gọi với nội dung đúng
+        mock_notify.assert_called_once()
+        call_kwargs = mock_notify.call_args
+        title = call_kwargs[1].get('title', call_kwargs[0][1] if len(call_kwargs[0]) > 1 else None)
+        # Nếu gọi bằng positional, lấy từ args
+        if title is None and len(call_kwargs[0]) >= 2:
+            title = call_kwargs[0][1]
+        if title is None:
+            title = call_kwargs.kwargs.get('title')
+
+        # Title PHẢI chứa text về vị trí, KHÔNG chứa 'mất kết nối'
+        self.assertIn('v', title.lower())  # co 'vi tri' trong title
+        self.assertNotIn('mất kết nối', title)
+
+        # Verify data.type = location_permission_revoked
+        data_arg = call_kwargs[1].get('data', call_kwargs.kwargs.get('data', {}))
+        if not data_arg and len(call_kwargs[0]) >= 4:
+            data_arg = call_kwargs[0][3]
+        self.assertEqual(data_arg['type'], 'location_permission_revoked')
+
+    @patch('tracking.services._notify_user')
+    def test_retry_device_offline_sends_correct_message(self, mock_notify):
+        """Retry cho device_offline: nội dung giữ nguyên 'mất kết nối'
+        (regression guard)."""
+        mock_notify.return_value = (True, 'ok')
+        alert = DeviceOfflineAlert.objects.create(
+            task=self.task, worker=self.worker, heartbeat=self.hb,
+            last_seen=self.hb.last_seen, status='active',
+            alert_type='device_offline',
+            push_sent=False, push_sent_at=timezone.now() - timedelta(seconds=60),
+            push_retry_count=0,
+        )
+        stats = retry_offline_alert_pushes()
+        self.assertEqual(stats['retried_count'], 1)
+
+        mock_notify.assert_called_once()
+        call_kwargs = mock_notify.call_args
+        title = call_kwargs.kwargs.get('title')
+        if title is None and len(call_kwargs[0]) >= 2:
+            title = call_kwargs[0][1]
+
+        # device_offline: PHẢI chứa 'KHẨN CẤP' (giữ hành vi cũ)
+        self.assertIn('KHẨN CẤP', title)
+
+        # data.type = device_offline
+        data_arg = call_kwargs.kwargs.get('data', {})
+        if not data_arg and len(call_kwargs[0]) >= 4:
+            data_arg = call_kwargs[0][3]
+        self.assertEqual(data_arg['type'], 'device_offline')
+

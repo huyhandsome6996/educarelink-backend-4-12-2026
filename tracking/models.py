@@ -470,7 +470,8 @@ class DeviceOfflineAlert(models.Model):
             # Index cho scheduler retry — tìm alert active chưa acknowledged
             models.Index(fields=['status', 'acknowledged_at', 'push_sent_at']),
             # SAFETY-LOC-001: index cho filter theo alert_type
-            models.Index(fields=['alert_type', 'status']),
+            # name khớp với migration 0012 để không tạo RenameIndex rác
+            models.Index(fields=['alert_type', 'status'], name='tracking_aler_alert_type__idx'),
         ]
         # QA-FIX-2 / C + SAFETY-LOC-001: partial unique index — mỗi task
         # chỉ có 1 alert active tại 1 thời điểm (bất kể alert_type).

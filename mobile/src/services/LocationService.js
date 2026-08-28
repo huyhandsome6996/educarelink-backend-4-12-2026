@@ -187,6 +187,8 @@ try {
         battery_level: batteryLevel,
         app_state: AppState.currentState || 'background',
         network_type: '',  // không có API native trong Expo
+        // SAFETY-LOC-001: kèm location_permission_status (như sendHeartbeatNow)
+        location_permission_status: lastReportedPermissionStatus,
       });
       console.log('[HeartbeatService] Heartbeat sent');
     } catch (e) {
@@ -974,6 +976,13 @@ async function _reportPermissionStatus(taskId: number, newStatus: string): Promi
 async function _checkAndReportPermission(taskId: number | null): Promise<void> {
   if (!taskId) return;
   const currentStatus = await _checkLocationPermissionStatus();
+  // SAFETY-LOC-001: không gửi 'unknown' lên backend —
+  // LocationPermissionStatusSerializer chỉ nhận 'granted'/'denied'.
+  // Giữ nguyên lastReportedPermissionStatus, thử lại chu kỳ sau.
+  if (currentStatus === 'unknown') {
+    console.warn('[SAFETY-LOC-001] Permission status is "unknown" — skipping API call, will retry next cycle');
+    return;
+  }
   await _reportPermissionStatus(taskId, currentStatus);
 }
 
