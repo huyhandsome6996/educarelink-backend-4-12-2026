@@ -1,14 +1,14 @@
 // ============================================================
-// ParentHomeScreen — Redesign theo bTaskee (Warm Professionalism)
-// Đảm bảo 100% chức năng hệ thống, API và state giữ nguyên:
-// - Header cam gradient (#F26522 -> #FF7A38) bo cong góc dưới
-// - Card nổi bCoin / bPoints đè lên Header (xem số dư & điểm thưởng)
-// - Danh mục dịch vụ nổi bật (horizontal scroll) với badge NEW / bCare
-// - Grid Dịch vụ chính 4 cột (Dọn dẹp ca lẻ, Gói tháng, Tổng vệ sinh, Vệ sinh máy lạnh...)
-// - Banner khuyến mãi Carousel (Giảm 20% cuối tuần...)
-// - bRewards (Voucher đổi điểm thưởng)
-// - Cộng đồng bTaskee / EduCareLink (Bài viết & Tích xu)
-// - Hoạt động gần đây (vẫn kết nối API getMyTasksAsParent thật)
+// ParentHomeScreen — Redesign layout bTaskee, nội dung EduCareLink
+// Visual layout lấy cảm hứng bTaskee, nội dung 100% EduCareLink:
+// - Header cam gradient bo cong + Card nổi Ví & Điểm thưởng
+// - Danh mục nổi bật: Gia sư AI, Đón trẻ Pro, Trông trẻ, Nấu ăn
+// - Grid 8 dịch vụ: Gia sư, Đón trẻ, Trông trẻ, Dọn dẹp, Nấu ăn,
+//   Mua sắm, Chuyển đồ, Khám phá (đồng bộ categoryIcons.js)
+// - Banner: Tìm CarePartner + AI Trợ lý (thay vì dọn nhà bTaskee)
+// - CareRewards: Điểm thưởng EduCareLink (thay vì bRewards)
+// - Mẹo hay: Bài viết an toàn & giáo dục (thay vì tích xu)
+// - Hoạt động gần đây (API getMyTasksAsParent thật)
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -33,68 +33,48 @@ const STATUS_MAPPING = {
   cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
-// Services Nổi bật (Horizontal scroll top badges - bTaskee style)
+// Dịch vụ nổi bật (Horizontal scroll — EduCareLink features)
 const FEATURED_SERVICES = [
-  { id: 1, name: 'Wellness\nOffice', badge: 'NEW', badgeBg: '#EF4444', icon: 'fitness', color: '#F97316' },
-  { id: 2, name: 'bBeauty', badge: 'NEW', badgeBg: '#EF4444', icon: 'sparkles', color: '#EC4899' },
-  { id: 3, name: 'Chăm sóc\nngười cao tuổi', badge: 'bCare', badgeBg: '#F26522', icon: 'heart', color: '#F26522' },
-  { id: 4, name: 'Chăm sóc\nngười bệnh', badge: 'bCare', badgeBg: '#F26522', icon: 'medkit', color: '#0284C7' },
+  { id: 1, name: 'Gia sư AI', badge: 'HOT', badgeBg: '#EF4444', icon: 'school', color: '#F26522' },
+  { id: 2, name: 'Đón trẻ\nPro', badge: 'NEW', badgeBg: '#059669', icon: 'happy', color: '#059669' },
+  { id: 3, name: 'Trông trẻ\ntận tâm', badge: 'Care', badgeBg: '#F26522', icon: 'people', color: '#F26522' },
+  { id: 4, name: 'Nấu ăn\ntại nhà', badge: 'NEW', badgeBg: '#D97706', icon: 'restaurant', color: '#D97706' },
 ];
 
-// Grid Dịch vụ 4 cột (bTaskee layout)
+// Grid 8 dịch vụ chính (đồng bộ categoryIcons.js)
 const SERVICE_GRID = [
-  { id: 'clean_single', name: 'Dọn dẹp nhà', sub: 'ca lẻ', subColor: '#F26522', icon: 'home', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 'clean_month', name: 'Dọn dẹp nhà', sub: 'gói tháng', subColor: '#F26522', icon: 'calendar', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 'deep_clean', name: 'Tổng vệ sinh', sub: '', icon: 'sparkles', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 'ac_clean', name: 'Vệ sinh máy lạnh', sub: '', icon: 'snow', iconBg: '#E0F2FE', color: '#0284C7' },
-  { id: 'babysitting', name: 'Trông trẻ & Đón bé', sub: '', icon: 'body', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 'tutor', name: 'Gia sư tại nhà', sub: '', icon: 'school', iconBg: '#FEF3C7', color: '#D97706' },
-  { id: 'moving', name: 'Chuyển nhà & Dọn dẹp', sub: '', icon: 'bus', iconBg: '#ECFDF5', color: '#059669' },
-  { id: 'explore', name: 'Khám phá', sub: '', icon: 'grid', iconBg: '#F3F4F6', color: '#6B7280' },
+  { id: 1, name: 'Gia sư', sub: '', icon: 'book', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 2, name: 'Đón trẻ', sub: '', icon: 'happy', iconBg: '#ECFDF5', color: '#059669' },
+  { id: 4, name: 'Trông trẻ', sub: '', icon: 'people', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 3, name: 'Dọn dẹp', sub: '', icon: 'sparkles', iconBg: '#E0F2FE', color: '#0284C7' },
+  { id: 6, name: 'Nấu ăn', sub: '', icon: 'restaurant', iconBg: '#FEF3C7', color: '#D97706' },
+  { id: 5, name: 'Mua sắm hộ', sub: '', icon: 'bag', iconBg: '#FDF2F8', color: '#DB2777' },
+  { id: 7, name: 'Chuyển đồ', sub: '', icon: 'cube', iconBg: '#ECFDF5', color: '#059669' },
+  { id: 8, name: 'Khám phá', sub: '', icon: 'apps', iconBg: '#F3F4F6', color: '#6B7280' },
 ];
 
-// Rewards Vouchers (bRewards section)
-const BREWARDS_VOUCHERS = [
-  {
-    id: 1,
-    title: 'Voucher 15% tại Cái Lò Nướng',
-    pts: 30,
-    bg: '#7C2D12',
-    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
-  },
-  {
-    id: 2,
-    title: 'Mua 1 Tặng 1 tại Chạm - Cafe & Cake',
-    pts: 40,
-    bg: '#064E3B',
-    image: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=400',
-  },
-  {
-    id: 3,
-    title: 'Voucher 100k tại LUG Luggage',
-    pts: 50,
-    bg: '#1E3A8A',
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
-  },
+// CareRewards — Ưu đãi điểm thưởng EduCareLink
+const CARE_REWARDS = [
+  { id: 1, title: 'Giảm 50k cho lần đặt Gia sư tiếp theo', pts: 100, icon: 'book' },
+  { id: 2, title: 'Miễn phí 1 giờ Đón trẻ đầu tiên', pts: 150, icon: 'happy' },
+  { id: 3, title: 'Ưu đãi 20% dịch vụ Dọn dẹp cuối tuần', pts: 200, icon: 'sparkles' },
 ];
 
-// Bài viết cộng đồng
-const COMMUNITY_POSTS = [
+// Mẹo hay cho Phụ huynh
+const TIPS_POSTS = [
   {
     id: 1,
-    title: 'TÍCH XU NGAY QUÀ VỀ TAY - CHƠI NGAY',
-    likes: 73,
-    comments: 5,
-    tag: '#Giải trí #Tích Xu ngay',
+    title: '5 tiêu chí chọn gia sư phù hợp cho con',
+    icon: 'bulb',
+    tag: '#Giáo dục #Gia sư',
     bg: '#FFF7ED',
   },
   {
     id: 2,
-    title: 'TÍCH XU TRANH TOP - QUÀ NGAY VỀ TÚI',
-    likes: 21,
-    comments: 0,
-    tag: '#Giải trí #Đường đua Ong Cam',
-    bg: '#FEF3C7',
+    title: 'An toàn khi sử dụng dịch vụ đón trẻ',
+    icon: 'shield-checkmark',
+    tag: '#An toàn #Đón trẻ',
+    bg: '#ECFDF5',
   },
 ];
 
@@ -211,17 +191,15 @@ export default function ParentHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Floating Balance & Points Card (bTaskee style overlapping header) */}
+          {/* Floating Balance & Points Card */}
           <View style={styles.balanceCard}>
             <TouchableOpacity
               style={styles.balanceItem}
               onPress={() => navigation.navigate('RewardPointsScreen')}
               activeOpacity={0.7}
             >
-              <View style={styles.bCoinBadge}>
-                <Text style={styles.bCoinText}>b</Text>
-              </View>
-              <Text style={styles.balanceValue}>0 đ</Text>
+              <Ionicons name="wallet" size={20} color="#F26522" style={{ marginRight: 6 }} />
+              <Text style={styles.balanceValue}>Ví EduCare</Text>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </TouchableOpacity>
 
@@ -233,7 +211,7 @@ export default function ParentHomeScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="star" size={20} color="#F26522" style={{ marginRight: 6 }} />
-              <Text style={styles.balanceValue}>0 bPoints</Text>
+              <Text style={styles.balanceValue}>Điểm thưởng</Text>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
@@ -313,12 +291,12 @@ export default function ParentHomeScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.promoBannerContent}>
-                <Text style={styles.promoTag}>Cuối tuần dọn nhà</Text>
-                <Text style={styles.promoBigTitle}>Giảm 20%</Text>
-                <Text style={styles.promoSubtitle}>Nhà sạch hơn, tiết kiệm hơn</Text>
+                <Text style={styles.promoTag}>Tìm CarePartner</Text>
+                <Text style={styles.promoBigTitle}>An tâm gửi gắm</Text>
+                <Text style={styles.promoSubtitle}>Đăng việc ngay, nhận ứng viên trong 5 phút</Text>
               </View>
               <View style={styles.promoBannerIcon}>
-                <Ionicons name="sparkles" size={48} color="#fff" />
+                <Ionicons name="people" size={48} color="#fff" />
               </View>
             </TouchableOpacity>
 
@@ -328,9 +306,9 @@ export default function ParentHomeScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.promoBannerContent}>
-                <Text style={styles.promoTag}>Trợ lý AI bCare</Text>
-                <Text style={styles.promoBigTitle}>Tự Động Ghép Cặp</Text>
-                <Text style={styles.promoSubtitle}>Tìm CarePartner trong 5 phút</Text>
+                <Text style={styles.promoTag}>AI Trợ lý EduCare</Text>
+                <Text style={styles.promoBigTitle}>Chat tạo việc</Text>
+                <Text style={styles.promoSubtitle}>Mô tả bằng lời, AI tạo task giúp bạn</Text>
               </View>
               <View style={styles.promoBannerIcon}>
                 <Ionicons name="hardware-chip" size={48} color="#fff" />
@@ -339,14 +317,14 @@ export default function ParentHomeScreen() {
           </ScrollView>
         </View>
 
-        {/* === SECTION 4: bRewards Vouchers === */}
+        {/* === SECTION 4: CareRewards === */}
         <View style={styles.sectionContainer}>
           <TouchableOpacity
             style={styles.sectionHeaderRow}
             onPress={() => navigation.navigate('RewardPointsScreen')}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.sectionTitle}>bRewards</Text>
+              <Text style={styles.sectionTitle}>CareRewards</Text>
               <Ionicons name="chevron-forward" size={20} color="#059669" style={{ marginLeft: 4 }} />
             </View>
           </TouchableOpacity>
@@ -356,7 +334,7 @@ export default function ParentHomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.rewardsScrollContainer}
           >
-            {BREWARDS_VOUCHERS.map((v) => (
+            {CARE_REWARDS.map((v) => (
               <TouchableOpacity
                 key={v.id}
                 style={styles.rewardCard}
@@ -364,7 +342,7 @@ export default function ParentHomeScreen() {
                 activeOpacity={0.85}
               >
                 <View style={styles.rewardImagePlaceholder}>
-                  <Ionicons name="gift" size={36} color="#F26522" />
+                  <Ionicons name={v.icon} size={36} color="#F26522" />
                 </View>
                 <View style={styles.rewardCardBody}>
                   <Text style={styles.rewardTitle} numberOfLines={2}>{v.title}</Text>
@@ -411,29 +389,25 @@ export default function ParentHomeScreen() {
           )}
         </View>
 
-        {/* === SECTION 6: Cộng đồng bTaskee / EduCareLink === */}
+        {/* === SECTION 6: Mẹo hay cho Phụ huynh === */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Cộng đồng</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
-              <Text style={styles.seeAllText}>Xem tất cả > </Text>
+            <Text style={styles.sectionTitle}>Mẹo hay</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ParentTabs', { screen: 'Chatbot' })}>
+              <Text style={styles.seeAllText}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.communityGrid}>
-            {COMMUNITY_POSTS.map((post) => (
+            {TIPS_POSTS.map((post) => (
               <TouchableOpacity
                 key={post.id}
                 style={[styles.communityCard, { backgroundColor: post.bg }]}
-                onPress={() => navigation.navigate('CreateTask')}
+                onPress={() => navigation.navigate('ParentTabs', { screen: 'Chatbot' })}
                 activeOpacity={0.85}
               >
                 <View style={styles.communityCardBanner}>
-                  <Ionicons name="trophy" size={32} color="#F26522" />
-                  <View style={styles.communityMetrics}>
-                    <Text style={styles.communityMetricText}>❤️ {post.likes}</Text>
-                    <Text style={styles.communityMetricText}>💬 {post.comments}</Text>
-                  </View>
+                  <Ionicons name={post.icon} size={28} color="#F26522" />
                 </View>
                 <Text style={styles.communityCardTitle} numberOfLines={2}>{post.title}</Text>
                 <Text style={styles.communityTag}>{post.tag}</Text>
@@ -544,20 +518,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bCoinBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#F59E0B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-  bCoinText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '900',
   },
   balanceValue: {
     fontSize: 14,
