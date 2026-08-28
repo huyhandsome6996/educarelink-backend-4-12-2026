@@ -104,21 +104,25 @@ function TabIcon({ name, focused, color }) {
 }
 
 // === Tab Navigator dành cho PHỤ HUYNH ===
-// QA-FIX-UI 1.2 (Hướng A): 5 tab đúng thiết kế Stitch AI
-//   1. Trang chủ  (ParentHome)
-//   2. Nhật ký    (MyTasks — đổi nhãn từ 'Hoạt động')
-//   3. AI Trợ lý  (Chatbot)
-//   4. Theo dõi   (TrackingOverview — MỚI, tổng hợp các task in_progress)
-//   5. Tài khoản  (ParentProfile)
+// Thiết kế bottom nav bTaskee: 5 tab, tab giữa (AI Trợ lý) nổi lên
 function ParentTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color }) => {
+          // Tab giữa (Chatbot) → nút tròn cam nổi
+          if (route.name === 'Chatbot') {
+            return (
+              <View style={styles.raisedFabContainer}>
+                <View style={[styles.raisedFab, focused && styles.raisedFabFocused]}>
+                  <Ionicons name="hardware-chip" size={26} color="#fff" />
+                </View>
+              </View>
+            );
+          }
           let iconName;
           if (route.name === 'ParentHome') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'MyTasks') iconName = focused ? 'book' : 'book-outline';
-          else if (route.name === 'Chatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
           else if (route.name === 'TrackingOverview') iconName = focused ? 'radar' : 'radar-outline';
           else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
@@ -340,5 +344,25 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     marginTop: 2,
+  },
+  // Raised AI FAB (tab giữa nổi lên — bTaskee style)
+  raisedFabContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Platform.OS === 'ios' ? 20 : 24,
+  },
+  raisedFab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.medium,
+    elevation: 6,
+  },
+  raisedFabFocused: {
+    backgroundColor: '#D45A1C',
+    ...SHADOWS.large,
   },
 });

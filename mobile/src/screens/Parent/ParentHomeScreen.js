@@ -33,24 +33,12 @@ const STATUS_MAPPING = {
   cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
 };
 
-// Dịch vụ nổi bật (Horizontal scroll — EduCareLink features)
-const FEATURED_SERVICES = [
-  { id: 1, name: 'Gia sư AI', badge: 'HOT', badgeBg: '#EF4444', icon: 'school', color: '#F26522' },
-  { id: 2, name: 'Đón trẻ\nPro', badge: 'NEW', badgeBg: '#059669', icon: 'happy', color: '#059669' },
-  { id: 3, name: 'Trông trẻ\ntận tâm', badge: 'Care', badgeBg: '#F26522', icon: 'people', color: '#F26522' },
-  { id: 4, name: 'Nấu ăn\ntại nhà', badge: 'NEW', badgeBg: '#D97706', icon: 'restaurant', color: '#D97706' },
-];
-
-// Grid 8 dịch vụ chính (đồng bộ categoryIcons.js)
+// Grid 4 dịch vụ chính EduCareLink (2×2)
 const SERVICE_GRID = [
-  { id: 1, name: 'Gia sư', sub: '', icon: 'book', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 2, name: 'Đón trẻ', sub: '', icon: 'happy', iconBg: '#ECFDF5', color: '#059669' },
-  { id: 4, name: 'Trông trẻ', sub: '', icon: 'people', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 3, name: 'Dọn dẹp', sub: '', icon: 'sparkles', iconBg: '#E0F2FE', color: '#0284C7' },
-  { id: 6, name: 'Nấu ăn', sub: '', icon: 'restaurant', iconBg: '#FEF3C7', color: '#D97706' },
-  { id: 5, name: 'Mua sắm hộ', sub: '', icon: 'bag', iconBg: '#FDF2F8', color: '#DB2777' },
-  { id: 7, name: 'Chuyển đồ', sub: '', icon: 'cube', iconBg: '#ECFDF5', color: '#059669' },
-  { id: 8, name: 'Khám phá', sub: '', icon: 'apps', iconBg: '#F3F4F6', color: '#6B7280' },
+  { id: 1, name: 'Gia sư', icon: 'book', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 2, name: 'Đón trẻ', icon: 'happy', iconBg: '#ECFDF5', color: '#059669' },
+  { id: 4, name: 'Trông trẻ', icon: 'people', iconBg: '#FFF4ED', color: '#F26522' },
+  { id: 9, name: 'Hỗ trợ AI', icon: 'hardware-chip', iconBg: '#EDE9FE', color: '#7C3AED' },
 ];
 
 // CareRewards — Ưu đãi điểm thưởng EduCareLink
@@ -220,7 +208,7 @@ export default function ParentHomeScreen() {
         {/* Spacer for floating balance card */}
         <View style={{ height: 28 }} />
 
-        {/* === SECTION 1: Featured Top Services Carousel === */}
+        {/* === Dịch vụ — Grid 2×2 === */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Dịch vụ</Text>
@@ -229,49 +217,35 @@ export default function ParentHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featuredServicesScroll}
-          >
-            {FEATURED_SERVICES.map((serv) => (
-              <TouchableOpacity
-                key={serv.id}
-                style={styles.featuredCard}
-                onPress={() => navigation.navigate('CreateTask')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.badgeTag, { backgroundColor: serv.badgeBg }]}>
-                  <Text style={styles.badgeTagText}>{serv.badge}</Text>
-                </View>
-                <View style={styles.featuredIconCircle}>
-                  <Ionicons name={serv.icon} size={24} color={serv.color} />
-                </View>
-                <Text style={styles.featuredName}>{serv.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* === SECTION 2: Main 4-Column Service Grid === */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.serviceGridContainer}>
-            {SERVICE_GRID.map((item) => (
+          {/* Row 1 */}
+          <View style={styles.serviceRow}>
+            {SERVICE_GRID.slice(0, 2).map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.serviceGridItem}
-                onPress={() => navigation.navigate('CreateTask')}
+                onPress={() => item.id === 9 ? navigation.navigate('Chatbot') : navigation.navigate('CreateTask')}
                 activeOpacity={0.8}
               >
                 <View style={[styles.serviceGridIconCircle, { backgroundColor: item.iconBg }]}>
                   <Ionicons name={item.icon} size={28} color={item.color} />
                 </View>
-                <Text style={styles.serviceGridLabel}>
-                  {item.name}
-                  {item.sub ? (
-                    <Text style={{ color: item.subColor, fontWeight: '700' }}> {item.sub}</Text>
-                  ) : null}
-                </Text>
+                <Text style={styles.serviceGridLabel}>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Row 2 */}
+          <View style={styles.serviceRow}>
+            {SERVICE_GRID.slice(2, 4).map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.serviceGridItem}
+                onPress={() => item.id === 9 ? navigation.navigate('Chatbot') : navigation.navigate('CreateTask')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.serviceGridIconCircle, { backgroundColor: item.iconBg }]}>
+                  <Ionicons name={item.icon} size={28} color={item.color} />
+                </View>
+                <Text style={styles.serviceGridLabel}>{item.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -419,14 +393,6 @@ export default function ParentHomeScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Floating Action Mascot Button */}
-      <TouchableOpacity
-        style={styles.fabMascot}
-        onPress={() => navigation.navigate('CreateTask')}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -553,77 +519,36 @@ const styles = StyleSheet.create({
     color: '#059669',
   },
 
-  // Featured Top Services
-  featuredServicesScroll: {
-    gap: 12,
-  },
-  featuredCard: {
-    width: 120,
-    backgroundColor: '#FFF4ED',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-  },
-  badgeTag: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  badgeTagText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  featuredIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  featuredName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-
-  // Service Grid 4 Columns
-  serviceGridContainer: {
+  // Service Grid 2×2
+  serviceRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
-    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   serviceGridItem: {
-    width: (SCREEN_WIDTH - 40 - 36) / 4,
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    marginVertical: 4,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    ...SHADOWS.small,
   },
   serviceGridIconCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   serviceGridLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#1F2937',
     textAlign: 'center',
-    lineHeight: 16,
   },
 
   // Promo Banner Carousel
