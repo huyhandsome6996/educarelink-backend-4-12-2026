@@ -402,12 +402,12 @@ class LandingSurvey(models.Model):
     """Dữ liệu khảo sát/góp ý từ trang landing công khai.
 
     Form không yêu cầu đăng nhập. Email là optional.
+    feedback_type: 'carepartner' hoặc 'parent' — bộ câu hỏi khác nhau.
+    question_answers: JSON chứa câu trả lời theo bộ câu hỏi riêng từng vai trò.
     """
-    ROLE_CHOICES = (
-        ('phu-huynh', 'Phụ huynh tìm người chăm sóc'),
-        ('carepartner', 'Sinh viên muốn làm Carepartner'),
-        ('doi-tac', 'Trường học / tổ chức đối tác'),
-        ('khac', 'Khác'),
+    FEEDBACK_TYPE_CHOICES = (
+        ('carepartner', 'Người đồng hành (Carepartner)'),
+        ('parent', 'Phụ huynh'),
     )
     NECESSITY_CHOICES = (
         ('rat-can', 'Rất cần thiết — đang tìm giải pháp ngay'),
@@ -424,10 +424,13 @@ class LandingSurvey(models.Model):
         ('nhat-ky', 'Nhật ký chăm sóc'),
     )
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    feedback_type = models.CharField(max_length=20, choices=FEEDBACK_TYPE_CHOICES,
+                                      help_text='Loại người反馈: carepartner hoặc parent')
     interests = models.JSONField(default=list, blank=True,
                                   help_text='Danh sách giá trị INTEREST_CHOICES')
-    necessity = models.CharField(max_length=20, choices=NECESSITY_CHOICES)
+    necessity = models.CharField(max_length=20, choices=NECESSITY_CHOICES, blank=True, default='')
+    question_answers = models.JSONField(default=dict, blank=True,
+                                         help_text='Câu trả lời theo bộ câu hỏi riêng từng vai trò (key=question_id, value=answer)')
     feedback = models.TextField(blank=True, default='')
     email = models.EmailField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -439,7 +442,7 @@ class LandingSurvey(models.Model):
         verbose_name_plural = 'Khảo sát landing page'
 
     def __str__(self):
-        return f"Survey #{self.id} ({self.get_role_display()})"
+        return f"Survey #{self.id} ({self.get_feedback_type_display()})"
 
 
 class LandingSignup(models.Model):

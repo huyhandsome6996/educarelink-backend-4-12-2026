@@ -3048,3 +3048,330 @@ class LandingSignupAPIView(APIView):
             'id': obj.id,
             'signup_type': obj.signup_type,
         }, status=201)
+
+
+# ────────────────────────────────────────────────────────────────────
+# ADMIN FEEDBACK STATS — Thống kê góp ý + AI phân tích + Excel export
+# ────────────────────────────────────────────────────────────────────
+
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
+
+
+class AdminFeedbackStatsAPIView(APIView):
+    """Thống kê góp ý landing page cho admin.
+
+    Trả về dữ liệu real-time cho biểu đồ + bảng thống kê.
+    """
+    permission_classes = [IsAdminUser]
+    throttle_scope = 'landing_form'
+
+    def get(self, request):
+        from .models import LandingSurvey, LandingSignup
+
+        # Filter params
+        days = int(request.query_params.get('days', 30))
+        from django.utils import timezone
+        since = timezone.now() - timezone.timedelta(days=days)
+
+        # === SURVEY STATS ===
+        surveys = LandingSurvey.objects.filter(created_at__gte=since)
+        total_surveys = surveys.count()
+        
+        # Theo feedback_type
+        by_type = list(
+            surveys.values('feedback_type').annotate(count=Count('id')).order_by('-count')
+        )
+        
+        # Theo ngày (dòng thời gian)
+        by_date = list(
+            surveys.annotate(date=TruncDate('created_at'))
+            .values('date').annotate(count=Count('id'))
+            .order_by('date')
+        )
+        
+        # Theo necessity
+        by_necessity = list(
+            surveys.exclude(necessity='').values('necessity').annotate(count=Count('id')).order_by('-count')
+        )
+        
+        # Theo interest (phổ biến nhất)
+        all_interests = []
+        for s in surveys.iterator():
+            if s.interests:
+                all_interests.extend(s.interests)
+        from collections import Counter
+        interest_counts = Counter(all_interests)
+        INTEREST_LABELS = dict(LandingSurvey.INTEREST_CHOICES)
+        by_interest = [
+            {'interest': k, 'label': INTEREST_LABELS.get(k, k), 'count': v}
+            for k, v in interest_counts.most_common(10)
+        ]
+
+        # === SIGNUP STATS ===
+        signups = LandingSignup.objects.filter(created_at__gte=since)
+        total_signups = signups.count()
+        
+        by_signup_type = list(
+            signups.values('signup_type').annotate(count=Count('id')).order_by('-count')
+        )
+        by_signup_role = list(
+            signups.values('role').annotate(count=Count('id')).order_by('-count')
+        )
+        signup_by_date = list(
+            signups.annotate(date=TruncDate('created_at'))
+            .values('date').annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        return Response({
+            'period_days': days,
+            'surveys': {
+                'total': total_surveys,
+                'by_type': by_type,
+                'by_date': by_date,
+                'by_necessity': by_necessity,
+                'by_interest': by_interest,
+            },
+            'signups': {
+                'total': total_signups,
+                'by_type': by_signup_type,
+                'by_role': by_signup_role,
+                'by_date': signup_by_date,
+            },
+        })
+
+
+class AdminFeedbackExcelAPIView(APIView):
+    """Xuất dữ liệu góp ý + đăng ký ra file Excel.
+
+    Trả về file .xlsx download.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from .models import LandingSurvey, LandingSignup
+        import openpyxl
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        days = int(request.query_params.get('days', 30))
+        since = timezone.now() - timezone.timedelta(days=days)
+
+        wb = openpyxl.Workbook()
+
+        # === Sheet 1: Góp ý ===
+        ws1 = wb.active
+        ws1.title = 'Gop y'
+        headers1 = ['ID', 'Loại (CP/PH)', 'Dịch vụ quan tâm', 'Mức độ cần thiết',
+                    'Câu trả lời riêng', 'Góp ý tự do', 'Email', 'IP', 'Ngày tạo']
+        ws1.append(headers1)
+        for row in ws1.iter_rows(min_row=1, max_row=1):
+            for cell in row:
+                cell.font = openpyxl.styles.Font(bold=True)
+
+        TYPE_LABELS = dict(LandingSurvey.FEEDBACK_TYPE_CHOICES)
+        NECESSITY_LABELS = dict(LandingSurvey.NECESSITY_CHOICES)
+        INTEREST_LABELS = dict(LandingSurvey.INTEREST_CHOICES)
+
+        for s in LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at'):
+            interests_str = ', '.join(INTEREST_LABELS.get(i, i) for i in (s.interests or []))
+            qa_str = str(s.question_answers) if s.question_answers else ''
+            ws1.append([
+                s.id,
+                TYPE_LABELS.get(s.feedback_type, s.feedback_type),
+                interests_str,
+                NECESSITY_LABELS.get(s.necessity, s.necessity or ''),
+                qa_str,
+                s.feedback,
+                s.email,
+                s.ip_address or '',
+                s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
+            ])
+
+        # Auto-width
+        for col in ws1.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws1.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
+        # === Sheet 2: Đăng ký ===
+        ws2 = wb.create_sheet('Dang ky')
+        headers2 = ['ID', 'Họ tên', 'SĐT', 'Email', 'Vai trò', 'Loại', 'Khung giờ', 'Đồng ý dùng thử', 'Ghi chú', 'Ngày tạo']
+        ws2.append(headers2)
+        for row in ws2.iter_rows(min_row=1, max_row=1):
+            for cell in row:
+                cell.font = openpyxl.styles.Font(bold=True)
+
+        for s in LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at'):
+            ws2.append([
+                s.id, s.full_name, s.phone, s.email,
+                s.get_role_display(), s.get_signup_type_display(),
+                s.get_preferred_time_slot_display() if s.preferred_time_slot else '',
+                'Có' if s.trial_consent else 'Không',
+                s.note,
+                s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
+            ])
+
+        for col in ws2.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws2.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
+        # === Sheet 3: Tổng hợp ===
+        ws3 = wb.create_sheet('Tong hop')
+        ws3.append(['Báo cáo thống kê EduCareLink Landing Page'])
+        ws3.merge_cells('A1:D1')
+        ws3['A1'].font = openpyxl.styles.Font(bold=True, size=14)
+        ws3.append([f'Khoảng thời gian: {since.strftime("%d/%m/%Y")} — {timezone.now().strftime("%d/%m/%Y")}'])
+        ws3.merge_cells('A2:D2')
+        ws3.append([])
+
+        ws3.append(['--- GÓP Ý ---'])
+        ws3['A4'].font = openpyxl.styles.Font(bold=True)
+        surveys = LandingSurvey.objects.filter(created_at__gte=since)
+        ws3.append(['Tổng góp ý', surveys.count()])
+        cp_count = surveys.filter(feedback_type='carepartner').count()
+        ph_count = surveys.filter(feedback_type='parent').count()
+        ws3.append(['Người đồng hành (Carepartner)', cp_count])
+        ws3.append(['Phụ huynh', ph_count])
+        ws3.append([])
+        ws3.append(['--- ĐĂNG KÝ ---'])
+        ws3['A9'].font = openpyxl.styles.Font(bold=True)
+        signups = LandingSignup.objects.filter(created_at__gte=since)
+        ws3.append(['Tổng đăng ký', signups.count()])
+        ws3.append(['Tư vấn', signups.filter(signup_type='tu-van').count()])
+        ws3.append(['Dùng thử', signups.filter(signup_type='dung-thu').count()])
+
+        for col_cells in ws3.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col_cells)
+            from openpyxl.utils import get_column_letter
+            ws3.column_dimensions[get_column_letter(col_cells[0].column)].width = min(max_len + 4, 60)
+
+        # Response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="educarelink_thong_ke_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+        )
+        wb.save(response)
+        return response
+
+
+class AdminFeedbackAIAnalysisAPIView(APIView):
+    """AI phân tích dữ liệu góp ý bằng Gemini.
+
+    Admin gửi request, server gọi Gemini phân tích xu hướng,
+    đề xuất cải thiện, trả về JSON.
+    """
+    permission_classes = [IsAdminUser]
+    throttle_scope = 'ai'
+
+    def post(self, request):
+        from .models import LandingSurvey, LandingSignup
+        from django.utils import timezone
+        import json
+
+        days = int(request.data.get('days', 30))
+        since = timezone.now() - timezone.timedelta(days=days)
+
+        surveys = LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at')
+        signups = LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at')
+
+        # Chuẩn bị dữ liệu tóm tắt cho AI
+        survey_data = []
+        for s in surveys[:100]:  # Giới hạn 100 bản ghi gần nhất
+            survey_data.append({
+                'type': s.feedback_type,
+                'interests': s.interests,
+                'necessity': s.necessity,
+                'qa': s.question_answers,
+                'feedback': (s.feedback or '')[:200],
+            })
+
+        signup_data = []
+        for s in signups[:100]:
+            signup_data.append({
+                'role': s.role,
+                'type': s.signup_type,
+            })
+
+        prompt = f"""Bạn là chuyên gia phân tích dữ liệu sản phẩm. Phân tích dữ liệu phản hồi từ landing page EduCareLink (nền tảng kết nối Phụ huynh với Sinh viên Carepartner chăm sóc trẻ em).
+
+DỮ LIỆU GÓP Ý ({len(survey_data)} bản ghi):
+{json.dumps(survey_data, ensure_ascii=False, indent=2)}
+
+DỮ LIỆU ĐĂNG KÝ ({len(signup_data)} bản ghi):
+{json.dumps(signup_data, ensure_ascii=False, indent=2)}
+
+YÊU CẦU: Trả về JSON với các trường:
+1. "tong_quan": Tổng quan ngắn (2-3 câu)
+2. "xu_huong": Mảng các xu hướng chính phát hiện được (mỗi xu hướng có "mo_ta" và "muc_do" là 1 trong: "cao", "trung_binh", "thap")
+3. "de_xuat": Mảng đề xuất cải thiện (mỗi đề xuất có "hanh_dong" và "uu_tien" là 1 trong: "cao", "trung_binh", "thap")
+4. "so_lieu_noi_bat": Mảng các số liệu đáng chú ý
+
+QUAN TRỌNG: Chỉ trả JSON, không thêm markdown hay giải thích."""
+
+        try:
+            api_key = os.environ.get('GEMINI_API_KEY', '')
+            if not api_key:
+                return Response({
+                    'error': 'Chưa cấu hình GEMINI_API_KEY',
+                    'fallback': _generate_fallback_analysis(surveys, signups),
+                }, status=200)
+
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+            )
+            text = response.text.strip()
+            # Xóa markdown code fences nếu có
+            if text.startswith('```'):
+                text = text.split('\n', 1)[1] if '\n' in text else text[3:]
+                if text.endswith('```'):
+                    text = text[:-3]
+                text = text.strip()
+
+            result = json.loads(text)
+            return Response(result)
+        except json.JSONDecodeError:
+            return Response({
+                'error': 'AI trả về format không hợp lệ',
+                'raw': text if 'text' in dir() else '',
+                'fallback': _generate_fallback_analysis(surveys, signups),
+            })
+        except Exception as e:
+            logger.error(f'AI analysis error: {e}')
+            return Response({
+                'error': str(e),
+                'fallback': _generate_fallback_analysis(surveys, signups),
+            })
+
+
+def _generate_fallback_analysis(surveys, signups):
+    """Phân tích thống kê cơ bản khi AI không khả dụng."""
+    from collections import Counter
+    total_s = surveys.count()
+    total_sig = signups.count()
+    cp_count = surveys.filter(feedback_type='carepartner').count()
+    ph_count = surveys.filter(feedback_type='parent').count()
+    
+    necessity_counts = Counter(surveys.exclude(necessity='').values_list('necessity', flat=True))
+    
+    return {
+        'tong_quan': f'Tổng cộng {total_s} góp ý và {total_sig} đăng ký trong khoảng thời gian đã chọn.',
+        'xu_huong': [
+            {'mo_ta': f'Phụ huynh đóng góp nhiều hơn ({ph_count}) so với Người đồng hành ({cp_count})' if ph_count > cp_count else f'Người đồng hành đóng góp nhiều hơn ({cp_count}) so với Phụ huynh ({ph_count})', 'muc_do': 'cao'},
+        ],
+        'de_xuat': [
+            {'hanh_dong': 'Tăng cường truyền thông đến nhóm có ít phản hồi hơn', 'uu_tien': 'trung_binh'},
+            {'hanh_dong': 'Phân tích thêm nội dung góp ý tự do để tìm insight', 'uu_tien': 'thap'},
+        ],
+        'so_lieu_noi_bat': [
+            f'Tổng góp ý: {total_s}',
+            f'Tổng đăng ký: {total_sig}',
+            f'Người đồng hành: {cp_count}',
+            f'Phụ huynh: {ph_count}',
+        ],
+    }

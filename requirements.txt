@@ -70,3 +70,6 @@ payos==1.1.0
 # dependency này → 5 test fail với ModuleNotFoundError trên môi trường
 # mới clone repo dù code hoàn toàn đúng.
 PyYAML==6.0.2
+
+# ── Excel export cho admin feedback stats ──
+openpyxl==3.1.5
