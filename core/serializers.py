@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification, WorkerAvailability
+from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification, WorkerAvailability, LandingSurvey, LandingSignup
 
 
 # 1. Dịch dữ liệu Người dùng (Dùng cho Đăng ký/Đăng nhập & Màn hình Hồ sơ)
@@ -184,4 +184,68 @@ class WorkerAvailabilitySerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         'Khung giờ này bị trùng với một khung giờ đã khai báo. Vui lòng chỉnh sửa hoặc xoá khung cũ.'
                     )
+        return attrs
+
+
+# ────────────────────────────────────────────────────────────────────
+# LANDING PAGE — Serializers cho khảo sát & đăng ký công khai
+# ────────────────────────────────────────────────────────────────────
+
+class LandingSurveySerializer(serializers.ModelSerializer):
+    """Serializer cho form khảo sát/góp ý (anonymous)."""
+
+    class Meta:
+        model = LandingSurvey
+        fields = ['role', 'interests', 'necessity', 'feedback', 'email']
+
+    def validate_email(self, value):
+        # Email optional — cho phép blank string
+        if value == '' or value is None:
+            return ''
+        return value
+
+    def validate_interests(self, value):
+        valid = {c[0] for c in LandingSurvey.INTEREST_CHOICES}
+        if not isinstance(value, list):
+            raise serializers.ValidationError('interests phải là danh sách.')
+        for item in value:
+            if item not in valid:
+                raise serializers.ValidationError(
+                    f'Giá trị không hợp lệ: {item}')
+        return value
+
+
+class LandingSignupSerializer(serializers.ModelSerializer):
+    """Serializer cho form đăng ký tư vấn/dùng thử (anonymous)."""
+
+    class Meta:
+        model = LandingSignup
+        fields = ['full_name', 'phone', 'email', 'role', 'signup_type',
+                  'preferred_time_slot', 'trial_consent', 'note']
+
+    def validate_phone(self, value):
+        import re
+        cleaned = re.sub(r'[\s+()-]', '', value)
+        if not re.match(r'^[0-9]{9,14}$', cleaned):
+            raise serializers.ValidationError(
+                'Số điện thoại không hợp lệ (cần 9–14 chữ số).')
+        return value
+
+    def validate(self, attrs):
+        signup_type = attrs.get('signup_type', '')
+
+        # Tư vấn: khung giờ gọi lại là bắt buộc
+        if signup_type == 'tu-van':
+            if not attrs.get('preferred_time_slot'):
+                raise serializers.ValidationError({
+                    'preferred_time_slot': 'Vui lòng chọn khung giờ gọi lại.'
+                })
+
+        # Dùng thử: checkbox đồng ý là bắt buộc
+        if signup_type == 'dung-thu':
+            if not attrs.get('trial_consent'):
+                raise serializers.ValidationError({
+                    'trial_consent': 'Bạn phải đồng ý để được kích hoạt dùng thử.'
+                })
+
         return attrs

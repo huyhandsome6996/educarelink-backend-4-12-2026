@@ -26,6 +26,8 @@ from .views import (
     WorkerAvailabilityListCreateAPIView, WorkerAvailabilityDetailAPIView,
     SmartMatchAPIView,
     geocode_proxy,
+    # Landing page (public)
+    LandingSurveyAPIView, LandingSignupAPIView,
 )
 # B4 — Phân hạng CarePartner: các view dưới đây là bản override của view gốc
 # (trong core.views) có bổ sung field tier, trỏ URL về tier_views để không
@@ -142,4 +144,8 @@ urlpatterns = [
     path('admin/workers/<int:user_id>/set-tier/', AdminSetWorkerTierAPIView.as_view(), name='admin-set-worker-tier'),
     # B4 — Admin tính lại hạng theo rule (bỏ override)
     path('admin/workers/<int:user_id>/recompute-tier/', AdminRecomputeWorkerTierAPIView.as_view(), name='admin-recompute-worker-tier'),
+
+    # Landing page — public API (không cần auth)
+    path('landing/survey/', LandingSurveyAPIView.as_view(), name='landing-survey'),
+    path('landing/signup/', LandingSignupAPIView.as_view(), name='landing-signup'),
 ]

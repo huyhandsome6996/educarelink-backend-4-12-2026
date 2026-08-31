@@ -137,3 +137,12 @@ class WorkerEarningsView(TemplateView):
     """Trang thu nhập CarePartner (earnings + kỳ hoa hồng QR —
     parity mobile MyEarningsScreen + SettlementDetailScreen)."""
     template_name = "frontend/worker_earnings.html"
+
+
+class LandingPageView(TemplateView):
+    """Trang landing page công khai (khảo sát + đăng ký tư vấn/dùng thử).
+
+    Trang marketing dành cho người chưa có tài khoản. Không cần đăng nhập.
+    Route: /landing/
+    """
+    template_name = "frontend/landing.html"
