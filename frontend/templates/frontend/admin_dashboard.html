@@ -821,6 +821,11 @@
                 <span class="icon">&#128225;</span>
                 Theo d&#245;i an to&#224;n
             </div>
+            <div class="nav-item" onclick="switchTab('feedback_stats')">
+                <span class="icon">📊</span>
+                Thống kê & AI
+                <span class="nav-badge" id="feedbackStatsBadge" style="display:none;background:#22c55e;">0</span>
+            </div>
             <div class="nav-item" onclick="switchTab('moderation')">
                 <span class="icon">&#128737;</span>
                 Ki&#7875;m duy&#7879;t AI
@@ -909,6 +914,78 @@
             </div>
             <div id="tableBody">
                 <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Feedback Stats Panel -->
+        <div id="feedbackStatsPanel" style="display:none;">
+            <div style="max-width:1200px;margin:0 auto;">
+                <!-- Controls -->
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
+                    <select id="feedbackDays" onchange="loadFeedbackStats()" style="padding:10px 14px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#e2e8f0;font-size:13px;font-weight:600;cursor:pointer;">
+                        <option value="7">7 ngày qua</option>
+                        <option value="14">14 ngày qua</option>
+                        <option value="30" selected>30 ngày qua</option>
+                        <option value="90">90 ngày qua</option>
+                        <option value="365">1 năm</option>
+                    </select>
+                    <button onclick="exportFeedbackExcel()" style="padding:10px 18px;border:none;border-radius:10px;background:#22c55e;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+                        📥 Xuất Excel
+                    </button>
+                    <button onclick="runAIAnalysis()" id="aiAnalysisBtn" style="padding:10px 18px;border:none;border-radius:10px;background:#F26522;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;" onmouseover="this.style.background='#D4541E'" onmouseout="this.style.background='#F26522'">
+                        🤖 Phân tích AI
+                    </button>
+                    <button onclick="loadFeedbackStats()" style="padding:10px 14px;border:1px solid #334155;border-radius:10px;background:#334155;color:#e2e8f0;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">
+                        🔄 Làm mới
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div id="feedbackStatsCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px;"></div>
+
+                <!-- Charts Row -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;" id="feedbackChartsRow">
+                    <!-- Chart: Theo loại -->
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                        <h3 style="font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:16px;">📈 Góp ý theo loại</h3>
+                        <div id="chartByType"></div>
+                    </div>
+                    <!-- Chart: Theo ngày -->
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                        <h3 style="font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:16px;">📅 Góp ý theo ngày</h3>
+                        <div id="chartByDate"></div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+                    <!-- Chart: Dịch vụ quan tâm -->
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                        <h3 style="font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:16px;">⭐ Dịch vụ quan tâm nhất</h3>
+                        <div id="chartByInterest"></div>
+                    </div>
+                    <!-- Chart: Đăng ký -->
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                        <h3 style="font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:16px;">📋 Đăng ký tư vấn / dùng thử</h3>
+                        <div id="chartSignup"></div>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Panel -->
+                <div id="aiAnalysisPanel" style="display:none;background:#1e293b;border:1px solid #334155;border-radius:14px;padding:24px;margin-bottom:24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">🤖 Phân tích AI</h3>
+                        <span style="font-size:11px;color:#64748b;">Gemini 2.5 Flash</span>
+                    </div>
+                    <div id="aiAnalysisContent" style="color:#cbd5e1;font-size:14px;line-height:1.7;"></div>
+                </div>
+
+                <!-- Table: Góp ý gần nhất -->
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;">
+                    <div style="padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">📋 Góp ý gần nhất</h3>
+                    </div>
+                    <div id="recentFeedbackTable" style="overflow-x:auto;"></div>
+                </div>
             </div>
         </div>
 
@@ -1492,6 +1569,8 @@
             currentTab = tab;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             resetStatsIcons();
+            // Ẩn feedback stats panel cho mọi tab khác
+            document.getElementById('feedbackStatsPanel').style.display = 'none';
             const navItems = document.querySelectorAll('.nav-item');
             if (tab === 'pending') {
                 navItems[0].classList.add('active');
@@ -1597,7 +1676,7 @@
                 return;
             } else if (tab === 'moderation') {
                 // Parity mobile AdminModerationScreen
-                navItems[10].classList.add('active');
+                navItems[11].classList.add('active');
                 document.getElementById('tableTitle').textContent = 'Kiểm duyệt công việc (AI)';
                 document.getElementById('pageTitle').textContent = 'Kiểm duyệt AI';
                 document.getElementById('pageSubtitle').textContent = 'Task needs review, override AI, duyệt lại';
@@ -1606,6 +1685,19 @@
                 document.getElementById('aiChatPanel').classList.remove('active');
                 document.querySelector('.refresh-btn').style.display = '';
                 loadAdminModeration();
+                if (window.innerWidth < 1024) closeSidebar();
+                return;
+            } else if (tab === 'feedback_stats') {
+                // Thống kê landing page + AI phân tích
+                navItems[10].classList.add('active');
+                document.getElementById('pageTitle').textContent = 'Thống kê & AI';
+                document.getElementById('pageSubtitle').textContent = 'Phân tích dữ liệu góp ý, đăng ký landing page bằng AI, xuất Excel';
+                document.querySelector('.stats-row').style.display = 'none';
+                document.querySelector('.table-container').style.display = 'none';
+                document.getElementById('aiChatPanel').classList.remove('active');
+                document.getElementById('feedbackStatsPanel').style.display = '';
+                document.querySelector('.refresh-btn').style.display = 'none';
+                loadFeedbackStats();
                 if (window.innerWidth < 1024) closeSidebar();
                 return;
             }
@@ -2678,6 +2770,208 @@
                     else { badge.style.display = 'none'; }
                 }
             } catch (e) {}
+        }
+
+        // ===== FEEDBACK STATS & AI =====
+        let feedbackStatsData = null;
+
+        async function loadFeedbackStats() {
+            const days = document.getElementById('feedbackDays').value;
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/feedback-stats/?days=${days}`);
+                if (!res.ok) throw new Error('Không thể tải thống kê');
+                feedbackStatsData = await res.json();
+                renderFeedbackStats(feedbackStatsData);
+            } catch (e) {
+                document.getElementById('feedbackStatsCards').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#ef4444;padding:40px;">Lỗi: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function renderFeedbackStats(data) {
+            const s = data.surveys, sig = data.signups;
+            const total = s.total + sig.total;
+
+            // Cập nhật badge
+            const badge = document.getElementById('feedbackStatsBadge');
+            if (total > 0) { badge.style.display = ''; badge.textContent = total; }
+            else { badge.style.display = 'none'; }
+
+            // Cards
+            document.getElementById('feedbackStatsCards').innerHTML = `
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                    <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">Tổng phản hồi</div>
+                    <div style="font-size:32px;font-weight:900;color:#f1f5f9;font-family:'Manrope',sans-serif;">${total}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${data.period_days} ngày qua</div>
+                </div>
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                    <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">Góp ý</div>
+                    <div style="font-size:32px;font-weight:900;color:#F26522;font-family:'Manrope',sans-serif;">${s.total}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${s.by_type.map(t => (t.feedback_type==='carepartner'?'CP':'PH')+': '+t.count).join(' | ') || 'Chưa có'}</div>
+                </div>
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
+                    <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">Đăng ký</div>
+                    <div style="font-size:32px;font-weight:900;color:#22c55e;font-family:'Manrope',sans-serif;">${sig.total}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${sig.by_type.map(t => t.signup_type+': '+t.count).join(' | ') || 'Chưa có'}</div>
+                </div>
+            `;
+
+            // Chart: By type (donut)
+            const typeLabels = {'carepartner': 'Người đồng hành', 'parent': 'Phụ huynh'};
+            const typeData = s.by_type;
+            if (typeData.length) {
+                const maxCount = Math.max(...typeData.map(t => t.count), 1);
+                document.getElementById('chartByType').innerHTML = typeData.map(t => `
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                            <span style="color:#e2e8f0;font-weight:600;">${typeLabels[t.feedback_type] || t.feedback_type}</span>
+                            <span style="color:#94a3b8;font-weight:700;">${t.count} (${s.total ? Math.round(t.count/s.total*100) : 0}%)</span>
+                        </div>
+                        <div style="height:8px;background:#0f172a;border-radius:4px;overflow:hidden;">
+                            <div style="height:100%;width:${Math.round(t.count/maxCount*100)}%;background:${t.feedback_type==='parent'?'#6366f1':'#F26522'};border-radius:4px;transition:width .5s;"></div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('chartByType').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">Chưa có dữ liệu</div>';
+            }
+
+            // Chart: By date (bar)
+            const dateData = s.by_date;
+            if (dateData.length) {
+                const maxD = Math.max(...dateData.map(d => d.count), 1);
+                document.getElementById('chartByDate').innerHTML = `<div style="display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:8px;">` +
+                    dateData.slice(-14).map(d => {
+                        const dayStr = d.date ? new Date(d.date).toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'}) : '';
+                        const h = Math.max(Math.round(d.count / maxD * 100), 4);
+                        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            <span style="font-size:10px;color:#94a3b8;font-weight:700;">${d.count}</span>
+                            <div style="width:100%;height:${h}%;background:#F26522;border-radius:4px 4px 0 0;min-height:4px;transition:height .5s;"></div>
+                            <span style="font-size:9px;color:#475569;">${dayStr}</span>
+                        </div>`;
+                    }).join('') + '</div>';
+            } else {
+                document.getElementById('chartByDate').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">Chưa có dữ liệu</div>';
+            }
+
+            // Chart: By interest
+            const intData = s.by_interest;
+            if (intData.length) {
+                const maxI = Math.max(...intData.map(i => i.count), 1);
+                document.getElementById('chartByInterest').innerHTML = intData.map(i => `
+                    <div style="margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
+                            <span style="color:#e2e8f0;">${escapeHtml(i.label)}</span>
+                            <span style="color:#94a3b8;font-weight:700;">${i.count}</span>
+                        </div>
+                        <div style="height:6px;background:#0f172a;border-radius:3px;overflow:hidden;">
+                            <div style="height:100%;width:${Math.round(i.count/maxI*100)}%;background:#2DB84B;border-radius:3px;transition:width .5s;"></div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('chartByInterest').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">Chưa có dữ liệu</div>';
+            }
+
+            // Chart: Signup
+            const sigTypeData = sig.by_type;
+            const sigRoleData = sig.by_role;
+            let signupHtml = '';
+            if (sigTypeData.length) {
+                const typeLabels2 = {'tu-van': 'Tư vấn', 'dung-thu': 'Dùng thử'};
+                const maxSig = Math.max(...sigTypeData.map(t => t.count), 1);
+                signupHtml += '<div style="margin-bottom:14px;"><div style="font-size:12px;color:#64748b;margin-bottom:8px;font-weight:600;">Theo loại</div>';
+                signupHtml += sigTypeData.map(t => `
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span style="color:#e2e8f0;">${typeLabels2[t.signup_type]||t.signup_type}</span><span style="color:#94a3b8;font-weight:700;">${t.count}</span></div>
+                        <div style="height:6px;background:#0f172a;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.round(t.count/maxSig*100)}%;background:#22c55e;border-radius:3px;"></div></div>
+                    </div>`).join('') + '</div>';
+            }
+            if (sigRoleData.length) {
+                const roleLabels = {'phu-huynh': 'Phụ huynh', 'carepartner': 'Carepartner'};
+                const maxSigR = Math.max(...sigRoleData.map(r => r.count), 1);
+                signupHtml += '<div><div style="font-size:12px;color:#64748b;margin-bottom:8px;font-weight:600;">Theo vai trò</div>';
+                signupHtml += sigRoleData.map(r => `
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span style="color:#e2e8f0;">${roleLabels[r.role]||r.role}</span><span style="color:#94a3b8;font-weight:700;">${r.count}</span></div>
+                        <div style="height:6px;background:#0f172a;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.round(r.count/maxSigR*100)}%;background:#6366f1;border-radius:3px;"></div></div>
+                    </div>`).join('') + '</div>';
+            }
+            document.getElementById('chartSignup').innerHTML = signupHtml || '<div style="text-align:center;color:#64748b;padding:20px;">Chưa có dữ liệu</div>';
+        }
+
+        function exportFeedbackExcel() {
+            const days = document.getElementById('feedbackDays').value;
+            const token = localStorage.getItem('access_token');
+            if (!token) { alert('Vui lòng đăng nhập lại'); return; }
+            window.open(`${API_BASE}/admin/feedback-stats/export/?days=${days}`, '_blank');
+        }
+
+        async function runAIAnalysis() {
+            const btn = document.getElementById('aiAnalysisBtn');
+            const panel = document.getElementById('aiAnalysisPanel');
+            const content = document.getElementById('aiAnalysisContent');
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang phân tích...';
+            panel.style.display = '';
+            content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+            const days = document.getElementById('feedbackDays').value;
+            try {
+                const res = await fetch(`${API_BASE}/admin/feedback-stats/ai-analysis/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('access_token') },
+                    body: JSON.stringify({ days: parseInt(days) })
+                });
+                const data = await res.json();
+                renderAIAnalysis(data);
+            } catch (e) {
+                content.innerHTML = `<div style="color:#ef4444;">Lỗi: ${escapeHtml(e.message)}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🤖 Phân tích AI';
+            }
+        }
+
+        function renderAIAnalysis(data) {
+            const content = document.getElementById('aiAnalysisContent');
+            const src = data.fallback || data;
+            let html = '';
+
+            if (src.tong_quan) {
+                html += `<div style="margin-bottom:16px;padding:16px;background:rgba(242,101,34,0.08);border-left:3px solid #F26522;border-radius:0 10px 10px 0;"><b style="color:#F26522;">Tổng quan:</b> ${escapeHtml(src.tong_quan)}</div>`;
+            }
+
+            if (src.xu_huong && src.xu_huong.length) {
+                html += '<div style="margin-bottom:16px;"><b style="color:#f1f5f9;">Xu hướng:</b><ul style="margin-top:8px;padding-left:20px;">';
+                src.xu_huong.forEach(x => {
+                    const mucDo = {cao:'#ef4444', trung_binh:'#f59e0b', thap:'#22c55e'}[x.muc_do] || '#94a3b8';
+                    html += `<li style="margin-bottom:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${mucDo};margin-right:8px;"></span>${escapeHtml(x.mo_ta)} <span style="color:${mucDo};font-size:11px;font-weight:700;margin-left:4px;">[${x.muc_do}]</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            if (src.de_xuat && src.de_xuat.length) {
+                html += '<div style="margin-bottom:16px;"><b style="color:#f1f5f9;">Đề xuất:</b><ul style="margin-top:8px;padding-left:20px;">';
+                src.de_xuat.forEach(d => {
+                    const uuTien = {cao:'#ef4444', trung_binh:'#f59e0b', thap:'#22c55e'}[d.uu_tien] || '#94a3b8';
+                    html += `<li style="margin-bottom:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${uuTien};margin-right:8px;"></span>${escapeHtml(d.hanh_dong)} <span style="color:${uuTien};font-size:11px;font-weight:700;margin-left:4px;">[${d.uu_tien}]</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            if (src.so_lieu_noi_bat && src.so_lieu_noi_bat.length) {
+                html += '<div style="margin-bottom:16px;"><b style="color:#f1f5f9;">Số liệu nổi bật:</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+                src.so_lieu_noi_bat.forEach(s => {
+                    html += `<span style="background:#334155;color:#e2e8f0;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;">${escapeHtml(s)}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            if (data.error) {
+                html += `<div style="margin-top:12px;padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;font-size:12px;color:#f59e0b;">⚠️ ${escapeHtml(data.error)}</div>`;
+            }
+
+            content.innerHTML = html || '<div style="color:#64748b;">Không có kết quả phân tích.</div>';
         }
     </script>
 
