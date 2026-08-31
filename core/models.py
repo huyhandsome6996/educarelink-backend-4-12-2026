@@ -392,3 +392,97 @@ class WorkerAvailability(models.Model):
 
     def __str__(self):
         return f"{self.worker.username} — {self.get_weekday_display()} {self.start_time}–{self.end_time}"
+
+
+# ────────────────────────────────────────────────────────────────────
+# LANDING PAGE — Khảo sát góp ý & Đăng ký tư vấn/dùng thử
+# ────────────────────────────────────────────────────────────────────
+
+class LandingSurvey(models.Model):
+    """Dữ liệu khảo sát/góp ý từ trang landing công khai.
+
+    Form không yêu cầu đăng nhập. Email là optional.
+    """
+    ROLE_CHOICES = (
+        ('phu-huynh', 'Phụ huynh tìm người chăm sóc'),
+        ('carepartner', 'Sinh viên muốn làm Carepartner'),
+        ('doi-tac', 'Trường học / tổ chức đối tác'),
+        ('khac', 'Khác'),
+    )
+    NECESSITY_CHOICES = (
+        ('rat-can', 'Rất cần thiết — đang tìm giải pháp ngay'),
+        ('can', 'Cần thiết — đang cân nhắc'),
+        ('binh-thuong', 'Bình thường — tìm hiểu thêm'),
+        ('chua-can', 'Chưa cần thiết lúc này'),
+    )
+    INTEREST_CHOICES = (
+        ('gia-su', 'Gia sư tại nhà'),
+        ('cham-soc-tre', 'Chăm sóc trẻ em'),
+        ('don-dep', 'Dọn dẹp nhà cửa'),
+        ('mua-sam', 'Mua sắm hộ'),
+        ('an-toan', 'Định vị & an toàn thời gian thực'),
+        ('nhat-ky', 'Nhật ký chăm sóc'),
+    )
+
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    interests = models.JSONField(default=list, blank=True,
+                                  help_text='Danh sách giá trị INTEREST_CHOICES')
+    necessity = models.CharField(max_length=20, choices=NECESSITY_CHOICES)
+    feedback = models.TextField(blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Khảo sát landing page'
+        verbose_name_plural = 'Khảo sát landing page'
+
+    def __str__(self):
+        return f"Survey #{self.id} ({self.get_role_display()})"
+
+
+class LandingSignup(models.Model):
+    """Đăng ký tư vấn miễn phí hoặc dùng thử miễn phí từ trang landing.
+
+    Form không yêu cầu đăng nhập.
+    """
+    ROLE_CHOICES = (
+        ('phu-huynh', 'Phụ huynh'),
+        ('carepartner', 'Sinh viên Carepartner'),
+    )
+    TYPE_CHOICES = (
+        ('tu-van', 'Tư vấn miễn phí'),
+        ('dung-thu', 'Dùng thử miễn phí'),
+    )
+    TIME_SLOT_CHOICES = (
+        ('sang', 'Buổi sáng (8:00 – 11:00)'),
+        ('chieu', 'Buổi chiều (13:00 – 17:00)'),
+        ('toi', 'Buổi tối (18:00 – 20:00)'),
+    )
+
+    full_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=15)
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    signup_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    preferred_time_slot = models.CharField(
+        max_length=10, choices=TIME_SLOT_CHOICES,
+        blank=True, default='',
+        help_text='Khung giờ gọi lại (chỉ cho tư vấn)'
+    )
+    trial_consent = models.BooleanField(
+        default=False,
+        help_text='Đồng ý kích hoạt dùng thử (chỉ cho dùng thử)'
+    )
+    note = models.TextField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Đăng ký landing page'
+        verbose_name_plural = 'Đăng ký landing page'
+
+    def __str__(self):
+        return f"Signup #{self.id} — {self.full_name} ({self.get_signup_type_display()})"

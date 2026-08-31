@@ -24,7 +24,7 @@ class SiteAccessGateMiddleware:
       - Bật lại được ngay không cần deploy code
     """
 
-    EXEMPT_PREFIXES = ("/api/", "/static/", "/media/")
+    EXEMPT_PREFIXES = ("/api/", "/static/", "/media/", "/landing/")
     GATE_PATH = "/site-gate/"
     SESSION_KEY = "site_gate_passed"
 

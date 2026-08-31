@@ -13,7 +13,8 @@ import logging
 import requests
 from django.db import models as db_models
 from django.utils import timezone
-from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability
+from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability, LandingSurvey, LandingSignup
+from .serializers import LandingSurveySerializer, LandingSignupSerializer
 
 logger = logging.getLogger('educarelink.core.views')
 
@@ -2991,3 +2992,59 @@ def geocode_proxy(request):
         return JsonResponse({'error': 'Geocoding server timeout'}, status=504)
     except requests.RequestException as exc:
         return JsonResponse({'error': f'Geocoding failed: {exc}'}, status=502)
+
+
+# ────────────────────────────────────────────────────────────────────
+# LANDING PAGE — API công khai (không yêu cầu đăng nhập)
+# ────────────────────────────────────────────────────────────────────
+
+def _get_client_ip(request):
+    """Lấy IP thật của client (x-forwarded-for nếu có proxy)."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+class LandingSurveyAPIView(APIView):
+    """API nhận dữ liệu khảo sát/góp ý từ trang landing (anonymous)."""
+    permission_classes = [AllowAny]
+    throttle_scope = 'landing_form'
+
+    def post(self, request):
+        # Honeypot check — nếu field ẩn bị điền → spam bot
+        if request.data.get('website_url'):
+            # Trả 200 để không tiết lộ cho bot
+            return Response({'ok': True})
+
+        serializer = LandingSurveySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'error': serializer.errors}, status=400)
+
+        obj = serializer.save(ip_address=_get_client_ip(request))
+        return Response({
+            'ok': True,
+            'id': obj.id,
+        }, status=201)
+
+
+class LandingSignupAPIView(APIView):
+    """API nhận đăng ký tư vấn/dùng thử từ trang landing (anonymous)."""
+    permission_classes = [AllowAny]
+    throttle_scope = 'landing_form'
+
+    def post(self, request):
+        # Honeypot check
+        if request.data.get('website_url'):
+            return Response({'ok': True})
+
+        serializer = LandingSignupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'error': serializer.errors}, status=400)
+
+        obj = serializer.save(ip_address=_get_client_ip(request))
+        return Response({
+            'ok': True,
+            'id': obj.id,
+            'signup_type': obj.signup_type,
+        }, status=201)

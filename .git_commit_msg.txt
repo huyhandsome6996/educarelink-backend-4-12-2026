@@ -1,0 +1,15 @@
+Thêm trang landing page công khai (khảo sát + đăng ký tư vấn/dùng thử)
+
+- Models: LandingSurvey, LandingSignup (core/models.py)
+- Migration: 0021_landing_survey_signup
+- Serializers: LandingSurveySerializer, LandingSignupSerializer (core/serializers.py)
+- Views: LandingSurveyAPIView, LandingSignupAPIView (core/views.py)
+- URLs: /api/landing/survey/, /api/landing/signup/ (core/urls.py)
+- Template: landing.html (frontend/templates/frontend/)
+- Route: /landing/ (frontend/urls.py)
+- Site Gate: thêm /landing/ vào EXEMPT_PREFIXES (core/middleware.py)
+- Throttle: landing_form 5/phút (backend/settings.py)
+- Tests: 19 tests (core/tests_landing.py)
+- Chống spam: honeypot field + throttle
+- Logo: /static/images/logo.png (đúng logo chính thức)
+- Full test suite: 488/488 pass

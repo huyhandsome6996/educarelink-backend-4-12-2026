@@ -1,0 +1,1016 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>EduCareLink — Đăng ký tư vấn, dùng thử miễn phí & góp ý cho chúng tôi</title>
+    <meta name="description" content="Tìm hiểu EduCareLink, nền tảng kết nối Phụ huynh với Sinh viên Carepartner đáng tin cậy. Đăng ký tư vấn miễn phí, dùng thử ngay, hoặc góp ý giúp chúng tôi hoàn thiện sản phẩm."/>
+
+    <!-- Fonts: bộ font thương hiệu EduCareLink (giống splash.html) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <!-- Material Symbols Outlined Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS đã build của dự án (giống splash.html) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind-radius-a.css' %}">
+
+    <style>
+      /* ==========================================================
+         LANDING PAGE — Custom CSS
+         Token màu lấy từ shared-theme.js (primary #F26522, secondary #2DB84B, …).
+         Riêng --btn-primary / --btn-secondary là bản tối hơn cùng tông màu,
+         dùng CHO NÚT CHỮ TRẮNG để đạt tỉ lệ tương phản AA (4.5:1).
+         --radius-card / --radius-btn / --radius-input là page-specific.
+         ========================================================== */
+      :root{
+        --primary: #F26522;
+        --primary-dark: #D4541E;
+        --primary-light: #FFF4ED;
+        --primary-soft: #FFCFB3;
+        --btn-primary: #C4521C;
+        --btn-primary-hover: #A8430D;
+        --secondary: #2DB84B;
+        --secondary-dark: #1E9439;
+        --secondary-light: #EAFBEF;
+        --btn-secondary: #1F8A3B;
+        --btn-secondary-hover: #196E2F;
+        --bg: #F7F7F7;
+        --surface: #FFFFFF;
+        --text: #1A1A2E;
+        --text-secondary: #5B6270;
+        --text-muted: #8B93A1;
+        --border: #E4E6EA;
+        --error: #C0271B;
+        --success: var(--btn-secondary);
+        --radius-card: 1.5rem;
+        --radius-btn: 9999px;
+        --radius-input: 0.9rem;
+      }
+
+      *{ box-sizing:border-box; }
+      html{ scroll-behavior:smooth; }
+      body{
+        margin:0;
+        background:var(--bg);
+        color:var(--text);
+        font-family:'Plus Jakarta Sans',sans-serif;
+        -webkit-font-smoothing:antialiased;
+      }
+      h1,h2,h3,h4{ font-family:'Manrope',sans-serif; margin:0; }
+      p{ margin:0; }
+      a{ color:inherit; }
+      img{ display:block; max-width:100%; }
+      ::selection{ background:var(--primary-soft); }
+
+      .material-symbols-outlined{
+        font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;
+        line-height:1;
+      }
+      .material-symbols-outlined.filled{ font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
+
+      a:focus-visible, button:focus-visible, input:focus-visible,
+      textarea:focus-visible, select:focus-visible, summary:focus-visible,
+      [tabindex]:focus-visible{
+        outline:3px solid var(--btn-primary);
+        outline-offset:2px;
+        border-radius:4px;
+      }
+
+      .wrap{ max-width:1180px; margin:0 auto; padding:0 20px; }
+      .skip-link{
+        position:absolute; left:12px; top:-60px; z-index:100;
+        background:var(--text); color:#fff; padding:12px 18px; border-radius:10px;
+        font-weight:700; transition:top .2s ease;
+      }
+      .skip-link:focus{ top:12px; }
+
+      /* ---------- NAV ---------- */
+      .nav{
+        position:sticky; top:0; z-index:50;
+        background:rgba(255,255,255,.92); backdrop-filter:blur(10px);
+        border-bottom:1px solid var(--border);
+      }
+      .nav-row{ display:flex; align-items:center; justify-content:space-between; height:72px; }
+      .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+      .brand-mark{ width:38px; height:38px; border-radius:11px; flex-shrink:0; }
+      .brand-name{ font-family:'Manrope',sans-serif; font-weight:800; font-size:1.3rem; color:var(--primary); letter-spacing:-.01em; }
+      .nav-links{ display:none; align-items:center; gap:28px; }
+      .nav-links a{ font-weight:600; font-size:.95rem; text-decoration:none; color:var(--text); padding:6px 2px; border-bottom:2px solid transparent; }
+      .nav-links a:hover{ color:var(--btn-primary); }
+      .nav-cta{ display:none; }
+      .nav-menu-btn{
+        display:inline-flex; align-items:center; justify-content:center;
+        width:44px; height:44px; border-radius:10px; border:1px solid var(--border);
+        background:#fff; cursor:pointer;
+      }
+      @media(min-width:900px){
+        .nav-links{ display:flex; }
+        .nav-cta{ display:inline-flex; }
+        .nav-menu-btn{ display:none; }
+      }
+      #mobile-menu{ display:none; border-top:1px solid var(--border); background:#fff; }
+      #mobile-menu.open{ display:block; }
+      #mobile-menu .wrap{ padding:16px 20px 22px; display:flex; flex-direction:column; gap:6px; }
+      #mobile-menu a{ text-decoration:none; color:var(--text); font-weight:600; padding:12px 10px; border-radius:10px; }
+      #mobile-menu a:hover{ background:var(--primary-light); }
+
+      /* ---------- BUTTONS ---------- */
+      .btn{
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:.95rem;
+        padding:14px 26px; border-radius:var(--radius-btn); border:2px solid transparent;
+        cursor:pointer; text-decoration:none; transition:transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+        min-height:48px; line-height:1;
+      }
+      .btn:active{ transform:translateY(1px); }
+      .btn-primary{ background:var(--btn-primary); color:#fff; box-shadow:0 8px 20px rgba(196,82,28,.28); }
+      .btn-primary:hover{ background:var(--btn-primary-hover); box-shadow:0 10px 24px rgba(196,82,28,.34); }
+      .btn-secondary{ background:var(--btn-secondary); color:#fff; box-shadow:0 8px 20px rgba(31,138,59,.28); }
+      .btn-secondary:hover{ background:var(--btn-secondary-hover); }
+      .btn-ghost{ background:#fff; color:var(--btn-primary); border-color:var(--primary-soft); }
+      .btn-ghost:hover{ border-color:var(--btn-primary); background:var(--primary-light); }
+      .btn-ghost-white{ background:transparent; color:#fff; border-color:rgba(255,255,255,.55); }
+      .btn-ghost-white:hover{ background:rgba(255,255,255,.14); border-color:#fff; }
+      .btn-block{ width:100%; }
+      .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+      .eyebrow{
+        display:inline-flex; align-items:center; gap:8px;
+        background:var(--primary-light); color:var(--btn-primary);
+        font-weight:700; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase;
+        padding:7px 16px; border-radius:9999px;
+      }
+      .eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--secondary); }
+
+      /* ---------- HERO ---------- */
+      .hero{
+        position:relative; overflow:hidden;
+        padding:64px 0 72px;
+        background:
+          radial-gradient(700px 420px at 85% -10%, rgba(242,101,34,.10), transparent 60%),
+          radial-gradient(600px 400px at -10% 30%, rgba(45,184,75,.08), transparent 60%),
+          var(--bg);
+      }
+      .hero-grid{ display:grid; gap:44px; align-items:center; }
+      @media(min-width:960px){ .hero-grid{ grid-template-columns: 1.05fr .95fr; } }
+      .hero h1{ font-size:clamp(2rem, 4.6vw, 3.1rem); font-weight:800; line-height:1.15; letter-spacing:-.02em; margin:18px 0 18px; }
+      .hero h1 .accent{ color:var(--primary); }
+      .hero p.lead{ font-size:1.08rem; color:var(--text-secondary); line-height:1.7; max-width:56ch; }
+      .hero-ctas{ display:flex; flex-wrap:wrap; gap:14px; margin-top:30px; }
+      .hero-link-secondary{
+        margin-top:22px; display:inline-flex; align-items:center; gap:6px;
+        font-weight:700; font-size:.92rem; color:var(--text-secondary); text-decoration:none; border-bottom:1px dashed var(--text-muted);
+        padding-bottom:2px;
+      }
+      .hero-link-secondary:hover{ color:var(--btn-primary); border-color:var(--btn-primary); }
+
+      .trust-row{ display:flex; flex-wrap:wrap; gap:22px; margin-top:34px; }
+      .trust-item{ display:flex; align-items:center; gap:9px; font-size:.9rem; color:var(--text-secondary); font-weight:600; }
+      .trust-item .material-symbols-outlined{ color:var(--secondary); font-size:20px; }
+
+      .hero-card{
+        background:var(--surface); border-radius:28px; border:1px solid var(--border);
+        box-shadow:0 26px 60px rgba(26,26,46,.09);
+        padding:26px; position:relative;
+      }
+      .hero-card-row{ display:flex; align-items:flex-start; gap:14px; padding:14px 4px; border-bottom:1px solid var(--border); }
+      .hero-card-row:last-child{ border-bottom:none; }
+      .hero-card-icon{ width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+      .hero-card-title{ font-weight:700; font-size:.98rem; margin-bottom:2px; }
+      .hero-card-desc{ font-size:.86rem; color:var(--text-secondary); line-height:1.55; }
+
+      /* ---------- SECTION SHELL ---------- */
+      section{ padding:76px 0; }
+      .section-head{ max-width:640px; margin:0 auto 44px; text-align:center; }
+      .section-head h2{ font-size:clamp(1.7rem,3.2vw,2.5rem); font-weight:800; letter-spacing:-.015em; margin:14px 0 12px; }
+      .section-head p{ color:var(--text-secondary); font-size:1.02rem; line-height:1.65; }
+
+      /* ---------- PILLARS ---------- */
+      .pillars{ display:grid; gap:20px; grid-template-columns:1fr; }
+      @media(min-width:700px){ .pillars{ grid-template-columns:repeat(2,1fr); } }
+      @media(min-width:1080px){ .pillars{ grid-template-columns:repeat(4,1fr); } }
+      .pillar{
+        background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
+        padding:26px 22px;
+      }
+      .pillar-icon{ width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+      .pillar h3{ font-size:1.05rem; font-weight:700; margin-bottom:8px; }
+      .pillar p{ font-size:.89rem; color:var(--text-secondary); line-height:1.6; }
+      .icon-orange{ background:var(--primary-light); color:var(--primary); }
+      .icon-green{ background:var(--secondary-light); color:var(--secondary); }
+
+      /* ---------- FEATURES ---------- */
+      .features{ background:var(--surface); }
+      .feature-grid{ display:grid; gap:18px; grid-template-columns:1fr; }
+      @media(min-width:700px){ .feature-grid{ grid-template-columns:repeat(2,1fr); } }
+      @media(min-width:1080px){ .feature-grid{ grid-template-columns:repeat(3,1fr); } }
+      .feature{
+        border:1px solid var(--border); border-radius:var(--radius-card); padding:24px;
+        background:var(--bg);
+      }
+      .feature h3{ font-size:1.02rem; font-weight:700; margin:14px 0 8px; }
+      .feature p{ font-size:.88rem; color:var(--text-secondary); line-height:1.6; }
+
+      /* ---------- FORM CARD (shared) ---------- */
+      .form-shell{ display:grid; gap:34px; }
+      @media(min-width:980px){ .form-shell{ grid-template-columns:.9fr 1.1fr; align-items:start; } }
+      .form-card{
+        background:var(--surface); border:1px solid var(--border); border-radius:24px;
+        padding:28px; box-shadow:0 18px 48px rgba(26,26,46,.06);
+      }
+      .field{ margin-bottom:20px; }
+      .field label.field-label, .field legend{
+        display:block; font-weight:700; font-size:.88rem; margin-bottom:8px; color:var(--text);
+      }
+      .field .hint{ font-size:.8rem; color:var(--text-muted); margin-top:6px; }
+      .req{ color:var(--btn-primary); }
+      input[type=text], input[type=email], input[type=tel], select, textarea{
+        width:100%; font-family:inherit; font-size:.95rem; color:var(--text);
+        padding:13px 15px; border-radius:var(--radius-input); border:1.5px solid var(--border);
+        background:#fff; min-height:48px;
+      }
+      textarea{ min-height:104px; resize:vertical; }
+      input::placeholder, textarea::placeholder{ color:var(--text-muted); }
+      input:focus, select:focus, textarea:focus{ border-color:var(--btn-primary); }
+      fieldset{ border:none; padding:0; margin:0; }
+      .choice-grid{ display:grid; gap:10px; }
+      .choice{
+        display:flex; align-items:flex-start; gap:10px; border:1.5px solid var(--border);
+        border-radius:var(--radius-input); padding:12px 14px; cursor:pointer;
+      }
+      .choice:has(input:checked){ border-color:var(--btn-primary); background:var(--primary-light); }
+      .choice input{ margin-top:3px; width:18px; height:18px; accent-color:var(--btn-primary); flex-shrink:0; }
+      .choice-text{ font-size:.9rem; font-weight:600; }
+      .choice-2col{ grid-template-columns:1fr; }
+      @media(min-width:520px){ .choice-2col{ grid-template-columns:1fr 1fr; } }
+
+      .err-msg{ display:none; align-items:center; gap:6px; color:var(--error); font-size:.82rem; font-weight:600; margin-top:7px; }
+      .field.has-error input, .field.has-error select, .field.has-error textarea{ border-color:var(--error); }
+      .field.has-error .err-msg{ display:flex; }
+
+      .form-note{ font-size:.78rem; color:var(--text-muted); line-height:1.6; margin-top:16px; }
+
+      .success-box{
+        display:none; align-items:flex-start; gap:14px;
+        background:var(--secondary-light); border:1px solid rgba(31,138,59,.25);
+        border-radius:18px; padding:20px;
+      }
+      .success-box.show{ display:flex; }
+      .success-box .material-symbols-outlined{ color:var(--btn-secondary); font-size:26px; }
+      .success-box h4{ font-size:1rem; font-weight:800; margin-bottom:4px; }
+      .success-box p{ font-size:.87rem; color:var(--text-secondary); line-height:1.6; }
+
+      /* ---------- SIDE COPY ---------- */
+      .form-side .eyebrow{ margin-bottom:16px; }
+      .form-side h2{ font-size:clamp(1.55rem,2.8vw,2.1rem); font-weight:800; letter-spacing:-.015em; margin-bottom:14px; }
+      .form-side p.lead{ color:var(--text-secondary); font-size:.98rem; line-height:1.7; margin-bottom:24px; }
+      .side-list{ display:flex; flex-direction:column; gap:16px; }
+      .side-list li{ list-style:none; display:flex; gap:12px; align-items:flex-start; }
+      .side-list .num{
+        width:28px; height:28px; border-radius:9px; background:var(--primary); color:#fff;
+        display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem; flex-shrink:0;
+      }
+      .side-list .txt{ font-size:.9rem; color:var(--text-secondary); line-height:1.55; }
+      .side-list .txt b{ color:var(--text); }
+
+      /* ---------- TABS ---------- */
+      .tabs{ display:flex; gap:8px; background:var(--bg); border-radius:16px; padding:6px; margin-bottom:24px; }
+      .tab-btn{
+        flex:1; border:none; background:transparent; padding:12px 10px; border-radius:12px;
+        font-weight:700; font-size:.88rem; color:var(--text-secondary); cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px;
+      }
+      .tab-btn[aria-selected="true"]{ background:#fff; color:var(--btn-primary); box-shadow:0 4px 14px rgba(26,26,46,.08); }
+      .tab-panel[hidden]{ display:none; }
+
+      /* ---------- SURVEY SECTION ---------- */
+      .survey-section{ background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+
+      /* ---------- FAQ ---------- */
+      .faq{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+      .faq details{
+        background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:6px 20px;
+      }
+      .faq summary{
+        cursor:pointer; list-style:none; padding:16px 0; font-weight:700; font-size:.96rem;
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+      }
+      .faq summary::-webkit-details-marker{ display:none; }
+      .faq summary .material-symbols-outlined{ transition:transform .2s ease; color:var(--text-muted); flex-shrink:0; }
+      .faq details[open] summary .material-symbols-outlined{ transform:rotate(45deg); }
+      .faq .faq-a{ padding:0 0 18px; font-size:.88rem; color:var(--text-secondary); line-height:1.65; }
+
+      /* ---------- FINAL CTA ---------- */
+      .cta-band{
+        background:linear-gradient(120deg, var(--btn-primary), var(--primary) 60%, var(--btn-primary));
+        color:#fff; text-align:center; border-radius:32px; padding:56px 28px;
+        margin:0 20px;
+      }
+      .cta-band h2{ font-size:clamp(1.6rem,3vw,2.3rem); font-weight:800; margin-bottom:14px; letter-spacing:-.015em; }
+      .cta-band p{ color:rgba(255,255,255,.9); max-width:52ch; margin:0 auto 28px; line-height:1.65; }
+      .cta-band .hero-ctas{ justify-content:center; }
+
+      /* ---------- FOOTER ---------- */
+      footer{ background:var(--text); color:#C7C9D6; padding:56px 0 28px; margin-top:76px; }
+      .foot-grid{ display:grid; gap:36px; grid-template-columns:1fr; }
+      @media(min-width:760px){ .foot-grid{ grid-template-columns:1.3fr 1fr 1fr; } }
+      footer .brand-name{ color:#fff; }
+      footer p.desc{ font-size:.85rem; line-height:1.65; max-width:32ch; margin-top:14px; color:#9BA0B0; }
+      footer h4{ color:#fff; font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px; }
+      footer ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+      footer a{ text-decoration:none; color:#C7C9D6; font-size:.88rem; }
+      footer a:hover{ color:var(--primary-soft); }
+      .foot-bottom{ border-top:1px solid #33354a; margin-top:40px; padding-top:22px; font-size:.8rem; color:#8A8FA0; text-align:center; }
+
+      @media (prefers-reduced-motion: reduce){
+        html{ scroll-behavior:auto; }
+        *{ animation:none !important; transition:none !important; }
+      }
+    </style>
+</head>
+<body>
+
+<a href="#noi-dung" class="skip-link">Chuyển đến nội dung chính</a>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="wrap nav-row">
+    <a href="#" class="brand" aria-label="EduCareLink — về đầu trang">
+      <img src="/static/images/logo.png" alt="" class="brand-mark">
+      <span class="brand-name">EduCareLink</span>
+    </a>
+    <nav class="nav-links" aria-label="Điều hướng chính">
+      <a href="#gioi-thieu">Giới thiệu</a>
+      <a href="#tinh-nang">Tính năng</a>
+      <a href="#khao-sat">Góp ý</a>
+      <a href="#faq">Câu hỏi thường gặp</a>
+    </nav>
+    <a href="#dang-ky" class="btn btn-primary nav-cta">
+      Đăng ký tư vấn / dùng thử
+    </a>
+    <button class="nav-menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mobile-menu" aria-label="Mở menu điều hướng">
+      <span class="material-symbols-outlined" id="menuIcon">menu</span>
+    </button>
+  </div>
+  <div id="mobile-menu">
+    <div class="wrap">
+      <a href="#gioi-thieu">Giới thiệu</a>
+      <a href="#tinh-nang">Tính năng</a>
+      <a href="#khao-sat">Góp ý</a>
+      <a href="#faq">Câu hỏi thường gặp</a>
+      <a href="#dang-ky" class="btn btn-primary btn-block" style="margin-top:8px;">Đăng ký tư vấn / dùng thử</a>
+    </div>
+  </div>
+</header>
+
+<main id="noi-dung">
+
+<!-- ============ HERO ============ -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Phụ huynh & Carepartner đáng tin cậy</span>
+      <h1 id="hero-heading">
+        Chăm sóc gia đình bạn,<br/>
+        <span class="accent">được xác minh và theo dõi rõ ràng</span>
+      </h1>
+      <p class="lead">
+        EduCareLink kết nối phụ huynh với sinh viên Carepartner đã xác minh danh tính,
+        cho việc gia sư, chăm sóc trẻ, dọn dẹp và mua sắm hộ. Đặt lịch tư vấn 1-1 miễn phí
+        để được giải thích cách nền tảng hoạt động, hoặc dùng thử ngay để tự trải nghiệm.
+      </p>
+      <div class="hero-ctas">
+        <a href="#dang-ky" class="btn btn-primary" data-open-tab="trial">
+          Dùng thử miễn phí
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        </a>
+        <a href="#dang-ky" class="btn btn-ghost" data-open-tab="consult">
+          <span class="material-symbols-outlined" aria-hidden="true">call</span>
+          Đăng ký tư vấn
+        </a>
+      </div>
+      <a href="#khao-sat" class="hero-link-secondary">
+        Chưa sẵn sàng đăng ký? Góp ý giúp chúng tôi hoàn thiện sản phẩm
+        <span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">south</span>
+      </a>
+
+      <div class="trust-row">
+        <div class="trust-item"><span class="material-symbols-outlined filled" aria-hidden="true">verified_user</span>500+ Carepartner đã xác minh</div>
+        <div class="trust-item"><span class="material-symbols-outlined filled" aria-hidden="true">star</span>4.8/5 đánh giá từ phụ huynh</div>
+        <div class="trust-item"><span class="material-symbols-outlined filled" aria-hidden="true">shield_lock</span>Không thu phí tư vấn</div>
+      </div>
+    </div>
+
+    <div class="hero-card" role="group" aria-label="Vì sao nên đăng ký tư vấn với EduCareLink">
+      <div class="hero-card-row">
+        <div class="hero-card-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">support_agent</span></div>
+        <div>
+          <div class="hero-card-title">Tư vấn 1-1, không ràng buộc</div>
+          <div class="hero-card-desc">Đội ngũ EduCareLink gọi lại đúng khung giờ bạn chọn, giải đáp mọi thắc mắc trước khi bạn quyết định.</div>
+        </div>
+      </div>
+      <div class="hero-card-row">
+        <div class="hero-card-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">bolt</span></div>
+        <div>
+          <div class="hero-card-title">Dùng thử không cần thẻ thanh toán</div>
+          <div class="hero-card-desc">Đăng ký dùng thử để tự duyệt hồ sơ Carepartner, xem nhật ký chăm sóc mẫu và tính năng định vị an toàn.</div>
+        </div>
+      </div>
+      <div class="hero-card-row">
+        <div class="hero-card-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">forum</span></div>
+        <div>
+          <div class="hero-card-title">Ý kiến của bạn định hình sản phẩm</div>
+          <div class="hero-card-desc">Mỗi góp ý trong khảo sát bên dưới đều được đội ngũ sản phẩm đọc trực tiếp, không qua khảo sát tự động.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GIỚI THIỆU / PILLARS ============ -->
+<section id="gioi-thieu" aria-labelledby="gioi-thieu-heading">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Vì sao chọn EduCareLink</span>
+      <h2 id="gioi-thieu-heading">Một nền tảng, bốn cam kết rõ ràng</h2>
+      <p>EduCareLink không chỉ là nơi đăng tin tìm người chăm sóc — mọi bước đều có công cụ để phụ huynh yên tâm theo dõi.</p>
+    </div>
+    <div class="pillars">
+      <div class="pillar">
+        <div class="pillar-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">fingerprint</span></div>
+        <h3>Xác minh danh tính</h3>
+        <p>Mọi Carepartner đều trải qua xác minh danh tính và kiểm tra hồ sơ trước khi được nhận việc.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">location_on</span></div>
+        <h3>Theo dõi an toàn theo thời gian thực</h3>
+        <p>Định vị trong buổi làm việc, cảnh báo khẩn cấp và xác minh bằng mã PIN ngẫu nhiên trong suốt ca chăm sóc.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">menu_book</span></div>
+        <h3>Nhật ký chăm sóc mỗi buổi</h3>
+        <p>Sau mỗi buổi, Carepartner ghi lại những gì đã làm và tâm trạng của bé, để phụ huynh theo dõi mà không cần hỏi lại.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">payments</span></div>
+        <h3>Thanh toán minh bạch</h3>
+        <p>Chi phí hiển thị rõ trước khi đặt lịch, thanh toán qua nền tảng — không giao dịch tiền mặt ngoài hệ thống.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TÍNH NĂNG ============ -->
+<section id="tinh-nang" class="features" aria-labelledby="tinh-nang-heading">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Dịch vụ & tính năng</span>
+      <h2 id="tinh-nang-heading">Được xây dựng cho từng nhu cầu gia đình</h2>
+      <p>Từ tìm người phù hợp đến giám sát trong lúc làm việc, tất cả nằm trong một nền tảng.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="pillar-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">school</span></div>
+        <h3>Gia sư tại nhà</h3>
+        <p>Hỗ trợ học tập cá nhân hóa, chọn Carepartner theo môn học và lịch rảnh phù hợp.</p>
+      </div>
+      <div class="feature">
+        <div class="pillar-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">child_care</span></div>
+        <h3>Chăm sóc trẻ em</h3>
+        <p>Đón trẻ, trông trẻ theo giờ với Carepartner đã xác minh và có đánh giá từ phụ huynh khác.</p>
+      </div>
+      <div class="feature">
+        <div class="pillar-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">cleaning_services</span></div>
+        <h3>Dọn dẹp nhà cửa</h3>
+        <p>Đặt lịch dọn dẹp linh hoạt theo giờ, không cần hợp đồng dài hạn.</p>
+      </div>
+      <div class="feature">
+        <div class="pillar-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">shopping_cart</span></div>
+        <h3>Mua sắm hộ</h3>
+        <p>Nhờ Carepartner đi chợ, mua đồ dùng cần thiết khi bạn không có thời gian.</p>
+      </div>
+      <div class="feature">
+        <div class="pillar-icon icon-orange"><span class="material-symbols-outlined filled" aria-hidden="true">emergency_home</span></div>
+        <h3>Cảnh báo khẩn cấp</h3>
+        <p>Nút báo động khẩn được gửi ngay đến phụ huynh và đội ngũ hỗ trợ nếu có sự cố trong ca làm.</p>
+      </div>
+      <div class="feature">
+        <div class="pillar-icon icon-green"><span class="material-symbols-outlined filled" aria-hidden="true">chat</span></div>
+        <h3>Trò chuyện trong ứng dụng</h3>
+        <p>Nhắn tin trực tiếp với Carepartner trong suốt thời gian làm việc và 24 giờ sau đó.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KHẢO SÁT / GÓP Ý ============ -->
+<section id="khao-sat" class="survey-section" aria-labelledby="khao-sat-heading">
+  <div class="wrap">
+    <div class="form-shell">
+      <div class="form-side">
+        <span class="eyebrow">2 phút thôi</span>
+        <h2 id="khao-sat-heading">Giúp chúng tôi hiểu đúng điều bạn cần</h2>
+        <p class="lead">Trước khi bạn đăng ký tư vấn hay dùng thử, vài câu hỏi ngắn dưới đây giúp đội ngũ EduCareLink ưu tiên đúng tính năng cho những gia đình như bạn.</p>
+        <ul class="side-list">
+          <li><span class="num" aria-hidden="true">1</span><span class="txt"><b>Không cần tài khoản</b> — điền và gửi trực tiếp, không đăng nhập.</span></li>
+          <li><span class="num" aria-hidden="true">2</span><span class="txt"><b>Có thể để trống email</b> — chỉ cần nếu bạn muốn nhận phản hồi.</span></li>
+          <li><span class="num" aria-hidden="true">3</span><span class="txt"><b>Đội ngũ sản phẩm đọc từng câu trả lời</b>, không chỉ tổng hợp số liệu.</span></li>
+        </ul>
+      </div>
+
+      <div class="form-card">
+        <form id="surveyForm" novalidate>
+          <!-- Honeypot: ẩn khỏi user thật, nhưng bot sẽ điền -->
+          <div style="position:absolute;left:-9999px;" aria-hidden="true">
+            <label for="survey-website">Đừng điền trường này</label>
+            <input type="text" id="survey-website" name="website_url" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="field" id="field-role">
+            <fieldset>
+              <legend class="field-label">Bạn đến với EduCareLink với vai trò nào? <span class="req" aria-hidden="true">*</span></legend>
+              <div class="choice-grid choice-2col" role="radiogroup" aria-required="true">
+                <label class="choice"><input type="radio" name="survey-role" value="phu-huynh" required><span class="choice-text">Phụ huynh tìm người chăm sóc</span></label>
+                <label class="choice"><input type="radio" name="survey-role" value="carepartner"><span class="choice-text">Sinh viên muốn làm Carepartner</span></label>
+                <label class="choice"><input type="radio" name="survey-role" value="doi-tac"><span class="choice-text">Trường học / tổ chức đối tác</span></label>
+                <label class="choice"><input type="radio" name="survey-role" value="khac"><span class="choice-text">Khác</span></label>
+              </div>
+              <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn một vai trò.</p>
+            </fieldset>
+          </div>
+
+          <div class="field">
+            <fieldset>
+              <legend class="field-label">Bạn quan tâm đến dịch vụ nào? <span style="font-weight:500;color:var(--text-muted);">(có thể chọn nhiều)</span></legend>
+              <div class="choice-grid choice-2col">
+                <label class="choice"><input type="checkbox" name="survey-interest" value="gia-su"><span class="choice-text">Gia sư tại nhà</span></label>
+                <label class="choice"><input type="checkbox" name="survey-interest" value="cham-soc-tre"><span class="choice-text">Chăm sóc trẻ em</span></label>
+                <label class="choice"><input type="checkbox" name="survey-interest" value="don-dep"><span class="choice-text">Dọn dẹp nhà cửa</span></label>
+                <label class="choice"><input type="checkbox" name="survey-interest" value="mua-sam"><span class="choice-text">Mua sắm hộ</span></label>
+                <label class="choice"><input type="checkbox" name="survey-interest" value="an-toan"><span class="choice-text">Định vị & an toàn thời gian thực</span></label>
+                <label class="choice"><input type="checkbox" name="survey-interest" value="nhat-ky"><span class="choice-text">Nhật ký chăm sóc</span></label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="field" id="field-necessity">
+            <fieldset>
+              <legend class="field-label">Mức độ cần thiết của một nền tảng như thế này với bạn hiện tại? <span class="req" aria-hidden="true">*</span></legend>
+              <div class="choice-grid" role="radiogroup" aria-required="true">
+                <label class="choice"><input type="radio" name="survey-necessity" value="rat-can" required><span class="choice-text">Rất cần thiết — đang tìm giải pháp ngay</span></label>
+                <label class="choice"><input type="radio" name="survey-necessity" value="can"><span class="choice-text">Cần thiết — đang cân nhắc</span></label>
+                <label class="choice"><input type="radio" name="survey-necessity" value="binh-thuong"><span class="choice-text">Bình thường — tìm hiểu thêm</span></label>
+                <label class="choice"><input type="radio" name="survey-necessity" value="chua-can"><span class="choice-text">Chưa cần thiết lúc này</span></label>
+              </div>
+              <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn một mức độ.</p>
+            </fieldset>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="survey-feedback">Điều gì khiến bạn còn băn khoăn khi tìm hoặc trở thành Carepartner? <span style="font-weight:500;color:var(--text-muted);">(không bắt buộc)</span></label>
+            <textarea id="survey-feedback" name="survey-feedback" placeholder="Ví dụ: tôi lo về độ an toàn khi để người lạ chăm bé, hoặc chưa rõ chi phí tính thế nào..."></textarea>
+          </div>
+
+          <div class="field" id="field-survey-email">
+            <label class="field-label" for="survey-email">Email <span style="font-weight:500;color:var(--text-muted);">(để lại nếu muốn nhận phản hồi, không bắt buộc)</span></label>
+            <input type="email" id="survey-email" name="survey-email" placeholder="ban@vidu.com" autocomplete="email">
+            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Email chưa đúng định dạng.</p>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            Gửi góp ý
+            <span class="material-symbols-outlined" aria-hidden="true">send</span>
+          </button>
+
+          <div class="success-box" id="surveySuccess" role="status" aria-live="polite">
+            <span class="material-symbols-outlined filled" aria-hidden="true">task_alt</span>
+            <div>
+              <h4>Cảm ơn bạn đã dành thời gian góp ý!</h4>
+              <p>Đội ngũ EduCareLink sẽ đọc từng phản hồi để hoàn thiện sản phẩm. Nếu bạn để lại email, chúng tôi sẽ phản hồi khi có cập nhật liên quan.</p>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ĐĂNG KÝ TƯ VẤN / DÙNG THỬ ============ -->
+<section id="dang-ky" aria-labelledby="dang-ky-heading">
+  <div class="wrap">
+    <div class="form-shell">
+      <div class="form-side">
+        <span class="eyebrow">Miễn phí — không ràng buộc</span>
+        <h2 id="dang-ky-heading">Đăng ký tư vấn hoặc dùng thử ngay</h2>
+        <p class="lead">Chọn hình thức phù hợp với bạn. Cả hai đều miễn phí và chúng tôi chỉ liên hệ qua thông tin bạn cung cấp bên dưới.</p>
+        <ul class="side-list">
+          <li><span class="num" aria-hidden="true">1</span><span class="txt"><b>Điền thông tin liên hệ</b> — chưa đến 1 phút.</span></li>
+          <li><span class="num" aria-hidden="true">2</span><span class="txt"><b>Đội ngũ EduCareLink xác nhận</b> qua điện thoại hoặc email trong vòng 24 giờ làm việc.</span></li>
+          <li><span class="num" aria-hidden="true">3</span><span class="txt"><b>Bắt đầu tư vấn hoặc trải nghiệm</b> nền tảng theo đúng nhu cầu của bạn.</span></li>
+        </ul>
+      </div>
+
+      <div class="form-card">
+        <div class="tabs" role="tablist" aria-label="Chọn hình thức đăng ký">
+          <button type="button" class="tab-btn" id="tab-consult" role="tab" aria-selected="false" aria-controls="panel-consult">
+            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">call</span>Tư vấn miễn phí
+          </button>
+          <button type="button" class="tab-btn" id="tab-trial" role="tab" aria-selected="true" aria-controls="panel-trial">
+            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">bolt</span>Dùng thử miễn phí
+          </button>
+        </div>
+
+        <form id="signupForm" novalidate>
+          <!-- Honeypot -->
+          <div style="position:absolute;left:-9999px;" aria-hidden="true">
+            <label for="signup-website">Đừng điền trường này</label>
+            <input type="text" id="signup-website" name="website_url" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="field" id="field-su-name">
+            <label class="field-label" for="su-name">Họ và tên <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="su-name" name="full_name" required autocomplete="name" placeholder="Nguyễn Văn A">
+            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng nhập họ tên.</p>
+          </div>
+
+          <div class="field" id="field-su-phone">
+            <label class="field-label" for="su-phone">Số điện thoại <span class="req" aria-hidden="true">*</span></label>
+            <input type="tel" id="su-phone" name="phone" required autocomplete="tel" inputmode="tel" placeholder="09xx xxx xxx">
+            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng nhập số điện thoại hợp lệ (9–11 số).</p>
+          </div>
+
+          <div class="field" id="field-su-email">
+            <label class="field-label" for="su-email">Email <span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="su-email" name="email" required autocomplete="email" placeholder="ban@vidu.com">
+            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Email chưa đúng định dạng.</p>
+          </div>
+
+          <div class="field" id="field-su-role">
+            <fieldset>
+              <legend class="field-label">Bạn là <span class="req" aria-hidden="true">*</span></legend>
+              <div class="choice-grid choice-2col" role="radiogroup" aria-required="true">
+                <label class="choice"><input type="radio" name="role" value="phu-huynh" required><span class="choice-text">Phụ huynh</span></label>
+                <label class="choice"><input type="radio" name="role" value="carepartner"><span class="choice-text">Sinh viên Carepartner</span></label>
+              </div>
+              <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn vai trò của bạn.</p>
+            </fieldset>
+          </div>
+
+          <!-- Panel: Tư vấn -->
+          <div class="tab-panel" id="panel-consult" role="tabpanel" aria-labelledby="tab-consult" hidden>
+            <div class="field" id="field-su-time">
+              <label class="field-label" for="su-time">Khung giờ thuận tiện để chúng tôi gọi lại <span class="req" aria-hidden="true">*</span></label>
+              <select id="su-time" name="preferred_time_slot">
+                <option value="sang">Buổi sáng (8:00 – 11:00)</option>
+                <option value="chieu">Buổi chiều (13:00 – 17:00)</option>
+                <option value="toi">Buổi tối (18:00 – 20:00)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Panel: Dùng thử -->
+          <div class="tab-panel" id="panel-trial" role="tabpanel" aria-labelledby="tab-trial">
+            <div class="field" id="field-su-consent">
+              <label class="choice" style="align-items:center;">
+                <input type="checkbox" id="su-trial-consent" name="trial_consent">
+                <span class="choice-text" style="font-weight:600;">Tôi đồng ý được liên hệ để kích hoạt tài khoản dùng thử miễn phí</span>
+              </label>
+              <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Bạn cần đồng ý để kích hoạt dùng thử.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="su-note">Ghi chú thêm <span style="font-weight:500;color:var(--text-muted);">(không bắt buộc)</span></label>
+            <textarea id="su-note" name="note" placeholder="Cho chúng tôi biết thêm về nhu cầu của bạn, nếu có."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-block" id="signupSubmitBtn">
+            Bắt đầu dùng thử miễn phí
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+
+          <p class="form-note">Chúng tôi chỉ sử dụng thông tin này để liên hệ tư vấn hoặc kích hoạt tài khoản dùng thử, không chia sẻ cho bên thứ ba.</p>
+
+          <div class="success-box" id="signupSuccess" role="status" aria-live="polite">
+            <span class="material-symbols-outlined filled" aria-hidden="true">task_alt</span>
+            <div>
+              <h4 id="signupSuccessTitle">Đăng ký thành công!</h4>
+              <p id="signupSuccessDesc">Đội ngũ EduCareLink sẽ liên hệ với bạn trong vòng 24 giờ làm việc.</p>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" aria-labelledby="faq-heading">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Câu hỏi thường gặp</span>
+      <h2 id="faq-heading">Trước khi bạn đăng ký</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Buổi tư vấn có mất phí không?<span class="material-symbols-outlined" aria-hidden="true">add</span></summary>
+        <div class="faq-a">Không. Tư vấn 1-1 hoàn toàn miễn phí và không yêu cầu bạn cam kết đăng ký sử dụng dịch vụ.</div>
+      </details>
+      <details>
+        <summary>Dùng thử miễn phí có cần nhập thẻ thanh toán không?<span class="material-symbols-outlined" aria-hidden="true">add</span></summary>
+        <div class="faq-a">Không. Bạn chỉ cần để lại thông tin liên hệ, đội ngũ EduCareLink sẽ hỗ trợ kích hoạt tài khoản dùng thử.</div>
+      </details>
+      <details>
+        <summary>Carepartner được xác minh như thế nào?<span class="material-symbols-outlined" aria-hidden="true">add</span></summary>
+        <div class="faq-a">Mỗi Carepartner phải xác minh danh tính và hoàn tất hồ sơ trước khi được nhận việc. Trong ca làm việc còn có xác minh bằng mã PIN ngẫu nhiên để đảm bảo đúng người thực hiện.</div>
+      </details>
+      <details>
+        <summary>Dữ liệu vị trí và thông tin cá nhân có an toàn không?<span class="material-symbols-outlined" aria-hidden="true">add</span></summary>
+        <div class="faq-a">Định vị chỉ được dùng trong thời gian ca làm việc để đảm bảo an toàn, và thông tin liên hệ bạn cung cấp ở trang này chỉ dùng để tư vấn hoặc kích hoạt dùng thử.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section>
+  <div class="cta-band">
+    <h2>Sẵn sàng để chúng tôi đồng hành cùng gia đình bạn?</h2>
+    <p>Đăng ký tư vấn miễn phí hoặc dùng thử ngay hôm nay — không cần cam kết dài hạn.</p>
+    <div class="hero-ctas">
+      <a href="#dang-ky" data-open-tab="trial" class="btn" style="background:#fff;color:var(--btn-primary);">
+        Dùng thử miễn phí
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+      </a>
+      <a href="#dang-ky" data-open-tab="consult" class="btn btn-ghost-white">
+        Đăng ký tư vấn
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <span class="brand-name" style="font-size:1.2rem;">EduCareLink</span>
+        <p class="desc">Nền tảng kết nối Phụ huynh với Sinh viên Carepartner đáng tin cậy. Kết nối yêu thương, nuôi dưỡng tương lai.</p>
+      </div>
+      <div>
+        <h4>Điều hướng</h4>
+        <ul>
+          <li><a href="#gioi-thieu">Giới thiệu</a></li>
+          <li><a href="#tinh-nang">Tính năng</a></li>
+          <li><a href="#khao-sat">Góp ý cho chúng tôi</a></li>
+          <li><a href="#dang-ky">Đăng ký tư vấn / dùng thử</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Liên hệ</h4>
+        <ul>
+          <li><a href="#faq">Câu hỏi thường gặp</a></li>
+          <li><a href="mailto:hello@educarelink.vn">hello@educarelink.vn</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">© 2026 EduCareLink. Tất cả quyền được bảo lưu.</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Mobile menu ---------- */
+  var menuBtn = document.getElementById('menuBtn');
+  var menuIcon = document.getElementById('menuIcon');
+  var mobileMenu = document.getElementById('mobile-menu');
+  menuBtn.addEventListener('click', function(){
+    var open = mobileMenu.classList.toggle('open');
+    menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuIcon.textContent = open ? 'close' : 'menu';
+  });
+  mobileMenu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){
+      mobileMenu.classList.remove('open');
+      menuBtn.setAttribute('aria-expanded','false');
+      menuIcon.textContent = 'menu';
+    });
+  });
+
+  /* ---------- Tabs: Tư vấn / Dùng thử ---------- */
+  var tabConsult = document.getElementById('tab-consult');
+  var tabTrial = document.getElementById('tab-trial');
+  var panelConsult = document.getElementById('panel-consult');
+  var panelTrial = document.getElementById('panel-trial');
+  var submitBtn = document.getElementById('signupSubmitBtn');
+  var successTitle = document.getElementById('signupSuccessTitle');
+  var successDesc = document.getElementById('signupSuccessDesc');
+
+  function openTab(which){
+    var isTrial = which === 'trial';
+    tabTrial.setAttribute('aria-selected', isTrial ? 'true' : 'false');
+    tabConsult.setAttribute('aria-selected', isTrial ? 'false' : 'true');
+    panelTrial.hidden = !isTrial;
+    panelConsult.hidden = isTrial;
+    submitBtn.innerHTML = isTrial
+      ? 'Bắt đầu dùng thử miễn phí <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>'
+      : 'Đăng ký tư vấn ngay <span class="material-symbols-outlined" aria-hidden="true">call</span>';
+    submitBtn.className = isTrial ? 'btn btn-secondary btn-block' : 'btn btn-primary btn-block';
+  }
+  tabTrial.addEventListener('click', function(){ openTab('trial'); });
+  tabConsult.addEventListener('click', function(){ openTab('consult'); });
+
+  // Nút CTA ngoài trang có thể mở đúng tab tương ứng
+  document.querySelectorAll('[data-open-tab]').forEach(function(el){
+    el.addEventListener('click', function(){
+      openTab(el.getAttribute('data-open-tab') === 'trial' ? 'trial' : 'consult');
+    });
+  });
+
+  /* ---------- Validation helpers ---------- */
+  function setFieldError(fieldEl, hasError){
+    if(!fieldEl) return;
+    fieldEl.classList.toggle('has-error', hasError);
+  }
+  function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function isValidPhone(v){ return /^[0-9\s+()-]{9,14}$/.test(v); }
+
+  /* ---------- Khảo sát / góp ý form ---------- */
+  var surveyForm = document.getElementById('surveyForm');
+  var surveySuccess = document.getElementById('surveySuccess');
+
+  surveyForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var valid = true;
+
+    var roleChosen = surveyForm.querySelector('input[name="survey-role"]:checked');
+    setFieldError(document.getElementById('field-role'), !roleChosen);
+    if(!roleChosen) valid = false;
+
+    var necChosen = surveyForm.querySelector('input[name="survey-necessity"]:checked');
+    setFieldError(document.getElementById('field-necessity'), !necChosen);
+    if(!necChosen) valid = false;
+
+    var emailField = document.getElementById('survey-email');
+    var emailWrap = emailField.closest('.field');
+    var emailInvalid = emailField.value.trim() !== '' && !isValidEmail(emailField.value.trim());
+    setFieldError(emailWrap, emailInvalid);
+    if(emailInvalid) valid = false;
+
+    if(!valid){
+      var firstError = surveyForm.querySelector('.has-error');
+      if(firstError) firstError.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+
+    // Thu thập dữ liệu
+    var interests = [];
+    surveyForm.querySelectorAll('input[name="survey-interest"]:checked').forEach(function(cb){
+      interests.push(cb.value);
+    });
+
+    var payload = {
+      role: roleChosen.value,
+      interests: interests,
+      necessity: necChosen.value,
+      feedback: surveyForm.querySelector('#survey-feedback').value.trim(),
+      email: emailField.value.trim(),
+      website_url: surveyForm.querySelector('#survey-website').value  // honeypot
+    };
+
+    // Gọi API thật
+    surveyForm.querySelector('button[type=submit]').disabled = true;
+    fetch('/api/landing/survey/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''},
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data.ok){
+        surveyForm.querySelectorAll('input, textarea, button').forEach(function(el){ el.disabled = true; });
+        surveySuccess.classList.add('show');
+        surveySuccess.scrollIntoView({behavior:'smooth', block:'center'});
+      } else {
+        surveyForm.querySelector('button[type=submit]').disabled = false;
+        alert('Gửi không thành công. Vui lòng thử lại sau.');
+      }
+    }).catch(function(){
+      surveyForm.querySelector('button[type=submit]').disabled = false;
+      alert('Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.');
+    });
+  });
+
+  /* ---------- Đăng ký tư vấn / dùng thử form ---------- */
+  var signupForm = document.getElementById('signupForm');
+  var signupSuccess = document.getElementById('signupSuccess');
+
+  signupForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var valid = true;
+    var isTrial = tabTrial.getAttribute('aria-selected') === 'true';
+
+    var nameField = document.getElementById('su-name');
+    var nameEmpty = nameField.value.trim() === '';
+    setFieldError(document.getElementById('field-su-name'), nameEmpty);
+    if(nameEmpty) valid = false;
+
+    var phoneField = document.getElementById('su-phone');
+    var phoneInvalid = !isValidPhone(phoneField.value.trim());
+    setFieldError(document.getElementById('field-su-phone'), phoneInvalid);
+    if(phoneInvalid) valid = false;
+
+    var suEmailField = document.getElementById('su-email');
+    var suEmailInvalid = !isValidEmail(suEmailField.value.trim());
+    setFieldError(document.getElementById('field-su-email'), suEmailInvalid);
+    if(suEmailInvalid) valid = false;
+
+    var roleChosen = signupForm.querySelector('input[name="role"]:checked');
+    setFieldError(document.getElementById('field-su-role'), !roleChosen);
+    if(!roleChosen) valid = false;
+
+    if(isTrial){
+      var consentChecked = document.getElementById('su-trial-consent').checked;
+      setFieldError(document.getElementById('field-su-consent'), !consentChecked);
+      if(!consentChecked) valid = false;
+    }
+
+    if(!valid){
+      var firstError = signupForm.querySelector('.has-error');
+      if(firstError) firstError.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+
+    var payload = {
+      full_name: nameField.value.trim(),
+      phone: phoneField.value.trim(),
+      email: suEmailField.value.trim(),
+      role: roleChosen.value,
+      signup_type: isTrial ? 'dung-thu' : 'tu-van',
+      preferred_time_slot: isTrial ? '' : document.getElementById('su-time').value,
+      trial_consent: isTrial,
+      note: document.getElementById('su-note').value.trim(),
+      website_url: document.getElementById('signup-website').value  // honeypot
+    };
+
+    submitBtn.disabled = true;
+    fetch('/api/landing/signup/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''},
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data.ok){
+        signupForm.querySelectorAll('input, textarea, select, button').forEach(function(el){ el.disabled = true; });
+        successTitle.textContent = isTrial ? 'Đăng ký dùng thử thành công!' : 'Đăng ký tư vấn thành công!';
+        successDesc.textContent = isTrial
+          ? 'Đội ngũ EduCareLink sẽ liên hệ để kích hoạt tài khoản dùng thử trong vòng 24 giờ làm việc.'
+          : 'Đội ngũ EduCareLink sẽ gọi lại đúng khung giờ bạn chọn trong vòng 24 giờ làm việc.';
+        signupSuccess.classList.add('show');
+        signupSuccess.scrollIntoView({behavior:'smooth', block:'center'});
+      } else {
+        submitBtn.disabled = false;
+        var errObj = data.error || {};
+        // Show first server error
+        var firstKey = Object.keys(errObj)[0];
+        if(firstKey){
+          var msg = Array.isArray(errObj[firstKey]) ? errObj[firstKey][0] : errObj[firstKey];
+          alert(msg);
+        } else {
+          alert('Gửi không thành công. Vui lòng thử lại sau.');
+        }
+      }
+    }).catch(function(){
+      submitBtn.disabled = false;
+      alert('Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.');
+    });
+  });
+
+  /* ---------- Nav active state khi cuộn ---------- */
+  var navLinks = document.querySelectorAll('.nav-links a');
+  var sections = Array.prototype.slice.call(navLinks).map(function(a){
+    return document.querySelector(a.getAttribute('href'));
+  }).filter(Boolean);
+
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          navLinks.forEach(function(a){ a.style.color = ''; a.style.borderBottomColor = 'transparent'; });
+          var match = document.querySelector('.nav-links a[href="#' + entry.target.id + '"]');
+          if(match){ match.style.color = 'var(--btn-primary)'; match.style.borderBottomColor = 'var(--btn-primary)'; }
+        }
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach(function(s){ io.observe(s); });
+  }
+})();
+</script>
+
+</body>
+</html>

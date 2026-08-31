@@ -39,4 +39,6 @@ urlpatterns = [
     path('parent/payments/', ParentPaymentsView.as_view(), name='parent_payments'),
     path('worker/earnings/', WorkerEarningsView.as_view(), name='worker_earnings'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
+    # Landing page công khai (khảo sát + đăng ký tư vấn/dùng thử)
+    path('landing/', LandingPageView.as_view(), name='landing_page'),
 ]
