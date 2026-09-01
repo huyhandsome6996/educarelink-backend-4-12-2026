@@ -7,6 +7,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
 from django.http import HttpResponseForbidden
+from core.admin_stats import (
+    admin_statistics_view,
+    admin_export_excel,
+    admin_ai_analysis,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -58,6 +63,9 @@ urlpatterns = [
     # (2 nhánh DEBUG/production bên dưới đều append SAU list này).
     re_path(r'^media/verification_photos/(?P<path>.*)$', _reject_verification_media),
 
+    path('admin/thong-ke/', admin.site.admin_view(admin_statistics_view), name='admin_statistics_view'),
+    path('admin/thong-ke/export/', admin.site.admin_view(admin_export_excel), name='admin_export_excel'),
+    path('admin/thong-ke/ai/', admin.site.admin_view(admin_ai_analysis), name='admin_ai_analysis'),
     path('admin/', admin.site.urls),
     # Đưa tất cả các API của app core vào nhánh /api/
     path('api/', include('core.urls')),

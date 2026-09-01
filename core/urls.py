@@ -27,9 +27,7 @@ from .views import (
     SmartMatchAPIView,
     geocode_proxy,
     # Landing page (public)
-    LandingSurveyAPIView, LandingSignupAPIView,
-    # Admin feedback stats + AI + Excel
-    AdminFeedbackStatsAPIView, AdminFeedbackExcelAPIView, AdminFeedbackAIAnalysisAPIView,
+    LandingSurveyAPIView, LandingSignupAPIView, LandingTrackVisitAPIView,
 )
 # B4 — Phân hạng CarePartner: các view dưới đây là bản override của view gốc
 # (trong core.views) có bổ sung field tier, trỏ URL về tier_views để không
@@ -150,9 +148,5 @@ urlpatterns = [
     # Landing page — public API (không cần auth)
     path('landing/survey/', LandingSurveyAPIView.as_view(), name='landing-survey'),
     path('landing/signup/', LandingSignupAPIView.as_view(), name='landing-signup'),
-
-    # Admin feedback stats — thống kê + AI + Excel
-    path('admin/feedback-stats/', AdminFeedbackStatsAPIView.as_view(), name='admin-feedback-stats'),
-    path('admin/feedback-stats/export/', AdminFeedbackExcelAPIView.as_view(), name='admin-feedback-excel'),
-    path('admin/feedback-stats/ai-analysis/', AdminFeedbackAIAnalysisAPIView.as_view(), name='admin-feedback-ai'),
+    path('landing/track-visit/', LandingTrackVisitAPIView.as_view(), name='landing-track-visit'),
 ]

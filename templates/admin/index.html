@@ -1,0 +1,17 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+<div style="margin-bottom: 16px;">
+  <a href="{% url 'admin_statistics_view' %}" style="
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; background: #F26522; color: #fff;
+    border-radius: 10px; text-decoration: none; font-weight: 700;
+    font-size: .95rem; box-shadow: 0 4px 12px rgba(242,101,34,.3);
+  ">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    Thống kê số liệu Landing Page
+  </a>
+</div>
+{{ block.super }}
+{% endblock %}

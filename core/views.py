@@ -3006,6 +3006,74 @@ def _get_client_ip(request):
     return request.META.get('REMOTE_ADDR')
 
 
+def _is_bot_ua(ua_string):
+    """Phát hiện bot/dựa trên user-agent — trả về True nếu nghi ngờ là bot."""
+    if not ua_string:
+        return True
+    ua_lower = ua_string.lower()
+    bot_keywords = [
+        'bot', 'crawl', 'spider', 'scrape', 'curl', 'wget', 'python-requests',
+        'httpclient', 'java/', 'node-fetch', 'axios', 'postmanruntime',
+        'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
+        'yandexbot', 'facebookexternalhit', 'twitterbot', 'linkedinbot',
+    ]
+    for kw in bot_keywords:
+        if kw in ua_lower:
+            return True
+    return False
+
+
+class LandingTrackVisitAPIView(APIView):
+    """Ghi nhận lượt truy cập landing page (1 per browser session).
+
+    Frontend gửi session_id (UUID từ sessionStorage) + user-agent.
+    Server kiểm tra trùng session_id, bot UA, rate-limit per IP.
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'landing_form'
+
+    def post(self, request):
+        from .models import LandingPageVisit
+        import uuid as _uuid
+
+        session_id = request.data.get('session_id', '')
+        ua = request.META.get('HTTP_USER_AGENT', '')
+
+        # Bot check
+        if _is_bot_ua(ua):
+            return Response({'ok': True})  # silent reject
+
+        # Validate session_id format (UUID)
+        try:
+            _uuid.UUID(session_id)
+        except (ValueError, AttributeError):
+            return Response({'ok': True})
+
+        # Deduplicate: cùng session_id chỉ ghi 1 lần
+        if LandingPageVisit.objects.filter(session_id=session_id).exists():
+            return Response({'ok': True, 'duplicate': True})
+
+        # Rate limit per IP: max 1 visit / 30 giây (chống inflate)
+        ip = _get_client_ip(request)
+        if ip:
+            from django.utils import timezone
+            from datetime import timedelta
+            cutoff = timezone.now() - timedelta(seconds=30)
+            recent = LandingPageVisit.objects.filter(
+                ip_address=ip, visited_at__gte=cutoff
+            ).exists()
+            if recent:
+                return Response({'ok': True, 'rate_limited': True})
+
+        LandingPageVisit.objects.create(
+            session_id=session_id,
+            ip_address=ip,
+            user_agent=ua[:500],
+            referrer=request.data.get('referrer', '')[:500],
+        )
+        return Response({'ok': True}, status=201)
+
+
 class LandingSurveyAPIView(APIView):
     """API nhận dữ liệu khảo sát/góp ý từ trang landing (anonymous)."""
     permission_classes = [AllowAny]
@@ -3014,7 +3082,6 @@ class LandingSurveyAPIView(APIView):
     def post(self, request):
         # Honeypot check — nếu field ẩn bị điền → spam bot
         if request.data.get('website_url'):
-            # Trả 200 để không tiết lộ cho bot
             return Response({'ok': True})
 
         serializer = LandingSurveySerializer(data=request.data)
