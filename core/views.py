@@ -3129,56 +3129,95 @@ class AdminFeedbackStatsAPIView(APIView):
     """Thống kê góp ý landing page cho admin.
 
     Trả về dữ liệu real-time cho biểu đồ + bảng thống kê.
+    Bao gồm: lượt truy cập, góp ý (theo role), đăng ký.
     """
     permission_classes = [IsAdminUser]
     throttle_scope = 'landing_form'
 
     def get(self, request):
-        from .models import LandingSurvey, LandingSignup
+        from .models import LandingSurvey, LandingSignup, LandingPageVisit
+        from collections import Counter
 
         # Filter params
         days = int(request.query_params.get('days', 30))
-        from django.utils import timezone
         since = timezone.now() - timezone.timedelta(days=days)
+
+        # === VISIT STATS ===
+        visits = LandingPageVisit.objects.filter(visited_at__gte=since)
+        total_visits = visits.count()
+        # Unique IPs (real visitors, not sessions)
+        unique_ips = visits.values('ip_address').exclude(ip_address__isnull=True).distinct().count()
+        visits_by_date = list(
+            visits.annotate(date=TruncDate('visited_at'))
+            .values('date').annotate(count=Count('id'))
+            .order_by('date')
+        )
 
         # === SURVEY STATS ===
         surveys = LandingSurvey.objects.filter(created_at__gte=since)
         total_surveys = surveys.count()
-        
-        # Theo feedback_type
+
+        # Theo role (carepartner / phu-huynh)
         by_type = list(
-            surveys.values('feedback_type').annotate(count=Count('id')).order_by('-count')
+            surveys.values('role').annotate(count=Count('id')).order_by('-count')
         )
-        
-        # Theo ngày (dòng thời gian)
+
+        # Theo ngày
         by_date = list(
             surveys.annotate(date=TruncDate('created_at'))
             .values('date').annotate(count=Count('id'))
             .order_by('date')
         )
-        
-        # Theo necessity
-        by_necessity = list(
-            surveys.exclude(necessity='').values('necessity').annotate(count=Count('id')).order_by('-count')
-        )
-        
-        # Theo interest (phổ biến nhất)
-        all_interests = []
+
+        # Trích dịch vụ quan tâm từ role_answers
+        SERVICE_LABELS = {
+            'gia-su': 'Gia sư tại nhà',
+            'cham-soc-tre': 'Chăm sóc trẻ em',
+            'don-dep': 'Dọn dẹp nhà cửa',
+            'mua-sam': 'Mua sắm hộ',
+            'an-toan': 'Định vị & an toàn',
+            'nhat-ky': 'Nhật ký chăm sóc',
+        }
+        all_services = []
         for s in surveys.iterator():
-            if s.interests:
-                all_interests.extend(s.interests)
-        from collections import Counter
-        interest_counts = Counter(all_interests)
-        INTEREST_LABELS = dict(LandingSurvey.INTEREST_CHOICES)
+            ra = s.role_answers or {}
+            # CarePartner: services list
+            if isinstance(ra.get('services'), list):
+                all_services.extend(ra['services'])
+            # Phụ huynh: interests list
+            if isinstance(ra.get('interests'), list):
+                all_services.extend(ra['interests'])
+        service_counts = Counter(all_services)
         by_interest = [
-            {'interest': k, 'label': INTEREST_LABELS.get(k, k), 'count': v}
-            for k, v in interest_counts.most_common(10)
+            {'interest': k, 'label': SERVICE_LABELS.get(k, k), 'count': v}
+            for k, v in service_counts.most_common(10)
+        ]
+
+        # Trích necessity từ role_answers (chỉ Phụ huynh)
+        NECESSITY_LABELS = {
+            'rat-can': 'Rất cần thiết',
+            'can': 'Cần thiết',
+            'binh-thuong': 'Bình thường',
+            'chua-can': 'Chưa cần thiết',
+        }
+        all_necessity = []
+        for s in surveys.filter(role='phu-huynh').iterator():
+            ra = s.role_answers or {}
+            nec = ra.get('necessity')
+            if nec:
+                all_necessity.append(nec)
+        necessity_counts = Counter(all_necessity)
+        by_necessity = [
+            {'necessity': k, 'label': NECESSITY_LABELS.get(k, k), 'count': v}
+            for k, v in necessity_counts.most_common()
         ]
 
         # === SIGNUP STATS ===
         signups = LandingSignup.objects.filter(created_at__gte=since)
         total_signups = signups.count()
-        
+        trial_count = signups.filter(signup_type='dung-thu').count()
+        consult_count = signups.filter(signup_type='tu-van').count()
+
         by_signup_type = list(
             signups.values('signup_type').annotate(count=Count('id')).order_by('-count')
         )
@@ -3193,6 +3232,11 @@ class AdminFeedbackStatsAPIView(APIView):
 
         return Response({
             'period_days': days,
+            'visits': {
+                'total': total_visits,
+                'unique_ips': unique_ips,
+                'by_date': visits_by_date,
+            },
             'surveys': {
                 'total': total_surveys,
                 'by_type': by_type,
@@ -3202,6 +3246,8 @@ class AdminFeedbackStatsAPIView(APIView):
             },
             'signups': {
                 'total': total_signups,
+                'trial_count': trial_count,
+                'consult_count': consult_count,
                 'by_type': by_signup_type,
                 'by_role': by_signup_role,
                 'by_date': signup_by_date,
@@ -3210,65 +3256,100 @@ class AdminFeedbackStatsAPIView(APIView):
 
 
 class AdminFeedbackExcelAPIView(APIView):
-    """Xuất dữ liệu góp ý + đăng ký ra file Excel.
+    """Xuất dữ liệu góp ý + đăng ký + lượt truy cập ra file Excel.
 
     Trả về file .xlsx download.
     """
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        from .models import LandingSurvey, LandingSignup
+        from .models import LandingSurvey, LandingSignup, LandingPageVisit
         import openpyxl
         from django.http import HttpResponse
-        from django.utils import timezone
 
         days = int(request.query_params.get('days', 30))
         since = timezone.now() - timezone.timedelta(days=days)
 
         wb = openpyxl.Workbook()
+        ROLE_LABELS = {c[0]: c[1] for c in LandingSurvey.ROLE_CHOICES}
+        SERVICE_LABELS = {
+            'gia-su': 'Gia sư tại nhà',
+            'cham-soc-tre': 'Chăm sóc trẻ em',
+            'don-dep': 'Dọn dẹp nhà cửa',
+            'mua-sam': 'Mua sắm hộ',
+            'an-toan': 'Định vị & an toàn',
+            'nhat-ky': 'Nhật ký chăm sóc',
+        }
+        EXPERIENCE_LABELS = {
+            'chua': 'Chưa có kinh nghiệm', 'duoi-1-nam': 'Dưới 1 năm',
+            '1-3-nam': '1–3 năm', 'tren-3-nam': 'Trên 3 năm',
+        }
+        RATE_LABELS = {
+            'duoi-30k': 'Dưới 30.000đ', '30-50k': '30.000–50.000đ',
+            '50-80k': '50.000–80.000đ', 'tren-80k': 'Trên 80.000đ',
+        }
+        INTEREST_LEVEL_LABELS = {
+            'rat-quan-tam': 'Rất quan tâm', 'quan-tam': 'Quan tâm', 'binh-thuong': 'Bình thường',
+        }
+        NECESSITY_LABELS = {
+            'rat-can': 'Rất cần thiết', 'can': 'Cần thiết',
+            'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết',
+        }
 
-        # === Sheet 1: Góp ý ===
-        ws1 = wb.active
-        ws1.title = 'Gop y'
-        headers1 = ['ID', 'Loại (CP/PH)', 'Dịch vụ quan tâm', 'Mức độ cần thiết',
-                    'Câu trả lời riêng', 'Góp ý tự do', 'Email', 'IP', 'Ngày tạo']
+        # === Sheet 1: Lượt truy cập ===
+        ws0 = wb.active
+        ws0.title = 'Luot truy cap'
+        headers0 = ['ID', 'Session ID', 'IP', 'Referrer', 'User Agent', 'Thời gian']
+        ws0.append(headers0)
+        for row in ws0.iter_rows(min_row=1, max_row=1):
+            for cell in row:
+                cell.font = openpyxl.styles.Font(bold=True)
+        for v in LandingPageVisit.objects.filter(visited_at__gte=since).order_by('-visited_at'):
+            ws0.append([
+                v.id, v.session_id[:20] + '…', v.ip_address or '',
+                v.referrer[:100] if v.referrer else '',
+                (v.user_agent or '')[:80],
+                v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else '',
+            ])
+        for col in ws0.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws0.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
+        # === Sheet 2: Góp ý ===
+        ws1 = wb.create_sheet('Gop y')
+        headers1 = ['ID', 'Vai trò', 'Dịch vụ quan tâm', 'Câu trả lời chi tiết (JSON)',
+                    'Góp ý tự do', 'Email', 'IP', 'Ngày tạo']
         ws1.append(headers1)
         for row in ws1.iter_rows(min_row=1, max_row=1):
             for cell in row:
                 cell.font = openpyxl.styles.Font(bold=True)
 
-        TYPE_LABELS = dict(LandingSurvey.FEEDBACK_TYPE_CHOICES)
-        NECESSITY_LABELS = dict(LandingSurvey.NECESSITY_CHOICES)
-        INTEREST_LABELS = dict(LandingSurvey.INTEREST_CHOICES)
-
         for s in LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at'):
-            interests_str = ', '.join(INTEREST_LABELS.get(i, i) for i in (s.interests or []))
-            qa_str = str(s.question_answers) if s.question_answers else ''
+            ra = s.role_answers or {}
+            # Extract services/interests
+            services_raw = ra.get('services', ra.get('interests', []))
+            services_str = ', '.join(SERVICE_LABELS.get(i, i) for i in (services_raw if isinstance(services_raw, list) else []))
             ws1.append([
                 s.id,
-                TYPE_LABELS.get(s.feedback_type, s.feedback_type),
-                interests_str,
-                NECESSITY_LABELS.get(s.necessity, s.necessity or ''),
-                qa_str,
+                ROLE_LABELS.get(s.role, s.role),
+                services_str,
+                str(ra) if ra else '',
                 s.feedback,
                 s.email,
                 s.ip_address or '',
                 s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
             ])
-
-        # Auto-width
         for col in ws1.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             ws1.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
 
-        # === Sheet 2: Đăng ký ===
+        # === Sheet 3: Đăng ký ===
         ws2 = wb.create_sheet('Dang ky')
         headers2 = ['ID', 'Họ tên', 'SĐT', 'Email', 'Vai trò', 'Loại', 'Khung giờ', 'Đồng ý dùng thử', 'Ghi chú', 'Ngày tạo']
         ws2.append(headers2)
         for row in ws2.iter_rows(min_row=1, max_row=1):
             for cell in row:
                 cell.font = openpyxl.styles.Font(bold=True)
-
         for s in LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at'):
             ws2.append([
                 s.id, s.full_name, s.phone, s.email,
@@ -3278,12 +3359,11 @@ class AdminFeedbackExcelAPIView(APIView):
                 s.note,
                 s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
             ])
-
         for col in ws2.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             ws2.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
 
-        # === Sheet 3: Tổng hợp ===
+        # === Sheet 4: Tổng hợp ===
         ws3 = wb.create_sheet('Tong hop')
         ws3.append(['Báo cáo thống kê EduCareLink Landing Page'])
         ws3.merge_cells('A1:D1')
@@ -3292,21 +3372,29 @@ class AdminFeedbackExcelAPIView(APIView):
         ws3.merge_cells('A2:D2')
         ws3.append([])
 
-        ws3.append(['--- GÓP Ý ---'])
+        ws3.append(['--- LƯỢT TRUY CẬP ---'])
         ws3['A4'].font = openpyxl.styles.Font(bold=True)
+        visits = LandingPageVisit.objects.filter(visited_at__gte=since)
+        ws3.append(['Tổng lượt truy cập (session)', visits.count()])
+        ws3.append(['Lượt truy cập duy nhất (IP)', visits.values('ip_address').exclude(ip_address__isnull=True).distinct().count()])
+        ws3.append([])
+
+        ws3.append(['--- GÓP Ý ---'])
+        ws3['A8'].font = openpyxl.styles.Font(bold=True)
         surveys = LandingSurvey.objects.filter(created_at__gte=since)
         ws3.append(['Tổng góp ý', surveys.count()])
-        cp_count = surveys.filter(feedback_type='carepartner').count()
-        ph_count = surveys.filter(feedback_type='parent').count()
+        cp_count = surveys.filter(role='carepartner').count()
+        ph_count = surveys.filter(role='phu-huynh').count()
         ws3.append(['Người đồng hành (Carepartner)', cp_count])
         ws3.append(['Phụ huynh', ph_count])
         ws3.append([])
+
         ws3.append(['--- ĐĂNG KÝ ---'])
-        ws3['A9'].font = openpyxl.styles.Font(bold=True)
+        ws3['A13'].font = openpyxl.styles.Font(bold=True)
         signups = LandingSignup.objects.filter(created_at__gte=since)
         ws3.append(['Tổng đăng ký', signups.count()])
-        ws3.append(['Tư vấn', signups.filter(signup_type='tu-van').count()])
-        ws3.append(['Dùng thử', signups.filter(signup_type='dung-thu').count()])
+        ws3.append(['Đăng ký tư vấn', signups.filter(signup_type='tu-van').count()])
+        ws3.append(['Đăng ký dùng thử', signups.filter(signup_type='dung-thu').count()])
 
         for col_cells in ws3.columns:
             max_len = max(len(str(cell.value or '')) for cell in col_cells)
@@ -3334,8 +3422,7 @@ class AdminFeedbackAIAnalysisAPIView(APIView):
     throttle_scope = 'ai'
 
     def post(self, request):
-        from .models import LandingSurvey, LandingSignup
-        from django.utils import timezone
+        from .models import LandingSurvey, LandingSignup, LandingPageVisit
         import json
 
         days = int(request.data.get('days', 30))
@@ -3343,15 +3430,14 @@ class AdminFeedbackAIAnalysisAPIView(APIView):
 
         surveys = LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at')
         signups = LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at')
+        visits = LandingPageVisit.objects.filter(visited_at__gte=since)
 
         # Chuẩn bị dữ liệu tóm tắt cho AI
         survey_data = []
-        for s in surveys[:100]:  # Giới hạn 100 bản ghi gần nhất
+        for s in surveys[:100]:
             survey_data.append({
-                'type': s.feedback_type,
-                'interests': s.interests,
-                'necessity': s.necessity,
-                'qa': s.question_answers,
+                'role': s.role,
+                'role_answers': s.role_answers,
                 'feedback': (s.feedback or '')[:200],
             })
 
@@ -3363,6 +3449,8 @@ class AdminFeedbackAIAnalysisAPIView(APIView):
             })
 
         prompt = f"""Bạn là chuyên gia phân tích dữ liệu sản phẩm. Phân tích dữ liệu phản hồi từ landing page EduCareLink (nền tảng kết nối Phụ huynh với Sinh viên Carepartner chăm sóc trẻ em).
+
+THỐNG KÊ LƯỢT TRUY CẬP: {visits.count()} sessions, {visits.values('ip_address').exclude(ip_address__isnull=True).distinct().count()} IP duy nhất
 
 DỮ LIỆU GÓP Ý ({len(survey_data)} bản ghi):
 {json.dumps(survey_data, ensure_ascii=False, indent=2)}
@@ -3383,7 +3471,7 @@ QUAN TRỌNG: Chỉ trả JSON, không thêm markdown hay giải thích."""
             if not api_key:
                 return Response({
                     'error': 'Chưa cấu hình GEMINI_API_KEY',
-                    'fallback': _generate_fallback_analysis(surveys, signups),
+                    'fallback': _generate_fallback_analysis(surveys, signups, visits),
                 }, status=200)
 
             from google import genai
@@ -3406,39 +3494,44 @@ QUAN TRỌNG: Chỉ trả JSON, không thêm markdown hay giải thích."""
             return Response({
                 'error': 'AI trả về format không hợp lệ',
                 'raw': text if 'text' in dir() else '',
-                'fallback': _generate_fallback_analysis(surveys, signups),
+                'fallback': _generate_fallback_analysis(surveys, signups, visits),
             })
         except Exception as e:
             logger.error(f'AI analysis error: {e}')
             return Response({
                 'error': str(e),
-                'fallback': _generate_fallback_analysis(surveys, signups),
+                'fallback': _generate_fallback_analysis(surveys, signups, visits),
             })
 
 
-def _generate_fallback_analysis(surveys, signups):
+def _generate_fallback_analysis(surveys, signups, visits=None):
     """Phân tích thống kê cơ bản khi AI không khả dụng."""
     from collections import Counter
     total_s = surveys.count()
     total_sig = signups.count()
-    cp_count = surveys.filter(feedback_type='carepartner').count()
-    ph_count = surveys.filter(feedback_type='parent').count()
-    
-    necessity_counts = Counter(surveys.exclude(necessity='').values_list('necessity', flat=True))
-    
+    cp_count = surveys.filter(role='carepartner').count()
+    ph_count = surveys.filter(role='phu-huynh').count()
+    total_visits = visits.count() if visits else 0
+    trial_count = signups.filter(signup_type='dung-thu').count()
+    consult_count = signups.filter(signup_type='tu-van').count()
+
     return {
-        'tong_quan': f'Tổng cộng {total_s} góp ý và {total_sig} đăng ký trong khoảng thời gian đã chọn.',
+        'tong_quan': f'Tổng cộng {total_visits} lượt truy cập, {total_s} góp ý và {total_sig} đăng ký (tư vấn: {consult_count}, dùng thử: {trial_count}) trong khoảng thời gian đã chọn.',
         'xu_huong': [
             {'mo_ta': f'Phụ huynh đóng góp nhiều hơn ({ph_count}) so với Người đồng hành ({cp_count})' if ph_count > cp_count else f'Người đồng hành đóng góp nhiều hơn ({cp_count}) so với Phụ huynh ({ph_count})', 'muc_do': 'cao'},
+            {'mo_ta': f'Tỷ lệ chuyển đổi: {total_visits} lượt truy cập → {total_sig} đăng ký ({round(total_sig/max(total_visits,1)*100, 1)}%)' if total_visits > 0 else 'Chưa có đủ dữ liệu lượt truy cập', 'muc_do': 'trung_binh'},
         ],
         'de_xuat': [
             {'hanh_dong': 'Tăng cường truyền thông đến nhóm có ít phản hồi hơn', 'uu_tien': 'trung_binh'},
             {'hanh_dong': 'Phân tích thêm nội dung góp ý tự do để tìm insight', 'uu_tien': 'thap'},
         ],
         'so_lieu_noi_bat': [
+            f'Lượt truy cập: {total_visits}',
             f'Tổng góp ý: {total_s}',
             f'Tổng đăng ký: {total_sig}',
             f'Người đồng hành: {cp_count}',
             f'Phụ huynh: {ph_count}',
+            f'Đăng ký dùng thử: {trial_count}',
+            f'Đăng ký tư vấn: {consult_count}',
         ],
     }
