@@ -398,22 +398,41 @@ class WorkerAvailability(models.Model):
 # LANDING PAGE — Khảo sát góp ý & Đăng ký tư vấn/dùng thử
 # ────────────────────────────────────────────────────────────────────
 
+class LandingPageVisit(models.Model):
+    """Lượt truy cập landing page — chỉ đếm session thật (không ảo).
+
+    Mỗi browser session chỉ ghi 1 lần (frontend dùng sessionStorage).
+    Bot detection qua user-agent + rate-limit per IP.
+    """
+    session_id = models.CharField(max_length=64, db_index=True,
+                                   help_text='Frontend-generated UUID, 1 per browser session')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    referrer = models.URLField(blank=True, default='')
+    visited_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-visited_at']
+        verbose_name = 'Lượt truy cập landing'
+        verbose_name_plural = 'Lượt truy cập landing'
+        indexes = [
+            models.Index(fields=['-visited_at'], name='idx_visit_visited_at'),
+        ]
+
+    def __str__(self):
+        return f"Visit {self.session_id[:8]}… ({self.visited_at.strftime('%d/%m/%Y %H:%M')})"
+
+
 class LandingSurvey(models.Model):
     """Dữ liệu khảo sát/góp ý từ trang landing công khai.
 
     Form không yêu cầu đăng nhập. Email là optional.
-    feedback_type: 'carepartner' hoặc 'parent' — bộ câu hỏi khác nhau.
-    question_answers: JSON chứa câu trả lời theo bộ câu hỏi riêng từng vai trò.
+    Có 2 role: carepartner / phu-huynh, mỗi role có bộ câu hỏi riêng
+    lưu trong role_answers (JSONField).
     """
-    FEEDBACK_TYPE_CHOICES = (
-        ('carepartner', 'Người đồng hành (Carepartner)'),
-        ('parent', 'Phụ huynh'),
-    )
-    NECESSITY_CHOICES = (
-        ('rat-can', 'Rất cần thiết — đang tìm giải pháp ngay'),
-        ('can', 'Cần thiết — đang cân nhắc'),
-        ('binh-thuong', 'Bình thường — tìm hiểu thêm'),
-        ('chua-can', 'Chưa cần thiết lúc này'),
+    ROLE_CHOICES = (
+        ('carepartner', 'Người đồng hành (CarePartner)'),
+        ('phu-huynh', 'Phụ huynh'),
     )
     INTEREST_CHOICES = (
         ('gia-su', 'Gia sư tại nhà'),
@@ -424,14 +443,12 @@ class LandingSurvey(models.Model):
         ('nhat-ky', 'Nhật ký chăm sóc'),
     )
 
-    feedback_type = models.CharField(max_length=20, choices=FEEDBACK_TYPE_CHOICES,
-                                      help_text='Loại người反馈: carepartner hoặc parent')
-    interests = models.JSONField(default=list, blank=True,
-                                  help_text='Danh sách giá trị INTEREST_CHOICES')
-    necessity = models.CharField(max_length=20, choices=NECESSITY_CHOICES, blank=True, default='')
-    question_answers = models.JSONField(default=dict, blank=True,
-                                         help_text='Câu trả lời theo bộ câu hỏi riêng từng vai trò (key=question_id, value=answer)')
-    feedback = models.TextField(blank=True, default='')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role_answers = models.JSONField(
+        default=dict, blank=True,
+        help_text='Bộ câu hỏi riêng theo role (carepartner/phu-huynh)')
+    feedback = models.TextField(blank=True, default='',
+                               help_text='Góp ý tự do (common cho cả 2 role)')
     email = models.EmailField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -442,7 +459,7 @@ class LandingSurvey(models.Model):
         verbose_name_plural = 'Khảo sát landing page'
 
     def __str__(self):
-        return f"Survey #{self.id} ({self.get_feedback_type_display()})"
+        return f"Survey #{self.id} ({self.get_role_display()})"
 
 
 class LandingSignup(models.Model):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification, WorkerAvailability, LandingSurvey, LandingSignup
+from .models import User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, Notification, WorkerAvailability, LandingSurvey, LandingSignup, LandingPageVisit
 
 
 # 1. Dịch dữ liệu Người dùng (Dùng cho Đăng ký/Đăng nhập & Màn hình Hồ sơ)
@@ -192,40 +192,31 @@ class WorkerAvailabilitySerializer(serializers.ModelSerializer):
 # ────────────────────────────────────────────────────────────────────
 
 class LandingSurveySerializer(serializers.ModelSerializer):
-    """Serializer cho form góp ý (anonymous).
+    """Serializer cho form khảo sát/góp ý (anonymous).
 
-    feedback_type: 'carepartner' hoặc 'parent' — bộ câu hỏi khác nhau.
-    question_answers: JSON chứa câu trả lời theo bộ câu hỏi riêng.
+    role = 'carepartner' | 'phu-huynh'
+    role_answers = JSON object chứa câu hỏi riêng theo role.
+    feedback + email là common.
     """
 
     class Meta:
         model = LandingSurvey
-        fields = ['feedback_type', 'interests', 'necessity', 'question_answers', 'feedback', 'email']
+        fields = ['role', 'role_answers', 'feedback', 'email']
 
     def validate_email(self, value):
-        # Email optional — cho phép blank string
         if value == '' or value is None:
             return ''
         return value
 
-    def validate_interests(self, value):
-        if not value:
-            return []
-        valid = {c[0] for c in LandingSurvey.INTEREST_CHOICES}
-        if not isinstance(value, list):
-            raise serializers.ValidationError('interests phải là danh sách.')
-        for item in value:
-            if item not in valid:
-                raise serializers.ValidationError(
-                    f'Giá trị không hợp lệ: {item}')
+    def validate_role(self, value):
+        valid = {c[0] for c in LandingSurvey.ROLE_CHOICES}
+        if value not in valid:
+            raise serializers.ValidationError(f'Vai trò không hợp lệ: {value}')
         return value
 
-    def validate_question_answers(self, value):
+    def validate_role_answers(self, value):
         if not isinstance(value, dict):
-            raise serializers.ValidationError('question_answers phải là object.')
-        # Giới hạn số key để chống spam
-        if len(value) > 20:
-            raise serializers.ValidationError('Quá nhiều câu trả lời.')
+            raise serializers.ValidationError('role_answers phải là object JSON.')
         return value
 
 
