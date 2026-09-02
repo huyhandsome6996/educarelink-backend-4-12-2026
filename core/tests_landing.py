@@ -356,7 +356,7 @@ class AdminFeedbackStatsTestCase(TestCase):
         import openpyxl
         from io import BytesIO
         wb = openpyxl.load_workbook(BytesIO(resp.content))
-        ws = wb['Gop y']
+        ws = wb['Góp ý']
         # Find the row containing our survey (column 5 = feedback)
         cell_text = ''
         for row in ws.iter_rows(min_row=2, values_only=True):

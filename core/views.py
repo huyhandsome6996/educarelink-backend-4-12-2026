@@ -3315,13 +3315,20 @@ class AdminFeedbackExcelAPIView(APIView):
 
     def _get_excel(self, request):
         from .models import LandingSurvey, LandingSignup, LandingPageVisit
+        from django.db.models import Count
+        from django.db.models.functions import TruncDate
         import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, numbers
         from openpyxl.utils import get_column_letter
+        from openpyxl.chart import BarChart, PieChart, LineChart, Reference
+        from openpyxl.chart.label import DataLabelList
+        from openpyxl.chart.series import DataPoint
+        from collections import Counter
         from django.http import HttpResponse
 
         days = int(request.query_params.get('days', 30))
         since = timezone.now() - timezone.timedelta(days=days)
+        now = timezone.now()
 
         ROLE_LABELS = {c[0]: c[1] for c in LandingSurvey.ROLE_CHOICES}
         SERVICE_LABELS = {
@@ -3329,11 +3336,11 @@ class AdminFeedbackExcelAPIView(APIView):
             'don-dep': 'Dọn dẹp nhà cửa', 'mua-sam': 'Mua sắm hộ',
             'an-toan': 'Định vị & an toàn', 'nhat-ky': 'Nhật ký chăm sóc',
         }
-        EXPERIENCE_LABELS = {'chua': 'Chưa có kinh nghiệm', 'duoi-1-nam': 'Dưới 1 năm', '1-3-nam': '1-3 nam', 'tren-3-nam': 'Trên 3 năm'}
-        RATE_LABELS = {'duoi-30k': 'Duoi 30.000d', '30-50k': '30.000-50.000d', '50-80k': '50.000-80.000d', 'tren-80k': 'Tren 80.000d'}
-        INTEREST_LEVEL_LABELS = {'rat-quan-tam': 'Rất quan tâm', 'quan-tam': 'Quan tâm', 'binh-thuong': 'Binh thuong'}
-        NECESSITY_LABELS = {'rat-can': 'Rất cần thiết', 'can': 'Can thiet', 'binh-thuong': 'Binh thuong', 'chua-can': 'Chưa cần thiết'}
-        USED_BEFORE_LABELS = {'chua-tung': 'Chưa từng', 'da-tung': 'Đã từng', 'dang-dung': 'Dang dung'}
+        EXPERIENCE_LABELS = {'chua': 'Chưa có kinh nghiệm', 'duoi-1-nam': 'Dưới 1 năm', '1-3-nam': '1-3 năm', 'tren-3-nam': 'Trên 3 năm'}
+        RATE_LABELS = {'duoi-30k': 'Dưới 30.000đ', '30-50k': '30.000-50.000đ', '50-80k': '50.000-80.000đ', 'tren-80k': 'Trên 80.000đ'}
+        INTEREST_LEVEL_LABELS = {'rat-quan-tam': 'Rất quan tâm', 'quan-tam': 'Quan tâm', 'binh-thuong': 'Bình thường'}
+        NECESSITY_LABELS = {'rat-can': 'Rất cần thiết', 'can': 'Cần thiết', 'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết'}
+        USED_BEFORE_LABELS = {'chua-tung': 'Chưa từng', 'da-tung': 'Đã từng', 'dang-dung': 'Đang dùng'}
         FACTOR_LABELS = {'gia-re': 'Giá hợp lý', 'uy-tin': 'Đáng tin cậy', 'kinh-nghiem': 'Kinh nghiệm', 'gan-nha': 'Gần nhà', 'co-danh-gia': 'Có đánh giá tốt', 'co-xac-minh': 'Đã xác minh danh tính'}
 
         def _fmt_ra(role, ra):
@@ -3341,126 +3348,543 @@ class AdminFeedbackExcelAPIView(APIView):
             parts = []
             if role == 'carepartner':
                 svcs = ra.get('services', [])
-                if svcs and isinstance(svcs, list): parts.append('Dich vu: ' + ', '.join(SERVICE_LABELS.get(s, s) for s in svcs))
+                if svcs and isinstance(svcs, list): parts.append('Dịch vụ: ' + ', '.join(SERVICE_LABELS.get(s, s) for s in svcs))
                 for k, lbls in [('experience', EXPERIENCE_LABELS), ('expected_rate', RATE_LABELS), ('interest_level', INTEREST_LEVEL_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
             else:
                 ints = ra.get('interests', [])
-                if ints and isinstance(ints, list): parts.append('Quan tam: ' + ', '.join(SERVICE_LABELS.get(i, i) for i in ints))
+                if ints and isinstance(ints, list): parts.append('Quan tâm: ' + ', '.join(SERVICE_LABELS.get(i, i) for i in ints))
                 for k, lbls in [('necessity', NECESSITY_LABELS), ('used_service_before', USED_BEFORE_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
                 factors = ra.get('important_factors', [])
-                if factors and isinstance(factors, list): parts.append('Yeu to: ' + ', '.join(FACTOR_LABELS.get(f, f) for f in factors))
+                if factors and isinstance(factors, list): parts.append('Yếu tố: ' + ', '.join(FACTOR_LABELS.get(f, f) for f in factors))
             return ' | '.join(parts)
 
-        BRAND = 'F26522'; BLUE = '38BDF8'; GREEN = '22C55E'; PURPLE = 'A78BFA'; YELLOW = 'FBBF24'
-        HDR_FILL = PatternFill(start_color=BRAND, end_color=BRAND, fill_type='solid')
-        HDR_FONT = Font(bold=True, color='FFFFFF', size=11, name='Calibri')
-        TITLE_FONT = Font(bold=True, size=16, color=BRAND, name='Calibri')
-        SUB_FONT = Font(bold=True, size=12, color='64748B', name='Calibri')
-        SEC_FONT = Font(bold=True, size=12, color=BRAND, name='Calibri')
-        KPI_VAL = Font(bold=True, size=22, color='0F172A', name='Calibri')
-        BODY = Font(size=10, name='Calibri')
-        BDR = Border(left=Side('thin', color='E2E8F0'), right=Side('thin', color='E2E8F0'), top=Side('thin', color='E2E8F0'), bottom=Side('thin', color='E2E8F0'))
-        ALT = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
-        CTR = Alignment(horizontal='center', vertical='center')
-        WRAP = Alignment(vertical='center', wrap_text=True)
+        # ======== DESIGN SYSTEM (borderless-first, 3-color rule) ========
+        PRIMARY = '1B2A4A'
+        PRIMARY_LIGHT = 'D6E4F0'
+        SECONDARY = PRIMARY_LIGHT
+        ACCENT_POS = '1B7D46'
+        ACCENT_NEG = 'C0392B'
+        ACCENT_WARN = 'D4820A'
+        N900 = '37352F'; N600 = '8C8A84'; N200 = 'E9E9E8'
+        N100 = 'F7F7F5'; N0 = 'FFFFFF'
+        CHART_COLORS = [PRIMARY, ACCENT_POS, ACCENT_WARN, ACCENT_NEG, N600]
 
-        def style_hdr(ws, r, nc):
-            for c in range(1, nc + 1):
-                cl = ws.cell(row=r, column=c); cl.font = HDR_FONT; cl.fill = HDR_FILL; cl.alignment = CTR; cl.border = BDR
-        def style_rows(ws, sr, er, nc):
+        FN = 'Calibri'
+        HDR_BOLD = True
+
+        hdr_fill = PatternFill('solid', fgColor=PRIMARY)
+        hdr_font = Font(name=FN, size=11, bold=HDR_BOLD, color='FFFFFF')
+        hdr_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        hdr_bdr = Border(bottom=Side('thin', color=N200))
+
+        body_font = Font(name=FN, size=11, color=N900)
+        body_align = Alignment(vertical='center', wrap_text=True)
+        alt_fill = PatternFill('solid', fgColor=N100)
+        white_fill = PatternFill('solid', fgColor=N0)
+
+        title_font = Font(name=FN, size=18, bold=True, color=PRIMARY)
+        title_align = Alignment(horizontal='left', vertical='center')
+        sub_font = Font(name=FN, size=11, color=N600)
+        sub_align = Alignment(horizontal='left', vertical='center')
+        kpi_font = Font(name=FN, size=28, bold=True, color=PRIMARY)
+        kpi_label_font = Font(name=FN, size=9, color=N600)
+        sec_font = Font(name=FN, size=12, bold=True, color=PRIMARY)
+        sec_fill = PatternFill('solid', fgColor=PRIMARY_LIGHT)
+        sec_align = Alignment(horizontal='left', vertical='center')
+        total_fill = PatternFill('solid', fgColor=SECONDARY)
+        total_font = Font(name=FN, size=11, bold=True, color=PRIMARY)
+        total_bdr = Border(top=Side('medium', color=N200))
+        caption_font = Font(name=FN, size=9, color=N600, italic=True)
+        empty_font = Font(name=FN, size=11, color=N600, italic=True)
+
+        def style_header_row(ws, row_num, col_start, col_end):
+            for c in range(col_start, col_end + 1):
+                cl = ws.cell(row=row_num, column=c)
+                cl.fill = hdr_fill; cl.font = hdr_font; cl.alignment = hdr_align; cl.border = hdr_bdr
+            ws.row_dimensions[row_num].height = 28
+
+        def style_data_cell(ws, row_num, col, row_idx):
+            cl = ws.cell(row=row_num, column=col)
+            cl.font = body_font; cl.alignment = body_align
+            cl.fill = alt_fill if row_idx % 2 == 1 else white_fill
+
+        def style_data_rows(ws, sr, er, nc):
             for r in range(sr, er + 1):
                 for c in range(1, nc + 1):
-                    cl = ws.cell(row=r, column=c); cl.font = BODY; cl.border = BDR; cl.alignment = WRAP
-                    if (r - sr) % 2 == 1: cl.fill = ALT
-        def auto_w(ws, mw=50):
-            for col in ws.columns:
-                ml = max(len(str(cl.value or '')) for cl in col)
-                ws.column_dimensions[get_column_letter(col[0].column)].width = min(ml + 4, mw)
-        def empty_msg(ws, msg):
-            ws.append([]); ws.append([msg])
-            ws.cell(row=ws.max_row, column=1).font = Font(italic=True, size=11, color='94A3B8', name='Calibri')
+                    style_data_cell(ws, r, c, r - sr)
+                ws.row_dimensions[r].height = 22
 
+        def auto_w(ws, sr=1, er=None, mw=40):
+            if er is None: er = ws.max_row
+            for col in ws.columns:
+                ml = max(len(str(cl.value or '')) for cl in col if cl.row >= sr and cl.row <= er)
+                ws.column_dimensions[get_column_letter(col[0].column)].width = min(max(ml + 3, 10), mw)
+
+        def make_chart_title(text, size_pt=12, bold=True, axis=False):
+            """Cross-platform chart title with font baked in."""
+            from openpyxl.chart.title import Title
+            from openpyxl.chart.text import Text, RichText
+            from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties, Font as DFont, RichTextProperties, RegularTextRun
+            from copy import deepcopy
+            sz = int(size_pt * 100)
+            rpr = CharacterProperties(latin=DFont(typeface=FN), ea=DFont(typeface=FN), sz=sz, b=bold)
+            run = RegularTextRun(rPr=deepcopy(rpr), t=text)
+            inner_body = RichTextProperties(rot=-5400000) if axis else RichTextProperties()
+            para = Paragraph(pPr=ParagraphProperties(defRPr=deepcopy(rpr)), r=[run])
+            rich = RichText(bodyPr=inner_body, p=[para])
+            if axis:
+                outer_body = RichTextProperties(rot=-5400000)
+                txPr = RichText(bodyPr=outer_body, p=[Paragraph(pPr=ParagraphProperties(defRPr=deepcopy(rpr)))])
+                return Title(tx=Text(rich=rich), txPr=txPr)
+            return Title(tx=Text(rich=rich))
+
+        def empty_msg(ws, msg):
+            r = ws.max_row + 2
+            ws.cell(row=r, column=2, value=msg).font = empty_font
+
+        # ======== FETCH DATA ========
         visits = list(LandingPageVisit.objects.filter(visited_at__gte=since).order_by('-visited_at'))
         surveys = list(LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at'))
         signups = list(LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at'))
         unique_ips = len(set(v.ip_address for v in visits if v.ip_address))
 
+        # Aggregate data for charts
+        visit_dates = list(
+            LandingPageVisit.objects.filter(visited_at__gte=since)
+            .annotate(date=TruncDate('visited_at'))
+            .values('date').annotate(count=Count('id')).order_by('date')
+        )
+        survey_dates = list(
+            LandingSurvey.objects.filter(created_at__gte=since)
+            .annotate(date=TruncDate('created_at'))
+            .values('date').annotate(count=Count('id')).order_by('date')
+        )
+        signup_dates = list(
+            LandingSignup.objects.filter(created_at__gte=since)
+            .annotate(date=TruncDate('created_at'))
+            .values('date').annotate(count=Count('id')).order_by('date')
+        )
+
+        # Role distribution
+        role_counts = Counter(s.role for s in surveys)
+        role_data = [(ROLE_LABELS.get(k, k), v) for k, v in role_counts.most_common()]
+
+        # Service interest
+        service_counter = Counter()
+        for s in surveys:
+            ra = s.role_answers or {}
+            svcs = ra.get('services', ra.get('interests', []))
+            if isinstance(svcs, list):
+                for svc in svcs:
+                    service_counter[SERVICE_LABELS.get(svc, svc)] += 1
+        service_data = [(k, v) for k, v in service_counter.most_common(6)]
+
+        # Signup type
+        signup_type_counts = Counter(s.signup_type for s in signups)
+        st_labels = {t[0]: t[1] for t in LandingSignup.TYPE_CHOICES}
+        signup_type_data = [(st_labels.get(k, k), v) for k, v in signup_type_counts.most_common()]
+
+        # Factor importance
+        factor_counter = Counter()
+        for s in surveys:
+            ra = s.role_answers or {}
+            factors = ra.get('important_factors', [])
+            if isinstance(factors, list):
+                for f in factors:
+                    factor_counter[FACTOR_LABELS.get(f, f)] += 1
+        factor_data = [(k, v) for k, v in factor_counter.most_common(6)]
+
+        # Build date map for trend chart
+        date_map = {}
+        for d in visit_dates: date_map[str(d['date'])] = date_map.get(str(d['date']), [0, 0, 0]); date_map[str(d['date'])][0] = d['count']
+        for d in survey_dates: k = str(d['date']); date_map[k] = date_map.get(k, [0, 0, 0]); date_map[k][1] = d['count']
+        for d in signup_dates: k = str(d['date']); date_map[k] = date_map.get(k, [0, 0, 0]); date_map[k][2] = d['count']
+        sorted_dates = sorted(date_map.keys())
+
+        # KPI values
+        total_visits = len(visits)
+        total_surveys = len(surveys)
+        total_signups = len(signups)
+        trial_count = sum(1 for s in signups if s.signup_type == 'dung-thu')
+        consult_count = sum(1 for s in signups if s.signup_type == 'tu-van')
+        conv_rate = round(total_signups / total_visits * 100, 1) if total_visits > 0 else 0
+
         wb = openpyxl.Workbook()
+        wb.properties.creator = 'EduCareLink'
 
-        # Sheet 1: Tong hop
-        ws = wb.active; ws.title = 'Tong hop'; ws.sheet_properties.tabColor = BRAND
-        ws.merge_cells('A1:F1'); c = ws['A1']; c.value = 'BÁO CÁO THỐNG KÊ EDUCARELINK'; c.font = TITLE_FONT; c.alignment = CTR
-        ws.row_dimensions[1].height = 40
-        ws.merge_cells('A2:F2'); ws['A2'].value = f'Khoang thoi gian: {since.strftime("%d/%m/%Y")} - {timezone.now().strftime("%d/%m/%Y")} ({days} ngay)'
-        ws['A2'].font = SUB_FONT; ws['A2'].alignment = CTR; ws.row_dimensions[2].height = 25
+        # ============================================================
+        # SHEET 1: TỔNG HỢP (Dashboard with Charts)
+        # ============================================================
+        ws = wb.active
+        ws.title = 'Tổng hợp'
+        ws.sheet_properties.tabColor = PRIMARY
+        ws.sheet_view.showGridLines = False
 
-        r = 4
-        kpis = [('LƯỢT TRUY CẬP', str(len(visits)), BLUE), ('IP DUY NHẤT', str(unique_ips), BLUE),
-                ('GÓP Ý', str(len(surveys)), BRAND), ('ĐĂNG KÝ', str(len(signups)), GREEN),
-                ('DÙNG THỬ', str(sum(1 for s in signups if s.signup_type == 'dung-thu')), PURPLE),
-                ('TƯ VẤN', str(sum(1 for s in signups if s.signup_type == 'tu-van')), YELLOW)]
+        # Column A = margin
+        ws.column_dimensions['A'].width = 3
+        for c in 'BCDEFGHIJ':
+            ws.column_dimensions[c].width = 14
+        ws.column_dimensions['K'].width = 14
+        ws.column_dimensions['L'].width = 14
+
+        # Row 1: margin
+        ws.row_dimensions[1].height = 15
+
+        # Row 2: Title
+        ws.merge_cells('B2:J2')
+        c = ws['B2']
+        c.value = 'BÁO CÁO THỐNG KÊ EDUCARELINK'
+        c.font = title_font; c.alignment = title_align
+        ws.row_dimensions[2].height = 36
+
+        # Row 3: Subtitle / date range
+        ws.merge_cells('B3:J3')
+        c = ws['B3']
+        c.value = f'Khoảng thời gian: {since.strftime("%d/%m/%Y")} - {now.strftime("%d/%m/%Y")} ({days} ngày) | Xuất lúc: {now.strftime("%H:%M %d/%m/%Y")}'
+        c.font = sub_font; c.alignment = sub_align
+        ws.row_dimensions[3].height = 20
+
+        # Row 5-7: KPI Cards (2 rows: value + label)
+        kpis = [
+            ('LƯỢT TRUY CẬP', total_visits, PRIMARY),
+            ('IP DUY NHẤT', unique_ips, PRIMARY),
+            ('GÓP Ý', total_surveys, ACCENT_WARN),
+            ('ĐĂNG KÝ', total_signups, ACCENT_POS),
+            ('DÙNG THỬ', trial_count, PRIMARY),
+            ('TƯ VẤN', consult_count, PRIMARY),
+            ('TỶ LỆ CHUYỂN ĐỔI', f'{conv_rate}%', ACCENT_POS if conv_rate > 0 else N600),
+        ]
+        kpi_start_col = 2  # B
+        kpi_col_span = 2  # each KPI takes 2 cols
+        ws.row_dimensions[5].height = 42
+        ws.row_dimensions[6].height = 18
+
         for i, (label, value, color) in enumerate(kpis):
-            col = i * 2 + 1
-            ws.merge_cells(start_row=r, start_column=col, end_row=r, end_column=col + 1)
-            cl = ws.cell(row=r, column=col); cl.value = f'{value}\n{label}'
-            cl.font = KPI_VAL; cl.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-            cl.fill = PatternFill(start_color=color + '18', end_color=color + '18', fill_type='solid')
-            cl.border = Border(left=Side('medium', color=color), right=Side('medium', color=color), top=Side('medium', color=color), bottom=Side('medium', color=color))
-        ws.row_dimensions[r].height = 55
+            col = kpi_start_col + i * kpi_col_span
+            end_col = col + kpi_col_span - 1
+            # Merge for value
+            ws.merge_cells(start_row=5, start_column=col, end_row=5, end_column=end_col)
+            cell_v = ws.cell(row=5, column=col)
+            cell_v.value = value
+            cell_v.font = Font(name=FN, size=28, bold=True, color=color)
+            cell_v.alignment = Alignment(horizontal='center', vertical='center')
+            # Merge for label
+            ws.merge_cells(start_row=6, start_column=col, end_row=6, end_column=end_col)
+            cell_l = ws.cell(row=6, column=col)
+            cell_l.value = label
+            cell_l.font = kpi_label_font
+            cell_l.alignment = Alignment(horizontal='center', vertical='center')
+            # Light bg for KPI card
+            bg_fill = PatternFill('solid', fgColor=PRIMARY_LIGHT)
+            for r in range(5, 7):
+                for cc in range(col, end_col + 1):
+                    ws.cell(row=r, column=cc).fill = bg_fill
+            # Bottom border for card
+            for cc in range(col, end_col + 1):
+                ws.cell(row=6, column=cc).border = Border(bottom=Side('medium', color=color))
 
-        r = 6
-        ws.merge_cells(f'A{r}:F{r}'); ws.cell(row=r, column=1).value = 'PHÂN TÍCH AI (Gemini)'
-        ws.cell(row=r, column=1).font = SEC_FONT; ws.cell(row=r, column=1).fill = PatternFill(start_color=BRAND + '15', end_color=BRAND + '15', fill_type='solid')
-        r += 1
+        # ---- CHART DATA AREAS (hidden in columns R-U, used by charts) ----
+        chart_data_col = 18  # R — beyond KPI merge range (B5:O6)
+
+        # --- Pie: Role Distribution (R2:S...) ---
+        r0 = 2
+        ws.cell(row=r0, column=chart_data_col, value='Vai trò')
+        ws.cell(row=r0, column=chart_data_col + 1, value='Số lượng')
+        for i, (lbl, val) in enumerate(role_data):
+            ws.cell(row=r0 + 1 + i, column=chart_data_col, value=lbl)
+            ws.cell(row=r0 + 1 + i, column=chart_data_col + 1, value=val)
+        role_data_end = r0 + len(role_data)
+
+        # --- Bar: Service Interest (N6:O...) ---
+        r1 = role_data_end + 2
+        ws.cell(row=r1, column=chart_data_col, value='Dịch vụ')
+        ws.cell(row=r1, column=chart_data_col + 1, value='Số lượt')
+        for i, (lbl, val) in enumerate(service_data):
+            ws.cell(row=r1 + 1 + i, column=chart_data_col, value=lbl)
+            ws.cell(row=r1 + 1 + i, column=chart_data_col + 1, value=val)
+        service_data_end = r1 + len(service_data)
+
+        # --- Bar: Important Factors (N12:O...) ---
+        r2 = service_data_end + 2
+        ws.cell(row=r2, column=chart_data_col, value='Yếu tố')
+        ws.cell(row=r2, column=chart_data_col + 1, value='Số lượt')
+        for i, (lbl, val) in enumerate(factor_data):
+            ws.cell(row=r2 + 1 + i, column=chart_data_col, value=lbl)
+            ws.cell(row=r2 + 1 + i, column=chart_data_col + 1, value=val)
+        factor_data_end = r2 + len(factor_data)
+
+        # --- Line: Trend over time (N18:Q...) ---
+        r3 = factor_data_end + 2
+        ws.cell(row=r3, column=chart_data_col, value='Ngày')
+        ws.cell(row=r3, column=chart_data_col + 1, value='Truy cập')
+        ws.cell(row=r3, column=chart_data_col + 2, value='Góp ý')
+        ws.cell(row=r3, column=chart_data_col + 3, value='Đăng ký')
+        for i, d in enumerate(sorted_dates):
+            ws.cell(row=r3 + 1 + i, column=chart_data_col, value=d)
+            ws.cell(row=r3 + 1 + i, column=chart_data_col + 1, value=date_map[d][0])
+            ws.cell(row=r3 + 1 + i, column=chart_data_col + 2, value=date_map[d][1])
+            ws.cell(row=r3 + 1 + i, column=chart_data_col + 3, value=date_map[d][2])
+        trend_data_end = r3 + len(sorted_dates)
+
+        # --- Pie: Signup Type (N35:O...) ---
+        r4 = trend_data_end + 2
+        ws.cell(row=r4, column=chart_data_col, value='Loại đăng ký')
+        ws.cell(row=r4, column=chart_data_col + 1, value='Số lượng')
+        for i, (lbl, val) in enumerate(signup_type_data):
+            ws.cell(row=r4 + 1 + i, column=chart_data_col, value=lbl)
+            ws.cell(row=r4 + 1 + i, column=chart_data_col + 1, value=val)
+        signup_type_end = r4 + len(signup_type_data)
+
+        # Hide chart data columns
+        for hc in range(chart_data_col, chart_data_col + 4):
+            ws.column_dimensions[get_column_letter(hc)].hidden = True
+
+        # ---- PLACE CHARTS ----
+        chart_row = 8
+
+        # Chart 1: Pie - Role Distribution
+        if role_data:
+            pie1 = PieChart()
+            pie1.style = 10
+            pie1.width = 16; pie1.height = 11
+            pie1.title = make_chart_title('Phân bố theo vai trò')
+            data_ref = Reference(ws, min_col=chart_data_col + 1, min_row=r0, max_row=role_data_end)
+            cats_ref = Reference(ws, min_col=chart_data_col, min_row=r0 + 1, max_row=role_data_end)
+            pie1.add_data(data_ref, titles_from_data=True)
+            pie1.set_categories(cats_ref)
+            pie1.dataLabels = DataLabelList()
+            pie1.dataLabels.dLblPos = 'bestFit'
+            pie1.dataLabels.showCatName = True
+            pie1.dataLabels.showPercent = True
+            pie1.dataLabels.showVal = False
+            pie1.dataLabels.showLeaderLines = True
+            for i in range(len(role_data)):
+                pt = DataPoint(idx=i)
+                pt.graphicalProperties.solidFill = CHART_COLORS[i % len(CHART_COLORS)]
+                pie1.series[0].data_points.append(pt)
+            ws.add_chart(pie1, f'B{chart_row}')
+
+        # Chart 2: Bar - Service Interest
+        if service_data:
+            bar1 = BarChart()
+            bar1.type = 'col'; bar1.grouping = 'clustered'
+            bar1.gapWidth = 80; bar1.overlap = 100
+            bar1.style = 10
+            bar1.width = 16; bar1.height = 11
+            bar1.title = make_chart_title('Dịch vụ được quan tâm')
+            bar1.y_axis.title = make_chart_title('Số lượt', 10, bold=False, axis=True)
+            data_ref = Reference(ws, min_col=chart_data_col + 1, min_row=r1, max_row=service_data_end)
+            cats_ref = Reference(ws, min_col=chart_data_col, min_row=r1 + 1, max_row=service_data_end)
+            bar1.add_data(data_ref, titles_from_data=True)
+            bar1.set_categories(cats_ref)
+            for series in bar1.series:
+                series.graphicalProperties.solidFill = CHART_COLORS[0]
+            bar1.plot_visible_only = False
+            ws.add_chart(bar1, f'F{chart_row}')
+
+        # Chart 3: Bar - Important Factors
+        if factor_data:
+            bar2 = BarChart()
+            bar2.type = 'bar'; bar2.grouping = 'clustered'
+            bar2.gapWidth = 80; bar2.overlap = 100
+            bar2.style = 10
+            bar2.width = 16; bar2.height = 11
+            bar2.title = make_chart_title('Yếu tố quan trọng nhất')
+            bar2.x_axis.title = make_chart_title('Số lượt', 10, bold=False, axis=True)
+            data_ref = Reference(ws, min_col=chart_data_col + 1, min_row=r2, max_row=factor_data_end)
+            cats_ref = Reference(ws, min_col=chart_data_col, min_row=r2 + 1, max_row=factor_data_end)
+            bar2.add_data(data_ref, titles_from_data=True)
+            bar2.set_categories(cats_ref)
+            for series in bar2.series:
+                series.graphicalProperties.solidFill = CHART_COLORS[1]
+            bar2.plot_visible_only = False
+            ws.add_chart(bar2, f'B{chart_row + 16}')
+
+        # Chart 4: Pie - Signup Type
+        if signup_type_data:
+            pie2 = PieChart()
+            pie2.style = 10
+            pie2.width = 16; pie2.height = 11
+            pie2.title = make_chart_title('Phân loại đăng ký')
+            data_ref = Reference(ws, min_col=chart_data_col + 1, min_row=r4, max_row=signup_type_end)
+            cats_ref = Reference(ws, min_col=chart_data_col, min_row=r4 + 1, max_row=signup_type_end)
+            pie2.add_data(data_ref, titles_from_data=True)
+            pie2.set_categories(cats_ref)
+            pie2.dataLabels = DataLabelList()
+            pie2.dataLabels.dLblPos = 'bestFit'
+            pie2.dataLabels.showCatName = True
+            pie2.dataLabels.showPercent = True
+            pie2.dataLabels.showVal = False
+            pie2.dataLabels.showLeaderLines = True
+            for i in range(len(signup_type_data)):
+                pt = DataPoint(idx=i)
+                pt.graphicalProperties.solidFill = CHART_COLORS[i % len(CHART_COLORS)]
+                pie2.series[0].data_points.append(pt)
+            ws.add_chart(pie2, f'F{chart_row + 16}')
+
+        # Chart 5: Line - Trend over time
+        if sorted_dates:
+            line1 = LineChart()
+            line1.style = 10
+            line1.width = 30; line1.height = 12
+            line1.title = make_chart_title('Xu hướng theo ngày')
+            line1.y_axis.title = make_chart_title('Số lượng', 10, bold=False, axis=True)
+            line1.x_axis.title = make_chart_title('Ngày', 10, bold=False)
+            data_ref = Reference(ws, min_col=chart_data_col + 1, max_col=chart_data_col + 3, min_row=r3, max_row=trend_data_end)
+            cats_ref = Reference(ws, min_col=chart_data_col, min_row=r3 + 1, max_row=trend_data_end)
+            line1.add_data(data_ref, titles_from_data=True)
+            line1.set_categories(cats_ref)
+            for i, series in enumerate(line1.series):
+                series.graphicalProperties.line.solidFill = CHART_COLORS[i % len(CHART_COLORS)]
+                series.smooth = True
+            line1.plot_visible_only = False
+            ws.add_chart(line1, f'B{chart_row + 32}')
+
+        # AI Analysis section
+        ai_start_row = chart_row + 46
+        ws.merge_cells(f'B{ai_start_row}:J{ai_start_row}')
+        ws.cell(row=ai_start_row, column=2, value='PHÂN TÍCH AI (Gemini)')
+        ws.cell(row=ai_start_row, column=2).font = sec_font
+        ws.cell(row=ai_start_row, column=2).fill = sec_fill
+        ws.cell(row=ai_start_row, column=2).alignment = sec_align
+        ws.row_dimensions[ai_start_row].height = 28
+
+        ai_row = ai_start_row + 1
         ai_text = self._ai_excel_insight(visits, surveys, signups, days)
         if ai_text:
-            ws.merge_cells(f'A{r}:F{r}'); ic = ws.cell(row=r, column=1); ic.value = ai_text
-            ic.font = Font(size=10, name='Calibri', color='334155'); ic.alignment = Alignment(wrap_text=True, vertical='top')
-            ws.row_dimensions[r].height = max(80, len(ai_text) // 3)
+            ws.merge_cells(f'B{ai_row}:J{ai_row}')
+            ic = ws.cell(row=ai_row, column=2, value=ai_text)
+            ic.font = body_font
+            ic.alignment = Alignment(wrap_text=True, vertical='top')
+            ws.row_dimensions[ai_row].height = max(60, len(ai_text) // 2)
         else:
-            ws.cell(row=r, column=1).value = 'Chua du du lieu de AI phan tich (can it nhat 1 ban ghi).'
-            ws.cell(row=r, column=1).font = Font(italic=True, size=10, color='94A3B8', name='Calibri')
-        for c in range(1, 7): ws.column_dimensions[get_column_letter(c)].width = 18
+            ws.cell(row=ai_row, column=2, value='Chưa đủ dữ liệu để AI phân tích (cần ít nhất 1 bản ghi).')
+            ws.cell(row=ai_row, column=2).font = empty_font
 
-        # Sheet 2: Luot truy cap
-        w2 = wb.create_sheet('Luot truy cap'); w2.sheet_properties.tabColor = BLUE
+        # Footer
+        ft_row = ai_row + 2
+        ws.merge_cells(f'B{ft_row}:J{ft_row}')
+        ws.cell(row=ft_row, column=2, value='Tạo tự động bởi EduCareLink | Nền tảng kết nối Phụ huynh - Carepartner').font = caption_font
+
+        # ============================================================
+        # SHEET 2: LƯỢT TRUY CẬP
+        # ============================================================
+        w2 = wb.create_sheet('Lượt truy cập')
+        w2.sheet_properties.tabColor = PRIMARY
+        w2.sheet_view.showGridLines = False
+        w2.column_dimensions['A'].width = 3
+
+        w2.merge_cells('B2:G2')
+        w2['B2'].value = 'Lượt truy cập landing page'
+        w2['B2'].font = title_font; w2['B2'].alignment = title_align
+        w2.row_dimensions[2].height = 36
+        w2.row_dimensions[3].height = 8
+
         h0 = ['ID', 'Session ID', 'IP', 'Referrer', 'User Agent', 'Thời gian']
-        w2.append(h0); style_hdr(w2, 1, len(h0))
-        if visits:
-            for v in visits: w2.append([v.id, v.session_id[:20]+'...', v.ip_address or '', v.referrer[:100] if v.referrer else '', (v.user_agent or '')[:80], v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else ''])
-            style_rows(w2, 2, w2.max_row, len(h0))
-        else: empty_msg(w2, 'Chua co luot truy cap.')
-        auto_w(w2)
+        hr = 4
+        for ci, h in enumerate(h0, start=2):
+            w2.cell(row=hr, column=ci, value=h)
+        style_header_row(w2, hr, 2, 2 + len(h0) - 1)
 
-        # Sheet 3: Gop y
-        w3 = wb.create_sheet('Gop y'); w3.sheet_properties.tabColor = BRAND
+        if visits:
+            for i, v in enumerate(visits):
+                ri = hr + 1 + i
+                w2.cell(row=ri, column=2, value=v.id)
+                w2.cell(row=ri, column=3, value=v.session_id[:20] + '...' if v.session_id else '')
+                w2.cell(row=ri, column=4, value=v.ip_address or '')
+                w2.cell(row=ri, column=5, value=(v.referrer or '')[:100])
+                w2.cell(row=ri, column=6, value=(v.user_agent or '')[:80])
+                w2.cell(row=ri, column=7, value=v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else '')
+                for c in range(2, 8):
+                    style_data_cell(w2, ri, c, i)
+        else:
+            empty_msg(w2, 'Chưa có lượt truy cập.')
+        auto_w(w2, sr=hr)
+
+        # ============================================================
+        # SHEET 3: GÓP Ý
+        # ============================================================
+        w3 = wb.create_sheet('Góp ý')
+        w3.sheet_properties.tabColor = ACCENT_WARN
+        w3.sheet_view.showGridLines = False
+        w3.column_dimensions['A'].width = 3
+
+        w3.merge_cells('B2:I2')
+        w3['B2'].value = 'Phản hồi khảo sát'
+        w3['B2'].font = title_font; w3['B2'].alignment = title_align
+        w3.row_dimensions[2].height = 36
+        w3.row_dimensions[3].height = 8
+
         h1 = ['ID', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Email', 'IP', 'Ngày tạo']
-        w3.append(h1); style_hdr(w3, 1, len(h1))
+        hr = 4
+        for ci, h in enumerate(h1, start=2):
+            w3.cell(row=hr, column=ci, value=h)
+        style_header_row(w3, hr, 2, 2 + len(h1) - 1)
+
         if surveys:
-            for s in surveys:
+            for i, s in enumerate(surveys):
+                ri = hr + 1 + i
                 ra = s.role_answers or {}; sr = ra.get('services', ra.get('interests', []))
                 ss = ', '.join(SERVICE_LABELS.get(i, i) for i in (sr if isinstance(sr, list) else []))
-                w3.append([s.id, ROLE_LABELS.get(s.role, s.role), ss, _fmt_ra(s.role, ra), s.feedback, s.email, s.ip_address or '', s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''])
-            style_rows(w3, 2, w3.max_row, len(h1))
-        else: empty_msg(w3, 'Chua co gop y.')
-        auto_w(w3)
+                w3.cell(row=ri, column=2, value=s.id)
+                w3.cell(row=ri, column=3, value=ROLE_LABELS.get(s.role, s.role))
+                w3.cell(row=ri, column=4, value=ss)
+                w3.cell(row=ri, column=5, value=_fmt_ra(s.role, ra))
+                w3.cell(row=ri, column=6, value=s.feedback or '')
+                w3.cell(row=ri, column=7, value=s.email or '')
+                w3.cell(row=ri, column=8, value=s.ip_address or '')
+                w3.cell(row=ri, column=9, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 10):
+                    style_data_cell(w3, ri, c, i)
+        else:
+            empty_msg(w3, 'Chưa có góp ý.')
+        auto_w(w3, sr=hr)
 
-        # Sheet 4: Dang ky
-        w4 = wb.create_sheet('Dang ky'); w4.sheet_properties.tabColor = GREEN
-        h2 = ['ID', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loai', 'Khung giờ', 'Dung thu', 'Ghi chú', 'Ngày tạo']
-        w4.append(h2); style_hdr(w4, 1, len(h2))
+        # ============================================================
+        # SHEET 4: ĐĂNG KÝ
+        # ============================================================
+        w4 = wb.create_sheet('Đăng ký')
+        w4.sheet_properties.tabColor = ACCENT_POS
+        w4.sheet_view.showGridLines = False
+        w4.column_dimensions['A'].width = 3
+
+        w4.merge_cells('B2:K2')
+        w4['B2'].value = 'Đăng ký dùng thử / tư vấn'
+        w4['B2'].font = title_font; w4['B2'].alignment = title_align
+        w4.row_dimensions[2].height = 36
+        w4.row_dimensions[3].height = 8
+
+        h2 = ['ID', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loại', 'Khung giờ', 'Dùng thử', 'Ghi chú', 'Ngày tạo']
+        hr = 4
+        for ci, h in enumerate(h2, start=2):
+            w4.cell(row=hr, column=ci, value=h)
+        style_header_row(w4, hr, 2, 2 + len(h2) - 1)
+
         if signups:
-            for s in signups: w4.append([s.id, s.full_name, s.phone, s.email, s.get_role_display(), s.get_signup_type_display(), s.get_preferred_time_slot_display() if s.preferred_time_slot else '', 'Co' if s.trial_consent else 'Không', s.note, s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''])
-            style_rows(w4, 2, w4.max_row, len(h2))
-        else: empty_msg(w4, 'Chua co dang ky.')
-        auto_w(w4)
+            for i, s in enumerate(signups):
+                ri = hr + 1 + i
+                w4.cell(row=ri, column=2, value=s.id)
+                w4.cell(row=ri, column=3, value=s.full_name or '')
+                w4.cell(row=ri, column=4, value=s.phone or '')
+                w4.cell(row=ri, column=5, value=s.email or '')
+                w4.cell(row=ri, column=6, value=s.get_role_display())
+                w4.cell(row=ri, column=7, value=s.get_signup_type_display())
+                w4.cell(row=ri, column=8, value=s.get_preferred_time_slot_display() if s.preferred_time_slot else '')
+                w4.cell(row=ri, column=9, value='Có' if s.trial_consent else 'Không')
+                w4.cell(row=ri, column=10, value=s.note or '')
+                w4.cell(row=ri, column=11, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 12):
+                    style_data_cell(w4, ri, c, i)
+        else:
+            empty_msg(w4, 'Chưa có đăng ký.')
+        auto_w(w4, sr=hr)
 
         resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        resp['Content-Disposition'] = f'attachment; filename="educarelink_thong_ke_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+        resp['Content-Disposition'] = f'attachment; filename="educarelink_thong_ke_{now.strftime("%Y%m%d")}.xlsx"'
         wb.save(resp)
         return resp
 
