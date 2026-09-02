@@ -2820,7 +2820,11 @@
             const days = document.getElementById('feedbackDays').value;
             try {
                 const res = await apiFetch(`${API_BASE}/admin/feedback-stats/?days=${days}`);
-                if (!res.ok) throw new Error('Không thể tải thống kê');
+                if (!res.ok) {
+                    let detail = `HTTP ${res.status}`;
+                    try { const j = await res.json(); detail = j.detail || j.error || detail; } catch(_){}
+                    throw new Error(detail);
+                }
                 feedbackStatsData = await res.json();
                 renderFeedbackStats(feedbackStatsData);
             } catch (e) {

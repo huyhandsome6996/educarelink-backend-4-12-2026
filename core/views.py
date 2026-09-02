@@ -3132,7 +3132,7 @@ class AdminFeedbackStatsAPIView(APIView):
     Bao gồm: lượt truy cập, góp ý (theo role), đăng ký.
     """
     permission_classes = [IsAdminUser]
-    throttle_scope = 'landing_form'
+    # Không throttle — admin authenticated, cần gọi API thoải mái
 
     def get(self, request):
         from .models import LandingSurvey, LandingSignup, LandingPageVisit
