@@ -213,7 +213,8 @@ REST_FRAMEWORK = {
         'sos': '5/min',  # ⚡ Security: SOS — 5/phút (chống spam khẩn cấp)
         'task_create': '10/hour',  # ⚡ Security: tạo task — 10/giờ (chống spam việc ảo)
         'apply': '20/hour',  # ⚡ Security: ứng tuyển — 20/giờ
-        'landing_form': '5/min',  # ⚡ Security: landing survey/signup — 5/phút (chống spam bot)
+        'landing_form': '15/min',  # ⚡ Security: landing survey/signup — 15/phút (anti-spam, đủ cho user thật)
+        'landing_visit': '30/min',  # ⚡ Security: landing page visit tracking — 30/phút
     },
 }
 

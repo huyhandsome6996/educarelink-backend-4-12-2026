@@ -996,7 +996,10 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''},
       body: JSON.stringify(payload)
-    }).then(function(r){ return r.json(); }).then(function(data){
+    }).then(function(r){
+      if(!r.ok) return r.json().then(function(j){ throw new Error(j.detail || j.error ? JSON.stringify(j.error) : 'HTTP ' + r.status); }).catch(function(e){ if(e.message.startsWith('HTTP')) throw e; throw new Error('HTTP ' + r.status); });
+      return r.json();
+    }).then(function(data){
       if(data.ok){
         surveyForm.querySelectorAll('input, textarea, button').forEach(function(el){ el.disabled = true; });
         surveySuccess.classList.add('show');
@@ -1005,9 +1008,9 @@
         surveyForm.querySelector('button[type=submit]').disabled = false;
         alert('Gửi không thành công. Vui lòng thử lại sau.');
       }
-    }).catch(function(){
+    }).catch(function(e){
       surveyForm.querySelector('button[type=submit]').disabled = false;
-      alert('Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.');
+      alert('Lỗi: ' + (e.message || 'Vui lòng kiểm tra mạng và thử lại.'));
     });
   });
 
@@ -1068,7 +1071,10 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''},
       body: JSON.stringify(payload)
-    }).then(function(r){ return r.json(); }).then(function(data){
+    }).then(function(r){
+      if(!r.ok) return r.json().then(function(j){ throw new Error(j.detail || j.error ? JSON.stringify(j.error) : 'HTTP ' + r.status); }).catch(function(e){ if(e.message.startsWith('HTTP')) throw e; throw new Error('HTTP ' + r.status); });
+      return r.json();
+    }).then(function(data){
       if(data.ok){
         signupForm.querySelectorAll('input, textarea, select, button').forEach(function(el){ el.disabled = true; });
         successTitle.textContent = isTrial ? 'Đăng ký dùng thử thành công!' : 'Đăng ký tư vấn thành công!';
@@ -1088,9 +1094,9 @@
           alert('Gửi không thành công. Vui lòng thử lại sau.');
         }
       }
-    }).catch(function(){
+    }).catch(function(e){
       submitBtn.disabled = false;
-      alert('Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.');
+      alert('Lỗi: ' + (e.message || 'Vui lòng kiểm tra mạng và thử lại.'));
     });
   });
 

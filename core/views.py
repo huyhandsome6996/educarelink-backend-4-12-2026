@@ -3030,7 +3030,7 @@ class LandingTrackVisitAPIView(APIView):
     Server kiểm tra trùng session_id, bot UA, rate-limit per IP.
     """
     permission_classes = [AllowAny]
-    throttle_scope = 'landing_form'
+    throttle_scope = 'landing_visit'
 
     def post(self, request):
         from .models import LandingPageVisit
