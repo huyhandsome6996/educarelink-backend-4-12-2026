@@ -3098,7 +3098,11 @@ class LandingSurveyAPIView(APIView):
             }, status=201)
         except Exception as e:
             logger.exception('LandingSurvey submit error')
-            return Response({'error': str(e)}, status=500)
+            err_msg = str(e)
+            # Ẩn chi tiết database schema khỏi user
+            if 'does not exist' in err_msg or 'relation' in err_msg or 'column' in err_msg:
+                return Response({'error': 'Hệ thống đang được cập nhật, vui lòng thử lại sau vài phút.'}, status=503)
+            return Response({'error': err_msg}, status=500)
 
 
 class LandingSignupAPIView(APIView):
@@ -3125,7 +3129,10 @@ class LandingSignupAPIView(APIView):
             }, status=201)
         except Exception as e:
             logger.exception('LandingSignup submit error')
-            return Response({'error': str(e)}, status=500)
+            err_msg = str(e)
+            if 'does not exist' in err_msg or 'relation' in err_msg or 'column' in err_msg:
+                return Response({'error': 'Hệ thống đang được cập nhật, vui lòng thử lại sau vài phút.'}, status=503)
+            return Response({'error': err_msg}, status=500)
 
 
 # ────────────────────────────────────────────────────────────────────
