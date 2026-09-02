@@ -3030,6 +3030,7 @@ class LandingTrackVisitAPIView(APIView):
     Server kiểm tra trùng session_id, bot UA, rate-limit per IP.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'landing_visit'
 
     def post(self, request):
@@ -3077,6 +3078,7 @@ class LandingTrackVisitAPIView(APIView):
 class LandingSurveyAPIView(APIView):
     """API nhận dữ liệu khảo sát/góp ý từ trang landing (anonymous)."""
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'landing_form'
 
     def post(self, request):
@@ -3102,6 +3104,7 @@ class LandingSurveyAPIView(APIView):
 class LandingSignupAPIView(APIView):
     """API nhận đăng ký tư vấn/dùng thử từ trang landing (anonymous)."""
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'landing_form'
 
     def post(self, request):
@@ -3303,6 +3306,41 @@ class AdminFeedbackExcelAPIView(APIView):
             'rat-can': 'Rất cần thiết', 'can': 'Cần thiết',
             'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết',
         }
+        USED_BEFORE_LABELS = {
+            'da-su-dung': 'Đã sử dụng', 'chua': 'Chưa sử dụng',
+        }
+        FACTOR_LABELS = {
+            'gia-ca': 'Giá cả hợp lý', 'bao-mat': 'Bảo mật & an toàn',
+            'uy-tin': 'Uy tín & đánh giá', 'tien-ich': 'Tiện ích tính năng',
+            'ho-tro': 'Hỗ trợ khách hàng',
+        }
+
+        def _fmt_role_answers(role, ra):
+            if not ra or not isinstance(ra, dict):
+                return ''
+            parts = []
+            if role == 'carepartner':
+                svcs = ra.get('services', [])
+                if svcs and isinstance(svcs, list):
+                    parts.append('Dịch vụ: ' + ', '.join(SERVICE_LABELS.get(s, s) for s in svcs))
+                for key, labels in [('experience', EXPERIENCE_LABELS), ('expected_rate', RATE_LABELS), ('interest_level', INTEREST_LEVEL_LABELS)]:
+                    v = ra.get(key)
+                    if v:
+                        parts.append(labels.get(v, v))
+            else:
+                ints = ra.get('interests', [])
+                if ints and isinstance(ints, list):
+                    parts.append('Quan tâm: ' + ', '.join(SERVICE_LABELS.get(i, i) for i in ints))
+                nec = ra.get('necessity')
+                if nec:
+                    parts.append('Mức độ cần thiết: ' + NECESSITY_LABELS.get(nec, nec))
+                ub = ra.get('used_service_before')
+                if ub:
+                    parts.append('Đã dùng dịch vụ: ' + USED_BEFORE_LABELS.get(ub, ub))
+                factors = ra.get('important_factors', [])
+                if factors and isinstance(factors, list):
+                    parts.append('Yếu tố quan trọng: ' + ', '.join(FACTOR_LABELS.get(f, f) for f in factors))
+            return ' · '.join(parts)
 
         # === Sheet 1: Lượt truy cập ===
         ws0 = wb.active
@@ -3341,7 +3379,7 @@ class AdminFeedbackExcelAPIView(APIView):
                 s.id,
                 ROLE_LABELS.get(s.role, s.role),
                 services_str,
-                str(ra) if ra else '',
+                _fmt_role_answers(s.role, ra),
                 s.feedback,
                 s.email,
                 s.ip_address or '',
@@ -3427,6 +3465,7 @@ class AdminFeedbackAIAnalysisAPIView(APIView):
     đề xuất cải thiện, trả về JSON.
     """
     permission_classes = [IsAdminUser]
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'ai'
 
     def post(self, request):
@@ -3526,7 +3565,9 @@ def _generate_fallback_analysis(surveys, signups, visits=None):
     return {
         'tong_quan': f'Tổng cộng {total_visits} lượt truy cập, {total_s} góp ý và {total_sig} đăng ký (tư vấn: {consult_count}, dùng thử: {trial_count}) trong khoảng thời gian đã chọn.',
         'xu_huong': [
-            {'mo_ta': f'Phụ huynh đóng góp nhiều hơn ({ph_count}) so với Người đồng hành ({cp_count})' if ph_count > cp_count else f'Người đồng hành đóng góp nhiều hơn ({cp_count}) so với Phụ huynh ({ph_count})', 'muc_do': 'cao'},
+            {'mo_ta': f'Người đồng hành và Phụ huynh đóng góp ngang nhau ({cp_count} mỗi nhóm)', 'muc_do': 'thap'} if cp_count == ph_count else
+            {'mo_ta': f'Phụ huynh đóng góp nhiều hơn ({ph_count}) so với Người đồng hành ({cp_count})', 'muc_do': 'cao'} if ph_count > cp_count else
+            {'mo_ta': f'Người đồng hành đóng góp nhiều hơn ({cp_count}) so với Phụ huynh ({ph_count})', 'muc_do': 'cao'},
             {'mo_ta': f'Tỷ lệ chuyển đổi: {total_visits} lượt truy cập → {total_sig} đăng ký ({round(total_sig/max(total_visits,1)*100, 1)}%)' if total_visits > 0 else 'Chưa có đủ dữ liệu lượt truy cập', 'muc_do': 'trung_binh'},
         ],
         'de_xuat': [

@@ -58,6 +58,10 @@
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
         .sidebar-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
         .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .main::-webkit-scrollbar { width: 8px; }
+        .main::-webkit-scrollbar-track { background: transparent; }
+        .main::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid #0f172a; }
+        .main::-webkit-scrollbar-thumb:hover { background: #475569; }
         .nav-item {
             display: flex; align-items: center; gap: 12px;
             padding: 12px 16px; border-radius: 10px;
@@ -2956,9 +2960,32 @@
 
         function exportFeedbackExcel() {
             const days = document.getElementById('feedbackDays').value;
-            const token = localStorage.getItem('access_token');
+            const token = getAuthToken();
             if (!token) { alert('Vui lòng đăng nhập lại'); return; }
-            window.open(`${API_BASE}/admin/feedback-excel/?days=${days}`, '_blank');
+            const btn = event.target.closest('button');
+            const origText = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang xuất...';
+            fetch(`${API_BASE}/admin/feedback-excel/?days=${days}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.blob();
+            }).then(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'educarelink-landing-stats-' + days + '-days.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }).catch(function(e) {
+                alert('Lỗi xuất Excel: ' + e.message);
+            }).finally(function() {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+            });
         }
 
         async function runAIAnalysis() {
@@ -2974,7 +3001,7 @@
             try {
                 const res = await fetch(`${API_BASE}/admin/feedback-ai-analysis/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('access_token') },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken() },
                     body: JSON.stringify({ days: parseInt(days) })
                 });
                 const data = await res.json();

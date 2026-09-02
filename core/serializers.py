@@ -219,6 +219,26 @@ class LandingSurveySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('role_answers phải là object JSON.')
         return value
 
+    def validate(self, attrs):
+        role = attrs.get('role', '')
+        ra = attrs.get('role_answers', {}) or {}
+        errors = {}
+        if role == 'carepartner':
+            if not ra.get('services') or not isinstance(ra['services'], list) or len(ra['services']) == 0:
+                errors['role_answers'] = 'Vui lòng chọn ít nhất 1 dịch vụ.'
+            if not ra.get('experience'):
+                errors['role_answers'] = 'Vui lòng chọn kinh nghiệm.'
+            if not ra.get('expected_rate'):
+                errors['role_answers'] = 'Vui lòng chọn mức lương mong muốn.'
+            if not ra.get('interest_level'):
+                errors['role_answers'] = 'Vui lòng chọn mức độ quan tâm.'
+        elif role == 'phu-huynh':
+            if not ra.get('necessity'):
+                errors['role_answers'] = 'Vui lòng chọn mức độ cần thiết.'
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
 
 class LandingSignupSerializer(serializers.ModelSerializer):
     """Serializer cho form đăng ký tư vấn/dùng thử (anonymous)."""
