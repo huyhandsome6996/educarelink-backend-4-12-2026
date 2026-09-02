@@ -15,7 +15,15 @@
             background: #0f172a;
             color: #e2e8f0;
             min-height: 100vh;
+            overflow-y: auto;
         }
+        /* Global scrollbar — visible for trackpad users */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; border: 2px solid #0f172a; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        /* Firefox */
+        * { scrollbar-width: thin; scrollbar-color: #334155 #0f172a; }
         h1, h2, h3, h4, h5, h6,
         .page-title, .sidebar-logo, .stat-value, .table-title,
         .edit-modal-title, .empty-title {
@@ -45,7 +53,11 @@
             font-size: 20px; font-weight: 900; color: #F26522;
         }
         .sidebar-logo-text span { color: #94a3b8; font-weight: 500; font-size: 12px; display: block; margin-top: 2px; }
-        .sidebar-nav { padding: 16px 12px; flex: 1; }
+        .sidebar-nav { padding: 16px 12px; flex: 1; overflow-y: auto; }
+        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #475569; }
         .nav-item {
             display: flex; align-items: center; gap: 12px;
             padding: 12px 16px; border-radius: 10px;
@@ -383,6 +395,32 @@
             opacity: 0; transition: opacity 0.3s ease;
         }
         .sidebar-overlay.active { display: block; opacity: 1; }
+
+        /* === SCROLL TO TOP BUTTON === */
+        .scroll-top-btn {
+            display: none;
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: #F26522;
+            color: #fff;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 90;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(242,101,34,0.4);
+            transition: all 0.25s ease;
+        }
+        .scroll-top-btn:hover { background: #D4541E; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(242,101,34,0.5); }
+        .scroll-top-btn.visible { display: flex; }
+        @media (max-width: 767px) {
+            .scroll-top-btn { bottom: 16px; right: 16px; width: 42px; height: 42px; font-size: 18px; border-radius: 12px; }
+        }
 
         /* === RESPONSIVE === */
         @media (max-width: 1023px) {
@@ -758,6 +796,9 @@
     </style>
 </head>
 <body>
+    <!-- Scroll to Top Button -->
+    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Lên đầu trang">&#9650;</button>
+
     <!-- Hamburger Button -->
     <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">&#9776;</button>
 
@@ -3004,6 +3045,17 @@
         }
     </style>
     <script>
+        // Show/hide scroll-to-top button (all screen sizes)
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTopBtn');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        });
+        window.dispatchEvent(new Event('scroll'));
+
         document.addEventListener('DOMContentLoaded', () => {
             if (window.innerWidth <= 767) {
                 requestAnimationFrame(() => { document.body.classList.add('page-loaded'); });
