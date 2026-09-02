@@ -846,10 +846,10 @@
       });
       sessionStorage.setItem('_ecl_visit_sid', _sid);
     }
-    var _payload = JSON.stringify({
+    var _payload = new Blob([JSON.stringify({
       session_id: _sid,
       referrer: document.referrer || ''
-    });
+    })], {type: 'application/json'});
     navigator.sendBeacon('/api/landing/track-visit/', _payload);
   } catch(e) {}
 
