@@ -33,8 +33,8 @@ VALID_CP_ROLE_ANSWERS = {
 VALID_PH_ROLE_ANSWERS = {
     'interests': ['gia-su', 'cham-soc-tre'],
     'necessity': 'can',
-    'used_service_before': 'chua',
-    'important_factors': ['gia-ca', 'bao-mat'],
+    'used_service_before': 'da-tung',
+    'important_factors': ['gia-re', 'uy-tin'],
 }
 
 
@@ -329,6 +329,49 @@ class AdminFeedbackStatsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         mo_ta = resp.data['fallback']['xu_huong'][0]['mo_ta']
         self.assertIn('ngang nhau', mo_ta)
+
+
+    # Bug #7 regression: Excel export must translate slugs to Vietnamese labels
+    def test_excel_ph_role_answers_no_raw_slugs(self):
+        """_fmt_role_answers() must convert real frontend slugs to readable Vietnamese.
+
+        E.g. 'da-tung' → 'Đã từng', 'gia-re' → 'Giá hợp lý'.
+        If labels are misaligned, raw slugs like 'da-tung' or 'gia-re' leak into the Excel.
+        This test catches exactly that class of bug.
+        """
+        self._login_as_admin()
+        LandingSurvey.objects.create(
+            role='phu-huynh',
+            role_answers={
+                'interests': ['gia-su', 'nhat-ky'],
+                'necessity': 'rat-can',
+                'used_service_before': 'da-tung',
+                'important_factors': ['gia-re', 'uy-tin', 'co-xac-minh'],
+            },
+            feedback='test anti-slug', ip_address='10.0.0.1'
+        )
+        resp = self.client.get('/api/admin/feedback-excel/?days=30')
+        self.assertEqual(resp.status_code, 200)
+        # Parse the xlsx in-memory
+        import openpyxl
+        from io import BytesIO
+        wb = openpyxl.load_workbook(BytesIO(resp.content))
+        ws = wb['Gop y']
+        # Find the row containing our survey (column 5 = feedback)
+        cell_text = ''
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and len(row) >= 4:
+                cell_text += ' '.join(str(c) for c in row)
+        # Assert Vietnamese labels present
+        self.assertIn('Đã từng', cell_text)
+        self.assertIn('Giá hợp lý', cell_text)
+        self.assertIn('Đáng tin cậy', cell_text)
+        self.assertIn('Đã xác minh danh tính', cell_text)
+        self.assertIn('Nhật ký chăm sóc', cell_text)
+        # Assert raw slugs are NOT present (the whole point of the test)
+        self.assertNotIn('da-tung', cell_text)
+        self.assertNotIn('gia-re', cell_text)
+        self.assertNotIn('co-xac-minh', cell_text)
 
 
 @override_settings(DEBUG=True)
