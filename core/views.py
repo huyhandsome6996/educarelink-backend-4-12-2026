@@ -3080,19 +3080,23 @@ class LandingSurveyAPIView(APIView):
     throttle_scope = 'landing_form'
 
     def post(self, request):
-        # Honeypot check — nếu field ẩn bị điền → spam bot
-        if request.data.get('website_url'):
-            return Response({'ok': True})
+        try:
+            # Honeypot check — nếu field ẩn bị điền → spam bot
+            if request.data.get('website_url'):
+                return Response({'ok': True})
 
-        serializer = LandingSurveySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({'error': serializer.errors}, status=400)
+            serializer = LandingSurveySerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({'error': serializer.errors}, status=400)
 
-        obj = serializer.save(ip_address=_get_client_ip(request))
-        return Response({
-            'ok': True,
-            'id': obj.id,
-        }, status=201)
+            obj = serializer.save(ip_address=_get_client_ip(request))
+            return Response({
+                'ok': True,
+                'id': obj.id,
+            }, status=201)
+        except Exception as e:
+            logger.exception('LandingSurvey submit error')
+            return Response({'error': str(e)}, status=500)
 
 
 class LandingSignupAPIView(APIView):
@@ -3101,20 +3105,24 @@ class LandingSignupAPIView(APIView):
     throttle_scope = 'landing_form'
 
     def post(self, request):
-        # Honeypot check
-        if request.data.get('website_url'):
-            return Response({'ok': True})
+        try:
+            # Honeypot check
+            if request.data.get('website_url'):
+                return Response({'ok': True})
 
-        serializer = LandingSignupSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({'error': serializer.errors}, status=400)
+            serializer = LandingSignupSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({'error': serializer.errors}, status=400)
 
-        obj = serializer.save(ip_address=_get_client_ip(request))
-        return Response({
-            'ok': True,
-            'id': obj.id,
-            'signup_type': obj.signup_type,
-        }, status=201)
+            obj = serializer.save(ip_address=_get_client_ip(request))
+            return Response({
+                'ok': True,
+                'id': obj.id,
+                'signup_type': obj.signup_type,
+            }, status=201)
+        except Exception as e:
+            logger.exception('LandingSignup submit error')
+            return Response({'error': str(e)}, status=500)
 
 
 # ────────────────────────────────────────────────────────────────────
