@@ -3307,12 +3307,12 @@ class AdminFeedbackExcelAPIView(APIView):
             'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết',
         }
         USED_BEFORE_LABELS = {
-            'da-su-dung': 'Đã sử dụng', 'chua': 'Chưa sử dụng',
+            'chua-tung': 'Chưa từng', 'da-tung': 'Đã từng', 'dang-dung': 'Đang dùng',
         }
         FACTOR_LABELS = {
-            'gia-ca': 'Giá cả hợp lý', 'bao-mat': 'Bảo mật & an toàn',
-            'uy-tin': 'Uy tín & đánh giá', 'tien-ich': 'Tiện ích tính năng',
-            'ho-tro': 'Hỗ trợ khách hàng',
+            'gia-re': 'Giá hợp lý', 'uy-tin': 'Đáng tin cậy',
+            'kinh-nghiem': 'Kinh nghiệm', 'gan-nha': 'Gần nhà',
+            'co-danh-gia': 'Có đánh giá tốt', 'co-xac-minh': 'Đã xác minh danh tính',
         }
 
         def _fmt_role_answers(role, ra):
