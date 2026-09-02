@@ -3146,6 +3146,21 @@ class AdminFeedbackStatsAPIView(APIView):
     # Không throttle — admin authenticated, cần gọi API thoải mái
 
     def get(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            return self._get_stats(request)
+        except Exception as e:
+            logger.error(f'AdminFeedbackStats error: {e}', exc_info=True)
+            return Response({
+                'period_days': int(request.query_params.get('days', 30)),
+                'visits': {'total': 0, 'unique_ips': 0, 'by_date': []},
+                'surveys': {'total': 0, 'by_type': [], 'by_date': [], 'by_necessity': [], 'by_interest': []},
+                'signups': {'total': 0, 'trial_count': 0, 'consult_count': 0, 'by_type': [], 'by_role': [], 'by_date': []},
+                '_error': str(e),
+            }, status=200)
+
+    def _get_stats(self, request):
         from .models import LandingSurvey, LandingSignup, LandingPageVisit
         from collections import Counter
 
@@ -3274,6 +3289,15 @@ class AdminFeedbackExcelAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            return self._get_excel(request)
+        except Exception as e:
+            logger.error(f'AdminFeedbackExcel error: {e}', exc_info=True)
+            return Response({'error': f'Không thể xuất Excel: {e}'}, status=500)
+
+    def _get_excel(self, request):
         from .models import LandingSurvey, LandingSignup, LandingPageVisit
         import openpyxl
         from django.http import HttpResponse
@@ -3469,6 +3493,21 @@ class AdminFeedbackAIAnalysisAPIView(APIView):
     throttle_scope = 'ai'
 
     def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            return self._post_ai(request)
+        except Exception as e:
+            logger.error(f'AdminFeedbackAI error: {e}', exc_info=True)
+            return Response({
+                'error': str(e),
+                'fallback': _generate_fallback_analysis(
+                    LandingSurvey.objects.none(),
+                    LandingSignup.objects.none(),
+                ),
+            }, status=200)
+
+    def _post_ai(self, request):
         from .models import LandingSurvey, LandingSignup, LandingPageVisit
         import json
 
