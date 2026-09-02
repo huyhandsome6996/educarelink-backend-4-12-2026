@@ -1010,7 +1010,12 @@
       }
     }).catch(function(e){
       surveyForm.querySelector('button[type=submit]').disabled = false;
-      alert('Lỗi: ' + (e.message || 'Vui lòng kiểm tra mạng và thử lại.'));
+      var msg = e.message || 'Vui lòng kiểm tra mạng và thử lại.';
+      // Ẩn chi tiết kỹ thuật khỏi user
+      if (msg.length > 100 || msg.includes('column') || msg.includes('relation') || msg.includes('does not exist')) {
+        msg = 'Hệ thống đang được cập nhật, vui lòng thử lại sau vài phút.';
+      }
+      alert('Lỗi: ' + msg);
     });
   });
 
@@ -1096,7 +1101,11 @@
       }
     }).catch(function(e){
       submitBtn.disabled = false;
-      alert('Lỗi: ' + (e.message || 'Vui lòng kiểm tra mạng và thử lại.'));
+      var msg = e.message || 'Vui lòng kiểm tra mạng và thử lại.';
+      if (msg.length > 100 || msg.includes('column') || msg.includes('relation') || msg.includes('does not exist')) {
+        msg = 'Hệ thống đang được cập nhật, vui lòng thử lại sau vài phút.';
+      }
+      alert('Lỗi: ' + msg);
     });
   });
 
