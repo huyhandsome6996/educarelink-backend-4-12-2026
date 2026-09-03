@@ -12,7 +12,9 @@
       "node_modules/@expo-google-fonts/**/*.ttf"
     ],
     "splash": {
-      "backgroundColor": "#F26522"
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#F26522",
+      "resizeMode": "contain"
     },
     "updates": {
       "enabled": false
@@ -46,7 +48,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#F26522"
       },
-      "softwareKeyboardLayoutMode": "adjustResize",
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.educarelink.app",
       "permissions": [
         "android.permission.RECORD_AUDIO",
