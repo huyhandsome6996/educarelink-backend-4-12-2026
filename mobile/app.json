@@ -62,7 +62,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 17
+      "versionCode": 19
     },
     "web": {
       "favicon": "./assets/favicon.png"
