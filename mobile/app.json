@@ -3,7 +3,7 @@
     "name": "EduCareLink",
     "slug": "educarelink",
     "scheme": "educarelink",
-    "version": "1.3.3",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -12,9 +12,7 @@
       "node_modules/@expo-google-fonts/**/*.ttf"
     ],
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "backgroundColor": "#F26522",
-      "resizeMode": "contain"
+      "backgroundColor": "#F26522"
     },
     "updates": {
       "enabled": false
@@ -62,7 +60,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 20
+      "versionCode": 21
     },
     "web": {
       "favicon": "./assets/favicon.png"
