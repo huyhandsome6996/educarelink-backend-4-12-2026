@@ -3,7 +3,7 @@
     "name": "EduCareLink",
     "slug": "educarelink",
     "scheme": "educarelink",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
-      "backgroundColor": "#F26522",
+      "backgroundColor": "#F36A04",
       "resizeMode": "contain"
     },
     "updates": {
@@ -46,7 +46,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#F26522"
+        "backgroundColor": "#F36A04"
       },
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.educarelink.app",
@@ -62,7 +62,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 21
+      "versionCode": 22
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -86,10 +86,10 @@
         "expo-build-properties",
         {
           "android": {
-          "compileSdkVersion": 36,
-          "targetSdkVersion": 36,
-          "minSdkVersion": 24,
-          "buildToolsVersion": "36.0.0"
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "36.0.0"
           }
         }
       ],
