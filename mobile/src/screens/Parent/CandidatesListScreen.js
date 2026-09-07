@@ -30,7 +30,12 @@ export default function CandidatesListScreen() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId) {
+      // Không có đơn nào được chọn — hiện trạng thái trừ thân thiện thay vì
+      // spinner vĩnh viễn (nút "Ứng viên phù hợp" trên trang chủ vào đây)
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -108,6 +113,28 @@ export default function CandidatesListScreen() {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  // Không có jobId — hướng dẫn phụ huynh đăng việc trước
+  if (!jobId) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Ionicons name="people-outline" size={56} color={COLORS.gray} />
+        <Text style={[styles.headerBold, { marginTop: 12, textAlign: 'center' }]}>
+          Chưa có đơn nào đang chờ chọn ứng viên
+        </Text>
+        <Text style={{ color: COLORS.textMuted, marginTop: 6, textAlign: 'center', paddingHorizontal: 32 }}>
+          Hãy đăng một công việc (Gia sư / Trông trẻ / Đón trẻ), hệ thống sẽ gom ứng viên phù hợp cho bạn.
+        </Text>
+        <TouchableOpacity
+          style={{ marginTop: 16, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('JobTypeSelect')}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Đăng việc mới</Text>
+        </TouchableOpacity>
       </View>
     );
   }
