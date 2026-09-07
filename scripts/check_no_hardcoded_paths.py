@@ -1,9 +1,10 @@
 """G17 — Guard chống đường dẫn cá nhân hardcode (regression guard).
 
-Bối cảnh: scripts/g13_business_rules.py từng hardcode
-BASE = '/home/z/my-project/repo-educarelink' → script chết ngay trên mọi máy
-khác (CI, sandbox QA, máy owner, Render). Guard này đảm bảo class lỗi đó
-KHÔNG BAO GIỜ quay lại repo.
+Bối cảnh: scripts/g13_business_rules.py từng hardcode BASE = đường dẫn
+tuyệt đối máy dev cá nhân (xem commit history) → script chết ngay trên mọi
+máy khác (CI, sandbox QA, máy owner, Render). Guard này đảm bảo class lỗi
+đó KHÔNG BAO GIỜ quay lại repo. (Docstring cố tình không chứa literal path
+để guard quét được chính nó.)
 
 Chạy độc lập (KHÔNG phụ thuộc cwd — tự suy ra gốc repo từ vị trí file):
     python scripts/check_no_hardcoded_paths.py        # exit 0 = sạch
