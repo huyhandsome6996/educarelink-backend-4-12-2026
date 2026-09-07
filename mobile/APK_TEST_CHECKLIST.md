@@ -9,7 +9,7 @@
 
 ## 📋 Pre-install
 
-- [ ] APK file: `/home/z/my-project/download/educarelink-v1.1.5.apk`
+- [ ] APK file: `educarelink-v1.1.5.apk` (thư mục download cục bộ, không commit)
 - [ ] File size ~86 MB
 - [ ] Signing cert SHA-256 matches v1.1.4 (same Expo-managed keystore)
 
