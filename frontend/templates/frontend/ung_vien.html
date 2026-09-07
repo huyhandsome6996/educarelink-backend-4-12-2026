@@ -45,7 +45,7 @@
 <script>
   const jobId = window.location.pathname.split('/').filter(Boolean)[1];
   const LEVEL_COLORS = { very_high: '#0E9F6E', high: '#F26522', medium: '#F5A623', low: '#9CA3AF' };
-  const LEVEL_LABELS = { very_high: 'Rất cao', high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
+  const LEVEL_LABELS = { very_high: 'Rất phù hợp', high: 'Phù hợp cao', medium: 'Phù hợp', low: 'Có thể cân nhắc' }; // theo spec Step 3
   let picked = null;
 
   function avatarUrl(name) {

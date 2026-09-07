@@ -116,8 +116,8 @@ export const getUnreadCount = () =>
 export const MATCH_LEVEL_LABELS = {
   very_high: 'Rất phù hợp',
   high: 'Phù hợp cao',
-  medium: 'Khá phù hợp',
-  low: 'Phù hợp thấp',
+  medium: 'Phù hợp',
+  low: 'Có thể cân nhắc',
 };
 
 // 8 lý do hủy (Step 5.3) — force majeure cần note >= 20 ký tự
