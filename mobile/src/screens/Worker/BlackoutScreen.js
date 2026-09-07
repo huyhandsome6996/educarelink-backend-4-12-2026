@@ -36,12 +36,17 @@ export default function BlackoutScreen() {
   const [timeFrom, setTimeFrom] = useState('07:00');
   const [timeTo, setTimeTo] = useState('12:00');
   const [reason, setReason] = useState('exam');
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const { data } = await getBlackouts();
       setItems(data ?? []);
+    } catch (err) {
+      // Lỗi mạng/server → thông báo tiếng Việt + nút thử lại (không crash)
+      setLoadError('Không tải được ngày bận. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -115,6 +120,15 @@ export default function BlackoutScreen() {
       </View>
 
       <Text style={styles.listTitle}>Các ngày đã khai</Text>
+      {loadError ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="cloud-offline-outline" size={34} color="#d1d5db" />
+          <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={load}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -143,6 +157,7 @@ export default function BlackoutScreen() {
         )}
         contentContainerStyle={{ paddingHorizontal: SIZES.padding, paddingBottom: 40 }}
       />
+      )}
     </View>
   );
 }
@@ -184,4 +199,11 @@ const styles = StyleSheet.create({
   itemDate: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   itemHours: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
   empty: { textAlign: 'center', color: COLORS.gray, paddingVertical: 24 },
+  errorBox: { alignItems: 'center', paddingVertical: 30, paddingHorizontal: SIZES.padding },
+  errorText: { marginTop: 10, color: COLORS.gray, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 16, backgroundColor: COLORS.primary,
+  },
+  retryText: { color: COLORS.white, fontWeight: '600' },
 });
