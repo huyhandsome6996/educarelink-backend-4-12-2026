@@ -3,7 +3,7 @@
     "name": "EduCareLink",
     "slug": "educarelink",
     "scheme": "educarelink",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -62,7 +62,7 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ],
-      "versionCode": 22
+      "versionCode": 23
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -99,7 +99,8 @@
           "faceIDPermission": "EduCareLink sử dụng Face ID để bảo vệ thông tin đăng nhập của bạn."
         }
       ],
-      "./plugins/withEmergencyAlarmSound"
+      "./plugins/withEmergencyAlarmSound",
+      "./plugins/withCriticalNotificationSound"
     ],
     "extra": {
       "eas": {
