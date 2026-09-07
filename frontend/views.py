@@ -146,3 +146,65 @@ class LandingPageView(TemplateView):
     Route: /landing/
     """
     template_name = "frontend/landing.html"
+
+
+# ====================================================================
+# Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (song song luồng cũ)
+# View chỉ render shell HTML; mọi dữ liệu + nghiệp vụ nằm ở
+# /api/matching/* có sẵn (JS trên trang gọi trực tiếp, JWT localStorage)
+# — không nhân bản logic nghiệp vụ vào Django view.
+# ====================================================================
+
+class DangViecSelectView(TemplateView):
+    """Chọn 1 trong ĐÚNG 3 loại việc: Gia sư / Trông trẻ / Đón trẻ."""
+    template_name = "frontend/dang_viec_select.html"
+
+
+class DangViecGiaSuView(TemplateView):
+    """Form đăng việc Gia sư — nhận cả môn KỸ NĂNG (MC, vẽ, đàn…)."""
+    template_name = "frontend/dang_viec_gia_su.html"
+
+
+class DangViecTrongTreView(TemplateView):
+    """Form đăng việc Trông trẻ — chăm sóc tại nhà."""
+    template_name = "frontend/dang_viec_trong_tre.html"
+
+
+class DangViecDonTreView(TemplateView):
+    """Form đăng việc Đón trẻ — điểm đón + điểm đến."""
+    template_name = "frontend/dang_viec_don_tre.html"
+
+
+class UngVienView(TemplateView):
+    """Danh sách ứng viên (tối đa 8, match_level tiếng Việt) của 1 job."""
+    template_name = "frontend/ung_vien.html"
+
+
+class DonView(TemplateView):
+    """Chi tiết đơn ghép cặp: đếm ngược cam kết, hủy 8 lý do, no-show."""
+    template_name = "frontend/don.html"
+
+
+class ViCreditView(TemplateView):
+    """Ví credit của phụ huynh: số dư + lịch sử (credit ảo, không rút)."""
+    template_name = "frontend/vi_credit.html"
+
+
+class LichRanhView(TemplateView):
+    """Lịch rảnh hằng tuần của CarePartner cho ghép cặp mới."""
+    template_name = "frontend/lich_ranh.html"
+
+
+class NgayBanView(TemplateView):
+    """Khai báo ngày bận đột xuất (blackout) — cấm ngày quá khứ."""
+    template_name = "frontend/ngay_ban.html"
+
+
+class DonCuaToiView(TemplateView):
+    """Danh sách đơn ghép cặp của CarePartner, lọc theo trạng thái."""
+    template_name = "frontend/don_cua_toi.html"
+
+
+class KhangCaoView(TemplateView):
+    """Gửi kháng cáo cho 1 đơn bị phạt (7 ngày, 3 đơn/30 ngày)."""
+    template_name = "frontend/khang_cao.html"

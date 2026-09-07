@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <title>EduCareLink — Đăng việc ghép cặp</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+    {% include 'frontend/_matching_common.html' %}
+</head>
+<body class="bg-gray-50">
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="/parent/" class="flex items-center gap-2">
+            <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
+            <span class="font-headline font-extrabold text-[#1A1A2E]">EduCareLink</span>
+        </a>
+        <span class="text-xs font-semibold uppercase tracking-wide text-[#F26522]">Ghép cặp mới</span>
+    </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-extrabold text-[#1A1A2E]">Bạn cần gì?</h1>
+    <p class="text-gray-500 mt-1">Chọn ĐÚNG 1 trong 3 loại công việc để bắt đầu đăng — hệ thống sẽ gom tối đa 8 ứng viên phù hợp nhất.</p>
+
+    <div class="mt-6 space-y-4">
+        <a href="{% url 'frontend:dang_viec_gia_su' %}"
+           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">📚</div>
+                <div class="flex-1">
+                    <h2 class="font-bold text-[#1A1A2E] text-lg">Gia sư</h2>
+                    <p class="text-sm text-gray-500">Dạy kèm môn học hoặc kỹ năng (MC, vẽ, đàn, kỹ năng sống…)</p>
+                </div>
+                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+            </div>
+        </a>
+
+        <a href="{% url 'frontend:dang_viec_trong_tre' %}"
+           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">🧸</div>
+                <div class="flex-1">
+                    <h2 class="font-bold text-[#1A1A2E] text-lg">Trông trẻ</h2>
+                    <p class="text-sm text-gray-500">Chăm sóc bé tại nhà: cho ăn, chơi cùng, hướng dẫn bài tập</p>
+                </div>
+                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+            </div>
+        </a>
+
+        <a href="{% url 'frontend:dang_viec_don_tre' %}"
+           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">🚗</div>
+                <div class="flex-1">
+                    <h2 class="font-bold text-[#1A1A2E] text-lg">Đón trẻ</h2>
+                    <p class="text-sm text-gray-500">Đón bé từ trường về nhà hoặc địa chỉ khác</p>
+                </div>
+                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+            </div>
+        </a>
+    </div>
+
+    <div class="mt-6 bg-[rgba(242,101,34,0.06)] border border-[rgba(242,101,34,0.25)] rounded-xl p-4 text-sm text-gray-600">
+        💡 <b>Lưu ý:</b> Sau khi đăng, bài viết được AI đọc lại để sinh ứng viên. Bạn sẽ thấy tối đa
+        <b>8 CarePartner tốt nhất</b> kèm mức độ phù hợp (Rất cao / Cao / Trung bình / Thấp) bằng tiếng Việt.
+    </div>
+</main>
+</body>
+</html>
