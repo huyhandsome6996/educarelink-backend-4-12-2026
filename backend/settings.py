@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'performance',  # ⚡ Tối ưu hiệu năng (LRU cache, connection pool, spatial index)
     'care_diary',  # B1 — Nhật ký chăm sóc (Care Diary)
     'chat',  # N — Cửa sổ chat Parent ↔ CarePartner (mở khi in_progress, đóng completed+24h)
+    'matching',  # Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (JobPost/Booking/ELO/lock)
 ]
 
 MIDDLEWARE = [
