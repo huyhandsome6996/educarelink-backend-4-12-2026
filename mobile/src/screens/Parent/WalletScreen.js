@@ -6,6 +6,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, StatusBar, ActivityIndicator, RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,18 +22,33 @@ const KIND_LABELS = {
 export default function WalletScreen() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const { data: res } = await getCreditBalance();
       setData(res);
+    } catch (err) {
+      // Lỗi mạng/server → thông báo tiếng Việt + nút thử lại (không crash)
+      setError('Không tải được ví credit. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  if (error && !data) {
+    return <View style={[styles.container, styles.center]}>
+      <Ionicons name="cloud-offline-outline" size={44} color="#d1d5db" />
+      <Text style={styles.errorText}>{error}</Text>
+      <TouchableOpacity style={styles.retryBtn} onPress={load}>
+        <Text style={styles.retryText}>Thử lại</Text>
+      </TouchableOpacity>
+    </View>;
+  }
 
   if (loading && !data) {
     return <View style={[styles.container, styles.center]}>
@@ -123,4 +139,10 @@ const styles = StyleSheet.create({
   txAmount: { fontSize: 14, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: 50 },
   emptyText: { marginTop: 10, color: COLORS.gray },
+  errorText: { marginTop: 10, color: COLORS.gray, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 16, backgroundColor: COLORS.primary,
+  },
+  retryText: { color: COLORS.white, fontWeight: '600' },
 });

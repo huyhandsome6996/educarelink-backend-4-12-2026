@@ -7,7 +7,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity, StatusBar,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, ScrollView,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,12 +34,17 @@ export default function MyBookingsScreen() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const { data } = await getBookings({ role: 'carepartner', status: filter || undefined });
       setItems(data.results ?? []);
+    } catch (err) {
+      // Lỗi mạng/server → thông báo tiếng Việt + cho phép kéo làm mới thử lại
+      setError('Không tải được danh sách đơn. Vui lòng kéo xuống để thử lại.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +69,15 @@ export default function MyBookingsScreen() {
         </ScrollView>
       </View>
 
-      {loading ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} /> : (
+      {error ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="cloud-offline-outline" size={36} color="#d1d5db" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={load}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} /> : (
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
@@ -125,6 +138,13 @@ export default function MyBookingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  errorBox: { alignItems: 'center', paddingTop: 60, paddingHorizontal: SIZES.padding },
+  errorText: { marginTop: 10, color: COLORS.gray, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 16, backgroundColor: COLORS.primary,
+  },
+  retryText: { color: COLORS.white, fontWeight: '600' },
   appealBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginTop: 10, alignSelf: 'flex-start',
