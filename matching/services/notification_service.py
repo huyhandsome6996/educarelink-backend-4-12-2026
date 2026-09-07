@@ -67,16 +67,84 @@ class NotificationService:
 
     @classmethod
     def _send(cls, notif_pk, sound=None):
-        """Gửi push — Phase 3 thay bằng Expo push + retry backoff 10/60/300s."""
+        """Gửi push Expo + đánh dấu sent/failed (Step 8.4 — sound bắt buộc
+        với class critical). Beat retry failed 3 lần backoff 10/60/300s."""
         try:
             notif = Notification.objects.get(pk=notif_pk)
         except Notification.DoesNotExist:
             return
         if notif.status != 'queued':
             return
-        # MVP Phase 1: đánh dấu sent (in-app inbox đọc trực tiếp bảng này).
-        # Phase 3: gọi send_expo_push_notification() với payload critical
-        # (channel educarelink_critical, priority max, sound critical_alert.wav).
-        notif.status = 'sent'
-        notif.sent_at = timezone.now()
-        notif.save(update_fields=['status', 'sent_at'])
+        sent = False
+        for token_row in cls._tokens_for(notif.user):
+            payload = cls._build_payload(notif, token_row)
+            try:
+                import requests
+                resp = requests.post(
+                    'https://exp.host/--/api/v2/push/send', json=payload,
+                    headers={'Accept': 'application/json',
+                             'Accept-encoding': 'gzip, deflate',
+                             'Content-Type': 'application/json'},
+                    timeout=8)
+                body = resp.json() if resp.status_code == 200 else {}
+                statuses = [d.get('status') for d in (body.get('data') or [{}])] \
+                    if isinstance(body.get('data'), list) else ['ok']
+                errors = [d.get('details', {}).get('error')
+                          for d in (body.get('data') or [{}])
+                          if isinstance(d, dict)]
+                if 'ok' in statuses:
+                    sent = True
+                    token_row.last_success_at = timezone.now()
+                    token_row.save(update_fields=['last_success_at'])
+                if 'DeviceNotRegistered' in [e for e in errors if e]:
+                    # Token chết → deactivate, fallback in-app (Step 8.4)
+                    token_row.is_active = False
+                    token_row.save(update_fields=['is_active'])
+            except Exception:
+                logger.exception('[Notification] Gửi push lỗi %s', notif.pk)
+        notif.attempts += 1
+        notif.status = 'sent' if sent else ('failed' if notif.attempts >= 3 else 'queued')
+        if sent:
+            notif.sent_at = timezone.now()
+        notif.save(update_fields=['status', 'attempts', 'sent_at'])
+
+    @staticmethod
+    def _tokens_for(user):
+        """Token push active của user — DeviceToken mới + fallback field cũ."""
+        from ..models import DeviceToken
+        rows = list(DeviceToken.objects.filter(user=user, is_active=True,
+                                               platform__in=('expo', 'android', 'ios')))
+        if not rows and getattr(user, 'expo_push_token', None):
+            rows = [DeviceToken(user=user, platform='expo',
+                                token=user.expo_push_token)]
+        return rows
+
+    @staticmethod
+    def _build_payload(notif, token_row):
+        """Payload Expo push Step 8.4 — critical PHẢI kêu to:
+        channelId educarelink_critical + sound critical_alert.wav + priority max."""
+        if notif.klass == 'critical':
+            return {
+                'to': token_row.token,
+                'title': notif.title_vi, 'body': notif.body_vi,
+                'sound': 'critical_alert.wav',
+                'channelId': 'educarelink_critical',
+                'priority': 'max', 'ttl': 3600,
+                '_displayInForeground': True,
+                'data': {**(notif.data or {}), 'type': notif.code,
+                         'notification_id': str(notif.pk)},
+            }
+        if notif.klass == 'important':
+            return {
+                'to': token_row.token,
+                'title': notif.title_vi, 'body': notif.body_vi,
+                'sound': 'default', 'priority': 'high', 'ttl': 3600,
+                '_displayInForeground': True,
+                'data': {**(notif.data or {}), 'type': notif.code,
+                         'notification_id': str(notif.pk)},
+            }
+        # info — chỉ in-app + badge (Step 8.2), không bắn push
+        return {'to': token_row.token, 'title': notif.title_vi,
+                'body': notif.body_vi, 'priority': 'default',
+                'data': {**(notif.data or {}), 'type': notif.code,
+                         'notification_id': str(notif.pk)}}

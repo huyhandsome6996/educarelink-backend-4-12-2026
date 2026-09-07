@@ -16,6 +16,19 @@ from .api.availability import (
     BlackoutDetailAPIView,
     BlackoutListCreateAPIView,
 )
+from .api.bookings import (
+    AppealCreateAPIView,
+    BookingCancelAPIView,
+    BookingCancelByParentAPIView,
+    BookingCompleteAPIView,
+    BookingDetailAPIView,
+    BookingListAPIView,
+    BookingStartAPIView,
+    ReportNoShowAPIView,
+    RescheduleCreateAPIView,
+    RescheduleRespondAPIView,
+    SelectCarePartnerAPIView,
+)
 from .api.credits import CreditBalanceAPIView
 from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
 from .api.notifications import NotificationListAPIView, UnreadCountAPIView
@@ -27,6 +40,28 @@ urlpatterns = [
     path('jobs/<uuid:job_id>/publish/', JobPostPublishAPIView.as_view(),
          name='matching-job-publish'),
     path('candidates/', CandidatesAPIView.as_view(), name='matching-candidates'),
+
+    # ── Booking + auto-commit (Step 5) ──
+    path('jobs/<uuid:job_id>/select-carepartner/', SelectCarePartnerAPIView.as_view(),
+         name='matching-select-carepartner'),
+    path('bookings/', BookingListAPIView.as_view(), name='matching-bookings'),
+    path('bookings/<uuid:pk>/', BookingDetailAPIView.as_view(), name='matching-booking'),
+    path('bookings/<uuid:pk>/cancel/', BookingCancelAPIView.as_view(),
+         name='matching-booking-cancel'),
+    path('bookings/<uuid:pk>/cancel-parent/', BookingCancelByParentAPIView.as_view(),
+         name='matching-booking-cancel-parent'),
+    path('bookings/<uuid:pk>/report-no-show/', ReportNoShowAPIView.as_view(),
+         name='matching-booking-no-show'),
+    path('bookings/<uuid:pk>/start/', BookingStartAPIView.as_view(),
+         name='matching-booking-start'),
+    path('bookings/<uuid:pk>/complete/', BookingCompleteAPIView.as_view(),
+         name='matching-booking-complete'),
+    path('bookings/<uuid:pk>/appeal/', AppealCreateAPIView.as_view(),
+         name='matching-booking-appeal'),
+    path('bookings/<uuid:pk>/reschedule/', RescheduleCreateAPIView.as_view(),
+         name='matching-booking-reschedule'),
+    path('bookings/<uuid:pk>/reschedule/respond/', RescheduleRespondAPIView.as_view(),
+         name='matching-booking-reschedule-respond'),
 
     # ── Lịch rảnh (Step 4 + 9) ──
     path('carepartners/me/availability/',
