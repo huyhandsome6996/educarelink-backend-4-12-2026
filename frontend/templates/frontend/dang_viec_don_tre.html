@@ -190,7 +190,7 @@
         toast(typeof detail === 'string' ? detail : 'Vui lòng kiểm tra lại thông tin.', false);
         console.warn(detail);
       }
-    } catch (err) { console.warn(err); }
+    } catch (err) { console.warn(err); toast('Không gửi được. Vui lòng kiểm tra kết nối và thử lại.', false); }
     finally { btn.disabled = false; }
   });
 </script>

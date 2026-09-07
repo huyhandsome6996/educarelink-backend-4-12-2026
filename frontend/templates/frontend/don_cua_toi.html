@@ -60,34 +60,42 @@
   }
 
   async function load() {
-    const resp = await authFetch(API_BASE + '/matching/bookings/' + (current ? `?status=${current}` : ''));
-    const data = await resp.json();
-    document.getElementById('loading').classList.add('hidden');
-    const list = document.getElementById('list');
-    list.innerHTML = '';
-    const rows = data.results || [];
-    if (!rows.length) {
-      list.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-gray-500">Chưa có đơn nào ở mục này.</div>';
-      return;
-    }
-    for (const b of rows) {
-      const color = STATUS_COLORS[b.status] || '#6B7280';
-      const s = b.first_slot || {};
-      const card = document.createElement('a');
-      card.href = `/don/${b.id}/`;
-      card.className = 'block bg-white rounded-2xl p-4 shadow-sm border border-gray-100';
-      card.innerHTML = `
-        <div class="flex items-center justify-between gap-2">
-          <div class="font-bold text-[#1A1A2E] truncate">${b.job_title || 'Công việc ghép cặp'}</div>
-          <span class="text-xs font-bold px-2.5 py-1 rounded-full text-white shrink-0" style="background:${color}">${b.status_label_vi || b.status}</span>
-        </div>
-        <div class="text-sm text-gray-500 mt-1">📅 ${s.date || '—'} · ${s.time_from ? s.time_from.slice(0, 5) : ''}–${s.time_to ? s.time_to.slice(0, 5) : ''}</div>
-        <div class="text-sm mt-1">💰 ${fmtVND(b.total_value_vnd)}
-          ${b.compensation_vnd > 0 ? `<span class="text-[#F5A623]">· Đền bù ${fmtVND(b.compensation_vnd)}</span>` : ''}</div>
-        ${APPEALABLE.includes(b.status)
-          ? `<div class="mt-2"><span class="inline-block text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-bold">⚖️ Có thể kháng cáo — xem chi tiết đơn</span></div>`
-          : ''}`;
-      list.appendChild(card);
+    try {
+      const resp = await authFetch(API_BASE + '/matching/bookings/' + (current ? `?status=${current}` : ''));
+      if (!resp.ok) { toast('Không tải được danh sách đơn. Vui lòng thử lại.', false); return; }
+      const data = await resp.json();
+      document.getElementById('loading').classList.add('hidden');
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      const rows = data.results || [];
+      if (!rows.length) {
+        list.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-gray-500">Chưa có đơn nào ở mục này.</div>';
+        return;
+      }
+      for (const b of rows) {
+        const color = STATUS_COLORS[b.status] || '#6B7280';
+        const s = b.first_slot || {};
+        const card = document.createElement('a');
+        card.href = `/don/${b.id}/`;
+        card.className = 'block bg-white rounded-2xl p-4 shadow-sm border border-gray-100';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-bold text-[#1A1A2E] truncate">${b.job_title || 'Công việc ghép cặp'}</div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full text-white shrink-0" style="background:${color}">${b.status_label_vi || b.status}</span>
+          </div>
+          <div class="text-sm text-gray-500 mt-1">📅 ${s.date || '—'} · ${s.time_from ? s.time_from.slice(0, 5) : ''}–${s.time_to ? s.time_to.slice(0, 5) : ''}</div>
+          <div class="text-sm mt-1">💰 ${fmtVND(b.total_value_vnd)}
+            ${b.compensation_vnd > 0 ? `<span class="text-[#F5A623]">· Đền bù ${fmtVND(b.compensation_vnd)}</span>` : ''}</div>
+          ${APPEALABLE.includes(b.status)
+            ? `<div class="mt-2"><span class="inline-block text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-bold">⚖️ Có thể kháng cáo — xem chi tiết đơn</span></div>`
+            : ''}`;
+        list.appendChild(card);
+      }
+    } catch (err) {
+      // Lỗi mạng/server → toast tiếng Việt + ẩn spinner (không treo màn hình)
+      console.warn(err);
+      document.getElementById('loading').classList.add('hidden');
+      toast('Không tải được danh sách đơn. Vui lòng thử lại.', false);
     }
   }
 
