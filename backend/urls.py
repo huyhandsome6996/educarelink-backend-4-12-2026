@@ -83,6 +83,8 @@ urlpatterns = [
     path('api/', include('care_diary.urls')),
     # N — Cửa sổ chat Parent ↔ CarePartner
     path('api/', include('chat.urls')),
+    # Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (JobPost/Booking/ELO/lock)
+    path('api/matching/', include('matching.urls')),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

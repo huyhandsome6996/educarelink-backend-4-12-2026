@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getMyTasksAsParent } from '../../api/tasks';
+import { getBookings } from '../../api/matching';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,7 +110,22 @@ export default function ParentHomeScreen() {
 
   useEffect(() => { fetchTasks(); }, []);
 
-  const onRefresh = () => { setRefreshing(true); fetchTasks(); };
+  // Flow 1 — "Đơn đang thực hiện": mở booking mới nhất đang hoạt động
+  const openLatestBooking = async () => {
+    try {
+      const { data } = await getBookings({ role: 'parent' });
+      const ACTIVE = ['awaiting_commitment', 'committed', 'in_progress'];
+      const latest = (data?.results || []).find((b) => ACTIVE.includes(b.status))
+        || (data?.results || [])[0];
+      if (latest) {
+        navigation.navigate('BookingDetail', { bookingId: latest.id });
+      } else {
+        Alert.alert('Chưa có đơn nào', 'Bạn chưa có đơn ghép cặp nào. Hãy đăng việc trước nhé!');
+      }
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không tải được danh sách đơn. Vui lòng thử lại.');
+    }
+  };
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -207,6 +223,56 @@ export default function ParentHomeScreen() {
 
         {/* Spacer for floating balance card */}
         <View style={{ height: 28 }} />
+
+        {/* === Flow 1 — Truy cập nhanh ghép cặp mới === */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Ghép cặp thông minh</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.flow1Card, { backgroundColor: '#F36A04' }]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('JobTypeSelect')}
+          >
+            <View style={styles.flow1IconWrap}>
+              <Ionicons name="add-circle" size={26} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.flow1Title, { color: '#fff' }]}>Đăng việc mới</Text>
+              <Text style={[styles.flow1Desc, { color: 'rgba(255,255,255,0.9)' }]}>
+                Gia sư · Trông trẻ · Đón trẻ — nhận ứng viên trong 5 phút
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+
+          <View style={styles.flow1Row}>
+            <TouchableOpacity
+              style={styles.flow1Small}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('CandidatesList')}
+            >
+              <Ionicons name="people" size={22} color="#F36A04" />
+              <Text style={styles.flow1SmallText}>Ứng viên phù hợp</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.flow1Small}
+              activeOpacity={0.85}
+              onPress={openLatestBooking}
+            >
+              <Ionicons name="document-text" size={22} color="#F36A04" />
+              <Text style={styles.flow1SmallText}>Đơn đang thực hiện</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.flow1Small}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('WalletCredits')}
+            >
+              <Ionicons name="wallet" size={22} color="#F36A04" />
+              <Text style={styles.flow1SmallText}>Ví credit của tôi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* === Dịch vụ — Grid 2×2 === */}
         <View style={styles.sectionContainer}>
@@ -740,5 +806,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...SHADOWS.medium,
     elevation: 6,
+  },
+  // === Flow 1 — ghép cặp mới ===
+  flow1Card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: SIZES.radiusMd,
+    ...SHADOWS.medium,
+    elevation: 4,
+  },
+  flow1IconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flow1Title: {
+    ...TYPO.bodyBold,
+    fontSize: 15,
+  },
+  flow1Desc: {
+    ...TYPO.caption,
+    marginTop: 2,
+  },
+  flow1Row: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  flow1Small: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusMd,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(243,106,4,0.25)',
+  },
+  flow1SmallText: {
+    ...TYPO.caption,
+    color: COLORS.text,
+    textAlign: 'center',
+    fontSize: 11,
   },
 });

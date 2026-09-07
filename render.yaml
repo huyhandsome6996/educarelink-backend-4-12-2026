@@ -208,3 +208,24 @@ services:
       - key: TRACKING_SCHEDULER_HEALTH_LOG_EVERY
         value: "5"
 
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Flow 1 — WEB ADMIN quản trị ghép cặp (Next.js 14 + TypeScript)
+  # 7 trang: elo-bands, matching-weights, appeals, state-logs,
+  # bookings, jobs + login. Xác thực SimpleJWT.
+  # API calls được proxy qua next.config.mjs rewrites tới BACKEND_URL
+  # (không cần cấu hình CORS thêm trên Django).
+  # ═══════════════════════════════════════════════════════════════════
+  - type: web
+    name: educarelink-admin-web
+    plan: free
+    env: node
+    rootDir: admin-web
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm run start"
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # URL backend Django công khai — rewrite /api/* sẽ trỏ về đây
+      - key: BACKEND_URL
+        value: "https://educarelink-backend.onrender.com"
