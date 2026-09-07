@@ -28,8 +28,8 @@ class SlotConflictError(Exception):
     """Slot đã bị khóa/booked — caller map sang HTTP 409 slot_taken."""
 
 
-class BufferViolationError(Exception):
-    """Vi phạm buffer 90 phút giữa 2 job liên tiếp."""
+class BufferViolationError(SlotConflictError):
+    """Vi phạm buffer 90 phút giữa 2 job liên tiếp — cùng nhóm conflict 409."""
 
 
 def _as_datetimes(date, time_from, time_to):

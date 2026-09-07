@@ -29,6 +29,15 @@ from .api.bookings import (
     RescheduleRespondAPIView,
     SelectCarePartnerAPIView,
 )
+from .api.admin_manage import (
+    AppealAdminAPIView,
+    AppealDecideAPIView,
+    BookingAdminAPIView,
+    EloBandAdminAPIView,
+    JobAdminAPIView,
+    MatchingWeightAdminAPIView,
+    StateLogAdminAPIView,
+)
 from .api.credits import CreditBalanceAPIView
 from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
 from .api.notifications import NotificationListAPIView, UnreadCountAPIView
@@ -86,6 +95,17 @@ urlpatterns = [
 
     # ── Tín nhiệm (Step 6.7) — không lộ số ELO ──
     path('carepartner/trust/', TrustAPIView.as_view(), name='matching-trust'),
+
+    # ── Quản trị web admin (IsAdminUser) ──
+    path('admin/elo-bands/', EloBandAdminAPIView.as_view(), name='matching-admin-elo-bands'),
+    path('admin/matching-weights/', MatchingWeightAdminAPIView.as_view(),
+         name='matching-admin-weights'),
+    path('admin/appeals/', AppealAdminAPIView.as_view(), name='matching-admin-appeals'),
+    path('admin/appeals/<uuid:pk>/decide/', AppealDecideAPIView.as_view(),
+         name='matching-admin-appeal-decide'),
+    path('admin/state-logs/', StateLogAdminAPIView.as_view(), name='matching-admin-state-logs'),
+    path('admin/bookings/', BookingAdminAPIView.as_view(), name='matching-admin-bookings'),
+    path('admin/jobs/', JobAdminAPIView.as_view(), name='matching-admin-jobs'),
 
     # ── Thông báo (Step 8.8) — /api/matching/notifications/ ──
     path('notifications/', NotificationListAPIView.as_view(), name='matching-notifications'),
