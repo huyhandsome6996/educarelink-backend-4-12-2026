@@ -73,6 +73,14 @@ export default function WorkerProfileScreen() {
     { icon: 'shield-checkmark-outline', label: 'Chính sách bảo mật', color: COLORS.primary },
   ];
 
+  // Flow 1 — menu ghép cặp mới (song song luồng cũ)
+  const MATCHING_MENU_ITEMS = [
+    { icon: 'time-outline', label: 'Lịch rảnh (ghép cặp)', color: COLORS.primary, action: 'matching_availability' },
+    { icon: 'ban-outline', label: 'Ngày bận đột xuất', color: COLORS.error, action: 'blackout' },
+    { icon: 'briefcase-outline', label: 'Đơn của tôi (ghép cặp)', color: COLORS.success, action: 'my_bookings' },
+    { icon: 'megaphone-outline', label: 'Kháng cáo', color: COLORS.info, action: 'appeal' },
+  ];
+
   const pickCredPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -150,6 +158,18 @@ export default function WorkerProfileScreen() {
       navigation.navigate('WorkerScreeningStatus');
     } else if (action === 'view_availability') {
       navigation.navigate('WorkerAvailability');
+    } else if (action === 'matching_availability') {
+      // Flow 1 — lịch rảnh cho ghép cặp mới
+      navigation.navigate('MatchingAvailability');
+    } else if (action === 'blackout') {
+      // Flow 1 — ngày bận đột xuất (blackout)
+      navigation.navigate('Blackout');
+    } else if (action === 'my_bookings') {
+      // Flow 1 — đơn ghép cặp của CarePartner
+      navigation.navigate('MyBookings');
+    } else if (action === 'appeal') {
+      // Flow 1 — kháng cáo (cần bookingId — mở danh sách đơn để chọn)
+      navigation.navigate('MyBookings');
     } else if (action === 'view_my_complaints') {
       navigation.navigate('MyComplaints');
     } else if (action === 'help_center') {
@@ -301,6 +321,24 @@ export default function WorkerProfileScreen() {
                 ) : (
                   <Ionicons name={item.icon} size={20} color={item.color} />
                 )}
+              </View>
+              <Text style={styles.actionText}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Flow 1 — Ghép cặp & Đơn (luồng mới) */}
+        <View style={styles.section}>
+          {MATCHING_MENU_ITEMS.map((item, index) => (
+            <TouchableOpacity
+              key={item.label}
+              style={[styles.actionRow, index === MATCHING_MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => item.action && handleMenuPress(item.action)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIconCircle, { backgroundColor: item.color + '15' }]}>
+                <Ionicons name={item.icon} size={20} color={item.color} />
               </View>
               <Text style={styles.actionText}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />

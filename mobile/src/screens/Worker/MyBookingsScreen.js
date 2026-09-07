@@ -23,6 +23,12 @@ const FILTERS = [
   { key: 'cancelled_by_carepartner', label: 'Đã hủy' },
 ];
 
+// Đơn có thể bị phạt ELO → được phép kháng cáo trong 7 ngày (Step 7.6).
+// Backend vẫn kiểm tra lại EloLedger âm + hạn 7 ngày + giới hạn 3 lần/30 ngày.
+const APPEALABLE = [
+  'cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show',
+];
+
 export default function MyBookingsScreen() {
   const navigation = useNavigation();
   const [items, setItems] = useState([]);
@@ -98,6 +104,16 @@ export default function MyBookingsScreen() {
                   </Text>
                 )}
               </View>
+              {APPEALABLE.includes(item.status) && (
+                <TouchableOpacity
+                  style={styles.appealBtn}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('Appeal', { bookingId: item.id })}
+                >
+                  <Ionicons name="megaphone-outline" size={14} color="#B45309" />
+                  <Text style={styles.appealText}>Kháng cáo</Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           )}
           contentContainerStyle={{ padding: SIZES.padding, paddingBottom: 40 }}
@@ -109,6 +125,13 @@ export default function MyBookingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  appealBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 10, alignSelf: 'flex-start',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+  },
+  appealText: { fontSize: 12, fontWeight: '700', color: '#B45309' },
   filterRow: { paddingTop: 12, paddingBottom: 4 },
   filterChip: {
     borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7,
