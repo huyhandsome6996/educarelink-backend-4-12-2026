@@ -43,3 +43,7 @@ db.sqlite3
 .design-source/
 stitch_educarelink_redesign_system.zip
 private_media/
+
+# Next.js build output (admin-web)
+admin-web/.next/
+admin-web/.env.local

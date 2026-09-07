@@ -22,7 +22,7 @@
 
 - **Severity**: Low (test script issue, not production bug)
 - **Platform**: Test script
-- **Component**: `/home/z/my-project/scripts/test_production_full.py`
+- **Component**: `scripts/test_production_full.py`
 - **Steps to reproduce**:
   1. Run test script
   2. SAFETY-001 checks `body.get("id")` after POST /api/tasks/
@@ -39,7 +39,7 @@
 
 - **Severity**: Low (test script issue, not production bug)
 - **Platform**: Test script
-- **Component**: `/home/z/my-project/scripts/test_production_full.py`
+- **Component**: `scripts/test_production_full.py`
 - **Steps to reproduce**:
   1. Run test script
   2. SAFETY-004 sends SOS with `task_id=safety_task or 1`

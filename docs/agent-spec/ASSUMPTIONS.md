@@ -21,3 +21,11 @@
 | A14 | Window cắt nửa đêm | Serializer/service tách 2 row khi LƯU (22:00-23:59 + 00:00-01:00); JobSlot không cho cắt nửa đêm | Step 9.3 |
 | A15 | `matching/tests/base.py` tự seed config | Mọi test class kế thừa `MatchingTestBase` — seed_matching_config chạy 1 lần/class | Bảng config phải có trong test DB |
 | A16 | Hard lock loại trừ booking đang tạo khỏi conflict check | `hard_lock(slots, booking, ...)` exclude chính booking (Step 5.1.2: tạo booking trước, khóa sau, cùng transaction) | Nếu không exclude thì mọi hard_lock sẽ tự conflict |
+
+## Phụ lục — Quyết định buổi audit G13/G17 (2026-09-08)
+
+| # | Vấn đề | Quyết định | Lý do |
+|---|--------|-----------|-------|
+| A17 | Bootstrap từ clone sạch từng thiếu tài liệu (G13 từng hardcode đường dẫn tuyệt đối máy dev gốc (repo root) → chết trên máy khác) | Đã tạo `README.md` (gốc repo) ghi đúng thứ tự: venv → pip install → `cp .env.example .env` → migrate → `seed_matching_config` → chạy gate. G13 có preflight thiếu seed → in tiếng Việt + exit 2. Script G13 + G17 đều tự suy ra gốc repo từ `__file__`, chạy được từ mọi cwd | Hai reviewer độc lập bắt bug "green on my machine, broken everywhere else" |
+| A18 | Chống tái phát đường dẫn cá nhân hardcode | Thêm guard G17: `scripts/check_no_hardcoded_paths.py` + wire vào `python manage.py test matching` (`matching/tests/test_no_hardcoded_paths.py`). Cấm `/home/<user>/`, `/Users/<user>/` trong file git-tracked; base URL phải env-driven (`EXPO_PUBLIC_API_URL`, `BACKEND_URL`, `NEXT_PUBLIC_API_BASE`) có default đã document trong `.env.example` | One hardcoded path → assume there are more; guard vĩnh viễn rẻ hơn audit tay |
+| A19 | Đính chính số liệu đền bù trôi nổi trong prompt/docs cũ | Nguồn sự thật duy nhất: `docs/agent-spec/flow1-step7-cancellation-compensation.md` §7.1 — T3 = 20% (KHÔNG phải 30%), T5 = 50% SÀN 50.000đ (KHÔNG phải 100%), 100% chỉ thuộc T6. admin-web có 7 trang (không phải 10). Mọi tài liệu ghi sai được sửa trong cùng PR | QA prompt gốc ghi nhầm 2 số; script/tests assert ĐÚNG theo spec và giữ nguyên |
