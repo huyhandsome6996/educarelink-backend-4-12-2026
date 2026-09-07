@@ -88,7 +88,21 @@ def check(idx, name, cond, actual=''):
 
 
 def preflight_problems():
-    """Kiểm tra dữ liệu cấu hình đã được seed đủ chưa. Trả về list vấn đề."""
+    """Kiểm tra dữ liệu cấu hình đã được seed đủ chưa. Trả về list vấn đề.
+
+    Ném PreflightError khi DB chưa migrate (bảng chưa tồn tại) — caller in
+    hướng dẫn tiếng Việt và thoát mã 2 thay vì chết với traceback sqlite.
+    """
+    from django.db.utils import OperationalError
+    try:
+        problems = _preflight_queries()
+    except OperationalError as exc:
+        raise PreflightError(
+            f'Database chưa migrate (bảng matching chưa tồn tại): {exc}') from exc
+    return problems
+
+
+def _preflight_queries():
     problems = []
     missing_tiers = [t for t in REQUIRED_TIERS
                      if not CancelPolicy.objects.filter(tier=t).exists()]
@@ -119,6 +133,10 @@ def print_preflight_help(problems):
     print('Chi tiết thiếu:')
     for p in problems:
         print(f'  - {p}')
+
+
+class PreflightError(Exception):
+    """Thiếu bước migrate hoặc seed — caller in hướng dẫn + thoát mã 2."""
 
 
 def make_cp(name, rating=4.5, elo=1200, loc=(21.0, 105.8)):
@@ -173,7 +191,12 @@ def main():
     global TAG
     TAG = 'g13_' + _uuid.uuid4().hex[:8]
 
-    problems = preflight_problems()
+    problems = []
+    try:
+        problems = preflight_problems()
+    except PreflightError as exc:
+        print_preflight_help([str(exc)])
+        return 2
     if problems:
         print_preflight_help(problems)
         return 2
