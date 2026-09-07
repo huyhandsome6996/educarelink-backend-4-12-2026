@@ -61,6 +61,7 @@ def _booking_dict(booking):
         'seconds_left': seconds_left(b),
         'total_value_vnd': b.total_value_vnd,
         'compensation_vnd': b.compensation_vnd,
+        'elo_delta_applied': b.elo_delta_applied,
         'cancel_reason_code': b.cancel_reason_code,
         'first_slot': ({'date': first.date, 'time_from': first.time_from,
                         'time_to': first.time_to} if first else None),
