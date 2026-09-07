@@ -1,0 +1,171 @@
+{% load static %}
+<!-- ============================================================ -->
+<!-- _matching_common.html — Flow 1 ghép cặp: JS dùng chung -->
+<!-- GỌI TRỰC TIẾP /api/matching/* (endpoint có sẵn) — KHÔNG nhân bản -->
+<!-- nghiệp vụ ở Django view. View chỉ render shell.                -->
+<!-- Cung cấp: authFetch (JWT + refresh), toast, fmtVND, bộ chọn    -->
+<!-- ngày/giờ (flatpickr, cấm quá khứ), bản đồ chọn điểm            -->
+<!-- (Leaflet: tìm địa chỉ + vị trí hiện tại + pin kéo thả).        -->
+<!-- ============================================================ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  .mcm-toast{position:fixed;top:18px;right:18px;z-index:9999;padding:12px 18px;border-radius:12px;
+    color:#fff;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;
+    transition:opacity .25s ease;max-width:340px}
+  .mcm-toast.show{opacity:1}
+  .mcm-toast.ok{background:#0E9F6E}.mcm-toast.err{background:#DC2626}
+  .mcm-map{height:300px;border-radius:14px;border:1px solid #E5E7EB;z-index:1}
+  .mcm-map-search{display:flex;gap:8px;margin-bottom:8px}
+  .mcm-map-search input{flex:1;border:1px solid #E5E7EB;border-radius:10px;padding:9px 12px;font-size:14px}
+  .mcm-btn-ghost{border:1px solid #F26522;color:#F26522;border-radius:10px;padding:9px 12px;
+    font-size:13px;font-weight:600;background:#fff;cursor:pointer;white-space:nowrap}
+  .mcm-btn-ghost:hover{background:rgba(242,101,34,.08)}
+  .mcm-addr{font-size:13px;color:#374151;margin-top:8px;background:#F9FAFB;border-radius:10px;
+    padding:8px 12px;border:1px dashed #E5E7EB}
+  .mcm-label{display:block;font-size:13px;font-weight:600;color:#374151;margin:14px 0 6px}
+  .mcm-input{width:100%;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;font-size:14px;
+    background:#fff}
+  .mcm-input:focus{outline:2px solid rgba(242,101,34,.25);border-color:#F26522}
+  .mcm-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+  .mcm-submit{background:#F26522;color:#fff;font-weight:700;border-radius:12px;padding:13px 22px;
+    font-size:15px;cursor:pointer;width:100%;margin-top:18px}
+  .mcm-submit:disabled{opacity:.6;cursor:not-allowed}
+</style>
+<script>
+  const API_BASE = window.API_BASE || '/api';
+  const MCM_TOKEN_KEY = 'token', MCM_REFRESH_KEY = 'refresh_token';
+
+  function toast(msg, ok = true) {
+    let el = document.querySelector('.mcm-toast');
+    if (!el) { el = document.createElement('div'); document.body.appendChild(el); el.className = 'mcm-toast'; }
+    el.textContent = msg;
+    el.classList.toggle('ok', !!ok); el.classList.toggle('err', !ok);
+    el.classList.add('show');
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  function fmtVND(n) { return (Number(n) || 0).toLocaleString('vi-VN') + 'đ'; }
+
+  async function authFetch(url, options = {}) {
+    let token = localStorage.getItem(MCM_TOKEN_KEY);
+    if (!token) { toast('Bạn cần đăng nhập để tiếp tục.', false); setTimeout(() => location.href = '/login/', 900); throw new Error('no_token'); }
+    options.headers = { ...(options.headers || {}), 'Authorization': 'Bearer ' + token,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}) };
+    let response = await fetch(url, options);
+    if (response.status === 401) {
+      const refreshToken = localStorage.getItem(MCM_REFRESH_KEY);
+      if (refreshToken) {
+        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh: refreshToken }) });
+        if (refreshResp.ok) {
+          const refreshData = await refreshResp.json();
+          localStorage.setItem(MCM_TOKEN_KEY, refreshData.access);
+          if (refreshData.refresh) localStorage.setItem(MCM_REFRESH_KEY, refreshData.refresh);
+          options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+          response = await fetch(url, options);
+        } else { localStorage.removeItem(MCM_TOKEN_KEY); localStorage.removeItem(MCM_REFRESH_KEY); }
+      }
+    }
+    return response;
+  }
+
+  // flatpickr — CẤM ngày quá khứ (minDate: hôm nay), time_to > time_from
+  function initDatePicker(sel) {
+    return flatpickr(sel, { minDate: 'today', dateFormat: 'Y-m-d', locale: 'vi', disableMobile: true });
+  }
+  function initTimePicker(sel, startSel, endSel) {
+    const cfg = { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true };
+    const start = flatpickr(startSel, cfg);
+    flatpickr(endSel, { ...cfg,
+      onChange: (dates, str) => {
+        if (start.selectedDates[0] && str && str <= start.selectedDates[0].toTimeString().slice(0, 5)) {
+          toast('Giờ kết thúc phải sau giờ bắt đầu.', false); endSel.value = '';
+        }
+      } });
+    return start;
+  }
+
+  // Bản đồ chọn điểm: tìm địa chỉ (Nominatim) + "Vị trí hiện tại" (GPS) + pin kéo thả
+  function initMapPicker({ mapId, searchId, btnGpsId, addrId, latInput, lngInput, noteInput }) {
+    const map = L.map(mapId).setView([10.7769, 106.7009], 13); // HCM mặc định
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { attribution: '© OpenStreetMap' }).addTo(map);
+    let marker = null;
+    const addrEl = document.getElementById(addrId);
+
+    function setPoint(lat, lng, label) {
+      lat = +(+lat).toFixed(6); lng = +(+lng).toFixed(6);
+      document.getElementById(latInput).value = lat;
+      document.getElementById(lngInput).value = lng;
+      if (addrEl) addrEl.textContent = '📍 ' + (label || `${lat}, ${lng}`);
+      if (!marker) marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      else marker.setLatLng([lat, lng]);
+      marker.bindTooltip('Kéo để điều chỉnh').openTooltip();
+      marker.on('dragend', async () => {
+        const p = marker.getLatLng();
+        document.getElementById(latInput).value = +p.lat.toFixed(6);
+        document.getElementById(lngInput).value = +p.lng.toFixed(6);
+        const label2 = await reverseGeocode(p.lat, p.lng);
+        if (addrEl) addrEl.textContent = '📍 ' + (label2 || `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`);
+      });
+      map.setView([lat, lng], 16);
+    }
+
+    async function reverseGeocode(lat, lng) {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`);
+        const j = await r.json();
+        return j.display_name || null;
+      } catch { return null; }
+    }
+
+    async function searchAddress(q) {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}&accept-language=vi`);
+        const j = await r.json();
+        if (j[0]) setPoint(j[0].lat, j[0].lon, j[0].display_name);
+        else toast('Không tìm thấy địa chỉ. Hãy thử từ khoá khác.', false);
+      } catch { toast('Lỗi tìm kiếm địa chỉ.', false); }
+    }
+
+    const searchInput = document.getElementById(searchId);
+    if (searchInput) {
+      let timer = null;
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); searchAddress(searchInput.value); }
+      });
+      searchInput.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { if (searchInput.value.trim().length >= 4) searchAddress(searchInput.value); }, 700);
+      });
+    }
+    const gpsBtn = document.getElementById(btnGpsId);
+    if (gpsBtn) gpsBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) return toast('Thiết bị không hỗ trợ định vị.', false);
+      gpsBtn.textContent = 'Đang định vị…';
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const label = await reverseGeocode(latitude, longitude);
+        setPoint(latitude, longitude, label);
+        gpsBtn.textContent = 'Dùng vị trí hiện tại';
+      }, () => { toast('Không lấy được vị trí. Hãy cấp quyền định vị.', false); gpsBtn.textContent = 'Dùng vị trí hiện tại'; });
+    });
+    return { map, setPoint };
+  }
+
+  // Đếm ngược deadline (dùng ở trang đơn)
+  function startCountdown(el, secondsLeft) {
+    let s = Number(secondsLeft) || 0;
+    const render = () => {
+      if (s <= 0) { el.textContent = 'Đã hết thời gian cam kết'; return; }
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      el.textContent = `${h} giờ ${String(m).padStart(2, '0')} phút ${String(sec).padStart(2, '0')} giây`;
+      s -= 1; setTimeout(render, 1000);
+    };
+    render();
+  }
+</script>

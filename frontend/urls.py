@@ -41,4 +41,20 @@ urlpatterns = [
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
     # Landing page công khai (khảo sát + đăng ký tư vấn/dùng thử)
     path('landing/', LandingPageView.as_view(), name='landing_page'),
+    # ================================================================
+    # Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (song song luồng cũ).
+    # View chỉ render shell; trang JS gọi trực tiếp /api/matching/* —
+    # KHÔNG nhân bản nghiệp vụ ở backend Django view.
+    # ================================================================
+    path('dang-viec/', DangViecSelectView.as_view(), name='dang_viec_select'),
+    path('dang-viec/gia-su/', DangViecGiaSuView.as_view(), name='dang_viec_gia_su'),
+    path('dang-viec/trong-tre/', DangViecTrongTreView.as_view(), name='dang_viec_trong_tre'),
+    path('dang-viec/don-tre/', DangViecDonTreView.as_view(), name='dang_viec_don_tre'),
+    path('ung-vien/<uuid:job_id>/', UngVienView.as_view(), name='ung_vien'),
+    path('don/<uuid:booking_id>/', DonView.as_view(), name='don'),
+    path('vi-credit/', ViCreditView.as_view(), name='vi_credit'),
+    path('lich-ranh/', LichRanhView.as_view(), name='lich_ranh'),
+    path('ngay-ban/', NgayBanView.as_view(), name='ngay_ban'),
+    path('don-cua-toi/', DonCuaToiView.as_view(), name='don_cua_toi'),
+    path('khang-cao/<uuid:booking_id>/', KhangCaoView.as_view(), name='khang_cao'),
 ]
