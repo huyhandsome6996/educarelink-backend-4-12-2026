@@ -84,12 +84,17 @@ def select_tier_for_decline():
 # Anti-abuse
 # ─────────────────────────────────────────────────────────────────
 def _force_majeure_count_last_30d(carepartner, now):
+    """Số lần hủy force-majeure trong rolling 30 ngày (Step 5.3 anti-abuse).
+
+    Đếm từ Booking.cancel_reason_code (lý do FM thật: health, accident…),
+    KHÔNG đếm từ EloLedger — vì ledger ghi reason_code là TIER (T0-T6),
+    không phải lý do FM → nếu đếm ledger thì anti-abuse không bao giờ kích hoạt.
+    """
     threshold = now - timedelta(days=30)
-    return EloLedger.objects.filter(
+    return Booking.objects.filter(
         carepartner=carepartner,
-        reason_code__in=FORCE_MAJEURE_CODES,
-        delta__lt=0,
-        created_at__gte=threshold,
+        cancel_reason_code__in=FORCE_MAJEURE_CODES,
+        cancelled_at__gte=threshold,
     ).count()
 
 

@@ -18,7 +18,7 @@ Concurrent race: thua → SlotConflictError → HTTP 409 slot_taken.
 import logging
 
 from datetime import datetime as _dt, time as _time, timedelta
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from ..config import get_config, get_int
@@ -92,7 +92,19 @@ def select_carepartner(job, carepartner, actor_user=None, idempotency_key=None):
 
     Idempotent: (1) Idempotency-Key cache, (2) unique (job, carepartner),
     (3) job đã có booking active → trả booking đó.
+
+    Rule 9 (Step 10 — schedule locking): chống race bằng (a) SELECT FOR
+    UPDATE row JobPost + CarePartnerProfile (thứ tự khóa cố định CP → job
+    để tránh deadlock; PostgreSQL khóa thật, SQLite no-op nhưng có ghi
+    tuần tự), (b) unique constraint (job, carepartner) bắt IntegrityError
+    → map về SlotConflictError, (c) conflict check + hard lock all-or-nothing.
     """
+    # (0) Mutex Race: khóa row CP trước, row job sau (thứ tự cố định).
+    from ..models import CarePartnerProfile
+    profile, _created = CarePartnerProfile.objects.get_or_create(user=carepartner)
+    CarePartnerProfile.objects.select_for_update().get(pk=profile.pk)
+    job = JobPost.objects.select_for_update().get(pk=job.pk)
+
     if job.status in (JobPostStatus.CAREPARTNER_SELECTED,
                       JobPostStatus.NEEDS_REPLACEMENT,
                       JobPostStatus.IN_PROGRESS):
@@ -120,7 +132,7 @@ def select_carepartner(job, carepartner, actor_user=None, idempotency_key=None):
     required_slots = [(s.date, s.time_from, s.time_to) for s in job.slots.all()]
     conflicts = []
     for d, tf, tt in required_slots:
-        conflicts.extend(LockService._find_conflicts(carepartner, d, tf, tt))
+        conflicts.extend(LockService._find_conflicts(carepartner, d, tf, tt, job=job))
     if conflicts:
         detail = '; '.join(f'{c.date} {c.time_from}-{c.time_to}' for c in conflicts[:3])
         raise SlotConflictError(f'Slot đã bị giữ: {detail}')
@@ -129,15 +141,20 @@ def select_carepartner(job, carepartner, actor_user=None, idempotency_key=None):
     for d, tf, tt in required_slots:
         LockService.validate_buffer(carepartner, d, tf, tt)
 
-    # (b) Tạo booking
+    # (b) Tạo booking — IntegrityError (unique job+carepartner) khi 2 thread
+    # cùng vượt status check → map về SlotConflictError (409 slot_taken)
     deadline, window = compute_commit_deadline(now, first_start)
-    booking = Booking.objects.create(
-        job=job, carepartner=carepartner, parent=job.parent,
-        status=BookingStatus.AWAITING_COMMITMENT,
-        selected_at=now,
-        commit_deadline=deadline or now,  # window 0 → committed ngay sau đây
-        total_value_vnd=compute_total_value(job) or job.hourly_rate_vnd,
-    )
+    try:
+        booking = Booking.objects.create(
+            job=job, carepartner=carepartner, parent=job.parent,
+            status=BookingStatus.AWAITING_COMMITMENT,
+            selected_at=now,
+            commit_deadline=deadline or now,  # window 0 → committed ngay sau đây
+            total_value_vnd=compute_total_value(job) or job.hourly_rate_vnd,
+        )
+    except IntegrityError:
+        raise SlotConflictError(
+            'Slot đã bị giữ — booking cho đơn này vừa được tạo ở request khác.')
 
     # (c) Hard-lock ALL slots (all-or-nothing) — cùng transaction
     LockService.hard_lock(required_slots, booking, carepartner, job=job)
