@@ -1,6 +1,6 @@
 # EduCareLink Admin Web — quản trị Flow 1 (ghép cặp)
 
-Next.js 14 + TypeScript. Xác thực SimpleJWT. 7 trang:
+Next.js 15 + TypeScript. Xác thực SimpleJWT. 7 trang:
 
 | Trang | Đường dẫn | Chức năng |
 |---|---|---|
