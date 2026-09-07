@@ -68,15 +68,16 @@ class LockService:
         """Rule 2: khóa cứng ALL slots — all-or-nothing.
 
         Caller PHẢI bọc trong transaction.atomic(). Nếu bất kỳ slot nào trùng
-        (hard lock ai đó / soft lock người khác / booking đang chạy) →
-        SlotConflictError → transaction rollback → KHÔNG lock 1 phần.
-        Booking truyền vào được LOẠI TRỪ khỏi conflict check (chính nó).
+        (hard lock của chính CP / lock cùng job / soft lock người khác /
+        booking đang chạy) → SlotConflictError → transaction rollback →
+        KHÔNG lock 1 phần. Booking truyền vào được LOẠI TRỪ khỏi conflict
+        check (chính nó).
         """
         # Phase 1 — kiểm tra toàn bộ trước khi ghi
         conflicts = []
         for date, time_from, time_to in slots:
             c = LockService._find_conflicts(carepartner, date, time_from, time_to,
-                                            exclude_booking=booking)
+                                            exclude_booking=booking, job=job)
             if c:
                 conflicts.extend(c)
         if conflicts:
@@ -122,21 +123,33 @@ class LockService:
 
     @classmethod
     def _find_conflicts(cls, carepartner, date, time_from, time_to, now=None,
-                        exclude_booking=None):
+                        exclude_booking=None, job=None):
         """Mọi thứ chặn việc khóa (date, tf, tt) của CP này.
 
         exclude_booking: booking đang được tạo/khóa — loại trừ khỏi check
         (Step 5.1.2: booking tạo trước, hard lock sau cùng transaction).
+
+        job: job đang được chọn CP (Step 10). Hard lock chỉ chặn khi:
+          (a) lock thuộc CHÍNH CP này — CP đang bận việc khác, hoặc
+          (b) lock thuộc CÙNG job — slot này đã có CP khác được chọn.
+        Hard lock của CP KHÁC ở job KHÁC (chỉ trùng khung giờ) KHÔNG chặn —
+        nếu không, 1 booking buổi tối sẽ khóa toàn bộ khung giờ đó cho mọi
+        job khác của mọi phụ huynh (không thể scale).
         """
         now = now or timezone.now()
         exclude_pk = exclude_booking.pk if exclude_booking is not None else None
+        job_id = job.pk if job is not None else None
         conflicts = []
 
-        # 1. Hard lock của BẤT KỲ ai trong khung (trừ lock của chính booking này)
+        # 1. Hard lock: của chính CP này (bận việc khác) hoặc của cùng job
+        #    (slot đã có người chọn) — trừ lock của chính booking đang tạo
         for lock in SlotLock.objects.filter(date=date, lock_type=SlotLock.LockType.HARD):
             if exclude_pk is not None and lock.booking_id == exclude_pk:
                 continue
-            if cls._overlaps(time_from, time_to, lock.time_from, lock.time_to):
+            same_cp = lock.carepartner_id == carepartner.pk
+            same_job = job_id is not None and lock.job_id == job_id
+            if (same_cp or same_job) and cls._overlaps(time_from, time_to,
+                                                       lock.time_from, lock.time_to):
                 conflicts.append(lock)
 
         # 2. Soft lock CÒN HẠN của NGƯỜI KHÁC
@@ -158,8 +171,9 @@ class LockService:
         return conflicts
 
     @classmethod
-    def has_conflict(cls, carepartner, date, time_from, time_to):
-        return bool(cls._find_conflicts(carepartner, date, time_from, time_to))
+    def has_conflict(cls, carepartner, date, time_from, time_to, job=None):
+        return bool(cls._find_conflicts(carepartner, date, time_from, time_to,
+                                        job=job))
 
     @staticmethod
     def _delete_soft_overlaps(carepartner, date, time_from, time_to):

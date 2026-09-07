@@ -185,13 +185,30 @@ class CancelFlowTest(CancelBaseTest):
             .exists())
 
     def test_third_force_majeure_full_penalty(self):
-        """Force majeure thứ 3 trong 30 ngày → phạt FULL (Step 5.3 anti-abuse)."""
+        """Force majeure thứ 3 trong 30 ngày → phạt FULL (Step 5.3 anti-abuse).
+
+        Seed 2 booking FM ĐÃ HỦY trước đó trong 30 ngày (đúng path thật:
+        anti-abuse đếm từ Booking.cancel_reason_code, không phải EloLedger —
+        vì ledger ghi reason_code là TIER T0-T6, không phải lý do FM).
+        """
         booking = self._make_committed_booking(lead_hours=10, value=200000)
-        # 2 force majeure trước đó (ledger rows)
+        # 2 force majeure trước đó trong 30 ngày — booking đã hủy thật
         for i in range(2):
-            EloLedger.objects.create(carepartner=self.cp, delta=-25,
-                                     reason_code='health', elo_before=1200,
-                                     elo_after=1175, created_at=tz.now())
+            prior_job = JobPost.objects.create(
+                parent=self.parent, job_type='tutoring', hourly_rate_vnd=100000,
+                status='cancelled_by_carepartner')
+            JobSlot.objects.create(job=prior_job, date=MONDAY,
+                                   time_from=time(1 + 3 * i, 0),
+                                   time_to=time(2 + 3 * i, 0))
+            Booking.objects.create(
+                job=prior_job, carepartner=self.cp, parent=self.parent,
+                status=BookingStatus.CANCELLED_BY_CAREPARTNER,
+                total_value_vnd=100000, selected_at=self.NOW,
+                commit_deadline=self.NOW,
+                cancel_reason_code='health', cancel_class='force_majeure',
+                cancel_note='Bệnh đột xuất có giấy nhập viện',
+                cancelled_at=self.NOW - timedelta(days=i + 1),
+            )
         booking, _ = cancel_by_carepartner(booking, 'health',
                                            note='Lý do bất khả kháng thứ ba trong tháng này')
         # FULL T2 = -30, không ×0.5

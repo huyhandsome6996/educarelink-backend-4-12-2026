@@ -21,6 +21,7 @@ from matching.models import (
     CarePartnerAvailability,
     CreditBalance,
     EloLedger,
+    JobSlot,
     Notification,
     ReplacementAttempt,
 )
@@ -132,14 +133,18 @@ class FullFlowIntegrationTest(MatchingTestBase):
         resp = self.parent_client.get(f'/api/matching/bookings/{booking_id}/')
         self.assertEqual(resp.json()['status'], 'committed')
 
-        # 7. Đưa đồng hồ tới 3h trước giờ job (Thứ Hai 16:00) → CP hủy → T3
-        # (lead 3-6h): -50 ELO, đền 20% (bảng Step 7.1 là nguồn sự thật)
-        self.frozen_now = self.frozen_now.replace(
-            year=self.frozen_now.year, month=self.frozen_now.month,
-            day=self.frozen_now.day)
+        # 7. Đưa đồng hồ tới lead 4h59' trước slot đầu — DETERMINISTIC:
+        # tính từ slot THỰC TẾ trong DB (không phụ thuộc thứ chạy test —
+        # trước đây cộng cứng +7d4h59m chỉ đúng khi hôm nay là Thứ Hai,
+        # dẫn tới T4 -80 thay vì T3 -50 khi chạy vào ngày khác).
+        # lead = 299' ∈ [180,360) → T3: -50 ELO, đền 20% (Step 7.1).
         import datetime as _dtmod
-        target = self.frozen_now + timedelta(days=7, hours=4, minutes=59)  # = Thứ Hai 16:00
-        self.frozen_now = target  # = Thứ Hai 16:00
+        slot = (JobSlot.objects.filter(job_id=job_id)
+                .order_by('date', 'time_from').first())
+        self.assertIsNotNone(slot)
+        slot_start = tz.make_aware(
+            _dtmod.datetime.combine(slot.date, slot.time_from))
+        self.frozen_now = slot_start - timedelta(hours=4, minutes=59)
         cp_client = APIClient()
         cp_client.force_authenticate(user=cp1)
         resp = cp_client.post(f'/api/matching/bookings/{booking_id}/cancel/', {
