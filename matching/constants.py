@@ -357,6 +357,6 @@ MATCHING_FACTORS = (
 MATCH_LEVEL_LABELS_VI = {
     'very_high': 'Rất phù hợp',
     'high': 'Phù hợp cao',
-    'medium': 'Khá phù hợp',
-    'low': 'Phù hợp thấp',
+    'medium': 'Phù hợp',
+    'low': 'Có thể cân nhắc',
 }
