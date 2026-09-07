@@ -1,9 +1,11 @@
 """G17 — Regression guard chống đường dẫn cá nhân hardcode (Part 2.A4).
 
-Lịch sử: scripts/g13_business_rules.py từng hardcode
-'/home/z/my-project/repo-educarelink' → gate G13 chết trên mọi máy khác
+Lịch sử: scripts/g13_business_rules.py từng hardcode đường dẫn tuyệt đối
+máy dev cá nhân (xem commit history) → gate G13 chết trên mọi máy khác
 máy dev gốc. Test này đảm bảo class bug đó không thể quay lại: nếu bất kỳ
 file git-tracked nào chứa /home/<user>/ hay /Users/<user>/ thì test FAIL.
+Sample đường dẫn được NỐI CHUỖI ĐỘNG để literal không xuất hiện trong
+source — nếu không guard sẽ bắt chính file test này (tự tham chiếu).
 
 Logic quét dùng chung với scripts/check_no_hardcoded_paths.py
 (chạy độc lập: python scripts/check_no_hardcoded_paths.py).
@@ -28,7 +30,9 @@ class NoHardcodedPathsTest(SimpleTestCase):
 
     def test_guard_self_check(self):
         """Guard phải nhận diện được đúng pattern (sanity check)."""
-        samples = ('/home/someuser/repo/x.py', '/Users/SomeOne/file.js')
+        # Nối động — tránh literal pattern trong source (self-scan)
+        samples = ('/'.join(['', 'ho' + 'me', 'someuser', 'repo', 'x.py']),
+                   '/'.join(['', 'Users', 'SomeOne', 'file.js']))
         for sample in samples:
             self.assertTrue(
                 any(pat.search(sample) for pat in _guard.PATTERNS),
