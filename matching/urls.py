@@ -17,10 +17,17 @@ from .api.availability import (
     BlackoutListCreateAPIView,
 )
 from .api.credits import CreditBalanceAPIView
+from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
 from .api.notifications import NotificationListAPIView, UnreadCountAPIView
 from .api.trust import TrustAPIView
 
 urlpatterns = [
+    # ── Đăng việc + ứng viên (Step 1/2/3) ──
+    path('jobs/', JobPostCreateAPIView.as_view(), name='matching-job-create'),
+    path('jobs/<uuid:job_id>/publish/', JobPostPublishAPIView.as_view(),
+         name='matching-job-publish'),
+    path('candidates/', CandidatesAPIView.as_view(), name='matching-candidates'),
+
     # ── Lịch rảnh (Step 4 + 9) ──
     path('carepartners/me/availability/',
          AvailabilityListCreateAPIView.as_view(), name='matching-availability'),
