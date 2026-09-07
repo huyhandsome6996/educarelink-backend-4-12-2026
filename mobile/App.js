@@ -12,6 +12,8 @@ import { storage } from './src/utils/storage';
 import { COLORS } from './src/theme/colors';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import RandomVerificationModal from './src/components/RandomVerificationModal';
+// Flow 1 Step 8.4 — tiếng kêu to cho push critical (ghép cặp)
+import NotificationListener from './src/components/NotificationListener';
 
 // ============================================================
 // Font assets — import tĩnh để Metro bundler ship .ttf vào APK
@@ -142,6 +144,25 @@ function useNotificationChannels() {
         sound: 'default',
         enableVibrate: true,
         showBadge: false,
+      });
+
+      // === Flow 1 Step 8.4 — Channel 'educarelink_critical' (kêu to) ===
+      // Đăng ký PHÒNG VỆ tại đây để channel tồn tại NGAY khi app mở, kể cả
+      // trước khi NotificationListener mount (listener cũng tự đăng ký lại
+      // — setNotificationChannelAsync là idempotent, không gây trùng lặp).
+      // Backend notification_service gửi channelId 'educarelink_critical'
+      // cho mọi push class 'critical' của luồng ghép cặp.
+      Notifications.setNotificationChannelAsync('educarelink_critical', {
+        name: 'EduCareLink - Quan trọng',
+        description: 'Thông báo quan trọng: cam kết đơn, không đến làm, thay thế CarePartner',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'critical_alert.wav', // trong res/raw/ nhờ withCriticalNotificationSound
+        vibrationPattern: [0, 500, 300, 500, 300, 500],
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        enableLights: true,
+        lightColor: '#F36A04',
+        showBadge: true,
       });
     } catch (e) {
       console.warn('[App] Notification channel setup failed (non-fatal):', e);
@@ -341,6 +362,14 @@ function AppContent() {
         đã đăng nhập, không poll ở login screen.
       */}
       <RandomVerificationModal />
+      {/*
+        Flow 1 Step 8.4 — NotificationListener: đăng ký channel
+        'educarelink_critical' (importance MAX + sound critical_alert.wav)
+        và phát thêm sound local + haptic khi nhận push class 'critical'
+        khi app đang mở foreground (Android foreground không tự phát sound).
+        Mount ở App root, sống suốt vòng đời app.
+      */}
+      <NotificationListener />
     </>
   );
 }
