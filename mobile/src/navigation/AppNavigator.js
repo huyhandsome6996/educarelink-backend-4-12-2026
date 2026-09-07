@@ -78,6 +78,25 @@ import MyComplaintsScreen from '../screens/Worker/MyComplaintsScreen';
 import WorkerAvailabilityScreen from '../screens/Worker/WorkerAvailabilityScreen';
 import SmartMatchesScreen from '../screens/Parent/SmartMatchesScreen';
 
+// Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (mới, song song luồng cũ)
+// Route name dùng tên riêng để KHÔNG đụng route cũ ('WorkerAvailability',
+// 'CandidateProfile', 'MyJobs'):
+//   Parent  : JobTypeSelect, TutoringForm, ChildcareForm, PickupForm,
+//             CandidatesList, CandidateProfileV2, BookingDetail, WalletCredits
+//   Worker  : MatchingAvailability, Blackout, MyBookings, Appeal
+import JobTypeSelectScreen from '../screens/Parent/JobTypeSelectScreen';
+import TutoringFormScreen from '../screens/Parent/TutoringForm';
+import ChildcareFormScreen from '../screens/Parent/ChildcareForm';
+import PickupFormScreen from '../screens/Parent/PickupForm';
+import CandidatesListScreen from '../screens/Parent/CandidatesListScreen';
+import CandidateProfileV2Screen from '../screens/Parent/CandidateProfileV2Screen';
+import BookingDetailScreen from '../screens/Parent/BookingDetailScreen';
+import WalletScreen from '../screens/Parent/WalletScreen';
+import MatchingAvailabilityScreen from '../screens/Worker/AvailabilityScreen';
+import BlackoutScreen from '../screens/Worker/BlackoutScreen';
+import MyBookingsScreen from '../screens/Worker/MyBookingsScreen';
+import AppealScreen from '../screens/Worker/AppealScreen';
+
 // B1 — Care Diary
 import CareDiaryFormScreen from '../screens/Worker/CareDiaryFormScreen';
 
@@ -234,6 +253,15 @@ export default function AppNavigator() {
             <Stack.Screen name="CreateTask" component={CreateTaskScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="Candidates" component={CandidatesScreen} />
             <Stack.Screen name="SmartMatches" component={SmartMatchesScreen} />
+            {/* Flow 1 — ghép cặp mới: đăng việc 3 loại → ứng viên → chọn CP → đơn */}
+            <Stack.Screen name="JobTypeSelect" component={JobTypeSelectScreen} />
+            <Stack.Screen name="TutoringForm" component={TutoringFormScreen} />
+            <Stack.Screen name="ChildcareForm" component={ChildcareFormScreen} />
+            <Stack.Screen name="PickupForm" component={PickupFormScreen} />
+            <Stack.Screen name="CandidatesList" component={CandidatesListScreen} />
+            <Stack.Screen name="CandidateProfileV2" component={CandidateProfileV2Screen} />
+            <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+            <Stack.Screen name="WalletCredits" component={WalletScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
@@ -263,6 +291,11 @@ export default function AppNavigator() {
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
+            {/* Flow 1 — CarePartner: lịch rảnh ghép cặp / ngày bận / đơn / kháng cáo */}
+            <Stack.Screen name="MatchingAvailability" component={MatchingAvailabilityScreen} />
+            <Stack.Screen name="Blackout" component={BlackoutScreen} />
+            <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+            <Stack.Screen name="Appeal" component={AppealScreen} />
             <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />

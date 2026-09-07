@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>EduCareLink — Đơn của tôi</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+    {% include 'frontend/_matching_common.html' %}
+</head>
+<body class="bg-gray-50">
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="/worker/" class="text-sm font-semibold text-gray-500">← Tìm việc</a>
+        <span class="font-headline font-extrabold text-[#1A1A2E]">Đơn của tôi</span>
+        <span class="w-20"></span>
+    </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 py-8">
+    <!-- Tab lọc -->
+    <div class="flex gap-2 overflow-x-auto pb-3" id="tabs"></div>
+    <div id="loading" class="text-center py-16 text-gray-400">Đang tải đơn…</div>
+    <div id="list" class="space-y-3"></div>
+</main>
+
+<script>
+  const FILTERS = [
+    { key: '', label: 'Tất cả' },
+    { key: 'awaiting_commitment', label: 'Chờ cam kết' },
+    { key: 'committed', label: 'Đã cam kết' },
+    { key: 'in_progress', label: 'Đang làm' },
+    { key: 'completed', label: 'Hoàn thành' },
+    { key: 'cancelled_by_carepartner', label: 'Đã hủy' },
+  ];
+  const STATUS_COLORS = {
+    awaiting_commitment: '#F26522', committed: '#0E9F6E', in_progress: '#2563EB',
+    completed: '#0E9F6E', cancelled_by_carepartner: '#DC2626', cancelled_by_parent: '#DC2626',
+    no_show: '#DC2626', suspected_no_show: '#F5A623', seeking_replacement: '#F5A623',
+  };
+  const APPEALABLE = ['cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show'];
+  let current = '';
+
+  function renderTabs() {
+    const tabs = document.getElementById('tabs');
+    tabs.innerHTML = '';
+    FILTERS.forEach((f) => {
+      const b = document.createElement('button');
+      b.className = 'whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border ' +
+        (current === f.key ? 'bg-[#F26522] text-white border-[#F26522]' : 'bg-white text-gray-500 border-gray-200');
+      b.textContent = f.label;
+      b.onclick = () => { current = f.key; renderTabs(); load(); };
+      tabs.appendChild(b);
+    });
+  }
+
+  async function load() {
+    const resp = await authFetch(API_BASE + '/matching/bookings/' + (current ? `?status=${current}` : ''));
+    const data = await resp.json();
+    document.getElementById('loading').classList.add('hidden');
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    const rows = data.results || [];
+    if (!rows.length) {
+      list.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-gray-500">Chưa có đơn nào ở mục này.</div>';
+      return;
+    }
+    for (const b of rows) {
+      const color = STATUS_COLORS[b.status] || '#6B7280';
+      const s = b.first_slot || {};
+      const card = document.createElement('a');
+      card.href = `/don/${b.id}/`;
+      card.className = 'block bg-white rounded-2xl p-4 shadow-sm border border-gray-100';
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-bold text-[#1A1A2E] truncate">${b.job_title || 'Công việc ghép cặp'}</div>
+          <span class="text-xs font-bold px-2.5 py-1 rounded-full text-white shrink-0" style="background:${color}">${b.status_label_vi || b.status}</span>
+        </div>
+        <div class="text-sm text-gray-500 mt-1">📅 ${s.date || '—'} · ${s.time_from ? s.time_from.slice(0, 5) : ''}–${s.time_to ? s.time_to.slice(0, 5) : ''}</div>
+        <div class="text-sm mt-1">💰 ${fmtVND(b.total_value_vnd)}
+          ${b.compensation_vnd > 0 ? `<span class="text-[#F5A623]">· Đền bù ${fmtVND(b.compensation_vnd)}</span>` : ''}</div>
+        ${APPEALABLE.includes(b.status)
+          ? `<div class="mt-2"><span class="inline-block text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-bold">⚖️ Có thể kháng cáo — xem chi tiết đơn</span></div>`
+          : ''}`;
+      list.appendChild(card);
+    }
+  }
+
+  renderTabs();
+  load();
+</script>
+</body>
+</html>
