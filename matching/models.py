@@ -282,6 +282,14 @@ class CarePartnerProfile(models.Model):
     max_radius_km = models.PositiveIntegerField(null=True, blank=True,
                                                 help_text='null → dùng DEFAULT_MAX_RADIUS_KM (20)')
     has_vehicle = models.BooleanField(default=False, help_text='Có xe — khoảng cách hiệu quả ×0.75')
+    gender = models.CharField(
+        max_length=10, blank=True, default='',
+        choices=[('male', 'Nam'), ('female', 'Nữ')],
+        help_text='Hard filter #5 (flow1-step2-matching-engine.md dòng 57): parent yêu cầu '
+                  'giới tính cụ thể → CP khác giới bị loại trước khi chấm điểm. Giá trị '
+                  'khớp chuẩn đã normalize ở gemini_service (male/female). Bỏ trống = chưa '
+                  'khai báo → KHÔNG chặn ghép cặp (newcomer-friendly, không auto-reject). '
+                  'Chỉ áp dụng childcare/pickup — tutoring luôn bỏ qua (Step 11.4).')
     school = models.CharField(max_length=255, blank=True, default='')
     major = models.CharField(max_length=255, blank=True, default='')
     skills = models.JSONField(default=list, blank=True,
