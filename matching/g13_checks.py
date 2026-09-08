@@ -179,6 +179,32 @@ def next_monday():
     return today + timedelta(days=(7 - today.weekday()) % 7 or 7)
 
 
+def pick_slot(leads, hours_long, now=None):
+    """Chọn lead (phút tính từ bây giờ) sao cho slot dài `hours_long` KHÔNG
+    wrap qua nửa đêm — JobSlot có CHECK `check_jobslot_time_from_lt_to`
+    (time_from < time_to trong CÙNG một ngày).
+
+    Trước đây 4 assertion chọn slot cứng theo `now + X phút` rồi cộng thẳng
+    giờ vào time(); khi giờ máy rơi vào khung nguy hiểm (ví dụ 17:00-19:00
+    giờ VN: +299' + 2h vượt nửa đêm) thì time() mất ngày → time_from >
+    time_to → CHECK chặn → script chết. G13 vì thế từng chỉ chạy đúng trong
+    khung giờ an toàn của ngày (flaky theo giờ chạy). Helper này duyệt danh
+    sách lead (cùng một bậc phạt — T3 cần lead ∈ [180,360), T4 < 180,
+    T1 ≥ 1440) và chọn lead đầu tiên tạo slot hợp lệ, để gate chạy được MỌI
+    giờ trong ngày.
+
+    Trả về (date, time_from, time_to).
+    """
+    now = now or tz.localtime()
+    for lead in leads:
+        st = (now + timedelta(minutes=lead)).replace(second=0, microsecond=0)
+        en = st + timedelta(hours=hours_long)
+        if en.date() == st.date():
+            return st.date(), st.time(), en.time()
+    raise AssertionError(
+        'G13 pick_slot: không tìm thấy lead không-wrap trong %r' % (leads,))
+
+
 def get_credit(parent):
     bal, _ = CreditBalance.objects.get_or_create(parent=parent)
     return bal
@@ -373,13 +399,12 @@ def main():
 
     # ── #6 Cancel T3 → -50 ELO + credit 20% (THEO SPEC §7.1 — QA ghi 30% là
     # của T4) ──
-    # Cách deterministic: slot = now + 299' (lead 4h59' rơi vào khoảng T3
-    # [180, 360)). Script chạy lúc nào cũng được vì tự chọn slot theo now.
-    slot_start = (tz.localtime() + timedelta(minutes=299)).replace(
-        second=0, microsecond=0)
-    slot_date = slot_start.date()
-    slot_tf = slot_start.time()
-    slot_tt = (dt.combine(slot_date, slot_tf) + timedelta(hours=2)).time()
+    # Deterministic MỌI giờ chạy: pick_slot giữ lead trong [180, 360) (T3)
+    # và rút lead khi slot 2h sắp wrap qua nửa đêm (xem pick_slot docstring).
+    # Lead 300 (5h) là "trump card" cho giờ máy 19:00 chẵn: start = 00:00
+    # ngày sau + 2h vẫn cùng ngày — vẫn nằm trong T3.
+    slot_date, slot_tf, slot_tt = pick_slot(
+        [299, 300, 250, 220, 200, 185, 181, 180], 2)
     cp_t3b = make_cp('t3b')
     add_avail(cp_t3b, slot_date.weekday(), dtime(0, 0), dtime(23, 59))
     job_t3b = make_job(parent, slot_date,
@@ -417,10 +442,7 @@ def main():
     # slot trong tương lai (select yêu cầu) — beat task mới là thứ phát hiện
     # "start + 15' chưa vào làm" → đặt suspected_no_show mô phỏng beat (như
     # integration test), confirm_no_show chỉ kiểm tra trạng thái.
-    start_ns = (tz.localtime() + timedelta(minutes=30)).replace(
-        second=0, microsecond=0)
-    ns_date, ns_tf = start_ns.date(), start_ns.time()
-    ns_tt = (dt.combine(ns_date, ns_tf) + timedelta(hours=1)).time()
+    ns_date, ns_tf, ns_tt = pick_slot([30, 25, 20, 15, 10, 5, 120, 90], 1)
     job_ns = make_job(parent, ns_date,
                       (ns_tf.hour, ns_tf.minute), (ns_tt.hour, ns_tt.minute),
                       rate=60000)  # 60k × 1h → 50% = 30k < sàn 50k
@@ -447,10 +469,8 @@ def main():
     # ── #8 FM 'health' note <20 ký tự → từ chối; ≥20 → ELO ×0.5, GIỮ đền bù ──
     cp_fm = make_cp('fm')
     add_avail(cp_fm, tz.localdate().weekday(), dtime(0, 0), dtime(23, 59))
-    start8 = (tz.localtime() + timedelta(minutes=90)).replace(
-        second=0, microsecond=0)
-    d8, tf8 = start8.date(), start8.time()
-    tt8 = (dt.combine(d8, tf8) + timedelta(hours=2)).time()
+    # lead phải ∈ T4 [0, 180) và slot đúng 2h (expect 30% × 200.000đ)
+    d8, tf8, tt8 = pick_slot([90, 75, 60, 45, 30, 15, 179], 2)
     job8 = make_job(parent, d8, (tf8.hour, tf8.minute), (tt8.hour, tt8.minute),
                     rate=100000)
     booking8, _c = select_carepartner(job8, cp_fm)
@@ -487,10 +507,10 @@ def main():
         add_avail(cp_fm3, wd, dtime(0, 0), dtime(23, 59))
     fm_deltas = []
     for i in range(3):
-        st = (tz.localtime() + timedelta(days=i + 1, hours=3)).replace(
-            second=0, microsecond=0)
-        dd, tff = st.date(), st.time()
-        ttt = (dt.combine(dd, tff) + timedelta(hours=1)).time()
+        # lead ≈ (i+1) ngày (≥ 1440' → T1); pick_slot chọn giờ sao cho slot
+        # 1h không wrap qua nửa đêm — chạy đúng mọi giờ máy
+        dd, tff, ttt = pick_slot(
+            [1440 * (i + 1) + d for d in (180, 120, 60)], 1)
         j = make_job(parent, dd, (tff.hour, tff.minute), (ttt.hour, ttt.minute),
                      rate=100000)
         bk, _c = select_carepartner(j, cp_fm3)
