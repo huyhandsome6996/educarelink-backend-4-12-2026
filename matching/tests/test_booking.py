@@ -171,6 +171,9 @@ class SelectCarePartnerTest(MatchingTestBase):
             end_dt = start_dt + timedelta(minutes=50)
         # Freeze now = 3 phút trước giờ start → window 5' vi phạm hard cap
         # (deadline phải cách start >= 5') → window 0 → committed ngay (Step 5.2)
+        # LƯU Ý: select_carepartner phải nằm TRONG vùng freeze — nếu gọi ngoài,
+        # guard "đã qua giờ bắt đầu" so với giờ THẬT sẽ chết khi chạy sau
+        # 22:47 giờ VN (branch dự phòng cắt nửa đêm đặt start = 10:06 hôm nay).
         with patch('django.utils.timezone.now', return_value=(
                 start_dt - timedelta(minutes=3)).replace(second=0, microsecond=0)):
             job = JobPost.objects.create(
@@ -179,7 +182,7 @@ class SelectCarePartnerTest(MatchingTestBase):
             JobSlot.objects.create(job=job, date=start_dt.date(),
                                    time_from=start_dt.time().replace(second=0, microsecond=0),
                                    time_to=end_dt.time().replace(second=0, microsecond=0))
-        booking, created = select_carepartner(job, self.cp)
+            booking, created = select_carepartner(job, self.cp)
         self.assertEqual(booking.status, BookingStatus.COMMITTED)
 
 
