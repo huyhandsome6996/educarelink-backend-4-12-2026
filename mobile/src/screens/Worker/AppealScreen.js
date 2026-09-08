@@ -9,7 +9,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, StatusBar,
   ActivityIndicator, Alert, TextInput,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { createAppeal, getAppeal, CANCEL_REASONS } from '../../api/matching';
