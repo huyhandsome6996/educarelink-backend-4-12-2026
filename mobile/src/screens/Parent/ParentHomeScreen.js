@@ -110,6 +110,15 @@ export default function ParentHomeScreen() {
 
   useEffect(() => { fetchTasks(); }, []);
 
+  // Pull-to-refresh (hotfix crash vc23): dòng 169 từng tham chiếu `onRefresh`
+  // chưa định nghĩa → Hermes ném "ReferenceError: Property 'onRefresh'
+  // doesn't exist" → app crash ngay khi mở màn Home của phụ huynh.
+  // fetchTasks tự tắt cờ refreshing trong finally nên không cần lặp logic.
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchTasks();
+  };
+
   // Flow 1 — "Đơn đang thực hiện": mở booking mới nhất đang hoạt động
   const openLatestBooking = async () => {
     try {
@@ -166,7 +175,7 @@ export default function ParentHomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" testID="parent-home-refresh" />}
       >
         {/* === HEADER BANNER (Orange Gradient bTaskee style) === */}
         <View style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}>
