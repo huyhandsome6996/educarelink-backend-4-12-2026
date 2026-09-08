@@ -211,8 +211,36 @@ def _create_slots(job):
             defaults={'time_to': tt})
 
 
+def _excluded_for_resent_list(job):
+    """Danh sách CP bị loại khi PH xem lại danh sách ứng viên của job.
+
+    1) CP có đơn của job này ở trạng thái cancelled_by_carepartner (CP tự hủy —
+       Step 8.5: "sinh viên vừa hủy không được phép xuất hiện lại trong danh sách mới").
+    2) CP đã được đề xuất >= MAX_ATTEMPT_PROPOSALS lần mà không được chọn
+       (Step 8.5.3) — cách đếm khớp replacement_service._proposal_count_excluding_selected.
+    """
+    from ..models import Booking, CandidateProposal, ReplacementAttempt
+
+    excluded = set(Booking.objects.filter(
+        job=job, status='cancelled_by_carepartner'
+    ).values_list('carepartner_id', flat=True))
+
+    attempt_count = ReplacementAttempt.objects.filter(job=job).count()
+    if attempt_count + 1 >= 3:  # = _proposal_count_excluding_selected(proposal)
+        excluded.update(
+            CandidateProposal.objects.filter(job=job)
+            .values_list('carepartner_id', flat=True))
+    return excluded
+
+
 class CandidatesAPIView(APIView):
-    """POST /api/matching/candidates/ {job_id} → max 8 CP (Step 2.4 contract)."""
+    """POST /api/matching/candidates/ {job_id} → max 8 CP (Step 2.4 contract).
+
+    Step 8.5: CP từng TỰ HỦY đơn của job này KHÔNG được đề xuất lại trong
+    danh sách mới (kể cả khi PH tự làm mới — không chỉ ở luồng replacement).
+    CP được đề xuất >= 3 lần không được chọn cũng bị loại (Step 8.5.3),
+    semantics khớp replacement_service.run_replacement_for_job().
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -234,7 +262,8 @@ class CandidatesAPIView(APIView):
                              'detail': f'Bài đang ở trạng thái "{job.get_status_display()}".'},
                             status=status.HTTP_409_CONFLICT)
 
-        result = matching_service.find_candidates(job)
+        result = matching_service.find_candidates(
+            job, exclude_carepartners=_excluded_for_resent_list(job))
         if job.status == JobPostStatus.AI_PARSED:
             with transaction.atomic():
                 transition(job, JobPostStatus.MATCHING, actor='system',

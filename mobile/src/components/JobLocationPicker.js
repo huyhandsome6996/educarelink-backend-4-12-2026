@@ -7,6 +7,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { COLORS, SHADOWS } from '../theme/colors';
 
 let MapView, MapMarker;
@@ -14,6 +15,14 @@ if (Platform.OS !== 'web') {
   MapView = require('react-native-maps').default;
   MapMarker = require('react-native-maps').Marker;
 }
+
+// Android bản đồ Google cần API key trong manifest; thiếu key thì MapView
+// chỉ hiện ô đen — khi đó dùng fallback nhập tọa độ để picker vẫn dùng được.
+const googleMapsApiKey = Platform.OS === 'android'
+  ? Constants?.expoConfig?.android?.config?.googleMaps?.apiKey
+  : undefined;
+const canRenderNativeMap = !!MapView && !!googleMapsApiKey;
+const showCoordinateInputs = Platform.OS === 'web' || !canRenderNativeMap;
 
 export default function JobLocationPicker({ value, onChange }) {
   const mapRef = useRef(null);
@@ -75,7 +84,7 @@ export default function JobLocationPicker({ value, onChange }) {
         </TouchableOpacity>
       </View>
 
-      {Platform.OS !== 'web' && MapView ? (
+      {Platform.OS !== 'web' && canRenderNativeMap ? (
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -98,7 +107,7 @@ export default function JobLocationPicker({ value, onChange }) {
         </View>
       )}
 
-      {Platform.OS === 'web' && (
+      {showCoordinateInputs && (
         <View style={styles.webCoordRow}>
           <TextInput style={[styles.searchInput, { flex: 1 }]}
             placeholder="Latitude (VD: 21.0278)"

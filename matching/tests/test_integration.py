@@ -170,6 +170,17 @@ class FullFlowIntegrationTest(MatchingTestBase):
         resp = self.parent_client.get('/api/matching/credits/balance/')
         self.assertEqual(resp.json()['credit_vnd'], 60000)
 
+        # 11. PH mở LẠI danh sách ứng viên của job → CP vừa TỰ HỦY KHÔNG được
+        # đề xuất lại (Step 8.5 — sửa 2026-09: CandidatesAPIView loại CP đã
+        # cancelled_by_carepartner, khớp semantics replacement_service)
+        resp = self.parent_client.post('/api/matching/candidates/',
+                                       {'job_id': job_id}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.json())
+        ids = {c['carepartner_id'] for c in resp.json()['candidates']}
+        self.assertNotIn(str(cp1_id), ids)
+        # CP khác (không hủy) vẫn bình thường được đề xuất lại
+        self.assertTrue(any(str(cp.pk) in ids for cp in self.cps if cp != cp1))
+
     def test_race_second_parent_gets_409_slot_taken(self):
         """2 parent chọn cùng CP + slot → 1 thành công, 1 nhận 409 slot_taken."""
         job_id = self._post_job()
