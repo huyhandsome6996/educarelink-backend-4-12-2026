@@ -28,12 +28,15 @@ import {
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
+import { API_BASE_URL } from '../api/client';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_LAT = 10.8231;  // TP.HCM
 const DEFAULT_LNG = 106.6297;
 const DEFAULT_ZOOM = 13;
-const GEOCODE_BASE = 'https://educarelink-backend.onrender.com/api/geocode/';
+// Geocode endpoint phái sinh từ base URL DUY NHẤT của app (env-driven,
+// không hardcode host production vào từng module).
+const GEOCODE_BASE = `${API_BASE_URL}/geocode/`;
 
 // ============================================================
 // HTML cho WebView — Leaflet + OpenStreetMap (same as web)

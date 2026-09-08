@@ -150,6 +150,15 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     parsed = job.ai_parse_result or {}
     required_skills = parsed.get('required_skills') or []
 
+    # ── Hard filter #5: giới tính (flow1-step2-matching-engine.md dòng 57) ──
+    # Bất biến Step 11.4: tutoring KHÔNG BAO GIỜ lọc theo giới tính. Bất biến này
+    # được ép ở 2 lớp upstream — matching/api/jobs.py (null gender_preference trước
+    # khi lưu JobPost khi job_type == 'tutoring') và gemini_service.py (null sau khi
+    # parse). Dòng dưới đây là lớp phòng thủ thứ 3 NGAY TẠI NƠI TIÊU DÙNG: kể cả
+    # gender_preference "lọt" vào job tutoring (ghi thẳng DB, import cũ...) thì vẫn
+    # vô hiệu hóa ở đây, không bao giờ dùng để loại ứng viên gia sư.
+    gender_preference = '' if job.job_type == 'tutoring' else (job.gender_preference or '')
+
     # Required slots từ JobSlot
     if required_slots is None:
         required_slots = [(s.date, s.time_from, s.time_to) for s in job.slots.all()]
@@ -178,6 +187,13 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         km = haversine_km(job.latitude, job.longitude, user.latitude, user.longitude)
         radius = profile.max_radius_km or default_radius
         if km is not None and km > radius:
+            continue
+        # Hard filter #5: parent yêu cầu giới tính cụ thể (chỉ childcare/pickup —
+        # tutoring đã bị vô hiệu ở trên) → CP khác giới bị LOẠI trước khi chấm điểm,
+        # không chỉ ảnh hưởng điểm soft skill. CP chưa khai báo gender (bỏ trống)
+        # KHÔNG bị loại — dữ liệu thiếu không chặn ghép cặp (newcomer-friendly,
+        # cùng tinh thần với cách bỏ qua distance/rating thiếu phía trên).
+        if gender_preference and profile.gender and profile.gender != gender_preference:
             continue
         pool_qualified += 1
         # restricted chỉ vào pool khi < 8 (chỉnh sau khi biết pool đủ điều kiện)

@@ -1375,7 +1375,7 @@ git log --oneline -10
 
 ### 20.3. Khi làm task
 1. **Bắt đầu từ todo list rõ ràng** — chia task thành subtask, đánh dấu in_progress → completed.
-2. **Persist scripts** — script > 10 dòng thì lưu vào `/home/z/my-project/scripts/` (không inline `python -c`).
+2. **Persist scripts** — script > 10 dòng thì lưu vào thư mục `scripts/` (của repo hoặc workspace agent — không hardcode đường dẫn tuyệt đối máy cá nhân, không inline `python -c`).
 3. **Test trước khi commit** — chạy `python manage.py migrate` + `python manage.py test` (nếu có).
 4. **Comment code bằng tiếng Việt** — giải thích "tại sao", không phải "cái gì".
 

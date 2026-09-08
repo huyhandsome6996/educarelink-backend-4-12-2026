@@ -50,31 +50,37 @@
   };
 
   async function load() {
-    const resp = await authFetch(API_BASE + '/matching/credits/balance/');
-    if (!resp.ok) { toast('Ví credit chỉ dành cho phụ huynh.', false); return; }
-    const data = await resp.json();
-    document.getElementById('balance').textContent = fmtVND(data.credit_vnd);
-    document.getElementById('updatedAt').textContent =
-      'Cập nhật: ' + new Date(data.updated_at).toLocaleString('vi-VN');
+    try {
+      const resp = await authFetch(API_BASE + '/matching/credits/balance/');
+      if (!resp.ok) { toast('Ví credit chỉ dành cho phụ huynh.', false); return; }
+      const data = await resp.json();
+      document.getElementById('balance').textContent = fmtVND(data.credit_vnd);
+      document.getElementById('updatedAt').textContent =
+        'Cập nhật: ' + new Date(data.updated_at).toLocaleString('vi-VN');
 
-    const wrap = document.getElementById('history');
-    wrap.innerHTML = '';
-    if (!(data.history || []).length) {
-      wrap.innerHTML = '<div class="py-8 text-center text-gray-400">Chưa có giao dịch credit nào.</div>';
-      return;
-    }
-    for (const t of data.history) {
-      const row = document.createElement('div');
-      row.className = 'py-3 flex items-center justify-between gap-3';
-      row.innerHTML = `
-        <div>
-          <div class="font-semibold text-[#1A1A2E]">${KIND_LABELS[t.kind] || t.kind}</div>
-          <div class="text-xs text-gray-400">${new Date(t.issued_at).toLocaleString('vi-VN')}${t.note ? ' · ' + t.note : ''}</div>
-        </div>
-        <div class="font-extrabold ${t.amount_vnd >= 0 ? 'text-[#0E9F6E]' : 'text-red-600'}">
-          ${t.amount_vnd >= 0 ? '+' : ''}${fmtVND(t.amount_vnd)}
-        </div>`;
-      wrap.appendChild(row);
+      const wrap = document.getElementById('history');
+      wrap.innerHTML = '';
+      if (!(data.history || []).length) {
+        wrap.innerHTML = '<div class="py-8 text-center text-gray-400">Chưa có giao dịch credit nào.</div>';
+        return;
+      }
+      for (const t of data.history) {
+        const row = document.createElement('div');
+        row.className = 'py-3 flex items-center justify-between gap-3';
+        row.innerHTML = `
+          <div>
+            <div class="font-semibold text-[#1A1A2E]">${KIND_LABELS[t.kind] || t.kind}</div>
+            <div class="text-xs text-gray-400">${new Date(t.issued_at).toLocaleString('vi-VN')}${t.note ? ' · ' + t.note : ''}</div>
+          </div>
+          <div class="font-extrabold ${t.amount_vnd >= 0 ? 'text-[#0E9F6E]' : 'text-red-600'}">
+            ${t.amount_vnd >= 0 ? '+' : ''}${fmtVND(t.amount_vnd)}
+          </div>`;
+        wrap.appendChild(row);
+      }
+    } catch (err) {
+      // Lỗi mạng/server → toast tiếng Việt (không treo spinner)
+      console.warn(err);
+      toast('Không tải được ví credit. Vui lòng thử lại.', false);
     }
   }
   load();
