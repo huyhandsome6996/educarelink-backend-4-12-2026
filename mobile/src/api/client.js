@@ -3,24 +3,29 @@ import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 
 // ====================================================================
-// ⚠️  CẬP NHẬT IP NÀY MỖI KHI ĐỔI MẠNG WI-FI (chỉ áp dụng khi chạy dev)!
-//  Cách lấy IP: Mở PowerShell → gõ `ipconfig` → tìm "IPv4 Address"
-//  Hoặc dùng: npx expo start --tunnel (không cần cập nhật IP)
+// DEV BACKEND URL — ĐỌC TỪ ENV, KHÔNG HARDCODE IP MÁY CÁ NHÂN.
+// Mỗi dev tự cấu hình trong mobile/.env (không commit):
+//   EXPO_PUBLIC_USE_DEV_BACKEND=1
+//   EXPO_PUBLIC_DEV_BACKEND_URL=http://<IP-LAN-của-bạn>:8000/api
+// (Android emulator trỏ về host machine: http://10.0.2.2:8000/api)
+// Mặc định khi thiếu env = localhost:8000 (chỉ dùng khi dev opt-in).
 // ====================================================================
-const DEV_IP = '192.168.1.31'; // <-- ĐỔI IP CỦA MÁY TÍNH BẠN VÀO ĐÂY
-const DEV_PORT = '8000';       // <-- Port Django dev server (manage.py runserver)
-const DEV_URL = `http://${DEV_IP}:${DEV_PORT}/api`;
+const DEV_URL =
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_DEV_BACKEND_URL) ||
+  'http://localhost:8000/api';
 
-// Production URL cho Render deployment
-const PROD_URL = 'https://educarelink-backend.onrender.com/api';
+// Production URL cho Render deployment (env override được, default = Render)
+const PROD_URL =
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
+  'https://educarelink-backend.onrender.com/api';
 
 // ====================================================================
 // Chọn backend theo môi trường.
 //
 // REGRESSION FIX (BUG-05 round 2): phiên bản trước đây bật DEV_URL tự động
 // khi `__DEV__ === true` — nhưng `__DEV__` true cho MỌI người chạy `npx expo
-// start`, không chỉ người đang ở LAN 192.168.1.31. App silent break cho mọi
-// tester/dev khác vì họ không có backend local ở IP đó.
+// start`, kể cả những người không có backend local. App silent break cho mọi
+// tester/dev khác.
 //
 // Quy tắc mới: PROD_URL là default trong MỌI trường hợp (cả dev lẫn release).
 // DEV_URL chỉ được dùng khi dev EXPLICITLY opt-in qua env var
@@ -32,6 +37,10 @@ const useDevBackend =
   (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_USE_DEV_BACKEND === '1');
 
 const BASE_URL = useDevBackend ? DEV_URL : PROD_URL;
+
+// Xuất cho module khác (VD MapPickerModal) dựng URL endpoint phái sinh,
+// đảm bảo toàn app dùng MỘT nguồn base URL duy nhất (env-driven).
+export const API_BASE_URL = BASE_URL;
 
 // Log 1 lần khi khởi động để dev biết app đang nói chuyện với backend nào
 if (useDevBackend) {

@@ -29,12 +29,18 @@ export default function BookingDetailScreen() {
   const [reasonCode, setReasonCode] = useState('');
   const [note, setNote] = useState('');
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
     try {
       const { data } = await getBookingDetail(bookingId);
       setBooking(data);
       setSecondsLeft(data.seconds_left || 0);
+    } catch (err) {
+      // Lỗi mạng/server → thông báo tiếng Việt + nút thử lại (không crash)
+      setLoadError('Không tải được chi tiết đơn. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -78,6 +84,15 @@ export default function BookingDetailScreen() {
   if (loading) {
     return <View style={[styles.container, styles.center]}>
       <ActivityIndicator size="large" color={COLORS.primary} />
+    </View>;
+  }
+  if (loadError) {
+    return <View style={[styles.container, styles.center]}>
+      <Ionicons name="cloud-offline-outline" size={44} color="#d1d5db" />
+      <Text style={{ marginTop: 10, color: COLORS.gray, textAlign: 'center' }}>{loadError}</Text>
+      <TouchableOpacity style={styles.retryBtn} onPress={load}>
+        <Text style={{ color: COLORS.white, fontWeight: '600' }}>Thử lại</Text>
+      </TouchableOpacity>
     </View>;
   }
   if (!booking) {
@@ -228,6 +243,10 @@ export default function BookingDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { alignItems: 'center', justifyContent: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 16, backgroundColor: COLORS.primary,
+  },
   card: {
     backgroundColor: COLORS.white, borderRadius: 16, padding: 18, ...SHADOWS.small,
   },

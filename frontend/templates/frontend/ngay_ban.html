@@ -59,7 +59,11 @@
   const tt = flatpickr('#timeTo', { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true });
 
   async function load() {
+    const wrap0 = document.getElementById('list');
+    wrap0.innerHTML = '<div class="py-6 text-center text-gray-400 text-sm">Đang tải…</div>';
+    try {
     const resp = await authFetch(API_BASE + '/matching/carepartners/me/blackouts/');
+    if (!resp.ok) { toast('Không tải được ngày bận. Vui lòng thử lại.', false); wrap0.innerHTML = ''; return; }
     const data = await resp.json();
     const wrap = document.getElementById('list');
     wrap.innerHTML = '';
@@ -89,6 +93,10 @@
         } else { toast('Đã xóa ngày bận.'); load(); }
       };
       wrap.appendChild(row);
+    }
+    } catch (err) {
+      console.warn(err);
+      toast('Không tải được ngày bận. Vui lòng thử lại.', false);
     }
   }
 

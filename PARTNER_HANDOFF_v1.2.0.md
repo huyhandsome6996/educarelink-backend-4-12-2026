@@ -13,7 +13,7 @@
 |---|---|
 | **Direct APK URL** | https://expo.dev/artifacts/eas/pemjI-S0r9XhcFlM584JOuCvY8bNHdy9UmzJ_sEJRHc.apk |
 | **Expo dashboard** | https://expo.dev/accounts/huyhandsome/projects/educarelink/builds/7b0c8f21-3e8c-4efe-98cb-37361524c655 |
-| **Local path** | `/home/z/my-project/download/educarelink-v1.2.0.apk` |
+| **Local path** | `educarelink-v1.2.0.apk` — thư mục download cục bộ (không commit vào repo) |
 | **Package** | `com.educarelink.app` |
 | **versionCode** | **7** (lớn hơn v1.1.4 versionCode=6 → Android sẽ chấp nhận install là upgrade) |
 | **versionName** | `1.2.0` |
@@ -98,7 +98,7 @@ Running 18 checks on your project...
 ```
 
 ### Integration smoke test (full demo flow)
-Script: `/home/z/my-project/scripts/smoke_test_v120.py`
+Script: `scripts/smoke_test_v120.py`
 
 ```
 [P1] POST /api/auth/login/ (parent)            HTTP 200, has_token=True, role=parent
@@ -201,8 +201,8 @@ Nếu v1.2.0 có vấn đề nghiêm trọng:
 | `mobile/app.json` | Sửa | version 1.1.0→1.2.0, versionCode 2→7 |
 | `mobile/package.json` | Sửa | version 1.1.0→1.2.0 |
 | `mobile/eas.json` | Sửa | appVersionSource remote→local (root cause fix) |
-| `/home/z/my-project/scripts/smoke_test_v120.py` | Tạo | Integration smoke test 10 endpoints |
-| `/home/z/my-project/scripts/poll_build_v120.sh` | Tạo | EAS build polling script |
-| `/home/z/my-project/download/educarelink-v1.2.0.apk` | Tải về | Final APK |
+| `scripts/smoke_test_v120.py` | Tạo | Integration smoke test 10 endpoints |
+| `scripts/poll_build_v120.sh` | Tạo | EAS build polling script |
+| `educarelink-v1.2.0.apk` (thư mục download cục bộ) | Tải về | Final APK |
 
 **Không chạm vào code logic QA-FIX-1 đến QA-FIX-7.**

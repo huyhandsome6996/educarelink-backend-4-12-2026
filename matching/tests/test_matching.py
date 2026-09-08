@@ -237,3 +237,100 @@ class ScoringTest(MatchingBaseTest):
                       'distance_km', 'match_score', 'match_level', 'top_skills',
                       'latest_review', 'response_tag', 'availability_fit'):
             self.assertIn(field, cand)
+
+
+class GenderHardFilterTest(MatchingBaseTest):
+    """ITEM #1 (A3) — Hard filter #5 giới tính (flow1-step2-matching-engine.md dòng 57).
+
+    Parent yêu cầu giới tính cụ thể (childcare/pickup) → CP khác giới bị LOẠI trước
+    khi chấm điểm; CP chưa khai báo gender KHÔNG bị chặn (newcomer-friendly);
+    tutoring KHÔNG BAO GIỜ lọc giới tính (bất biến Step 11.4 — 2 lớp upstream ở
+    jobs.py + gemini_service.py, và lớp phòng thủ thứ 3 ngay trong find_candidates).
+    """
+
+    def setUp(self):
+        self.parent = User.objects.create_user('gp', password='x', role='parent',
+                                               latitude=21.0, longitude=105.8)
+        self.job = JobPost.objects.create(
+            parent=self.parent, job_type='childcare', hourly_rate_vnd=100000,
+            status='ai_parsed', latitude=21.0, longitude=105.8,
+            gender_preference='female',
+            ai_parse_result={'required_skills': [], 'urgency': 'normal'})
+        JobSlot.objects.create(job=self.job, date=MONDAY,
+                               time_from=time(19, 0), time_to=time(21, 0))
+
+    def _seed_cp_with_gender(self, name, gender):
+        cp = self._seed_cp(name)
+        profile = CarePartnerProfile.objects.get(user=cp)
+        profile.gender = gender
+        profile.save()
+        return cp
+
+    def test_male_excluded_when_parent_requires_female(self):
+        """CP nam phải bị loại khỏi candidates khi parent yêu cầu 'female'."""
+        self._seed_cp_with_gender('malecp', 'male')
+        result = find_candidates(self.job)
+        self.assertEqual(result['total_matched'], 0)
+        self.assertEqual(result['candidates'], [])
+
+    def test_female_included_when_parent_requires_female(self):
+        """CP nữ đúng yêu cầu giới tính vẫn vào pool bình thường."""
+        f = self._seed_cp_with_gender('femalecp', 'female')
+        result = find_candidates(self.job)
+        self.assertEqual(result['total_matched'], 1)
+        self.assertEqual([c['carepartner_id'] for c in result['candidates']],
+                         [str(f.pk)])
+
+    def test_filter_selective_in_mixed_pool(self):
+        """Pool trộn giới tính: chỉ CP đúng giới tính được giữ — filter mang tính chọn lọc."""
+        self._seed_cp_with_gender('malecp2', 'male')
+        f = self._seed_cp_with_gender('femalecp2', 'female')
+        result = find_candidates(self.job)
+        self._assert_excluded(result, 'malecp2')
+        self.assertIn(str(f.pk), [c['carepartner_id'] for c in result['candidates']])
+
+    def _assert_excluded(self, result, username):
+        u = User.objects.get(username=username)
+        self.assertNotIn(str(u.pk), [c['carepartner_id'] for c in result['candidates']])
+
+    def test_unset_gender_not_blocked(self):
+        """CP chưa khai báo gender (blank) KHÔNG bị auto-reject — newcomer-friendly."""
+        u = self._seed_cp('unsetcp')  # gender mặc định ''
+        profile = CarePartnerProfile.objects.get(user=u)
+        self.assertEqual(profile.gender, '')
+        result = find_candidates(self.job)
+        self.assertEqual([c['carepartner_id'] for c in result['candidates']],
+                         [str(u.pk)])
+
+    def test_no_gender_preference_includes_everyone(self):
+        """Parent không yêu cầu giới tính → không ai bị loại vì lý do giới tính."""
+        self.job.gender_preference = ''
+        self.job.save()
+        self._seed_cp_with_gender('malecp3', 'male')
+        f = self._seed_cp_with_gender('femalecp3', 'female')
+        result = find_candidates(self.job)
+        self.assertEqual(result['total_matched'], 2)
+
+    def test_pickup_job_type_also_filters(self):
+        """Hard filter áp cho cả job_type='pickup' (không chỉ childcare)."""
+        self.job.job_type = 'pickup'
+        self.job.save()
+        self._seed_cp_with_gender('malecp4', 'male')
+        result = find_candidates(self.job)
+        self.assertEqual(result['total_matched'], 0)
+
+    def test_tutoring_never_filters_gender(self):
+        """Bất biến Step 11.4: kể cả gender_preference 'lọt' vào job tutoring
+        (ghi thẳng DB — vượt 2 lớp upstream jobs.py + gemini_service.py) thì CP
+        nam vẫn KHÔNG bị loại khi parent đăng gia sư yêu cầu 'female'."""
+        tutoring_job = JobPost.objects.create(
+            parent=self.parent, job_type='tutoring', hourly_rate_vnd=100000,
+            status='ai_parsed', latitude=21.0, longitude=105.8,
+            gender_preference='female',  # simulating upstream bypass
+            ai_parse_result={'required_skills': [], 'urgency': 'normal'})
+        JobSlot.objects.create(job=tutoring_job, date=MONDAY,
+                               time_from=time(19, 0), time_to=time(21, 0))
+        m = self._seed_cp_with_gender('malecp5', 'male')
+        result = find_candidates(tutoring_job)
+        self.assertEqual([c['carepartner_id'] for c in result['candidates']],
+                         [str(m.pk)])

@@ -317,7 +317,23 @@ def NotificationService_enqueue_review(booking):
 
 
 class AppealCreateAPIView(APIView):
+    """POST: nộp kháng cáo (Step 7.6). GET: tra đơn kháng cáo mới nhất của
+    booking (mobile AppealScreen dùng để hiển thị trạng thái đơn đã nộp)."""
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        booking = _get_booking(pk)
+        if booking is None:
+            return Response({'code': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.pk != booking.carepartner_id and not request.user.is_staff:
+            return _forbidden()
+        appeal = booking.appeals.order_by('-created_at').first()
+        if appeal is None:
+            return Response({'code': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'id': str(appeal.pk), 'status': appeal.status,
+                         'status_label_vi': appeal.get_status_display(),
+                         'reason_code': appeal.reason_code,
+                         'admin_note': appeal.admin_note})
 
     def post(self, request, pk):
         booking = _get_booking(pk)

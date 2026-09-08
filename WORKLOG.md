@@ -971,7 +971,7 @@ Biết tên file là đọc được ảnh → mâu thuẫn với tuyên bố b�
    Nhánh DEBUG đổi từ `static(MEDIA_URL, document_root=...)` sang
    `static(MEDIA_URL, view=_serve_media_guarded)` để guard áp dụng cho cả 2 nhánh.
 
-### Verify thủ công (script /home/z/my-project/scripts/verify_b5_media_block.py — runserver thật port 8765)
+### Verify thủ công (script scripts/verify_b5_media_block.py — runserver thật port 8765)
 - GET /media/verification_photos/<file JPEG thật> KHÔNG Authorization → **403** (không trả bytes ảnh) ✅
 - GET /media/verification_photos/<file không tồn tại> → **403** ✅
 - GET /media//verification_photos/... (slash đôi) → **403** ✅
@@ -1415,7 +1415,7 @@ Frontend 38/38 pass.
 - version 1.3.1 / versionCode 11, package com.educarelink.app
 - Build ID: 5aa39a01 (EAS profile production, app-bundle)
 - Link .aab: https://expo.dev/artifacts/eas/ULpnUy466oLbge5mCgCpqVyLnMW3kfTMppueqPNQj6c.aab
-- Đã tải về verify: /home/z/my-project/download/EduCareLink-v1.3.1-production.aab (61MB, BundleConfig.pb + manifest hợp lệ)
+- Đã tải về verify: EduCareLink-v1.3.1-production.aab (thư mục download cục bộ, không commit) (61MB, BundleConfig.pb + manifest hợp lệ)
 
 ### Submit — BỊ CHẶN ở 1 bước thủ công (giới hạn Google, không phải lỗi code)
 - eas.json: 2 submit profile — internal_demo (track internal) + closed_production_path (track alpha)

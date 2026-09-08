@@ -32,12 +32,17 @@ export default function AvailabilityScreen() {
   const [weekday, setWeekday] = useState(0);
   const [timeFrom, setTimeFrom] = useState('18:00');
   const [timeTo, setTimeTo] = useState('21:00');
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const { data } = await getAvailability();
       setWindows(data.windows ?? []);
+    } catch (err) {
+      // Lỗi mạng/server → thông báo tiếng Việt + nút thử lại (không crash)
+      setLoadError('Không tải được lịch rảnh. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -114,7 +119,15 @@ export default function AvailabilityScreen() {
         ))}
       </View>
 
-      {loading ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} /> : (
+      {loadError ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="cloud-offline-outline" size={34} color="#d1d5db" />
+          <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={load}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} /> : (
         <View style={styles.windowList}>
           {dayWindows.length === 0 && (
             <Text style={styles.emptyDay}>Chưa khai khung giờ nào cho {weekdayLabel(weekday)}.</Text>
@@ -168,6 +181,13 @@ const styles = StyleSheet.create({
   dayTextActive: { color: COLORS.white },
   windowList: { marginTop: 16 },
   emptyDay: { color: COLORS.gray, fontSize: 13, textAlign: 'center', paddingVertical: 18 },
+  errorBox: { alignItems: 'center', paddingVertical: 30, paddingHorizontal: SIZES.padding },
+  errorText: { marginTop: 10, color: COLORS.gray, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 16, backgroundColor: COLORS.primary,
+  },
+  retryText: { color: COLORS.white, fontWeight: '600' },
   windowRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white,
     borderRadius: 12, padding: 14, marginBottom: 8, gap: 10, ...SHADOWS.small,
