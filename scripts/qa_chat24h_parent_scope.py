@@ -66,8 +66,8 @@ check("Trang chủ parent trỏ /parent/task-detail/ (URL mới)", "/parent/task
 check("Trang worker task-detail VẪN tồn tại riêng cho CarePartner (không bị xóa)", "Chi tiết công việc" in wdetail)
 
 # ---------- 3. Trang chi tiết parent: chrome phụ huynh + đủ chức năng ----------
-check("Trang chi tiết parent có sidebar phụ huynh (psb-item)", "psb-item" in detail)
-check("Sidebar phụ huynh active đúng tab 'Việc của tôi'", 'active_tab' in detail or 'psb-item active' in detail)
+check("Trang chi tiết parent có sidebar phụ huynh (Stitch: brand + footer capsule)", 'Edu<span class="text-[#F26522]">Care</span>Link' in detail and 'data-purpose="sidebar-user-footer"' in detail)
+check("Sidebar phụ huynh active đúng tab 'Việc của tôi'", '/parent/tasks/' in detail and 'bg-orange-50/80' in detail)
 check("Trang chi tiết parent KHÔNG có nút Ứng tuyển (chỉ dành cho worker)", "handleApply" not in detail and "Ứng tuyển ngay" not in detail)
 check("Trang chi tiết parent có nút Quay lại Việc của tôi", "Quay lại Việc của tôi" in detail)
 check("Trang chi tiết parent có ownership check (task.parent !== prof.id)", "task.parent !== prof.id" in detail)
@@ -78,7 +78,7 @@ check("Trang chi tiết parent có logic chat 24h", "chat-24h" in detail or "cha
 check("Trang chi tiết parent có nhãn 'Quá 24h không thể chat'", "Quá 24h không thể chat" in detail)
 
 # ---------- 3b. Trang hồ sơ CarePartner khu vực parent ----------
-check("Trang hồ sơ CP (parent) có sidebar phụ huynh", "psb-item" in cprofile)
+check("Trang hồ sơ CP (parent) có sidebar phụ huynh (Stitch)", 'Edu<span class="text-[#F26522]">Care</span>Link' in cprofile and 'data-purpose="sidebar-user-footer"' in cprofile)
 check("Trang hồ sơ CP (parent) KHÔNG có nav worker (Tìm việc/ví CP)", 'href="/worker/"' not in cprofile)
 check("Trang hồ sơ CP (parent) đọc API profile chung", "/worker/${workerId}/profile/" in cprofile)
 check("browse_candidates KHÔNG còn link /worker/profile/", "frontend:worker_profile" not in contents["/parent/browse-candidates/"])
