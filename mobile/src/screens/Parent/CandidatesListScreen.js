@@ -24,7 +24,8 @@ const LEVEL_COLORS = {
 
 export default function CandidatesListScreen() {
   const navigation = useNavigation();
-  const { params: { jobId } } = useRoute();
+  const route = useRoute();
+  const jobId = route.params?.jobId;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

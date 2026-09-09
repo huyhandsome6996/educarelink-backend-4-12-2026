@@ -287,7 +287,7 @@ export default function ParentHomeScreen() {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Dịch vụ</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')}>
+            <TouchableOpacity onPress={() => navigation.navigate('JobTypeSelect')}>
               <Text style={styles.seeAllText}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
@@ -298,7 +298,13 @@ export default function ParentHomeScreen() {
               <TouchableOpacity
                 key={item.id}
                 style={styles.serviceGridItem}
-                onPress={() => item.id === 9 ? navigation.navigate('Chatbot') : navigation.navigate('CreateTask')}
+                onPress={() => {
+                  if (item.id === 1) navigation.navigate('TutoringForm');
+                  else if (item.id === 2) navigation.navigate('PickupForm');
+                  else if (item.id === 4) navigation.navigate('ChildcareForm');
+                  else if (item.id === 9) navigation.navigate('Chatbot');
+                  else navigation.navigate('JobTypeSelect');
+                }}
                 activeOpacity={0.8}
               >
                 <View style={[styles.serviceGridIconCircle, { backgroundColor: item.iconBg }]}>
@@ -314,7 +320,13 @@ export default function ParentHomeScreen() {
               <TouchableOpacity
                 key={item.id}
                 style={styles.serviceGridItem}
-                onPress={() => item.id === 9 ? navigation.navigate('Chatbot') : navigation.navigate('CreateTask')}
+                onPress={() => {
+                  if (item.id === 1) navigation.navigate('TutoringForm');
+                  else if (item.id === 2) navigation.navigate('PickupForm');
+                  else if (item.id === 4) navigation.navigate('ChildcareForm');
+                  else if (item.id === 9) navigation.navigate('Chatbot');
+                  else navigation.navigate('JobTypeSelect');
+                }}
                 activeOpacity={0.8}
               >
                 <View style={[styles.serviceGridIconCircle, { backgroundColor: item.iconBg }]}>
@@ -336,7 +348,7 @@ export default function ParentHomeScreen() {
           >
             <TouchableOpacity
               style={styles.promoBannerCard}
-              onPress={() => navigation.navigate('CreateTask')}
+              onPress={() => navigation.navigate('JobTypeSelect')}
               activeOpacity={0.9}
             >
               <View style={styles.promoBannerContent}>

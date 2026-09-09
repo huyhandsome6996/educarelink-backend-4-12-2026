@@ -63,7 +63,6 @@ export default function WorkerProfileScreen() {
     { icon: 'wallet-outline', label: 'Thu nhập của tôi', color: COLORS.success, action: 'view_earnings' },
     // QA-FIX-GAP-4: Entry point vào WorkerScreeningStatus (Nhóm B)
     { icon: 'shield-checkmark-outline', label: 'Trạng thái thẩm định hồ sơ', color: COLORS.primary, action: 'view_screening_status' },
-    { icon: 'calendar-outline', label: 'Khung giờ rảnh', color: COLORS.primary, action: 'view_availability' },
     { icon: 'ribbon-outline', label: 'Gửi bằng cấp mới', color: COLORS.primary, action: 'submit_credential' },
     { icon: 'documents-outline', label: 'Khiếu nại của tôi', color: COLORS.error, action: 'view_my_complaints' },
     { icon: 'create-outline', label: 'Yêu cầu sửa hồ sơ', color: COLORS.primary, action: 'request_change' },
@@ -330,6 +329,9 @@ export default function WorkerProfileScreen() {
 
         {/* Flow 1 — Ghép cặp & Đơn (luồng mới) */}
         <View style={styles.section}>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, letterSpacing: 0.5 }}>
+            ⚡ Ghép cặp thông minh (Flow 1 mới)
+          </Text>
           {MATCHING_MENU_ITEMS.map((item, index) => (
             <TouchableOpacity
               key={item.label}
