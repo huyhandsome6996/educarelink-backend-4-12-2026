@@ -28,7 +28,6 @@ import MyTasksScreen from '../screens/Parent/MyTasksScreen';
 import CandidatesScreen from '../screens/Parent/CandidatesScreen';
 import ReviewScreen from '../screens/Parent/ReviewScreen';
 import CandidateProfileScreen from '../screens/Parent/CandidateProfileScreen';
-import UpgradeToCarepartnerScreen from '../screens/Parent/UpgradeToCarepartnerScreen';
 import ParentProfileScreen from '../screens/Parent/ParentProfileScreen';
 import CareDiaryDetailScreen from '../screens/Parent/CareDiaryDetailScreen';
 import CareDiaryHistoryScreen from '../screens/Parent/CareDiaryHistoryScreen';
@@ -266,7 +265,6 @@ export default function AppNavigator() {
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
-            <Stack.Screen name="UpgradeToCarepartner" component={UpgradeToCarepartnerScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
             {/* ParentProfile giờ là tab trong ParentTabs — không cần Stack.Screen riêng */}
             <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />

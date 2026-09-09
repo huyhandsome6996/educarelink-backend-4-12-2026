@@ -238,18 +238,6 @@
                     </a>
                 </section>
 
-                <!-- Upgrade CTA -->
-                <section id="upgrade-section" class="bg-green-50 rounded-2xl p-5 border border-green-200 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all duration-200" style="display:none;">
-                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <span class="material-symbols-outlined text-green-600 text-2xl filled">school</span>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-headline font-bold text-green-800 text-sm">Trở thành CarePartner</p>
-                        <p class="text-green-600 text-xs mt-0.5">Kiếm thêm thu nhập linh hoạt</p>
-                    </div>
-                    <span class="material-symbols-outlined text-green-400 text-xl">arrow_forward</span>
-                </section>
-
                 <!-- Logout -->
                 <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface border border-red-100 text-red-600 font-bold text-sm hover:bg-red-50 transition-all duration-200">
                     <span class="material-symbols-outlined text-lg">logout</span>
@@ -488,11 +476,6 @@
                 document.getElementById('info-phone').textContent = prof.phone_number || 'Chưa cập nhật';
                 document.getElementById('info-address').textContent = prof.address || 'Chưa cập nhật';
                 document.getElementById('info-username').textContent = prof.username || '-';
-
-                // Upgrade CTA (show if parent)
-                if (prof.role === 'parent') {
-                    document.getElementById('upgrade-section').style.display = 'flex';
-                }
 
                 // Show content, hide skeleton
                 document.getElementById('loading-state').style.display = 'none';

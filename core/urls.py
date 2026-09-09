@@ -43,7 +43,7 @@ from .tier_views import (
     WorkerSubmitCredentialAPIView,
     AdminReviewCredentialAPIView,
 )
-from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView, UpgradeToCarepartnerAPIView, UpgradeStatusAPIView
+from .oauth_views import GoogleOAuthAPIView, FacebookOAuthAPIView, OAuthConfigAPIView
 
 urlpatterns = [
     # Health Check (cho keep-alive ping)
@@ -55,8 +55,6 @@ urlpatterns = [
     path('auth/google/', GoogleOAuthAPIView.as_view(), name='google-oauth'),
     path('auth/facebook/', FacebookOAuthAPIView.as_view(), name='facebook-oauth'),
     path('auth/oauth-config/', OAuthConfigAPIView.as_view(), name='oauth-config'),
-    path('auth/upgrade-carepartner/', UpgradeToCarepartnerAPIView.as_view(), name='upgrade-carepartner'),
-    path('auth/upgrade-status/', UpgradeStatusAPIView.as_view(), name='upgrade-status'),
     path('profile/', UserProfileAPIView.as_view(), name='profile'),
     
     # Bảng tin chung (Cho sinh viên tìm việc / Phụ huynh đăng việc)

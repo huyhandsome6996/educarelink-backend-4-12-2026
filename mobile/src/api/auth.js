@@ -97,17 +97,3 @@ export const loginWithGoogle = (accessToken, role = 'parent') =>
 // Body: { access_token, role? }
 export const loginWithFacebook = (accessToken, role = 'parent') =>
   apiClient.post('/auth/facebook/', { access_token: accessToken, role });
-
-// ====================================================================
-// UPGRADE TO CAREPARTNER — đồng bộ với web (parent_home.html)
-// ====================================================================
-
-// Phụ huynh yêu cầu nâng cấp thành Carepartner
-// Body: FormData với id_card_front, id_card_back, selfie_photo, phone_number, address?
-export const upgradeToCarepartner = (formData) =>
-  apiClient.post('/auth/upgrade-carepartner/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-
-// Kiểm tra trạng thái yêu cầu nâng cấp
-export const getUpgradeStatus = () => apiClient.get('/auth/upgrade-status/');

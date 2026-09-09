@@ -449,8 +449,6 @@ Tất cả API nằm dưới prefix `/api/`. Auth: header `Authorization: Bearer
 | POST | `/api/auth/google/` | AllowAny | OAuth Google (ID token hoặc access token) |
 | POST | `/api/auth/facebook/` | AllowAny | OAuth Facebook (access token) |
 | GET | `/api/auth/oauth-config/` | AllowAny | Trả client_id Google/Facebook + enabled flag |
-| POST | `/api/auth/upgrade-carepartner/` | IsAuthenticated | Parent nộp CCCD + chân dung → chờ admin duyệt thành worker |
-| GET | `/api/auth/upgrade-status/` | IsAuthenticated | Trạng thái yêu cầu nâng cấp |
 | GET/PATCH | `/api/profile/` | IsAuthenticated | Xem / sửa hồ sơ user hiện tại |
 | POST | `/api/auth/token/refresh/` | AllowAny | Refresh JWT (SimpleJWT) |
 
@@ -656,7 +654,7 @@ SIMPLE_JWT = {
 - Nếu email đã tồn tại với cùng provider → login (trả JWT).
 - Nếu email đã tồn tại với provider khác → 409 Conflict + `code` chỉ định provider đúng.
 - Nếu chưa có → tạo tài khoản parent mới, `set_unusable_password()`.
-- Parent có thể upgrade lên carepartner qua `/api/auth/upgrade-carepartner/` (nộp CCCD).
+- Parent và CarePartner là 2 loại tài khoản tách biệt hoàn toàn, không có cơ chế chuyển đổi trong hệ thống.
 
 ### MoMo Webhook Security
 - `/api/payments/momo-ipn/` không yêu cầu JWT (MoMo gọi server-to-server).
@@ -1463,7 +1461,7 @@ KHÔNG xóa nội dung cũ — chỉ bổ sung. Nếu cần sửa nội dung cũ
 | `backend/urls.py` | Root URL routing |
 | `core/models.py` | 8 models foundation (User, ServiceCategory, Task, TaskApplication, Review, CredentialSubmission, ProfileChangeRequest, Notification) |
 | `core/views.py` | ~25 API views (auth, task, parent, worker, admin, chatbot, notifications) — file lớn nhất project |
-| `core/oauth_views.py` | Google + Facebook OAuth + Upgrade to Carepartner |
+| `core/oauth_views.py` | Google + Facebook OAuth |
 | `core/serializers.py` | DRF serializers cho core models |
 | `core/urls.py` | ~40 URL patterns cho core APIs |
 | `core/keepalive_scheduler.py` | Scheduler ping mỗi 3 phút |
