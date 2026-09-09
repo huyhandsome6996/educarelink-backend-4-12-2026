@@ -40,6 +40,27 @@ class TaskCreate2View(TemplateView):
 class ParentTasksView(TemplateView):
     template_name = "frontend/parent_tasks.html"
 
+class ParentTaskDetailView(TemplateView):
+    """Chi tiết công việc cho PHỤ HUYNH — giữ điều hướng trong khu vực parent.
+
+    Trước đây nút "Chi tiết" ở trang chủ phụ huynh trỏ sang
+    /worker/task-detail/ (giao diện CarePartner) khiến phụ huynh bị
+    “nhảy sân”. Trang này hiển thị cùng dữ liệu (/api/tasks/<id>/) nhưng
+    dùng chrome phụ huynh (sidebar riêng) và chỉ đưa ra hành động của
+    phụ huynh (xem ứng viên, theo dõi, chat, thanh toán, đánh giá).
+    """
+    template_name = "frontend/parent_task_detail.html"
+
+class ParentCandidateProfileView(TemplateView):
+    """Hồ sơ CarePartner cho PHỤ HUYNH xem (từ trang Xem ứng viên).
+
+    Trước đây nút "Xem hồ sơ" ở browse_candidates trỏ sang
+    /worker/profile/?worker_id= (giao diện CarePartner) — phụ huynh bấm
+    là “nhảy sân”. Trang này đọc cùng API (/api/worker/<id>/profile/)
+    nhưng bọc trong chrome phụ huynh.
+    """
+    template_name = "frontend/parent_candidate_profile.html"
+
 class BrowseCandidatesView(TemplateView):
     template_name = "frontend/browse_candidates.html"
 

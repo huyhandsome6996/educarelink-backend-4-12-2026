@@ -1,0 +1,366 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>Hồ sơ CarePartner - EduCareLink</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes fade-up { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .fade-up { animation: fade-up 0.35s ease-out forwards; }
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .mobile-nav { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- ==================== SIDEBAR (Desktop) ==================== -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-white lg:border-r lg:border-gray-100 lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab='tasks' %}
+</aside>
+
+<!-- ==================== MOBILE TOP BAR ==================== -->
+<header class="lg:hidden sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-gray-100">
+    <div class="flex items-center justify-between px-4 h-14">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-base" style="font-variation-settings: 'FILL' 1;">school</span>
+            </div>
+            <h1 class="font-headline font-bold text-base text-textPrimary">Hồ sơ CarePartner</h1>
+        </div>
+        <a href="/notifications/" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all duration-200 hover:bg-gray-200" aria-label="Thông báo">
+            <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
+        </a>
+    </div>
+</header>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="lg:ml-[260px] min-h-screen pb-24 lg:pb-8">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Back link — quay lại danh sách ứng viên (khu vực phụ huynh) -->
+        <a href="javascript:history.length > 1 ? history.back() : location.href='{% url 'frontend:browse_candidates' %}'"
+           class="inline-flex items-center gap-1.5 text-sm font-bold text-textSecondary hover:text-primary transition-all duration-200 mb-5">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            Quay lại ứng viên
+        </a>
+
+        <!-- Skeleton -->
+        <div id="loading-skeleton" class="space-y-4">
+            <div class="bg-surface rounded-2xl border border-gray-100 p-6">
+                <div class="flex items-center gap-4 mb-5">
+                    <div class="skeleton w-16 h-16 rounded-full"></div>
+                    <div class="flex-1">
+                        <div class="skeleton h-5 w-1/2 mb-2"></div>
+                        <div class="skeleton h-4 w-1/3"></div>
+                    </div>
+                </div>
+                <div class="skeleton h-4 w-full mb-2"></div>
+                <div class="skeleton h-4 w-5/6"></div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="error-state" class="hidden py-16 text-center">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-4xl text-red-300">person_off</span>
+            </div>
+            <h3 class="font-headline font-bold text-lg text-textPrimary mb-2">Không thể tải hồ sơ</h3>
+            <p id="error-desc" class="text-sm text-textSecondary mb-6">CarePartner này không tồn tại hoặc đã ngừng hoạt động.</p>
+            <a href="{% url 'frontend:browse_candidates' %}" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">group</span>
+                Về danh sách ứng viên
+            </a>
+        </div>
+
+        <!-- Profile content -->
+        <div id="profile-content" class="hidden space-y-5">
+
+            <!-- Card chính -->
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+                <div class="flex items-center gap-4 mb-5">
+                    <img id="cp-avatar" class="w-16 h-16 rounded-full object-cover ring-2 ring-orange-100" src="" alt="Avatar"/>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 id="cp-name" class="font-headline font-extrabold text-xl text-textPrimary"></h2>
+                            <span id="cp-verified" class="hidden inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                Đã xác minh
+                            </span>
+                        </div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-textMuted mt-0.5">CarePartner</p>
+                    </div>
+                </div>
+
+                <!-- Rating -->
+                <div class="flex items-center gap-3 p-3.5 bg-amber-50/70 border border-amber-100 rounded-xl mb-5">
+                    <div id="cp-stars" class="flex text-amber-500"></div>
+                    <div class="text-sm">
+                        <span id="cp-avg-rating" class="font-headline font-extrabold text-textPrimary"></span>
+                        <span id="cp-review-count" class="text-textSecondary"></span>
+                    </div>
+                </div>
+
+                <!-- AI summary -->
+                <div class="mb-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-textMuted mb-2 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-primary">auto_awesome</span>
+                        Nhận xét từ AI
+                    </p>
+                    <p id="cp-summary" class="text-sm text-textPrimary leading-relaxed bg-primaryLight/50 border border-orange-100 rounded-xl p-3.5 italic"></p>
+                </div>
+
+                <!-- Qualifications -->
+                <div id="cp-quals-wrap" class="hidden">
+                    <p class="text-xs font-bold uppercase tracking-wide text-textMuted mb-2">Bằng cấp &amp; chứng chỉ</p>
+                    <div id="cp-quals" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+
+            <!-- Liên hệ -->
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+                <p class="text-xs font-bold uppercase tracking-wide text-textMuted mb-3">Thông tin liên hệ</p>
+                <div id="cp-contact" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Đánh giá -->
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+                <p class="text-xs font-bold uppercase tracking-wide text-textMuted mb-3">Đánh giá từ phụ huynh</p>
+                <div id="cp-reviews" class="space-y-3"></div>
+            </div>
+
+        </div>
+
+    </div>
+</main>
+
+<!-- ==================== MOBILE BOTTOM NAV ==================== -->
+<nav class="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-gray-100">
+    <div class="flex justify-around items-center px-2 pt-2 pb-3">
+        <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">home</span>
+            <span class="text-[10px] font-medium mt-0.5">Trang chủ</span>
+        </a>
+        <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center justify-center text-primary bg-primaryLight px-3 py-1.5 rounded-xl">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">assignment</span>
+            <span class="text-[10px] font-semibold mt-0.5">Việc của tôi</span>
+        </a>
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">add_circle</span>
+            <span class="text-[10px] font-medium mt-0.5">Đăng việc</span>
+        </a>
+        <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">smart_toy</span>
+            <span class="text-[10px] font-medium mt-0.5">AI Trợ lý</span>
+        </a>
+    </div>
+</nav>
+
+<script>
+// ==================== CONFIG ====================
+const API_BASE = "/api";
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+async function apiFetch(url, options = {}) {
+    let token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = LOGIN_URL;
+        return new Response(null, { status: 401 });
+    }
+    options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+            try {
+                const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                });
+                if (refreshResp.ok) {
+                    const refreshData = await refreshResp.json();
+                    localStorage.setItem('token', refreshData.access);
+                    if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                    options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                    response = await fetch(url, options);
+                } else {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
+                    window.location.href = LOGIN_URL;
+                    return new Response(null, { status: 401 });
+                }
+            } catch (e) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = LOGIN_URL;
+                return new Response(null, { status: 401 });
+            }
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = LOGIN_URL;
+            return new Response(null, { status: 401 });
+        }
+    }
+    return response;
+}
+
+if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
+
+// ==================== HELPERS ====================
+function escapeHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function showError(desc) {
+    document.getElementById('loading-skeleton').classList.add('hidden');
+    document.getElementById('profile-content').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+    if (desc) document.getElementById('error-desc').textContent = desc;
+}
+
+function starsHtml(rating) {
+    const full = Math.round(rating || 0);
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        const filled = i <= full ? "style=\"font-variation-settings: 'FILL' 1;\"" : '';
+        html += `<span class="material-symbols-outlined text-base" ${filled}>star</span>`;
+    }
+    return html;
+}
+
+// ==================== RENDER ====================
+function renderProfile(p) {
+    const displayName = (p.first_name || p.last_name)
+        ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+        : (p.username || 'CarePartner');
+
+    const avatar = document.getElementById('cp-avatar');
+    avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F26522&color=fff&size=128`;
+    setText('cp-name', displayName);
+
+    if (p.is_verified) document.getElementById('cp-verified').classList.remove('hidden');
+
+    setText('cp-avg-rating', (p.avg_rating || 0).toFixed(1));
+    setText('cp-review-count', `(${p.review_count || 0} đánh giá)`);
+    document.getElementById('cp-stars').innerHTML = starsHtml(p.avg_rating);
+    setText('cp-summary', p.ai_profile_summary || 'Chưa có nhận xét từ AI.');
+
+    // Chứng chỉ
+    const quals = Array.isArray(p.qualifications) ? p.qualifications.filter(Boolean) : [];
+    if (quals.length) {
+        document.getElementById('cp-quals-wrap').classList.remove('hidden');
+        document.getElementById('cp-quals').innerHTML = quals.map(q =>
+            `<span class="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-lg">
+                <span class="material-symbols-outlined text-sm">workspace_premium</span>${escapeHtml(q)}
+            </span>`).join('');
+    }
+
+    // Liên hệ
+    const contact = [];
+    if (p.phone_number) contact.push({ icon: 'call', label: 'Số điện thoại', value: p.phone_number });
+    if (p.email) contact.push({ icon: 'mail', label: 'Email', value: p.email });
+    if (p.address) contact.push({ icon: 'location_on', label: 'Địa chỉ', value: p.address });
+    document.getElementById('cp-contact').innerHTML = contact.length
+        ? contact.map(c => `
+            <div class="flex items-center gap-3 text-sm">
+                <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[18px] text-textSecondary">${c.icon}</span>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-textMuted font-bold">${c.label}</p>
+                    <p class="font-medium text-textPrimary">${escapeHtml(c.value)}</p>
+                </div>
+            </div>`).join('')
+        : '<p class="text-sm text-textMuted">Chưa có thông tin liên hệ.</p>';
+
+    // Reviews
+    const reviews = Array.isArray(p.reviews) ? p.reviews : [];
+    document.getElementById('cp-reviews').innerHTML = reviews.length
+        ? reviews.map(r => `
+            <div class="p-3.5 bg-bg rounded-xl border border-gray-100">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <div class="flex text-amber-500">${starsHtml(r.rating)}</div>
+                        <span class="text-xs font-bold text-textPrimary">${escapeHtml(r.reviewer_name || r.reviewer_username || 'Phụ huynh')}</span>
+                    </div>
+                    <span class="text-[11px] text-textMuted">${escapeHtml(r.created_at || '')}</span>
+                </div>
+                ${r.comment ? `<p class="text-sm text-textSecondary">${escapeHtml(r.comment)}</p>` : ''}
+            </div>`).join('')
+        : '<p class="text-sm text-textMuted">CarePartner này chưa có đánh giá nào.</p>';
+
+    document.getElementById('loading-skeleton').classList.add('hidden');
+    document.getElementById('profile-content').classList.remove('hidden');
+}
+
+// ==================== INIT ====================
+async function init() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const workerId = params.get('worker_id');
+        if (!workerId) { showError('Không xác định được CarePartner cần xem.'); return; }
+
+        // Hồ sơ user — cho sidebar
+        const profResp = await apiFetch(API_BASE + "/profile/");
+        if (!profResp || profResp.status === 401) {
+            if (profResp) { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); }
+            window.location.href = LOGIN_URL;
+            return;
+        }
+        const prof = await profResp.json();
+        const fullName = (prof.first_name && prof.last_name) ? prof.first_name + ' ' + prof.last_name : prof.username;
+        setText('sidebar-name', fullName);
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username)}&background=F26522&color=fff`;
+
+        // Hồ sơ CarePartner (API dùng chung — ownership không cần thiết vì chỉ đọc)
+        const resp = await apiFetch(`${API_BASE}/worker/${workerId}/profile/`);
+        if (!resp || !resp.ok) {
+            showError('CarePartner này không tồn tại hoặc đã ngừng hoạt động.');
+            return;
+        }
+        renderProfile(await resp.json());
+    } catch (e) {
+        console.error(e);
+        showError('Lỗi kết nối. Vui lòng thử lại.');
+    }
+}
+
+function handleLogout() {
+    if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        localStorage.clear();
+        setTimeout(() => { window.location.href = LOGIN_URL; }, 400);
+    }
+}
+
+init();
+</script>
+</body>
+</html>

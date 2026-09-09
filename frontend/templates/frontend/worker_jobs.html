@@ -646,9 +646,7 @@
                         <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${a.task_id || a.task}&task_title=${encodeURIComponent(a.task_title || '')}'" class="px-4 py-2 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-all duration-200 active:scale-95">
                             <span class="material-symbols-outlined text-sm align-middle">edit_note</span> Nhật ký
                         </button>
-                        <button onclick="location.href='/chat/?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
-                            <span class="material-symbols-outlined text-sm align-middle">chat</span> Chat (24h)
-                        </button>
+                        <div id="chat-slot-${a.task_id || a.task}" class="chat-24h-slot inline-block" data-task-id="${a.task_id || a.task}"></div>
                         <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
                             Xem lại
                         </button>
@@ -710,9 +708,59 @@
                 </article>
                 `;
             }).join('');
+
+            // Cửa sổ chat 24h: kiểm tra trạng thái thật từ server sau khi render
+            patchChat24hSlots();
         }
 
 
+
+        // ===== CỬA SỔ CHAT 24H (worker side) =====
+        // Trạng thái lấy từ GET /api/chat/conversations/<id>/ — 'open' → nút xanh;
+        // 'closed' → nút ĐỎ khóa "Quá 24h không thể chat"; 404 → không thể chat.
+        function chat24hButtonHtml(state, taskId) {
+            if (state === 'open') {
+                return `
+                    <button onclick="location.href='/chat/?task_id=${taskId}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
+                        <span class="material-symbols-outlined text-sm align-middle">chat</span> Chat (24h)
+                    </button>`;
+            }
+            if (state === 'unknown') {
+                return `
+                    <button disabled aria-disabled="true" class="px-4 py-2 rounded-xl border border-blue-100 bg-blue-50/60 text-blue-300 font-semibold text-xs cursor-wait">
+                        <span class="material-symbols-outlined text-sm align-middle">hourglass_top</span> Đang kiểm tra…
+                    </button>`;
+            }
+            const label = state === 'closed' ? 'Quá 24h không thể chat' : 'Không thể chat';
+            return `
+                <button disabled aria-disabled="true" class="px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-500 font-semibold text-xs cursor-not-allowed" title="${label}">
+                    <span class="material-symbols-outlined text-sm align-middle" style="font-variation-settings: 'FILL' 1;">lock</span> ${label}
+                </button>`;
+        }
+
+        async function checkChatWindow(taskId) {
+            try {
+                const r = await apiFetch(`${API_BASE}/chat/conversations/${taskId}/`);
+                if (r.ok) {
+                    const conv = await r.json();
+                    return conv.status === 'open' ? 'open' : 'closed';
+                }
+                return 'no_conversation';
+            } catch (e) {
+                return 'unknown';
+            }
+        }
+
+        async function patchChat24hSlots() {
+            const slots = Array.from(document.querySelectorAll('.chat-24h-slot[data-task-id]'));
+            await Promise.all(slots.map(async (slot) => {
+                const taskId = slot.dataset.taskId;
+                const state = await checkChatWindow(taskId);
+                const live = document.querySelector(`.chat-24h-slot[data-task-id="${taskId}"]`);
+                if (!live) return; // đã bị render lại — bỏ qua kết quả cũ
+                live.innerHTML = chat24hButtonHtml(state, taskId);
+            }));
+        }
 
         // ===== CONTACT PARENT =====
         // Fix C4: thay inline onclick (dễ bị XSS qua JS string) bằng event

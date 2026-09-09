@@ -14,6 +14,10 @@ urlpatterns = [
     path('parent/create-1/', TaskCreate1View.as_view(), name='task_create_1'),
     path('parent/create-2/', TaskCreate2View.as_view(), name='task_create_2'),
     path('parent/tasks/', ParentTasksView.as_view(), name='parent_tasks'),
+    # Chi tiết công việc trong khu vực phụ huynh (không nhảy sang giao diện CarePartner)
+    path('parent/task-detail/', ParentTaskDetailView.as_view(), name='parent_task_detail'),
+    # Hồ sơ CarePartner xem từ trang Xem ứng viên (khu vực phụ huynh)
+    path('parent/candidate-profile/', ParentCandidateProfileView.as_view(), name='parent_candidate_profile'),
     path('parent/browse-candidates/', BrowseCandidatesView.as_view(), name='browse_candidates'),
     path('parent/chatbot/', ChatbotView.as_view(), name='chatbot'),
     path('parent/review/', ReviewView.as_view(), name='review'),

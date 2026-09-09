@@ -733,7 +733,7 @@ function renderCandidates(candidates) {
                 .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;');
             actionButtons = `
                 <div class="flex gap-3">
-                    <a href="{% url 'frontend:worker_profile' %}?worker_id=${c.worker_id || c.worker}"
+                    <a href="{% url 'frontend:parent_candidate_profile' %}?worker_id=${c.worker_id || c.worker}"
                        class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-lg">person</span>
                         Xem hồ sơ
@@ -1106,7 +1106,7 @@ function renderSmartMatches(matches) {
                 </div>
 
                 <!-- View profile button -->
-                <a href="{% url 'frontend:worker_profile' %}?worker_id=${workerId}"
+                <a href="{% url 'frontend:parent_candidate_profile' %}?worker_id=${workerId}"
                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-textSecondary font-semibold text-xs hover:bg-gray-50 hover:text-primary hover:border-primary/20 transition-all duration-200">
                     <span class="material-symbols-outlined text-base">person</span>
                     <span class="hidden sm:inline">Xem hồ sơ</span>

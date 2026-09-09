@@ -1,0 +1,574 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <title>Chi tiết công việc - EduCareLink</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes toast-in { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast-in { animation: toast-in 0.3s ease-out forwards; }
+        @keyframes fade-up { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .fade-up { animation: fade-up 0.35s ease-out forwards; }
+
+        /* Mobile bottom nav safe area */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .mobile-nav { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textPrimary min-h-screen">
+
+<!-- ==================== SIDEBAR (Desktop) ==================== -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-white lg:border-r lg:border-gray-100 lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab='tasks' %}
+</aside>
+
+<!-- ==================== MOBILE TOP BAR ==================== -->
+<header class="lg:hidden sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-gray-100">
+    <div class="flex items-center justify-between px-4 h-14">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-base" style="font-variation-settings: 'FILL' 1;">school</span>
+            </div>
+            <h1 class="font-headline font-bold text-base text-textPrimary">Chi tiết công việc</h1>
+        </div>
+        <a href="/notifications/" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all duration-200 hover:bg-gray-200" aria-label="Thông báo">
+            <span class="material-symbols-outlined text-textSecondary text-xl">notifications</span>
+        </a>
+    </div>
+</header>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="lg:ml-[260px] min-h-screen pb-24 lg:pb-8">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Back link — luôn ở lại khu vực phụ huynh -->
+        <a href="{% url 'frontend:parent_tasks' %}" class="inline-flex items-center gap-1.5 text-sm font-bold text-textSecondary hover:text-primary transition-all duration-200 mb-5">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            Quay lại Việc của tôi
+        </a>
+
+        <!-- Skeleton loading -->
+        <div id="loading-skeleton" class="space-y-4">
+            <div class="bg-surface rounded-2xl border border-gray-100 p-6">
+                <div class="skeleton h-5 w-1/3 mb-4"></div>
+                <div class="skeleton h-7 w-3/4 mb-3"></div>
+                <div class="skeleton h-4 w-1/4 mb-6"></div>
+                <div class="skeleton h-4 w-full mb-2"></div>
+                <div class="skeleton h-4 w-5/6 mb-2"></div>
+                <div class="skeleton h-4 w-2/3"></div>
+            </div>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-state" class="hidden py-16 text-center">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-4xl text-red-300">error</span>
+            </div>
+            <h3 id="error-title" class="font-headline font-bold text-lg text-textPrimary mb-2">Không thể tải công việc</h3>
+            <p id="error-desc" class="text-sm text-textSecondary mb-6">Công việc không tồn tại hoặc bạn không có quyền xem.</p>
+            <a href="{% url 'frontend:parent_tasks' %}" class="inline-flex items-center gap-2 bg-primary text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">assignment</span>
+                Về danh sách việc
+            </a>
+        </div>
+
+        <!-- Task content -->
+        <div id="task-content" class="hidden space-y-5">
+            <!-- Card chính -->
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+                <!-- Badges -->
+                <div id="task-badges" class="flex flex-wrap items-center gap-2 mb-4"></div>
+
+                <!-- Title + price -->
+                <div class="flex justify-between items-start gap-4 mb-5">
+                    <h2 id="task-title" class="font-headline font-extrabold text-xl sm:text-2xl text-textPrimary leading-snug flex-1"></h2>
+                    <span id="task-price" class="font-headline font-extrabold text-xl sm:text-2xl text-primary whitespace-nowrap"></span>
+                </div>
+
+                <!-- Info grid -->
+                <div class="space-y-3 mb-5">
+                    <div class="flex items-center gap-3 text-textSecondary">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-[18px]">schedule</span>
+                        </div>
+                        <span id="task-time" class="text-sm font-medium"></span>
+                    </div>
+                    <div class="flex items-center gap-3 text-textSecondary">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-[18px]">location_on</span>
+                        </div>
+                        <span id="task-location" class="text-sm font-medium"></span>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="border-t border-gray-100 pt-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-textMuted mb-2">Mô tả công việc</p>
+                    <p id="task-description" class="text-sm text-textPrimary leading-relaxed whitespace-pre-wrap"></p>
+                </div>
+            </div>
+
+            <!-- Banner CarePartner đang thực hiện (in_progress) -->
+            <div id="worker-banner" class="hidden bg-surface rounded-2xl border border-blue-100 shadow-sm p-5 fade-up"></div>
+
+            <!-- Banner đánh giá (completed) -->
+            <div id="review-banner" class="hidden bg-surface rounded-2xl border border-amber-100 shadow-sm p-5 fade-up"></div>
+
+            <!-- Khu vực hành động theo trạng thái -->
+            <div id="action-area" class="fade-up"></div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ==================== MOBILE BOTTOM NAV ==================== -->
+<nav class="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-t border-gray-100">
+    <div class="flex justify-around items-center px-2 pt-2 pb-3">
+        <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">home</span>
+            <span class="text-[10px] font-medium mt-0.5">Trang chủ</span>
+        </a>
+        <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center justify-center text-primary bg-primaryLight px-3 py-1.5 rounded-xl">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">assignment</span>
+            <span class="text-[10px] font-semibold mt-0.5">Việc của tôi</span>
+        </a>
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">add_circle</span>
+            <span class="text-[10px] font-medium mt-0.5">Đăng việc</span>
+        </a>
+        <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center text-textSecondary px-3 py-1.5 rounded-xl transition-all duration-200">
+            <span class="material-symbols-outlined text-2xl">smart_toy</span>
+            <span class="text-[10px] font-medium mt-0.5">AI Trợ lý</span>
+        </a>
+    </div>
+</nav>
+
+<!-- ==================== TOAST CONTAINER ==================== -->
+<div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3 pointer-events-none" style="max-width: 380px;"></div>
+
+<script>
+// ==================== CONFIG ====================
+const API_BASE = "/api";
+const LOGIN_URL = "{% url 'frontend:login' %}";
+
+async function apiFetch(url, options = {}) {
+    let token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = LOGIN_URL;
+        return new Response(null, { status: 401 });
+    }
+    options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+            try {
+                const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                });
+                if (refreshResp.ok) {
+                    const refreshData = await refreshResp.json();
+                    localStorage.setItem('token', refreshData.access);
+                    if (refreshData.refresh) localStorage.setItem('refresh_token', refreshData.refresh);
+                    options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+                    response = await fetch(url, options);
+                } else {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refresh_token');
+                    window.location.href = LOGIN_URL;
+                    return new Response(null, { status: 401 });
+                }
+            } catch (e) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = LOGIN_URL;
+                return new Response(null, { status: 401 });
+            }
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = LOGIN_URL;
+            return new Response(null, { status: 401 });
+        }
+    }
+    return response;
+}
+
+if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
+
+// ==================== HELPERS ====================
+function escapeHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatPrice(price) {
+    return new Intl.NumberFormat('vi-VN').format(parseInt(price) || 0) + 'đ';
+}
+
+function formatDateTime(dateStr) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return 'Hôm nay, ' + timeStr;
+    const tom = new Date(now); tom.setDate(now.getDate() + 1);
+    if (d.toDateString() === tom.toDateString()) return 'Ngày mai, ' + timeStr;
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    if (d.toDateString() === yest.toDateString()) return 'Hôm qua, ' + timeStr;
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ', ' + timeStr;
+}
+
+function getStatusConfig(status) {
+    const map = {
+        open: { label: 'Đang tìm người', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: 'search' },
+        in_progress: { label: 'Đang thực hiện', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: 'autorenew' },
+        completed: { label: 'Đã hoàn thành', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'check_circle' },
+        cancelled: { label: 'Đã hủy', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'cancel' },
+    };
+    return map[status] || map.open;
+}
+
+function getCategoryConfig(name) {
+    const map = {
+        'Gia sư': { icon: 'menu_book', bg: 'bg-violet-50', text: 'text-violet-600' },
+        'Trông trẻ': { icon: 'child_care', bg: 'bg-sky-50', text: 'text-sky-600' },
+        'Đưa đón': { icon: 'directions_car', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    };
+    return map[name] || { icon: 'handyman', bg: 'bg-gray-100', text: 'text-gray-600' };
+}
+
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const iconMap = {
+        success: { icon: 'check_circle', color: 'text-success', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+        error: { icon: 'error', color: 'text-error', bg: 'bg-red-50', border: 'border-red-200' },
+        info: { icon: 'info', color: 'text-primary', bg: 'bg-primaryLight', border: 'border-orange-200' },
+    };
+    const cfg = iconMap[type] || iconMap.info;
+    toast.className = `toast-in pointer-events-auto flex items-start gap-3 ${cfg.bg} border ${cfg.border} rounded-xl px-4 py-3 shadow-lg`;
+    toast.innerHTML = `
+        <span class="material-symbols-outlined ${cfg.color} text-xl flex-shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">${cfg.icon}</span>
+        <p class="text-sm font-medium text-textPrimary flex-1">${message}</p>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
+}
+
+function showError(title, desc) {
+    document.getElementById('loading-skeleton').classList.add('hidden');
+    document.getElementById('task-content').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+    if (title) document.getElementById('error-title').textContent = title;
+    if (desc) document.getElementById('error-desc').textContent = desc;
+}
+
+// ==================== STATE ====================
+let currentTask = null;
+
+// ==================== HÀNH ĐỘNG THEO TRẠNG THÁI ====================
+function viewCandidates(taskId) {
+    localStorage.setItem('current_task_id', taskId);
+    window.location.href = "{% url 'frontend:browse_candidates' %}";
+}
+
+function goToReview(taskId) {
+    window.location.href = "{% url 'frontend:review' %}?task_id=" + taskId;
+}
+
+async function trackCarepartner(taskId) {
+    try {
+        const r = await apiFetch(`${API_BASE}/tracking/${taskId}/consent/`);
+        if (r.ok) {
+            const data = await r.json();
+            const consent = data?.consent?.consent || (data?.has_consent ? data.consent?.consent : null);
+            if (data.has_consent && consent === 'granted') {
+                window.location.href = "{% url 'frontend:live_tracking' %}?task_id=" + taskId;
+            } else if (data.has_consent && consent === 'revoked') {
+                showToast('⚠️ Carepartner đã dừng chia sẻ vị trí. Vui lòng liên hệ trực tiếp.', 'error');
+            } else {
+                showToast('📍 Carepartner chưa đồng ý chia sẻ vị trí cho việc này.', 'info');
+            }
+        } else {
+            showToast('Không thể kiểm tra trạng thái theo dõi. Vui lòng thử lại.', 'error');
+        }
+    } catch (e) {
+        showToast('Lỗi mạng. Vui lòng thử lại.', 'error');
+    }
+}
+
+// ==================== CỬA SỔ CHAT 24H ====================
+// Trạng thái cửa sổ chat lấy TỪ SERVER (GET /api/chat/conversations/<id>/):
+//   status 'open'   → còn hạn chat (nút xanh)
+//   status 'closed' → quá 24h (nút ĐỎ, khóa bấm)
+//   404             → chưa từng có cửa sổ chat (việc hoàn thành mà chưa từng diễn ra)
+function chatButtonHtml(state, taskId) {
+    if (state === 'open') {
+        return `
+            <button onclick="location.href='/chat/?task_id=${taskId}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+                Chat với Carepartner (24h)
+            </button>`;
+    }
+    if (state === 'unknown') {
+        // Trạng thái ban đầu trước khi check server — nút trung tính, chưa bấm được
+        return `
+            <button disabled aria-disabled="true" class="w-full py-3 bg-blue-300 text-white font-headline font-bold text-sm rounded-xl cursor-wait flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">hourglass_top</span>
+                Đang kiểm tra cửa sổ chat…
+            </button>`;
+    }
+    // 'closed' | 'no_conversation' → nút đỏ, không bấm được
+    const label = state === 'closed' ? 'Quá 24h không thể chat' : 'Không thể chat';
+    return `
+        <button disabled aria-disabled="true" class="w-full py-3 bg-red-500 text-white font-headline font-bold text-sm rounded-xl opacity-90 cursor-not-allowed flex items-center justify-center gap-2" title="${label}">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">lock</span>
+            ${label}
+        </button>`;
+}
+
+async function checkChatWindow(taskId) {
+    try {
+        const r = await apiFetch(`${API_BASE}/chat/conversations/${taskId}/`);
+        if (r.ok) {
+            const conv = await r.json();
+            return conv.status === 'open' ? 'open' : 'closed';
+        }
+        return 'no_conversation'; // 404/403 — chưa có cửa sổ chat
+    } catch (e) {
+        return 'unknown';
+    }
+}
+
+// ==================== RENDER ====================
+function render(task) {
+    currentTask = task;
+
+    // Badges: danh mục + trạng thái
+    const cat = getCategoryConfig(task.category_name);
+    const st = getStatusConfig(task.status);
+    document.getElementById('task-badges').innerHTML = `
+        <span class="${cat.bg} ${cat.text} px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">${cat.icon}</span>
+            ${escapeHtml(task.category_name || 'Công việc')}
+        </span>
+        <span class="${st.color} px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">${st.icon}</span>
+            ${st.label}
+        </span>`;
+
+    document.getElementById('task-title').textContent = task.title;
+    document.getElementById('task-price').textContent = formatPrice(task.price);
+    document.getElementById('task-time').textContent = formatDateTime(task.scheduled_time);
+    document.getElementById('task-location').textContent = task.location || 'Chưa xác định';
+    document.getElementById('task-description').textContent = task.description || 'Không có mô tả chi tiết.';
+
+    document.getElementById('loading-skeleton').classList.add('hidden');
+    document.getElementById('task-content').classList.remove('hidden');
+
+    renderActionArea(task);
+}
+
+function renderActionArea(task) {
+    const area = document.getElementById('action-area');
+    const btnBase = 'w-full py-3 font-headline font-bold text-sm rounded-xl active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2';
+
+    if (task.status === 'open') {
+        area.innerHTML = `
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+                <p class="text-sm text-textSecondary mb-4">Việc đang tìm CarePartner. Xem các ứng viên đã ứng tuyển để chọn người phù hợp.</p>
+                <button onclick="viewCandidates(${task.id})" class="${btnBase} bg-primary text-white shadow-md shadow-primary/20 hover:bg-primaryDark">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">group</span>
+                    Xem ứng viên
+                    <span class="material-symbols-outlined text-lg">chevron_right</span>
+                </button>
+            </div>`;
+    } else if (task.status === 'in_progress') {
+        area.innerHTML = `
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 space-y-2.5">
+                <p class="text-sm text-textSecondary mb-1">Việc đang được thực hiện. Bạn có thể theo dõi, trò chuyện và thanh toán khi hoàn tất.</p>
+                <button onclick="trackCarepartner(${task.id})" class="${btnBase} bg-gradient-to-r from-primary to-primaryDark text-white shadow-md shadow-primary/30 hover:shadow-lg">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                    Theo dõi vị trí Carepartner
+                </button>
+                <button onclick="location.href='/chat/?task_id=${task.id}'" class="${btnBase} bg-blue-500 text-white hover:bg-blue-600">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+                    Nhắn tin với Carepartner
+                </button>
+                <button onclick="location.href='/parent/payments/?task_id=${task.id}'" class="${btnBase} bg-indigo-500 text-white hover:bg-indigo-600">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">payments</span>
+                    Thanh toán
+                </button>
+            </div>`;
+    } else if (task.status === 'completed') {
+        // Banner đánh giá
+        const isReviewed = Boolean(task.is_reviewed || task.review_detail);
+        const reviewBanner = document.getElementById('review-banner');
+        if (isReviewed) {
+            const starRating = task.review_detail?.rating || 5;
+            const comment = task.review_detail?.comment || '';
+            reviewBanner.innerHTML = `
+                <div class="flex items-center justify-between gap-3 mb-2">
+                    <div class="flex items-center gap-2">
+                        <div class="flex text-amber-500">
+                            ${Array(starRating).fill('<span class="material-symbols-outlined text-base" style="font-variation-settings: \'FILL\' 1;">star</span>').join('')}
+                        </div>
+                        <span class="text-xs font-bold text-amber-800">Đã đánh giá (${starRating}★)</span>
+                    </div>
+                    <button onclick="goToReview(${task.id})" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">edit</span>
+                        Sửa
+                    </button>
+                </div>
+                ${comment ? `<p class="text-sm text-textSecondary italic">"${escapeHtml(comment)}"</p>` : ''}`;
+            reviewBanner.classList.remove('hidden');
+        }
+        // Nút đánh giá + chat (chat được vá trạng thái 24h sau khi check server)
+        area.innerHTML = `
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 space-y-2.5">
+                ${isReviewed ? '' : `
+                <button onclick="goToReview(${task.id})" class="${btnBase} bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/20 hover:shadow-lg">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
+                    Đánh giá Carepartner
+                </button>`}
+                <div id="chat-btn-wrap">${chatButtonHtml('unknown', task.id)}</div>
+                <p id="chat-window-note" class="text-xs text-textMuted text-center">Đang kiểm tra cửa sổ chat 24h…</p>
+            </div>`;
+        patchChat24h(task.id);
+    } else if (task.status === 'cancelled') {
+        area.innerHTML = `
+            <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div class="flex items-center gap-2 justify-center py-2 text-gray-400 text-sm font-medium">
+                    <span class="material-symbols-outlined text-lg">block</span>
+                    Việc đã bị hủy
+                </div>
+            </div>`;
+    }
+}
+
+// Vá nút chat theo trạng thái CỬA SỔ THẬT từ server (blue nếu còn hạn,
+// ĐỎ + khóa "Quá 24h không thể chat" nếu đã hết 24h)
+async function patchChat24h(taskId) {
+    const wrap = document.getElementById('chat-btn-wrap');
+    const note = document.getElementById('chat-window-note');
+    if (!wrap) return;
+    const state = await checkChatWindow(taskId);
+    if (!document.getElementById('chat-btn-wrap')) return; // trang đã re-render
+    wrap.innerHTML = chatButtonHtml(state, taskId);
+    if (note) {
+        if (state === 'open') {
+            note.textContent = 'Cửa sổ chat đang mở — bạn còn hạn để trao đổi sau ca làm.';
+        } else if (state === 'closed') {
+            note.textContent = 'Cửa sổ chat 24h kể từ khi hoàn thành việc đã kết thúc.';
+        } else {
+            note.textContent = '';
+        }
+    }
+}
+
+// ==================== FETCH CAREPARTNER ĐANG LÀM ====================
+async function fetchAssignedWorker(task) {
+    try {
+        const resp = await apiFetch(`${API_BASE}/parent/tasks/${task.id}/candidates/`);
+        if (!resp || !resp.ok) return;
+        const candidates = await resp.json();
+        const accepted = Array.isArray(candidates) ? candidates.find(c => c.status === 'accepted') : null;
+        if (accepted) {
+            task.assigned_worker_name = accepted.worker_name || 'Carepartner';
+            const banner = document.getElementById('worker-banner');
+            if (banner && task.status === 'in_progress') {
+                banner.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-blue-500 text-xl" style="font-variation-settings: 'FILL' 1;">person</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-blue-600 font-medium">Đang thực hiện bởi</p>
+                            <p class="text-sm font-bold text-blue-700 truncate">${escapeHtml(task.assigned_worker_name)}</p>
+                        </div>
+                        <span class="material-symbols-outlined text-blue-400 text-lg">autorenew</span>
+                    </div>`;
+                banner.classList.remove('hidden');
+            }
+        }
+    } catch (e) { /* im lặng — banner chỉ là thông tin thêm */ }
+}
+
+// ==================== INIT ====================
+async function init() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const taskId = params.get('task_id');
+        if (!taskId) { showError('Thiếu mã công việc', 'Không xác định được công việc cần xem.'); return; }
+
+        // Hồ sơ user — cho sidebar + kiểm tra quyền sở hữu
+        const profResp = await apiFetch(API_BASE + "/profile/");
+        if (!profResp || profResp.status === 401) {
+            if (profResp) { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); }
+            window.location.href = LOGIN_URL;
+            return;
+        }
+        const prof = await profResp.json();
+        const fullName = (prof.first_name && prof.last_name) ? prof.first_name + ' ' + prof.last_name : prof.username;
+        const sidebarName = document.getElementById('sidebar-name');
+        if (sidebarName) sidebarName.textContent = fullName;
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username)}&background=F26522&color=fff`;
+
+        // Chi tiết công việc
+        const resp = await apiFetch(`${API_BASE}/tasks/${taskId}/`);
+        if (!resp || !resp.ok) {
+            showError('Không thể tải công việc', 'Công việc không tồn tại hoặc đã bị xóa.');
+            return;
+        }
+        const task = await resp.json();
+
+        // Quyền sở hữu — trang này chỉ dành cho phụ huynh đăng việc
+        if (task.parent !== prof.id) {
+            showError('Không có quyền truy cập', 'Bạn chỉ có thể xem chi tiết công việc do mình đăng.');
+            return;
+        }
+
+        render(task);
+        if (task.status === 'in_progress') fetchAssignedWorker(task);
+    } catch (e) {
+        console.error(e);
+        showError('Lỗi kết nối', 'Không thể tải dữ liệu. Vui lòng thử lại.');
+    }
+}
+
+function handleLogout() {
+    if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        localStorage.clear();
+        setTimeout(() => { window.location.href = LOGIN_URL; }, 400);
+    }
+}
+
+init();
+</script>
+
+</body>
+</html>
