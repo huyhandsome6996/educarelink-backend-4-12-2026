@@ -1,856 +1,1341 @@
 """
-Django Management Command: seed_demo_data  (BẢN RESET TOÀN BỘ)
-=================================================================
-Thực hiện RESET dữ liệu mẫu cho ban giám khảo:
-  1. Xoá TOÀN BỘ dữ liệu demo (Tasks, Applications, Reviews, Notifications,
-     Credentials, ProfileChangeRequests, Tracking, Payments, Moderation).
-  2. Xoá MỌI user KHÔNG nằm trong danh sách bảo vệ.
-  3. GIỮ NGUYÊN 3 tài khoản đã tạo: admin / phuhuynh_test / sinhvien_test
-     (không đổi password, không đổi profile, không reset first_login).
-  4. Tạo lại dữ liệu mẫu MỚI (tên user, task khác bản cũ) để giám khảo demo.
+Django Management Command: seed_demo_data (BẢN RESET & SEED TOÀN BỘ HỆ THỐNG)
+================================================================================
+Thực hiện RESET dữ liệu và khởi tạo dữ liệu mẫu toàn diện cho tất cả các luồng:
+  1. Xóa sạch mọi dữ liệu demo cũ (Matching, Chat, Tracking, Payments,
+     Moderation, CareDiary, Core, Users không bảo vệ).
+  2. Bảo vệ & chuẩn hóa 3 tài khoản cốt lõi:
+     - admin: Quản trị viên hệ thống (admin / Demo@2026)
+     - phuhuynh_test: Phụ huynh test chính (phuhuynh_test / Demo@2026)
+     - sinhvien_test: CarePartner test chính (sinhvien_test / Demo@2026)
+  3. Tạo dữ liệu mẫu đa dạng cho TẤT CẢ các trường hợp & phân hệ:
+     - 8 Danh mục dịch vụ & Biểu giá chuẩn (PricingRule)
+     - Cấu hình nghiệp vụ Flow 1 (EloBand, CancelPolicy, MatchingWeight, Templates, Config)
+     - 4 Phụ huynh mẫu với địa chỉ, GPS thực tế & Ví Credit phong phú
+     - 6 CarePartner mẫu thuộc nhiều trường ĐH, chứng chỉ, bậc ELO & lịch rảnh
+     - Flow 1 Matching: JobPost cả 3 loại (Gia sư, Trông trẻ, Đón trẻ), JobSlot,
+       CandidateProposal, Booking (đủ trạng thái: awaiting_commitment, in_progress,
+       completed, cancelled có đền bù), Đơn kháng cáo ELO (Appeal)
+     - Core Tasks: 12 công việc phủ khắp các trạng thái (open chưa có ai apply,
+       open có nhiều ứng viên, in_progress, completed, cancelled)
+     - Ứng tuyển (TaskApplication) & Đánh giá (Review) 4-5 sao chi tiết
+     - Tracking & An toàn: Geofence, LocationConsent, LiveLocation TP.HCM,
+       LocationHistory, DeviceHeartbeat, SOSAlert khẩn cấp (active/resolved)
+     - Payments: MoMo Escrow (held / completed 80-20), Tiền mặt Cash (hoa hồng 20%),
+       Quyết toán hoa hồng tháng (CommissionSettlement paid/pending), PaymentLog
+     - Chat: Cửa sổ chat Conversation đang mở (kèm 5 tin nhắn đối thoại thực tế)
+       và Cửa sổ chat đã đóng lưu lịch sử
+     - Care Diary: Nhật ký chăm sóc đa dạng cảm xúc & timeline hoạt động
+     - Moderation & Admin: AI kiểm duyệt Task, Khiếu nại Complaint (pending/investigating/resolved),
+       Xác thực bằng cấp CredentialSubmission, Yêu cầu đổi hồ sơ ProfileChangeRequest
+     - Thông báo hệ thống & thông báo cá nhân (Notification)
 
-Chạy: python manage.py seed_demo_data
-Idempotent: chạy nhiều lần vẫn an toàn (luôn reset về cùng 1 state).
+Chạy lệnh: python manage.py seed_demo_data
+Idempotent: chạy nhiều lần vẫn luôn đưa hệ thống về trạng thái demo chuẩn mực.
 """
 
-from django.core.management.base import BaseCommand
-from django.utils import timezone
-from django.db import transaction
+import datetime
 from datetime import timedelta
+from decimal import Decimal as D
+import uuid
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+
 from core.models import (
-    User, ServiceCategory, Task, TaskApplication, Review,
-    CredentialSubmission, Notification, ProfileChangeRequest,
+    User, ServiceCategory, PricingRule, Task, TaskApplication, Review,
+    CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability,
 )
 
-# ── 3 TÀI KHOẢN BẢO VỆ — TUYỆT ĐỐI KHÔNG ĐỤNG ──────────────────────
 PROTECTED_USERNAMES = {"admin", "phuhuynh_test", "sinhvien_test"}
-
 TEST_PASSWORD = "Demo@2026"
 
 
 class Command(BaseCommand):
-    help = 'RESET toàn bộ dữ liệu mẫu cho ban giám khảo. Giữ 3 tài khoản admin/phuhuynh_test/sinhvien_test.'
+    help = 'RESET va SEED toan bo du lieu mau cho tat ca cac phan he va kich ban cua EduCareLink.'
 
+    def _log(self, msg, style_func=None):
+        try:
+            self.stdout.write(style_func(msg) if style_func else msg)
+        except Exception:
+            clean_msg = msg.encode('ascii', errors='replace').decode('ascii')
+            try:
+                self.stdout.write(style_func(clean_msg) if style_func else clean_msg)
+            except Exception:
+                pass
+
+    @transaction.atomic
     def handle(self, *args, **options):
         now = timezone.now()
+        today = now.date()
 
-        self.stdout.write("\n" + "=" * 64)
-        self.stdout.write("  EDUCARELINK — RESET DU LIEU MAU (BAN GIAM KHAO)")
-        self.stdout.write("=" * 64)
-        self.stdout.write(f"  Tai khoan BAO VE (khong duoc xoa): {sorted(PROTECTED_USERNAMES)}")
+        self._log("\n" + "=" * 72)
+        self._log("  EDUCARELINK -- RESET & SEED TOAN BO DU LIEU MAU MOI (TAT CA KICH BAN)")
+        self._log("=" * 72)
+        self._log(f"  Tai khoan BAO VE: {sorted(PROTECTED_USERNAMES)} | Mat khau: {TEST_PASSWORD}")
 
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 0: XÓA TOÀN BỘ DỮ LIỆU DEMO
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[0/7] Dang xoa toan bo du lieu demo cu...")
-
-        # Cross-app imports (có thể có app chưa cài khi chạy local)
-        deleted_counts = {}
+        # ===============================================================
+        #  PHAN 0: XOA SACH TOAN BO DU LIEU CU
+        # ===============================================================
+        self._log("\n[0/12] Dang xoa sach toan bo du lieu demo cu...")
 
         def safe_delete(label, queryset):
             try:
                 cnt = queryset.count()
                 queryset.delete()
-                deleted_counts[label] = cnt
-                self.stdout.write(f"   - Xoa {cnt:>5} {label}")
+                self._log(f"   - Da xoa {cnt:>5} {label}")
             except Exception as e:
-                self.stdout.write(f"   ! Bo qua {label}: {e}")
+                self._log(f"   ! Bo qua {label}: {e}")
 
-        # Moderation
+        # 1. Matching (Flow 1)
+        try:
+            from matching.models import (
+                Appeal, CreditTransaction, CreditBalance, ParentTrustFlag,
+                Booking, JobSlot, JobPost, CandidateProposal, EloLedger,
+                CarePartnerAvailability, CarePartnerBlackout, CarePartnerProfile,
+            )
+            safe_delete("Appeal (Kháng cáo)", Appeal.objects.all())
+            safe_delete("CreditTransaction (Giao dịch ví)", CreditTransaction.objects.all())
+            safe_delete("CreditBalance (Ví credit)", CreditBalance.objects.all())
+            safe_delete("ParentTrustFlag", ParentTrustFlag.objects.all())
+            safe_delete("Booking (Flow 1)", Booking.objects.all())
+            safe_delete("JobSlot", JobSlot.objects.all())
+            safe_delete("JobPost (Flow 1)", JobPost.objects.all())
+            safe_delete("CandidateProposal", CandidateProposal.objects.all())
+            safe_delete("EloLedger", EloLedger.objects.all())
+            safe_delete("CarePartnerAvailability", CarePartnerAvailability.objects.all())
+            safe_delete("CarePartnerBlackout", CarePartnerBlackout.objects.all())
+            safe_delete("CarePartnerProfile", CarePartnerProfile.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! Matching module: {e}")
+
+        # 2. Chat
+        try:
+            from chat.models import Conversation, Message
+            safe_delete("Message (Tin nhắn chat)", Message.objects.all())
+            safe_delete("Conversation (Cửa sổ chat)", Conversation.objects.all())
+        except Exception as e:
+            self.stdout.write(f"   ! Chat module: {e}")
+
+        # 3. Moderation
         try:
             from moderation.models import TaskModeration, Complaint, ComplaintEvidence
             safe_delete("ComplaintEvidence", ComplaintEvidence.objects.all())
             safe_delete("Complaint", Complaint.objects.all())
             safe_delete("TaskModeration", TaskModeration.objects.all())
         except Exception as e:
-            self.stdout.write(f"   ! Moderation module khong san sang: {e}")
+            self.stdout.write(f"   ! Moderation module: {e}")
 
-        # Payments
+        # 4. Payments
         try:
             from payments.models import Payment, CommissionSettlement, PaymentLog
             safe_delete("PaymentLog", PaymentLog.objects.all())
             safe_delete("CommissionSettlement", CommissionSettlement.objects.all())
             safe_delete("Payment", Payment.objects.all())
         except Exception as e:
-            self.stdout.write(f"   ! Payments module khong san sang: {e}")
+            self.stdout.write(f"   ! Payments module: {e}")
 
-        # Tracking
+        # 5. Tracking
         try:
-            from tracking.models import LocationConsent, LiveLocation, LocationHistory, SOSAlert
+            from tracking.models import (
+                LocationConsent, LiveLocation, LocationHistory, SOSAlert,
+                DeviceHeartbeat, DeviceOfflineAlert, RandomVerificationCheck,
+            )
             safe_delete("SOSAlert", SOSAlert.objects.all())
+            safe_delete("RandomVerificationCheck", RandomVerificationCheck.objects.all())
+            safe_delete("DeviceOfflineAlert", DeviceOfflineAlert.objects.all())
+            safe_delete("DeviceHeartbeat", DeviceHeartbeat.objects.all())
             safe_delete("LocationHistory", LocationHistory.objects.all())
             safe_delete("LiveLocation", LiveLocation.objects.all())
             safe_delete("LocationConsent", LocationConsent.objects.all())
         except Exception as e:
-            self.stdout.write(f"   ! Tracking module khong san sang: {e}")
+            self.stdout.write(f"   ! Tracking module: {e}")
 
-        # Care Diary (B1)
+        # 6. Care Diary
         try:
             from care_diary.models import CareDiaryActivity, CareDiaryAttachment, CareDiaryEntry
             safe_delete("CareDiaryActivity", CareDiaryActivity.objects.all())
             safe_delete("CareDiaryAttachment", CareDiaryAttachment.objects.all())
             safe_delete("CareDiaryEntry", CareDiaryEntry.objects.all())
         except Exception as e:
-            self.stdout.write(f"   ! CareDiary module khong san sang: {e}")
+            self.stdout.write(f"   ! CareDiary module: {e}")
 
-        # Worker Availability (A2)
-        try:
-            from core.models import WorkerAvailability
-            safe_delete("WorkerAvailability", WorkerAvailability.objects.all())
-        except Exception as e:
-            self.stdout.write(f"   ! WorkerAvailability seed loi: {e}")
-
-        # Core
+        # 7. Core
         safe_delete("Review", Review.objects.all())
         safe_delete("TaskApplication", TaskApplication.objects.all())
         safe_delete("Notification", Notification.objects.all())
         safe_delete("ProfileChangeRequest", ProfileChangeRequest.objects.all())
         safe_delete("CredentialSubmission", CredentialSubmission.objects.all())
+        safe_delete("WorkerAvailability", WorkerAvailability.objects.all())
         safe_delete("Task", Task.objects.all())
 
-        # Xoá MỌI user không nằm trong danh sách bảo vệ
+        # 8. Users non-protected
         old_users = User.objects.exclude(username__in=PROTECTED_USERNAMES)
         old_count = old_users.count()
-        protected_kept = User.objects.filter(username__in=PROTECTED_USERNAMES).count()
         old_users.delete()
-        self.stdout.write(f"   - Xoa {old_count:>5} User (non-protected)")
-        self.stdout.write(f"   - GIU  {protected_kept:>5} User (protected: admin/phuhuynh_test/sinhvien_test)")
+        self.stdout.write(f"   - Đã xóa {old_count:>5} User phụ (non-protected)")
 
         # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 1: DANH MỤC DỊCH VỤ (giữ nguyên nếu đã có)
+        #  PHẦN 1: CHUẨN HÓA 3 TÀI KHOẢN BẢO VỆ CỐT LÕI
         # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[1/7] Dang nap danh muc dich vu...")
+        self.stdout.write("\n[1/12] Chuẩn hóa 3 tài khoản bảo vệ cốt lõi...")
+
+        # 1. Admin
+        admin_user, _ = User.objects.get_or_create(
+            username="admin",
+            defaults={
+                "email": "admin@educarelink.vn",
+                "first_name": "Quản Trị Viên",
+                "last_name": "Hệ Thống",
+                "role": "parent",
+                "is_staff": True,
+                "is_superuser": True,
+                "is_active": True,
+                "is_verified": True,
+                "is_approved": True,
+            }
+        )
+        admin_user.set_password(TEST_PASSWORD)
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.is_active = True
+        admin_user.save()
+        self.stdout.write(f"   + [ADMIN] {admin_user.username} (Superuser)")
+
+        # 2. Phụ huynh test (phuhuynh_test)
+        parent_test, _ = User.objects.get_or_create(
+            username="phuhuynh_test",
+            defaults={
+                "email": "phuhuynh.test@educarelink.vn",
+                "first_name": "Hồng Nhung",
+                "last_name": "Lê",
+                "role": "parent",
+                "phone_number": "0912345678",
+                "address": "72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP.HCM",
+                "is_active": True,
+                "is_verified": True,
+                "is_approved": True,
+                "first_login": False,
+                "latitude": 10.7769,
+                "longitude": 106.7009,
+            }
+        )
+        parent_test.set_password(TEST_PASSWORD)
+        parent_test.role = "parent"
+        parent_test.first_name = "Hồng Nhung"
+        parent_test.last_name = "Lê"
+        parent_test.phone_number = "0912345678"
+        parent_test.address = "72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP.HCM"
+        parent_test.latitude = 10.7769
+        parent_test.longitude = 106.7009
+        parent_test.is_active = True
+        parent_test.is_verified = True
+        parent_test.is_approved = True
+        parent_test.first_login = False
+        parent_test.save()
+        self.stdout.write(f"   + [PARENT TEST] {parent_test.username} ({parent_test.get_full_name()})")
+
+        # 3. CarePartner test (sinhvien_test)
+        worker_test, _ = User.objects.get_or_create(
+            username="sinhvien_test",
+            defaults={
+                "email": "sinhvien.test@educarelink.vn",
+                "first_name": "Minh Anh",
+                "last_name": "Nguyễn",
+                "role": "worker",
+                "phone_number": "0987654321",
+                "address": "280 An Dương Vương, Phường 4, Quận 5, TP.HCM",
+                "is_active": True,
+                "is_verified": True,
+                "is_approved": True,
+                "first_login": False,
+                "latitude": 10.7601,
+                "longitude": 106.6823,
+                "qualifications": [
+                    "Sinh viên năm 3 ĐH Sư Phạm TP.HCM",
+                    "Chứng chỉ IELTS 7.5 (IDP)",
+                    "Chứng chỉ Sơ cấp cứu Nhi khoa",
+                    "Bằng lái xe máy hạng A1",
+                ],
+                "ai_profile_summary": "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm TP.HCM, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ.",
+            }
+        )
+        worker_test.set_password(TEST_PASSWORD)
+        worker_test.role = "worker"
+        worker_test.first_name = "Minh Anh"
+        worker_test.last_name = "Nguyễn"
+        worker_test.phone_number = "0987654321"
+        worker_test.address = "280 An Dương Vương, Phường 4, Quận 5, TP.HCM"
+        worker_test.latitude = 10.7601
+        worker_test.longitude = 106.6823
+        worker_test.is_active = True
+        worker_test.is_verified = True
+        worker_test.is_approved = True
+        worker_test.first_login = False
+        worker_test.qualifications = [
+            "Sinh viên năm 3 ĐH Sư Phạm TP.HCM",
+            "Chứng chỉ IELTS 7.5 (IDP)",
+            "Chứng chỉ Sơ cấp cứu Nhi khoa",
+            "Bằng lái xe máy hạng A1",
+        ]
+        worker_test.ai_profile_summary = "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm TP.HCM, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ."
+        worker_test.save()
+        self.stdout.write(f"   + [WORKER TEST] {worker_test.username} ({worker_test.get_full_name()})")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 2: DANH MỤC DỊCH VỤ & BIỂU GIÁ (PRICING RULES)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[2/12] Nạp danh mục dịch vụ & quy tắc biểu giá...")
 
         categories_data = [
-            {"name": "Gia sư", "icon_name": "BookOpen", "description": "Dạy kèm các môn học từ tiểu học đến đại học."},
-            {"name": "Đón trẻ", "icon_name": "Baby", "description": "Đón con em từ trường về nhà an toàn. Yêu cầu có xe máy và bằng lái."},
-            {"name": "Dọn dẹp nhà cửa", "icon_name": "Home", "description": "Vệ sinh, sắp xếp nhà cửa, văn phòng theo yêu cầu của gia đình."},
-            {"name": "Trông trẻ", "icon_name": "Heart", "description": "Trông coi, chăm sóc trẻ nhỏ tại nhà. Yêu cầu kiên nhẫn và có kinh nghiệm."},
-            {"name": "Mua sắm hộ", "icon_name": "ShoppingCart", "description": "Đi chợ, mua đồ theo danh sách và giao hàng tận nơi cho gia đình."},
-            {"name": "Nấu ăn", "icon_name": "Restaurant", "description": "Nấu ăn cho gia đình, chuẩn bị bữa sáng, trưa, tối theo yêu cầu."},
-            {"name": "Hỗ trợ AI", "icon_name": "SmartToy", "description": "Sử dụng công nghệ AI hỗ trợ học tập và phát triển cho bé."},
-            {"name": "Khác", "icon_name": "MoreHoriz", "description": "Các dịch vụ khác như chuyển nhà, chăm sóc thú cưng, hỗ trợ kỹ năng sống."},
+            {"name": "Gia sư", "icon_name": "BookOpen", "description": "Dạy kèm các môn văn hóa (Toán, Lý, Hóa, Anh...) và kỹ năng mềm từ tiểu học đến THPT."},
+            {"name": "Trông trẻ", "icon_name": "Heart", "description": "Trông nom, vui chơi, cho ăn uống và chăm sóc trẻ an toàn tại nhà theo ca linh hoạt."},
+            {"name": "Đón trẻ", "icon_name": "Baby", "description": "Đón bé đúng giờ từ trường học hoặc lớp năng khiếu về tận nhà an toàn tuyệt đối."},
+            {"name": "Dọn dẹp nhà cửa", "icon_name": "Home", "description": "Vệ sinh, sắp xếp nhà cửa, phòng ngủ, phòng khách gọn gàng, sạch sẽ."},
+            {"name": "Nấu ăn", "icon_name": "Restaurant", "description": "Chuẩn bị bữa ăn gia đình dinh dưỡng theo khẩu vị và chế độ ăn riêng cho bé."},
+            {"name": "Mua sắm hộ", "icon_name": "ShoppingCart", "description": "Đi siêu thị, chợ mua thực phẩm và đồ dùng theo danh sách, giao tận nơi."},
+            {"name": "Hỗ trợ AI", "icon_name": "SmartToy", "description": "Hướng dẫn sử dụng công cụ AI học tập an toàn, phát triển tư duy sáng tạo cho trẻ."},
+            {"name": "Khác", "icon_name": "MoreHoriz", "description": "Các dịch vụ trợ giúp gia đình đặc thù khác theo thỏa thuận."},
         ]
 
-        created_cats = 0
-        for cat_data in categories_data:
-            obj, created = ServiceCategory.objects.get_or_create(
-                name=cat_data["name"],
-                defaults={"icon_name": cat_data["icon_name"], "description": cat_data["description"]}
+        cats = {}
+        for c in categories_data:
+            obj, _ = ServiceCategory.objects.update_or_create(
+                name=c["name"],
+                defaults={"icon_name": c["icon_name"], "description": c["description"]}
             )
-            if created:
-                created_cats += 1
-        self.stdout.write(f"   + Tao {created_cats} danh muc moi. Tong: {ServiceCategory.objects.count()}")
+            cats[c["name"]] = obj
 
-        # --- Seed PricingRule cho mỗi category (A1 — gợi ý giá tự động) ---
-        from core.models import PricingRule
-        pricing_rules_data = [
-            {"name": "Gia sư",           "pricing_type": "hourly", "base_fee": 0,     "unit_price": 80000,  "min_price": 150000, "max_price": 300000},
-            {"name": "Đón trẻ",          "pricing_type": "distance","base_fee": 20000, "unit_price": 15000,  "min_price": 80000,  "max_price": 150000},
-            {"name": "Dọn dẹp nhà cửa", "pricing_type": "hourly", "base_fee": 0,     "unit_price": 100000, "min_price": 200000, "max_price": 400000},
-            {"name": "Trông trẻ",         "pricing_type": "hourly", "base_fee": 0,     "unit_price": 60000,  "min_price": 100000, "max_price": 200000},
-            {"name": "Mua sắm hộ",       "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 50000,  "max_price": 100000},
-            {"name": "Nấu ăn",           "pricing_type": "hourly", "base_fee": 0,     "unit_price": 80000,  "min_price": 100000, "max_price": 200000},
-            {"name": "Hỗ trợ AI",        "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 100000, "max_price": 300000},
-            {"name": "Khác",             "pricing_type": "fixed",  "base_fee": 0,     "unit_price": 0,      "min_price": 0,      "max_price": 0},
+        pricing_rules = [
+            {"name": "Gia sư", "pricing_type": "hourly", "base_fee": 0, "unit_price": 90000, "min_price": 150000, "max_price": 350000},
+            {"name": "Trông trẻ", "pricing_type": "hourly", "base_fee": 0, "unit_price": 70000, "min_price": 100000, "max_price": 250000},
+            {"name": "Đón trẻ", "pricing_type": "distance", "base_fee": 30000, "unit_price": 15000, "min_price": 70000, "max_price": 180000},
+            {"name": "Dọn dẹp nhà cửa", "pricing_type": "hourly", "base_fee": 0, "unit_price": 100000, "min_price": 180000, "max_price": 400000},
+            {"name": "Nấu ăn", "pricing_type": "hourly", "base_fee": 0, "unit_price": 90000, "min_price": 120000, "max_price": 250000},
+            {"name": "Mua sắm hộ", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 60000, "max_price": 150000},
+            {"name": "Hỗ trợ AI", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 120000, "max_price": 300000},
+            {"name": "Khác", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 0, "max_price": 0},
         ]
-        created_rules = 0
-        for rule_data in pricing_rules_data:
-            try:
-                cat = ServiceCategory.objects.get(name=rule_data["name"])
-                PricingRule.objects.update_or_create(
-                    category=cat,
-                    defaults={
-                        "pricing_type": rule_data["pricing_type"],
-                        "base_fee": rule_data["base_fee"],
-                        "unit_price": rule_data["unit_price"],
-                        "min_price": rule_data["min_price"],
-                        "max_price": rule_data["max_price"],
-                    },
-                )
-                created_rules += 1
-            except ServiceCategory.DoesNotExist:
-                self.stdout.write(self.style.WARNING(f"   ! Khong tim thay category: {rule_data['name']}"))
-        self.stdout.write(f"   + Tao/update {created_rules} PricingRule. Tong: {PricingRule.objects.count()}")
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 2: KIỂM TRA 3 TÀI KHOẢN BẢO VỆ (không tạo mới, không sửa)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[2/7] Kiem tra 3 tai khoan bao ve...")
-
-        for uname in sorted(PROTECTED_USERNAMES):
-            try:
-                u = User.objects.get(username=uname)
-                role_vi = "Admin" if u.is_staff else ("Phu huynh" if u.role == "parent" else "Carepartner")
-                self.stdout.write(f"   [DA TON TAI] {uname:18s} ({role_vi}) — KHONG THAY DOI")
-            except User.DoesNotExist:
-                self.stdout.write(self.style.WARNING(f"   [THIEU] {uname} — tai khoan nay chua duoc tao, bo qua."))
-
-        # Lấy reference tới các tài khoản bảo vệ (nếu có) để gán làm parent/worker cho task mẫu
-        admin_ref = User.objects.filter(username="admin", is_staff=True).first()
-        parent_ref = User.objects.filter(username="phuhuynh_test", role="parent").first()
-        worker_ref = User.objects.filter(username="sinhvien_test", role="worker").first()
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 3: TẠO PHỤ HUYNH MỚI (4 tài khoản — tên khác bản cũ)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[3/7] Dang tao Phu huynh moi...")
-
-        parents_data = [
-            {"username": "phuhuynh_baolinh", "first_name": "Bảo Lĩnh", "last_name": "Phạm", "email": "baolinh.pham@email.com", "phone_number": "0901002003", "address": "22 Ung Văn Khiên, Bình Thạnh, TP.HCM"},
-            {"username": "phuhuynh_minhkhoi", "first_name": "Minh Khôi", "last_name": "Đặng", "email": "minhkhoi.dang@email.com", "phone_number": "0901002004", "address": "8 Xa Lộ Hà Nội, Thủ Đức, TP.HCM"},
-            {"username": "phuhuynh_yenchi", "first_name": "Yến Chi", "last_name": "Hồ", "email": "yenchi.ho@email.com", "phone_number": "0901002005", "address": "156 Nguyễn Đình Chiểu, Quận 3, TP.HCM"},
-            {"username": "phuhuynh_congvinh", "first_name": "Công Vinh", "last_name": "Trương", "email": "congvinh.truong@email.com", "phone_number": "0901002006", "address": "40 Lý Thường Kiệt, Quận 10, TP.HCM"},
-        ]
-
-        parent_users = {}
-        for p_data in parents_data:
-            user = User.objects.create_user(
-                username=p_data["username"],
-                password=TEST_PASSWORD,
-                role="parent",
-                first_name=p_data["first_name"],
-                last_name=p_data["last_name"],
-                email=p_data["email"],
-                phone_number=p_data["phone_number"],
-                address=p_data["address"],
-                is_verified=True,
-                is_approved=True,
-                first_login=False,
+        for pr in pricing_rules:
+            PricingRule.objects.update_or_create(
+                category=cats[pr["name"]],
+                defaults={
+                    "pricing_type": pr["pricing_type"],
+                    "base_fee": pr["base_fee"],
+                    "unit_price": pr["unit_price"],
+                    "min_price": pr["min_price"],
+                    "max_price": pr["max_price"],
+                }
             )
-            parent_users[p_data["username"]] = user
-            self.stdout.write(f"   + {p_data['last_name']} {p_data['first_name']}: {p_data['username']}")
+        self.stdout.write(f"   + Đã thiết lập 8 ServiceCategory và PricingRule tương ứng.")
+
+        # ===============================================================
+        #  PHAN 3: CAU HINH NGHIEP VU MATCHING FLOW 1
+        # ===============================================================
+        self._log("\n[3/12] Nap cau hinh nghiep vu Matching Flow 1...")
+
+        from django.core.management import call_command
+        from matching.models import EloBand
+        call_command('seed_matching_config', verbosity=0)
+        elo_bands = {b.name: b for b in EloBand.objects.all()}
+        self._log(f"   + Da nap day du {len(elo_bands)} EloBand, CancelPolicy, MatchingWeight va MatchingConfig.")
 
         # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 4: TẠO CAREPARTNER MỚI (4 đã duyệt + 1 chờ duyệt)
+        #  PHẦN 4: TẠO PHỤ HUYNH MẪU & VÍ CREDIT (CREDITBALANCE)
         # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[4/7] Dang tao Carepartner moi...")
+        self.stdout.write("\n[4/12] Tạo tài khoản Phụ huynh thực tế & Ví Credit...")
 
-        workers_data = [
-            {"username": "carepartner_tuankiet", "first_name": "Tuấn Kiệt", "last_name": "Lương", "email": "tuankiet.luong@email.com", "phone_number": "0987001001", "address": "KTX Khu B ĐHQG, Thủ Đức, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm 3 ĐH Sư Phạm Toán", "Chứng chỉ IELTS 7.0"], "ai_profile_summary": "Sinh viên Sư phạm Toán năm 3, 2 năm kinh nghiệm gia sư. Kiên nhẫn, có phương pháp dạy trực quan. Đánh giá 4.9/5 từ 18 phụ huynh."},
-            {"username": "carepartner_hoango", "first_name": "Hoàng Ngân", "last_name": "Đỗ", "email": "hoango.do@email.com", "phone_number": "0987001002", "address": "Đường Lê Văn Sĩ, Tân Phú, TP.HCM", "is_approved": True, "qualifications": ["Cử nhân Sư Phạm Mầm Non", "Chứng chỉ Sơ cấp cứu", "Chứng chỉ Montessori cơ bản"], "ai_profile_summary": "Cử nhân Sư phạm Mầm Non, 4 năm kinh nghiệm trông trẻ. Có chứng chỉ sơ cấp cứu và Montessori. Yêu trẻ, nhiệt tình."},
-            {"username": "carepartner_mylinh", "first_name": "Mỹ Linh", "last_name": "Trần", "email": "mylinh.tran@email.com", "phone_number": "0987001003", "address": "Đường Phan Xích Long, Phú Nhuận, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm cuối ĐH Kinh Tế", "Chứng chỉ nấu ăn Việt–Á"], "ai_profile_summary": "Sinh viên năm cuối ĐH Kinh Tế, 2 năm phụ việc nhà + nấu ăn. Nấu ăn ngon, gọn gàng, chu đáo với trẻ nhỏ."},
-            {"username": "carepartner_phuoc", "first_name": "Phước", "last_name": "Nguyễn", "email": "phuoc.nguyen@email.com", "phone_number": "0987001004", "address": "Đường Tô Ký, Quận 12, TP.HCM", "is_approved": True, "qualifications": ["Sinh viên năm 2 ĐH Bách Khoa", "Chứng chỉ gia sư Lý–Hóa"], "ai_profile_summary": "Sinh viên Bách Khoa, chuyên gia sư Lý–Hóa cấp 3. Dạy dễ hiểu, có bài tập thực hành."},
-            {"username": "carepartner_pending_hai", "first_name": "Hải", "last_name": "Bùi", "email": "hai.bui@email.com", "phone_number": "0987001005", "address": "Đường Trường Chinh, Tân Phú, TP.HCM", "is_approved": False, "qualifications": [], "ai_profile_summary": ""},
+        from matching.models import CreditBalance, CreditTransaction
+
+        parents_profiles = [
+            {
+                "username": "phuhuynh_baolinh", "first_name": "Bảo Lĩnh", "last_name": "Phạm",
+                "email": "baolinh.pham@gmail.com", "phone_number": "0903112233",
+                "address": "Tòa Landmark 4, Vinhomes Central Park, Bình Thạnh, TP.HCM",
+                "lat": 10.7932, "lng": 106.7218, "credit": 1800000,
+            },
+            {
+                "username": "phuhuynh_minhkhoi", "first_name": "Minh Khôi", "last_name": "Đặng",
+                "email": "minhkhoi.dang@gmail.com", "phone_number": "0903445566",
+                "address": "Khu đô thị Sala, Mai Chí Thọ, TP. Thủ Đức, TP.HCM",
+                "lat": 10.7712, "lng": 106.7201, "credit": 3200000,
+            },
+            {
+                "username": "phuhuynh_yenchi", "first_name": "Yến Chi", "last_name": "Hồ",
+                "email": "yenchi.ho@benhvien.vn", "phone_number": "0903778899",
+                "address": "156 Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM",
+                "lat": 10.7785, "lng": 106.6912, "credit": 1500000,
+            },
+            {
+                "username": "phuhuynh_congvinh", "first_name": "Công Vinh", "last_name": "Trương",
+                "email": "congvinh.truong@hcmut.edu.vn", "phone_number": "0903224466",
+                "address": "40 Lý Thường Kiệt, Phường 7, Quận 10, TP.HCM",
+                "lat": 10.7684, "lng": 106.6587, "credit": 900000,
+            },
         ]
 
-        worker_users = {}
-        for w_data in workers_data:
-            user = User.objects.create_user(
-                username=w_data["username"],
-                password=TEST_PASSWORD,
-                role="worker",
-                first_name=w_data["first_name"],
-                last_name=w_data["last_name"],
-                email=w_data["email"],
-                phone_number=w_data["phone_number"],
-                address=w_data["address"],
-                is_approved=w_data["is_approved"],
-                is_verified=w_data["is_approved"],
-                is_active=True,
-                qualifications=w_data["qualifications"],
-                ai_profile_summary=w_data["ai_profile_summary"],
-                first_login=False,
-            )
-            worker_users[w_data["username"]] = user
-            trang_thai = "CHO DUYET" if not w_data["is_approved"] else "Da duyet"
-            self.stdout.write(f"   + {w_data['last_name']} {w_data['first_name']}: {w_data['username']} ({trang_thai})")
-
-        # Tài khoản bị khoá (test mở khoá)
-        locked_user = User.objects.create_user(
-            username="locked_test_2",
-            password=TEST_PASSWORD,
-            role="parent",
-            first_name="Thị Hà",
-            last_name="Vũ",
-            email="ha.vu@email.com",
-            phone_number="0987001999",
-            address="Đường Sư Vạn Hạnh, Quận 10, TP.HCM",
-            is_verified=True,
-            is_approved=True,
-            is_active=False,
-            first_login=False,
+        parent_dict = {"phuhuynh_test": parent_test}
+        # Cấp ví credit cho phuhuynh_test
+        w_test_credit, _ = CreditBalance.objects.update_or_create(
+            parent=parent_test, defaults={"credit_vnd": 2500000}
         )
-        self.stdout.write(f"   + {locked_user.last_name} {locked_user.first_name}: locked_test_2 (BI KHOA — test mo khoa)")
+        CreditTransaction.objects.create(
+            parent=parent_test, amount_vnd=2500000,
+            kind="platform_credit", status="issued",
+            note="Cấp credit ban đầu cho tài khoản thử nghiệm"
+        )
+
+        for p in parents_profiles:
+            u, _ = User.objects.update_or_create(
+                username=p["username"],
+                defaults={
+                    "password": TEST_PASSWORD,
+                    "first_name": p["first_name"],
+                    "last_name": p["last_name"],
+                    "email": p["email"],
+                    "phone_number": p["phone_number"],
+                    "address": p["address"],
+                    "role": "parent",
+                    "latitude": p["lat"],
+                    "longitude": p["lng"],
+                    "is_active": True,
+                    "is_verified": True,
+                    "is_approved": True,
+                    "first_login": False,
+                }
+            )
+            u.set_password(TEST_PASSWORD)
+            u.save()
+            parent_dict[p["username"]] = u
+
+            # Ví credit
+            CreditBalance.objects.update_or_create(
+                parent=u, defaults={"credit_vnd": p["credit"]}
+            )
+            CreditTransaction.objects.create(
+                parent=u, amount_vnd=p["credit"],
+                kind="platform_credit", status="issued",
+                note="Nạp credit dùng thử dịch vụ ghép cặp"
+            )
+            self.stdout.write(f"   + Phụ huynh: {u.get_full_name()} ({u.username}) — Ví {p['credit']:,}đ")
 
         # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 5: TẠO CÔNG VIỆC MỚI (10 việc — tiêu đề/mô tả khác bản cũ)
+        #  PHẦN 5: TẠO CAREPARTNER MẪU & HỒ SƠ TÍN NHIỆM ELO (FLOW 1)
         # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[5/7] Dang tao cong viec moi...")
+        self.stdout.write("\n[5/12] Tạo CarePartner mẫu, Hồ sơ ELO & Lịch rảnh...")
 
-        cat_giasu = ServiceCategory.objects.get(name="Gia sư")
-        cat_dontre = ServiceCategory.objects.get(name="Đón trẻ")
-        cat_dondep = ServiceCategory.objects.get(name="Dọn dẹp nhà cửa")
-        cat_trongtre = ServiceCategory.objects.get(name="Trông trẻ")
-        cat_muasam = ServiceCategory.objects.get(name="Mua sắm hộ")
-        cat_nauan = ServiceCategory.objects.get(name="Nấu ăn")
-        cat_hotroAI = ServiceCategory.objects.get(name="Hỗ trợ AI")
+        from matching.models import (
+            CarePartnerProfile, CarePartnerAvailability, CarePartnerBlackout
+        )
 
-        p1 = parent_users["phuhuynh_baolinh"]
-        p2 = parent_users["phuhuynh_minhkhoi"]
-        p3 = parent_users["phuhuynh_yenchi"]
-        p4 = parent_users["phuhuynh_congvinh"]
-        # ⚡ p_test = phuhuynh_test (tài khoản bảo vệ — thêm tasks để demo)
-        p_test = parent_ref  # Already fetched at line 144
-
-        w1 = worker_users["carepartner_tuankiet"]
-        w2 = worker_users["carepartner_hoango"]
-        w3 = worker_users["carepartner_mylinh"]
-        w4 = worker_users["carepartner_phuoc"]
-        # ⚡ w_test = sinhvien_test (tài khoản bảo vệ — gán làm worker cho tasks của p_test)
-        w_test = worker_ref  # Already fetched at line 145
-
-        tasks_data = [
-            # OPEN (4)
-            {"title": "Gia su Vat Ly lop 10 - buoi toi thu 4 & thu 6", "description": "Be gai hoc yeu Vat Ly, can gia su kien nhan, co phuong phap day hieu qua. Day tai nha 1.5 tieng/buoi. Uu tien sinh vien Bach Khoa hoac Su Pham.", "price": 220000, "category": cat_giasu, "location": "Khu Can Ho Vinhomes Central Park, Binh Thanh, TP.HCM", "scheduled_time": now + timedelta(days=3), "status": "open", "parent": p1},
-            {"title": "[GAP] Don be lop 2 chieu thu 7 tai truong Nguyen Du", "description": "Can nguoi don be trai 7 tuoi chieu thu 7 luc 11h30. Nha cach truong 1.5km. Yeu cau co xe may, bang lai A1, than thien voi tre em.", "price": 120000, "category": cat_dontre, "location": "Truong Tieu Hoc Nguyen Du, Quan 10, TP.HCM", "scheduled_time": now + timedelta(days=2), "status": "open", "parent": p2},
-            {"title": "Don dep can ho 2 phong ngu cuoi tuan", "description": "Can ho 75m2, can lau san, ve sinh bep va 2 phong tam. Cong viec khoang 4 tieng sang thu 7. Dung cu ve sinh toi chuan bi san.", "price": 280000, "category": cat_dondep, "location": "Chung cu The Manor, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=5), "status": "open", "parent": p3},
-            {"title": "Trong be 4 tuoi buoi chieu CN", "description": "Vc toi di du sinh nhat ban, can nguoi trong be 4 tuoi tai nha tu 13h-18h CN. Be ngoan, da quen nguoi la. Co do an va do choi san.", "price": 200000, "category": cat_trongtre, "location": "Hem 123 Le Van Sy, Phu Nhuan, TP.HCM", "scheduled_time": now + timedelta(days=4), "status": "open", "parent": p4},
-            # IN_PROGRESS (2)
-            {"title": "Gia su Hoa lop 11 - 2 buoi/tuan", "description": "Be chuyen sang khoi A, can phu dao Hoa nang cao. Day thu 3 & thu 5 toi, 19h-20h30. Yeu cau co phuong phap day de hieu, giai de mau.", "price": 250000, "category": cat_giasu, "location": "Duong Nguyen Thai Hoc, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=7), "status": "in_progress", "parent": p1},
-            {"title": "Nau com toi cho gia dinh 4 nguoi", "description": "Can nguoi nau com toi thu 2-den-thu 6 hang tuan cho 4 nguoi (2 nguoi lon, 2 tre em). Biet nau mon Viet va mon chay. Nguyen lieu toi chuan bi.", "price": 320000, "category": cat_nauan, "location": "Duong Nguyen Van Troi, Phu Nhuan, TP.HCM", "scheduled_time": now + timedelta(days=4), "status": "in_progress", "parent": p3},
-            # COMPLETED (3)
-            {"title": "Don dep nha 4 tang cuoi thang", "description": "Nha pho 4 tang can tong ve sinh: lau san, ve sinh bep, 3 phong tam. Yeu cu lam can than.", "price": 600000, "category": cat_dondep, "location": "Duong Nguyen Dinh Chieu, Quan 3, TP.HCM", "scheduled_time": now - timedelta(days=6), "status": "completed", "parent": p2},
-            {"title": "Di cho mua do dung sinh nhat be", "description": "Can nguoi den coopmart mua banh kem, baloon, do trang tri sinh nhat theo danh sach. Giao hang tan nha. Chi phi chuan bi truoc.", "price": 180000, "category": cat_muasam, "location": "Coopmart Nguyen Kiem, Phu Nhuan, TP.HCM", "scheduled_time": now - timedelta(days=11), "status": "completed", "parent": p4},
-            {"title": "Trong 2 be toi thu 7 - 4 tieng", "description": "Vc di an toi sinh nhat, can nguoi trong 2 be (5 tuoi va 8 tuoi) tu 18h-22h. Be lon tu choi, be nho can cho an va ru ngu.", "price": 350000, "category": cat_trongtre, "location": "Duong Cach Mang Thang 8, Quan Tan Binh, TP.HCM", "scheduled_time": now - timedelta(days=9), "status": "completed", "parent": p1},
-            # CANCELLED (1)
-            {"title": "Ho tro AI hoc tap cho be lop 4", "description": "Tim nguoi biet dung ChatGPT/cac app AI de ho tro be hoc tap. Day be cach dung AI an toan, hieu qua.", "price": 240000, "category": cat_hotroAI, "location": "Duong Truong Chinh, Quan Tan Binh, TP.HCM", "scheduled_time": now - timedelta(days=2), "status": "cancelled", "parent": p4},
+        workers_profiles = [
+            {
+                "username": "carepartner_tuankiet", "first_name": "Tuấn Kiệt", "last_name": "Lương",
+                "email": "tuankiet.luong@student.hcmut.edu.vn", "phone_number": "0987111222",
+                "address": "KTX Khu B Đại Học Quốc Gia, TP. Thủ Đức, TP.HCM",
+                "lat": 10.8802, "lng": 106.7825, "is_approved": True, "is_active": True,
+                "school": "Đại học Bách Khoa TP.HCM", "major": "Khoa học Máy tính & Kỹ thuật",
+                "elo": 1480, "band": "trusted", "has_vehicle": True, "gender": "male",
+                "skills": ["toan", "vat_ly", "lap_trinh", "cap_2", "cap_3", "tieng_anh"],
+                "qualifications": ["Sinh viên năm 3 ĐH Bách Khoa", "Giải Ba Toán cấp Thành phố", "IELTS 7.0"],
+                "summary": "Sinh viên Bách Khoa đam mê giảng dạy, chuyên kèm môn Toán, Lý và Lập trình tư duy cho học sinh từ lớp 6-12.",
+                "jobs_done": 14, "rating": 4.9,
+            },
+            {
+                "username": "carepartner_hoango", "first_name": "Hoàng Ngân", "last_name": "Đỗ",
+                "email": "hoango.do@gmail.com", "phone_number": "0987333444",
+                "address": "45 Lê Văn Sỹ, Phường 13, Quận Phú Nhuận, TP.HCM",
+                "lat": 10.7915, "lng": 106.6748, "is_approved": True, "is_active": True,
+                "school": "Đại học Sư Phạm TP.HCM", "major": "Giáo dục Mầm non",
+                "elo": 1580, "band": "trusted", "has_vehicle": True, "gender": "female",
+                "skills": ["trong_tre", "mam_non", "montessori", "so_cap_cuu", "nau_an", "kien_nhan"],
+                "qualifications": ["Cử nhân Giáo dục Mầm non", "Chứng chỉ Montessori Quốc tế", "Chứng nhận Sơ cấp cứu Red Cross"],
+                "summary": "Cử nhân Sư phạm Mầm non 4 năm kinh nghiệm, yêu trẻ, chu đáo, am hiểu tâm lý trẻ nhỏ và kỹ năng ăn dặm, sơ cứu.",
+                "jobs_done": 26, "rating": 5.0,
+            },
+            {
+                "username": "carepartner_mylinh", "first_name": "Mỹ Linh", "last_name": "Trần",
+                "email": "mylinh.tran@gmail.com", "phone_number": "0987555666",
+                "address": "88 Phan Xích Long, Phường 2, Quận Phú Nhuận, TP.HCM",
+                "lat": 10.7972, "lng": 106.6892, "is_approved": True, "is_active": True,
+                "school": "Đại học Kinh Tế TP.HCM (UEH)", "major": "Quản trị Kinh doanh",
+                "elo": 1360, "band": "good", "has_vehicle": False, "gender": "female",
+                "skills": ["nau_an", "don_dep", "trong_tre", "choi_cung_be", "ve_tranh"],
+                "qualifications": ["Sinh viên năm cuối UEH", "Chứng chỉ Nấu ăn Dinh dưỡng", "Kinh nghiệm 2 năm phụ giúp việc nhà"],
+                "summary": "Nhanh nhẹn, sạch sẽ, nấu ăn ngon, rất khéo léo khi chơi và tương tác với các bé độ tuổi mẫu giáo.",
+                "jobs_done": 9, "rating": 4.8,
+            },
+            {
+                "username": "carepartner_phuoc", "first_name": "Hữu Phước", "last_name": "Nguyễn",
+                "email": "phuoc.nguyen@ump.edu.vn", "phone_number": "0987777888",
+                "address": "217 Hồng Bàng, Phường 11, Quận 5, TP.HCM",
+                "lat": 10.7554, "lng": 106.6598, "is_approved": True, "is_active": True,
+                "school": "Đại học Y Dược TP.HCM", "major": "Bác sĩ Đa khoa (Năm 4)",
+                "elo": 1440, "band": "good", "has_vehicle": True, "gender": "male",
+                "skills": ["don_tre", "so_cap_cuu", "sinh_hoc", "dung_gio", "an_toan"],
+                "qualifications": ["Sinh viên Y đa khoa năm 4", "Bằng lái xe máy A1", "Chứng chỉ Kỹ thuật viên Sơ cấp cứu Y tế"],
+                "summary": "Chuyên đón trẻ tan trường cẩn thận, phương tiện xe tay ga trang bị nón bảo hiểm an toàn, am hiểu sơ cứu nhi.",
+                "jobs_done": 12, "rating": 4.85,
+            },
+            {
+                "username": "carepartner_pending_hai", "first_name": "Quang Hải", "last_name": "Bùi",
+                "email": "hai.bui@student.edu.vn", "phone_number": "0987999000",
+                "address": "Tân Kỳ Tân Quý, Quận Tân Phú, TP.HCM",
+                "lat": 10.8012, "lng": 106.6289, "is_approved": False, "is_active": True,
+                "school": "Đại học Khoa Học Tự Nhiên", "major": "Toán - Tin học",
+                "elo": 1200, "band": "normal", "has_vehicle": True, "gender": "male",
+                "skills": ["toan", "tin_hoc"],
+                "qualifications": ["Sinh viên năm 2 ĐH KHTN", "CCCD 2 mặt + Thẻ SV (đang chờ duyệt)"],
+                "summary": "Hồ sơ mới đăng ký, đang chờ Admin kiểm duyệt bằng cấp và CCCD.",
+                "jobs_done": 0, "rating": 0.0,
+            },
+            {
+                "username": "carepartner_locked_trung", "first_name": "Thành Trung", "last_name": "Vũ",
+                "email": "trung.vu@gmail.com", "phone_number": "0987222333",
+                "address": "Đường 3/2, Quận 10, TP.HCM",
+                "lat": 10.7715, "lng": 106.6698, "is_approved": True, "is_active": False,
+                "school": "Đại học Văn Lang", "major": "Thiết kế Đồ họa",
+                "elo": 750, "band": "blocked", "has_vehicle": True, "gender": "male",
+                "skills": ["ve_tranh", "my_thuat"],
+                "qualifications": ["Sinh viên Văn Lang"],
+                "summary": "Tài khoản bị tạm khóa do vi phạm hủy ca không báo trước. Dùng để demo tính năng Admin mở khóa.",
+                "jobs_done": 3, "rating": 3.2,
+            },
         ]
 
-        # ⚡ THÊM 2026-07-21: Tasks cho phuhuynh_test (trước đây 0 tasks)
-        # Giúp phụ huynh test có dữ liệu demo ngay khi đăng nhập
-        if p_test:
-            tasks_data.extend([
-                # OPEN (2) — phuhuynh_test đăng 2 việc đang tìm người
-                {"title": "Gia su Tieng Anh lop 6 - 3 buoi/tuan", "description": "Be trai lop 6 can phu dao Tieng Anh, phat am. Day thu 2, 4, 6 toi 19h-20h30. Yeu cau sinh vien CĐ Su Pham Ngoai Ngu hoac IELTS 6.5+.", "price": 250000, "category": cat_giasu, "location": "Duong Le Loi, Quan 1, TP.HCM", "scheduled_time": now + timedelta(days=2), "status": "open", "parent": p_test},
-                {"title": "Don dep can ho cuoi tuan - 3 tieng", "description": "Can ho 60m2 can lau san, ve sinh bep, 1 phong tam. Lam sang thu 7 tu 8h-11h. Toi chuan bi dung cu ve sinh.", "price": 200000, "category": cat_dondep, "location": "Chung cu Sunview Town, Quan 9, TP.HCM", "scheduled_time": now + timedelta(days=5), "status": "open", "parent": p_test},
-                # IN_PROGRESS (1) — phuhuynh_test có 1 việc đang làm (để test live tracking + geofence)
-                {"title": "Trong be 5 tuoi chieu thu 7", "description": "Can nguoi trong be trai 5 tuoi tu 14h-18h thu 7. Be ngoan, thich choi xep hinh Lego. Co do an va nuoc uong san. Nha co camera an ninh.", "price": 240000, "category": cat_trongtre, "location": "Duong Nguyen Huu Tho, Quan 7, TP.HCM", "scheduled_time": now + timedelta(days=1), "status": "in_progress", "parent": p_test, "geofence_lat": 10.7338, "geofence_lng": 106.7197, "geofence_radius": 500},
-                # COMPLETED (2) — phuhuynh_test có 2 việc đã xong (để test review + history)
-                {"title": "Di cho mua do tuan - sieu thi Coopmart", "description": "Can nguoi den Coopmart Nguyen Kiem mua do tuan: gao, rau, thit, sua. Giao tan nha. Chi phi toi chuan bi truoc.", "price": 150000, "category": cat_muasam, "location": "Coopmart Nguyen Kiem, Phu Nhuan, TP.HCM", "scheduled_time": now - timedelta(days=7), "status": "completed", "parent": p_test},
-                {"title": "Don be lop 3 ra khoi truong thu 5", "description": "Don be trai lop 3 ra khoi truong luc 16h30 thu 5. Nha cach truong 1km. Be tu di xe buyt ve nha voi carepartner.", "price": 100000, "category": cat_dontre, "location": "Truong Pho Thong Nguyen Du, Quan 1, TP.HCM", "scheduled_time": now - timedelta(days=14), "status": "completed", "parent": p_test},
-            ])
-            self.stdout.write(f"   + Them 5 cong viec cho phuhuynh_test (OPEN=2, IN_PROGRESS=1, COMPLETED=2)")
+        worker_dict = {"sinhvien_test": worker_test}
 
-        task_objects = []
-        for td in tasks_data:
-            parent = td.pop("parent")
-            obj = Task.objects.create(**td, parent=parent)
-            task_objects.append(obj)
-        self.stdout.write(f"   + Tao {len(task_objects)} cong viec moi. Tong: {Task.objects.count()}")
+        # Tạo Profile ELO cho sinhvien_test
+        CarePartnerProfile.objects.update_or_create(
+            user=worker_test,
+            defaults={
+                "hidden_elo": 1520,
+                "effective_elo": 1520.0,
+                "band": elo_bands["trusted"],
+                "has_vehicle": True,
+                "gender": "female",
+                "school": "Đại học Sư Phạm TP.HCM",
+                "major": "Sư phạm Toán học",
+                "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao"],
+                "jobs_completed": 18,
+                "rating_avg": 4.95,
+                "review_count": 16,
+            }
+        )
 
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 6: ỨNG TUYỂN & ĐÁNH GIÁ
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[6/7] Dang tao ung tuyen va danh gia...")
-
-        open_tasks = [t for t in task_objects if t.status == "open"]
-        in_progress_tasks = [t for t in task_objects if t.status == "in_progress"]
-        completed_tasks = [t for t in task_objects if t.status == "completed"]
-
-        apps = []
-        reviews = []
-
-        # OPEN: nhiều ứng viên
-        if len(open_tasks) > 0:
-            apps += [
-                {"task": open_tasks[0], "worker": w1, "status": "pending"},
-                {"task": open_tasks[0], "worker": w4, "status": "pending"},
-                {"task": open_tasks[0], "worker": w2, "status": "pending"},
-            ]
-        if len(open_tasks) > 1:
-            apps += [
-                {"task": open_tasks[1], "worker": w2, "status": "pending"},
-                {"task": open_tasks[1], "worker": w3, "status": "pending"},
-            ]
-        if len(open_tasks) > 2:
-            apps += [{"task": open_tasks[2], "worker": w3, "status": "pending"}]
-        if len(open_tasks) > 3:
-            apps += [
-                {"task": open_tasks[3], "worker": w2, "status": "pending"},
-                {"task": open_tasks[3], "worker": w3, "status": "pending"},
-            ]
-
-        # IN_PROGRESS: đã accept
-        if len(in_progress_tasks) > 0:
-            apps += [
-                {"task": in_progress_tasks[0], "worker": w1, "status": "accepted"},
-                {"task": in_progress_tasks[0], "worker": w4, "status": "rejected"},
-            ]
-        if len(in_progress_tasks) > 1:
-            apps += [
-                {"task": in_progress_tasks[1], "worker": w3, "status": "accepted"},
-                {"task": in_progress_tasks[1], "worker": w2, "status": "rejected"},
-            ]
-
-        # COMPLETED: có đánh giá
-        if len(completed_tasks) > 0:
-            apps.append({"task": completed_tasks[0], "worker": w3, "status": "accepted"})
-            reviews.append({"task": completed_tasks[0], "reviewer": p2, "reviewee": w3, "rating": 5, "comment": "Lam viec rat can than, sach se va dung gio. Hoi danh bep mot chut nhung tong quat rat hai long. Se thue lai!"})
-        if len(completed_tasks) > 1:
-            apps.append({"task": completed_tasks[1], "worker": w2, "status": "accepted"})
-            reviews.append({"task": completed_tasks[1], "reviewer": p4, "reviewee": w2, "rating": 5, "comment": "Mua sam day du, dung danh sach, giao hang dung hen. Banh kem con nguyen ven. Tuyet voi!"})
-        if len(completed_tasks) > 2:
-            apps.append({"task": completed_tasks[2], "worker": w2, "status": "accepted"})
-            reviews.append({"task": completed_tasks[2], "reviewer": p1, "reviewee": w2, "rating": 4, "comment": "Biet cham soc tre, ru be ngu ngon. Be lon rat thich chi. Nen chu y them ve gio ngu."})
-
-        # ⚡ THÊM 2026-07-21: Gán sinhvien_test (w_test) làm worker cho tasks của phuhuynh_test
-        # Mục đích: khi login bằng 2 tài khoản test, có thể demo live tracking + geofence + review
-        if p_test and w_test:
-            p_test_in_progress = [t for t in in_progress_tasks if t.parent_id == p_test.id]
-            p_test_completed = [t for t in completed_tasks if t.parent_id == p_test.id]
-
-            # IN_PROGRESS: sinhvien_test là worker đang làm (để test live tracking + geofence)
-            for t in p_test_in_progress:
-                apps.append({"task": t, "worker": w_test, "status": "accepted"})
-                self.stdout.write(f"   + sinhvien_test → Task#{t.id} '{t.title}' (in_progress, geofence)")
-
-            # COMPLETED: sinhvien_test đã làm xong (để test review + history)
-            for idx, t in enumerate(p_test_completed):
-                apps.append({"task": t, "worker": w_test, "status": "accepted"})
-                rating = 5 if idx == 0 else 4
-                comment = "Lam viec chu dao, be rat thich. Se lien lac lai tuan sau!" if idx == 0 else "Don be dung gio, giao tiep thich. Nen nac nhe them ve an toan giao thong."
-                reviews.append({"task": t, "reviewer": p_test, "reviewee": w_test, "rating": rating, "comment": comment})
-
-        created_apps = 0
-        for a in apps:
-            TaskApplication.objects.create(task=a["task"], worker=a["worker"], status=a["status"])
-            created_apps += 1
-
-        created_reviews = 0
-        for r in reviews:
-            Review.objects.create(task=r["task"], reviewer=r["reviewer"], reviewee=r["reviewee"], rating=r["rating"], comment=r["comment"])
-            created_reviews += 1
-
-        self.stdout.write(f"   + Tao {created_apps} ung tuyen & {created_reviews} danh gia")
-
-        # ⚡ THÊM 2026-07-21: Tạo LocationConsent 'granted' cho task in_progress của phuhuynh_test
-        # Mục đích: khi login 2 tài khoản test, parent có thể xem live tracking ngay
-        # không cần worker phải đồng ý trên mobile trước.
-        if p_test and w_test:
-            try:
-                from tracking.models import LocationConsent
-                for t in [t for t in in_progress_tasks if t.parent_id == p_test.id]:
-                    LocationConsent.objects.update_or_create(
-                        task=t,
-                        defaults={
-                            'worker': w_test,
-                            'consent': 'granted',
-                            'granted_at': now - timedelta(hours=1),
-                        }
-                    )
-                    self.stdout.write(f"   + LocationConsent GRANTED cho Task#{t.id} (sinhvien_test → phuhuynh_test)")
-            except ImportError:
-                self.stdout.write("   ⚠️  tracking module chưa sẵn sàng — skip LocationConsent")
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 7: TẠO MỘT SỐ THÔNG BÁO MẪU
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[7/7] Dang tao thong bao mau...")
-
-        notifs = []
-        # Thông báo chung cho tất cả carepartner
-        notifs.append(Notification.objects.create(
-            recipient=None,
-            title="Chao mung Carepartner moi den voi EduCareLink!",
-            message="Dat the nen tang, ban se nhan duoc viec lam phu hop tu AI goi y. Hay cap nhat ho so day du de tang co hoi nhan viec.",
-        ))
-        # Thông báo cá nhân cho carepartner đang có việc in_progress
-        if worker_ref:
-            notifs.append(Notification.objects.create(
-                recipient=worker_ref,
-                title="Ban co 1 viec dang thuc hien",
-                message="Nho bat chia se vi tri (Live Tracking) de phu huynh yeen tam va bat len geofence an toan cho be.",
-            ))
-        # Thông báo cho parent_ref
-        if parent_ref:
-            notifs.append(Notification.objects.create(
-                recipient=parent_ref,
-                title="AI goi y: Co 3 ung vien phu hop viec cua ban",
-                message="AI da xep hang ung vien dua tren bang cap, danh gia va khoang cach. Bam vao 'Xem ung vien' de xem chi tiet.",
-            ))
-        self.stdout.write(f"   + Tao {len(notifs)} thong bao mau")
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 8: TRACKING (LocationConsent + LiveLocation + History + Heartbeat + SOS + OfflineAlert)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[8/10] Dang tao du lieu Tracking (geofence, heartbeat, SOS)...")
-
-        try:
-            from tracking.models import (
-                LocationConsent, LiveLocation, LocationHistory,
-                DeviceHeartbeat, DeviceOfflineAlert, SOSAlert,
+        for wp in workers_profiles:
+            u, _ = User.objects.update_or_create(
+                username=wp["username"],
+                defaults={
+                    "password": TEST_PASSWORD,
+                    "first_name": wp["first_name"],
+                    "last_name": wp["last_name"],
+                    "email": wp["email"],
+                    "phone_number": wp["phone_number"],
+                    "address": wp["address"],
+                    "role": "worker",
+                    "latitude": wp["lat"],
+                    "longitude": wp["lng"],
+                    "is_active": wp["is_active"],
+                    "is_verified": wp["is_approved"],
+                    "is_approved": wp["is_approved"],
+                    "qualifications": wp["qualifications"],
+                    "ai_profile_summary": wp["summary"],
+                    "first_login": False,
+                }
             )
-            from decimal import Decimal
+            u.set_password(TEST_PASSWORD)
+            u.save()
+            worker_dict[wp["username"]] = u
 
-            tracking_count = 0
-            # Gán geofence cho open + in_progress tasks (parent vẽ vùng an toàn khi đăng việc)
-            geofence_tasks = [t for t in task_objects if t.status in ("open", "in_progress")]
-            for i, t in enumerate(geofence_tasks):
-                t.geofence_lat = 10.7897 + (i * 0.005)
-                t.geofence_lng = 106.6883 + (i * 0.005)
-                t.geofence_radius = 500
-                t.save()
-                tracking_count += 1
-            self.stdout.write(f"   + Gan geofence cho {tracking_count} task (open + in_progress)")
+            CarePartnerProfile.objects.update_or_create(
+                user=u,
+                defaults={
+                    "hidden_elo": wp["elo"],
+                    "effective_elo": float(wp["elo"]),
+                    "band": elo_bands[wp["band"]],
+                    "has_vehicle": wp["has_vehicle"],
+                    "gender": wp["gender"],
+                    "school": wp["school"],
+                    "major": wp["major"],
+                    "skills": wp["skills"],
+                    "jobs_completed": wp["jobs_done"],
+                    "rating_avg": wp["rating"],
+                    "review_count": wp["jobs_done"],
+                }
+            )
+            status_txt = "ĐÃ DUYỆT" if wp["is_approved"] else "CHỜ DUYỆT"
+            if not wp["is_active"]:
+                status_txt = "BỊ TẠM KHÓA"
+            self.stdout.write(f"   + CarePartner: {u.get_full_name()} ({u.username}) — ELO {wp['elo']} ({status_txt})")
 
-            # LocationConsent + LiveLocation cho in_progress tasks (carepartner đang làm)
-            for t in in_progress_tasks:
-                # Tìm worker đã accept task này
-                accepted_app = TaskApplication.objects.filter(task=t, status="accepted").first()
-                if not accepted_app:
-                    continue
-                w = accepted_app.worker
-                # Consent granted
-                LocationConsent.objects.create(
-                    task=t, worker=w, consent="granted",
-                    granted_at=now - timedelta(hours=1),
+        # ── Lịch rảnh tuần (CarePartnerAvailability & WorkerAvailability) ──
+        # weekday: 0=T2, 1=T3, 2=T4, 3=T5, 4=T6, 5=T7, 6=CN
+        active_cps = [worker_test, worker_dict["carepartner_tuankiet"], worker_dict["carepartner_hoango"],
+                      worker_dict["carepartner_mylinh"], worker_dict["carepartner_phuoc"]]
+
+        for cp in active_cps:
+            # Lịch sáng T2, T4, T6 (08:00 - 12:00)
+            for wd in [0, 2, 4]:
+                CarePartnerAvailability.objects.update_or_create(
+                    carepartner=cp, weekday=wd, time_from=datetime.time(8, 0), time_to=datetime.time(12, 0)
                 )
-                # LiveLocation (đang ở trong vùng an toàn)
-                LiveLocation.objects.create(
-                    task=t, worker=w,
-                    latitude=Decimal("10.7897"), longitude=Decimal("106.6883"),
-                    accuracy=5.0, speed=0.0, heading=0.0,
-                    is_outside_geofence=False,
-                )
-                # 5 điểm LocationHistory (route carepartner đã đi)
-                for j in range(5):
-                    LocationHistory.objects.create(
-                        task=t, worker=w,
-                        latitude=Decimal(str(10.7897 + j * 0.0002)),
-                        longitude=Decimal(str(106.6883 + j * 0.0002)),
-                        accuracy=5.0, speed=1.2,
-                    )
-                # Heartbeat online
-                DeviceHeartbeat.objects.create(
-                    task=t, worker=w, last_seen=now - timedelta(seconds=15),
-                    last_location_lat=Decimal("10.7897"),
-                    last_location_lng=Decimal("106.6883"),
-                    device_status="online",
-                    battery_level=85, app_state="foreground", network_type="wifi",
-                )
-            self.stdout.write(f"   + Tao consent + livelocation + history + heartbeat cho {len(in_progress_tasks)} in_progress task")
-
-            # 1 SOS alert active (test nút SOS)
-            if len(in_progress_tasks) > 0:
-                t0 = in_progress_tasks[0]
-                acc = TaskApplication.objects.filter(task=t0, status="accepted").first()
-                if acc:
-                    SOSAlert.objects.create(
-                        task=t0, sender="worker", sender_user=acc.worker,
-                        latitude=Decimal("10.7897"), longitude=Decimal("106.6883"),
-                        message="Be bi ngã, can ho tro khẩn cap!",
-                        status="active",
-                    )
-                    self.stdout.write("   + Tao 1 SOS alert ACTIVE (test nut SOS)")
-
-            # 1 DeviceOfflineAlert đã recovered (test luồng offline)
-            if len(in_progress_tasks) > 1:
-                t1 = in_progress_tasks[1]
-                acc = TaskApplication.objects.filter(task=t1, status="accepted").first()
-                if acc:
-                    DeviceOfflineAlert.objects.create(
-                        task=t1, worker=acc.worker,
-                        last_seen=now - timedelta(minutes=10),
-                        last_location_lat=Decimal("10.7897"),
-                        last_location_lng=Decimal("106.6883"),
-                        status="recovered",
-                        push_sent=True, push_sent_at=now - timedelta(minutes=9),
-                        recovered_at=now - timedelta(minutes=8),
-                        recovery_duration_seconds=120,
-                    )
-                    self.stdout.write("   + Tao 1 DeviceOfflineAlert RECOVERED (test luong offline)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! Tracking seed loi: {e}"))
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 9: PAYMENTS (Escrow + Cash + Settlement + Log)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[9/10] Dang tao du lieu Payments (escrow, cash, settlement)...")
-
-        try:
-            from payments.models import Payment, CommissionSettlement, PaymentLog
-            from decimal import Decimal as D
-
-            payment_count = 0
-            # COMPLETED tasks → đã thanh toán (cash + momo_escrow)
-            for idx, t in enumerate(completed_tasks):
-                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
-                if not acc:
-                    continue
-                method = "cash" if idx % 2 == 0 else "momo_escrow"
-                amt = D(str(t.price))
-                commission = (amt * D("0.20")).quantize(D("1"))
-                payout = amt - commission
-                p = Payment.objects.create(
-                    task=t, parent=t.parent, worker=acc.worker,
-                    amount=amt, commission_rate=D("0.2000"),
-                    commission_amount=commission, worker_payout_amount=payout,
-                    method=method, status="completed",
-                    momo_order_id=f"EduCareLink_{t.id}_{int(now.timestamp())}" if method == "momo_escrow" else None,
-                    momo_trans_id=f"405{t.id:08d}" if method == "momo_escrow" else None,
-                    held_at=now - timedelta(days=5) if method == "momo_escrow" else None,
-                    completed_at=now - timedelta(days=3),
-                )
-                PaymentLog.objects.create(
-                    payment=p, event_type="payment_created",
-                    message=f"Tao thanh toan {method}",
-                )
-                if method == "momo_escrow":
-                    PaymentLog.objects.create(payment=p, event_type="momo_ipn_held", message="MoMo da giu tien")
-                    PaymentLog.objects.create(payment=p, event_type="escrow_released", message="Giai ngan cho carepartner")
-                else:
-                    PaymentLog.objects.create(payment=p, event_type="cash_recorded", message="Ghi nhan hoa hong tien mat")
-                payment_count += 1
-
-            # 1 Payment held (escrow đang chờ)
-            if len(in_progress_tasks) > 0:
-                t0 = in_progress_tasks[0]
-                acc = TaskApplication.objects.filter(task=t0, status="accepted").first()
-                if acc:
-                    amt = D(str(t0.price))
-                    commission = (amt * D("0.20")).quantize(D("1"))
-                    p = Payment.objects.create(
-                        task=t0, parent=t0.parent, worker=acc.worker,
-                        amount=amt, commission_rate=D("0.20"),
-                        commission_amount=commission, worker_payout_amount=amt - commission,
-                        method="momo_escrow", status="held",
-                        momo_order_id=f"EduCareLink_{t0.id}_held",
-                        momo_trans_id=f"405{t0.id:08d}",
-                        momo_pay_url="https://testing.momo.vn/v2/gateway/pay?t=T",
-                        held_at=now - timedelta(hours=2),
-                    )
-                    PaymentLog.objects.create(payment=p, event_type="momo_ipn_held", message="Tien dang giu, cho task hoan thanh")
-                    payment_count += 1
-
-            # CommissionSettlement: kỳ thanh toán tháng trước (đã paid)
-            if worker_ref:
-                CommissionSettlement.objects.create(
-                    worker=worker_ref,
-                    period_year=now.year, period_month=now.month - 1 if now.month > 1 else 12,
-                    total_tasks=2, total_amount=D("96000"),
-                    task_ids=[1, 2], status="paid",
-                    momo_order_id="settle_demo_001",
-                    momo_pay_url="https://testing.momo.vn/v2/gateway/pay?t=S",
-                    generated_at=now - timedelta(days=10),
-                    paid_at=now - timedelta(days=5),
-                )
-                payment_count += 1
-            self.stdout.write(f"   + Tao {payment_count} ban ghi payment (escrow + cash + settlement)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! Payments seed loi: {e}"))
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 10: CREDENTIALS + PROFILE CHANGE REQUESTS + COMPLAINTS
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[10/10] Dang tao Credentials + ProfileChange + Complaints...")
-
-        # CredentialSubmission: 1 pending (chờ admin duyệt) + 1 approved
-        try:
-            if w3:
-                CredentialSubmission.objects.create(
-                    worker=w3, description="Chung chi nau an Viet - Asia cap 2",
-                    status="pending",
-                )
-            if w1:
-                CredentialSubmission.objects.create(
-                    worker=w1,
-                    description="Chung chi IELTS 7.0 + Bang tot nghiep Su Pham Toan",
-                    status="approved", admin_review="Bằng cấp hợp lệ, đã xác thực.",
-                    reviewed_at=now - timedelta(days=2),
-                )
-            self.stdout.write("   + Tao 2 CredentialSubmission (1 pending + 1 approved)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! Credential seed loi: {e}"))
-
-        # ProfileChangeRequest: 1 pending (worker yêu cầu sửa hồ sơ)
-        try:
-            if w2:
-                ProfileChangeRequest.objects.create(
-                    worker=w2,
-                    proposed_changes={"phone_number": "0987001999", "address": "So 5 Duong Le Loi, Q1, TP.HCM"},
-                    status="pending",
-                )
-            self.stdout.write("   + Tao 1 ProfileChangeRequest (pending)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! ProfileChange seed loi: {e}"))
-
-        # Complaints: 1 pending + 1 investigating (AI đã phân tích)
-        try:
-            from moderation.models import Complaint
-            if len(completed_tasks) > 0 and w1:
-                Complaint.objects.create(
-                    complainant=w1, reported_user=completed_tasks[0].parent,
-                    task=completed_tasks[0],
-                    complaint_type="non_payment",
-                    title="Tre hen thanh toan hon 7 ngay",
-                    description="Toi da hoan thanh cong viec don dep nha nhung phu huynh chua thanh toan day du, hen nhieu lan ma khong giu loi hua.",
-                    status="pending", priority="high",
-                    ai_analyzed=True,
-                    ai_analysis="AI phan tich: co ban co task completed nhung chua co ban ghi Payment completed. De xuat uu tien HIGH.",
-                    ai_priority="high",
-                )
-            if len(completed_tasks) > 1 and w4:
-                Complaint.objects.create(
-                    complainant=w4, reported_user=completed_tasks[1].parent,
-                    task=completed_tasks[1],
-                    complaint_type="harassment",
-                    title="Co bat dac di khi dang lam viec",
-                    description="Phu huynh co nhung loi noi khong phu hop, bat toi lam ngoai thoa thuan.",
-                    status="investigating", priority="urgent",
-                    ai_analyzed=True,
-                    ai_analysis="AI phan tich: co dau hieu quay roi, de xuat URGENT, can dieu tra ngay.",
-                    ai_priority="urgent",
-                )
-            self.stdout.write("   + Tao 2 Complaint (1 pending + 1 investigating)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! Complaint seed loi: {e}"))
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 11: WORKER AVAILABILITY (A2 — Lịch rảnh CarePartner)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[11/12] Dang tao Worker Availability (lich ranh)...")
-
-        try:
-            from core.models import WorkerAvailability
-
-            avail_data = [
-                {"worker": w1, "weekday": 2, "start_time": "14:00", "end_time": "20:00"},
-                {"worker": w1, "weekday": 4, "start_time": "14:00", "end_time": "20:00"},
-                {"worker": w1, "weekday": 6, "start_time": "08:00", "end_time": "17:00"},
-                {"worker": w2, "weekday": 1, "start_time": "07:00", "end_time": "18:00"},
-                {"worker": w2, "weekday": 3, "start_time": "07:00", "end_time": "18:00"},
-                {"worker": w2, "weekday": 5, "start_time": "07:00", "end_time": "18:00"},
-                {"worker": w3, "weekday": 2, "start_time": "10:00", "end_time": "14:00"},
-                {"worker": w3, "weekday": 4, "start_time": "10:00", "end_time": "14:00"},
-                {"worker": w4, "weekday": 1, "start_time": "13:00", "end_time": "17:00"},
-                {"worker": w4, "weekday": 3, "start_time": "13:00", "end_time": "17:00"},
-                {"worker": w4, "weekday": 5, "start_time": "08:00", "end_time": "12:00"},
-            ]
-            if w_test:
-                avail_data += [
-                    {"worker": w_test, "weekday": 1, "start_time": "08:00", "end_time": "20:00"},
-                    {"worker": w_test, "weekday": 2, "start_time": "08:00", "end_time": "20:00"},
-                    {"worker": w_test, "weekday": 3, "start_time": "08:00", "end_time": "20:00"},
-                    {"worker": w_test, "weekday": 4, "start_time": "08:00", "end_time": "20:00"},
-                    {"worker": w_test, "weekday": 5, "start_time": "08:00", "end_time": "20:00"},
-                ]
-            avail_count = 0
-            for ad in avail_data:
                 WorkerAvailability.objects.update_or_create(
-                    worker=ad["worker"], weekday=ad["weekday"],
-                    defaults={"start_time": ad["start_time"], "end_time": ad["end_time"]},
+                    worker=cp, weekday=wd + 1, defaults={"start_time": "08:00", "end_time": "12:00"}
                 )
-                avail_count += 1
-            self.stdout.write(f"   + Tao {avail_count} WorkerAvailability (lich ranh cho 5 carepartner)")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! WorkerAvailability seed loi: {e}"))
-
-        # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 12: CARE DIARY ENTRIES (B1 — Nhật ký chăm sóc)
-        # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[12/12] Dang tao Care Diary entries (nhat ky cham soc)...")
-
-        try:
-            from care_diary.models import CareDiaryEntry, CareDiaryActivity
-
-            diary_count = 0
-            activity_count = 0
-            # COMPLETED tasks có accepted worker → tạo diary entries
-            for idx, t in enumerate(completed_tasks):
-                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
-                if not acc:
-                    continue
-
-                # Task đã completed trong quá khứ → diary có scheduled_time = task.scheduled_time
-                mood_icons = ["😊", "😐", "😔", "🙅"]
-                mood_labels = ["Vui vẻ", "Bình thường", "Hài lòng", "Tủ chức"]
-                entry = CareDiaryEntry.objects.create(
-                    task=t, worker=acc.worker,
-                    mood_icon=mood_icons[idx % 4],
-                    mood_label=mood_labels[idx % 4],
-                    completion_percent=100,
-                    note=[
-                        "Hoan thanh tot. Be hoc tiep nhanh, co tien bo ve nha. Phu huynh hai long.",
-                        "Mua sam day du, giao hang dung hen. Se lien lac lai tuan sau.",
-                        "Cham soc tot, be thich co. Nen chu y them ve gio ngu va an vat.",
-                        "Don be dung gio, giau thuan. Nen nac nhe them ve an toan giao thong.",
-                        "Nau an ngon, be an nhieu hon binh thuong. Con chua duoc mo, lan sau se cai thien.",
-                    ][min(idx, 4)],
+            # Lịch chiều tối T3, T5, T7, CN (14:00 - 20:00)
+            for wd in [1, 3, 5, 6]:
+                CarePartnerAvailability.objects.update_or_create(
+                    carepartner=cp, weekday=wd, time_from=datetime.time(14, 0), time_to=datetime.time(20, 0)
                 )
-                diary_count += 1
-
-                # Tạo activities cho mỗi entry
-                act_templates = [
-                    ["15:00", "Dạy bài tập", "completed"],
-                    ["16:00", "Cho bé ăn vặt", "completed"],
-                    ["16:30", "Vận động ngoài trời", "completed"],
-                    ["17:00", "Tắm rửa", "completed"],
-                    ["17:30", "Dỗ bé ngủ", "completed"],
-                ]
-                for j, (act_time, act_title, act_status) in enumerate(act_templates):
-                    CareDiaryActivity.objects.create(
-                        entry=entry,
-                        time=act_time,
-                        title=act_title,
-                        status=act_status if j < (idx + 1) else "skipped",
-                        order=j,
-                    )
-                    activity_count += 1
-
-            # IN_PROGRESS tasks → tạo diary entry cho carepartner đang làm
-            for t in in_progress_tasks:
-                acc = TaskApplication.objects.filter(task=t, status="accepted").first()
-                if not acc:
-                    continue
-                entry = CareDiaryEntry.objects.create(
-                    task=t, worker=acc.worker,
-                    mood_icon="😊",
-                    mood_label="Vui vẻ",
-                    completion_percent=60 if t.id == in_progress_tasks[0].id else 30,
-                    note="Dang thuc hien viec, se cap nhat sau khi hoan thanh.",
+                WorkerAvailability.objects.update_or_create(
+                    worker=cp, weekday=wd + 1, defaults={"start_time": "14:00", "end_time": "20:00"}
                 )
-                diary_count += 1
-                CareDiaryActivity.objects.create(entry=entry, time="14:00", title="Bắt đầu dạy", status="done", order=0)
-                CareDiaryActivity.objects.create(entry=entry, time="15:30", title="Cho bé ăn vặt", status="partial", order=1)
-                activity_count += 2
 
-            # OPEN tasks → chưa có diary (đúng logic)
-            self.stdout.write(f"   + Tao {diary_count} CareDiaryEntry + {activity_count} CareDiaryActivity")
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"   ! CareDiary seed loi: {e}"))
+        # 1 Ngày bận đột xuất (Blackout) cho Tuấn Kiệt (lý do: thi cuối kỳ)
+        CarePartnerBlackout.objects.update_or_create(
+            carepartner=worker_dict["carepartner_tuankiet"],
+            date=today + timedelta(days=4),
+            defaults={"reason": "exam", "note": "Bận thi môn Giải tích 2 tại trường cả ngày"}
+        )
+        self.stdout.write("   + Đã thiết lập lịch rảnh lặp tuần cho các CarePartner & 1 Blackout ngày bận.")
 
         # ═══════════════════════════════════════════════════════════════
-        #  TỔNG KẾT
+        #  PHẦN 6: FLOW 1 — BÀI ĐĂNG VIỆC (JOBPOST) & GHÉP CẶP (BOOKING)
         # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n" + "=" * 64)
-        self.stdout.write("  RESET DU LIEU HOAN TAT - SAN SANG CHO BAN GIAM KHAO!")
-        self.stdout.write("=" * 64)
-        self.stdout.write(f"""
-  Thong ke database hien tai:
-    - Danh muc dich vu : {ServiceCategory.objects.count()} muc
-    - Tong nguoi dung  : {User.objects.count()} tai khoan
-    - Tong cong viec   : {Task.objects.count()} viec
-    - Tong ung tuyen   : {TaskApplication.objects.count()} lan
-    - Tong danh gia    : {Review.objects.count()} danh gia
-    - Tong thong bao   : {Notification.objects.count()} thong bao
+        self.stdout.write("\n[6/12] Tạo bài đăng việc Flow 1, JobSlot & Booking các trường hợp...")
 
-  ╔══════════════════════════════════════════════════════════════╗
-  ║ 3 TAI KHOAN BAO VE (KHONG BI XOA / KHONG BI THAY DOI)        ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║ admin            | Admin EduCareLink  (admin / {TEST_PASSWORD})║
-  ║ phuhuynh_test    | Phu huynh test     (phuhuynh_test / {TEST_PASSWORD})║
-  ║ sinhvien_test    | Carepartner test   (sinhvien_test / {TEST_PASSWORD})║
-  ╚══════════════════════════════════════════════════════════════╝
+        from matching.models import (
+            JobPost, JobSlot, Booking, CandidateProposal, EloLedger, Appeal
+        )
 
-  ╔══════════════════════════════════════════════════════════════╗
-  ║ DU LIEU MAU MOI (mat khau: {TEST_PASSWORD})                            ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║ PHU HUYNH: phuhuynh_baolinh / phuhuynh_minhkhoi /           ║
-  ║            phuhuynh_yenchi / phuhuynh_congvinh               ║
-  ║ CAREPARTNER (da duyet): carepartner_tuankiet / hoango /      ║
-  ║                         mylinh / phuoc                       ║
-  ║ CAREPARTNER (cho duyet): carepartner_pending_hai             ║
-  ║ TAI KHOAN BI KHOA: locked_test_2 (test mo khoa)              ║
-  ╚══════════════════════════════════════════════════════════════╝
+        # ── JOB 1: Gia sư Toán & Tiếng Anh lớp 7 (Đang tìm ứng viên - Matching) ──
+        job1 = JobPost.objects.create(
+            parent=parent_test,
+            job_type=JobPost.JobType.TUTORING,
+            title="Gia sư Toán & Tiếng Anh lớp 7 — 3 buổi/tuần",
+            description="Bé chuẩn bị thi giữa kỳ, cần sinh viên sư phạm kiên nhẫn củng cố ngữ pháp tiếng Anh và giải toán hình học.",
+            hourly_rate_vnd=150000,
+            status="matching",
+            latitude=parent_test.latitude,
+            longitude=parent_test.longitude,
+            location_note="Tầng 12, Căn hộ A12-04",
+            type_data={"subject": "Toán & Tiếng Anh", "grade": "Lớp 7", "sessions_per_week": 3},
+            total_matched=3,
+        )
+        for d_offset in [1, 3, 5]:
+            JobSlot.objects.create(
+                job=job1, date=today + timedelta(days=d_offset),
+                time_from=datetime.time(18, 30), time_to=datetime.time(20, 30),
+                status=JobSlot.SlotStatus.FREE
+            )
+        # Đề xuất ứng viên thuật toán ELO
+        CandidateProposal.objects.create(job=job1, carepartner=worker_test, match_score=96, match_level="very_high")
+        CandidateProposal.objects.create(job=job1, carepartner=worker_dict["carepartner_tuankiet"], match_score=92, match_level="high")
+        CandidateProposal.objects.create(job=job1, carepartner=worker_dict["carepartner_hoango"], match_score=88, match_level="high")
+        self.stdout.write(f"   + [Flow 1 Job 1] Gia sư Toán & Anh (matching) — {job1.id}")
+
+        # ── JOB 2: Trông trẻ tại nhà (Đã chọn, đang chờ cam kết - Awaiting Commitment) ──
+        job2 = JobPost.objects.create(
+            parent=parent_dict["phuhuynh_baolinh"],
+            job_type=JobPost.JobType.CHILDCARE,
+            title="Trông bé gái 4 tuổi chiều Chủ Nhật",
+            description="Gia đình đi tiệc cưới, cần cô giáo mầm non trông bé từ 14h-18h. Bé ngoan, thích tô màu và nghe kể chuyện.",
+            hourly_rate_vnd=120000,
+            status="matching",
+            latitude=parent_dict["phuhuynh_baolinh"].latitude,
+            longitude=parent_dict["phuhuynh_baolinh"].longitude,
+            location_note="Tòa Landmark 4",
+            type_data={"child_age": 4, "duties": ["cho_an", "to_mau", "ngu_trua"]},
+            selected_carepartner=worker_dict["carepartner_hoango"],
+        )
+        JobSlot.objects.create(
+            job=job2, date=today + timedelta(days=2),
+            time_from=datetime.time(14, 0), time_to=datetime.time(18, 0),
+            status=JobSlot.SlotStatus.LOCKED
+        )
+        booking2 = Booking.objects.create(
+            job=job2,
+            carepartner=worker_dict["carepartner_hoango"],
+            parent=parent_dict["phuhuynh_baolinh"],
+            status="awaiting_commitment",
+            selected_at=now - timedelta(minutes=10),
+            commit_deadline=now + timedelta(minutes=35), # Còn 35 phút để cam kết!
+            total_value_vnd=480000,
+        )
+        self.stdout.write(f"   + [Flow 1 Job 2] Trông trẻ (awaiting_commitment đếm ngược) — Booking: {booking2.id}")
+
+        # ── JOB 3: Đón trẻ tan trường (Đã cam kết, đang diễn ra - In Progress) ──
+        job3 = JobPost.objects.create(
+            parent=parent_dict["phuhuynh_minhkhoi"],
+            job_type=JobPost.JobType.PICKUP,
+            title="Đón bé trai lớp 3 trường Quốc Tế Á Châu về nhà",
+            description="Đón bé lúc 16h30 tại cổng trường Pasteur, đưa về căn hộ Sala an toàn, cho bé uống sữa và đợi ba mẹ về.",
+            hourly_rate_vnd=100000,
+            status="closed",
+            latitude=parent_dict["phuhuynh_minhkhoi"].latitude,
+            longitude=parent_dict["phuhuynh_minhkhoi"].longitude,
+            location_note="Đón tại cổng trường, đưa về căn hộ Khu Sala",
+            type_data={"pickup_point": "Trường QT Á Châu, Q.1", "dropoff_point": "Khu Sala, Q.2"},
+            selected_carepartner=worker_dict["carepartner_phuoc"],
+        )
+        JobSlot.objects.create(
+            job=job3, date=today,
+            time_from=datetime.time(16, 30), time_to=datetime.time(18, 0),
+            status=JobSlot.SlotStatus.LOCKED
+        )
+        booking3 = Booking.objects.create(
+            job=job3,
+            carepartner=worker_dict["carepartner_phuoc"],
+            parent=parent_dict["phuhuynh_minhkhoi"],
+            status="in_progress",
+            selected_at=now - timedelta(hours=3),
+            commit_deadline=now - timedelta(hours=1),
+            committed_at=now - timedelta(hours=2),
+            started_at=now - timedelta(minutes=30),
+            total_value_vnd=150000,
+        )
+        self.stdout.write(f"   + [Flow 1 Job 3] Đón trẻ (in_progress) — Booking: {booking3.id}")
+
+        # ── JOB 4: Gia sư Tiếng Anh (Đã hoàn thành xuất sắc - Completed) ──
+        job4 = JobPost.objects.create(
+            parent=parent_dict["phuhuynh_yenchi"],
+            job_type=JobPost.JobType.TUTORING,
+            title="Gia sư Tiếng Anh giao tiếp cho bé 8 tuổi",
+            description="Luyện phát âm chuẩn IPA và phản xạ giao tiếp tiếng Anh qua trò chơi tương tác.",
+            hourly_rate_vnd=160000,
+            status="closed",
+            selected_carepartner=worker_test,
+        )
+        JobSlot.objects.create(
+            job=job4, date=today - timedelta(days=2),
+            time_from=datetime.time(19, 0), time_to=datetime.time(21, 0),
+            status=JobSlot.SlotStatus.DONE
+        )
+        booking4 = Booking.objects.create(
+            job=job4,
+            carepartner=worker_test,
+            parent=parent_dict["phuhuynh_yenchi"],
+            status="completed",
+            selected_at=now - timedelta(days=3),
+            commit_deadline=now - timedelta(days=3, hours=-2),
+            committed_at=now - timedelta(days=3, hours=-1),
+            started_at=now - timedelta(days=2, hours=2),
+            ended_at=now - timedelta(days=2),
+            total_value_vnd=320000,
+            elo_delta_applied=15,
+        )
+        EloLedger.objects.create(
+            carepartner=worker_test, booking=booking4, delta=15,
+            reason_code="job_completed", elo_before=1505, elo_after=1520,
+            note="Hoàn thành xuất sắc buổi dạy Tiếng Anh"
+        )
+        self.stdout.write(f"   + [Flow 1 Job 4] Gia sư (completed +15 ELO) — Booking: {booking4.id}")
+
+        # ── JOB 5: Trông trẻ (CarePartner hủy ca sát giờ & Kháng cáo ELO - Appeal) ──
+        job5 = JobPost.objects.create(
+            parent=parent_dict["phuhuynh_congvinh"],
+            job_type=JobPost.JobType.CHILDCARE,
+            title="Trông bé tối thứ 6",
+            description="Trông bé 3 tuổi từ 18h-21h.",
+            hourly_rate_vnd=100000,
+            status="closed",
+            selected_carepartner=worker_dict["carepartner_tuankiet"],
+        )
+        booking5 = Booking.objects.create(
+            job=job5,
+            carepartner=worker_dict["carepartner_tuankiet"],
+            parent=parent_dict["phuhuynh_congvinh"],
+            status="cancelled_by_carepartner",
+            selected_at=now - timedelta(days=1, hours=6),
+            commit_deadline=now - timedelta(days=1, hours=4),
+            committed_at=now - timedelta(days=1, hours=5),
+            cancelled_at=now - timedelta(days=1, hours=1),
+            cancelled_by="carepartner",
+            cancel_reason_code="broken_vehicle",
+            cancel_class="normal_cancel",
+            cancel_note="Bị thủng lốp và hỏng nhông xích trên cầu Sài Gòn lúc 17h, không kịp đến điểm hẹn.",
+            total_value_vnd=300000,
+            compensation_vnd=120000, # Đền bù 40% (T3)
+            elo_delta_applied=-60,
+        )
+        EloLedger.objects.create(
+            carepartner=worker_dict["carepartner_tuankiet"], booking=booking5, delta=-60,
+            reason_code="T3", elo_before=1540, elo_after=1480,
+            note="Phạt T3 do hủy việc trước giờ làm 2 tiếng"
+        )
+        # Đơn kháng cáo ELO chờ Admin duyệt!
+        Appeal.objects.create(
+            booking=booking5,
+            carepartner=worker_dict["carepartner_tuankiet"],
+            reason_code="broken_vehicle",
+            note="Kính gửi Admin, em bị tai nạn nhẹ hỏng xe trên đường đến nhà phụ huynh, có hóa đơn sửa xe của tiệm kèm theo. Kính mong Admin xem xét giảm trừ mức phạt ELO vì lý do bất khả kháng ạ.",
+            status="pending",
+        )
+        self.stdout.write(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 7: CORE TASKS (12 CÔNG VIỆC ĐỦ TẤT CẢ TRẠNG THÁI)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[7/12] Tạo 12 công việc Core Tasks (open, in_progress, completed, cancelled)...")
+
+        tasks_configs = [
+            # ── OPEN TASKS (4) ──
+            {
+                "key": "t1", "title": "Gia sư Vật Lý lớp 10 — 2 buổi/tuần (Thứ 3 & Thứ 5)",
+                "description": "Bé bị hổng kiến thức phần Động lực học chất điểm, cần sinh viên Bách Khoa hoặc Sư Phạm kiên nhẫn giảng lại lý thuyết và hướng dẫn giải bài tập.",
+                "price": 250000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_baolinh"],
+                "loc": "Chung cư Vinhomes Central Park, Quận Bình Thạnh, TP.HCM",
+                "lat": 10.7932, "lng": 106.7218, "status": "open", "scheduled": now + timedelta(days=2),
+                "applicants": ["carepartner_tuankiet", "sinhvien_test", "carepartner_phuoc"],
+            },
+            {
+                "key": "t2", "title": "[GẤP] Đón bé lớp 2 tan trường Nguyễn Du chiều Thứ 6",
+                "description": "Cần bạn đón bé lúc 16h30 từ trường về chung cư Sunview. Nhà cách trường 2km. Yêu cầu có xe máy an toàn, đội nón bảo hiểm cho bé.",
+                "price": 120000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_minhkhoi"],
+                "loc": "Trường Tiểu Học Nguyễn Du, Quận 10, TP.HCM",
+                "lat": 10.7712, "lng": 106.6625, "status": "open", "scheduled": now + timedelta(days=1),
+                "applicants": ["carepartner_phuoc", "carepartner_hoango"],
+            },
+            {
+                "key": "t3", "title": "Dọn dẹp tổng vệ sinh căn hộ 2 phòng ngủ cuối tuần",
+                "description": "Căn hộ 75m2 cần lau sàn, lau kính, vệ sinh kỹ khu vực bếp và 2 phòng tắm. Dụng cụ và hóa chất tẩy rửa gia đình chuẩn bị sẵn.",
+                "price": 300000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_yenchi"],
+                "loc": "Căn hộ The Manor, 91 Nguyễn Hữu Cảnh, Bình Thạnh, TP.HCM",
+                "lat": 10.7911, "lng": 106.7164, "status": "open", "scheduled": now + timedelta(days=4),
+                "applicants": ["carepartner_mylinh"],
+            },
+            {
+                "key": "t4", "title": "Trông bé 3 tuổi buổi sáng Thứ Bảy (08:00 - 11:30)",
+                "description": "Mẹ có cuộc họp online, cần người chơi cùng bé, cho bé uống sữa và hướng dẫn bé xếp hình gỗ. Bé rất ngoan và dễ gần.",
+                "price": 220000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
+                "loc": "120 Lê Văn Sỹ, Phường 10, Phú Nhuận, TP.HCM",
+                "lat": 10.7925, "lng": 106.6732, "status": "open", "scheduled": now + timedelta(days=3),
+                "applicants": [], # 0 applicants (việc mới tinh)
+            },
+
+            # ── IN_PROGRESS TASKS (3) ──
+            {
+                "key": "t5", "title": "[TEST DEMO] Trông bé 5 tuổi chiều Thứ 7 & Dạy vẽ màu nước",
+                "description": "Công việc chính của tài khoản test: trông bé trai 5 tuổi, hướng dẫn vẽ tranh sáng tạo và cho bé ăn xế chiều. Nhà có camera an ninh.",
+                "price": 280000, "cat": cats["Trông trẻ"], "parent": parent_test,
+                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
+                "lat": 10.7769, "lng": 106.7009, "status": "in_progress", "scheduled": now + timedelta(hours=2),
+                "accepted_worker": "sinhvien_test",
+                "geofence": {"lat": 10.7769, "lng": 106.7009, "radius": 500},
+            },
+            {
+                "key": "t6", "title": "Nấu bữa cơm tối gia đình 4 người (món thuần Việt)",
+                "description": "Nấu canh chua cá lóc, thịt kho tiêu và rau củ luộc kho quẹt. Nguyên liệu sạch đã mua sẵn trong tủ lạnh.",
+                "price": 250000, "cat": cats["Nấu ăn"], "parent": parent_dict["phuhuynh_baolinh"],
+                "loc": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+                "lat": 10.7932, "lng": 106.7218, "status": "in_progress", "scheduled": now + timedelta(hours=1),
+                "accepted_worker": "carepartner_mylinh",
+                "geofence": {"lat": 10.7932, "lng": 106.7218, "radius": 400},
+            },
+            {
+                "key": "t7", "title": "Đón bé trường Tiểu học Lê Ngọc Hân về nhà (có SOS)",
+                "description": "Đón bé 7 tuổi từ trường về nhà. CarePartner đang thực hiện nhiệm vụ đón bé trên đường.",
+                "price": 100000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_yenchi"],
+                "loc": "Trường Tiểu Học Lê Ngọc Hân, Quận 1, TP.HCM",
+                "lat": 10.7745, "lng": 106.6961, "status": "in_progress", "scheduled": now - timedelta(minutes=20),
+                "accepted_worker": "carepartner_phuoc",
+                "geofence": {"lat": 10.7785, "lng": 106.6912, "radius": 600},
+            },
+
+            # ── COMPLETED TASKS (4) ──
+            {
+                "key": "t8", "title": "Dọn dẹp nhà phố 3 tầng đón người thân về chơi",
+                "description": "Tổng vệ sinh 3 phòng ngủ, phòng khách và lau ban công sạch bóng. Đã hoàn thành xuất sắc.",
+                "price": 500000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_minhkhoi"],
+                "loc": "Khu đô thị Sala, TP. Thủ Đức, TP.HCM",
+                "lat": 10.7712, "lng": 106.7201, "status": "completed", "scheduled": now - timedelta(days=5),
+                "accepted_worker": "carepartner_mylinh",
+                "review": {"rating": 5, "comment": "Mỹ Linh làm việc rất chăm chỉ, tỉ mỉ từng góc nhà, cực kỳ sạch sẽ và đúng giờ. Rất hài lòng!"},
+                "payment_method": "momo_escrow",
+            },
+            {
+                "key": "t9", "title": "Đi siêu thị Emart mua thực phẩm và đồ chơi cho bé",
+                "description": "Mua sắm theo danh sách thực phẩm tươi sống và sữa bột cho bé, đối chiếu hóa đơn rõ ràng.",
+                "price": 150000, "cat": cats["Mua sắm hộ"], "parent": parent_dict["phuhuynh_congvinh"],
+                "loc": "Siêu thị Emart Phan Văn Trị, Gò Vấp, TP.HCM",
+                "lat": 10.8245, "lng": 106.6925, "status": "completed", "scheduled": now - timedelta(days=7),
+                "accepted_worker": "carepartner_tuankiet",
+                "review": {"rating": 5, "comment": "Tuấn Kiệt chọn đồ rất tươi ngon, hóa đơn đầy đủ và giao hàng rất nhanh chóng."},
+                "payment_method": "cash",
+            },
+            {
+                "key": "t10", "title": "[TEST DEMO] Trông 2 bé tối Thứ 7 tuần trước",
+                "description": "Trông 2 bé (4 tuổi và 7 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt.",
+                "price": 320000, "cat": cats["Trông trẻ"], "parent": parent_test,
+                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
+                "lat": 10.7769, "lng": 106.7009, "status": "completed", "scheduled": now - timedelta(days=4),
+                "accepted_worker": "sinhvien_test",
+                "review": {"rating": 5, "comment": "Chị Minh Anh chăm sóc 2 bé cực kỳ chu đáo, các bé rất thích và hỏi khi nào chị đến chơi tiếp. Nhất định sẽ thuê lại!"},
+                "payment_method": "momo_escrow",
+            },
+            {
+                "key": "t11", "title": "Gia sư Hóa học lớp 11 nâng cao luyện thi học kỳ",
+                "description": "Dạy kèm 2 buổi chuyên đề bài tập Axit Nitric và Hợp chất hữu cơ.",
+                "price": 260000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_baolinh"],
+                "loc": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+                "lat": 10.7932, "lng": 106.7218, "status": "completed", "scheduled": now - timedelta(days=8),
+                "accepted_worker": "carepartner_tuankiet",
+                "review": {"rating": 4, "comment": "Phương pháp dạy dễ hiểu, giải bài mẫu rõ ràng. Nhắc bé làm bài tập về nhà kỹ hơn một chút là hoàn hảo."},
+                "payment_method": "cash",
+            },
+
+            # ── CANCELLED TASK (1) ──
+            {
+                "key": "t12", "title": "Hướng dẫn bé lớp 4 dùng AI học vẽ và học từ vựng",
+                "description": "Phụ huynh hủy vì bé bị ốm phải nhập viện điều trị.",
+                "price": 200000, "cat": cats["Hỗ trợ AI"], "parent": parent_dict["phuhuynh_yenchi"],
+                "loc": "156 Nguyễn Đình Chiểu, Quận 3, TP.HCM",
+                "lat": 10.7785, "lng": 106.6912, "status": "cancelled", "scheduled": now - timedelta(days=3),
+            },
+        ]
+
+        task_dict = {}
+        for tc in tasks_configs:
+            gf = tc.get("geofence") or {}
+            t_obj = Task.objects.create(
+                title=tc["title"],
+                description=tc["description"],
+                price=tc["price"],
+                category=tc["cat"],
+                parent=tc["parent"],
+                location=tc["loc"],
+                latitude=tc["lat"],
+                longitude=tc["lng"],
+                status=tc["status"],
+                scheduled_time=tc["scheduled"],
+                geofence_lat=gf.get("lat"),
+                geofence_lng=gf.get("lng"),
+                geofence_radius=gf.get("radius"),
+            )
+            task_dict[tc["key"]] = t_obj
+
+            # Tạo applications cho open tasks
+            for ap_uname in tc.get("applicants", []):
+                TaskApplication.objects.create(
+                    task=t_obj, worker=worker_dict[ap_uname], status="pending"
+                )
+
+            # Tạo accepted application cho in_progress & completed
+            if "accepted_worker" in tc:
+                w_user = worker_dict[tc["accepted_worker"]]
+                TaskApplication.objects.create(
+                    task=t_obj, worker=w_user, status="accepted"
+                )
+
+            # Tạo review cho completed tasks
+            if "review" in tc:
+                rv = tc["review"]
+                Review.objects.create(
+                    task=t_obj, reviewer=t_obj.parent, reviewee=worker_dict[tc["accepted_worker"]],
+                    rating=rv["rating"], comment=rv["comment"]
+                )
+
+        self.stdout.write(f"   + Đã tạo 12 Core Tasks với ứng tuyển và đánh giá tương ứng.")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 8: TRACKING, GEOFENCE, HEARTBEAT & SOS ALERTS
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[8/12] Tạo dữ liệu Định vị trực tiếp (Live Tracking), SOS & Thiết bị...")
+
+        from tracking.models import (
+            LocationConsent, LiveLocation, LocationHistory,
+            DeviceHeartbeat, DeviceOfflineAlert, SOSAlert
+        )
+
+        # 1. Tracking cho Task 5 (phuhuynh_test ↔ sinhvien_test)
+        t5 = task_dict["t5"]
+        LocationConsent.objects.create(
+            task=t5, worker=worker_test, consent="granted",
+            granted_at=now - timedelta(hours=1)
+        )
+        LiveLocation.objects.create(
+            task=t5, worker=worker_test,
+            latitude=D("10.7769"), longitude=D("106.7009"),
+            accuracy=4.5, speed=0.0, heading=90.0,
+            is_outside_geofence=False,
+        )
+        for idx in range(5):
+            LocationHistory.objects.create(
+                task=t5, worker=worker_test,
+                latitude=D(str(10.7750 + idx * 0.0004)),
+                longitude=D(str(106.6990 + idx * 0.0004)),
+                accuracy=5.0, speed=1.5,
+                recorded_at=now - timedelta(minutes=30 - idx * 5)
+            )
+        DeviceHeartbeat.objects.create(
+            task=t5, worker=worker_test,
+            last_seen=now - timedelta(seconds=12),
+            last_location_lat=D("10.7769"), last_location_lng=D("106.7009"),
+            device_status="online", battery_level=88,
+            app_state="foreground", network_type="wifi"
+        )
+
+        # 2. Tracking cho Task 7 (Có cảnh báo SOS ACTIVE để test nút SOS)
+        t7 = task_dict["t7"]
+        w_phuoc = worker_dict["carepartner_phuoc"]
+        LocationConsent.objects.create(
+            task=t7, worker=w_phuoc, consent="granted",
+            granted_at=now - timedelta(minutes=30)
+        )
+        LiveLocation.objects.create(
+            task=t7, worker=w_phuoc,
+            latitude=D("10.7760"), longitude=D("106.6940"),
+            accuracy=6.0, speed=2.0, heading=180.0,
+            is_outside_geofence=False,
+        )
+        # ⚡ SOS ALERT ĐANG HOẠT ĐỘNG (ACTIVE)
+        SOSAlert.objects.create(
+            task=t7, sender="worker", sender_user=w_phuoc,
+            latitude=D("10.7760"), longitude=D("106.6940"),
+            message="Bé bị sốt cao 39 độ đột ngột tại cổng trường, em đang chườm ấm và xin ý kiến phụ huynh gấp!",
+            status="active",
+        )
+        # 1 SOS Alert đã giải quyết xong trong quá khứ
+        SOSAlert.objects.create(
+            task=task_dict["t10"], sender="parent", sender_user=parent_test,
+            latitude=D("10.7769"), longitude=D("106.7009"),
+            message="Kiểm tra nhầm nút SOS khẩn cấp, bé vẫn chơi bình thường.",
+            status="resolved", resolved_at=now - timedelta(days=4), resolved_by=admin_user
+        )
+
+        # 1 Cảnh báo mất kết nối đã phục hồi (DeviceOfflineAlert recovered)
+        DeviceOfflineAlert.objects.create(
+            task=t5, worker=worker_test,
+            last_seen=now - timedelta(minutes=15),
+            last_location_lat=D("10.7769"), last_location_lng=D("106.7009"),
+            status="recovered", push_sent=True, push_sent_at=now - timedelta(minutes=14),
+            recovered_at=now - timedelta(minutes=12), recovery_duration_seconds=120,
+        )
+        self.stdout.write("   + Đã tạo LiveLocation, vệt hành trình GPS, Heartbeat online & SOS Alert (ACTIVE + RESOLVED).")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 9: PAYMENTS (MOMO ESCROW, TIỀN MẶT & QUYẾT TOÁN THÁNG)
+        # ═══════════════════════════════════════════════════════════════
+        self.stdout.write("\n[9/12] Tạo thanh toán MoMo Escrow, Tiền mặt & Quyết toán hoa hồng...")
+
+        from payments.models import Payment, CommissionSettlement, PaymentLog
+
+        # 1. MoMo Escrow HELD (Task 5 - in_progress)
+        amt_t5 = D(str(t5.price))
+        comm_t5 = (amt_t5 * D("0.20")).quantize(D("1"))
+        p_held = Payment.objects.create(
+            task=t5, parent=t5.parent, worker=worker_test,
+            amount=amt_t5, commission_rate=D("0.2000"),
+            commission_amount=comm_t5, worker_payout_amount=amt_t5 - comm_t5,
+            method="momo_escrow", status="held",
+            momo_order_id=f"EduCareLink_{t5.id}_held",
+            momo_trans_id=f"405{t5.id:08d}",
+            momo_pay_url="https://testing.momo.vn/v2/gateway/pay?t=TEST",
+            held_at=now - timedelta(hours=1),
+        )
+        PaymentLog.objects.create(payment=p_held, event_type="payment_created", message="Tạo lệnh ký quỹ MoMo Escrow")
+        PaymentLog.objects.create(payment=p_held, event_type="momo_ipn_held", message="MoMo IPN xác nhận giữ tiền thành công")
+
+        # 2. MoMo Escrow COMPLETED (Task 8 & Task 10)
+        for t_comp in [task_dict["t8"], task_dict["t10"]]:
+            acc = TaskApplication.objects.filter(task=t_comp, status="accepted").first()
+            amt = D(str(t_comp.price))
+            comm = (amt * D("0.20")).quantize(D("1"))
+            p_comp = Payment.objects.create(
+                task=t_comp, parent=t_comp.parent, worker=acc.worker,
+                amount=amt, commission_rate=D("0.2000"),
+                commission_amount=comm, worker_payout_amount=amt - comm,
+                method="momo_escrow", status="completed",
+                momo_order_id=f"EduCareLink_{t_comp.id}_done",
+                momo_trans_id=f"405{t_comp.id:08d}",
+                held_at=t_comp.scheduled_time - timedelta(hours=2),
+                completed_at=t_comp.scheduled_time + timedelta(hours=3),
+            )
+            PaymentLog.objects.create(payment=p_comp, event_type="payment_created", message="Tạo thanh toán MoMo")
+            PaymentLog.objects.create(payment=p_comp, event_type="momo_ipn_held", message="MoMo giữ tiền thành công")
+            PaymentLog.objects.create(payment=p_comp, event_type="escrow_released", message="Đã giải ngân 80% cho CarePartner")
+
+        # 3. Cash COMPLETED (Task 9 & Task 11)
+        for t_cash in [task_dict["t9"], task_dict["t11"]]:
+            acc = TaskApplication.objects.filter(task=t_cash, status="accepted").first()
+            amt = D(str(t_cash.price))
+            comm = (amt * D("0.20")).quantize(D("1"))
+            p_cash = Payment.objects.create(
+                task=t_cash, parent=t_cash.parent, worker=acc.worker,
+                amount=amt, commission_rate=D("0.2000"),
+                commission_amount=comm, worker_payout_amount=amt - comm,
+                method="cash", status="completed",
+                completed_at=t_cash.scheduled_time + timedelta(hours=2),
+            )
+            PaymentLog.objects.create(payment=p_cash, event_type="cash_recorded", message="Ghi nhận thanh toán tiền mặt và hoa hồng nền tảng")
+
+        # 4. Quyết toán hoa hồng tháng (CommissionSettlement)
+        # Tháng trước: ĐÃ THANH TOÁN (paid)
+        last_month = 12 if now.month == 1 else now.month - 1
+        last_year = now.year - 1 if now.month == 1 else now.year
+        CommissionSettlement.objects.create(
+            worker=worker_test,
+            period_year=last_year, period_month=last_month,
+            total_tasks=3, total_amount=D("180000"),
+            task_ids=[1, 2, 3], status="paid",
+            momo_order_id=f"settle_{last_year}_{last_month}_{worker_test.id}",
+            momo_trans_id="9988776655",
+            generated_at=now - timedelta(days=12),
+            paid_at=now - timedelta(days=8),
+        )
+        self.stdout.write("   + Đã tạo Payment MoMo Escrow (held + completed), Cash & Quyết toán hoa hồng tháng.")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 10: CỬA SỔ CHAT TRỰC TIẾP (CHAT CONVERSATION & MESSAGES)
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n[10/12] Tạo phiên Chat phụ huynh ↔ CarePartner và tin nhắn mẫu...")
+
+        from chat.models import Conversation, Message
+
+        # 1. Cửa sổ chat ĐANG MỞ cho Task 5 (phuhuynh_test ↔ sinhvien_test)
+        conv_open, _ = Conversation.objects.update_or_create(
+            task=t5,
+            defaults={
+                "parent": parent_test,
+                "worker": worker_test,
+                "status": "open",
+                "opens_at": now - timedelta(hours=1),
+                "closes_at": now + timedelta(hours=26),
+            }
+        )
+        chat_messages_data = [
+            (parent_test, "Chào em Minh Anh, chiều nay 14h em qua trông bé Bon giúp chị nhé. Chị có để sẵn sữa chua và hoa quả trên bàn bếp.", 45),
+            (worker_test, "Dạ em chào chị Nhung ạ! Em đã nhận được dặn dò của chị. Tầm 13h50 em sẽ có mặt đúng giờ ạ.", 40),
+            (parent_test, "Bé Bon hôm nay thích vẽ tranh lắm, em hướng dẫn bé tô màu nước giúp chị nha.", 35),
+            (worker_test, "Dạ vâng chị an tâm, em có mang theo cả tập tranh tô màu con vật ngộ nghĩnh cho bé đây rồi ạ.", 30),
+            (worker_test, "Chị ơi, em đã đến nhà an toàn và bé Bon đang hào hứng tô bức tranh chú gấu rồi chị nhé! 😊", 10),
+        ]
+        for sender, text, min_ago in chat_messages_data:
+            Message.objects.create(
+                conversation=conv_open,
+                sender=sender,
+                content=text,
+                read_at=now - timedelta(minutes=min_ago - 1)
+            )
+
+        # 2. Cửa sổ chat ĐÃ ĐÓNG (read-only) cho Task 10 (ca đã xong)
+        conv_closed, _ = Conversation.objects.update_or_create(
+            task=task_dict["t10"],
+            defaults={
+                "parent": parent_test,
+                "worker": worker_test,
+                "status": "closed",
+                "opens_at": now - timedelta(days=5),
+                "closes_at": now - timedelta(days=3),
+                "closed_at": now - timedelta(days=3),
+            }
+        )
+        Message.objects.create(
+            conversation=conv_closed, sender=worker_test,
+            content="Em đã cho 2 bé đi ngủ ngon lành lúc 21h30 rồi chị nhé. Chúc gia đình buổi tối vui vẻ ạ!",
+            read_at=now - timedelta(days=4)
+        )
+        Message.objects.create(
+            conversation=conv_closed, sender=parent_test,
+            content="Cảm ơn em nhiều nha Minh Anh, tiền chị đã xác nhận thanh toán rồi nhé!",
+            read_at=now - timedelta(days=4)
+        )
+        self._log("   + Đã tạo 2 cuộc hội thoại Chat (1 ĐANG MỞ với 5 tin nhắn + 1 ĐÃ ĐÓNG lưu lịch sử).")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 11: NHẬT KÝ CHĂM SÓC (CARE DIARY) & HOẠT ĐỘNG
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n[11/12] Tạo Nhật ký chăm sóc (Care Diary) theo ca...")
+
+        from care_diary.models import CareDiaryEntry, CareDiaryActivity
+
+        # 1. Nhật ký ca Task 10 (Hoàn thành 100%)
+        entry_t10 = CareDiaryEntry.objects.create(
+            task=task_dict["t10"], worker=worker_test,
+            mood_icon="😊", mood_label="Vui vẻ",
+            completion_percent=100,
+            note="Hai bé ngoan, ăn hết phần cháo thịt bằm và uống sữa đầy đủ. Bé lớn tự giác làm bài tập toán, bé nhỏ chơi lắp ghép Lego ngoan ngoãn.",
+            created_at=now - timedelta(days=4)
+        )
+        activities_t10 = [
+            ("18:00", "Đến nhà & Chào hỏi phụ huynh", "done", 0),
+            ("18:30", "Cho 2 bé ăn tối & uống nước ấm", "done", 1),
+            ("19:30", "Hướng dẫn bé lớn hoàn thành bài tập về nhà", "done", 2),
+            ("20:30", "Chơi trò chơi thông minh cùng bé nhỏ", "done", 3),
+            ("21:30", "Vệ sinh răng miệng & Đọc truyện dỗ bé ngủ", "done", 4),
+        ]
+        for a_time, a_title, a_status, a_order in activities_t10:
+            CareDiaryActivity.objects.create(
+                entry=entry_t10, time=a_time, title=a_title, status=a_status, order=a_order
+            )
+
+        # 2. Nhật ký ca Task 5 (Đang thực hiện 60%)
+        entry_t5 = CareDiaryEntry.objects.create(
+            task=t5, worker=worker_test,
+            mood_icon="🎨", mood_label="Hào hứng",
+            completion_percent=60,
+            note="Bé Bon rất tập trung pha màu nước, đã tô xong bức tranh chú gấu và chuẩn bị ăn xế chiều.",
+            created_at=now - timedelta(minutes=40)
+        )
+        CareDiaryActivity.objects.create(entry=entry_t5, time="14:00", title="Có mặt tại nhà bé & kiểm tra góc vẽ", status="done", order=0)
+        CareDiaryActivity.objects.create(entry=entry_t5, time="14:30", title="Dạy kỹ năng phối màu nước cơ bản", status="done", order=1)
+        CareDiaryActivity.objects.create(entry=entry_t5, time="16:00", title="Cho bé ăn bánh flan và uống sữa tươi", status="partial", order=2)
+        CareDiaryActivity.objects.create(entry=entry_t5, time="17:30", title="Dọn dẹp dụng cụ vẽ & bàn giao cho mẹ", status="partial", order=3)
+        self._log("   + Đã tạo Care Diary Entries (100% hoàn tất & 60% đang diễn ra).")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 12: QUẢN TRỊ ADMIN — MODERATION, KHIẾU NẠI & BẰNG CẤP
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n[12/12] Tạo dữ liệu Quản trị: Khiếu nại, Bằng cấp, Kiểm duyệt & Thông báo...")
+
+        from moderation.models import TaskModeration, Complaint
+
+        # 1. AI TaskModeration cho các task
+        for k, t in task_dict.items():
+            verdict = "approved"
+            if k == "t12":
+                verdict = "flagged"
+            TaskModeration.objects.update_or_create(
+                task=t,
+                defaults={
+                    "status": "approved" if verdict == "approved" else "needs_review",
+                    "ai_verdict": verdict,
+                    "ai_confidence": 0.95,
+                    "ai_suggestion": "Nội dung công việc rõ ràng, phù hợp quy chuẩn đạo đức và thuần phong mỹ tục.",
+                }
+            )
+
+        # 2. Khiếu nại (Complaints) — 3 trường hợp (pending, investigating, resolved)
+        # Case 1: PENDING — AI phân tích độ ưu tiên HIGH
+        Complaint.objects.create(
+            complainant=worker_dict["carepartner_tuankiet"],
+            reported_user=parent_dict["phuhuynh_baolinh"],
+            task=task_dict["t11"],
+            complaint_type="non_payment",
+            title="Phụ huynh chậm thanh toán tiền gia sư quá 5 ngày",
+            description="Em đã hoàn thành 2 buổi dạy Hóa kèm cho bé, phụ huynh hẹn thanh toán qua chuyển khoản nhưng đến nay vẫn chưa gửi.",
+            status="pending", priority="high",
+            ai_analyzed=True,
+            ai_analysis="Hệ thống kiểm tra: Buổi học đã hoàn thành ngày hôm trước nhưng bản ghi Payment chưa hoàn tất. Đề xuất ưu tiên HIGH, Admin gửi nhắc nhở phụ huynh.",
+            ai_priority="high",
+        )
+        # Case 2: INVESTIGATING — Tranh chấp phát sinh ngoài hợp đồng (URGENT)
+        Complaint.objects.create(
+            complainant=worker_dict["carepartner_mylinh"],
+            reported_user=parent_dict["phuhuynh_minhkhoi"],
+            task=task_dict["t8"],
+            complaint_type="exploitation",
+            title="Yêu cầu làm thêm việc ngoài thỏa thuận ban đầu",
+            description="Ban đầu thỏa thuận chỉ dọn căn hộ, nhưng khi đến nơi phụ huynh yêu cầu khiêng vác tủ gỗ nặng và dọn thêm sân thượng trời mưa.",
+            status="investigating", priority="urgent",
+            ai_analyzed=True,
+            ai_analysis="Có dấu hiệu vi phạm an toàn lao động và sai phạm vi công việc. Đề xuất URGENT để bảo vệ CarePartner.",
+            ai_priority="urgent",
+        )
+        # Case 3: RESOLVED — Đã giải quyết xong
+        Complaint.objects.create(
+            complainant=parent_dict["phuhuynh_yenchi"],
+            reported_user=worker_dict["carepartner_tuankiet"],
+            complaint_type="other",
+            title="Đến trễ 15 phút không báo trước",
+            description="Buổi học đầu tiên gia sư đến muộn 15 phút làm lỡ giờ cơm tối của bé.",
+            status="resolved", priority="low",
+            admin_response="Admin đã liên hệ nhắc nhở CarePartner Tuấn Kiệt nghiêm túc tuân thủ giờ giấc. CarePartner đã xin lỗi phụ huynh và bù thêm 30 phút vào buổi học sau.",
+            resolved_by=admin_user, resolved_at=now - timedelta(days=2)
+        )
+
+        # 3. Minh chứng Bằng cấp (CredentialSubmission) — pending, approved, rejected
+        CredentialSubmission.objects.create(
+            worker=worker_dict["carepartner_pending_hai"],
+            description="Chứng chỉ IELTS 7.0 Quốc Tế & Giấy khen Sinh viên Giỏi cấp Trường năm 2025",
+            status="pending"
+        )
+        CredentialSubmission.objects.create(
+            worker=worker_dict["carepartner_hoango"],
+            description="Bằng Cử Nhân Sư Phạm Mầm Non chính quy loại Giỏi — ĐH Sư Phạm TP.HCM",
+            status="approved",
+            admin_review="Bằng cấp hợp lệ, đã đối chiếu với cơ sở dữ liệu sinh viên của nhà trường.",
+            reviewed_at=now - timedelta(days=5)
+        )
+        CredentialSubmission.objects.create(
+            worker=worker_dict["carepartner_tuankiet"],
+            description="Ảnh chụp chứng chỉ tin học văn phòng (bị mờ, không thấy rõ số hiệu)",
+            status="rejected",
+            admin_review="Ảnh chứng chỉ bị mờ, không thấy rõ dấu giáp lai và số hiệu. Vui lòng chụp quét lại bản gốc rõ nét.",
+            reviewed_at=now - timedelta(days=3)
+        )
+
+        # 4. Yêu cầu đổi thông tin hồ sơ (ProfileChangeRequest) — pending
+        ProfileChangeRequest.objects.create(
+            worker=worker_dict["carepartner_tuankiet"],
+            proposed_changes={
+                "phone_number": "0987111999",
+                "address": "Ký túc xá Đại học Bách Khoa, 497 Hòa Hảo, Phường 7, Quận 10, TP.HCM"
+            },
+            status="pending",
+        )
+
+        # 5. Thông báo (Notification)
+        Notification.objects.create(
+            recipient=None, # Broadcast toàn hệ thống
+            title="Chào mừng bạn đến với phiên bản EduCareLink 2026!",
+            message="Nền tảng đã kích hoạt thuật toán ghép cặp thông minh ELO và hệ thống bảo vệ an toàn Live Tracking thời gian thực."
+        )
+        Notification.objects.create(
+            recipient=parent_test,
+            title="AI gợi ý: Có 3 CarePartner rất phù hợp với bé nhà bạn!",
+            message="Thuật toán ELO đã tìm thấy 3 ứng viên xuất sắc trong bán kính 3km có lịch rảnh khớp với yêu cầu của bạn."
+        )
+        Notification.objects.create(
+            recipient=worker_test,
+            title="Nhắc nhở ca làm chiều nay lúc 14:00",
+            message="Bạn có 1 ca làm trông bé chiều nay tại Quận 1. Đừng quên bật chia sẻ vị trí (Live Tracking) khi bắt đầu di chuyển nhé!"
+        )
+
+        self._log("   + Đã tạo đầy đủ Kiểm duyệt, Khiếu nại AI, Bằng cấp, Yêu cầu đổi hồ sơ & Thông báo.")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  TỔNG KẾT DỮ LIỆU
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n" + "=" * 72)
+        self._log("  RESET & SEED DỮ LIỆU THÀNH CÔNG RỰC RỠ — SẴN SÀNG CHO MỌI BÀI KIỂM THỬ!")
+        self._log("=" * 72)
+        self._log(f"""
+  📊 THỐNG KÊ DATABASE SAU KHI NẠP:
+    • Danh mục dịch vụ : {ServiceCategory.objects.count()} danh mục
+    • Tổng người dùng  : {User.objects.count()} tài khoản
+    • Tổng Core Tasks  : {Task.objects.count()} công việc (open, in_progress, completed, cancelled)
+    • Ứng tuyển & Review: {TaskApplication.objects.count()} ứng tuyển, {Review.objects.count()} đánh giá
+    • Flow 1 Ghép cặp  : {JobPost.objects.count()} JobPost, {Booking.objects.count()} Booking, {Appeal.objects.count()} Kháng cáo
+    • Ví Credit Phụ Huynh: {CreditBalance.objects.count()} ví credit hoạt động
+    • Hồ sơ ELO & Lịch : {CarePartnerProfile.objects.count()} profile ELO, {CarePartnerAvailability.objects.count()} ca rảnh tuần
+    • Live Tracking    : {LiveLocation.objects.count()} live GPS, {SOSAlert.objects.count()} SOS alerts
+    • Thanh toán       : {Payment.objects.count()} payments (MoMo escrow + Cash), {CommissionSettlement.objects.count()} quyết toán
+    • Chat trực tiếp   : {Conversation.objects.count()} cuộc hội thoại, {Message.objects.count()} tin nhắn trao đổi
+    • Nhật ký chăm sóc : {CareDiaryEntry.objects.count()} ca nhật ký, {CareDiaryActivity.objects.count()} mốc hoạt động
+    • Quản trị & AI    : {Complaint.objects.count()} khiếu nại, {CredentialSubmission.objects.count()} bằng cấp duyệt
+
+  🔑 THÔNG TIN TÀI KHOẢN ĐĂNG NHẬP THỬ NGHIỆM (MẬT KHẨU CHUNG: {TEST_PASSWORD}):
+  ┌─────────────────────────┬──────────────────────────┬────────────────────────────────────────────────────────┐
+  │ Tên đăng nhập (Username)│ Vai trò (Role)           │ Mô tả kịch bản kiểm thử                                │
+  ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
+  │ admin                   │ Quản trị viên (Staff/Su) │ Duyệt bằng cấp, xử lý khiếu nại, kháng cáo ELO, mở khóa│
+  │ phuhuynh_test           │ Phụ huynh kiểm thử chính │ Đang có đơn open, in_progress, chat mở, ví 2.500.000đ │
+  │ sinhvien_test           │ CarePartner kiểm thử     │ ĐH Sư Phạm, ELO 1520, có ca đang làm, live GPS, diary  │
+  ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
+  │ phuhuynh_baolinh        │ Phụ huynh mẫu (Vinhomes) │ Đơn trông trẻ đang đếm ngược cam kết (awaiting_commit) │
+  │ phuhuynh_minhkhoi       │ Phụ huynh mẫu (Sala Q2)  │ Đơn đón trẻ tan trường (in_progress), ví 3.200.000đ    │
+  │ phuhuynh_yenchi         │ Phụ huynh mẫu (Bác sĩ Q3)│ Đơn gia sư tiếng anh đã xong (completed +15 ELO)       │
+  │ phuhuynh_congvinh       │ Phụ huynh mẫu (Q.10)     │ Đơn bị hủy sát giờ có đền bù credit & đơn kháng cáo    │
+  ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
+  │ carepartner_tuankiet    │ CarePartner (ĐH Bách Khoa│ Gia sư Toán Lý, ELO 1480, có đơn kháng cáo hỏng xe     │
+  │ carepartner_hoango      │ CarePartner (ĐH Sư Phạm) │ Mầm non Montessori, ELO 1580, nhận việc trông bé 4 tuổi│
+  │ carepartner_mylinh      │ CarePartner (ĐH Kinh Tế) │ Nấu ăn dọn dẹp, ELO 1360, có khiếu nại ép làm thêm việc│
+  │ carepartner_phuoc       │ CarePartner (ĐH Y Dược)  │ Đón trẻ tan trường, có cảnh báo SOS bé sốt đang ACTIVE │
+  │ carepartner_pending_hai │ CarePartner (Chờ duyệt)  │ Hồ sơ mới đăng ký, bằng cấp đang chờ Admin duyệt       │
+  │ carepartner_locked_trung│ CarePartner (Tạm khóa)   │ Tài khoản bị khóa, dùng để Admin kiểm thử mở khóa      │
+  └─────────────────────────┴──────────────────────────┴────────────────────────────────────────────────────────┘
 """)
