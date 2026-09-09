@@ -711,6 +711,34 @@ class TierResponseContractTests(TestCase):
         self.worker.refresh_from_db()
         self.assertEqual(self.worker.tier, 'gold')
 
+    def test_admin_review_credential_never_promotes_parent(self):
+        """HỒI QUY gỡ tính năng "nâng cấp Parent → CarePartner":
+        submission legacy còn sót marker '[NÂNG CẤP]' khi được admin duyệt
+        KHÔNG được đổi role của user — view không còn khả năng đổi role,
+        chỉ bật is_verified như duyệt bằng cấp thường.
+        (Trước gỡ: nhánh is_upgrade đổi role='worker' + is_approved + BRONZE.)"""
+        parent_user = User.objects.create_user(
+            username='parent_legacy_marker', password='p', role='parent',
+        )
+        cred = CredentialSubmission.objects.create(
+            worker=parent_user,
+            description='[NÂNG CẤP] Phụ huynh đăng ký qua google muốn trở thành Carepartner.',
+            status='pending',
+        )
+        parent_user.is_verified = False
+        parent_user.save(update_fields=['is_verified'])
+
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            f'/api/admin/credential-submissions/{cred.id}/review/',
+            {'action': 'approve'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        parent_user.refresh_from_db()
+        self.assertEqual(parent_user.role, 'parent')  # trước gỡ: bị đổi thành 'worker'
+        self.assertTrue(parent_user.is_verified)      # hành vi duyệt bằng cấp thường giữ nguyên
+        self.assertFalse(parent_user.tier_override)
+
     def test_admin_review_credential_is_specialized_diamond_path(self):
         """Admin duyệt credential chuyên ngành + worker đủ jobs/rating → diamond."""
         for i in range(10):

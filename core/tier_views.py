@@ -8,10 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-import logging
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 
 from .models import User, Review, CredentialSubmission, Notification, TaskApplication
 
@@ -300,20 +297,9 @@ class AdminReviewCredentialAPIView(APIView):
             submission.save()
 
             worker = submission.worker
-            is_upgrade = '[NÂNG CẤP]' in (submission.description or '')
-
-            if is_upgrade:
-                worker.role = 'worker'
-                worker.is_approved = True
+            if not worker.is_verified:
                 worker.is_verified = True
-                worker.tier = User.CarePartnerTier.BRONZE
-                worker.tier_override = False
-                worker.save(update_fields=['role', 'is_approved', 'is_verified', 'tier', 'tier_override'])
-                logger.info('[Upgrade] %s upgraded to Carepartner by admin', worker.username)
-            else:
-                if not worker.is_verified:
-                    worker.is_verified = True
-                    worker.save(update_fields=['is_verified'])
+                worker.save(update_fields=['is_verified'])
 
             if isinstance(qualifications_update, list) and len(qualifications_update) > 0:
                 existing_quals = worker.qualifications if isinstance(worker.qualifications, list) else []
@@ -323,32 +309,18 @@ class AdminReviewCredentialAPIView(APIView):
                 worker.qualifications = existing_quals
                 worker.save(update_fields=['qualifications'])
 
-            if is_upgrade:
-                Notification.objects.create(
-                    recipient=worker,
-                    title='Đã được duyệt làm Carepartner!',
-                    message=f'Chúc mừng! Admin đã duyệt hồ sơ nâng cấp của bạn. Bạn nay đã là Carepartner. {submission.admin_review}',
-                )
-                if worker.expo_push_token:
-                    send_expo_push_notification(
-                        token=worker.expo_push_token,
-                        title='Đã được duyệt làm Carepartner!',
-                        body='Admin đã duyệt hồ sơ nâng cấp của bạn.',
-                        data={'type': 'upgrade_approved'},
-                    )
-            else:
-                Notification.objects.create(
-                    recipient=worker,
+            Notification.objects.create(
+                recipient=worker,
+                title='Bằng cấp đã được duyệt!',
+                message=f'Admin đã duyệt bằng cấp của bạn. {submission.admin_review}',
+            )
+            if worker.expo_push_token:
+                send_expo_push_notification(
+                    token=worker.expo_push_token,
                     title='Bằng cấp đã được duyệt!',
-                    message=f'Admin đã duyệt bằng cấp của bạn. {submission.admin_review}',
+                    body='Admin đã duyệt bằng cấp của bạn.',
+                    data={'type': 'credential_approved'},
                 )
-                if worker.expo_push_token:
-                    send_expo_push_notification(
-                        token=worker.expo_push_token,
-                        title='Bằng cấp đã được duyệt!',
-                        body='Admin đã duyệt bằng cấp của bạn.',
-                        data={'type': 'credential_approved'},
-                    )
 
             is_specialized = request.data.get('is_specialized', None)
             if is_specialized is not None:
@@ -375,39 +347,22 @@ class AdminReviewCredentialAPIView(APIView):
 
         elif action == 'reject':
             submission.status = 'rejected'
-            is_upgrade = '[NÂNG CẤP]' in (submission.description or '')
-            submission.admin_review = admin_review if admin_review else (
-                'Hồ sơ nâng cấp không đạt yêu cầu.' if is_upgrade else 'Bằng cấp không đạt yêu cầu.'
-            )
+            submission.admin_review = admin_review if admin_review else 'Bằng cấp không đạt yêu cầu.'
             submission.reviewed_at = timezone.now()
             submission.save()
 
-            if is_upgrade:
-                Notification.objects.create(
-                    recipient=submission.worker,
-                    title='Yêu cầu nâng cấp bị từ chối',
-                    message=f'Admin đã từ chối hồ sơ nâng cấp Carepartner của bạn. Lý do: {submission.admin_review}',
-                )
-                if submission.worker.expo_push_token:
-                    send_expo_push_notification(
-                        token=submission.worker.expo_push_token,
-                        title='Yêu cầu nâng cấp bị từ chối',
-                        body='Admin đã từ chối hồ sơ nâng cấp của bạn.',
-                        data={'type': 'upgrade_rejected'},
-                    )
-            else:
-                Notification.objects.create(
-                    recipient=submission.worker,
+            Notification.objects.create(
+                recipient=submission.worker,
+                title='Bằng cấp bị từ chối',
+                message=f'Admin đã từ chối bằng cấp của bạn. Lý do: {submission.admin_review}',
+            )
+            if submission.worker.expo_push_token:
+                send_expo_push_notification(
+                    token=submission.worker.expo_push_token,
                     title='Bằng cấp bị từ chối',
-                    message=f'Admin đã từ chối bằng cấp của bạn. Lý do: {submission.admin_review}',
+                    body='Admin đã từ chối bằng cấp của bạn.',
+                    data={'type': 'credential_rejected'},
                 )
-                if submission.worker.expo_push_token:
-                    send_expo_push_notification(
-                        token=submission.worker.expo_push_token,
-                        title='Bằng cấp bị từ chối',
-                        body='Admin đã từ chối bằng cấp của bạn.',
-                        data={'type': 'credential_rejected'},
-                    )
 
             return Response({'message': f'Đã từ chối bằng cấp của {submission.worker.username}.'})
 

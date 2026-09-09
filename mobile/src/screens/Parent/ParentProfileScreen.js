@@ -261,24 +261,6 @@ export default function ParentProfileScreen() {
           ))}
         </View>
 
-        {/* Become CarePartner CTA — chỉ hiện nếu user là parent */}
-        {user?.role === 'parent' && !user?.is_staff && (
-          <TouchableOpacity
-            style={styles.upgradeCard}
-            onPress={() => navigation.navigate('UpgradeToCarepartner')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.upgradeIconBox}>
-              <Ionicons name="school" size={24} color={COLORS.secondaryDark} />
-            </View>
-            <View style={styles.upgradeContent}>
-              <Text style={styles.upgradeTitle}>Trở thành CarePartner</Text>
-              <Text style={styles.upgradeDesc}>Kiếm thêm thu nhập linh hoạt</Text>
-            </View>
-            <Ionicons name="arrow-forward" size={20} color={COLORS.secondaryDark} />
-          </TouchableOpacity>
-        )}
-
         {/* Logout button */}
         <TouchableOpacity
           style={styles.logoutBtn}
@@ -626,37 +608,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.outlineVariant,
     marginHorizontal: 16,
     opacity: 0.5,
-  },
-  // === UPGRADE CTA ===
-  upgradeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: COLORS.secondaryLight,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
-    ...SHADOWS.small,
-  },
-  upgradeIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
-  },
-  upgradeContent: { flex: 1 },
-  upgradeTitle: {
-    ...TYPO.h4,
-    color: COLORS.secondaryDark,
-    marginBottom: 2,
-  },
-  upgradeDesc: {
-    ...TYPO.caption,
-    color: COLORS.onSurfaceVariant,
   },
   // === LOGOUT ===
   logoutBtn: {

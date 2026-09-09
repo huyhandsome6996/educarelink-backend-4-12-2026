@@ -92,7 +92,6 @@ export default function AdminReviewScreen() {
 
   const renderCredential = ({ item }) => {
     const statusColor = STATUS_COLORS[item.status] || COLORS.textMuted;
-    const isUpgrade = (item.description || '').includes('[NÂNG CẤP]');
     return (
       <View style={styles.card}>
         <View style={styles.cardTop}>
@@ -105,12 +104,6 @@ export default function AdminReviewScreen() {
               <Text style={styles.workerUsername}>@{item.worker_username}</Text>
             </View>
           </View>
-          {isUpgrade && (
-            <View style={styles.upgradeBadge}>
-              <Ionicons name="arrow-up-circle" size={12} color="#fff" />
-              <Text style={styles.upgradeText}>NÂNG CẤP</Text>
-            </View>
-          )}
         </View>
 
         {item.description && (
@@ -414,11 +407,6 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', ...TYPO.h5, fontWeight: '800' },
   workerName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
   workerUsername: { ...TYPO.caption, color: COLORS.textMuted },
-  upgradeBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: COLORS.secondary, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 3,
-  },
-  upgradeText: { color: '#fff', ...TYPO.overline, fontWeight: '800', fontSize: 9 },
   descBox: {
     backgroundColor: COLORS.background, borderRadius: SIZES.radiusSm, padding: 10, gap: 4,
   },
