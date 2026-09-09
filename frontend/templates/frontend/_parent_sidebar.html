@@ -44,10 +44,17 @@
       <span>Nhật ký chăm sóc</span>
     </a>
 
-    <!-- 4. Đăng việc mới -->
-    <a href="{% url 'frontend:task_create_1' %}" class="psb-item{% if active_tab == 'create' %} active{% endif %}">
-      <span class="material-symbols-outlined psb-icon text-xl">add_circle</span>
-      <span>Đăng việc mới</span>
+    <!-- 4. Đăng việc ghép cặp (Flow 1 mới) -->
+    <a href="{% url 'frontend:dang_viec_select' %}" class="psb-item{% if active_tab == 'matching' or active_tab == 'create' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">auto_awesome</span>
+      <span class="font-semibold">Đăng việc ghép cặp</span>
+      <span class="ml-auto text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-orange-100 text-[#F26522]">Mới</span>
+    </a>
+
+    <!-- 4c. Ví credit -->
+    <a href="{% url 'frontend:vi_credit' %}" class="psb-item{% if active_tab == 'credit' %} active{% endif %}">
+      <span class="material-symbols-outlined psb-icon text-xl">account_balance_wallet</span>
+      <span>Ví credit</span>
     </a>
 
     <!-- 5. AI Trợ lý -->

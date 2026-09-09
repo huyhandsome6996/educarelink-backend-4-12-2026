@@ -458,7 +458,7 @@ export default function MyTasksScreen() {
           </TouchableOpacity>
           <NotificationBell color={COLORS.primary} />
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateTask')}
+            onPress={() => navigation.navigate('JobTypeSelect')}
             style={styles.addBtn}
           >
             <Ionicons name="add" size={22} color={COLORS.primary} />
@@ -502,7 +502,7 @@ export default function MyTasksScreen() {
               <Text style={styles.emptyText}>Trong mục này chưa có việc nào. Hãy đăng việc mới để bắt đầu!</Text>
               <TouchableOpacity
                 style={styles.emptyBtn}
-                onPress={() => navigation.navigate('CreateTask')}
+                onPress={() => navigation.navigate('JobTypeSelect')}
                 activeOpacity={0.85}
               >
                 <Ionicons name="add-circle" size={18} color="#fff" />

@@ -216,7 +216,7 @@
             <!-- 2. ĐĂNG VIỆC NGAY CTA CARD      -->
             <!-- =============================== -->
             <section>
-                <button onclick="location.href='{% url 'frontend:task_create_1' %}'"
+                <button onclick="location.href='{% url 'frontend:dang_viec_select' %}'"
                         class="w-full relative overflow-hidden rounded-2xl p-6 lg:p-8 text-left group active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-[0_4px_14px_rgba(242,101,34,0.2)]"
                         style="background: linear-gradient(135deg, #F26522 0%, #D4541E 60%, #B8431A 100%);">
 
@@ -248,6 +248,35 @@
                         </div>
                     </div>
                 </button>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 2a. GHÉP CẶP TỰ ĐỘNG THÔNG MINH (FLOW 1 - MỚI)  -->
+            <!-- ============================================== -->
+            <section class="bg-white rounded-2xl p-6 border-2 border-orange-200 shadow-sm relative overflow-hidden">
+                <div class="absolute top-3 right-3">
+                    <span class="text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-orange-100 text-[#F26522] tracking-wider">Mới ra mắt</span>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[#F26522] text-2xl">auto_awesome</span>
+                            <h2 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Ghép cặp nhanh thông minh (Flow 1)</h2>
+                        </div>
+                        <p class="text-textSecondary text-sm mt-1 max-w-xl">
+                            Tự động tìm và xếp hạng tối đa <b>8 CarePartner tốt nhất</b> (Gia sư, Trông trẻ, Đón trẻ) theo vị trí, lịch rảnh &amp; điểm tín nhiệm ELO.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <a href="{% url 'frontend:vi_credit' %}" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition">
+                            Ví credit
+                        </a>
+                        <a href="{% url 'frontend:dang_viec_select' %}" class="px-5 py-2.5 rounded-xl bg-[#F26522] hover:bg-[#D4541E] text-white font-bold text-sm shadow-md transition flex items-center gap-1.5">
+                            <span>Khám phá ngay</span>
+                            <span class="material-symbols-outlined text-base">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
             </section>
 
             <!-- =============================== -->
@@ -346,7 +375,7 @@
                 <span class="font-medium text-[11px] mt-0.5">Việc của tôi</span>
             </a>
             <!-- Đăng việc -->
-            <a href="{% url 'frontend:task_create_1' %}"
+            <a href="{% url 'frontend:dang_viec_select' %}"
                class="flex flex-col items-center justify-center rounded-xl px-4 py-2 text-textMuted hover:text-textPrimary hover:bg-gray-50 transition-all">
                 <span class="material-symbols-outlined text-xl">add_circle</span>
                 <span class="font-medium text-[11px] mt-0.5">Đăng việc</span>
@@ -687,7 +716,7 @@
                             </div>
                             <h3 class="font-headline font-bold text-textPrimary text-lg mb-2">Chưa có công việc nào</h3>
                             <p class="text-textSecondary text-sm mb-5">Hãy đăng việc mới để tìm Carepartner phù hợp cho bé yêu!</p>
-                            <a href="{% url 'frontend:task_create_1' %}"
+                            <a href="{% url 'frontend:dang_viec_select' %}"
                                class="inline-flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-xl hover:bg-primaryDark transition-all duration-200">
                                 <span class="material-symbols-outlined text-lg">add_circle</span>
                                 Đăng việc ngay

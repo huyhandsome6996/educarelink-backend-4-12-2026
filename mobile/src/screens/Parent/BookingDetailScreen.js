@@ -10,9 +10,10 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
   ActivityIndicator, Alert, TextInput, Modal, Platform,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { useAuth } from '../../context/AuthContext';
 import {
   getBookingDetail, cancelBooking, cancelBookingByParent,
   reportNoShow, startBooking, completeBooking, respondReschedule,
@@ -20,7 +21,9 @@ import {
 } from '../../api/matching';
 
 export default function BookingDetailScreen() {
+  const navigation = useNavigation();
   const route = useRoute();
+  const { user } = useAuth();
   const { bookingId } = route.params || {};
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +73,12 @@ export default function BookingDetailScreen() {
   };
 
   const submitCancel = async () => {
+    if (isParent) {
+      setCancelModal(false);
+      await run(() => cancelBookingByParent(bookingId, note.trim()),
+        'Đã hủy đơn thành công.');
+      return;
+    }
     const reason = CANCEL_REASONS.find((r) => r.code === reasonCode);
     if (!reason) return Alert.alert('Thiếu thông tin', 'Chọn lý do hủy.');
     if (reason.forceMajeure && note.trim().length < 20)
@@ -101,7 +110,8 @@ export default function BookingDetailScreen() {
     </View>;
   }
 
-  const isCP = booking.carepartner_id && booking.carepartner_id.length > 0; // role từ API /bookings
+  const isCarePartner = user?.role === 'worker' || (user?.id && booking.carepartner_id && String(user.id) === String(booking.carepartner_id));
+  const isParent = !isCarePartner && (user?.role === 'parent' || (user?.id && booking.parent_id && String(user.id) === String(booking.parent_id)));
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const ss = String(secondsLeft % 60).padStart(2, '0');
 
@@ -146,14 +156,14 @@ export default function BookingDetailScreen() {
         )}
 
         {/* HÀNH ĐỘNG CP */}
-        {(booking.status === 'committed' || booking.status === 'suspected_no_show') && (
+        {isCarePartner && (booking.status === 'committed' || booking.status === 'suspected_no_show') && (
           <TouchableOpacity style={[styles.actionBtn, styles.primaryBtn]}
             disabled={actionLoading}
             onPress={() => run(() => startBooking(bookingId), 'Đã bắt đầu làm việc.')}>
             <Text style={styles.primaryBtnText}>Bắt đầu làm việc</Text>
           </TouchableOpacity>
         )}
-        {booking.status === 'in_progress' && (
+        {isCarePartner && booking.status === 'in_progress' && (
           <TouchableOpacity style={[styles.actionBtn, styles.primaryBtn]}
             disabled={actionLoading}
             onPress={() => run(() => completeBooking(bookingId), 'Đã kết thúc. Đừng quên đánh giá!')}>
@@ -161,8 +171,16 @@ export default function BookingDetailScreen() {
           </TouchableOpacity>
         )}
 
+        {/* NÚT KHÁNG CÁO CHO CP KHI BỊ PHẠT */}
+        {isCarePartner && ['cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show'].includes(booking.status) && (
+          <TouchableOpacity style={[styles.actionBtn, styles.warningBtn]}
+            onPress={() => navigation.navigate('Appeal', { bookingId: booking.id })}>
+            <Text style={styles.warningBtnText}>⚖️ Gửi đơn kháng cáo ELO</Text>
+          </TouchableOpacity>
+        )}
+
         {/* HÀNH ĐỘNG PARENT */}
-        {booking.status === 'suspected_no_show' && (
+        {isParent && booking.status === 'suspected_no_show' && (
           <View style={styles.noShowBox}>
             <Text style={styles.noShowTitle}>CarePartner đã đến chưa?</Text>
             <View style={styles.noShowRow}>
@@ -179,7 +197,7 @@ export default function BookingDetailScreen() {
             </View>
           </View>
         )}
-        {(booking.status === 'reschedule_requested') && (
+        {isParent && (booking.status === 'reschedule_requested') && (
           <View style={styles.noShowBox}>
             <Text style={styles.noShowTitle}>CarePartner xin đổi giờ</Text>
             <View style={styles.noShowRow}>
@@ -205,23 +223,30 @@ export default function BookingDetailScreen() {
         )}
       </ScrollView>
 
-      {/* MODAL HỦY — 8 lý do (Step 5.3) */}
+      {/* MODAL HỦY */}
       <Modal visible={cancelModal} transparent animationType="slide"
         onRequestClose={() => setCancelModal(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Lý do hủy đơn</Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              {CANCEL_REASONS.map((r) => (
-                <TouchableOpacity key={r.code}
-                  style={[styles.reasonRow, reasonCode === r.code && styles.reasonActive]}
-                  onPress={() => setReasonCode(r.code)}>
-                  <Text style={styles.reasonText}>{r.label}</Text>
-                  {r.forceMajeure && <Text style={styles.fmTag}>Bất khả kháng</Text>}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TextInput style={styles.noteInput} placeholder="Ghi chú (bắt buộc với lý do bất khả kháng, tối thiểu 20 ký tự)"
+            <Text style={styles.modalTitle}>{isParent ? 'Xác nhận hủy đơn' : 'Lý do hủy đơn'}</Text>
+            {isParent ? (
+              <Text style={{ fontSize: 13, color: COLORS.gray, marginBottom: 8, lineHeight: 18 }}>
+                Bạn có chắc chắn muốn hủy đơn này? Nếu hủy sát giờ (dưới 3h trước ca), CarePartner có thể được hỗ trợ điểm tín nhiệm.
+              </Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 320 }}>
+                {CANCEL_REASONS.map((r) => (
+                  <TouchableOpacity key={r.code}
+                    style={[styles.reasonRow, reasonCode === r.code && styles.reasonActive]}
+                    onPress={() => setReasonCode(r.code)}>
+                    <Text style={styles.reasonText}>{r.label}</Text>
+                    {r.forceMajeure && <Text style={styles.fmTag}>Bất khả kháng</Text>}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+            <TextInput style={styles.noteInput}
+              placeholder={isParent ? 'Ghi chú lý do hủy (tùy chọn)' : 'Ghi chú (bắt buộc với lý do bất khả kháng, tối thiểu 20 ký tự)'}
               value={note} onChangeText={setNote} multiline
               textAlignVertical="top" />
             <View style={styles.modalRow}>
@@ -268,6 +293,8 @@ const styles = StyleSheet.create({
   actionBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 14 },
   primaryBtn: { backgroundColor: COLORS.primary },
   primaryBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 15 },
+  warningBtn: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#F59E0B' },
+  warningBtnText: { color: '#B45309', fontWeight: '700', fontSize: 15 },
   greenBtn: { backgroundColor: '#0E9F6E', flex: 1 },
   redBtn: { backgroundColor: '#DC2626', flex: 1 },
   noShowBox: {

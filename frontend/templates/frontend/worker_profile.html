@@ -322,6 +322,27 @@
                     </a>
                 </li>
             </ul>
+            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mt-4 mb-2">Ghép cặp Flow 1</p>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{% url 'frontend:don_cua_toi' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">auto_awesome</span>
+                        Đơn ghép cặp
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:lich_ranh' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">calendar_month</span>
+                        Lịch rảnh ghép cặp
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'frontend:ngay_ban' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
+                        <span class="material-symbols-outlined text-xl">event_busy</span>
+                        Ngày bận đột xuất
+                    </a>
+                </li>
+            </ul>
         </nav>
 
         <!-- User section at bottom -->
@@ -600,13 +621,33 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </button>
-                    <!-- Khung gio ranh -->
-                    <a href="{% url 'frontend:worker_availability' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                    <!-- Lịch rảnh (ghép cặp Flow 1) -->
+                    <a href="{% url 'frontend:lich_ranh' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[#F26522] text-lg">calendar_month</span>
+                            </div>
+                            <span class="font-semibold text-sm text-textPrimary">Lịch rảnh (ghép cặp)</span>
+                        </div>
+                        <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
+                    </a>
+                    <!-- Ngày bận đột xuất (Flow 1) -->
+                    <a href="{% url 'frontend:ngay_ban' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-rose-500 text-lg">event_busy</span>
+                            </div>
+                            <span class="font-semibold text-sm text-textPrimary">Ngày bận đột xuất</span>
+                        </div>
+                        <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
+                    </a>
+                    <!-- Đơn ghép cặp của tôi (Flow 1) -->
+                    <a href="{% url 'frontend:don_cua_toi' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-emerald-500 text-lg">calendar_month</span>
+                                <span class="material-symbols-outlined text-emerald-500 text-lg">auto_awesome</span>
                             </div>
-                            <span class="font-semibold text-sm text-textPrimary">Khung giờ rảnh</span>
+                            <span class="font-semibold text-sm text-textPrimary">Đơn ghép cặp của tôi</span>
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </a>

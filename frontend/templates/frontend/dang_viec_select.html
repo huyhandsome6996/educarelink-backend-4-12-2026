@@ -5,71 +5,172 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
-    <title>EduCareLink — Đăng việc ghép cặp</title>
+    <title>EduCareLink — Đăng việc ghép cặp thông minh</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+        .service-card {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .service-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(26, 26, 46, 0.08);
+            border-color: #F26522;
+        }
+        .service-card:hover .arrow-icon {
+            transform: translateX(4px);
+            color: #F26522;
+        }
     </style>
     {% include 'frontend/_matching_common.html' %}
 </head>
-<body class="bg-gray-50">
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/parent/" class="flex items-center gap-2">
-            <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-            <span class="font-headline font-extrabold text-[#1A1A2E]">EduCareLink</span>
+<body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90">
+    <div class="max-w-3xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <a href="/parent/" class="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            <span>Trang chủ</span>
         </a>
-        <span class="text-xs font-semibold uppercase tracking-wide text-[#F26522]">Ghép cặp mới</span>
+        <div class="flex items-center gap-2">
+            <img src="/static/images/logo.png" alt="EduCareLink" class="h-7 w-7 rounded-lg object-contain">
+            <span class="font-headline font-extrabold text-base text-[#1A1A2E]">Edu<span class="text-[#F26522]">Care</span>Link</span>
+        </div>
+        <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-orange-50 text-[#F26522] border border-orange-200">
+            Flow 1 mới
+        </span>
     </div>
 </header>
 
-<main class="max-w-3xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-extrabold text-[#1A1A2E]">Bạn cần gì?</h1>
-    <p class="text-gray-500 mt-1">Chọn ĐÚNG 1 trong 3 loại công việc để bắt đầu đăng — hệ thống sẽ gom tối đa 8 ứng viên phù hợp nhất.</p>
+<main class="max-w-3xl mx-auto px-4 py-8 mcm-fade-in">
+    <!-- HERO TITLE -->
+    <div class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-tight">
+            Bạn cần hỗ trợ dịch vụ gì?
+        </h1>
+        <p class="text-gray-500 text-sm sm:text-base mt-2 leading-relaxed">
+            Chọn 1 trong 3 nhóm dịch vụ bên dưới. Thuật toán ELO sẽ tự động gom và xếp hạng <b class="text-[#1A1A2E]">tối đa 8 CarePartner tốt nhất</b> theo lịch rảnh và vị trí của bạn.
+        </p>
+    </div>
 
-    <div class="mt-6 space-y-4">
+    <!-- FEATURE PILLS -->
+    <div class="flex items-center gap-2 sm:gap-3 flex-wrap mb-6">
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
+            <span class="material-symbols-outlined text-sm text-[#F26522]">auto_awesome</span>
+            Ghép cặp thông minh ELO
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
+            <span class="material-symbols-outlined text-sm text-[#0E9F6E]">near_me</span>
+            Bán kính tối ưu theo GPS
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
+            <span class="material-symbols-outlined text-sm text-[#2563EB]">verified_user</span>
+            Cam kết hoàn credit nếu hủy
+        </span>
+    </div>
+
+    <!-- 3 SERVICE CARDS -->
+    <div class="space-y-4">
+        <!-- 1. GIA SƯ -->
         <a href="{% url 'frontend:dang_viec_gia_su' %}"
-           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">📚</div>
-                <div class="flex-1">
-                    <h2 class="font-bold text-[#1A1A2E] text-lg">Gia sư</h2>
-                    <p class="text-sm text-gray-500">Dạy kèm môn học hoặc kỹ năng (MC, vẽ, đàn, kỹ năng sống…)</p>
+           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
+            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
+                    📚
                 </div>
-                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#F26522] transition">
+                            Gia sư dạy kèm
+                        </h2>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-orange-100 text-[#F26522]">Phổ biến</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
+                        Dạy kèm môn văn hóa (Toán, Lý, Hóa, Văn, Anh...) hoặc kỹ năng mềm (MC nhí, vẽ tranh, piano, lập trình thiếu nhi).
+                    </p>
+                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Tùy chọn môn &amp; cấp lớp</span>
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Chọn nhiều buổi trong tuần</span>
+                    </div>
+                </div>
+                <div class="arrow-icon text-gray-400 group-hover:text-[#F26522] transition shrink-0 self-center">
+                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
+                </div>
             </div>
         </a>
 
+        <!-- 2. TRÔNG TRẺ -->
         <a href="{% url 'frontend:dang_viec_trong_tre' %}"
-           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">🧸</div>
-                <div class="flex-1">
-                    <h2 class="font-bold text-[#1A1A2E] text-lg">Trông trẻ</h2>
-                    <p class="text-sm text-gray-500">Chăm sóc bé tại nhà: cho ăn, chơi cùng, hướng dẫn bài tập</p>
+           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
+            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
+                    🧸
                 </div>
-                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#0E9F6E] transition">
+                            Trông trẻ tại nhà
+                        </h2>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-[#0E9F6E]">An tâm</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
+                        Chăm sóc bé tận tâm: cho ăn uống, vui chơi phát triển giác quan, giám sát an toàn và hướng dẫn hoàn thành bài tập về nhà.
+                    </p>
+                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Sinh viên đã xác thực CCCD</span>
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Nhật ký chăm sóc theo ca</span>
+                    </div>
+                </div>
+                <div class="arrow-icon text-gray-400 group-hover:text-[#0E9F6E] transition shrink-0 self-center">
+                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
+                </div>
             </div>
         </a>
 
+        <!-- 3. ĐÓN TRẺ -->
         <a href="{% url 'frontend:dang_viec_don_tre' %}"
-           class="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#F26522] transition group">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-[rgba(242,101,34,0.12)] flex items-center justify-center text-2xl">🚗</div>
-                <div class="flex-1">
-                    <h2 class="font-bold text-[#1A1A2E] text-lg">Đón trẻ</h2>
-                    <p class="text-sm text-gray-500">Đón bé từ trường về nhà hoặc địa chỉ khác</p>
+           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
+            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
+                    🚗
                 </div>
-                <span class="text-[#F26522] group-hover:translate-x-1 transition">→</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#2563EB] transition">
+                            Đón trẻ tan trường
+                        </h2>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-blue-100 text-[#2563EB]">Đúng giờ</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
+                        Đón bé đúng hẹn từ trường học hoặc lớp năng khiếu về tận nhà hoặc địa điểm chỉ định an toàn tuyệt đối.
+                    </p>
+                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Định vị GPS 2 điểm</span>
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">Hẹn giờ đón chính xác</span>
+                    </div>
+                </div>
+                <div class="arrow-icon text-gray-400 group-hover:text-[#2563EB] transition shrink-0 self-center">
+                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
+                </div>
             </div>
         </a>
     </div>
 
-    <div class="mt-6 bg-[rgba(242,101,34,0.06)] border border-[rgba(242,101,34,0.25)] rounded-xl p-4 text-sm text-gray-600">
-        💡 <b>Lưu ý:</b> Sau khi đăng, bài viết được AI đọc lại để sinh ứng viên. Bạn sẽ thấy tối đa
-        <b>8 CarePartner tốt nhất</b> kèm mức độ phù hợp (Rất cao / Cao / Trung bình / Thấp) bằng tiếng Việt.
+    <!-- NOTICE BOX -->
+    <div class="mt-8 bg-white border border-orange-200/80 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-[#F26522] text-2xl shrink-0 mt-0.5">lightbulb</span>
+            <div class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                <p class="font-bold text-[#1A1A2E] mb-1">Cách thức hoạt động của Flow 1 ghép cặp:</p>
+                <p>
+                    Sau khi điền biểu mẫu, hệ thống sẽ chạy thuật toán so khớp đa tiêu chí (độ trùng lịch, khoảng cách địa lý, môn học, kỹ năng, điểm tín nhiệm ELO) và hiển thị danh sách <b>tối đa 8 CarePartner phù hợp nhất</b> để bạn lựa chọn ngay lập tức.
+                </p>
+            </div>
+        </div>
     </div>
 </main>
 </body>

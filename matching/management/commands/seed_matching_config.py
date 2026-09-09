@@ -33,8 +33,16 @@ from matching.models import (
 class Command(BaseCommand):
     help = 'Seed cấu hình nghiệp vụ matching (EloBand, CancelPolicy, MatchingWeight, NotificationTemplate, MatchingConfig) — idempotent'
 
+    def _log(self, msg, style_func=None):
+        if getattr(self, 'verbosity', 1) > 0:
+            try:
+                self.stdout.write(style_func(msg) if style_func else msg)
+            except Exception:
+                pass
+
     @transaction.atomic
     def handle(self, *args, **options):
+        self.verbosity = options.get('verbosity', 1)
         self._seed_elo_bands()
         self._seed_cancel_policies()
         self._seed_matching_weights()
@@ -42,7 +50,7 @@ class Command(BaseCommand):
         self._seed_matching_config()
         self._seed_carepartner_profiles()
         self._migrate_old_availability()
-        self.stdout.write(self.style.SUCCESS('Seed matching config HOÀN TẤT (idempotent).'))
+        self._log('Seed matching config HOAN TAT (idempotent).', self.style.SUCCESS)
 
     # ─────────────────────────────────────────────────────────
     def _seed_elo_bands(self):
@@ -62,7 +70,7 @@ class Command(BaseCommand):
                               max_proposals_per_day=maxp, label_vi=label,
                               excluded_from_matching=excluded,
                               only_when_pool_below=pool_below))
-        self.stdout.write(f'  ✓ EloBand: {EloBand.objects.count()} band')
+        self._log(f'  [OK] EloBand: {EloBand.objects.count()} band')
 
     def _seed_cancel_policies(self):
         # tier, trigger, min_lead, max_lead, elo, pct, min_comp, repeat_window, repeat_threshold, escalate_to, suspend
@@ -84,7 +92,7 @@ class Command(BaseCommand):
                               force_majeure_multiplier='0.50',
                               repeat_window_days=rwin, repeat_threshold=rthr,
                               escalate_to=esc, suspend_days=susp, is_active=True))
-        self.stdout.write(f'  ✓ CancelPolicy: {CancelPolicy.objects.count()} tier')
+        self._log(f'  [OK] CancelPolicy: {CancelPolicy.objects.count()} tier')
 
     def _seed_matching_weights(self):
         weights = [
@@ -94,7 +102,7 @@ class Command(BaseCommand):
         for factor, pct in weights:
             MatchingWeight.objects.update_or_create(
                 factor=factor, defaults=dict(weight_pct=pct, is_active=True))
-        self.stdout.write(f'  ✓ MatchingWeight: {MatchingWeight.objects.count()} factor (tổng '
+        self._log(f'  [OK] MatchingWeight: {MatchingWeight.objects.count()} factor (tổng '
                           f'{sum(w.weight_pct for w in MatchingWeight.objects.filter(is_active=True))})')
 
     def _seed_notification_templates(self):
@@ -139,7 +147,7 @@ class Command(BaseCommand):
                 defaults=dict(klass=klass, audience=audience, title_vi=title, body_vi=body,
                               sound='critical_alert.wav' if klass == 'critical' else None,
                               is_active=True))
-        self.stdout.write(f'  ✓ NotificationTemplate: {NotificationTemplate.objects.count()} template')
+        self._log(f'  [OK] NotificationTemplate: {NotificationTemplate.objects.count()} template')
 
     def _seed_matching_config(self):
         notes = {
@@ -153,7 +161,7 @@ class Command(BaseCommand):
         for key, value in DEFAULT_CONFIG.items():
             MatchingConfig.objects.update_or_create(
                 key=key, defaults=dict(value_json=value, note=notes.get(key, '')))
-        self.stdout.write(f'  ✓ MatchingConfig: {MatchingConfig.objects.count()} key')
+        self._log(f'  [OK] MatchingConfig: {MatchingConfig.objects.count()} key')
 
     def _seed_carepartner_profiles(self):
         from django.contrib.auth import get_user_model
@@ -168,7 +176,7 @@ class Command(BaseCommand):
                 profile.band = normal_band
                 profile.save()
                 created += 1
-        self.stdout.write(f'  ✓ CarePartnerProfile: tạo mới {created}, tổng '
+        self._log(f'  [OK] CarePartnerProfile: tạo mới {created}, tổng '
                           f'{CarePartnerProfile.objects.count()}')
 
     def _migrate_old_availability(self):
@@ -183,4 +191,4 @@ class Command(BaseCommand):
             copied += 1 if was_created else 0
             skipped += 0 if was_created else 1
         if copied or skipped:
-            self.stdout.write(f'  ✓ Chuyển lịch rảnh cũ → mới: {copied} tạo, {skipped} đã có')
+            self._log(f'  [OK] Chuyển lịch rảnh cũ → mới: {copied} tạo, {skipped} đã có')

@@ -4,40 +4,74 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <title>EduCareLink — Ứng viên phù hợp</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+        .candidate-card {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .candidate-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(26, 26, 46, 0.08);
+            border-color: rgba(242, 101, 34, 0.4);
+        }
     </style>
     {% include 'frontend/_matching_common.html' %}
 </head>
-<body class="bg-gray-50">
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/parent/" class="text-sm font-semibold text-gray-500">← Trang chủ</a>
-        <span class="font-headline font-extrabold text-[#1A1A2E]">Ứng viên phù hợp</span>
-        <span class="w-20"></span>
+<body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90">
+    <div class="max-w-3xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <a href="/parent/" class="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            <span>Trang chủ</span>
+        </a>
+        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Danh sách ứng viên phù hợp</span>
+        <span class="text-xs font-bold text-[#F26522] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
+            Flow 1
+        </span>
     </div>
 </header>
 
-<main class="max-w-3xl mx-auto px-4 py-8">
-    <div id="header" class="mb-4 text-gray-600"></div>
-    <div id="errorBox" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm"></div>
-    <div id="loading" class="text-center py-16 text-gray-400">Đang gom ứng viên phù hợp…</div>
-    <div id="cards" class="space-y-3"></div>
+<main class="max-w-3xl mx-auto px-4 py-8 mcm-fade-in">
+    <!-- SUBHEADER / STATUS -->
+    <div id="header" class="mb-5 flex items-center justify-between flex-wrap gap-2 text-sm text-gray-600"></div>
+
+    <div id="errorBox" class="hidden mb-5 bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm font-semibold flex items-center gap-3">
+        <span class="material-symbols-outlined text-red-500">error</span>
+        <span id="errorMsg"></span>
+    </div>
+
+    <div id="loading" class="text-center py-20 text-gray-400">
+        <div class="w-12 h-12 border-3 border-gray-200 border-t-[#F26522] rounded-full animate-spin mx-auto mb-3"></div>
+        <p class="font-medium text-sm">Thuật toán ELO đang quét và xếp hạng ứng viên...</p>
+    </div>
+
+    <!-- CANDIDATES LIST -->
+    <div id="cards" class="space-y-4"></div>
 </main>
 
 <!-- Modal xác nhận chọn CarePartner -->
-<div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-    <div class="bg-white rounded-2xl p-6 max-w-sm w-full">
-        <h3 class="font-bold text-lg text-[#1A1A2E]">Chọn CarePartner này?</h3>
-        <p class="text-sm text-gray-500 mt-2" id="confirmText"></p>
-        <p class="text-xs text-gray-400 mt-2">Đơn được tạo ngay (không cần CarePartner xác nhận). Bạn có một khoảng thời gian cam kết — hủy đúng hạn sẽ được đền bù credit theo chính sách.</p>
-        <div class="flex gap-3 mt-5">
-            <button id="cancelConfirm" class="flex-1 border border-gray-200 rounded-xl py-2.5 font-semibold text-gray-600">Để tôi xem thêm</button>
-            <button id="okConfirm" class="flex-1 bg-[#F26522] text-white rounded-xl py-2.5 font-bold">Chọn ngay</button>
+<div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl mcm-fade-in border border-gray-100">
+        <div class="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-[#F26522] mb-3">
+            <span class="material-symbols-outlined text-2xl">handshake</span>
+        </div>
+        <h3 class="font-headline font-extrabold text-xl text-[#1A1A2E]">Xác nhận chọn CarePartner</h3>
+        <p class="text-sm text-gray-600 mt-2 leading-relaxed" id="confirmText"></p>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 mt-4 leading-relaxed flex items-start gap-2">
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0 mt-0.5">info</span>
+            <span>Đơn sẽ được tạo ngay lập tức mà không cần CarePartner bấm chấp nhận. Bạn sẽ được đảm bảo quyền lợi theo chính sách hoàn huỷ credit.</span>
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button id="cancelConfirm" class="flex-1 border border-gray-200 rounded-xl py-3 font-bold text-gray-600 hover:bg-gray-50 transition text-sm">Xem thêm</button>
+            <button id="okConfirm" class="flex-1 bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white rounded-xl py-3 font-extrabold shadow-md shadow-orange-500/20 hover:shadow-orange-500/30 transition text-sm">Xác nhận chọn</button>
         </div>
     </div>
 </div>
@@ -45,11 +79,11 @@
 <script>
   const jobId = window.location.pathname.split('/').filter(Boolean)[1];
   const LEVEL_COLORS = { very_high: '#0E9F6E', high: '#F26522', medium: '#F5A623', low: '#9CA3AF' };
-  const LEVEL_LABELS = { very_high: 'Rất phù hợp', high: 'Phù hợp cao', medium: 'Phù hợp', low: 'Có thể cân nhắc' }; // theo spec Step 3
+  const LEVEL_LABELS = { very_high: 'Rất phù hợp', high: 'Phù hợp cao', medium: 'Phù hợp', low: 'Có thể cân nhắc' };
   let picked = null;
 
   function avatarUrl(name) {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=F26522&color=fff&size=128`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=F26522&color=fff&size=128&bold=true`;
   }
 
   async function load() {
@@ -60,55 +94,114 @@
       document.getElementById('loading').classList.add('hidden');
       if (!resp.ok) {
         const box = document.getElementById('errorBox');
-        box.textContent = data.detail || 'Không tải được danh sách ứng viên.';
+        document.getElementById('errorMsg').textContent = data.detail || 'Không tải được danh sách ứng viên.';
         box.classList.remove('hidden');
         return;
       }
       render(data);
-    } catch (e) { console.warn(e); }
+    } catch (e) {
+      console.warn(e);
+      document.getElementById('loading').classList.add('hidden');
+    }
   }
 
   function render(data) {
     document.getElementById('header').innerHTML =
-      `Có <b class="text-[#F26522]">${data.total_matched}</b> CarePartner phù hợp, hiển thị <b>${data.candidates.length} người tốt nhất</b>`;
+      `<div class="flex items-center gap-2">
+         <span class="w-2.5 h-2.5 rounded-full bg-[#0E9F6E] animate-pulse"></span>
+         <span>Tìm thấy <b class="text-[#1A1A2E]">${data.total_matched}</b> CarePartner rảnh lịch</span>
+       </div>
+       <span class="text-xs text-gray-500">Hiển thị <b>${data.candidates.length} người điểm cao nhất</b></span>`;
+
     const wrap = document.getElementById('cards');
     wrap.innerHTML = '';
     if (!data.candidates.length) {
-      wrap.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-gray-500">Chưa có ứng viên phù hợp. Hãy thử nới khung giờ hoặc tăng bán kính tìm kiếm.</div>';
+      wrap.innerHTML = `
+        <div class="bg-white rounded-2xl p-10 text-center border border-gray-200">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">🔍</div>
+          <h3 class="font-headline font-bold text-lg text-[#1A1A2E]">Chưa tìm thấy ứng viên trùng lịch</h3>
+          <p class="text-sm text-gray-500 mt-1 max-w-md mx-auto">Hiện tại chưa có CarePartner nào rảnh đúng khung giờ này hoặc ở gần địa chỉ của bạn. Hãy thử nới thời gian hoặc chọn khung giờ khác.</p>
+          <a href="{% url 'frontend:dang_viec_select' %}" class="inline-block mt-4 px-5 py-2.5 rounded-xl bg-[#F26522] text-white text-sm font-bold shadow">Chọn loại việc khác</a>
+        </div>`;
       return;
     }
+
     for (const c of data.candidates) {
       const color = LEVEL_COLORS[c.match_level] || '#999';
       const label = c.match_level_vi || LEVEL_LABELS[c.match_level] || c.match_level;
       const card = document.createElement('div');
-      card.className = 'bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-3 items-start';
+      card.className = 'candidate-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200/80 flex flex-col sm:flex-row gap-4 items-start';
       card.innerHTML = `
-        <img src="${avatarUrl(c.display_name)}" class="w-12 h-12 rounded-full" alt="">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-bold text-[#1A1A2E]">${c.display_name || 'CarePartner'}</span>
-            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full text-white" style="background:${color}">${label}</span>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <img src="${avatarUrl(c.display_name)}" class="w-14 h-14 rounded-full ring-2 ring-orange-100 object-cover shrink-0" alt="">
+          <div class="sm:hidden flex-1">
+            <div class="flex items-center justify-between">
+              <span class="font-headline font-extrabold text-[#1A1A2E] text-base">${c.display_name || 'CarePartner'}</span>
+              <span class="text-xl font-extrabold text-[#F26522] font-headline">${c.match_score}<span class="text-xs font-normal text-gray-400"> đ</span></span>
+            </div>
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full text-white inline-block mt-0.5" style="background:${color}">${label}</span>
           </div>
-          <div class="text-sm text-gray-500">${[c.school, c.major].filter(Boolean).join(' · ') || ''}</div>
-          <div class="flex gap-3 mt-1 text-xs text-gray-500 flex-wrap">
-            <span>⭐ ${c.rating ?? 0} (${c.completed_jobs} đơn)</span>
-            <span>📍 ${c.distance_km != null ? c.distance_km + ' km' : '—'}</span>
-            <span>✅ Đủ lịch</span>
-          </div>
-          ${c.top_skills && c.top_skills.length ? `<div class="flex gap-1 mt-2 flex-wrap">${c.top_skills.slice(0, 3).map((s) => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-[#F26522] font-semibold">${s}</span>`).join('')}</div>` : ''}
-          ${c.latest_review ? `<div class="text-xs text-gray-400 mt-2 italic truncate">"${c.latest_review}"</div>` : ''}
         </div>
-        <div class="text-right shrink-0">
-          <div class="text-xl font-extrabold text-[#F26522]">${c.match_score}</div>
-          <div class="text-[10px] text-gray-400">điểm</div>
-          <button class="choose mt-2 text-xs bg-[#F26522] text-white px-3 py-1.5 rounded-lg font-bold" data-id="${c.carepartner_id}" data-name="${c.display_name || ''}" data-score="${c.match_score}">Chọn</button>
+
+        <div class="flex-1 min-w-0 w-full">
+          <div class="hidden sm:flex items-center gap-2 flex-wrap">
+            <span class="font-headline font-extrabold text-[#1A1A2E] text-lg">${c.display_name || 'CarePartner'}</span>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full text-white" style="background:${color}">${label}</span>
+            <span class="text-xs text-gray-400">· ID #${c.carepartner_id}</span>
+          </div>
+
+          <div class="text-xs sm:text-sm font-medium text-gray-600 mt-1 flex items-center gap-1.5 flex-wrap">
+            <span class="material-symbols-outlined text-sm text-gray-400">school</span>
+            <span>${[c.school, c.major].filter(Boolean).join(' — ') || 'Sinh viên đại học'}</span>
+          </div>
+
+          <div class="flex gap-3 sm:gap-4 mt-2.5 text-xs text-gray-600 flex-wrap font-medium">
+            <span class="flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg">
+              <span>⭐</span><b>${c.rating ?? '5.0'}</b> (${c.completed_jobs ?? 0} đơn)
+            </span>
+            <span class="flex items-center gap-1 bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg">
+              <span>📍</span><b>${c.distance_km != null ? c.distance_km + ' km' : '—'}</b>
+            </span>
+            <span class="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg">
+              <span>✅</span>Đủ lịch
+            </span>
+          </div>
+
+          ${c.top_skills && c.top_skills.length ? `
+            <div class="flex gap-1.5 mt-3 flex-wrap">
+              ${c.top_skills.slice(0, 4).map((s) => `<span class="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-semibold">${s}</span>`).join('')}
+            </div>` : ''}
+
+          ${c.latest_review ? `
+            <div class="text-xs text-gray-500 mt-2.5 italic bg-gray-50 p-2.5 rounded-xl border border-gray-100 line-clamp-2">
+              "${c.latest_review}"
+            </div>` : ''}
+        </div>
+
+        <div class="hidden sm:flex flex-col items-end shrink-0 pl-2">
+          <div class="text-right">
+            <div class="text-2xl font-extrabold text-[#F26522] font-headline tracking-tight">${c.match_score}</div>
+            <div class="text-[11px] text-gray-400 font-semibold">điểm phù hợp</div>
+          </div>
+          <button class="choose mt-3 text-sm bg-gradient-to-r from-[#F26522] to-[#D4541E] hover:from-[#D4541E] hover:to-[#B8431A] text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/20 active:scale-95 transition"
+                  data-id="${c.carepartner_id}" data-name="${c.display_name || ''}" data-score="${c.match_score}">
+            Chọn người này
+          </button>
+        </div>
+
+        <div class="sm:hidden w-full pt-2 border-t border-gray-100">
+          <button class="choose w-full text-sm bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/20 active:scale-95 transition"
+                  data-id="${c.carepartner_id}" data-name="${c.display_name || ''}" data-score="${c.match_score}">
+            Chọn người này
+          </button>
         </div>`;
       wrap.appendChild(card);
     }
+
     wrap.querySelectorAll('.choose').forEach((b) => b.addEventListener('click', () => {
       picked = { id: b.dataset.id, name: b.dataset.name, score: b.dataset.score };
       document.getElementById('confirmText').innerHTML =
-        `Bạn chọn <b>${picked.name}</b> với <b>${picked.score} điểm</b> phù hợp.`;
+        `Bạn muốn ghép cặp với CarePartner <b>${picked.name}</b> (điểm phù hợp: <b>${picked.score}/100</b>).`;
       document.getElementById('confirmModal').classList.remove('hidden');
     }));
   }
@@ -116,14 +209,16 @@
   document.getElementById('cancelConfirm').onclick = () => document.getElementById('confirmModal').classList.add('hidden');
   document.getElementById('okConfirm').onclick = async () => {
     if (!picked) return;
-    document.getElementById('okConfirm').disabled = true;
+    const btn = document.getElementById('okConfirm');
+    btn.disabled = true;
+    btn.textContent = 'Đang tạo đơn...';
     try {
       const resp = await authFetch(`${API_BASE}/matching/jobs/${jobId}/select-carepartner/`, {
         method: 'POST', body: JSON.stringify({ carepartner_id: picked.id }),
         headers: { 'Idempotency-Key': 'web-' + jobId + '-' + picked.id } });
       const data = await resp.json();
       if (resp.status === 201) {
-        toast('Đã chọn CarePartner. Đơn của bạn đã được tạo.');
+        toast('Đã chọn CarePartner thành công! Đang chuyển đến đơn...');
         setTimeout(() => location.href = `/don/${data.id}/`, 800);
       } else if (resp.status === 409) {
         toast(data.code === 'slot_taken' ? 'Lịch vừa được người khác chọn. Vui lòng chọn ứng viên khác.' : (data.detail || 'Xung đột lịch.'), false);
@@ -133,7 +228,10 @@
         toast(data.detail || 'Không chọn được ứng viên.', false);
       }
     } catch (e) { console.warn(e); }
-    finally { document.getElementById('okConfirm').disabled = false; }
+    finally {
+      btn.disabled = false;
+      btn.textContent = 'Xác nhận chọn';
+    }
   };
 
   load();
