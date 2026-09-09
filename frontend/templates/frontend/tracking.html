@@ -332,9 +332,9 @@ async function init() {
 }
 
 function initMap() {
-  // Default center: geofence center nếu có, else task location, else HCM
-  const centerLat = geofenceLat || taskLat || 10.762622;
-  const centerLng = geofenceLng || taskLng || 106.660172;
+  // Default center: geofence center nếu có, else task location, else Huế
+  const centerLat = geofenceLat || taskLat || 16.4637;
+  const centerLng = geofenceLng || taskLng || 107.5909;
   map = L.map('map', { zoomControl: true }).setView([centerLat, centerLng], 14);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {

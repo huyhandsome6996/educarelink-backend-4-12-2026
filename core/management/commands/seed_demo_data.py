@@ -19,7 +19,7 @@ Thực hiện RESET dữ liệu và khởi tạo dữ liệu mẫu toàn diện 
      - Core Tasks: 12 công việc phủ khắp các trạng thái (open chưa có ai apply,
        open có nhiều ứng viên, in_progress, completed, cancelled)
      - Ứng tuyển (TaskApplication) & Đánh giá (Review) 4-5 sao chi tiết
-     - Tracking & An toàn: Geofence, LocationConsent, LiveLocation TP.HCM,
+     - Tracking & An toàn: Geofence, LocationConsent, LiveLocation TP. Huế,
        LocationHistory, DeviceHeartbeat, SOSAlert khẩn cấp (active/resolved)
      - Payments: MoMo Escrow (held / completed 80-20), Tiền mặt Cash (hoa hồng 20%),
        Quyết toán hoa hồng tháng (CommissionSettlement paid/pending), PaymentLog
@@ -213,13 +213,13 @@ class Command(BaseCommand):
                 "last_name": "Lê",
                 "role": "parent",
                 "phone_number": "0912345678",
-                "address": "72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP.HCM",
+                "address": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
                 "is_active": True,
                 "is_verified": True,
                 "is_approved": True,
                 "first_login": False,
-                "latitude": 10.7769,
-                "longitude": 106.7009,
+                "latitude": 16.4602,
+                "longitude": 107.6008,
             }
         )
         parent_test.set_password(TEST_PASSWORD)
@@ -227,9 +227,9 @@ class Command(BaseCommand):
         parent_test.first_name = "Hồng Nhung"
         parent_test.last_name = "Lê"
         parent_test.phone_number = "0912345678"
-        parent_test.address = "72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP.HCM"
-        parent_test.latitude = 10.7769
-        parent_test.longitude = 106.7009
+        parent_test.address = "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế"
+        parent_test.latitude = 16.4602
+        parent_test.longitude = 107.6008
         parent_test.is_active = True
         parent_test.is_verified = True
         parent_test.is_approved = True
@@ -246,20 +246,20 @@ class Command(BaseCommand):
                 "last_name": "Nguyễn",
                 "role": "worker",
                 "phone_number": "0987654321",
-                "address": "280 An Dương Vương, Phường 4, Quận 5, TP.HCM",
+                "address": "Ký túc xá ĐH Sư Phạm Huế, 32 Lê Lợi, P. Vĩnh Ninh, TP. Huế",
                 "is_active": True,
                 "is_verified": True,
                 "is_approved": True,
                 "first_login": False,
-                "latitude": 10.7601,
-                "longitude": 106.6823,
+                "latitude": 16.4682,
+                "longitude": 107.5895,
                 "qualifications": [
-                    "Sinh viên năm 3 ĐH Sư Phạm TP.HCM",
+                    "Sinh viên năm 3 ĐH Sư Phạm - Đại học Huế",
                     "Chứng chỉ IELTS 7.5 (IDP)",
                     "Chứng chỉ Sơ cấp cứu Nhi khoa",
                     "Bằng lái xe máy hạng A1",
                 ],
-                "ai_profile_summary": "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm TP.HCM, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ.",
+                "ai_profile_summary": "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ.",
             }
         )
         worker_test.set_password(TEST_PASSWORD)
@@ -267,20 +267,20 @@ class Command(BaseCommand):
         worker_test.first_name = "Minh Anh"
         worker_test.last_name = "Nguyễn"
         worker_test.phone_number = "0987654321"
-        worker_test.address = "280 An Dương Vương, Phường 4, Quận 5, TP.HCM"
-        worker_test.latitude = 10.7601
-        worker_test.longitude = 106.6823
+        worker_test.address = "Ký túc xá ĐH Sư Phạm Huế, 32 Lê Lợi, P. Vĩnh Ninh, TP. Huế"
+        worker_test.latitude = 16.4682
+        worker_test.longitude = 107.5895
         worker_test.is_active = True
         worker_test.is_verified = True
         worker_test.is_approved = True
         worker_test.first_login = False
         worker_test.qualifications = [
-            "Sinh viên năm 3 ĐH Sư Phạm TP.HCM",
+            "Sinh viên năm 3 ĐH Sư Phạm - Đại học Huế",
             "Chứng chỉ IELTS 7.5 (IDP)",
             "Chứng chỉ Sơ cấp cứu Nhi khoa",
             "Bằng lái xe máy hạng A1",
         ]
-        worker_test.ai_profile_summary = "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm TP.HCM, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ."
+        worker_test.ai_profile_summary = "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ."
         worker_test.save()
         self.stdout.write(f"   + [WORKER TEST] {worker_test.username} ({worker_test.get_full_name()})")
 
@@ -353,26 +353,26 @@ class Command(BaseCommand):
             {
                 "username": "phuhuynh_baolinh", "first_name": "Bảo Lĩnh", "last_name": "Phạm",
                 "email": "baolinh.pham@gmail.com", "phone_number": "0903112233",
-                "address": "Tòa Landmark 4, Vinhomes Central Park, Bình Thạnh, TP.HCM",
-                "lat": 10.7932, "lng": 106.7218, "credit": 1800000,
+                "address": "Khu đô thị An Cựu City, Đường Hoàng Quốc Việt, P. An Đông, TP. Huế",
+                "lat": 16.4525, "lng": 107.6045, "credit": 1800000,
             },
             {
                 "username": "phuhuynh_minhkhoi", "first_name": "Minh Khôi", "last_name": "Đặng",
                 "email": "minhkhoi.dang@gmail.com", "phone_number": "0903445566",
-                "address": "Khu đô thị Sala, Mai Chí Thọ, TP. Thủ Đức, TP.HCM",
-                "lat": 10.7712, "lng": 106.7201, "credit": 3200000,
+                "address": "Căn hộ Vincom Plaza Huế, 50A Hùng Vương, P. Phú Nhuận, TP. Huế",
+                "lat": 16.4655, "lng": 107.5932, "credit": 3200000,
             },
             {
                 "username": "phuhuynh_yenchi", "first_name": "Yến Chi", "last_name": "Hồ",
                 "email": "yenchi.ho@benhvien.vn", "phone_number": "0903778899",
-                "address": "156 Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM",
-                "lat": 10.7785, "lng": 106.6912, "credit": 1500000,
+                "address": "15 Lê Lợi, P. Vĩnh Ninh, TP. Huế (gần Bệnh viện TW Huế)",
+                "lat": 16.4678, "lng": 107.5855, "credit": 1500000,
             },
             {
                 "username": "phuhuynh_congvinh", "first_name": "Công Vinh", "last_name": "Trương",
-                "email": "congvinh.truong@hcmut.edu.vn", "phone_number": "0903224466",
-                "address": "40 Lý Thường Kiệt, Phường 7, Quận 10, TP.HCM",
-                "lat": 10.7684, "lng": 106.6587, "credit": 900000,
+                "email": "congvinh.truong@hueuni.edu.vn", "phone_number": "0903224466",
+                "address": "Chung cư Xuân Phú, Đường Hoàng Lanh, P. Xuân Phú, TP. Huế",
+                "lat": 16.4589, "lng": 107.6023, "credit": 900000,
             },
         ]
 
@@ -433,73 +433,73 @@ class Command(BaseCommand):
         workers_profiles = [
             {
                 "username": "carepartner_tuankiet", "first_name": "Tuấn Kiệt", "last_name": "Lương",
-                "email": "tuankiet.luong@student.hcmut.edu.vn", "phone_number": "0987111222",
-                "address": "KTX Khu B Đại Học Quốc Gia, TP. Thủ Đức, TP.HCM",
-                "lat": 10.8802, "lng": 106.7825, "is_approved": True, "is_active": True,
-                "school": "Đại học Bách Khoa TP.HCM", "major": "Khoa học Máy tính & Kỹ thuật",
+                "email": "tuankiet.luong@student.hueuni.edu.vn", "phone_number": "0987111222",
+                "address": "KTX Đại học Khoa học Huế, 77 Nguyễn Huệ, P. Phú Nhuận, TP. Huế",
+                "lat": 16.4598, "lng": 107.5882, "is_approved": True, "is_active": True,
+                "school": "Đại học Khoa học - Đại học Huế", "major": "Công nghệ Thông tin & Toán ứng dụng",
                 "elo": 1480, "band": "trusted", "has_vehicle": True, "gender": "male",
                 "skills": ["toan", "vat_ly", "lap_trinh", "cap_2", "cap_3", "tieng_anh"],
-                "qualifications": ["Sinh viên năm 3 ĐH Bách Khoa", "Giải Ba Toán cấp Thành phố", "IELTS 7.0"],
-                "summary": "Sinh viên Bách Khoa đam mê giảng dạy, chuyên kèm môn Toán, Lý và Lập trình tư duy cho học sinh từ lớp 6-12.",
+                "qualifications": ["Sinh viên năm 3 ĐH Khoa học Huế", "Giải Ba Toán cấp Tỉnh Thừa Thiên Huế", "IELTS 7.0"],
+                "summary": "Sinh viên ĐH Khoa học Huế đam mê giảng dạy, chuyên kèm môn Toán, Lý và Lập trình tư duy cho học sinh từ lớp 6-12.",
                 "jobs_done": 14, "rating": 4.9,
             },
             {
                 "username": "carepartner_hoango", "first_name": "Hoàng Ngân", "last_name": "Đỗ",
                 "email": "hoango.do@gmail.com", "phone_number": "0987333444",
-                "address": "45 Lê Văn Sỹ, Phường 13, Quận Phú Nhuận, TP.HCM",
-                "lat": 10.7915, "lng": 106.6748, "is_approved": True, "is_active": True,
-                "school": "Đại học Sư Phạm TP.HCM", "major": "Giáo dục Mầm non",
+                "address": "45 Đống Đa, P. Phú Nhuận, TP. Huế",
+                "lat": 16.4635, "lng": 107.5912, "is_approved": True, "is_active": True,
+                "school": "Đại học Sư Phạm - Đại học Huế", "major": "Giáo dục Mầm non",
                 "elo": 1580, "band": "trusted", "has_vehicle": True, "gender": "female",
                 "skills": ["trong_tre", "mam_non", "montessori", "so_cap_cuu", "nau_an", "kien_nhan"],
-                "qualifications": ["Cử nhân Giáo dục Mầm non", "Chứng chỉ Montessori Quốc tế", "Chứng nhận Sơ cấp cứu Red Cross"],
-                "summary": "Cử nhân Sư phạm Mầm non 4 năm kinh nghiệm, yêu trẻ, chu đáo, am hiểu tâm lý trẻ nhỏ và kỹ năng ăn dặm, sơ cứu.",
+                "qualifications": ["Cử nhân Giáo dục Mầm non - ĐH Sư phạm Huế", "Chứng chỉ Montessori Quốc tế", "Chứng nhận Sơ cấp cứu Red Cross"],
+                "summary": "Cử nhân Sư phạm Mầm non ĐH Sư phạm Huế 4 năm kinh nghiệm, yêu trẻ, chu đáo, am hiểu tâm lý trẻ nhỏ và kỹ năng ăn dặm, sơ cứu.",
                 "jobs_done": 26, "rating": 5.0,
             },
             {
                 "username": "carepartner_mylinh", "first_name": "Mỹ Linh", "last_name": "Trần",
                 "email": "mylinh.tran@gmail.com", "phone_number": "0987555666",
-                "address": "88 Phan Xích Long, Phường 2, Quận Phú Nhuận, TP.HCM",
-                "lat": 10.7972, "lng": 106.6892, "is_approved": True, "is_active": True,
-                "school": "Đại học Kinh Tế TP.HCM (UEH)", "major": "Quản trị Kinh doanh",
+                "address": "88 Bến Nghé, P. Phú Hội, TP. Huế",
+                "lat": 16.4660, "lng": 107.5945, "is_approved": True, "is_active": True,
+                "school": "Đại học Kinh Tế - Đại học Huế", "major": "Quản trị Kinh doanh",
                 "elo": 1360, "band": "good", "has_vehicle": False, "gender": "female",
                 "skills": ["nau_an", "don_dep", "trong_tre", "choi_cung_be", "ve_tranh"],
-                "qualifications": ["Sinh viên năm cuối UEH", "Chứng chỉ Nấu ăn Dinh dưỡng", "Kinh nghiệm 2 năm phụ giúp việc nhà"],
-                "summary": "Nhanh nhẹn, sạch sẽ, nấu ăn ngon, rất khéo léo khi chơi và tương tác với các bé độ tuổi mẫu giáo.",
+                "qualifications": ["Sinh viên năm cuối ĐH Kinh tế Huế", "Chứng chỉ Nấu ăn Ẩm thực Huế & Dinh dưỡng", "Kinh nghiệm 2 năm phụ giúp việc gia đình"],
+                "summary": "Nhanh nhẹn, sạch sẽ, nấu các món ăn Huế và cơm gia đình chuẩn vị, rất khéo léo khi chơi và tương tác với các bé độ tuổi mẫu giáo.",
                 "jobs_done": 9, "rating": 4.8,
             },
             {
                 "username": "carepartner_phuoc", "first_name": "Hữu Phước", "last_name": "Nguyễn",
-                "email": "phuoc.nguyen@ump.edu.vn", "phone_number": "0987777888",
-                "address": "217 Hồng Bàng, Phường 11, Quận 5, TP.HCM",
-                "lat": 10.7554, "lng": 106.6598, "is_approved": True, "is_active": True,
-                "school": "Đại học Y Dược TP.HCM", "major": "Bác sĩ Đa khoa (Năm 4)",
+                "email": "phuoc.nguyen@huemed-univ.edu.vn", "phone_number": "0987777888",
+                "address": "KTX ĐH Y Dược Huế, 06 Ngô Quyền, P. Vĩnh Ninh, TP. Huế",
+                "lat": 16.4668, "lng": 107.5835, "is_approved": True, "is_active": True,
+                "school": "Đại học Y Dược - Đại học Huế", "major": "Bác sĩ Đa khoa (Năm 4)",
                 "elo": 1440, "band": "good", "has_vehicle": True, "gender": "male",
                 "skills": ["don_tre", "so_cap_cuu", "sinh_hoc", "dung_gio", "an_toan"],
-                "qualifications": ["Sinh viên Y đa khoa năm 4", "Bằng lái xe máy A1", "Chứng chỉ Kỹ thuật viên Sơ cấp cứu Y tế"],
-                "summary": "Chuyên đón trẻ tan trường cẩn thận, phương tiện xe tay ga trang bị nón bảo hiểm an toàn, am hiểu sơ cứu nhi.",
+                "qualifications": ["Sinh viên Y đa khoa năm 4 ĐH Y Dược Huế", "Bằng lái xe máy A1", "Chứng chỉ Kỹ thuật viên Sơ cấp cứu Y tế"],
+                "summary": "Chuyên đón trẻ tan trường cẩn thận, phương tiện xe máy trang bị nón bảo hiểm an toàn, am hiểu sơ cứu nhi khoa và chăm sóc sức khỏe ban đầu.",
                 "jobs_done": 12, "rating": 4.85,
             },
             {
                 "username": "carepartner_pending_hai", "first_name": "Quang Hải", "last_name": "Bùi",
-                "email": "hai.bui@student.edu.vn", "phone_number": "0987999000",
-                "address": "Tân Kỳ Tân Quý, Quận Tân Phú, TP.HCM",
-                "lat": 10.8012, "lng": 106.6289, "is_approved": False, "is_active": True,
-                "school": "Đại học Khoa Học Tự Nhiên", "major": "Toán - Tin học",
+                "email": "hai.bui@student.hueuni.edu.vn", "phone_number": "0987999000",
+                "address": "57 Nguyễn Khoa Chiêm, P. An Cựu, TP. Huế",
+                "lat": 16.4475, "lng": 107.5955, "is_approved": False, "is_active": True,
+                "school": "Đại học Ngoại Ngữ - Đại học Huế", "major": "Sư phạm Tiếng Anh",
                 "elo": 1200, "band": "normal", "has_vehicle": True, "gender": "male",
                 "skills": ["toan", "tin_hoc"],
-                "qualifications": ["Sinh viên năm 2 ĐH KHTN", "CCCD 2 mặt + Thẻ SV (đang chờ duyệt)"],
+                "qualifications": ["Sinh viên năm 2 ĐH Ngoại ngữ Huế", "CCCD 2 mặt + Thẻ SV (đang chờ duyệt)"],
                 "summary": "Hồ sơ mới đăng ký, đang chờ Admin kiểm duyệt bằng cấp và CCCD.",
                 "jobs_done": 0, "rating": 0.0,
             },
             {
                 "username": "carepartner_locked_trung", "first_name": "Thành Trung", "last_name": "Vũ",
                 "email": "trung.vu@gmail.com", "phone_number": "0987222333",
-                "address": "Đường 3/2, Quận 10, TP.HCM",
-                "lat": 10.7715, "lng": 106.6698, "is_approved": True, "is_active": False,
-                "school": "Đại học Văn Lang", "major": "Thiết kế Đồ họa",
+                "address": "Đường An Dương Vương, P. An Đông, TP. Huế",
+                "lat": 16.4510, "lng": 107.6020, "is_approved": True, "is_active": False,
+                "school": "Đại học Nghệ Thuật - Đại học Huế", "major": "Hội họa & Đồ họa",
                 "elo": 750, "band": "blocked", "has_vehicle": True, "gender": "male",
                 "skills": ["ve_tranh", "my_thuat"],
-                "qualifications": ["Sinh viên Văn Lang"],
+                "qualifications": ["Sinh viên ĐH Nghệ thuật Huế"],
                 "summary": "Tài khoản bị tạm khóa do vi phạm hủy ca không báo trước. Dùng để demo tính năng Admin mở khóa.",
                 "jobs_done": 3, "rating": 3.2,
             },
@@ -516,7 +516,7 @@ class Command(BaseCommand):
                 "band": elo_bands["trusted"],
                 "has_vehicle": True,
                 "gender": "female",
-                "school": "Đại học Sư Phạm TP.HCM",
+                "school": "Đại học Sư Phạm - Đại học Huế",
                 "major": "Sư phạm Toán học",
                 "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao"],
                 "jobs_completed": 18,
@@ -621,7 +621,7 @@ class Command(BaseCommand):
             status="matching",
             latitude=parent_test.latitude,
             longitude=parent_test.longitude,
-            location_note="Tầng 12, Căn hộ A12-04",
+            location_note="Tầng 8, Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu",
             type_data={"subject": "Toán & Tiếng Anh", "grade": "Lớp 7", "sessions_per_week": 3},
             total_matched=3,
         )
@@ -647,7 +647,7 @@ class Command(BaseCommand):
             status="matching",
             latitude=parent_dict["phuhuynh_baolinh"].latitude,
             longitude=parent_dict["phuhuynh_baolinh"].longitude,
-            location_note="Tòa Landmark 4",
+            location_note="Khu đô thị An Cựu City, Đường Hoàng Quốc Việt",
             type_data={"child_age": 4, "duties": ["cho_an", "to_mau", "ngu_trua"]},
             selected_carepartner=worker_dict["carepartner_hoango"],
         )
@@ -671,14 +671,14 @@ class Command(BaseCommand):
         job3 = JobPost.objects.create(
             parent=parent_dict["phuhuynh_minhkhoi"],
             job_type=JobPost.JobType.PICKUP,
-            title="Đón bé trai lớp 3 trường Quốc Tế Á Châu về nhà",
-            description="Đón bé lúc 16h30 tại cổng trường Pasteur, đưa về căn hộ Sala an toàn, cho bé uống sữa và đợi ba mẹ về.",
+            title="Đón bé trai lớp 3 trường Tiểu học Lê Lợi về nhà",
+            description="Đón bé lúc 16h30 tại cổng trường Lê Lợi, đưa về căn hộ Vincom Plaza Huế an toàn, cho bé uống sữa và đợi ba mẹ về.",
             hourly_rate_vnd=100000,
             status="closed",
             latitude=parent_dict["phuhuynh_minhkhoi"].latitude,
             longitude=parent_dict["phuhuynh_minhkhoi"].longitude,
-            location_note="Đón tại cổng trường, đưa về căn hộ Khu Sala",
-            type_data={"pickup_point": "Trường QT Á Châu, Q.1", "dropoff_point": "Khu Sala, Q.2"},
+            location_note="Đón tại cổng trường Tiểu học Lê Lợi, đưa về căn hộ Vincom Hùng Vương",
+            type_data={"pickup_point": "Trường Tiểu học Lê Lợi, TP. Huế", "dropoff_point": "Vincom Plaza, 50A Hùng Vương, TP. Huế"},
             selected_carepartner=worker_dict["carepartner_phuoc"],
         )
         JobSlot.objects.create(
@@ -756,7 +756,7 @@ class Command(BaseCommand):
             cancelled_by="carepartner",
             cancel_reason_code="broken_vehicle",
             cancel_class="normal_cancel",
-            cancel_note="Bị thủng lốp và hỏng nhông xích trên cầu Sài Gòn lúc 17h, không kịp đến điểm hẹn.",
+            cancel_note="Bị thủng lốp và hỏng xe trên cầu Trường Tiền lúc 17h, không kịp đến điểm hẹn.",
             total_value_vnd=300000,
             compensation_vnd=120000, # Đền bù 40% (T3)
             elo_delta_applied=-60,
@@ -771,7 +771,7 @@ class Command(BaseCommand):
             booking=booking5,
             carepartner=worker_dict["carepartner_tuankiet"],
             reason_code="broken_vehicle",
-            note="Kính gửi Admin, em bị tai nạn nhẹ hỏng xe trên đường đến nhà phụ huynh, có hóa đơn sửa xe của tiệm kèm theo. Kính mong Admin xem xét giảm trừ mức phạt ELO vì lý do bất khả kháng ạ.",
+            note="Kính gửi Admin, em bị tai nạn nhẹ hỏng xe trên cầu Trường Tiền khi đang tới nhà phụ huynh, có hóa đơn sửa xe của tiệm đường Phan Đăng Lưu kèm theo. Kính mong Admin xem xét giảm trừ mức phạt ELO vì lý do bất khả kháng ạ.",
             status="pending",
         )
         self._log(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
@@ -787,40 +787,40 @@ class Command(BaseCommand):
                 "key": "t0", "title": "[TEST DEMO] Dạy kèm Tiếng Anh giao tiếp và kể chuyện bé 6 tuổi",
                 "description": "Cần tìm CarePartner kiên nhẫn, phát âm chuẩn hướng dẫn bé 6 tuổi học từ vựng và xem tranh tiếng Anh 2 buổi cuối tuần.",
                 "price": 250000, "cat": cats["Gia sư"], "parent": parent_test,
-                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
-                "lat": 10.7769, "lng": 106.7009, "status": "open", "scheduled": now + timedelta(days=2),
+                "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
+                "lat": 16.4602, "lng": 107.6008, "status": "open", "scheduled": now + timedelta(days=2),
                 "applicants": ["carepartner_tuankiet", "carepartner_hoango", "carepartner_mylinh"],
             },
             {
                 "key": "t1", "title": "Gia sư Vật Lý lớp 10 — 2 buổi/tuần (Thứ 3 & Thứ 5)",
-                "description": "Bé bị hổng kiến thức phần Động lực học chất điểm, cần sinh viên Bách Khoa hoặc Sư Phạm kiên nhẫn giảng lại lý thuyết và hướng dẫn giải bài tập.",
+                "description": "Bé bị hổng kiến thức phần Động lực học chất điểm, cần sinh viên Khoa học hoặc Sư Phạm kiên nhẫn giảng lại lý thuyết và hướng dẫn giải bài tập.",
                 "price": 250000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_baolinh"],
-                "loc": "Chung cư Vinhomes Central Park, Quận Bình Thạnh, TP.HCM",
-                "lat": 10.7932, "lng": 106.7218, "status": "open", "scheduled": now + timedelta(days=2),
+                "loc": "Khu đô thị An Cựu City, Đường Hoàng Quốc Việt, TP. Huế",
+                "lat": 16.4525, "lng": 107.6045, "status": "open", "scheduled": now + timedelta(days=2),
                 "applicants": ["carepartner_tuankiet", "sinhvien_test", "carepartner_phuoc"],
             },
             {
-                "key": "t2", "title": "[GẤP] Đón bé lớp 2 tan trường Nguyễn Du chiều Thứ 6",
-                "description": "Cần bạn đón bé lúc 16h30 từ trường về chung cư Sunview. Nhà cách trường 2km. Yêu cầu có xe máy an toàn, đội nón bảo hiểm cho bé.",
+                "key": "t2", "title": "[GẤP] Đón bé lớp 2 tan trường Vĩnh Ninh chiều Thứ 6",
+                "description": "Cần bạn đón bé lúc 16h30 từ trường về căn hộ Vincom. Nhà cách trường 1.5km. Yêu cầu có xe máy an toàn, đội nón bảo hiểm cho bé.",
                 "price": 120000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_minhkhoi"],
-                "loc": "Trường Tiểu Học Nguyễn Du, Quận 10, TP.HCM",
-                "lat": 10.7712, "lng": 106.6625, "status": "open", "scheduled": now + timedelta(days=1),
+                "loc": "Trường Tiểu học Vĩnh Ninh, 09 Trương Định, P. Vĩnh Ninh, TP. Huế",
+                "lat": 16.4665, "lng": 107.5862, "status": "open", "scheduled": now + timedelta(days=1),
                 "applicants": ["carepartner_phuoc", "carepartner_hoango"],
             },
             {
                 "key": "t3", "title": "Dọn dẹp tổng vệ sinh căn hộ 2 phòng ngủ cuối tuần",
                 "description": "Căn hộ 75m2 cần lau sàn, lau kính, vệ sinh kỹ khu vực bếp và 2 phòng tắm. Dụng cụ và hóa chất tẩy rửa gia đình chuẩn bị sẵn.",
                 "price": 300000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_yenchi"],
-                "loc": "Căn hộ The Manor, 91 Nguyễn Hữu Cảnh, Bình Thạnh, TP.HCM",
-                "lat": 10.7911, "lng": 106.7164, "status": "open", "scheduled": now + timedelta(days=4),
+                "loc": "Chung cư Đống Đa, Đường Đống Đa, P. Phú Nhuận, TP. Huế",
+                "lat": 16.4640, "lng": 107.5910, "status": "open", "scheduled": now + timedelta(days=4),
                 "applicants": ["carepartner_mylinh", "carepartner_phuoc", "carepartner_hoango"],
             },
             {
                 "key": "t4", "title": "Trông bé 3 tuổi buổi sáng Thứ Bảy (08:00 - 11:30)",
                 "description": "Mẹ có cuộc họp online, cần người chơi cùng bé, cho bé uống sữa và hướng dẫn bé xếp hình gỗ. Bé rất ngoan và dễ gần.",
                 "price": 220000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
-                "loc": "120 Lê Văn Sỹ, Phường 10, Phú Nhuận, TP.HCM",
-                "lat": 10.7925, "lng": 106.6732, "status": "open", "scheduled": now + timedelta(days=3),
+                "loc": "Chung cư Xuân Phú, Hoàng Lanh, P. Xuân Phú, TP. Huế",
+                "lat": 16.4589, "lng": 107.6023, "status": "open", "scheduled": now + timedelta(days=3),
                 "applicants": ["carepartner_hoango", "carepartner_tuankiet", "sinhvien_test"],
             },
 
@@ -829,57 +829,57 @@ class Command(BaseCommand):
                 "key": "t5", "title": "[TEST DEMO] Trông bé 5 tuổi chiều Thứ 7 & Dạy vẽ màu nước",
                 "description": "Công việc chính của tài khoản test: trông bé trai 5 tuổi, hướng dẫn vẽ tranh sáng tạo và cho bé ăn xế chiều. Nhà có camera an ninh.",
                 "price": 280000, "cat": cats["Trông trẻ"], "parent": parent_test,
-                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
-                "lat": 10.7769, "lng": 106.7009, "status": "in_progress", "scheduled": now + timedelta(hours=2),
+                "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
+                "lat": 16.4602, "lng": 107.6008, "status": "in_progress", "scheduled": now + timedelta(hours=2),
                 "accepted_worker": "sinhvien_test",
-                "geofence": {"lat": 10.7769, "lng": 106.7009, "radius": 500},
+                "geofence": {"lat": 16.4602, "lng": 107.6008, "radius": 400},
             },
             {
-                "key": "t6", "title": "Nấu bữa cơm tối gia đình 4 người (món thuần Việt)",
-                "description": "Nấu canh chua cá lóc, thịt kho tiêu và rau củ luộc kho quẹt. Nguyên liệu sạch đã mua sẵn trong tủ lạnh.",
+                "key": "t6", "title": "Nấu bữa cơm tối gia đình 4 người (món cơm Huế thuần Việt)",
+                "description": "Nấu canh chua cá lóc, thịt kho ruốc sả ớt và vả trộn tôm thịt. Nguyên liệu sạch đã mua sẵn trong tủ lạnh.",
                 "price": 250000, "cat": cats["Nấu ăn"], "parent": parent_dict["phuhuynh_baolinh"],
-                "loc": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
-                "lat": 10.7932, "lng": 106.7218, "status": "in_progress", "scheduled": now + timedelta(hours=1),
+                "loc": "Khu đô thị An Cựu City, Đường Hoàng Quốc Việt, TP. Huế",
+                "lat": 16.4525, "lng": 107.6045, "status": "in_progress", "scheduled": now + timedelta(hours=1),
                 "accepted_worker": "carepartner_mylinh",
-                "geofence": {"lat": 10.7932, "lng": 106.7218, "radius": 400},
+                "geofence": {"lat": 16.4525, "lng": 107.6045, "radius": 400},
             },
             {
-                "key": "t7", "title": "Đón bé trường Tiểu học Lê Ngọc Hân về nhà (có SOS)",
-                "description": "Đón bé 7 tuổi từ trường về nhà. CarePartner đang thực hiện nhiệm vụ đón bé trên đường.",
+                "key": "t7", "title": "Đón bé trường Tiểu học Lê Lợi về nhà (có SOS)",
+                "description": "Đón bé 7 tuổi từ trường Lê Lợi về nhà. CarePartner đang thực hiện nhiệm vụ đón bé trên đường.",
                 "price": 100000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_yenchi"],
-                "loc": "Trường Tiểu Học Lê Ngọc Hân, Quận 1, TP.HCM",
-                "lat": 10.7745, "lng": 106.6961, "status": "in_progress", "scheduled": now - timedelta(minutes=20),
+                "loc": "Trường Tiểu học Lê Lợi, Đường Lê Lợi, TP. Huế",
+                "lat": 16.4670, "lng": 107.5870, "status": "in_progress", "scheduled": now - timedelta(minutes=20),
                 "accepted_worker": "carepartner_phuoc",
-                "geofence": {"lat": 10.7785, "lng": 106.6912, "radius": 600},
+                "geofence": {"lat": 16.4678, "lng": 107.5855, "radius": 500},
             },
 
             # ── COMPLETED TASKS (4) ──
             {
-                "key": "t8", "title": "Dọn dẹp nhà phố 3 tầng đón người thân về chơi",
-                "description": "Tổng vệ sinh 3 phòng ngủ, phòng khách và lau ban công sạch bóng. Đã hoàn thành xuất sắc.",
+                "key": "t8", "title": "Dọn dẹp nhà vườn cổ đón người thân về thăm Huế",
+                "description": "Tổng vệ sinh gian nhà chính, lau bàn ghế gỗ, dọn dẹp sân vườn và hiên nhà. Đã hoàn thành xuất sắc.",
                 "price": 500000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_minhkhoi"],
-                "loc": "Khu đô thị Sala, TP. Thủ Đức, TP.HCM",
-                "lat": 10.7712, "lng": 106.7201, "status": "completed", "scheduled": now - timedelta(days=5),
+                "loc": "Phố cổ Bao Vinh, P. Hương Vinh, TP. Huế",
+                "lat": 16.4850, "lng": 107.5790, "status": "completed", "scheduled": now - timedelta(days=5),
                 "accepted_worker": "carepartner_mylinh",
-                "review": {"rating": 5, "comment": "Mỹ Linh làm việc rất chăm chỉ, tỉ mỉ từng góc nhà, cực kỳ sạch sẽ và đúng giờ. Rất hài lòng!"},
+                "review": {"rating": 5, "comment": "Mỹ Linh làm việc rất chăm chỉ, tỉ mỉ từng ngóc ngách, nhà cửa sạch bong kin kít và rất đúng giờ. Rất hài lòng!"},
                 "payment_method": "momo_escrow",
             },
             {
-                "key": "t9", "title": "Đi siêu thị Emart mua thực phẩm và đồ chơi cho bé",
+                "key": "t9", "title": "Đi siêu thị Go! Huế mua thực phẩm và đồ chơi cho bé",
                 "description": "Mua sắm theo danh sách thực phẩm tươi sống và sữa bột cho bé, đối chiếu hóa đơn rõ ràng.",
                 "price": 150000, "cat": cats["Mua sắm hộ"], "parent": parent_dict["phuhuynh_congvinh"],
-                "loc": "Siêu thị Emart Phan Văn Trị, Gò Vấp, TP.HCM",
-                "lat": 10.8245, "lng": 106.6925, "status": "completed", "scheduled": now - timedelta(days=7),
+                "loc": "Siêu thị Go! Huế, Đường Bà Triệu, P. Phú Hội, TP. Huế",
+                "lat": 16.4628, "lng": 107.5968, "status": "completed", "scheduled": now - timedelta(days=7),
                 "accepted_worker": "carepartner_tuankiet",
-                "review": {"rating": 5, "comment": "Tuấn Kiệt chọn đồ rất tươi ngon, hóa đơn đầy đủ và giao hàng rất nhanh chóng."},
+                "review": {"rating": 5, "comment": "Tuấn Kiệt chọn đồ rất tươi ngon, hóa đơn đối chiếu đầy đủ và giao hàng rất nhanh chóng."},
                 "payment_method": "cash",
             },
             {
                 "key": "t10", "title": "[TEST DEMO] Trông 2 bé tối Thứ 7 tuần trước",
                 "description": "Trông 2 bé (4 tuổi và 7 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt. Đang chờ phụ huynh đánh giá chất lượng ca làm.",
                 "price": 320000, "cat": cats["Trông trẻ"], "parent": parent_test,
-                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
-                "lat": 10.7769, "lng": 106.7009, "status": "completed", "scheduled": now - timedelta(days=4),
+                "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
+                "lat": 16.4602, "lng": 107.6008, "status": "completed", "scheduled": now - timedelta(days=4),
                 "accepted_worker": "sinhvien_test",
                 "payment_method": "momo_escrow",
             },
@@ -887,8 +887,8 @@ class Command(BaseCommand):
                 "key": "t11", "title": "Gia sư Hóa học lớp 11 nâng cao luyện thi học kỳ",
                 "description": "Dạy kèm 2 buổi chuyên đề bài tập Axit Nitric và Hợp chất hữu cơ.",
                 "price": 260000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_baolinh"],
-                "loc": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
-                "lat": 10.7932, "lng": 106.7218, "status": "completed", "scheduled": now - timedelta(days=8),
+                "loc": "Khu đô thị An Cựu City, Hoàng Quốc Việt, TP. Huế",
+                "lat": 16.4525, "lng": 107.6045, "status": "completed", "scheduled": now - timedelta(days=8),
                 "accepted_worker": "carepartner_tuankiet",
                 "review": {"rating": 4, "comment": "Phương pháp dạy dễ hiểu, giải bài mẫu rõ ràng. Nhắc bé làm bài tập về nhà kỹ hơn một chút là hoàn hảo."},
                 "payment_method": "cash",
@@ -899,8 +899,8 @@ class Command(BaseCommand):
                 "key": "t12", "title": "Hướng dẫn bé lớp 4 dùng AI học vẽ và học từ vựng",
                 "description": "Phụ huynh hủy vì bé bị ốm phải nhập viện điều trị.",
                 "price": 200000, "cat": cats["Hỗ trợ AI"], "parent": parent_dict["phuhuynh_yenchi"],
-                "loc": "156 Nguyễn Đình Chiểu, Quận 3, TP.HCM",
-                "lat": 10.7785, "lng": 106.6912, "status": "cancelled", "scheduled": now - timedelta(days=3),
+                "loc": "15 Lê Lợi, P. Vĩnh Ninh, TP. Huế",
+                "lat": 16.4678, "lng": 107.5855, "status": "cancelled", "scheduled": now - timedelta(days=3),
             },
         ]
 
@@ -965,22 +965,22 @@ class Command(BaseCommand):
         )
         LiveLocation.objects.create(
             task=t5, worker=worker_test,
-            latitude=D("10.7769"), longitude=D("106.7009"),
+            latitude=D("16.4602"), longitude=D("107.6008"),
             accuracy=4.5, speed=0.0, heading=90.0,
             is_outside_geofence=False,
         )
         for idx in range(5):
             LocationHistory.objects.create(
                 task=t5, worker=worker_test,
-                latitude=D(str(10.7750 + idx * 0.0004)),
-                longitude=D(str(106.6990 + idx * 0.0004)),
+                latitude=D(str(16.4580 + idx * 0.0005)),
+                longitude=D(str(107.5990 + idx * 0.0004)),
                 accuracy=5.0, speed=1.5,
                 recorded_at=now - timedelta(minutes=30 - idx * 5)
             )
         DeviceHeartbeat.objects.create(
             task=t5, worker=worker_test,
             last_seen=now - timedelta(seconds=12),
-            last_location_lat=D("10.7769"), last_location_lng=D("106.7009"),
+            last_location_lat=D("16.4602"), last_location_lng=D("107.6008"),
             device_status="online", battery_level=88,
             app_state="foreground", network_type="wifi"
         )
@@ -994,21 +994,21 @@ class Command(BaseCommand):
         )
         LiveLocation.objects.create(
             task=t7, worker=w_phuoc,
-            latitude=D("10.7760"), longitude=D("106.6940"),
+            latitude=D("16.4670"), longitude=D("107.5870"),
             accuracy=6.0, speed=2.0, heading=180.0,
             is_outside_geofence=False,
         )
         # ⚡ SOS ALERT ĐANG HOẠT ĐỘNG (ACTIVE)
         SOSAlert.objects.create(
             task=t7, sender="worker", sender_user=w_phuoc,
-            latitude=D("10.7760"), longitude=D("106.6940"),
-            message="Bé bị sốt cao 39 độ đột ngột tại cổng trường, em đang chườm ấm và xin ý kiến phụ huynh gấp!",
+            latitude=D("16.4670"), longitude=D("107.5870"),
+            message="Bé bị sốt cao 39 độ đột ngột tại cổng trường Lê Lợi, em đang chườm ấm và xin ý kiến phụ huynh gấp!",
             status="active",
         )
         # 1 SOS Alert đã giải quyết xong trong quá khứ
         SOSAlert.objects.create(
             task=task_dict["t10"], sender="parent", sender_user=parent_test,
-            latitude=D("10.7769"), longitude=D("106.7009"),
+            latitude=D("16.4602"), longitude=D("107.6008"),
             message="Kiểm tra nhầm nút SOS khẩn cấp, bé vẫn chơi bình thường.",
             status="resolved", resolved_at=now - timedelta(days=4), resolved_by=admin_user
         )
@@ -1017,7 +1017,7 @@ class Command(BaseCommand):
         DeviceOfflineAlert.objects.create(
             task=t5, worker=worker_test,
             last_seen=now - timedelta(minutes=15),
-            last_location_lat=D("10.7769"), last_location_lng=D("106.7009"),
+            last_location_lat=D("16.4602"), last_location_lng=D("107.6008"),
             status="recovered", push_sent=True, push_sent_at=now - timedelta(minutes=14),
             recovered_at=now - timedelta(minutes=12), recovery_duration_seconds=120,
         )
@@ -1257,12 +1257,12 @@ class Command(BaseCommand):
         # 3. Minh chứng Bằng cấp (CredentialSubmission) — pending, approved, rejected
         CredentialSubmission.objects.create(
             worker=worker_dict["carepartner_pending_hai"],
-            description="Chứng chỉ IELTS 7.0 Quốc Tế & Giấy khen Sinh viên Giỏi cấp Trường năm 2025",
+            description="Chứng chỉ IELTS 7.0 Quốc Tế & Giấy khen Sinh viên Giỏi ĐH Ngoại ngữ Huế năm 2025",
             status="pending"
         )
         CredentialSubmission.objects.create(
             worker=worker_dict["carepartner_hoango"],
-            description="Bằng Cử Nhân Sư Phạm Mầm Non chính quy loại Giỏi — ĐH Sư Phạm TP.HCM",
+            description="Bằng Cử Nhân Sư Phạm Mầm Non chính quy loại Giỏi — ĐH Sư Phạm Huế (Đại học Huế)",
             status="approved",
             admin_review="Bằng cấp hợp lệ, đã đối chiếu với cơ sở dữ liệu sinh viên của nhà trường.",
             reviewed_at=now - timedelta(days=5)
@@ -1280,7 +1280,7 @@ class Command(BaseCommand):
             worker=worker_dict["carepartner_tuankiet"],
             proposed_changes={
                 "phone_number": "0987111999",
-                "address": "Ký túc xá Đại học Bách Khoa, 497 Hòa Hảo, Phường 7, Quận 10, TP.HCM"
+                "address": "Ký túc xá Đại học Khoa học Huế, 77 Nguyễn Huệ, P. Phú Nhuận, TP. Huế"
             },
             status="pending",
         )
@@ -1299,7 +1299,7 @@ class Command(BaseCommand):
         Notification.objects.create(
             recipient=worker_test,
             title="Nhắc nhở ca làm chiều nay lúc 14:00",
-            message="Bạn có 1 ca làm trông bé chiều nay tại Quận 1. Đừng quên bật chia sẻ vị trí (Live Tracking) khi bắt đầu di chuyển nhé!"
+            message="Bạn có 1 ca làm trông bé chiều nay tại The Manor Crown Huế. Đừng quên bật chia sẻ vị trí (Live Tracking) khi bắt đầu di chuyển nhé!"
         )
 
         self._log("   + Đã tạo đầy đủ Kiểm duyệt, Khiếu nại AI, Bằng cấp, Yêu cầu đổi hồ sơ & Thông báo.")
@@ -1331,18 +1331,18 @@ class Command(BaseCommand):
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
   │ admin                   │ Quản trị viên (Staff/Su) │ Duyệt bằng cấp, xử lý khiếu nại, kháng cáo ELO, mở khóa│
   │ phuhuynh_test           │ Phụ huynh kiểm thử chính │ Đang có đơn open, in_progress, chat mở, ví 2.500.000đ │
-  │ sinhvien_test           │ CarePartner kiểm thử     │ ĐH Sư Phạm, ELO 1520, có ca đang làm, live GPS, diary  │
+  │ sinhvien_test           │ CarePartner kiểm thử     │ ĐH Sư Phạm Huế, ELO 1520, có ca đang làm, live GPS     │
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-  │ phuhuynh_baolinh        │ Phụ huynh mẫu (Vinhomes) │ Đơn trông trẻ đang đếm ngược cam kết (awaiting_commit) │
-  │ phuhuynh_minhkhoi       │ Phụ huynh mẫu (Sala Q2)  │ Đơn đón trẻ tan trường (in_progress), ví 3.200.000đ    │
-  │ phuhuynh_yenchi         │ Phụ huynh mẫu (Bác sĩ Q3)│ Đơn gia sư tiếng anh đã xong (completed +15 ELO)       │
-  │ phuhuynh_congvinh       │ Phụ huynh mẫu (Q.10)     │ Đơn bị hủy sát giờ có đền bù credit & đơn kháng cáo    │
+  │ phuhuynh_baolinh        │ Phụ huynh mẫu (An Cựu)   │ Đơn trông trẻ đang đếm ngược cam kết (awaiting_commit) │
+  │ phuhuynh_minhkhoi       │ Phụ huynh mẫu (Vincom)   │ Đơn đón trẻ tan trường (in_progress), ví 3.200.000đ    │
+  │ phuhuynh_yenchi         │ Phụ huynh mẫu (Lê Lợi)   │ Đơn gia sư tiếng anh đã xong (completed +15 ELO)       │
+  │ phuhuynh_congvinh       │ Phụ huynh mẫu (Xuân Phú) │ Đơn bị hủy sát giờ có đền bù credit & đơn kháng cáo    │
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-  │ carepartner_tuankiet    │ CarePartner (ĐH Bách Khoa│ Gia sư Toán Lý, ELO 1480, có đơn kháng cáo hỏng xe     │
-  │ carepartner_hoango      │ CarePartner (ĐH Sư Phạm) │ Mầm non Montessori, ELO 1580, nhận việc trông bé 4 tuổi│
-  │ carepartner_mylinh      │ CarePartner (ĐH Kinh Tế) │ Nấu ăn dọn dẹp, ELO 1360, có khiếu nại ép làm thêm việc│
+  │ carepartner_tuankiet    │ CarePartner (ĐH K.Học)   │ Gia sư Toán Lý, ELO 1480, có đơn kháng cáo hỏng xe     │
+  │ carepartner_hoango      │ CarePartner (ĐH S.Phạm)  │ Mầm non Montessori, ELO 1580, nhận việc trông bé 4 tuổi│
+  │ carepartner_mylinh      │ CarePartner (ĐH K.Tế)    │ Nấu ăn dọn dẹp, ELO 1360, có khiếu nại ép làm thêm việc│
   │ carepartner_phuoc       │ CarePartner (ĐH Y Dược)  │ Đón trẻ tan trường, có cảnh báo SOS bé sốt đang ACTIVE │
-  │ carepartner_pending_hai │ CarePartner (Chờ duyệt)  │ Hồ sơ mới đăng ký, bằng cấp đang chờ Admin duyệt       │
+  │ carepartner_pending_hai │ CarePartner (Chờ duyệt)  │ Hồ sơ mới ĐH Ngoại Ngữ, bằng cấp chờ Admin duyệt       │
   │ carepartner_locked_trung│ CarePartner (Tạm khóa)   │ Tài khoản bị khóa, dùng để Admin kiểm thử mở khóa      │
   └─────────────────────────┴──────────────────────────┴────────────────────────────────────────────────────────┘
 """)

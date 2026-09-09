@@ -140,7 +140,7 @@
 
   // Bản đồ chọn điểm: tìm địa chỉ (Nominatim) + "Vị trí hiện tại" (GPS) + pin kéo thả
   function initMapPicker({ mapId, searchId, btnGpsId, addrId, latInput, lngInput, noteInput }) {
-    const map = L.map(mapId).setView([10.7769, 106.7009], 13); // HCM mặc định
+    const map = L.map(mapId).setView([16.4637, 107.5909], 13); // Huế mặc định
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { attribution: '© OpenStreetMap' }).addTo(map);
     let marker = null;
