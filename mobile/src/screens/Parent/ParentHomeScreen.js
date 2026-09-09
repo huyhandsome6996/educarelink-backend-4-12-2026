@@ -19,7 +19,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { getMyTasksAsParent } from '../../api/tasks';
 import { getBookings } from '../../api/matching';
 import NotificationBell from '../../components/NotificationBell';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
@@ -27,11 +26,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const STATUS_MAPPING = {
-  open: { label: 'Đang tìm', color: COLORS.warning, bg: COLORS.warningBg, icon: 'search' },
-  in_progress: { label: 'Đang làm', color: COLORS.primary, bg: COLORS.primaryLight, icon: 'construct' },
-  completed: { label: 'Hoàn thành', color: COLORS.success, bg: COLORS.successBg, icon: 'checkmark-circle' },
-  cancelled: { label: 'Đã huỷ', color: COLORS.textMuted, bg: '#f3f4f6', icon: 'close-circle' },
+// Style theo trạng thái ĐƠN GHÉP CẶP (Flow 1) — label VI lấy thẳng từ
+// API (status_label_vi) để luôn khớp backend, không còn nhãn cứng phía client.
+const BOOKING_STATUS_STYLE = {
+  awaiting_commitment: { color: '#B45309', bg: '#FFFBEB', icon: 'hourglass' },
+  committed: { color: '#C2410C', bg: '#FFF4ED', icon: 'time' },
+  in_progress: { color: '#C2410C', bg: '#FFF4ED', icon: 'play-circle' },
+  completed: { color: COLORS.successDeep, bg: COLORS.successBg, icon: 'checkmark-circle' },
+  cancelled: { color: COLORS.textMuted, bg: '#F3F4F6', icon: 'close-circle' },
+  expired: { color: COLORS.textMuted, bg: '#F3F4F6', icon: 'close-circle' },
 };
 
 // Grid 4 dịch vụ chính EduCareLink (2×2)
@@ -71,7 +74,7 @@ export default function ParentHomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const [tasks, setTasks] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -79,7 +82,7 @@ export default function ParentHomeScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!isLoading && tasks.length === 0) {
+    if (!isLoading && bookings.length === 0) {
       pulseAnimRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.08, duration: ANIM.timingSlow, useNativeDriver: true }),
@@ -94,29 +97,31 @@ export default function ParentHomeScreen() {
         }
       };
     }
-  }, [isLoading, tasks.length, pulseAnim]);
+  }, [isLoading, bookings.length, pulseAnim]);
 
-  const fetchTasks = async () => {
+  // "Đơn ghép cặp gần đây" — dữ liệu từ HỆ GHÉP CẶP MỚI (Flow 1, /bookings/),
+  // không còn dùng Task API cũ (đã loại bỏ hệ thống ghép nối kiểu cũ khỏi màn Home).
+  const fetchBookings = async () => {
     try {
-      const res = await getMyTasksAsParent();
-      setTasks(res.data.slice(0, 3));
+      const { data } = await getBookings({ role: 'parent' });
+      setBookings((data?.results || data || []).slice(0, 3));
     } catch (e) {
-      console.error('Lỗi tải danh sách việc:', e);
+      console.error('Lỗi tải danh sách đơn:', e);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => { fetchBookings(); }, []);
 
   // Pull-to-refresh (hotfix crash vc23): dòng 169 từng tham chiếu `onRefresh`
   // chưa định nghĩa → Hermes ném "ReferenceError: Property 'onRefresh'
   // doesn't exist" → app crash ngay khi mở màn Home của phụ huynh.
-  // fetchTasks tự tắt cờ refreshing trong finally nên không cần lặp logic.
+  // fetchBookings tự tắt cờ refreshing trong finally nên không cần lặp logic.
   const onRefresh = () => {
     setRefreshing(true);
-    fetchTasks();
+    fetchBookings();
   };
 
   // Flow 1 — "Đơn đang thực hiện": mở booking mới nhất đang hoạt động
@@ -164,8 +169,10 @@ export default function ParentHomeScreen() {
     ? `${user.first_name} ${user.last_name || ''}`.trim()
     : user?.username || 'Phụ huynh';
 
-  const recentTask = tasks[0];
-  const recentStatus = recentTask ? (STATUS_MAPPING[recentTask.status] || STATUS_MAPPING.open) : null;
+  const recentBooking = bookings[0];
+  const recentStatusStyle = recentBooking
+    ? (BOOKING_STATUS_STYLE[recentBooking.status] || BOOKING_STATUS_STYLE.in_progress)
+    : null;
 
   return (
     <View style={styles.container}>
@@ -417,36 +424,56 @@ export default function ParentHomeScreen() {
           </ScrollView>
         </View>
 
-        {/* === SECTION 5: Hoạt động gần đây (Active Task System) === */}
+        {/* === SECTION 5: Đơn ghép cặp gần đây (Flow 1 — /bookings/) === */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Đơn ghép cặp gần đây</Text>
+            {bookings.length > 0 && (
+              <TouchableOpacity onPress={openLatestBooking}>
+                <Text style={styles.seeAllText}>Xem tất cả</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {isLoading ? (
             <ActivityIndicator color="#F26522" style={{ marginTop: 16 }} />
-          ) : recentTask && recentStatus ? (
+          ) : recentBooking && recentStatusStyle ? (
+            bookings.map((b) => {
+              const st = BOOKING_STATUS_STYLE[b.status] || BOOKING_STATUS_STYLE.in_progress;
+              return (
+                <TouchableOpacity
+                  key={b.id}
+                  style={styles.recentTaskCard}
+                  onPress={() => navigation.navigate('BookingDetail', { bookingId: b.id })}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.recentTaskIconBox, { backgroundColor: st.bg }]}>
+                    <Ionicons name={st.icon} size={22} color={st.color} />
+                  </View>
+                  <View style={styles.recentTaskInfo}>
+                    <Text style={styles.recentTaskTitle} numberOfLines={1}>
+                      {b.job_title || 'Đơn ghép cặp'}
+                    </Text>
+                    <Text style={styles.recentTaskLocation} numberOfLines={1}>
+                      {b.first_slot ? `${b.first_slot.date} · ${b.first_slot.time_from}-${b.first_slot.time_to}` : 'Chưa có lịch cụ thể'}
+                    </Text>
+                  </View>
+                  <View style={[styles.recentStatusBadge, { backgroundColor: st.bg }]}>
+                    <Text style={[styles.recentStatusText, { color: st.color }]}>
+                      {b.status_label_vi || b.status}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
             <TouchableOpacity
-              style={styles.recentTaskCard}
-              onPress={() => navigation.navigate('MyTasks')}
+              style={styles.emptyTaskBox}
+              onPress={() => navigation.navigate('JobTypeSelect')}
               activeOpacity={0.85}
             >
-              <View style={styles.recentTaskIconBox}>
-                <Ionicons name={recentStatus.icon} size={24} color="#F26522" />
-              </View>
-              <View style={styles.recentTaskInfo}>
-                <Text style={styles.recentTaskTitle} numberOfLines={1}>{recentTask.title}</Text>
-                <Text style={styles.recentTaskLocation} numberOfLines={1}>
-                  {recentTask.location || 'Không có địa điểm'}
-                </Text>
-              </View>
-              <View style={[styles.recentStatusBadge, { backgroundColor: recentStatus.bg }]}>
-                <Text style={[styles.recentStatusText, { color: recentStatus.color }]}>
-                  {recentStatus.label}
-                </Text>
-              </View>
+              <Ionicons name="add-circle" size={22} color="#F26522" />
+              <Text style={styles.emptyTaskText}>Bạn chưa có đơn ghép cặp nào — đăng việc ngay</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyTaskBox}>
-              <Text style={styles.emptyTaskText}>Bạn chưa có công việc nào đang diễn ra</Text>
-            </View>
           )}
         </View>
 
@@ -574,8 +601,8 @@ const styles = StyleSheet.create({
   },
   balanceValue: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: '800',
+    color: '#111827',
     marginRight: 6,
   },
   balanceDivider: {
@@ -619,8 +646,8 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
     ...SHADOWS.small,
   },
   serviceGridIconCircle: {
@@ -633,8 +660,8 @@ const styles = StyleSheet.create({
   },
   serviceGridLabel: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: '800',
+    color: '#111827',
     textAlign: 'center',
   },
 
@@ -748,12 +775,12 @@ const styles = StyleSheet.create({
   recentTaskTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#111827',
     marginBottom: 2,
   },
   recentTaskLocation: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#4B5563',
   },
   recentStatusBadge: {
     paddingHorizontal: 10,
@@ -766,13 +793,20 @@ const styles = StyleSheet.create({
   },
   emptyTaskBox: {
     padding: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFF9F5',
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#F26522',
+    borderStyle: 'dashed',
   },
   emptyTaskText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#C2410C',
+    fontWeight: '700',
   },
 
   // Community Posts
@@ -804,7 +838,7 @@ const styles = StyleSheet.create({
   communityCardTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#111827',
     lineHeight: 18,
     marginBottom: 6,
   },
@@ -867,12 +901,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center',
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(243,106,4,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(243,106,4,0.45)',
   },
   flow1SmallText: {
     ...TYPO.caption,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     textAlign: 'center',
     fontSize: 11,
   },

@@ -19,6 +19,7 @@ from matching.services.elo_service import EloService
 from matching.tests.base import MatchingTestBase
 from matching.services.matching_service import (
     find_candidates,
+    match_level_of,
     subscore_availability,
     subscore_completion,
     subscore_distance,
@@ -35,15 +36,30 @@ MONDAY = date(2026, 9, 14)
 
 class SubscoreTest(MatchingTestBase):
     def test_rating_newcomer_blend(self):
-        """review_count < 3 → blend 0.6×base + 0.4×60."""
-        self.assertEqual(subscore_rating(5.0, 0), 5.0 / 5 * 100 * 0.6 + 60 * 0.4)
+        """Đặc tả Mục 4: review_count == 0 -> 60.0 trung tính;
+        review_count < 3 -> blend 0.6×base + 0.4×60."""
+        self.assertEqual(subscore_rating(0.0, 0), 60.0)
+        self.assertEqual(subscore_rating(None, 0), 60.0)
+        self.assertEqual(subscore_rating(5.0, 1), 5.0 / 5 * 100 * 0.6 + 60 * 0.4)
         self.assertEqual(subscore_rating(4.0, 2), 80 * 0.6 + 24)
 
     def test_rating_full_history(self):
         self.assertEqual(subscore_rating(4.0, 10), 80.0)
 
-    def test_completion_newcomer_70(self):
-        self.assertEqual(subscore_completion(0, 0, 0), 70.0)
+    def test_completion_newcomer_100(self):
+        """Đặc tả Mục 4: người mới chưa có đơn — mặc định 100.0%."""
+        self.assertEqual(subscore_completion(0, 0, 0), 100.0)
+
+    def test_match_level_thresholds(self):
+        """Đặc tả Mục 5: ngưỡng nhãn 90/75/60 — nhãn phản ánh đúng điểm số."""
+        self.assertEqual(match_level_of(95), 'very_high')
+        self.assertEqual(match_level_of(90), 'very_high')
+        self.assertEqual(match_level_of(89), 'high')
+        self.assertEqual(match_level_of(75), 'high')
+        self.assertEqual(match_level_of(74), 'medium')
+        self.assertEqual(match_level_of(60), 'medium')
+        self.assertEqual(match_level_of(59), 'low')
+        self.assertEqual(match_level_of(40), 'low')
 
     def test_completion_rate(self):
         self.assertEqual(subscore_completion(8, 2, 0), 80.0)

@@ -152,9 +152,10 @@
   </style>
 </head>
 <body class="min-h-screen bg-[#F8F9FB] flex flex-col selection:bg-orange-100 selection:text-orange-900">
+{% include 'frontend/_parent_chrome.html' with active_tab='matching' %}
 
   <!-- D.1 — Sticky Top Navigation Bar -->
-  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] lg:ml-[260px]">
     <div class="max-w-[880px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <!-- Left: Back link -->
       <a href="{% url 'frontend:parent_home' %}" class="group flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-[#F26522] transition-colors py-2 px-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F26522]/30">
@@ -181,7 +182,8 @@
   </header>
 
   <!-- Main Container -->
-  <main class="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-6 py-6 sm:py-9 animate-page-enter space-y-8">
+  <main class="flex-1 w-full lg:ml-[260px] px-4 sm:px-6 py-6 sm:py-9 animate-page-enter space-y-8">
+<div class="max-w-[880px] mx-auto">
 
     <!-- D.2 — Hero Banner Section (Warm Gradient & Multi-color Accents) -->
     <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFF8F3] via-[#FFFFFF] to-[#F0F7FF] border border-orange-100/70 p-6 sm:p-9 shadow-[0_4px_24px_rgba(242,101,34,0.06)]">
@@ -487,7 +489,8 @@
       &copy; EduCareLink. Nền tảng kết nối phụ huynh &amp; sinh viên CarePartner hàng đầu Việt Nam.
     </footer>
 
-  </main>
+  </div>
+</main>
 
 </body>
 </html>

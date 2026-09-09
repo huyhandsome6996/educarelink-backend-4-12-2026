@@ -10,7 +10,17 @@ import datetime
 
 from rest_framework.exceptions import ValidationError
 
+# 5 nhóm tuổi trẻ chuẩn theo đặc tả Mục 2 + alias backward-compatibility
+# (các key cũ under_3/preschool/primary/secondary/mixed vẫn hợp lệ để không
+# gãy dữ liệu đã lưu trong DB và các test cũ).
 CHILD_AGE_GROUPS = {
+    # 5 mức chuẩn theo đặc tả Mục 2:
+    '0_to_12_months': '0 - 12 tháng tuổi',
+    '1_to_3_years': '1 - 3 tuổi',
+    '3_to_6_years': '3 - 6 tuổi',
+    '6_to_10_years': '6 - 10 tuổi',
+    'over_10_years': 'Trên 10 tuổi',
+    # Aliases tương thích ngược:
     'under_3': 'Dưới 3 tuổi',
     'preschool': 'Mầm non (3-6 tuổi)',
     'primary': 'Tiểu học (6-11 tuổi)',
@@ -18,13 +28,31 @@ CHILD_AGE_GROUPS = {
     'mixed': 'Nhiều độ tuổi',
 }
 
+# 7 việc chăm sóc trẻ chuẩn theo đặc tả Mục 2 + alias backward-compatibility
+# (các key cũ feed/bath/study/play/sleep/transport vẫn hợp lệ).
 CARE_DUTIES = {
+    # 7 việc chuẩn theo đặc tả Mục 2:
+    'general_care': 'Chăm sóc chung',
+    'feeding': 'Cho ăn',
+    'bathing': 'Tắm rửa',
+    'sleep_monitoring': 'Trông ngủ',
+    'play_activities': 'Vui chơi và tổ chức hoạt động',
+    'homework_help': 'Hỗ trợ làm bài tập về nhà',
+    'light_chores': 'Các việc nhẹ liên quan đến trẻ',
+    # Aliases tương thích ngược:
     'feed': 'Cho ăn / bữa ăn',
     'bath': 'Tắm rửa / vệ sinh',
     'study': 'Hướng dẫn bài tập',
     'play': 'Chơi cùng bé',
     'sleep': 'Đưa bé ngủ',
     'transport': 'Đưa đón',
+}
+
+# 3 phương thức đưa đón trẻ theo đặc tả Mục 2
+TRANSPORT_METHODS = {
+    'walking': 'Đi bộ',
+    'carepartner_vehicle': 'CarePartner tự có phương tiện',
+    'parent_arranged': 'Phụ huynh sắp xếp phương tiện',
 }
 
 JOB_TYPES = ('tutoring', 'childcare', 'pickup')
@@ -42,7 +70,8 @@ REQUIRED_BY_TYPE = {
 OPTIONAL_BY_TYPE = {
     'tutoring': ['location_note'],
     'childcare': ['medical_allergy_notes', 'location_note'],
-    'pickup': ['pickup_location_note', 'destination_note', 'transport_note'],
+    'pickup': ['pickup_location_note', 'destination_note', 'transport_note',
+               'transport_method'],
 }
 
 
@@ -126,6 +155,13 @@ def validate_job_payload(job_type, payload, user_role='parent'):
             errors['destination_location'] = 'Cần vị trí điểm đến trên bản đồ.'
         else:
             clean['destination_location'] = payload.get('destination_location')
+
+        # Kiểm tra transport_method nếu có gửi lên (đặc tả Mục 2 — 3 lựa chọn)
+        transport_method = payload.get('transport_method')
+        if transport_method and transport_method not in TRANSPORT_METHODS:
+            errors['transport_method'] = 'Phương thức di chuyển không hợp lệ.'
+        elif transport_method:
+            clean['transport_method'] = transport_method
 
     if errors:
         raise ValidationError(errors)

@@ -1,0 +1,85 @@
+{% load static %}
+<!-- ============================================================ -->
+<!-- _parent_chrome.html — Khung điều hướng dùng chung cho MỌI trang -->
+<!-- phía phụ huynh (QA 2026-09-10: trước đây chỉ trang chủ có      -->
+<!-- sidebar, các trang /dang-viec/*, ung-vien, don, vi-credit      -->
+<!-- không có điều hướng → thêm đồng bộ).                           -->
+<!-- Tham số: active_tab = home | tasks | matching | chatbot        -->
+<!-- Gồm: sidebar desktop + bottom-nav mobile + runtime user/logout -->
+<!-- ============================================================ -->
+
+<!-- ===== SIDEBAR (Desktop ≥1024px) ===== -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-white lg:border-r lg:border-gray-100 lg:z-40">
+{% include 'frontend/_parent_sidebar.html' with active_tab=active_tab %}
+</aside>
+
+<!-- ===== BOTTOM NAV (Mobile <1024px) ===== -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-200">
+    <div class="flex justify-around items-center px-2 pt-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+        <!-- Trang chủ -->
+        <a href="{% url 'frontend:parent_home' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3 py-2 {% if active_tab == 'home' %}bg-orange-50 text-[#F26522] font-bold{% else %}text-gray-500 hover:text-gray-800 hover:bg-gray-50{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'home' %} filled{% endif %}">home</span>
+            <span class="text-[11px] mt-0.5 {% if active_tab == 'home' %}font-bold{% else %}font-medium{% endif %}">Trang chủ</span>
+        </a>
+        <!-- Việc của tôi -->
+        <a href="{% url 'frontend:parent_tasks' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3 py-2 {% if active_tab == 'tasks' %}bg-orange-50 text-[#F26522] font-bold{% else %}text-gray-500 hover:text-gray-800 hover:bg-gray-50{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'tasks' %} filled{% endif %}">assignment</span>
+            <span class="text-[11px] mt-0.5 {% if active_tab == 'tasks' %}font-bold{% else %}font-medium{% endif %}">Việc của tôi</span>
+        </a>
+        <!-- Đăng việc ghép cặp -->
+        <a href="{% url 'frontend:dang_viec_select' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3 py-2 {% if active_tab == 'matching' %}bg-orange-50 text-[#F26522] font-bold{% else %}text-gray-500 hover:text-gray-800 hover:bg-gray-50{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'matching' %} filled{% endif %}">add_circle</span>
+            <span class="text-[11px] mt-0.5 {% if active_tab == 'matching' %}font-bold{% else %}font-medium{% endif %}">Đăng việc</span>
+        </a>
+        <!-- AI Trợ lý -->
+        <a href="{% url 'frontend:chatbot' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3 py-2 {% if active_tab == 'chatbot' %}bg-orange-50 text-[#F26522] font-bold{% else %}text-gray-500 hover:text-gray-800 hover:bg-gray-50{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'chatbot' %} filled{% endif %}">smart_toy</span>
+            <span class="text-[11px] mt-0.5 {% if active_tab == 'chatbot' %}font-bold{% else %}font-medium{% endif %}">AI Trợ lý</span>
+        </a>
+    </div>
+</nav>
+
+<style>
+    /* Chừa chỗ cho bottom-nav trên mobile để nội dung không bị che */
+    @media (max-width: 1023px) {
+        main { padding-bottom: 5.5rem; }
+    }
+</style>
+
+<script>
+  // Runtime cho sidebar: đăng xuất + hiển thị tên/avatar (null-safe).
+  // Trang dùng _matching_common có sẵn toast/authFetch — nếu chưa có thì
+  // fallback fetch thường, lỗi im lặng (trang vẫn dùng được).
+  (function () {
+    window.handleLogout = window.handleLogout || function () {
+      if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        try { localStorage.clear(); } catch (e) {}
+        setTimeout(() => { window.location.href = '/login/'; }, 200);
+      }
+    };
+    async function pcrLoadUser() {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+        const r = await fetch('/api/profile/', { headers });
+        if (!r.ok) return;
+        const p = await r.json();
+        const fullName = (p.first_name && p.last_name)
+          ? `${p.first_name} ${p.last_name}` : (p.username || 'Người dùng');
+        const nameEl = document.getElementById('sidebar-name');
+        if (nameEl) nameEl.textContent = fullName;
+        const avatarUrl = p.avatar_url
+          || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.username || 'User')}&background=F26522&color=fff`;
+        const avEl = document.getElementById('sidebar-avatar');
+        if (avEl) avEl.src = avatarUrl;
+      } catch (e) { /* im lặng — sidebar vẫn hiển thị mặc định */ }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', pcrLoadUser);
+    } else { pcrLoadUser(); }
+  })();
+</script>

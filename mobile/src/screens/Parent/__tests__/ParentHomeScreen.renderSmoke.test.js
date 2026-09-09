@@ -74,17 +74,18 @@ jest.mock('../../../context/AuthContext', () => ({
   }),
 }));
 
-// ── Mock API tasks + matching ─────────────────────────────────
-// getMyTasksAsParent: "Hoạt động gần đây" — mặc định trả 1 việc để render
-// nhánh có dữ liệu (status label VI thật từ STATUS_MAPPING).
-const mockGetMyTasksAsParent = jest.fn();
-jest.mock('../../../api/tasks', () => ({
-  getMyTasksAsParent: (...args) => mockGetMyTasksAsParent(...args),
-}));
-
+// ── Mock API matching + tasks ─────────────────────────────
+// "Đơn ghép cặp gần đây" (Flow 1) giờ lấy từ getBookings — mặc định trả 1
+// đơn có đủ field như _booking_dict của backend để render nhánh có dữ liệu
+// (status_label_vi thật từ API).
 const mockGetBookings = jest.fn();
 jest.mock('../../../api/matching', () => ({
   getBookings: (...args) => mockGetBookings(...args),
+}));
+
+const mockGetMyTasksAsParent = jest.fn();
+jest.mock('../../../api/tasks', () => ({
+  getMyTasksAsParent: (...args) => mockGetMyTasksAsParent(...args),
 }));
 
 // NotificationBell poll API mỗi 30s + kéo theo expo-image → mock thành
@@ -110,17 +111,27 @@ async function flushEffects() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockGetMyTasksAsParent.mockResolvedValue({
-    data: [
-      { id: 't-1', title: 'Gia sư toán cho bé Mai', status: 'open' },
-      { id: 't-2', title: 'Đón trẻ trường mầm non', status: 'in_progress' },
-    ],
+  mockGetBookings.mockResolvedValue({
+    data: {
+      count: 1,
+      results: [
+        {
+          id: 'b-1',
+          job_id: 'j-1',
+          job_title: 'Trông trẻ tối thứ Ba cho bé Mai',
+          status: 'committed',
+          status_label_vi: 'Đã khóa lịch',
+          total_value_vnd: 180000,
+          first_slot: { date: '2026-09-15', time_from: '18:00', time_to: '21:00' },
+        },
+      ],
+    },
   });
-  mockGetBookings.mockResolvedValue({ data: { results: [] } });
+  mockGetMyTasksAsParent.mockResolvedValue({ data: [] });
 });
 
 describe('ParentHomeScreen — regression crash v1.4.2 (onRefresh)', () => {
-  test('mount lần đầu không ném ReferenceError, tải hoạt động gần đây', async () => {
+  test('mount lần đầu không ném ReferenceError, tải đơn ghép cặp Flow 1', async () => {
     let tree = null;
     let renderError = null;
     try {
@@ -131,14 +142,15 @@ describe('ParentHomeScreen — regression crash v1.4.2 (onRefresh)', () => {
     // Trước fix: "ReferenceError: Property 'onRefresh' doesn't exist"
     expect(renderError).toBeNull();
     await flushEffects();
-    expect(mockGetMyTasksAsParent).toHaveBeenCalledTimes(1);
+    expect(mockGetBookings).toHaveBeenCalledWith({ role: 'parent' });
+    expect(mockGetBookings).toHaveBeenCalledTimes(1);
     expect(tree.toJSON()).toBeTruthy();
   });
 
   test('pull-to-refresh: onRefresh bật spinner → tải lại → tắt spinner', async () => {
     const tree = await renderHome();
     await flushEffects();
-    expect(mockGetMyTasksAsParent).toHaveBeenCalledTimes(1);
+    expect(mockGetBookings).toHaveBeenCalledTimes(1);
 
     // RN jest-mock của RefreshControl render <RCTRefreshControl /> KHÔNG
     // truyền props xuống host (nên getByTestId không thấy testID) — nhưng
@@ -154,14 +166,14 @@ describe('ParentHomeScreen — regression crash v1.4.2 (onRefresh)', () => {
       await Promise.resolve(); // cho fetch promise chạy
     });
 
-    // Spinner đã tắt sau khi fetch xong (fetchTasks setRefreshing(false) trong finally)
+    // Spinner đã tắt sau khi fetch xong (fetchBookings setRefreshing(false) trong finally)
     expect(RefreshControl.latestRef.props.refreshing).toBe(false);
     // Đã gọi lại API làm mới dữ liệu (1 lần mount + 1 lần pull)
-    expect(mockGetMyTasksAsParent).toHaveBeenCalledTimes(2);
+    expect(mockGetBookings).toHaveBeenCalledTimes(2);
   });
 
   test('refresh lỗi API vẫn tắt spinner (không treo màn)', async () => {
-    mockGetMyTasksAsParent.mockRejectedValueOnce(new Error('network down'));
+    mockGetBookings.mockRejectedValueOnce(new Error('network down'));
     const tree = await renderHome();
     await flushEffects(); // finally trong fetchTasks vẫn chạy
     const rc = RefreshControl.latestRef;

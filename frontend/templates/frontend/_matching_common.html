@@ -82,6 +82,13 @@
   }
   .mcm-submit:active:not(:disabled) { transform: scale(0.99); }
   .mcm-submit:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+  /* Thông báo khi KHÔNG tải được tile bản đồ nền (mạng chặn CDN) —
+     người dùng vẫn tìm được địa chỉ qua ô tìm kiếm + GPS */
+  .mcm-tile-notice {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 16px; background: #F3F4F6; color: #4B5563;
+    font-size: 13px; line-height: 1.5; z-index: 500; pointer-events: none;
+  }
 </style>
 <script>
   const API_BASE = window.API_BASE || '/api';
@@ -138,11 +145,86 @@
     return start;
   }
 
-  // Bản đồ chọn điểm: tìm địa chỉ (Nominatim) + "Vị trí hiện tại" (GPS) + pin kéo thả
+  // Bản đồ chọn điểm: tìm địa chỉ (proxy backend + fallback Nominatim)
+  // + "Vị trí hiện tại" (GPS) + pin kéo thả.
+  // QA 2026-09-10: nhiều mạng chặn miền *.openstreetmap.org → tile xám +
+  // toast "Lỗi tìm kiếm địa chỉ.". Fix 2 lớp:
+  //   1) Geocode gọi qua /api/matching/geocode/* (proxy server, cache 6h);
+  //      chỉ khi proxy lỗi mới thử thẳng Nominatim.
+  //   2) Tile bản đồ dùng CARTO (Fastly CDN) làm mặc định, tự chuyển sang
+  //      OSM tile nếu CARTO lỗi, và hiện thông báo thân thiện nếu cả hai fail.
+  const MCM_TILE_PROVIDERS = [
+    { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      options: { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 20 } },
+    { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      options: { attribution: '© OpenStreetMap', maxZoom: 19 } },
+  ];
+
+  function attachResilientTiles(map) {
+    let layer = null, errors = 0, notified = false;
+    const notice = () => {
+      if (notified) return;
+      notified = true;
+      const holder = map.getContainer();
+      if (holder.querySelector('.mcm-tile-notice')) return;
+      const div = document.createElement('div');
+      div.className = 'mcm-tile-notice';
+      div.textContent = 'Không tải được bản đồ nền trên mạng này. Bạn vẫn có thể nhập địa chỉ vào ô tìm kiếm hoặc bấm "Dùng vị trí hiện tại" để chọn vị trí.';
+      holder.appendChild(div);
+    };
+    const attach = (idx) => {
+      errors = 0;
+      if (layer) map.removeLayer(layer);
+      const p = MCM_TILE_PROVIDERS[idx];
+      layer = L.tileLayer(p.url, p.options);
+      layer.on('tileerror', () => {
+        errors += 1;
+        if (errors >= 6) {
+          if (idx + 1 < MCM_TILE_PROVIDERS.length) attach(idx + 1);
+          else notice();
+        }
+      });
+      layer.addTo(map);
+    };
+    attach(0);
+  }
+
+  async function mcmGeocodeSearch(q) {
+    // Ưu tiên proxy backend (cùng origin — không bị adblock/ISP chặn)
+    try {
+      const r = await fetch(`${API_BASE}/matching/geocode/search/?q=${encodeURIComponent(q)}`);
+      if (r.ok) {
+        const j = await r.json();
+        return Array.isArray(j.results) ? j.results : [];
+      }
+      if (r.status === 400 || r.status === 429) return [];
+    } catch (e) { /* proxy lỗi mạng → thử trực tiếp bên dưới */ }
+    // Fallback: gọi thẳng Nominatim (trường hợp backend trả 502)
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}&accept-language=vi`);
+      const j = await r.json();
+      return Array.isArray(j) ? j : [];
+    } catch (e) { return null; }
+  }
+
+  async function mcmGeocodeReverse(lat, lng) {
+    try {
+      const r = await fetch(`${API_BASE}/matching/geocode/reverse/?lat=${lat}&lon=${lng}`);
+      if (r.ok) {
+        const j = await r.json();
+        if (j.display_name) return j.display_name;
+      }
+    } catch (e) { /* thử trực tiếp bên dưới */ }
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`);
+      const j = await r.json();
+      return j.display_name || null;
+    } catch (e) { return null; }
+  }
+
   function initMapPicker({ mapId, searchId, btnGpsId, addrId, latInput, lngInput, noteInput }) {
     const map = L.map(mapId).setView([16.4637, 107.5909], 13); // Huế mặc định
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      { attribution: '© OpenStreetMap' }).addTo(map);
+    attachResilientTiles(map);
     let marker = null;
     const addrEl = document.getElementById(addrId);
 
@@ -165,20 +247,14 @@
     }
 
     async function reverseGeocode(lat, lng) {
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`);
-        const j = await r.json();
-        return j.display_name || null;
-      } catch { return null; }
+      return mcmGeocodeReverse(lat, lng);
     }
 
     async function searchAddress(q) {
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}&accept-language=vi`);
-        const j = await r.json();
-        if (j[0]) setPoint(j[0].lat, j[0].lon, j[0].display_name);
-        else toast('Không tìm thấy địa chỉ. Hãy thử từ khoá khác.', false);
-      } catch { toast('Lỗi tìm kiếm địa chỉ.', false); }
+      const results = await mcmGeocodeSearch(q);
+      if (results === null) { toast('Lỗi tìm kiếm địa chỉ. Vui lòng thử lại.', false); return; }
+      if (!results.length) { toast('Không tìm thấy địa chỉ. Hãy thử từ khoá khác.', false); return; }
+      setPoint(results[0].lat, results[0].lon, results[0].display_name);
     }
 
     const searchInput = document.getElementById(searchId);

@@ -39,6 +39,7 @@ from .api.admin_manage import (
     StateLogAdminAPIView,
 )
 from .api.credits import CreditBalanceAPIView
+from .api.geocode import GeocodeReverseAPIView, GeocodeSearchAPIView
 from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
 from .api.notifications import NotificationListAPIView, UnreadCountAPIView
 from .api.trust import TrustAPIView
@@ -95,6 +96,12 @@ urlpatterns = [
 
     # ── Tín nhiệm (Step 6.7) — không lộ số ELO ──
     path('carepartner/trust/', TrustAPIView.as_view(), name='matching-trust'),
+
+    # ── Geocode proxy (QA 2026-09-10): browser KHÔNG gọi thẳng Nominatim
+    #    nữa vì nhiều mạng chặn miền *.openstreetmap.org → proxy qua backend
+    #    + cache 6h. Endpoint công khai, throttle 60 req/phút/IP. ──
+    path('geocode/search/', GeocodeSearchAPIView.as_view(), name='matching-geocode-search'),
+    path('geocode/reverse/', GeocodeReverseAPIView.as_view(), name='matching-geocode-reverse'),
 
     # ── Quản trị web admin (IsAdminUser) ──
     path('admin/elo-bands/', EloBandAdminAPIView.as_view(), name='matching-admin-elo-bands'),

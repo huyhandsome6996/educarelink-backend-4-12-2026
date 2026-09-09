@@ -140,7 +140,7 @@ function ParentTabs() {
           }
           let iconName;
           if (route.name === 'ParentHome') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'MyTasks') iconName = focused ? 'book' : 'book-outline';
+          else if (route.name === 'MyTasks') iconName = focused ? 'list' : 'list-outline';
           else if (route.name === 'TrackingOverview') iconName = focused ? 'radar' : 'radar-outline';
           else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
@@ -155,7 +155,7 @@ function ParentTabs() {
       })}
     >
       <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Nhật ký' }} />
+      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Việc của tôi' }} />
       <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
       <Tab.Screen name="TrackingOverview" component={TrackingOverviewScreen} options={{ tabBarLabel: 'Theo dõi' }} />
       <Tab.Screen name="ParentProfile" component={ParentProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
