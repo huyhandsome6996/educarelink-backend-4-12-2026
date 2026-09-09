@@ -774,15 +774,23 @@ class Command(BaseCommand):
             note="Kính gửi Admin, em bị tai nạn nhẹ hỏng xe trên đường đến nhà phụ huynh, có hóa đơn sửa xe của tiệm kèm theo. Kính mong Admin xem xét giảm trừ mức phạt ELO vì lý do bất khả kháng ạ.",
             status="pending",
         )
-        self.stdout.write(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
+        self._log(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
 
         # ═══════════════════════════════════════════════════════════════
-        #  PHẦN 7: CORE TASKS (12 CÔNG VIỆC ĐỦ TẤT CẢ TRẠNG THÁI)
+        #  PHẦN 7: CORE TASKS (13 CÔNG VIỆC ĐỦ TẤT CẢ TRẠNG THÁI)
         # ═══════════════════════════════════════════════════════════════
-        self.stdout.write("\n[7/12] Tạo 12 công việc Core Tasks (open, in_progress, completed, cancelled)...")
+        self._log("\n[7/12] Tạo 13 công việc Core Tasks (open, in_progress, completed, cancelled)...")
 
         tasks_configs = [
-            # ── OPEN TASKS (4) ──
+            # ── OPEN TASKS (5) ──
+            {
+                "key": "t0", "title": "[TEST DEMO] Dạy kèm Tiếng Anh giao tiếp và kể chuyện bé 6 tuổi",
+                "description": "Cần tìm CarePartner kiên nhẫn, phát âm chuẩn hướng dẫn bé 6 tuổi học từ vựng và xem tranh tiếng Anh 2 buổi cuối tuần.",
+                "price": 250000, "cat": cats["Gia sư"], "parent": parent_test,
+                "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
+                "lat": 10.7769, "lng": 106.7009, "status": "open", "scheduled": now + timedelta(days=2),
+                "applicants": ["carepartner_tuankiet", "carepartner_hoango", "carepartner_mylinh"],
+            },
             {
                 "key": "t1", "title": "Gia sư Vật Lý lớp 10 — 2 buổi/tuần (Thứ 3 & Thứ 5)",
                 "description": "Bé bị hổng kiến thức phần Động lực học chất điểm, cần sinh viên Bách Khoa hoặc Sư Phạm kiên nhẫn giảng lại lý thuyết và hướng dẫn giải bài tập.",
@@ -805,7 +813,7 @@ class Command(BaseCommand):
                 "price": 300000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_yenchi"],
                 "loc": "Căn hộ The Manor, 91 Nguyễn Hữu Cảnh, Bình Thạnh, TP.HCM",
                 "lat": 10.7911, "lng": 106.7164, "status": "open", "scheduled": now + timedelta(days=4),
-                "applicants": ["carepartner_mylinh"],
+                "applicants": ["carepartner_mylinh", "carepartner_phuoc", "carepartner_hoango"],
             },
             {
                 "key": "t4", "title": "Trông bé 3 tuổi buổi sáng Thứ Bảy (08:00 - 11:30)",
@@ -813,7 +821,7 @@ class Command(BaseCommand):
                 "price": 220000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
                 "loc": "120 Lê Văn Sỹ, Phường 10, Phú Nhuận, TP.HCM",
                 "lat": 10.7925, "lng": 106.6732, "status": "open", "scheduled": now + timedelta(days=3),
-                "applicants": [], # 0 applicants (việc mới tinh)
+                "applicants": ["carepartner_hoango", "carepartner_tuankiet", "sinhvien_test"],
             },
 
             # ── IN_PROGRESS TASKS (3) ──
@@ -868,12 +876,11 @@ class Command(BaseCommand):
             },
             {
                 "key": "t10", "title": "[TEST DEMO] Trông 2 bé tối Thứ 7 tuần trước",
-                "description": "Trông 2 bé (4 tuổi và 7 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt.",
+                "description": "Trông 2 bé (4 tuổi và 7 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt. Đang chờ phụ huynh đánh giá chất lượng ca làm.",
                 "price": 320000, "cat": cats["Trông trẻ"], "parent": parent_test,
                 "loc": "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM",
                 "lat": 10.7769, "lng": 106.7009, "status": "completed", "scheduled": now - timedelta(days=4),
                 "accepted_worker": "sinhvien_test",
-                "review": {"rating": 5, "comment": "Chị Minh Anh chăm sóc 2 bé cực kỳ chu đáo, các bé rất thích và hỏi khi nào chị đến chơi tiếp. Nhất định sẽ thuê lại!"},
                 "payment_method": "momo_escrow",
             },
             {

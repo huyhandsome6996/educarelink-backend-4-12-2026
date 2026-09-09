@@ -683,34 +683,72 @@ class ReviewCreateAPIView(generics.CreateAPIView):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
-    def perform_create(self, serializer):
-        # Phục vụ Màn 7: Đánh giá
-        task_id = self.request.data.get('task')
-        # Validate: chỉ review task đã hoàn thành
-        if task_id:
-            try:
-                task_id = int(task_id)
-            except (TypeError, ValueError):
-                raise drf_serializers.ValidationError({'task': 'ID công việc không hợp lệ.'})
-            try:
-                task = Task.objects.get(id=task_id)
-                if task.status != 'completed':
-                    raise drf_serializers.ValidationError({'task': 'Chỉ đánh giá công việc đã hoàn thành.'})
-                if task.parent != self.request.user:
-                    raise drf_serializers.ValidationError({'task': 'Bạn chỉ được đánh giá công việc của mình.'})
-                # Kiểm tra đã review chưa
-                if hasattr(task, 'review'):
-                    raise drf_serializers.ValidationError({'task': 'Công việc này đã được đánh giá.'})
-                # Tự động xác định reviewee là worker được accept
-                accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
-                if accepted_app:
-                    serializer.save(reviewer=self.request.user, reviewee=accepted_app.worker)
-                else:
-                    raise drf_serializers.ValidationError({'task': 'Không tìm thấy người thực hiện công việc này.'})
-            except Task.DoesNotExist:
-                raise drf_serializers.ValidationError({'task': 'Không tìm thấy công việc.'})
-        else:
-            raise drf_serializers.ValidationError({'task': 'Vui lòng chọn công việc cần đánh giá.'})
+
+    def create(self, request, *args, **kwargs):
+        # Phục vụ Màn 7: Đánh giá & Cập nhật đánh giá
+        task_id = request.data.get('task')
+        if not task_id:
+            return Response({'task': 'Vui lòng chọn công việc cần đánh giá.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            task_id = int(task_id)
+        except (TypeError, ValueError):
+            return Response({'task': 'ID công việc không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            task = Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            return Response({'task': 'Không tìm thấy công việc.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if task.status != 'completed':
+            return Response({'task': 'Chỉ đánh giá công việc đã hoàn thành.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if task.parent != request.user:
+            return Response({'task': 'Bạn chỉ được đánh giá công việc của mình.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Validate rating
+        rating = request.data.get('rating')
+        try:
+            rating = int(rating)
+            if not (1 <= rating <= 5):
+                raise ValueError
+        except (TypeError, ValueError):
+            return Response({'rating': 'Đánh giá phải từ 1 đến 5 sao.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        comment = request.data.get('comment', '').strip()
+
+        # Xác định worker thực hiện
+        worker = None
+        accepted_app = TaskApplication.objects.filter(task=task, status='accepted').first()
+        if accepted_app:
+            worker = accepted_app.worker
+        elif hasattr(task, 'review') and task.review:
+            worker = task.review.reviewee
+
+        if not worker:
+            return Response({'task': 'Không tìm thấy CarePartner thực hiện công việc này.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Nếu đã có review từ phụ huynh này → Cập nhật (Update) thay vì báo lỗi trùng lặp
+        existing_review = Review.objects.filter(task=task).first()
+        if existing_review:
+            if existing_review.reviewer != request.user:
+                return Response({'task': 'Bạn không có quyền chỉnh sửa đánh giá này.'}, status=status.HTTP_403_FORBIDDEN)
+            existing_review.rating = rating
+            existing_review.comment = comment
+            existing_review.save()
+            serializer = self.get_serializer(existing_review)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Tạo review mới
+        new_review = Review.objects.create(
+            task=task,
+            reviewer=request.user,
+            reviewee=worker,
+            rating=rating,
+            comment=comment
+        )
+        serializer = self.get_serializer(new_review)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 # --- PHẦN 4: LUỒNG DÀNH CHO SINH VIÊN ---
 class ApplyTaskAPIView(APIView):
