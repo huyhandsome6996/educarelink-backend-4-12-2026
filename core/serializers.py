@@ -82,11 +82,25 @@ class TaskSerializer(serializers.ModelSerializer):
     # Tên phụ huynh & tên danh mục (chỉ đọc) — phục vụ màn hình bảng tin mobile
     parent_name = serializers.CharField(source='parent.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    is_reviewed = serializers.SerializerMethodField()
+    review_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
         fields = '__all__'
         read_only_fields = ['parent']  # Tự động lấy từ JWT Token khi tạo việc
+
+    def get_is_reviewed(self, obj):
+        return hasattr(obj, 'review') and obj.review is not None
+
+    def get_review_detail(self, obj):
+        if hasattr(obj, 'review') and obj.review is not None:
+            return {
+                'id': obj.review.id,
+                'rating': obj.review.rating,
+                'comment': obj.review.comment,
+            }
+        return None
 
 # 4. Dịch dữ liệu Ứng tuyển (Dành cho màn hình Việc của tôi — cả Parent lẫn Worker)
 class TaskApplicationSerializer(serializers.ModelSerializer):

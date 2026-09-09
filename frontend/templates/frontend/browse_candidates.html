@@ -889,6 +889,13 @@ async function fetchCandidates() {
             loadAIInsights();
         } else {
             document.getElementById('ai-insights-panel').classList.add('hidden');
+            // Tự động mở gợi ý Smart Matches khi chưa có ai ứng tuyển để phụ huynh chọn ngay
+            setTimeout(() => {
+                const body = document.getElementById('smart-matches-body');
+                if (body && body.classList.contains('hidden')) {
+                    toggleSmartMatches();
+                }
+            }, 200);
         }
 
     } catch (e) {

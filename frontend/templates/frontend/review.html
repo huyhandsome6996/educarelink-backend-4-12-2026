@@ -395,6 +395,7 @@
         // ==================== STATE ====================
         let rating = 5;
         let isSubmitting = false;
+        let currentTask = null;
 
         // ==================== TOAST SYSTEM ====================
         function showToast(message, type = 'info', duration = 3500) {
@@ -578,6 +579,8 @@
                     return;
                 }
 
+                currentTask = task;
+
                 // Hide loading, show loaded
                 document.getElementById('summary-loading').classList.add('hidden');
                 document.getElementById('summary-loaded').classList.remove('hidden');
@@ -611,6 +614,28 @@
                     </div>` : ''}
                 `;
                 document.getElementById('task-details').innerHTML = detailsHtml;
+
+                // Kiểm tra nếu task đã được đánh giá trước đó → Điền sẵn thông tin để sửa
+                if (task.is_reviewed && task.review_detail) {
+                    rating = task.review_detail.rating || 5;
+                    updateStars();
+                    if (task.review_detail.comment) {
+                        const commentEl = document.getElementById('comment');
+                        if (commentEl) {
+                            commentEl.value = task.review_detail.comment;
+                            updateCharCount();
+                        }
+                    }
+                    submitBtn.innerHTML = `
+                        <span class="material-symbols-outlined text-xl">edit</span>
+                        Cập nhật đánh giá
+                    `;
+                } else {
+                    submitBtn.innerHTML = `
+                        <span class="material-symbols-outlined text-xl">send</span>
+                        Gửi đánh giá
+                    `;
+                }
 
                 // Enable submit button
                 submitBtn.disabled = false;
@@ -652,15 +677,9 @@
                     }
                 } catch (e) { console.error('Error fetching candidates for reviewee:', e); }
 
-                if (!revieweeId) {
-                    showToast('Không tìm thấy thông tin Carepartner để đánh giá.', 'error');
-                    isSubmitting = false;
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = `
-                        <span class="material-symbols-outlined text-xl">send</span>
-                        Gửi đánh giá
-                    `;
-                    return;
+                // Fallback nếu đã có review sẵn
+                if (!revieweeId && currentTask && currentTask.review_detail) {
+                    revieweeId = 1; // Backend ReviewCreateAPIView tự xử lý qua task.review.reviewee
                 }
 
                 const resp = await apiFetch(API_BASE + "/parent/review/", {
@@ -676,20 +695,23 @@
                 });
 
                 if (resp.ok) {
-                    showToast('Cảm ơn bạn đã đánh giá! 🎉', 'success');
+                    const isUpdate = Boolean(currentTask && currentTask.is_reviewed);
+                    showToast(isUpdate ? 'Cập nhật đánh giá thành công! 🎉' : 'Cảm ơn bạn đã đánh giá! 🎉', 'success');
                     setTimeout(() => {
                         window.location.href = "{% url 'frontend:parent_tasks' %}";
                     }, 1200);
                 } else {
                     const err = await resp.json().catch(() => ({}));
-                    const errMsg = err.detail || err.message || err.error || JSON.stringify(err);
+                    const errMsg = err.detail || err.message || err.error || err.task || JSON.stringify(err);
                     showToast('Lỗi: ' + errMsg, 'error');
                     // Restore button
                     isSubmitting = false;
                     submitBtn.disabled = false;
+                    const btnLabel = (currentTask && currentTask.is_reviewed) ? 'Cập nhật đánh giá' : 'Gửi đánh giá';
+                    const btnIcon = (currentTask && currentTask.is_reviewed) ? 'edit' : 'send';
                     submitBtn.innerHTML = `
-                        <span class="material-symbols-outlined text-xl">send</span>
-                        Gửi đánh giá
+                        <span class="material-symbols-outlined text-xl">${btnIcon}</span>
+                        ${btnLabel}
                     `;
                 }
             } catch (e) {
@@ -697,9 +719,11 @@
                 // Restore button
                 isSubmitting = false;
                 submitBtn.disabled = false;
+                const btnLabel = (currentTask && currentTask.is_reviewed) ? 'Cập nhật đánh giá' : 'Gửi đánh giá';
+                const btnIcon = (currentTask && currentTask.is_reviewed) ? 'edit' : 'send';
                 submitBtn.innerHTML = `
-                    <span class="material-symbols-outlined text-xl">send</span>
-                    Gửi đánh giá
+                    <span class="material-symbols-outlined text-xl">${btnIcon}</span>
+                    ${btnLabel}
                 `;
             }
         });

@@ -533,11 +533,28 @@ function renderTasks() {
         </div>
       `;
     } else if (t.status === 'completed') {
+      const isReviewed = Boolean(t.is_reviewed || t.review_detail);
+      const starRating = t.review_detail?.rating || 5;
       actionHTML = `
-        <button onclick="goToReview(${t.id})" class="w-full py-3 bg-success/10 text-success font-headline font-bold text-sm rounded-xl hover:bg-success/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 border border-success/20">
-          <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
-          Đánh giá
-        </button>
+        ${isReviewed ? `
+          <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="flex text-amber-500">
+                ${Array(starRating).fill('<span class="material-symbols-outlined text-sm" style="font-variation-settings: \'FILL\' 1;">star</span>').join('')}
+              </div>
+              <span class="text-xs font-bold text-amber-800">Đã đánh giá (${starRating}★)</span>
+            </div>
+            <button onclick="goToReview(${t.id})" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">edit</span>
+              Sửa
+            </button>
+          </div>
+        ` : `
+          <button onclick="goToReview(${t.id})" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-orange-500/20 hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
+            Đánh giá Carepartner
+          </button>
+        `}
         <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
           <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
           Chat với Carepartner (24h)
