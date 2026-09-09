@@ -4,34 +4,47 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <title>EduCareLink — Đăng việc Đón trẻ</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
     </style>
     {% include 'frontend/_matching_common.html' %}
 </head>
-<body class="bg-gray-50">
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40">
-    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="{% url 'frontend:dang_viec_select' %}" class="text-sm font-semibold text-gray-500">← Chọn lại</a>
-        <span class="font-headline font-extrabold text-[#1A1A2E]">Đăng việc — Đón trẻ</span>
-        <span class="w-16"></span>
+<body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90">
+    <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            <span>Chọn lại</span>
+        </a>
+        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Đăng việc — Đón trẻ tan trường</span>
+        <span class="text-xs font-bold text-[#F26522] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
+            Flow 1
+        </span>
     </div>
 </header>
 
-<main class="max-w-2xl mx-auto px-4 py-8">
+<main class="max-w-2xl mx-auto px-4 py-8 mcm-fade-in">
     <form id="jobForm" class="space-y-4">
         <div class="mcm-card">
-            <h2 class="font-bold text-[#1A1A2E] mb-2">1. Điểm đón &amp; bé</h2>
+            <div class="flex items-center gap-2.5 mb-3">
+                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">1</span>
+                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Điểm đón &amp; Thông tin bé</h2>
+            </div>
             <label class="mcm-label" for="schoolName">Tên trường / điểm đón (bắt buộc)</label>
             <input id="schoolName" class="mcm-input" placeholder="VD: Tiểu học Nguyễn Văn Cừ">
             <label class="mcm-label">Vị trí điểm đón trên bản đồ (bắt buộc)</label>
             <div class="mcm-map-search">
                 <input id="mapSearch" placeholder="Nhập tên trường / địa chỉ để tìm…">
-                <button type="button" id="mapGps" class="mcm-btn-ghost">Dùng vị trí hiện tại</button>
+                <button type="button" id="mapGps" class="mcm-btn-ghost">
+                    <span class="material-symbols-outlined text-base">my_location</span>
+                    <span>Dùng vị trí hiện tại</span>
+                </button>
             </div>
             <div id="map" class="mcm-map"></div>
             <div id="mapAddr" class="mcm-addr">Chưa chọn vị trí</div>
@@ -53,16 +66,22 @@
         </div>
 
         <div class="mcm-card">
-            <h2 class="font-bold text-[#1A1A2E] mb-2">2. Điểm đến</h2>
+            <div class="flex items-center gap-2.5 mb-3">
+                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">2</span>
+                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Điểm đến &amp; Phương tiện</h2>
+            </div>
             <label class="mcm-label">Điểm đến (bắt buộc)</label>
             <div class="space-y-2 text-sm">
-                <label class="flex items-center gap-2"><input type="radio" name="destType" value="parent_home" checked> Về nhà phụ huynh (dùng vị trí ở mục 1 nếu không đổi)</label>
-                <label class="flex items-center gap-2"><input type="radio" name="destType" value="other_address"> Địa chỉ khác</label>
+                <label class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-orange-50/50 transition border border-gray-100"><input type="radio" name="destType" value="parent_home" checked class="accent-[#F26522] w-4 h-4"> Về nhà phụ huynh (dùng vị trí ở mục 1 nếu không đổi)</label>
+                <label class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-orange-50/50 transition border border-gray-100"><input type="radio" name="destType" value="other_address" class="accent-[#F26522] w-4 h-4"> Địa chỉ khác</label>
             </div>
             <div id="destOther" class="hidden mt-2">
                 <div class="mcm-map-search">
                     <input id="destSearch" placeholder="Nhập địa chỉ điểm đến…">
-                    <button type="button" id="destGps" class="mcm-btn-ghost">Dùng vị trí hiện tại</button>
+                    <button type="button" id="destGps" class="mcm-btn-ghost">
+                        <span class="material-symbols-outlined text-base">my_location</span>
+                        <span>Dùng vị trí hiện tại</span>
+                    </button>
                 </div>
                 <div id="destMap" class="mcm-map"></div>
                 <div id="destAddr" class="mcm-addr">Chưa chọn điểm đến</div>
@@ -76,7 +95,10 @@
         </div>
 
         <div class="mcm-card">
-            <h2 class="font-bold text-[#1A1A2E] mb-2">3. Thời gian, giá &amp; yêu cầu</h2>
+            <div class="flex items-center gap-2.5 mb-3">
+                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">3</span>
+                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Thời gian, Giá &amp; Yêu cầu</h2>
+            </div>
             <label class="mcm-label">Các ngày cần đón (bắt buộc)</label>
             <input id="dates" class="mcm-input" placeholder="Chọn ngày (có thể nhiều ngày)">
             <div id="dateList" class="flex flex-wrap gap-2 mt-2"></div>
@@ -97,7 +119,10 @@
             <input id="rate" type="number" min="1000" step="1000" class="mcm-input" placeholder="90000">
         </div>
 
-        <button type="submit" id="submitBtn" class="mcm-submit">Đăng việc &amp; tìm ứng viên</button>
+        <button type="submit" id="submitBtn" class="mcm-submit">
+            <span class="material-symbols-outlined text-xl">search</span>
+            <span>Đăng việc &amp; Tìm CarePartner phù hợp</span>
+        </button>
     </form>
 </main>
 
