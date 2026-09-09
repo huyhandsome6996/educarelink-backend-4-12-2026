@@ -555,10 +555,7 @@ function renderTasks() {
             Đánh giá Carepartner
           </button>
         `}
-        <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
-          Chat với Carepartner (24h)
-        </button>
+        <div id="chat-slot-${t.id}" class="chat-24h-slot" data-task-id="${t.id}"></div>
       `;
     } else if (t.status === 'cancelled') {
       actionHTML = `
@@ -610,6 +607,61 @@ function renderTasks() {
       </article>
     `;
   }).join('');
+
+  // Cửa sổ chat 24h: kiểm tra trạng thái thật từ server sau khi render
+  patchChat24hSlots();
+}
+
+// ==================== CỬA SỔ CHAT 24H ====================
+// Trạng thái lấy TỪ SERVER (GET /api/chat/conversations/<id>/ — service lazy-close
+// khi quá hạn): 'open' → nút xanh bấm được; 'closed' → nút ĐỎ khóa "Quá 24h
+// không thể chat"; 404 → chưa từng có cửa sổ chat (không thể chat).
+function chat24hButtonHtml(state, taskId) {
+  if (state === 'open') {
+    return `
+      <button onclick="location.href='/chat/?task_id=${taskId}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+        Chat với Carepartner (24h)
+      </button>`;
+  }
+  if (state === 'unknown') {
+    return `
+      <button disabled aria-disabled="true" class="w-full py-3 bg-blue-300 text-white font-headline font-bold text-sm rounded-xl cursor-wait flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">hourglass_top</span>
+        Đang kiểm tra cửa sổ chat…
+      </button>`;
+  }
+  const label = state === 'closed' ? 'Quá 24h không thể chat' : 'Không thể chat';
+  return `
+    <button disabled aria-disabled="true" class="w-full py-3 bg-red-500 text-white font-headline font-bold text-sm rounded-xl opacity-90 cursor-not-allowed flex items-center justify-center gap-2" title="${label}">
+      <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">lock</span>
+      ${label}
+    </button>`;
+}
+
+async function checkChatWindow(taskId) {
+  try {
+    const r = await apiFetch(`${API_BASE}/chat/conversations/${taskId}/`);
+    if (r.ok) {
+      const conv = await r.json();
+      return conv.status === 'open' ? 'open' : 'closed';
+    }
+    return 'no_conversation';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+// Vá toàn bộ slot chat 24h đang hiển thị sau mỗi lần render
+async function patchChat24hSlots() {
+  const slots = Array.from(document.querySelectorAll('.chat-24h-slot[data-task-id]'));
+  await Promise.all(slots.map(async (slot) => {
+    const taskId = slot.dataset.taskId;
+    const state = await checkChatWindow(taskId);
+    const live = document.querySelector(`.chat-24h-slot[data-task-id="${taskId}"]`);
+    if (!live) return; // đã bị render lại — bỏ qua kết quả cũ
+    live.innerHTML = chat24hButtonHtml(state, taskId);
+  }));
 }
 
 // ==================== UPDATE STATS & BADGES ====================
