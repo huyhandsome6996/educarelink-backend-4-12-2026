@@ -3,8 +3,10 @@
 import os
 import re
 
-SRC = "/home/z/my-project/upload/Pasted Content_1788987873809.txt"
-OUT = "/home/z/my-project/scripts/_parent_home_redesign_extracted.html"
+# Đường dẫn suy động lúc runtime (G17: không hardcode máy cá nhân trong source)
+_UPLOAD_DIR = os.path.join(os.path.expanduser("~"), "my-project", "upload")
+SRC = os.path.join(_UPLOAD_DIR, "Pasted Content_1788987873809.txt")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_parent_home_redesign_extracted.html")
 
 with open(SRC, "r", encoding="utf-8") as f:
     content = f.read()

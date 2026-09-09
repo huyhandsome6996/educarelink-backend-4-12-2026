@@ -11,7 +11,8 @@ Mọi thay đổi fail-loud: anchor phải khớp đúng 1 lần.
 import os
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = "/home/z/my-project/scripts/_parent_home_redesign_extracted.html"
+# File trung gian nằm cùng thư mục scripts/ — suy động để tránh hardcode máy cá nhân
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_parent_home_redesign_extracted.html")
 DST = os.path.join(BASE, "frontend", "templates", "frontend", "parent_home.html")
 
 with open(SRC, encoding="utf-8") as f:

@@ -205,7 +205,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- ===== DESKTOP SIDEBAR (hidden on mobile) ===== -->
-    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-white lg:border-r lg:border-gray-100 lg:z-40">
+    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
 {% include 'frontend/_parent_sidebar.html' with active_tab='chatbot' %}
     </aside>
 
@@ -304,24 +304,26 @@
         </div>
     </div>
 
-    <!-- ===== MOBILE BOTTOM NAV (hidden on desktop) ===== -->
-    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-2 pt-2 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <div class="flex justify-around items-center">
-            <a href="{% url 'frontend:parent_home' %}" class="mobile-nav-item">
+    <!-- ===== MOBILE BOTTOM NAV (đồng bộ 100% markup/class với /parent/) ===== -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border shadow-lg">
+        <div class="flex justify-around items-center px-2 py-2" style="padding-bottom: max(0.6rem, env(safe-area-inset-bottom));">
+            <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-textSecondary hover:text-textPrimary transition-all">
                 <span class="material-symbols-outlined text-xl">home</span>
-                <span>Trang chủ</span>
+                <span class="font-medium text-[10px] mt-0.5">Trang chủ</span>
             </a>
-            <a href="{% url 'frontend:parent_tasks' %}" class="mobile-nav-item">
+            <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-textSecondary hover:text-textPrimary transition-all">
                 <span class="material-symbols-outlined text-xl">assignment</span>
-                <span>Việc của tôi</span>
+                <span class="font-medium text-[10px] mt-0.5">Việc của tôi</span>
             </a>
-            <a href="{% url 'frontend:dang_viec_select' %}" class="mobile-nav-item">
-                <span class="material-symbols-outlined text-xl">add_circle</span>
-                <span>Đăng việc</span>
+            <a href="{% url 'frontend:dang_viec_select' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-primary transition-all">
+                <div class="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                </div>
+                <span class="font-bold text-[10px] mt-0.5 text-primary">Đăng việc</span>
             </a>
-            <a href="{% url 'frontend:chatbot' %}" class="mobile-nav-item active">
-                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
-                <span>AI Trợ lý</span>
+            <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 bg-orange-50 text-primary font-bold">
+                <span class="material-symbols-outlined filled text-xl">smart_toy</span>
+                <span class="font-bold text-[10px] mt-0.5">AI Trợ lý</span>
             </a>
         </div>
     </nav>

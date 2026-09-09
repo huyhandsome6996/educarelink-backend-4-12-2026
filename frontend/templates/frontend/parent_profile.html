@@ -48,7 +48,7 @@
         .modal-content-enter { animation: modal-content-in 0.3s ease-out forwards; }
 
         @media (max-width: 1023px) {
-            .main-content { padding-bottom: 2rem; }
+            .main-content { padding-bottom: 5.5rem; }
         }
     </style>
 </head>
@@ -74,6 +74,16 @@
             </div>
         </div>
     </header>
+
+    <!-- MOBILE BOTTOM NAV (đồng bộ 100% markup/class với /parent/ — trước đây trang thiếu nav) -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border shadow-lg">
+      <div class="flex justify-around items-center px-2 py-2" style="padding-bottom: max(0.6rem, env(safe-area-inset-bottom));">
+        <a href="{% url 'frontend:parent_home' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-textSecondary hover:text-textPrimary transition-all"><span class="material-symbols-outlined text-xl">home</span><span class="font-medium text-[10px] mt-0.5">Trang chủ</span></a>
+        <a href="{% url 'frontend:parent_tasks' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-textSecondary hover:text-textPrimary transition-all"><span class="material-symbols-outlined text-xl">assignment</span><span class="font-medium text-[10px] mt-0.5">Việc của tôi</span></a>
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-primary transition-all"><div class="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-lg">add</span></div><span class="font-bold text-[10px] mt-0.5 text-primary">Đăng việc</span></a>
+        <a href="{% url 'frontend:chatbot' %}" class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 text-textSecondary hover:text-textPrimary transition-all"><span class="material-symbols-outlined text-xl">smart_toy</span><span class="font-medium text-[10px] mt-0.5">AI Trợ lý</span></a>
+      </div>
+    </nav>
 
     <!-- MAIN CONTENT AREA -->
     <main class="lg:ml-[260px] min-h-screen main-content">
