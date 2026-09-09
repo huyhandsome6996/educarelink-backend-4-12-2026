@@ -455,9 +455,29 @@ export default function LiveTrackingScreen() {
   <div id="map"></div>
   <script>
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${centerLat}, ${centerLng}], ${zoom});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
+    // Tile CARTO (Fastly CDN) làm mặc định — tile.openstreetmap.org bị nhiều
+    // mạng chặn (QA 2026-09-10) → tự chuyển sang OSM tile nếu CARTO lỗi.
+    var TILE_PROVIDERS = [
+      { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        opts: { maxZoom: 20, subdomains: 'abcd' } },
+      { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        opts: { maxZoom: 19 } }
+    ];
+    var tileIdx = 0, tileErrors = 0, tileLayer = null;
+    function attachTiles() {
+      tileErrors = 0;
+      if (tileLayer) { map.removeLayer(tileLayer); }
+      var p = TILE_PROVIDERS[tileIdx];
+      tileLayer = L.tileLayer(p.url, p.opts);
+      tileLayer.on('tileerror', function () {
+        tileErrors += 1;
+        if (tileErrors >= 6 && tileIdx + 1 < TILE_PROVIDERS.length) {
+          tileIdx += 1; attachTiles();
+        }
+      });
+      tileLayer.addTo(map);
+    }
+    attachTiles();
 
     var workerIcon = L.divIcon({
       html: '<div style="background:${COLORS.primary};width:36px;height:36px;border-radius:18px;border:3px solid ${COLORS.surface};box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:${COLORS.textOnPrimary};font-size:18px;">🚶</div>',

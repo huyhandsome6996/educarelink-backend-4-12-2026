@@ -12,7 +12,8 @@ Hard filters (Step 2.2.1) — loại TRƯỚC khi chấm:
 Soft scoring (Step 11.6 — trọng số từ DB MatchingWeight):
   availability 25 | skills 20 | distance 15 | rating 15 | completion 10 |
   elo 10 | response 5.  Final = Σ(w×sub)/100 × band_multiplier, làm tròn int.
-  match_level: >=85 very_high | 70-84 high | 55-69 medium | <55 low.
+  match_level (đặc tả Mục 5): >=90 very_high | 75-89 high | 60-74 medium | <60 low.
+  Nhãn PHẢN ÁNH ĐÚNG ĐIỂM SỐ — không còn ghi đè low→medium khi pool đầy.
 """
 
 import logging
@@ -100,16 +101,25 @@ def subscore_distance(km, max_radius_km, has_vehicle=False):
 
 
 def subscore_rating(rating_avg, review_count):
+    """Điểm đánh giá sao (đặc tả Mục 4):
+    - Người mới chưa có review (review_count == 0): điểm trung tính 60.0/100.
+    - 1-2 review: blend 0.6×điểm thực + 0.4×60 để chuyển mượt.
+    - Từ 3 review: 100% theo điểm thực tế.
+    """
+    if not review_count or review_count == 0:
+        return 60.0
     base = (rating_avg or 0) / 5.0 * 100.0
     if review_count < 3:
-        return base * 0.6 + 60.0 * 0.4  # blend — newcomers không bị phạt
+        return base * 0.6 + 60.0 * 0.4  # blend cho 1-2 review đầu
     return base
 
 
 def subscore_completion(completed, cancelled, no_show):
+    """Tỷ lệ hoàn thành đơn (đặc tả Mục 4): người mới chưa có đơn nào được
+    tính mặc định 100% để không bị bất lợi khi tìm việc đầu tiên."""
     total = completed + cancelled + no_show
     if total == 0:
-        return 70.0  # newcomers cao hơn trung tính nhẹ để có đơn đầu tiên
+        return 100.0  # người mới chưa có đơn: mặc định 100% theo đặc tả
     return completed / total * 100.0
 
 
@@ -124,15 +134,16 @@ def subscore_response(within_sla, total):
     return within_sla / total * 100.0
 
 
-def match_level_of(score, pool_size):
-    if score >= 85:
+def match_level_of(score, pool_size=0):
+    """Ngưỡng nhãn mức độ phù hợp theo đặc tả Mục 5 (pool_size giữ lại cho
+    backward-compat với chữ ký cũ nhưng KHÔNG còn dùng để ghi đè nhãn)."""
+    if score >= 90:
         return 'very_high'
-    if score >= 70:
+    if score >= 75:
         return 'high'
-    if score >= 55:
+    if score >= 60:
         return 'medium'
-    # 'low' chỉ hiển thị khi pool < 8 (Step 11.6)
-    return 'low' if pool_size < MAX_CANDIDATES_DEFAULT else 'medium'
+    return 'low'
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -260,11 +271,9 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         cand.pop('_distance', None)
         cand.pop('_completion', None)
 
-    # match_level 'low' chỉ khi pool < 8 (re-check sau khi biết pool thật)
-    if total_matched >= MAX_CANDIDATES_DEFAULT:
-        for cand in top:
-            if cand['match_level'] == 'low':
-                cand['match_level'] = 'medium'
+    # Đặc tả Mục 5: nhãn match_level phản ánh ĐÚNG điểm số của ứng viên —
+    # đã bỏ đoạn ghi đè 'low' → 'medium' khi pool đủ 8 người (code cũ ép
+    # nhãn sai sự thật, gây khó hiểu cho phụ huynh khi so sánh điểm/nhãn).
 
     return {'total_matched': total_matched, 'candidates': top}
 

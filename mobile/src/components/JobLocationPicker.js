@@ -9,6 +9,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, Alert } 
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { COLORS, SHADOWS } from '../theme/colors';
+import apiClient from '../api/client';
 
 let MapView, MapMarker;
 if (Platform.OS !== 'web') {
@@ -48,19 +49,42 @@ export default function JobLocationPicker({ value, onChange }) {
     })();
   };
 
+  const applyResult = (row) => {
+    const loc = {
+      latitude: parseFloat(row.lat),
+      longitude: parseFloat(row.lon),
+      label: row.display_name || '',
+    };
+    onChange?.(loc);
+    mapRef.current?.animateToRegion({
+      latitude: loc.latitude, longitude: loc.longitude,
+      latitudeDelta: 0.01, longitudeDelta: 0.01,
+    }, 400);
+  };
+
   const searchPlace = async () => {
     if (!searchText.trim()) return;
+    const q = searchText.trim();
+    // Ưu tiên proxy backend /api/matching/geocode/search/ (QA 2026-09-10:
+    // gọi thẳng nominatim.openstreetmap.org bị nhiều mạng ISP/adblock chặn
+    // → không tìm được địa điểm. Proxy chạy server-side nên luôn thông).
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(searchText + ' Việt Nam')}`;
+      const { data } = await apiClient.get('/matching/geocode/search/', {
+        params: { q: `${q} Việt Nam` },
+      });
+      const rows = Array.isArray(data?.results) ? data.results : [];
+      if (rows.length) return applyResult(rows[0]);
+      Alert.alert('Không tìm thấy', 'Thử nhập tên địa điểm cụ thể hơn.');
+      return;
+    } catch (e) {
+      // Proxy lỗi (mạng/máy chủ) → thử thẳng Nominatim lần cuối
+    }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q + ' Việt Nam')}`;
       const resp = await fetch(url, { headers: { 'User-Agent': 'EduCareLink/1.0' } });
       const rows = await resp.json();
-      if (rows?.length) {
-        const loc = { latitude: parseFloat(rows[0].lat), longitude: parseFloat(rows[0].lon) };
-        onChange?.(loc);
-        mapRef.current?.animateToRegion({ ...loc, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
-      } else {
-        Alert.alert('Không tìm thấy', 'Thử nhập tên địa điểm cụ thể hơn.');
-      }
+      if (rows?.length) return applyResult(rows[0]);
+      Alert.alert('Không tìm thấy', 'Thử nhập tên địa điểm cụ thể hơn.');
     } catch (e) {
       Alert.alert('Lỗi', 'Tìm kiếm địa điểm thất bại. Hãy chọn pin trực tiếp trên bản đồ.');
     }
@@ -99,10 +123,10 @@ export default function JobLocationPicker({ value, onChange }) {
         </MapView>
       ) : (
         <View style={[styles.map, styles.webFallback]}>
-          <Text style={styles.fallbackText}>
+          <Text style={styles.fallbackText} numberOfLines={3}>
             {value
-              ? `Đã chọn: ${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}`
-              : 'Nhập tọa độ hoặc dùng tìm kiếm ở trên'}
+              ? `Đã chọn: ${value.label || `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}`}`
+              : 'Nhập tên địa điểm ở ô tìm kiếm trên, hoặc dùng nút định vị để chọn vị trí'}
           </Text>
         </View>
       )}
@@ -142,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight, alignItems: 'center',
     justifyContent: 'center',
   },
-  fallbackText: { color: COLORS.gray, fontSize: 13, padding: 12, textAlign: 'center' },
+  fallbackText: { color: COLORS.textSecondary, fontSize: 13, padding: 12, textAlign: 'center', fontWeight: '600' },
   webCoordRow: {
     flexDirection: 'row', gap: 8, backgroundColor: COLORS.white,
     padding: 8, borderTopWidth: 1, borderTopColor: '#eee',

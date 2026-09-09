@@ -19,21 +19,24 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
+// 5 nhóm tuổi chuẩn theo đặc tả Mục 2 (backend job_schema.CHILD_AGE_GROUPS)
 const AGE_GROUPS = [
-  { code: 'under_3', label: 'Dưới 3 tuổi' },
-  { code: 'preschool', label: 'Mầm non (3-6 tuổi)' },
-  { code: 'primary', label: 'Tiểu học (6-11 tuổi)' },
-  { code: 'secondary', label: 'THCS (11-15 tuổi)' },
-  { code: 'mixed', label: 'Nhiều độ tuổi' },
+  { code: '0_to_12_months', label: '0 - 12 tháng tuổi' },
+  { code: '1_to_3_years', label: '1 - 3 tuổi' },
+  { code: '3_to_6_years', label: '3 - 6 tuổi' },
+  { code: '6_to_10_years', label: '6 - 10 tuổi' },
+  { code: 'over_10_years', label: 'Trên 10 tuổi' },
 ];
 
+// 7 việc chăm sóc trẻ chuẩn theo đặc tả Mục 2 (backend job_schema.CARE_DUTIES)
 const DUTIES = [
-  { code: 'feed', label: 'Cho ăn / bữa ăn' },
-  { code: 'bath', label: 'Tắm rửa / vệ sinh' },
-  { code: 'study', label: 'Hướng dẫn bài tập' },
-  { code: 'play', label: 'Chơi cùng bé' },
-  { code: 'sleep', label: 'Đưa bé ngủ' },
-  { code: 'transport', label: 'Đưa đón' },
+  { code: 'general_care', label: 'Chăm sóc chung' },
+  { code: 'feeding', label: 'Cho ăn' },
+  { code: 'bathing', label: 'Tắm rửa' },
+  { code: 'sleep_monitoring', label: 'Trông ngủ' },
+  { code: 'play_activities', label: 'Vui chơi & hoạt động' },
+  { code: 'homework_help', label: 'Hỗ trợ bài tập về nhà' },
+  { code: 'light_chores', label: 'Việc nhẹ liên quan bé' },
 ];
 
 export default function ChildcareForm() {
@@ -197,10 +200,11 @@ export default function ChildcareForm() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginTop: 16, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginTop: 16, marginBottom: 8 },
   input: {
     backgroundColor: COLORS.white, borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 15, color: COLORS.text, ...SHADOWS.small,
+    paddingVertical: 12, fontSize: 15, color: COLORS.textPrimary,
+    borderWidth: 1, borderColor: COLORS.divider, ...SHADOWS.small,
   },
   textarea: { height: 70, textAlignVertical: 'top' },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -208,22 +212,22 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   chip: {
     borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: COLORS.white, borderWidth: 1, borderColor: '#eee',
+    backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: COLORS.divider,
   },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { color: COLORS.text, fontSize: 13 },
-  chipTextActive: { color: COLORS.white, fontWeight: '600' },
+  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primaryDark },
+  chipText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '600' },
+  chipTextActive: { color: COLORS.white, fontWeight: '700' },
   dateRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   dateChip: {
     backgroundColor: COLORS.primaryLight, borderRadius: 10, paddingHorizontal: 12,
     paddingVertical: 8, marginBottom: 8,
   },
-  dateChipText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
+  dateChipText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: 13 },
   pickBtn: {
-    borderWidth: 1, borderColor: COLORS.primary, borderStyle: 'dashed',
-    borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+    borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: 'dashed',
+    borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: COLORS.primaryLight,
   },
-  pickBtnText: { color: COLORS.primary, fontWeight: '600' },
+  pickBtnText: { color: COLORS.primaryDeep, fontWeight: '700' },
   submitBtn: {
     backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 16,
     alignItems: 'center', marginTop: 24,
