@@ -297,6 +297,40 @@ let allTasks = [];
 let currentTab = 'open';
 let confirmCallback = null;
 
+// ==== Lọc sâu từ URL (thẻ thống kê ở Trang chủ chuyển qua: ?status= / ?filter=all) ====
+(function applyInitialFilterFromUrl() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const st = (p.get('status') || '').toLowerCase();
+    const fl = (p.get('filter') || '').toLowerCase();
+    if (['open', 'in_progress', 'completed', 'cancelled'].includes(st)) {
+      currentTab = (st === 'completed' || st === 'cancelled') ? 'history' : st;
+    } else if (fl === 'all') {
+      currentTab = 'all';
+    }
+    // Đồng bộ highlight tab (với 'all' không có nút tab → không highlight mục nào)
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active', 'text-primary');
+      btn.classList.add('text-textSecondary');
+      const badge = btn.querySelector('span[id^="badge-"]');
+      if (badge) {
+        badge.classList.remove('bg-primary/10', 'text-primary');
+        badge.classList.add('bg-gray-100', 'text-textSecondary');
+      }
+    });
+    const activeBtn = document.getElementById('tab-' + currentTab);
+    if (activeBtn) {
+      activeBtn.classList.add('active', 'text-primary');
+      activeBtn.classList.remove('text-textSecondary');
+      const badge = activeBtn.querySelector('span[id^="badge-"]');
+      if (badge) {
+        badge.classList.remove('bg-gray-100', 'text-textSecondary');
+        badge.classList.add('bg-primary/10', 'text-primary');
+      }
+    }
+  } catch (e) { /* bỏ qua — giữ tab mặc định */ }
+})();
+
 // ==================== TOAST SYSTEM ====================
 function showToast(message, type = 'info', duration = 3500) {
   const container = document.getElementById('toast-container');
@@ -408,6 +442,10 @@ function setTab(tab) {
 
 // ==================== FILTER LOGIC ====================
 function getFilteredTasks() {
+  if (currentTab === 'all') {
+    // ?filter=all từ thẻ "Tổng việc đã đăng" — xem toàn bộ
+    return allTasks;
+  }
   if (currentTab === 'open') {
     return allTasks.filter(t => t.status === 'open');
   } else if (currentTab === 'in_progress') {
