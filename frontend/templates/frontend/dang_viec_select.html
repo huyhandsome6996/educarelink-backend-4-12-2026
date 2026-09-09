@@ -2,176 +2,492 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
-    <title>EduCareLink — Đăng việc ghép cặp thông minh</title>
-    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
-        .service-card {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32.png' %}">
+  <title>EduCareLink — Đăng việc ghép cặp thông minh</title>
+  <!-- Google Fonts: Manrope & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Material Symbols Outlined -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            manrope: ['Manrope', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: '#F26522',
+            tutoring: {
+              DEFAULT: '#F26522',
+              hover: '#EA580C',
+              bg: '#FFF4ED',
+              border: '#FED7AA',
+              dark: '#9A3412',
+            },
+            childcare: {
+              DEFAULT: '#0E9F6E',
+              hover: '#047857',
+              bg: '#ECFDF5',
+              border: '#A7F3D0',
+              dark: '#065F46',
+            },
+            pickup: {
+              DEFAULT: '#2563EB',
+              hover: '#1D4ED8',
+              bg: '#EFF6FF',
+              border: '#BFDBFE',
+              dark: '#1E40AF',
+            }
+          }
         }
-        .service-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 28px rgba(26, 26, 46, 0.08);
-            border-color: #F26522;
-        }
-        .service-card:hover .arrow-icon {
-            transform: translateX(4px);
-            color: #F26522;
-        }
-    </style>
-    {% include 'frontend/_matching_common.html' %}
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #F8F9FB;
+      color: #1A1A2E;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Manrope', sans-serif;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .material-symbols-outlined.fill-icon {
+      font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    }
+    
+    /* Smooth Transitions & Shadows */
+    .service-card {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 2px 14px rgba(26, 26, 46, 0.04);
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+    }
+    
+    .card-tutoring:hover {
+      box-shadow: 0 14px 30px -4px rgba(242, 101, 34, 0.18);
+      border-color: #F26522 !important;
+    }
+    .card-tutoring:hover .card-title {
+      color: #EA580C;
+    }
+    .card-tutoring:hover .card-arrow {
+      transform: translateX(6px);
+      color: #EA580C;
+    }
+    .card-tutoring:hover .card-action-btn {
+      background: linear-gradient(135deg, #F26522, #EA580C);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(242, 101, 34, 0.35);
+    }
+
+    .card-childcare:hover {
+      box-shadow: 0 14px 30px -4px rgba(14, 159, 110, 0.18);
+      border-color: #0E9F6E !important;
+    }
+    .card-childcare:hover .card-title {
+      color: #047857;
+    }
+    .card-childcare:hover .card-arrow {
+      transform: translateX(6px);
+      color: #047857;
+    }
+    .card-childcare:hover .card-action-btn {
+      background: linear-gradient(135deg, #0E9F6E, #047857);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(14, 159, 110, 0.35);
+    }
+
+    .card-pickup:hover {
+      box-shadow: 0 14px 30px -4px rgba(37, 99, 235, 0.18);
+      border-color: #2563EB !important;
+    }
+    .card-pickup:hover .card-title {
+      color: #1D4ED8;
+    }
+    .card-pickup:hover .card-arrow {
+      transform: translateX(6px);
+      color: #1D4ED8;
+    }
+    .card-pickup:hover .card-action-btn {
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+
+    .card-arrow {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+    }
+
+    /* Page Entrance Animation */
+    @keyframes pageEnter {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-page-enter {
+      animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
 </head>
-<body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
+<body class="min-h-screen bg-[#F8F9FB] flex flex-col selection:bg-orange-100 selection:text-orange-900">
 
-<!-- HEADER -->
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90">
-    <div class="max-w-3xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <a href="/parent/" class="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
-            <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Trang chủ</span>
-        </a>
-        <div class="flex items-center gap-2">
-            <img src="/static/images/logo.png" alt="EduCareLink" class="h-7 w-7 rounded-lg object-contain">
-            <span class="font-headline font-extrabold text-base text-[#1A1A2E]">Edu<span class="text-[#F26522]">Care</span>Link</span>
-        </div>
-        <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-orange-50 text-[#F26522] border border-orange-200">
-            Flow 1 mới
+  <!-- D.1 — Sticky Top Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+    <div class="max-w-[880px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <!-- Left: Back link -->
+      <a href="{% url 'frontend:parent_home' %}" class="group flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-[#F26522] transition-colors py-2 px-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F26522]/30">
+        <span class="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-1">arrow_back</span>
+        <span>Trang chủ</span>
+      </a>
+
+      <!-- Center: Logo -->
+      <a href="{% url 'frontend:parent_home' %}" class="flex items-center gap-2.5 focus:outline-none">
+        <img src="{% static 'images/logo.png' %}" alt="EduCareLink Logo" class="w-8 h-8 rounded-lg object-contain shadow-sm">
+        <span class="font-heading font-extrabold text-xl tracking-tight text-[#1A1A2E]">
+          Edu<span class="text-[#F26522]">Care</span>Link
         </span>
-    </div>
-</header>
+      </a>
 
-<main class="max-w-3xl mx-auto px-4 py-8 mcm-fade-in">
-    <!-- HERO TITLE -->
-    <div class="mb-6">
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-[#1A1A2E] tracking-tight">
-            Bạn cần hỗ trợ dịch vụ gì?
+      <!-- Right: Flow 1 pill badge -->
+      <div class="flex items-center">
+        <span class="inline-flex items-center gap-1 text-xs font-bold text-[#F26522] bg-orange-50 px-3 py-1 rounded-full border border-orange-200 shadow-sm">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] animate-pulse"></span>
+          Flow 1
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-6 py-6 sm:py-9 animate-page-enter space-y-8">
+
+    <!-- D.2 — Hero Banner Section (Warm Gradient & Multi-color Accents) -->
+    <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFF8F3] via-[#FFFFFF] to-[#F0F7FF] border border-orange-100/70 p-6 sm:p-9 shadow-[0_4px_24px_rgba(242,101,34,0.06)]">
+      <!-- Subtle Decorative Background Elements -->
+      <div class="absolute -top-12 -left-12 w-48 h-48 bg-orange-200/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute top-1/2 right-1/4 w-40 h-40 bg-emerald-200/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-10 -right-10 w-52 h-52 bg-blue-200/25 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="relative z-10 text-center max-w-2xl mx-auto">
+        <!-- Main Headline -->
+        <h1 class="font-heading text-2xl sm:text-[34px] sm:leading-[1.25] font-extrabold text-[#1A1A2E] tracking-tight">
+          Bạn cần hỗ trợ dịch vụ gì hôm nay?
         </h1>
-        <p class="text-gray-500 text-sm sm:text-base mt-2 leading-relaxed">
-            Chọn 1 trong 3 nhóm dịch vụ bên dưới. Thuật toán ELO sẽ tự động gom và xếp hạng <b class="text-[#1A1A2E]">tối đa 8 CarePartner tốt nhất</b> theo lịch rảnh và vị trí của bạn.
+        
+        <!-- Sub-headline -->
+        <p class="mt-3 text-sm sm:text-base text-[#6B7280] leading-relaxed font-normal">
+          Chọn 1 trong 3 nhóm dịch vụ bên dưới. Thuật toán ELO sẽ tự động gom và xếp hạng tối đa 8 CarePartner uy tín nhất theo lịch rảnh và vị trí của bạn.
         </p>
-    </div>
 
-    <!-- FEATURE PILLS -->
-    <div class="flex items-center gap-2 sm:gap-3 flex-wrap mb-6">
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
-            <span class="material-symbols-outlined text-sm text-[#F26522]">auto_awesome</span>
-            Ghép cặp thông minh ELO
-        </span>
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
-            <span class="material-symbols-outlined text-sm text-[#0E9F6E]">near_me</span>
-            Bán kính tối ưu theo GPS
-        </span>
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-sm">
-            <span class="material-symbols-outlined text-sm text-[#2563EB]">verified_user</span>
-            Cam kết hoàn credit nếu hủy
-        </span>
-    </div>
+        <!-- Trust badge row (Tri-color pills) -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+          <!-- Badge 1: Orange -->
+          <div class="inline-flex items-center gap-1.5 bg-orange-50/90 border border-orange-200/90 px-3 py-1.5 rounded-full text-xs font-semibold text-orange-900 shadow-sm transition-all hover:bg-orange-100/80">
+            <span class="material-symbols-outlined text-[17px] text-[#F26522] fill-icon">auto_awesome</span>
+            <span>Ghép cặp thông minh ELO</span>
+          </div>
 
-    <!-- 3 SERVICE CARDS -->
-    <div class="space-y-4">
-        <!-- 1. GIA SƯ -->
-        <a href="{% url 'frontend:dang_viec_gia_su' %}"
-           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
-            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
-                <div class="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
-                    📚
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#F26522] transition">
-                            Gia sư dạy kèm
-                        </h2>
-                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-orange-100 text-[#F26522]">Phổ biến</span>
-                    </div>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
-                        Dạy kèm môn văn hóa (Toán, Lý, Hóa, Văn, Anh...) hoặc kỹ năng mềm (MC nhí, vẽ tranh, piano, lập trình thiếu nhi).
-                    </p>
-                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Tùy chọn môn &amp; cấp lớp</span>
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Chọn nhiều buổi trong tuần</span>
-                    </div>
-                </div>
-                <div class="arrow-icon text-gray-400 group-hover:text-[#F26522] transition shrink-0 self-center">
-                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
-                </div>
-            </div>
-        </a>
+          <!-- Badge 2: Emerald Green -->
+          <div class="inline-flex items-center gap-1.5 bg-emerald-50/90 border border-emerald-200/90 px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-900 shadow-sm transition-all hover:bg-emerald-100/80">
+            <span class="material-symbols-outlined text-[17px] text-[#0E9F6E] fill-icon">near_me</span>
+            <span>Bán kính tối ưu theo GPS</span>
+          </div>
 
-        <!-- 2. TRÔNG TRẺ -->
-        <a href="{% url 'frontend:dang_viec_trong_tre' %}"
-           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
-            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
-                <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
-                    🧸
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#0E9F6E] transition">
-                            Trông trẻ tại nhà
-                        </h2>
-                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-[#0E9F6E]">An tâm</span>
-                    </div>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
-                        Chăm sóc bé tận tâm: cho ăn uống, vui chơi phát triển giác quan, giám sát an toàn và hướng dẫn hoàn thành bài tập về nhà.
-                    </p>
-                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Sinh viên đã xác thực CCCD</span>
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Nhật ký chăm sóc theo ca</span>
-                    </div>
-                </div>
-                <div class="arrow-icon text-gray-400 group-hover:text-[#0E9F6E] transition shrink-0 self-center">
-                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- 3. ĐÓN TRẺ -->
-        <a href="{% url 'frontend:dang_viec_don_tre' %}"
-           class="service-card block bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-sm group">
-            <div class="flex items-start sm:items-center gap-4 sm:gap-5">
-                <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
-                    🚗
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <h2 class="font-headline font-extrabold text-[#1A1A2E] text-lg sm:text-xl group-hover:text-[#2563EB] transition">
-                            Đón trẻ tan trường
-                        </h2>
-                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-blue-100 text-[#2563EB]">Đúng giờ</span>
-                    </div>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
-                        Đón bé đúng hẹn từ trường học hoặc lớp năng khiếu về tận nhà hoặc địa điểm chỉ định an toàn tuyệt đối.
-                    </p>
-                    <div class="flex items-center gap-2 mt-2.5 text-[11px] font-semibold text-gray-500 flex-wrap">
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Định vị GPS 2 điểm</span>
-                        <span class="bg-gray-100 px-2 py-0.5 rounded">Hẹn giờ đón chính xác</span>
-                    </div>
-                </div>
-                <div class="arrow-icon text-gray-400 group-hover:text-[#2563EB] transition shrink-0 self-center">
-                    <span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <!-- NOTICE BOX -->
-    <div class="mt-8 bg-white border border-orange-200/80 rounded-2xl p-5 shadow-sm">
-        <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-[#F26522] text-2xl shrink-0 mt-0.5">lightbulb</span>
-            <div class="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                <p class="font-bold text-[#1A1A2E] mb-1">Cách thức hoạt động của Flow 1 ghép cặp:</p>
-                <p>
-                    Sau khi điền biểu mẫu, hệ thống sẽ chạy thuật toán so khớp đa tiêu chí (độ trùng lịch, khoảng cách địa lý, môn học, kỹ năng, điểm tín nhiệm ELO) và hiển thị danh sách <b>tối đa 8 CarePartner phù hợp nhất</b> để bạn lựa chọn ngay lập tức.
-                </p>
-            </div>
+          <!-- Badge 3: Royal Blue -->
+          <div class="inline-flex items-center gap-1.5 bg-blue-50/90 border border-blue-200/90 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-900 shadow-sm transition-all hover:bg-blue-100/80">
+            <span class="material-symbols-outlined text-[17px] text-[#2563EB] fill-icon">verified_user</span>
+            <span>Cam kết hoàn credit nếu hủy</span>
+          </div>
         </div>
-    </div>
-</main>
+      </div>
+    </section>
+
+    <!-- D.3 — The 3 Service Selection Cards (THE CORE OF THE PAGE) -->
+    <section class="space-y-4" aria-label="Danh sách nhóm dịch vụ">
+      
+      <!-- CARD 1: Gia sư dạy kèm (ORANGE #F26522) -->
+      <a href="{% url 'frontend:dang_viec_gia_su' %}" class="service-card card-tutoring block relative bg-white border border-[#E5E7EB] rounded-2xl p-5 sm:p-6 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-[#F26522]/40 group">
+        <!-- 4px Colored Left Accent Stripe -->
+        <div class="absolute left-0 top-0 bottom-0 w-[5px] bg-[#F26522]"></div>
+
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 pl-2 sm:pl-3">
+          <!-- Left Content -->
+          <div class="flex items-start gap-4 flex-1">
+            <!-- Icon Container: 56x56 -->
+            <div class="w-14 h-14 rounded-2xl bg-[#FFF4ED] border border-[#FED7AA] flex-shrink-0 flex items-center justify-center text-[#F26522] shadow-sm">
+              <span class="material-symbols-outlined text-[30px]">menu_book</span>
+            </div>
+
+            <!-- Details -->
+            <div class="space-y-2 flex-1">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h2 class="card-title font-heading text-lg sm:text-xl font-extrabold text-[#1A1A2E] tracking-tight transition-colors">
+                  Gia sư dạy kèm
+                </h2>
+                <!-- Badge Pill -->
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-100 text-[#F26522] border border-orange-200">
+                  Phổ biến nhất
+                </span>
+              </div>
+
+              <!-- Description -->
+              <p class="text-sm text-[#6B7280] leading-relaxed">
+                Dạy kèm các môn văn hóa (Toán, Lý, Hóa, Tiếng Anh...) hoặc kỹ năng mềm, năng khiếu (vẽ, đàn piano, cờ vua, lập trình thiếu nhi).
+              </p>
+
+              <!-- Feature Tags Row (Orange Tinted) -->
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF4ED] text-[#EA580C] border border-[#FED7AA]/70">
+                  Tùy chọn môn &amp; cấp lớp
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF4ED] text-[#EA580C] border border-[#FED7AA]/70">
+                  Chọn nhiều buổi/tuần
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF4ED] text-[#EA580C] border border-[#FED7AA]/70">
+                  Giá từ 120.000đ/giờ
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Action CTA Area -->
+          <div class="flex items-center justify-end w-full sm:w-auto pt-2 sm:pt-0 pl-18 sm:pl-0 border-t sm:border-t-0 border-gray-100 sm:self-center flex-shrink-0">
+            <div class="card-action-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-orange-50 text-[#F26522] border border-orange-200 font-bold text-sm transition-all duration-200">
+              <span>Bắt đầu</span>
+              <span class="material-symbols-outlined card-arrow text-base">arrow_forward</span>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- CARD 2: Trông trẻ tại nhà (EMERALD GREEN #0E9F6E) -->
+      <a href="{% url 'frontend:dang_viec_trong_tre' %}" class="service-card card-childcare block relative bg-white border border-[#E5E7EB] rounded-2xl p-5 sm:p-6 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-[#0E9F6E]/40 group">
+        <!-- 4px Colored Left Accent Stripe -->
+        <div class="absolute left-0 top-0 bottom-0 w-[5px] bg-[#0E9F6E]"></div>
+
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 pl-2 sm:pl-3">
+          <!-- Left Content -->
+          <div class="flex items-start gap-4 flex-1">
+            <!-- Icon Container: 56x56 -->
+            <div class="w-14 h-14 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex-shrink-0 flex items-center justify-center text-[#0E9F6E] shadow-sm">
+              <span class="material-symbols-outlined text-[30px]">child_care</span>
+            </div>
+
+            <!-- Details -->
+            <div class="space-y-2 flex-1">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h2 class="card-title font-heading text-lg sm:text-xl font-extrabold text-[#1A1A2E] tracking-tight transition-colors">
+                  Trông trẻ tại nhà
+                </h2>
+                <!-- Badge Pill -->
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-[#0E9F6E] border border-emerald-200">
+                  An tâm tuyệt đối
+                </span>
+              </div>
+
+              <!-- Description -->
+              <p class="text-sm text-[#6B7280] leading-relaxed">
+                Chăm sóc bé tận tâm: cho ăn uống, vui chơi kích thích giác quan, trông nom an toàn và hướng dẫn làm bài tập theo ca linh hoạt.
+              </p>
+
+              <!-- Feature Tags Row (Emerald Tinted) -->
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]/70">
+                  CarePartner xác thực CCCD &amp; lý lịch
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]/70">
+                  Nhật ký chăm sóc theo ca
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]/70">
+                  Giá từ 90.000đ/giờ
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Action CTA Area -->
+          <div class="flex items-center justify-end w-full sm:w-auto pt-2 sm:pt-0 pl-18 sm:pl-0 border-t sm:border-t-0 border-gray-100 sm:self-center flex-shrink-0">
+            <div class="card-action-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-50 text-[#0E9F6E] border border-emerald-200 font-bold text-sm transition-all duration-200">
+              <span>Bắt đầu</span>
+              <span class="material-symbols-outlined card-arrow text-base">arrow_forward</span>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- CARD 3: Đón trẻ tan trường (ROYAL BLUE #2563EB) -->
+      <a href="{% url 'frontend:dang_viec_don_tre' %}" class="service-card card-pickup block relative bg-white border border-[#E5E7EB] rounded-2xl p-5 sm:p-6 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40 group">
+        <!-- 4px Colored Left Accent Stripe -->
+        <div class="absolute left-0 top-0 bottom-0 w-[5px] bg-[#2563EB]"></div>
+
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 pl-2 sm:pl-3">
+          <!-- Left Content -->
+          <div class="flex items-start gap-4 flex-1">
+            <!-- Icon Container: 56x56 -->
+            <div class="w-14 h-14 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] flex-shrink-0 flex items-center justify-center text-[#2563EB] shadow-sm">
+              <span class="material-symbols-outlined text-[30px]">directions_car</span>
+            </div>
+
+            <!-- Details -->
+            <div class="space-y-2 flex-1">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h2 class="card-title font-heading text-lg sm:text-xl font-extrabold text-[#1A1A2E] tracking-tight transition-colors">
+                  Đón trẻ tan trường
+                </h2>
+                <!-- Badge Pill -->
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-[#2563EB] border border-blue-200">
+                  Đúng giờ &amp; An toàn
+                </span>
+              </div>
+
+              <!-- Description -->
+              <p class="text-sm text-[#6B7280] leading-relaxed">
+                Đón bé đúng giờ từ trường học hoặc lớp học thêm về tận nhà hoặc địa điểm chỉ định an toàn tuyệt đối.
+              </p>
+
+              <!-- Feature Tags Row (Blue Tinted) -->
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]/70">
+                  Định vị GPS 2 điểm (Trường → Nhà)
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]/70">
+                  Ghi chú phương tiện di chuyển
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]/70">
+                  Giá từ 70.000đ/chuyến
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Action CTA Area -->
+          <div class="flex items-center justify-end w-full sm:w-auto pt-2 sm:pt-0 pl-18 sm:pl-0 border-t sm:border-t-0 border-gray-100 sm:self-center flex-shrink-0">
+            <div class="card-action-btn flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 text-[#2563EB] border border-blue-200 font-bold text-sm transition-all duration-200">
+              <span>Bắt đầu</span>
+              <span class="material-symbols-outlined card-arrow text-base">arrow_forward</span>
+            </div>
+          </div>
+        </div>
+      </a>
+
+    </section>
+
+    <!-- D.4 — "How It Works" 3-Step Process Section -->
+    <section class="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 shadow-[0_2px_14px_rgba(26,26,46,0.04)]">
+      <div class="text-center max-w-md mx-auto mb-8">
+        <h3 class="font-heading text-xl sm:text-2xl font-bold text-[#1A1A2E] tracking-tight">
+          Quy trình ghép nối chỉ 3 bước
+        </h3>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1">
+          Nhanh chóng, minh bạch và hoàn toàn tự động hóa theo chuẩn EduCareLink
+        </p>
+      </div>
+
+      <!-- 3 Steps Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+        
+        <!-- Connecting Line for Desktop -->
+        <div class="hidden md:block absolute top-7 left-1/6 right-1/6 h-[2px] border-t-2 border-dashed border-gray-200 z-0" style="left: 18%; right: 18%;"></div>
+
+        <!-- Step 1: ORANGE -->
+        <div class="relative z-10 flex flex-col items-center text-center p-4 rounded-xl transition-all hover:bg-orange-50/40">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#F26522] to-[#EA580C] text-white flex items-center justify-center font-heading font-extrabold text-lg shadow-md shadow-orange-500/25 mb-4 ring-4 ring-orange-50">
+            1
+          </div>
+          <div class="flex items-center gap-1.5 text-[#F26522] font-heading font-bold text-base mb-1.5">
+            <span class="material-symbols-outlined text-[20px]">edit_note</span>
+            <span>Điền yêu cầu</span>
+          </div>
+          <p class="text-xs sm:text-sm text-[#6B7280] leading-relaxed max-w-[220px]">
+            Thời gian, địa điểm, mức giá — chỉ mất 2 phút
+          </p>
+        </div>
+
+        <!-- Step 2: EMERALD -->
+        <div class="relative z-10 flex flex-col items-center text-center p-4 rounded-xl transition-all hover:bg-emerald-50/40">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#0E9F6E] to-[#047857] text-white flex items-center justify-center font-heading font-extrabold text-lg shadow-md shadow-emerald-500/25 mb-4 ring-4 ring-emerald-50">
+            2
+          </div>
+          <div class="flex items-center gap-1.5 text-[#0E9F6E] font-heading font-bold text-base mb-1.5">
+            <span class="material-symbols-outlined text-[20px]">groups</span>
+            <span>Xem Top 8 ứng viên</span>
+          </div>
+          <p class="text-xs sm:text-sm text-[#6B7280] leading-relaxed max-w-[220px]">
+            Hệ thống tự chấm điểm ELO, lịch rảnh và khoảng cách
+          </p>
+        </div>
+
+        <!-- Step 3: BLUE -->
+        <div class="relative z-10 flex flex-col items-center text-center p-4 rounded-xl transition-all hover:bg-blue-50/40">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white flex items-center justify-center font-heading font-extrabold text-lg shadow-md shadow-blue-500/25 mb-4 ring-4 ring-blue-50">
+            3
+          </div>
+          <div class="flex items-center gap-1.5 text-[#2563EB] font-heading font-bold text-base mb-1.5">
+            <span class="material-symbols-outlined text-[20px]">handshake</span>
+            <span>Chọn &amp; Khóa lịch tức thì</span>
+          </div>
+          <p class="text-xs sm:text-sm text-[#6B7280] leading-relaxed max-w-[220px]">
+            Đơn tạo ngay, tự động giữ chỗ — không cần chờ đợi
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- D.5 — Trust & Guarantee Footer Box -->
+    <section class="bg-white border border-orange-200/90 rounded-2xl p-5 sm:p-6 shadow-[0_2px_14px_rgba(26,26,46,0.04)] transition-all">
+      <div class="flex flex-col sm:flex-row items-start gap-4">
+        <!-- Lightbulb Icon -->
+        <div class="w-11 h-11 rounded-xl bg-orange-50 border border-orange-200 flex-shrink-0 flex items-center justify-center text-[#F26522]">
+          <span class="material-symbols-outlined text-[26px]">lightbulb</span>
+        </div>
+
+        <!-- Text Content -->
+        <div class="space-y-1.5 flex-1">
+          <h4 class="font-heading font-bold text-base sm:text-lg text-[#1A1A2E]">
+            Mọi CarePartner trên EduCareLink đều được xác minh
+          </h4>
+          <p class="text-xs sm:text-sm text-[#6B7280] leading-relaxed">
+            Quy trình xác minh nghiêm ngặt gồm CCCD 2 mặt, ảnh chân dung, thẻ sinh viên và đánh giá điểm tín nhiệm ELO liên tục sau mỗi lần hoàn thành công việc.
+          </p>
+          <div class="pt-2">
+            <a href="{% url 'frontend:parent_tasks' %}" class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#F26522] hover:underline focus:outline-none">
+              <span>Xem danh sách đơn đã đăng</span>
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Micro Footer info -->
+    <footer class="text-center py-4 text-xs text-gray-400">
+      &copy; EduCareLink. Nền tảng kết nối phụ huynh &amp; sinh viên CarePartner hàng đầu Việt Nam.
+    </footer>
+
+  </main>
+
 </body>
 </html>
