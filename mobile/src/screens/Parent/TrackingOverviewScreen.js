@@ -28,7 +28,7 @@ import NotificationBell from '../../components/NotificationBell';
 const STATUS_INFO = {
   in_progress: {
     label: 'Đang diễn ra',
-    icon: 'radar',
+    icon: 'locate',
     color: COLORS.primary,
     bg: COLORS.primaryLight,
   },
@@ -166,7 +166,7 @@ export default function TrackingOverviewScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconWrap}>
-        <Ionicons name="radar-outline" size={56} color={COLORS.primary} />
+        <Ionicons name="locate-outline" size={56} color={COLORS.primary} />
       </View>
       <Text style={styles.emptyTitle}>Chưa có nhiệm vụ nào đang theo dõi</Text>
       <Text style={styles.emptyDesc}>
