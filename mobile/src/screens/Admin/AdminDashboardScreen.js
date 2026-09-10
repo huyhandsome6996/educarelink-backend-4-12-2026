@@ -229,7 +229,7 @@ export default function AdminDashboardScreen() {
                 onPress={() => handleAction(item.id, 'revoke')}
                 activeOpacity={0.85}
               >
-                <Ionicons name="arrow-swap" size={16} color={COLORS.warning} />
+                <Ionicons name="swap-horizontal" size={16} color={COLORS.warning} />
                 <Text style={[styles.actionBtnText, { color: COLORS.warning }]}>Tước quyền</Text>
               </TouchableOpacity>
             </>
