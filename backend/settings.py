@@ -219,19 +219,44 @@ REST_FRAMEWORK = {
     },
 }
 
-# ⚡ Cache backend — dùng LocMem (in-process, không cần Redis)
-# Production nên upgrade lên Redis khi có traffic cao
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'educarelink-cache',
-        'TIMEOUT': 300,  # 5 phút default
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-            'CULL_FREQUENCY': 3,  # Khi đầy, xoá 1/3 entries (LRU-ish)
+# ⚡ Cache backend — Task perf 3: Redis tập trung khi có REDIS_URL.
+# - REDIS_URL có giá trị (prod Render/Railway có Redis add-on): dùng
+#   django.core.cache.backends.redis.RedisCache (built-in Django 4.0+) —
+#   cache SHARE giữa các Gunicorn worker, sống sót qua restart/deploy.
+# - REDIS_URL trống (dev/test/CI không có Redis): fallback LocMemCache như
+#   cũ — không phá môi trường test hiện tại (CI không cần Redis chạy sẵn).
+# Ghi chú serialize: backend Redis mặc định pickle — các giá trị đang cache
+# trong app (list tuple time, dict JSON, str) đều pickle ổn.
+REDIS_URL = os.environ.get('REDIS_URL', '')
+
+
+def _build_caches(redis_url=None):
+    """Build dict CACHES theo REDIS_URL (tách hàm để unit-test được cả 2
+    nhánh mà không cần Redis thật — chỉ build config, không kết nối)."""
+    url = redis_url if redis_url is not None else REDIS_URL
+    if url:
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': url,
+                'TIMEOUT': 300,  # 5 phút default — khớp cấu hình LocMem cũ
+                'KEY_PREFIX': 'educarelink',
+            }
+        }
+    return {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'educarelink-cache',
+            'TIMEOUT': 300,  # 5 phút default
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+                'CULL_FREQUENCY': 3,  # Khi đầy, xoá 1/3 entries (LRU-ish)
+            }
         }
     }
-}
+
+
+CACHES = _build_caches()
 
 # Cấu hình thời gian của Token
 # QA-FIX-8 / Issue #3: guardSECRET_KEY dummy trong production.

@@ -948,6 +948,16 @@ File mẫu: `.env.example`. Trên Render: cấu hình qua Dashboard → Settings
 | `CORS_ALLOW_ALL_ORIGINS` | `False` | CORS mở cho mọi origin |
 | `DATABASE_URL` | (bắt buộc prod) | PostgreSQL connection string |
 
+### Cache (Task perf 3 — Redis tập trung)
+| Var | Mặc định | Mô tả |
+|---|---|---|
+| `REDIS_URL` | (empty) | Connection string Redis (VD `redis://default:pass@host:6379/0` hoặc `rediss://...` cho TLS). **Có giá trị** → `django.core.cache.backends.redis.RedisCache` (built-in Django 4.0+, dep `redis` đã có trong requirements.txt) — cache SHARE giữa các Gunicorn worker, sống sót qua restart/deploy. **Trống** → fallback `LocMemCache` per-process như cũ (dev/test/CI KHÔNG cần Redis chạy sẵn). |
+
+Cách bật khi deploy:
+- **Render**: tạo Redis add-on (Dashboard → New → Redis) → copy "Internal Database URL" vào env var `REDIS_URL` của service web (dùng `redis://...` nội bộ, không cần TLS trong cùng region).
+- **Railway**: add plugin Redis → biến `REDIS_URL` đã tự inject, service web dùng trực tiếp.
+- Giá trị cache trong app (list tuple `time`, dict JSON, `Decimal`, `datetime`) đều pickle-được với backend mặc định — không cần cấu hình thêm serializer.
+
 ### AI
 | Var | Mặc định | Mô tả |
 |---|---|---|
