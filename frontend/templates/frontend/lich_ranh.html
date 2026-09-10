@@ -80,7 +80,8 @@
     const data = await resp.json();
     const wrap = document.getElementById('list');
     wrap.innerHTML = '';
-    const rows = Array.isArray(data) ? data : (data.results || []);
+    // Backend Flow 1 Step 4 trả {"windows": [...]} — chấp nhận cả mảng thuần/pagination cho an toàn
+    const rows = Array.isArray(data) ? data : (data.windows || data.results || []);
     if (!rows.length) {
       wrap.innerHTML = '<div class="py-8 text-center text-gray-400">Chưa có khung giờ nào. Thêm khung đầu tiên nhé!</div>';
       return;
@@ -109,6 +110,30 @@
     }
   }
 
+  // Gộp khung giờ bị chồng lấn: PUT khung cũ thành khoảng hợp nhất (backend trả id trong merge_suggestion)
+  async function applyMerge(s) {
+    const arr = Array.isArray(s) ? s : [s];
+    const first = arr[0];
+    if (!first) return load();
+    // Hợp nhất toàn bộ khoảng gợi ý + khung đang thêm thành 1 khoảng bao trùm
+    const froms = arr.map(x => String(x.time_from || '').slice(0, 8)).concat([document.getElementById('timeFrom').value]);
+    const tos = arr.map(x => String(x.time_to || '').slice(0, 8)).concat([document.getElementById('timeTo').value]);
+    const timeFrom = froms.sort()[0], timeTo = tos.sort()[tos.length - 1];
+    const weekday = Number(document.getElementById('weekday').value);
+    const resp = await authFetch(`${API_BASE}/matching/carepartners/me/availability/${first.id}/`, {
+      method: 'PUT', body: JSON.stringify({ weekday, time_from: timeFrom, time_to: timeTo }) });
+    if (resp.ok) {
+      // Nếu có nhiều khung cũ trùng → xóa nốt các khung còn lại sau khi gộp
+      for (const extra of arr.slice(1)) {
+        await authFetch(`${API_BASE}/matching/carepartners/me/availability/${extra.id}/`, { method: 'DELETE' });
+      }
+      toast(`Đã gộp thành ${timeFrom.slice(0, 5)} – ${timeTo.slice(0, 5)}.`);
+    } else {
+      toast('Không gộp được khung giờ. Vui lòng thử lại.', false);
+    }
+    load();
+  }
+
   document.getElementById('addBtn').onclick = async () => {
     const timeFrom = document.getElementById('timeFrom').value, timeTo = document.getElementById('timeTo').value;
     const weekday = Number(document.getElementById('weekday').value);
@@ -117,9 +142,21 @@
     const resp = await authFetch(API_BASE + '/matching/carepartners/me/availability/', {
       method: 'POST', body: JSON.stringify({ weekday, time_from: timeFrom, time_to: timeTo }) });
     if (resp.status === 201) { toast('Đã thêm khung giờ.'); load(); }
+    else if (resp.status === 400) {
+      const j = await resp.json().catch(() => ({}));
+      if (j.code === 'overlap_windows' && j.merge_suggestion) {
+        const s = Array.isArray(j.merge_suggestion) ? j.merge_suggestion : [j.merge_suggestion];
+        const froms = s.map(x => String(x.time_from || '').slice(0, 5)).concat([timeFrom.slice(0, 5)]);
+        const tos = s.map(x => String(x.time_to || '').slice(0, 5)).concat([timeTo.slice(0, 5)]);
+        const msg = `Khung giờ bị trùng. Bạn có muốn gộp thành ${froms.sort()[0]} – ${tos.sort()[tos.length - 1]} không?`;
+        if (confirm(msg)) await applyMerge(j.merge_suggestion);
+      } else {
+        toast(j.detail || (typeof j === 'object' && Object.values(j).length ? Object.values(j).flat()[0] : 'Không thêm được khung giờ.'), false);
+      }
+    }
     else {
       const j = await resp.json().catch(() => ({}));
-      toast(j.detail || (typeof j === 'object' ? Object.values(j).flat()[0] : 'Không thêm được.'), false);
+      toast(j.detail || (typeof j === 'object' && Object.values(j).length ? Object.values(j).flat()[0] : 'Không thêm được.'), false);
     }
   };
 
