@@ -126,11 +126,17 @@ class User(AbstractUser):
         return bool(self.verification_pin_hash)
 
 
-# 2. BẢNG DANH MỤC DỊCH VỤ (Gia sư, Đón trẻ...)
+# 2. BẢNG DANH MỤC DỊCH VỤ (chỉ 3 danh mục: Gia sư, Đón trẻ, Trông trẻ)
+# QA 2026-09-10 Vấn đề #1: các danh mục cũ (Dọn dẹp, Nấu ăn, Mua sắm hộ,
+# Hỗ trợ AI, Khác) bị khóa bằng cờ is_active=False — dữ liệu lịch sử giữ
+# nguyên FK, không cho tạo việc mới bằng danh mục đã khóa.
 class ServiceCategory(models.Model):
-    name = models.CharField(max_length=100) 
+    name = models.CharField(max_length=100)
     icon_name = models.CharField(max_length=50, blank=True, help_text="Tên icon, VD: BookOpen, Baby")
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="False = danh mục bị khóa, không hiển thị và không cho đăng việc mới")
 
     def __str__(self):
         return self.name

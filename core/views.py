@@ -442,6 +442,34 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
                 {'error': 'Chỉ phụ huynh mới được đăng việc.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        # ⚡ QA 2026-09-10 Vấn đề #1: KHÓA CHẶT 3 DANH MỤC — chặn 400 NGAY
+        # LẬP TỨC nếu category không thuộc [Gia sư, Đón trẻ, Trông trẻ] hoặc
+        # danh mục đã bị khóa (is_active=False). Không đợi gọi AI moderation.
+        try:
+            from core.models import ServiceCategory
+            from moderation.services import ALLOWED_CATEGORY_NAMES
+            raw_cat = request.data.get('category')
+            cat = None
+            if raw_cat not in (None, '', 'null', 'undefined'):
+                try:
+                    cat = ServiceCategory.objects.filter(pk=int(raw_cat)).first()
+                except (TypeError, ValueError):
+                    # Client gửi tên thay vì id (compat) — so tên trực tiếp
+                    cat = ServiceCategory.objects.filter(name=str(raw_cat).strip()).first()
+            if cat is None:
+                return Response(
+                    {'error': 'Danh mục công việc không hợp lệ. Vui lòng chọn 1 trong 3 danh mục: Gia sư, Đón trẻ, Trông trẻ.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if (not cat.is_active) or (cat.name not in ALLOWED_CATEGORY_NAMES):
+                return Response(
+                    {'error': f'Danh mục "{cat.name}" đã bị ngừng phục vụ. EduCareLink chỉ nhận đăng việc thuộc 3 danh mục: Gia sư, Đón trẻ, Trông trẻ.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except ImportError:
+            pass  # moderation module chưa sẵn sàng → bỏ qua gate này
+
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -2333,7 +2361,9 @@ class CategoryListAPIView(APIView):
 
     def get(self, request):
         from core.models import PricingRule
-        cats = ServiceCategory.objects.order_by('id').select_related('pricing_rule')
+        # QA 2026-09-10 Vấn đề #1: chỉ trả 3 danh mục đang mở (is_active=True)
+        # — danh mục cũ bị khóa mềm không hiển thị để client đăng việc mới.
+        cats = ServiceCategory.objects.filter(is_active=True).order_by('id').select_related('pricing_rule')
         result = []
         for c in cats:
             try:
