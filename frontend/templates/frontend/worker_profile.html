@@ -954,9 +954,22 @@
             return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
         }
 
+        // ===== SAFE DOM SETTERS — chống "Cannot set properties of null" =====
+        // Khi một phần tử bị ẩn/đổi ID giữa các phiên bản web/mobile, gán trực tiếp
+        // sẽ ném ngoại lệ rồi bị catch lớn bắt lại → toast "Không thể tải hồ sơ" sai sự thật.
+        function setElText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        }
+        function setElSrc(id, src) {
+            const el = document.getElementById(id);
+            if (el) el.src = src;
+        }
+
         // ===== RENDER RATING STARS =====
         function renderStars(rating) {
             const container = document.getElementById('rating-display');
+            if (!container) return;
             const starsContainer = container.querySelector('.flex');
             if (!starsContainer) return;
 
@@ -1020,7 +1033,16 @@
                         if (ratingResp.ok) ratingData = await ratingResp.json();
                     } catch (e) { console.error('Lỗi tải đánh giá:', e); }
 
-                    renderProfile(profileData, jobsData, ratingData);
+                    // Chuẩn hóa jobsData: endpoint /worker/my-jobs/ có thể trả mảng thuần,
+                    // object phân trang {count, results} hoặc object khác — luôn đảm bảo mảng an toàn
+                    // trước khi truyền vào renderProfile (tránh TypeError: jobs.filter is not a function)
+                    let safeJobs = [];
+                    if (Array.isArray(jobsData)) {
+                        safeJobs = jobsData;
+                    } else if (jobsData && Array.isArray(jobsData.results)) {
+                        safeJobs = jobsData.results;
+                    }
+                    renderProfile(profileData, safeJobs, ratingData);
                 } else {
                     // XEM HỒ SƠ CỦA WORKER KHÁC — fetch từ /api/worker/<id>/profile/
                     const workerResp = await apiFetch(API_BASE + "/worker/" + viewingWorkerId + "/profile/");
@@ -1114,17 +1136,18 @@
 
             // --- Full Name (first_name + last_name from API) ---
             const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.username || 'Carepartner';
-            document.getElementById('profile-name').textContent = fullName;
+            setElText('profile-name', fullName);
 
             // --- Avatar (from ui-avatars.com using username) ---
             const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'W')}&background=F26522&color=fff&size=128`;
-            document.getElementById('profile-avatar').src = avatarUrl;
-            document.getElementById('sidebar-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'W')}&background=F26522&color=fff`;
-            document.getElementById('mobile-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'W')}&background=F26522&color=fff`;
+            setElSrc('profile-avatar', avatarUrl);
+            setElSrc('sidebar-avatar', `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'W')}&background=F26522&color=fff`);
+            setElSrc('mobile-avatar', `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'W')}&background=F26522&color=fff`);
 
-            // --- Sidebar name & role ---
-            document.getElementById('sidebar-name').textContent = fullName;
-            document.getElementById('sidebar-role').textContent = 'Carepartner';
+            // --- Sidebar name & role (sidebar-role là ID cũ; _worker_sidebar.html dùng sidebar-subtitle) ---
+            setElText('sidebar-name', fullName);
+            setElText('sidebar-role', 'Carepartner');
+            setElText('sidebar-subtitle', 'Carepartner');
 
             // --- Verification Badge on avatar + status text ---
             const verifyBadge = document.getElementById('verify-badge');
@@ -1132,58 +1155,69 @@
 
             if (profile.is_approved) {
                 // Approved — green badge
-                verifyBadge.style.display = 'flex';
-                verifyBadge.className = verifyBadge.className.replace(/bg-\S+/g, '');
-                verifyBadge.classList.add('bg-success');
-                verifyStatus.className = 'inline-flex items-center gap-1.5 bg-emerald-50 text-success px-4 py-1.5 rounded-full text-xs font-bold mb-3';
-                verifyStatus.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">verified</span> Đã xác thực`;
+                if (verifyBadge) {
+                    verifyBadge.style.display = 'flex';
+                    verifyBadge.className = verifyBadge.className.replace(/bg-\S+/g, '');
+                    verifyBadge.classList.add('bg-success');
+                }
+                if (verifyStatus) {
+                    verifyStatus.className = 'inline-flex items-center gap-1.5 bg-emerald-50 text-success px-4 py-1.5 rounded-full text-xs font-bold mb-3';
+                    verifyStatus.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">verified</span> Đã xác thực`;
+                }
             } else {
                 // Pending — amber badge
-                verifyBadge.style.display = 'flex';
-                verifyBadge.className = verifyBadge.className.replace(/bg-\S+/g, '');
-                verifyBadge.classList.add('bg-amber-400');
-                verifyStatus.className = 'inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-1.5 rounded-full text-xs font-bold mb-3';
-                verifyStatus.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">schedule</span> Chờ duyệt`;
+                if (verifyBadge) {
+                    verifyBadge.style.display = 'flex';
+                    verifyBadge.className = verifyBadge.className.replace(/bg-\S+/g, '');
+                    verifyBadge.classList.add('bg-amber-400');
+                }
+                if (verifyStatus) {
+                    verifyStatus.className = 'inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-1.5 rounded-full text-xs font-bold mb-3';
+                    verifyStatus.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">schedule</span> Chờ duyệt`;
+                }
             }
 
             // --- Average Rating (from ratingDetail if available) ---
             const ratingDisplay = document.getElementById('rating-display');
-            if (ratingDetail && ratingDetail.avg_rating) {
+            if (ratingDetail && ratingDetail.avg_rating && ratingDisplay) {
                 ratingDisplay.style.display = 'flex';
-                document.getElementById('rating-value').textContent = ratingDetail.avg_rating.toFixed(1);
+                setElText('rating-value', ratingDetail.avg_rating.toFixed(1));
                 renderStars(ratingDetail.avg_rating);
-            } else {
+            } else if (ratingDisplay) {
                 ratingDisplay.style.display = 'none';
             }
 
             // --- AI Summary (from ai_profile_summary field) ---
             const aiSummaryText = document.getElementById('ai-summary-text');
-            if (profile.ai_profile_summary && profile.ai_profile_summary.trim()) {
-                aiSummaryText.textContent = `"${profile.ai_profile_summary}"`;
-                aiSummaryText.classList.remove('text-textSecondary/50');
-                aiSummaryText.classList.add('text-textSecondary');
-            } else {
-                aiSummaryText.textContent = 'Chưa có đánh giá AI';
-                aiSummaryText.classList.remove('text-textSecondary');
-                aiSummaryText.classList.add('text-textSecondary/50');
+            if (aiSummaryText) {
+                if (profile.ai_profile_summary && profile.ai_profile_summary.trim()) {
+                    aiSummaryText.textContent = `"${profile.ai_profile_summary}"`;
+                    aiSummaryText.classList.remove('text-textSecondary/50');
+                    aiSummaryText.classList.add('text-textSecondary');
+                } else {
+                    aiSummaryText.textContent = 'Chưa có đánh giá AI';
+                    aiSummaryText.classList.remove('text-textSecondary');
+                    aiSummaryText.classList.add('text-textSecondary/50');
+                }
             }
 
-            // --- Quick Stats ---
+            // --- Quick Stats (luôn lọc trên mảng an toàn) ---
             // Completed jobs = jobs where task_status === 'completed'
-            const completedJobs = jobs.filter(j => j.task_status === 'completed');
-            document.getElementById('stat-completed').textContent = completedJobs.length;
+            const safeJobsList = Array.isArray(jobs) ? jobs : [];
+            const completedJobs = safeJobsList.filter(j => j && j.task_status === 'completed');
+            setElText('stat-completed', completedJobs.length);
 
             // Total earnings = sum of task_price from completed jobs
             const totalEarnings = completedJobs.reduce((sum, j) => {
                 const price = parseFloat(j.task_price) || 0;
                 return sum + price;
             }, 0);
-            document.getElementById('stat-earnings').textContent = formatCurrency(totalEarnings);
+            setElText('stat-earnings', formatCurrency(totalEarnings));
 
             // --- Personal Info ---
-            document.getElementById('info-phone').textContent = profile.phone_number || 'Chưa cập nhật';
-            document.getElementById('info-address').textContent = profile.address || 'Chưa cập nhật';
-            document.getElementById('info-email').textContent = profile.email || 'Chưa cập nhật';
+            setElText('info-phone', profile.phone_number || 'Chưa cập nhật');
+            setElText('info-address', profile.address || 'Chưa cập nhật');
+            setElText('info-email', profile.email || 'Chưa cập nhật');
         }
 
         // ===== PROFILE TOUR SYSTEM =====
