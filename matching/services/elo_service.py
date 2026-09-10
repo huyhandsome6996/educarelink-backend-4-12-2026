@@ -14,6 +14,7 @@ QUY TẮC TUYỆT ĐỐI:
 
 import logging
 import math
+import time as _time_mod
 
 from datetime import datetime as _dt, time as _time
 from decimal import Decimal, ROUND_HALF_UP
@@ -170,15 +171,31 @@ class EloService:
 
         rewards = 0.0
         penalties = 0.0
-        rows = EloLedger.objects.filter(carepartner=profile.user).only(
-            'delta', 'reason_code', 'created_at')
-        for row in rows:
-            if row.delta > 0:
-                # Rewards KHÔNG decay; cooldown sau T5/T6 → 50% (Step 6.5)
-                rewards += row.delta * (0.5 if in_cooldown else 1.0)
-            elif row.delta < 0:
-                # Mọi penalty decay theo tuổi (Step 6.5)
-                penalties += row.delta * EloService._decay_factor(row.created_at, now)
+        # ── Task perf 7.1 — tách 2 phần khác bản chất của ledger ──
+        # PENALTY (có decay): đóng góp = 0 CHÍNH XÁC khi age_days >= 181
+        # (biên _decay_factor: >180 ngày ×0.00 vĩnh viễn). Với
+        # age_days = floor(age_seconds/86400): age_days >= 181 ⟺
+        # created_at <= now - 181d → chỉ cần scan cửa sổ (now-181d, now].
+        # ⚠️ CẮT Ở 181 NGÀY, KHÔNG phải 180: row cũ 180d+1s vẫn có
+        # age_days = 180 → hệ số ×0.25 — cắt ở 180d sẽ mất decay 0.25 của
+        # cả band [180d, 181d) → sai điểm tín nhiệm.
+        # Index sẵn có idx_elo_cp_created (carepartner, created_at) che filter.
+        penalty_cutoff = now - timezone.timedelta(days=181)
+        reward_rows = (EloLedger.objects
+                       .filter(carepartner=profile.user, delta__gt=0)
+                       .only('delta'))
+        penalty_rows = (EloLedger.objects
+                        .filter(carepartner=profile.user, delta__lt=0,
+                                created_at__gt=penalty_cutoff)
+                        .only('delta', 'created_at'))
+        for row in reward_rows:
+            # Rewards KHÔNG decay — cộng dồn vĩnh viễn (chỉ nhân hệ số
+            # cooldown 0.5 toàn cục ở trên) (Step 6.5)
+            rewards += row.delta * (0.5 if in_cooldown else 1.0)
+        for row in penalty_rows:
+            # Mọi penalty decay theo tuổi (Step 6.5) — ngoài cửa sổ 181 ngày
+            # hệ số chắc chắn 0.00 nên bỏ qua không đổi kết quả
+            penalties += row.delta * EloService._decay_factor(row.created_at, now)
 
         effective = base + rewards + penalties
         effective = max(float(ELO_MIN), min(float(ELO_MAX), effective))
@@ -202,15 +219,40 @@ class EloService:
             )
         return effective_f, band
 
+    # ── Task perf 7.3 — cache danh sách EloBand (bảng gần như tĩnh) ──
+    # determine_band() được gọi trong MỌI recompute() → trước đây query mỗi
+    # lần. Cache process-level TTL 60s + tự invalidate qua signal post_save/
+    # post_delete của EloBand (admin/seed đổi band → refresh NGAY, không đợi
+    # TTL — giữ đúng contract "sửa band không cần deploy").
+    _BAND_CACHE = None
+    _BAND_CACHE_TTL = 60  # giây
+
+    @classmethod
+    def get_bands_cached(cls, ttl_seconds=None):
+        ttl = cls._BAND_CACHE_TTL if ttl_seconds is None else ttl_seconds
+        now_mono = _time_mod.monotonic()
+        if cls._BAND_CACHE is None or now_mono - cls._BAND_CACHE[0] >= ttl:
+            cls._BAND_CACHE = (now_mono, list(EloBand.objects.all()))
+        return cls._BAND_CACHE[1]
+
+    @classmethod
+    def invalidate_band_cache(cls):
+        cls._BAND_CACHE = None
+
     @staticmethod
     def determine_band(effective_elo):
-        """Chọn band theo [min_elo, max_elo] đọc từ DB."""
-        for band in EloBand.objects.all():
+        """Chọn band theo [min_elo, max_elo] — danh sách band đọc qua cache
+        TTL 60s (perf 7.3), thứ tự lặp GIỐNG HỆT queryset cũ (Meta
+        ordering ['-min_elo'])."""
+        bands = EloService.get_bands_cached()
+        for band in bands:
             if band.min_elo <= effective_elo <= band.max_elo:
                 return band
-        # Fallback an toàn: band gần nhất theo min_elo
-        return (EloBand.objects.order_by('-min_elo').first()
-                or EloBand.objects.first())
+        # Fallback an toàn: band gần nhất theo min_elo (giữ nguyên logic cũ
+        # order_by('-min_elo').first() or .first())
+        if bands:
+            return bands[0]  # list đã theo Meta ordering ['-min_elo']
+        return None
 
     # ─────────────────────────────────────────────────────────────
     # apply_event — điểm vào DUY NHẤT ghi ledger
@@ -379,6 +421,23 @@ class EloService:
 
 def carepartner_id(user):
     return getattr(user, 'pk', user)
+
+
+# ── Task perf 7.3 — invalidate band cache khi EloBand đổi ──
+# Che phủ cả đường admin sửa tay, seed_matching_config (update_or_create)
+# và test tự tạo/sửa band. QuerySet.update()/bulk không fire signal —
+# không có path nào trong repo dùng update() hàng loạt cho EloBand.
+from django.db.models.signals import post_delete, post_save  # noqa: E402
+
+
+def _invalidate_band_cache(sender, instance, **kwargs):
+    EloService._BAND_CACHE = None
+
+
+post_save.connect(_invalidate_band_cache, sender=EloBand,
+                  dispatch_uid='elo_band_cache_save')
+post_delete.connect(_invalidate_band_cache, sender=EloBand,
+                    dispatch_uid='elo_band_cache_delete')
 
 
 def _get_int_config(key, default):
