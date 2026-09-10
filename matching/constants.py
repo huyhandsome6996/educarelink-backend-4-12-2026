@@ -188,6 +188,9 @@ BOOKING_TRANSITIONS = {
         BookingStatus.RESCHEDULE_REQUESTED,
         BookingStatus.CANCELLED_BY_PARENT,
         BookingStatus.DISPUTED,
+        # QA 2026-09-10 Vấn đề #2 — Grab-style: quá hạn không phản hồi →
+        # đơn hết hạn + thông báo phụ huynh + kích hoạt chọn người thay
+        BookingStatus.EXPIRED_NO_RESPONSE,
     }),
     BookingStatus.COMMITTED: frozenset({
         BookingStatus.RESCHEDULE_REQUESTED,
@@ -283,6 +286,8 @@ NOTIFICATION_CLASS_INFO = 'info'
 NOTIFICATION_CODES = {
     'job_assigned':            ('carepartner', 'critical'),
     'booking_committed':       ('carepartner', 'important'),
+    'booking_committed_parent': ('parent', 'important'),
+    'commit_expired':          ('parent', 'critical'),
     'carepartner_declined':    ('parent', 'critical'),
     'carepartner_cancelled':   ('parent', 'critical'),
     'carepartner_no_show':     ('parent', 'critical'),

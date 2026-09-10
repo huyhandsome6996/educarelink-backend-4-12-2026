@@ -785,97 +785,24 @@ class ApplyTaskAPIView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'apply'
     def post(self, request, task_id):
-        # Phục vụ Màn 9: Nút bấm [Ứng tuyển ngay]
-        if request.user.role != 'worker':
-            return Response({"error": "Chỉ Carepartner mới được nhận việc!"}, status=status.HTTP_403_FORBIDDEN)
-        if not request.user.is_approved:
-            return Response({"error": "Tài khoản của bạn chưa được Admin duyệt. Vui lòng đợi."}, status=status.HTTP_403_FORBIDDEN)
-
-        try:
-            task = Task.objects.get(id=task_id)
-            if task.parent == request.user:
-                 return Response({"error": "Không thể tự nhận việc của mình."}, status=400)
-
-            # ================================================================
-            # CONSENT CHO TRACKING (yêu cầu mới)
-            # Frontend phải gửi 'consent_tracking' (true/false) trong body.
-            # Nếu task có geofence → BẮT BUỘC đồng ý tracking mới được apply.
-            # Nếu task không có geofence → không yêu cầu, vẫn apply bình thường.
-            # ================================================================
-            consent_tracking = request.data.get('consent_tracking', None)
-            has_geofence = bool(task.geofence_lat and task.geofence_lng)
-
-            # ================================================================
-            # QA-FIX-6 / BẮT BUỘC 1 + LỖ HỔNG #1 — Chặn worker chưa đặt PIN
-            # nhận việc CÓ THEO DÕI VỊ TRÍ (geofence/tracking)
-            # --------------------------------------------------------------
-            # Vấn đề: verification_scheduler.py có dòng
-            #   `if not worker.verification_pin_hash: continue`
-            # nghĩa là worker chưa đặt PIN sẽ được miễn trừ VĨNH VIỄN khỏi
-            # tính năng xác minh ngẫu nhiên. Nếu không chặn ở bước nhận việc,
-            # worker (cố ý hoặc vô ý) không đặt PIN vẫn nhận việc bình thường
-            # → vô hiệu hoá toàn bộ mục đích của module xác minh ngẫu nhiên.
-            #
-            # Fix (lỗ hổng #1): chỉ chặn khi task CÓ tracking (geofence).
-            # Task không có geofence → không cần PIN (không có risk bỏ máy
-            # vì không theo dõi vị trí). Cho phép worker chưa đặt PIN ứng tuyển
-            # task không có tracking để không khóa hoàn toàn người dùng mới.
-            #
-            # Error code `verification_pin_required` — mobile bắt riêng để
-            # điều hướng worker đến màn đặt PIN + retry flow.
-            # ================================================================
-            if has_geofence and not request.user.has_verification_pin_set:
-                return Response({
-                    "error": "verification_pin_required",
-                    "message": "Bạn cần đặt mã xác minh cá nhân trước khi nhận việc có theo dõi vị trí.",
-                    "has_geofence": True,
-                    "geofence_lat": task.geofence_lat,
-                    "geofence_lng": task.geofence_lng,
-                    "geofence_radius": task.geofence_radius or 500,
-                }, status=status.HTTP_403_FORBIDDEN)
-
-            if has_geofence and consent_tracking is None:
-                return Response({
-                    "error": "CONSENT_REQUIRED",
-                    "message": "Phụ huynh đã yêu cầu theo dõi vị trí cho việc này. Bạn phải đồng ý chia sẻ vị trí mới được nhận việc.",
-                    "geofence_lat": task.geofence_lat,
-                    "geofence_lng": task.geofence_lng,
-                    "geofence_radius": task.geofence_radius or 500,
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            app, created = TaskApplication.objects.get_or_create(
-                task=task, worker=request.user, defaults={'status': 'pending'}
-            )
-            if created:
-                # ================================================================
-                # TẠO LOCATION CONSENT (nếu worker đồng ý)
-                # ================================================================
-                if consent_tracking is True and has_geofence:
-                    try:
-                        from tracking.models import LocationConsent
-                        from django.utils import timezone
-                        LocationConsent.objects.update_or_create(
-                            task=task, worker=request.user,
-                            defaults={
-                                'consent': 'granted',
-                                'granted_at': timezone.now(),
-                                'revoked_at': None,
-                            }
-                        )
-                    except Exception as e:
-                        # Không fail nếu tracking module chưa sẵn sàng
-                        import logging
-                        logging.getLogger('educarelink.apply').warning(
-                            f"Không tạo được LocationConsent cho task#{task.id}: {e}"
-                        )
-
-                return Response({
-                    "message": "Đã ứng tuyển!",
-                    "consent_tracking": bool(consent_tracking and has_geofence),
-                }, status=201)
-            return Response({"message": "Bạn đã ứng tuyển rồi!"}, status=400)
-        except Task.DoesNotExist:
-            return Response({"error": "Không tìm thấy công việc."}, status=404)
+        # ================================================================
+        # QA 2026-09-10 VẤN ĐỀ #2 — LUỒNG GHÉP CẶP THỤ ĐỘNG KIỂU GRAB
+        # --------------------------------------------------------------
+        # Endpoint ứng tuyển chủ động ĐÃ ĐÓNG. Carepartner KHÔNG tự lướt
+        # tìm việc và bấm "Ứng tuyển" nữa. Thay vào đó:
+        #   Phụ huynh đăng việc → AI quét chọn 8 ứng viên xuất sắc nhất
+        #   → phụ huynh chọn 1 → Booking 'awaiting_commitment' tự xuất
+        #   hiện ở dashboard Carepartner (/don-cua-toi/) → Carepartner
+        #   XÁC NHẬN/TỪ CHỐI trong thời hạn quy định.
+        # Đây là tàn dư của luồng ghép cặp cũ (core.Task + TaskApplication
+        # với 8 danh mục cũ) — trả 403 cho MỌI lời gọi trực tiếp.
+        # ================================================================
+        return Response({
+            "error": "passive_matching_only",
+            "message": "Hệ thống đã chuyển sang luồng ghép cặp thụ động kiểu Grab: bạn không tự ứng tuyển nữa. "
+                       "Khi phụ huynh chọn bạn từ danh sách 8 ứng viên do AI đề xuất, đơn sẽ tự xuất hiện "
+                       "trong mục 'Nhận đơn mới' (/don-cua-toi/) — hãy khai báo Lịch rảnh để được ưu tiên đề xuất.",
+        }, status=status.HTTP_403_FORBIDDEN)
 
 class WorkerJobsAPIView(generics.ListAPIView):
     serializer_class = TaskApplicationSerializer

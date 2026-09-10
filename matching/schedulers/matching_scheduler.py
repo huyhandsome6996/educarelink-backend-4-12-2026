@@ -7,7 +7,9 @@ hoặc chạy trên Render.
 
 Job mỗi phút (Step 12 AC7 — beat task safe re-run / idempotent):
   - cleanup_expired_locks: dọn soft lock hết hạn (Rule 1 Step 10)
-  - auto_commit_bookings: awaiting_commitment quá deadline → committed
+  - expire_commit_deadline_bookings: awaiting_commitment quá deadline →
+    EXPIRED_NO_RESPONSE + thông báo phụ huynh + replacement
+    (QA 2026-09-10 Vấn đề #2 — Grab-style, KHÔNG còn auto-commit)
   - detect_no_show: start + 15 phút chưa start → suspected_no_show
   - reschedule_watchdog: reminder 50% + expire idle (Phase 3 wire)
 """
@@ -35,17 +37,18 @@ def cleanup_expired_locks():
         logger.info('[MatchingBeat] Dọn %d soft lock hết hạn', deleted)
 
 
-def auto_commit_bookings():
-    """awaiting_commitment quá commit_deadline → committed (Step 5.1.6).
+def expire_commit_deadline_bookings():
+    """awaiting_commitment quá commit_deadline → EXPIRED_NO_RESPONSE
+    (QA 2026-09-10 Vấn đề #2 — Grab-style: im lặng = hết hạn).
 
-    Lazy check trên GET cũng làm (Step 5 AC4) — beat là mạng lưới dự phòng.
+    Đơn bị gỡ khỏi dashboard Carepartner, phụ huynh nhận thông báo
+    critical và replacement chạy để đề xuất ứng viên khác. Lazy check
+    trên GET cũng làm — beat là mạng lưới dự phòng.
     """
-    from django.db import transaction
     from django.utils import timezone
     from ..constants import BookingStatus
     from ..models import Booking
-    from ..services.notification_service import NotificationService
-    from ..services.state import transition
+    from ..services.booking_service import expire_booking_on_deadline
 
     now = timezone.now()
     expired = Booking.objects.filter(
@@ -53,23 +56,9 @@ def auto_commit_bookings():
         commit_deadline__lte=now)
     for booking in expired:
         try:
-            with transaction.atomic():
-                b = Booking.objects.select_for_update().get(pk=booking.pk)
-                if b.status != BookingStatus.AWAITING_COMMITMENT:
-                    continue  # safe re-run
-                b.committed_at = timezone.now()
-                b.save(update_fields=['committed_at'])
-                transition(b, BookingStatus.COMMITTED, actor='system',
-                           reason='Hết cửa sổ cam kết — tự động cam kết')
-                NotificationService.enqueue(b.carepartner, 'booking_committed', ctx={
-                    'time': b.job.slots.order_by('date').first().time_from.strftime('%H:%M'),
-                    'date': b.job.slots.order_by('date').first().date.strftime('%d/%m/%Y'),
-                })
-                NotificationService.enqueue(
-                    b.parent, 'booking_committed',
-                    ctx={'time': '', 'date': ''})  # parent copy khác — Phase 3 render riêng
+            expire_booking_on_deadline(booking)
         except Exception:
-            logger.exception('[MatchingBeat] Lỗi auto-commit booking %s', booking.pk)
+            logger.exception('[MatchingBeat] Lỗi expire booking %s', booking.pk)
 
 
 def detect_no_show():
@@ -189,8 +178,8 @@ def retry_failed_notifications():
 
 def run_all_beats():
     """Chạy mọi beat job — mỗi job tự bắt lỗi để không chặn nhau."""
-    for fn in (cleanup_expired_locks, auto_commit_bookings, detect_no_show,
-               no_show_unconfirmed_timeout, reschedule_watchdog,
+    for fn in (cleanup_expired_locks, expire_commit_deadline_bookings,
+               detect_no_show, no_show_unconfirmed_timeout, reschedule_watchdog,
                retry_empty_replacement, retry_failed_notifications):
         try:
             fn()

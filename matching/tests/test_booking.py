@@ -16,11 +16,14 @@ from matching.models import (
     JobPost,
     JobSlot,
     Notification,
+    SlotLock,
     StateTransitionLog,
 )
 from matching.services.booking_service import (
+    commit_booking,
     compute_commit_deadline,
     compute_total_value,
+    expire_booking_on_deadline,
     lazy_commit_check,
     select_carepartner,
 )
@@ -187,20 +190,104 @@ class SelectCarePartnerTest(MatchingTestBase):
 
 
 class LazyCommitTest(MatchingTestBase):
+    """QA 2026-09-10 Vấn đề #2 — Grab-style: quá hạn KHÔNG phản hồi →
+    hết hạn (EXPIRED_NO_RESPONSE), KHÔNG còn auto-commit."""
+
+    def _make_awaiting_booking(self, cp, parent, deadline_delta):
+        job = JobPost.objects.create(parent=parent, job_type='tutoring',
+                                     hourly_rate_vnd=100000,
+                                     status='carepartner_selected')
+        JobSlot.objects.create(job=job, date=MONDAY, time_from=time(19, 0),
+                               time_to=time(21, 0))
+        return Booking.objects.create(
+            job=job, carepartner=cp, parent=parent,
+            status=BookingStatus.AWAITING_COMMITMENT,
+            selected_at=tz.now(), commit_deadline=tz.now() + deadline_delta,
+            total_value_vnd=200000)
+
     def test_get_flips_status_after_deadline(self):
-        """Scheduler chết → GET vẫn lật awaiting → committed (AC4)."""
+        """Scheduler chết → GET vẫn lật awaiting → expired_no_response +
+        thông báo phụ huynh + chạy replacement."""
+        from matching.models import Notification, ReplacementAttempt
+        from matching.constants import STATUS_LABELS_VI
+
         parent = User.objects.create_user('lcp', password='x', role='parent')
         cp = User.objects.create_user('lcc', password='x', role='worker',
                                       is_approved=True)
+        cp.first_name = 'Không'; cp.last_name = 'Phản hồi'; cp.save()
         EloService.get_profile(cp)
-        job = JobPost.objects.create(parent=parent, job_type='tutoring',
-                                     hourly_rate_vnd=100000)
-        JobSlot.objects.create(job=job, date=MONDAY, time_from=time(19, 0),
-                               time_to=time(21, 0))
-        booking = Booking.objects.create(
-            job=job, carepartner=cp, parent=parent,
-            status=BookingStatus.AWAITING_COMMITMENT,
-            selected_at=tz.now(), commit_deadline=tz.now() - timedelta(minutes=1),
-            total_value_vnd=200000)
+        booking = self._make_awaiting_booking(
+            cp, parent, -timedelta(minutes=1))
         booking = lazy_commit_check(booking)
+        self.assertEqual(booking.status, BookingStatus.EXPIRED_NO_RESPONSE)
+        self.assertEqual(booking.status_label_vi if hasattr(booking, 'status_label_vi')
+                         else STATUS_LABELS_VI[booking.status], 'Hết hạn phản hồi')
+        # Phụ huynh nhận thông báo critical 'commit_expired'
+        self.assertTrue(Notification.objects.filter(
+            user=parent, code='commit_expired').exists())
+        # Slot của CP hết hạn được mở khóa
+        self.assertFalse(
+            SlotLock.objects.filter(booking=booking).exists())
+        # Replacement chạy → phụ huynh được đề xuất chọn người khác
+        self.assertTrue(ReplacementAttempt.objects.filter(
+            job=booking.job).exists())
+
+    def test_not_expired_inside_window(self):
+        """Còn trong cửa sổ → lazy check giữ nguyên awaiting."""
+        parent = User.objects.create_user('lcp2', password='x', role='parent')
+        cp = User.objects.create_user('lcc2', password='x', role='worker',
+                                      is_approved=True)
+        EloService.get_profile(cp)
+        booking = self._make_awaiting_booking(
+            cp, parent, timedelta(minutes=10))
+        booking = lazy_commit_check(booking)
+        self.assertEqual(booking.status, BookingStatus.AWAITING_COMMITMENT)
+
+    def test_commit_booking_carepartner_confirms(self):
+        """Carepartner bấm XÁC NHẬN trước deadline → committed + thông báo."""
+        from matching.models import Notification
+
+        parent = User.objects.create_user('lcp3', password='x', role='parent')
+        cp = User.objects.create_user('lcc3', password='x', role='worker',
+                                      is_approved=True)
+        cp.first_name = 'Minh'; cp.last_name = 'Anh'; cp.save()
+        EloService.get_profile(cp)
+        booking = self._make_awaiting_booking(
+            cp, parent, timedelta(minutes=30))
+        booking, changed = commit_booking(booking, actor_user=cp)
+        self.assertTrue(changed)
         self.assertEqual(booking.status, BookingStatus.COMMITTED)
+        self.assertIsNotNone(booking.committed_at)
+        # CP + parent đều nhận thông báo cam kết
+        self.assertTrue(Notification.objects.filter(
+            user=cp, code='booking_committed').exists())
+        self.assertTrue(Notification.objects.filter(
+            user=parent, code='booking_committed_parent').exists())
+
+    def test_commit_booking_idempotent(self):
+        """Commit 2 lần → lần 2 không đổi trạng thái (changed=False)."""
+        parent = User.objects.create_user('lcp4', password='x', role='parent')
+        cp = User.objects.create_user('lcc4', password='x', role='worker',
+                                      is_approved=True)
+        EloService.get_profile(cp)
+        booking = self._make_awaiting_booking(
+            cp, parent, timedelta(minutes=30))
+        booking, changed1 = commit_booking(booking, actor_user=cp)
+        booking, changed2 = commit_booking(booking, actor_user=cp)
+        self.assertTrue(changed1)
+        self.assertFalse(changed2)
+        self.assertEqual(booking.status, BookingStatus.COMMITTED)
+
+    def test_commit_after_expiry_returns_unchanged(self):
+        """Đơn đã hết hạn → commit muộn không đổi trạng thái."""
+        parent = User.objects.create_user('lcp5', password='x', role='parent')
+        cp = User.objects.create_user('lcc5', password='x', role='worker',
+                                      is_approved=True)
+        EloService.get_profile(cp)
+        booking = self._make_awaiting_booking(
+            cp, parent, -timedelta(minutes=1))
+        expired = expire_booking_on_deadline(booking)
+        self.assertEqual(expired.status, BookingStatus.EXPIRED_NO_RESPONSE)
+        expired, changed = commit_booking(expired, actor_user=cp)
+        self.assertFalse(changed)
+        self.assertEqual(expired.status, BookingStatus.EXPIRED_NO_RESPONSE)

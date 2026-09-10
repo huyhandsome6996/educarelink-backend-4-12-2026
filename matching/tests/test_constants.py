@@ -95,7 +95,9 @@ class SeedIdempotencyTest(TestCase):
     def test_seed_twice_same_counts(self):
         call_command('seed_matching_config', verbosity=0)
         first = self._counts()
-        self.assertEqual(first, (6, 7, 7, 16))
+        # QA 2026-09-10 #2: thêm 2 template commit_expired +
+        # booking_committed_parent → 16 + 2 = 18
+        self.assertEqual(first, (6, 7, 7, 18))
         call_command('seed_matching_config', verbosity=0)
         self.assertEqual(self._counts(), first)
 

@@ -204,7 +204,7 @@ export default function CandidateProfileScreen() {
 
           {/* Skills chips */}
           <View style={styles.skillsRow}>
-            {['Sơ cứu cơ bản', 'Hỗ trợ bài tập', 'Chăm sóc trẻ', 'Nấu ăn dinh dưỡng'].map((skill) => (
+            {['Sơ cứu cơ bản', 'Hỗ trợ bài tập', 'Chăm sóc trẻ', 'Đưa đón an toàn'].map((skill) => (
               <View key={skill} style={styles.skillChip}>
                 <Text style={styles.skillChipText}>{skill}</Text>
               </View>
