@@ -212,7 +212,11 @@ export default function MapPickerModal({
   onPick,
   onClose,
 }) {
-  const insets = useSafeAreaInsets();
+  let insets = { top: 12, bottom: 20, left: 0, right: 0 };
+  try {
+    const safeInsets = useSafeAreaInsets();
+    if (safeInsets) insets = safeInsets;
+  } catch {}
   const [pickedLocation, setPickedLocation] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);

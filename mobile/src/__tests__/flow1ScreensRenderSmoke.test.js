@@ -63,6 +63,14 @@ jest.mock('react-native-maps', () => {
   return { __esModule: true, default: MockMapView, Marker: MockMapView.Marker };
 }, { virtual: true });
 
+// react-native-webview native module mock cho Jest
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockWebView = React.forwardRef((props, ref) => React.createElement(View, props));
+  return { __esModule: true, default: MockWebView, WebView: MockWebView };
+}, { virtual: true });
+
 // AsyncStorage native module không tồn tại trong jest → mock chuẩn theo docs
 // (api/client → utils/storage import nó lúc load module).
 jest.mock('@react-native-async-storage/async-storage', () =>
