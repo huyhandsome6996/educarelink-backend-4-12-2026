@@ -121,8 +121,74 @@ function TabIcon({ name, focused, color }) {
   );
 }
 
+// === Stacks cho từng Tab của PHỤ HUYNH ===
+function ParentHomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ParentHomeMain" component={ParentHomeScreen} />
+      <Stack.Screen name="JobTypeSelect" component={JobTypeSelectScreen} />
+      <Stack.Screen name="TutoringForm" component={TutoringFormScreen} />
+      <Stack.Screen name="ChildcareForm" component={ChildcareFormScreen} />
+      <Stack.Screen name="PickupForm" component={PickupFormScreen} />
+      <Stack.Screen name="CandidatesList" component={CandidatesListScreen} />
+      <Stack.Screen name="CandidateProfileV2" component={CandidateProfileV2Screen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="WalletCredits" component={WalletScreen} />
+      <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
+      <Stack.Screen name="RewardPointsScreen" component={RewardPointsScreen} />
+      <Stack.Screen name="SmartMatches" component={SmartMatchesScreen} />
+      <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+      <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
+      <Stack.Screen name="Candidates" component={CandidatesScreen} />
+      <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="Review" component={ReviewScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ParentTasksStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MyTasksMain" component={MyTasksScreen} />
+      <Stack.Screen name="Candidates" component={CandidatesScreen} />
+      <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="Review" component={ReviewScreen} />
+      <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+      <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ParentTrackingStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="TrackingOverviewMain" component={TrackingOverviewScreen} />
+      <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ParentProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ParentProfileMain" component={ParentProfileScreen} />
+      <Stack.Screen name="WalletCredits" component={WalletScreen} />
+      <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
+      <Stack.Screen name="RewardPointsScreen" component={RewardPointsScreen} />
+      <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
+      <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
 // === Tab Navigator dành cho PHỤ HUYNH ===
-// Thiết kế bottom nav bTaskee: 5 tab, tab giữa (AI Trợ lý) nổi lên
+// Thiết kế 5 tab cân đối: nút AI Trợ lý ở chính giữa trung tâm (Tab 3)
 function ParentTabs() {
   return (
     <Tab.Navigator
@@ -141,7 +207,7 @@ function ParentTabs() {
           let iconName;
           if (route.name === 'ParentHome') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'MyTasks') iconName = focused ? 'list' : 'list-outline';
-          else if (route.name === 'TrackingOverview') iconName = focused ? 'radar' : 'radar-outline';
+          else if (route.name === 'TrackingOverview') iconName = focused ? 'location' : 'location-outline';
           else if (route.name === 'ParentProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
@@ -154,25 +220,95 @@ function ParentTabs() {
         tabBarHideOnKeyboard: false,
       })}
     >
-      <Tab.Screen name="ParentHome" component={ParentHomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-      <Tab.Screen name="MyTasks" component={MyTasksScreen} options={{ tabBarLabel: 'Việc của tôi' }} />
+      <Tab.Screen name="ParentHome" component={ParentHomeStack} options={{ tabBarLabel: 'Trang chủ' }} />
+      <Tab.Screen name="MyTasks" component={ParentTasksStack} options={{ tabBarLabel: 'Công việc' }} />
       <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
-      <Tab.Screen name="TrackingOverview" component={TrackingOverviewScreen} options={{ tabBarLabel: 'Theo dõi' }} />
-      <Tab.Screen name="ParentProfile" component={ParentProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
+      <Tab.Screen name="TrackingOverview" component={ParentTrackingStack} options={{ tabBarLabel: 'Theo dõi' }} />
+      <Tab.Screen name="ParentProfile" component={ParentProfileStack} options={{ tabBarLabel: 'Tài khoản' }} />
     </Tab.Navigator>
   );
 }
 
-// === Tab Navigator dành cho SINH VIÊN (4 tabs — thêm AI Trợ lý) ===
+// === Stacks cho từng Tab của SINH VIÊN / CAREPARTNER ===
+function WorkerFeedStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="WorkerFeedMain" component={WorkerFeedScreen} />
+      <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+      <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function WorkerAvailabilityStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MatchingAvailabilityMain" component={MatchingAvailabilityScreen} />
+      <Stack.Screen name="MatchingAvailability" component={MatchingAvailabilityScreen} />
+      <Stack.Screen name="Blackout" component={BlackoutScreen} />
+      <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function WorkerJobsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MyJobsMain" component={MyJobsScreen} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+      <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
+      <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+      <Stack.Screen name="Appeal" component={AppealScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function WorkerProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="WorkerProfileMain" component={WorkerProfileScreen} />
+      <Stack.Screen name="MyEarnings" component={MyEarningsScreen} />
+      <Stack.Screen name="SettlementDetail" component={SettlementDetailScreen} />
+      <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+      <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
+      <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
+      <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
+      <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
+      <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="MatchingAvailability" component={MatchingAvailabilityScreen} />
+      <Stack.Screen name="Blackout" component={BlackoutScreen} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+      <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// === Tab Navigator dành cho SINH VIÊN / CAREPARTNER (5 tabs cân đối với AI Trợ lý ở trung tâm) ===
 function WorkerTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color }) => {
+          // Tab giữa (WorkerChatbot) → nút tròn cam nổi
+          if (route.name === 'WorkerChatbot') {
+            return (
+              <View style={styles.raisedFabContainer}>
+                <View style={[styles.raisedFab, focused && styles.raisedFabFocused]}>
+                  <Ionicons name="hardware-chip" size={26} color="#fff" />
+                </View>
+              </View>
+            );
+          }
           let iconName;
           if (route.name === 'WorkerFeed') iconName = focused ? 'search' : 'search-outline';
+          else if (route.name === 'MatchingAvailability') iconName = focused ? 'calendar' : 'calendar-outline';
           else if (route.name === 'MyJobs') iconName = focused ? 'briefcase' : 'briefcase-outline';
-          else if (route.name === 'WorkerChatbot') iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
           else if (route.name === 'WorkerProfile') iconName = focused ? 'person' : 'person-outline';
           return <TabIcon name={iconName} focused={focused} color={color} />;
         },
@@ -185,10 +321,11 @@ function WorkerTabs() {
         tabBarHideOnKeyboard: false,
       })}
     >
-      <Tab.Screen name="WorkerFeed" component={WorkerFeedScreen} options={{ tabBarLabel: 'Tìm việc' }} />
-      <Tab.Screen name="MyJobs" component={MyJobsScreen} options={{ tabBarLabel: 'Việc của tôi' }} />
+      <Tab.Screen name="WorkerFeed" component={WorkerFeedStack} options={{ tabBarLabel: 'Tìm việc' }} />
+      <Tab.Screen name="MatchingAvailability" component={WorkerAvailabilityStack} options={{ tabBarLabel: 'Lịch rảnh' }} />
       <Tab.Screen name="WorkerChatbot" component={WorkerChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
-      <Tab.Screen name="WorkerProfile" component={WorkerProfileScreen} options={{ tabBarLabel: 'Tài khoản' }} />
+      <Tab.Screen name="MyJobs" component={WorkerJobsStack} options={{ tabBarLabel: 'Công việc' }} />
+      <Tab.Screen name="WorkerProfile" component={WorkerProfileStack} options={{ tabBarLabel: 'Tài khoản' }} />
     </Tab.Navigator>
   );
 }
@@ -250,9 +387,13 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="ParentTabs" component={ParentTabs} />
             <Stack.Screen name="CreateTask" component={CreateTaskScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            {/* Fallback routes trên root stack đảm bảo 100% tương thích ngược */}
             <Stack.Screen name="Candidates" component={CandidatesScreen} />
             <Stack.Screen name="SmartMatches" component={SmartMatchesScreen} />
-            {/* Flow 1 — ghép cặp mới: đăng việc 3 loại → ứng viên → chọn CP → đơn */}
             <Stack.Screen name="JobTypeSelect" component={JobTypeSelectScreen} />
             <Stack.Screen name="TutoringForm" component={TutoringFormScreen} />
             <Stack.Screen name="ChildcareForm" component={ChildcareFormScreen} />
@@ -264,41 +405,37 @@ export default function AppNavigator() {
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="PaymentSetup" component={PaymentSetupScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
-            {/* ParentProfile giờ là tab trong ParentTabs — không cần Stack.Screen riêng */}
             <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
             <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
             <Stack.Screen name="RewardPoints" component={RewardPointsScreen} />
+            <Stack.Screen name="RewardPointsScreen" component={RewardPointsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
-            <Stack.Screen name="CancellationPolicy" component={CancellationPolicyScreen} options={{ presentation: 'modal' }} />
-            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
-            <Stack.Screen name="Chat" component={ChatScreen} />
           </>
         ) : (
           // Đã đăng nhập là Sinh viên (worker)
           <>
             <Stack.Screen name="WorkerTabs" component={WorkerTabs} />
+            <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            {/* Fallback routes trên root stack đảm bảo 100% tương thích ngược */}
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
             <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="MyEarnings" component={MyEarningsScreen} />
             <Stack.Screen name="SettlementDetail" component={SettlementDetailScreen} />
             <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
-            <Stack.Screen name="Complaint" component={ComplaintScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
             <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
             <Stack.Screen name="WorkerAvailability" component={WorkerAvailabilityScreen} />
-            {/* Flow 1 — CarePartner: lịch rảnh ghép cặp / ngày bận / đơn / kháng cáo */}
             <Stack.Screen name="MatchingAvailability" component={MatchingAvailabilityScreen} />
             <Stack.Screen name="Blackout" component={BlackoutScreen} />
             <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
             <Stack.Screen name="Appeal" component={AppealScreen} />
             <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
-            <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
-            <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} options={{ presentation: 'modal' }} />
           </>
         )}
       </Stack.Navigator>
@@ -353,10 +490,15 @@ const styles = StyleSheet.create({
   },
   tabBarLabel: {
     ...TYPO.caption,
+    fontSize: 10.5,
+    fontWeight: '600',
+    letterSpacing: -0.2,
     marginTop: 2,
+    textAlign: 'center',
   },
   tabBarItem: {
     paddingTop: 2,
+    paddingHorizontal: 0,
   },
   tabIconContainer: {
     alignItems: 'center',

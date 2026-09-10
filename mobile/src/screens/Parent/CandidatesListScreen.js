@@ -143,6 +143,19 @@ export default function CandidatesListScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary || '#1A1A2E'} />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Ứng viên phù hợp</Text>
+        <View style={{ width: 40 }} />
+      </View>
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
@@ -177,6 +190,25 @@ export default function CandidatesListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { alignItems: 'center', justifyContent: 'center' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary || '#1A1A2E',
+  },
   header: {
     paddingHorizontal: SIZES.padding, paddingTop: 16, paddingBottom: 6,
     fontSize: 14, color: COLORS.gray, lineHeight: 20,

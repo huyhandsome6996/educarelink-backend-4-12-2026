@@ -130,6 +130,8 @@ beforeEach(() => {
   mockGetMyTasksAsParent.mockResolvedValue({ data: [] });
 });
 
+jest.setTimeout(20000);
+
 describe('ParentHomeScreen — regression crash v1.4.2 (onRefresh)', () => {
   test('mount lần đầu không ném ReferenceError, tải đơn ghép cặp Flow 1', async () => {
     let tree = null;

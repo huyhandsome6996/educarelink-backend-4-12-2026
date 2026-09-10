@@ -118,6 +118,19 @@ export default function BookingDetailScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary || '#1A1A2E'} />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Chi tiết đơn</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <ScrollView contentContainerStyle={{ padding: SIZES.padding, paddingBottom: 40 }}>
         <View style={styles.card}>
           <Text style={styles.statusBadge}>{booking.status_label_vi}</Text>
@@ -268,6 +281,25 @@ export default function BookingDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { alignItems: 'center', justifyContent: 'center' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary || '#1A1A2E',
+  },
   retryBtn: {
     marginTop: 14, paddingHorizontal: 20, paddingVertical: 8,
     borderRadius: 16, backgroundColor: COLORS.primary,

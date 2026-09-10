@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { getCreditBalance } from '../../api/matching';
 
@@ -20,6 +20,7 @@ const KIND_LABELS = {
 };
 
 export default function WalletScreen() {
+  const navigation = useNavigation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,6 +60,19 @@ export default function WalletScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary || '#1A1A2E'} />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Ví Credit</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <View style={styles.balanceCard}>
         <Ionicons name="wallet" size={26} color={COLORS.white} />
         <Text style={styles.balanceLabel}>Số dư credit</Text>
@@ -111,6 +125,25 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { alignItems: 'center', justifyContent: 'center' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary || '#1A1A2E',
+  },
   balanceCard: {
     margin: SIZES.padding, marginBottom: 8, backgroundColor: COLORS.primary,
     borderRadius: 18, padding: 22, alignItems: 'center',
