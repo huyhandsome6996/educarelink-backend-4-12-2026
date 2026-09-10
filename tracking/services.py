@@ -21,6 +21,12 @@ logger = logging.getLogger('educarelink.tracking')
 
 GEOFENCE_RADIUS_METERS = getattr(settings, 'TRACKING_GEOFENCE_RADIUS', 500)  # 500m mặc định
 UPDATE_INTERVAL_SECONDS = getattr(settings, 'TRACKING_UPDATE_INTERVAL', 10)
+# Task perf 4 — ngưỡng throttle ghi LocationHistory (bảng lịch sử append-only):
+# chỉ INSERT khi di chuyển xa hơn ngưỡng mét HOẶC đủ khoảng thời gian giây
+# so với điểm lịch sử gần nhất của cùng task. LiveLocation (real-time) KHÔNG
+# bị ảnh hưởng — vẫn update mỗi lần gọi như cũ.
+HISTORY_MIN_DISTANCE_METERS = getattr(settings, 'TRACKING_HISTORY_MIN_DISTANCE_M', 30)
+HISTORY_MIN_INTERVAL_SECONDS = getattr(settings, 'TRACKING_HISTORY_MIN_INTERVAL_S', 60)
 HEARTBEAT_INTERVAL_SECONDS = getattr(settings, 'TRACKING_HEARTBEAT_INTERVAL', 30)
 OFFLINE_THRESHOLD_SECONDS = getattr(settings, 'TRACKING_OFFLINE_THRESHOLD', 60)  # 2 lần miss heartbeat (30s × 2)
 
@@ -175,13 +181,42 @@ def update_worker_location(*, task: Task, worker: User,
             }
         )
 
-        # Append vào LocationHistory
-        LocationHistory.objects.create(
-            task=task, worker=worker,
-            latitude=Decimal(str(latitude)),
-            longitude=Decimal(str(longitude)),
-            accuracy=accuracy, speed=speed, heading=heading,
-        )
+        # ── Task perf 4 — throttle ghi LocationHistory (bảng lịch sử) ──
+        # Trước đây INSERT VÔ ĐIỀU KIỆN mỗi lần client gửi (thiết kế 10s/lần)
+        # ≈ 6 row/phút/đơn dù carepartner đứng yên. Giờ chỉ INSERT khi so với
+        # điểm lịch sử gần nhất của task:
+        #   - di chuyển > HISTORY_MIN_DISTANCE_METERS (30m), HOẶC
+        #   - trôi qua >= HISTORY_MIN_INTERVAL_SECONDS (60s).
+        # LiveLocation bên trên vẫn update MỌI lần — nguồn dữ liệu real-time
+        # của app phụ huynh không đổi.
+        # ĐÃ RÀ SOÁT mọi luồng đọc LocationHistory:
+        #   • geofence / hysteresis / predictive_warned: chỉ đọc LiveLocation
+        #     (live.is_outside_geofence, live.predictive_warned) → không ảnh hưởng.
+        #   • get_location_history (route replay của parent): granularity
+        #     30m/60s vẫn đủ vẽ lộ trình (đúng ý throttle — không đổi ngưỡng).
+        #   • BatchLocationAPIView (sync offline queue): path RIÊNG có
+        #     idempotency theo client_point_id + bulk_create, không đi qua hàm này.
+        #   • stats admin (total_history_points): chỉ COUNT tổng, không phụ
+        #     thuộc tần suất ghi.
+        _last_point = (LocationHistory.objects.filter(task=task)
+                       .only('latitude', 'longitude', 'recorded_at')
+                       .order_by('-recorded_at', '-id').first())
+        if _last_point is not None:
+            _moved_m = haversine_distance(
+                float(latitude), float(longitude),
+                float(_last_point.latitude), float(_last_point.longitude))
+            _elapsed_s = (_now - _last_point.recorded_at).total_seconds()
+            _should_log = (_moved_m > HISTORY_MIN_DISTANCE_METERS
+                           or _elapsed_s >= HISTORY_MIN_INTERVAL_SECONDS)
+        else:
+            _should_log = True  # điểm đầu tiên của task — luôn ghi
+        if _should_log:
+            LocationHistory.objects.create(
+                task=task, worker=worker,
+                latitude=Decimal(str(latitude)),
+                longitude=Decimal(str(longitude)),
+                accuracy=accuracy, speed=speed, heading=heading,
+            )
 
         # Geofence check (nếu task có geofence tùy chỉnh HOẶC lat/lng mặc định).
         # Dedup đã được handle qua live.is_outside_geofence flag trên model:
