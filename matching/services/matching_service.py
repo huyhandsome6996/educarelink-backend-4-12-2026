@@ -16,6 +16,7 @@ Soft scoring (Step 11.6 — trọng số từ DB MatchingWeight):
   Nhãn PHẢN ÁNH ĐÚNG ĐIỂM SỐ — không còn ghi đè low→medium khi pool đầy.
 """
 
+import heapq
 import logging
 import math
 from datetime import datetime as _dt, time as _time
@@ -370,11 +371,14 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
             '_completion': subs['completion'],
         })
 
-    # Sort desc + tie-break ELO > distance > completion (Step 2.2.3)
-    candidates.sort(key=lambda c: (-c['match_score'], -c['_elo'], c['_distance'], -c['_completion']))
-
+    # Top-K bằng heapq.nlargest — Task perf 5: O(N log K) thay vì sort toàn
+    # mảng O(N log N) khi chỉ cần top_n (~8) phần tử.
+    # Key (score, elo, -distance, completion) với nlargest TƯƠNG ĐƯƠNG chính
+    # xác sort key cũ (-score, -elo, distance, -completion) ascending:
+    # heapq.nlargest ≡ sorted(iterable, key, reverse=True)[:n] — cả tie
+    # cũng giữ nguyên thứ tự gốc (sorted stable, reverse=True không đảo tie).
     total_matched = len(candidates)
-    top = candidates[:top_n]
+    top = heapq.nlargest(top_n, candidates, key=_candidate_rank_key)
 
     # Ghi đề xuất (throttle đã lọc ở trên) — unique (job, cp)
     now = timezone.now()
@@ -392,6 +396,12 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     # nhãn sai sự thật, gây khó hiểu cho phụ huynh khi so sánh điểm/nhãn).
 
     return {'total_matched': total_matched, 'candidates': top}
+
+
+def _candidate_rank_key(c):
+    """Key cho heapq.nlargest (Task perf 5) — tương đương sort key cũ
+    (-match_score, -_elo, _distance, -_completion) ascending."""
+    return (c['match_score'], c['_elo'], -c['_distance'], c['_completion'])
 
 
 def _latest_review_text(user):
