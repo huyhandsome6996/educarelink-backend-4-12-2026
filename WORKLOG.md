@@ -1450,3 +1450,25 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   → email SA (educarelink-eas-deploy@educarelink.iam.gserviceaccount.com)
   → role có Release management + chọn app EduCareLink. Chờ owner làm xong
   rồi chạy lại 2 lệnh submit.
+
+## Perf — 7 điểm nghẽn hiệu năng backend (2026-09-10, nhánh fix/perf-n1-cache-gps)
+
+- Nhánh từ main @ b06d18b; commit tách theo task (7 commits, tiếng Việt).
+- Số đo thật (SQLite test DB, best-of-3, scripts/bench_find_candidates.py):
+  find_candidates() N=10/100/500: 41/311/1511 query → 18 query HẰNG ĐỊNH;
+  thời gian 25/211.5/1073.8ms → 10.2/18.0/55.8ms (N=500 nhanh 19.2×).
+- Task 1 N+1: bounding-box SQL (delta an toàn, chứng minh trong docstring) +
+  load_slot_context 5 query + batch review/proposal; golden parity test.
+- Task 2: cache key md5 xác định thay built-in hash (cross-process test).
+- Task 3: CACHES đọc REDIS_URL → RedisCache, fallback LocMem (CI không đỏ);
+  +redis==8.1.0; docs AGENTS.md §12.
+- Task 4: LocationHistory chỉ ghi khi >30m hoặc >=60s; LiveLocation nguyên vẹn;
+  rà đủ luồng đọc (geofence/replay/batch/stats — chi tiết trong code).
+- Task 5: heapq.nlargest (thực tế ~2× sau Task 1 — không báo 10-20×).
+- Task 6: haversine_km delegate bản optimized /1000, parity 12 cặp < 0.01km.
+- Task 7 (phần an toàn): penalty scan cửa sổ 181 ngày (không phải 180 — biên
+  ×0.25), band cache TTL 60s + signal invalidate; reward checkpoint LÙI đợt sau
+  (cần migration + parity DB thật). KHÔNG áp checkpoint cache nguyên văn DSA.
+- Test: matching 156→168 PASS; tracking+ai_rec 230 PASS (1 skip); core+chat+
+  payments+moderation+care_diary+performance 249 PASS. Tổng 647 PASS.
+- Chi tiết PR: docs/PERF_PR_DESCRIPTION.md
