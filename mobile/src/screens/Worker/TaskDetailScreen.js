@@ -2,21 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Modal } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getTaskDetail, applyTask, getMyJobsAsWorker } from '../../api/tasks';
+import { getTaskDetail, getMyJobsAsWorker } from '../../api/tasks';
 import { getTaskModeration } from '../../api/moderation';
 import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
 import { CATEGORY_ICONS, renderCategoryIcon, getCategoryIconByName } from '../../theme/categoryIcons';
 
-// Sync 100% với web task_create_1.html
+// QA 2026-09-10 #1: chỉ 3 danh mục chuẩn
 const CATEGORIES = [
   { id: 1, name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
   { id: 2, name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 3, name: 'Dọn dẹp', color: COLORS.primary, bg: COLORS.primaryLight },
   { id: 4, name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 5, name: 'Mua sắm hộ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 6, name: 'Nấu ăn', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 7, name: 'Chuyển đồ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 8, name: 'Khác', color: COLORS.primary, bg: COLORS.primaryLight },
 ];
 
 export default function TaskDetailScreen() {
@@ -27,7 +22,6 @@ export default function TaskDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [consentModalVisible, setConsentModalVisible] = useState(false);
   // WIRING FIX (2026-08-21): moderation info
   const [moderationInfo, setModerationInfo] = useState(null);
 
@@ -59,64 +53,6 @@ export default function TaskDetailScreen() {
     fetchData();
   }, [taskId]);
 
-  const doApply = async (consentTracking = null) => {
-    setApplying(true);
-    try {
-      const res = await applyTask(taskId, consentTracking);
-      setHasApplied(true);
-      if (Platform.OS === 'web') {
-        alert('✅ Thành công! Đã ứng tuyển!');
-        navigation.navigate('MyJobs');
-      } else {
-        Alert.alert('✅ Thành công!', res.data.message || 'Đã ứng tuyển!', [
-          { text: 'Xem việc của tôi', onPress: () => navigation.navigate('MyJobs') }
-        ]);
-      }
-    } catch (e) {
-      const data = e.response?.data;
-      // Backend yêu cầu consent (CONSENT_REQUIRED)
-      if (data?.error === 'CONSENT_REQUIRED' || data?.geofence_lat) {
-        setConsentModalVisible(true);
-        return;
-      }
-      const msg = data?.error || data?.message || 'Thao tác thất bại.';
-      if (Platform.OS === 'web') {
-        alert(`Thông báo: ${msg}`);
-      } else {
-        Alert.alert('Thông báo', msg);
-      }
-    } finally {
-      setApplying(false);
-    }
-  };
-
-  const handleApply = () => {
-    // Nếu task có geofence → hiện consent modal trước
-    if (task?.geofence_lat && task?.geofence_lng) {
-      setConsentModalVisible(true);
-      return;
-    }
-    // Task không có geofence → confirm bình thường
-    if (Platform.OS === 'web') {
-      if (window.confirm('Bạn chắc chắn muốn ứng tuyển công việc này?')) {
-        doApply(null);
-      }
-    } else {
-      Alert.alert('Ứng tuyển ngay', 'Bạn chắc chắn muốn ứng tuyển công việc này?', [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Ứng tuyển', onPress: () => doApply(null) },
-      ]);
-    }
-  };
-
-  const handleConsentChoice = (granted) => {
-    setConsentModalVisible(false);
-    if (granted) {
-      doApply(true);
-    }
-  };
-
-
   if (isLoading) return <ActivityIndicator color={COLORS.primary} style={{ flex: 1, marginTop: 100 }} />;
   if (!task) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -124,7 +60,7 @@ export default function TaskDetailScreen() {
     </View>
   );
 
-  const cat = CATEGORIES.find(c => c.id === task.category) || CATEGORIES[7];
+  const cat = CATEGORIES.find(c => c.id === task.category) || CATEGORIES[0];
 
   const INFO_ITEMS = [
     { icon: 'calendar-outline', label: 'Thời gian', value: new Date(task.scheduled_time).toLocaleString('vi-VN'), color: COLORS.primary },
@@ -190,90 +126,22 @@ export default function TaskDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA — QA 2026-09-10 #2: luồng thụ động kiểu Grab.
+          Carepartner KHÔNG tự ứng tuyển nữa: phụ huynh chọn từ 8 ứng viên
+          AI đề xuất, đơn tự xuất hiện ở MyBookingsScreen chờ cam kết. */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[
-            styles.applyBtn,
-            (applying || hasApplied) && styles.applyBtnDisabled,
-          ]}
-          onPress={handleApply}
-          disabled={applying || hasApplied}
+          style={styles.applyBtn}
+          onPress={() => navigation.navigate('MyBookings')}
           activeOpacity={0.85}
         >
-          {applying ? <ActivityIndicator color="#fff" /> : (
-            <>
-              <Ionicons name={hasApplied ? "checkmark-circle" : (task?.geofence_lat ? "location" : "paper-plane")} size={20} color="#fff" />
-              <Text style={styles.applyBtnText}>
-                {hasApplied ? 'ĐÃ ỨNG TUYỂN' : (task?.geofence_lat ? 'ĐỒNG Ý & ỨNG TUYỂN' : 'ỨNG TUYỂN NGAY')}
-              </Text>
-            </>
-          )}
+          <Ionicons name="notifications" size={20} color="#fff" />
+          <Text style={styles.applyBtnText}>XEM ĐƠN ĐƯỢC GIAO</Text>
         </TouchableOpacity>
       </View>
 
       {/* ===== CONSENT MODAL (cho tracking) ===== */}
-      <Modal visible={consentModalVisible} transparent animationType="slide" onRequestClose={() => setConsentModalVisible(false)}>
-        <View style={styles.consentOverlay}>
-          <View style={styles.consentSheet}>
-            <View style={styles.consentHandle} />
-            <View style={styles.consentIconCircle}>
-              <Ionicons name="location" size={36} color={COLORS.primary} />
-            </View>
-            <Text style={styles.consentTitle}>Cho phép theo dõi vị trí?</Text>
-            <Text style={styles.consentDesc}>
-              Phụ huynh yêu cầu theo dõi vị trí của bạn trong lúc làm việc{' '}
-              <Text style={{ fontWeight: '700' }}>{task?.title}</Text> để an tâm.
-            </Text>
 
-            <View style={styles.consentFeaturesCard}>
-              <View style={styles.consentFeatureRow}>
-                <View style={styles.consentFeatureIcon}><Ionicons name="time-outline" size={14} color={COLORS.primary} /></View>
-                <Text style={styles.consentFeatureText}>Chỉ chia sẻ <Text style={{ fontWeight: '700' }}>khi đang làm việc</Text></Text>
-              </View>
-              <View style={styles.consentFeatureRow}>
-                <View style={styles.consentFeatureIcon}><Ionicons name="eye-off-outline" size={14} color={COLORS.primary} /></View>
-                <Text style={styles.consentFeatureText}>Phụ huynh chỉ thấy <Text style={{ fontWeight: '700' }}>vị trí hiện tại</Text></Text>
-              </View>
-              <View style={styles.consentFeatureRow}>
-                <View style={styles.consentFeatureIcon}><Ionicons name="stop-circle-outline" size={14} color={COLORS.primary} /></View>
-                <Text style={styles.consentFeatureText}>Bạn có thể <Text style={{ fontWeight: '700' }}>dừng bất cứ lúc nào</Text></Text>
-              </View>
-              <View style={styles.consentFeatureRow}>
-                <View style={styles.consentFeatureIcon}><Ionicons name="lock-closed-outline" size={14} color={COLORS.primary} /></View>
-                <Text style={styles.consentFeatureText}>Dữ liệu mã hóa, chỉ phụ huynh sở hữu việc mới xem</Text>
-              </View>
-            </View>
-
-            {task?.geofence_lat && (
-              <View style={styles.consentWarningBox}>
-                <Ionicons name="warning" size={14} color={COLORS.warning} />
-                <Text style={styles.consentWarningText}>
-                  Vùng an toàn: bán kính {(task.geofence_radius || 500).toFixed(0)}m. Nếu bạn rời vùng, phụ huynh sẽ nhận chuông cảnh báo.
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.consentBtnRow}>
-              <TouchableOpacity
-                style={[styles.consentBtn, styles.consentBtnSecondary]}
-                onPress={() => handleConsentChoice(false)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.consentBtnSecondaryText}>Không nhận việc</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.consentBtn, styles.consentBtnPrimary]}
-                onPress={() => handleConsentChoice(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="location" size={16} color="#fff" />
-                <Text style={styles.consentBtnPrimaryText}>Đồng ý & nhận việc</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

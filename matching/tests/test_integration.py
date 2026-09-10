@@ -128,10 +128,18 @@ class FullFlowIntegrationTest(MatchingTestBase):
         self.assertTrue(Booking.objects.filter(
             job_id=job_id, status='not_selected').count() >= 1)
 
-        # 6. Hết cửa sổ cam kết → committed (lazy check) — đồng hồ +61 phút
-        self.frozen_now = self.frozen_now + timedelta(minutes=61)
-        resp = self.parent_client.get(f'/api/matching/bookings/{booking_id}/')
+        # 6. QA 2026-09-10 #2 (Grab-style): CP CHỦ ĐỘNG bấm xác nhận cam kết
+        # → committed ngay + phụ huynh nhận thông báo booking_committed_parent
+        # (kịch bản quá hạn không phản hồi → expired_no_response được phủ
+        # riêng trong test_booking.LazyCommitTest)
+        cp1 = User.objects.get(pk=cp1_id)
+        cp_client = APIClient()
+        cp_client.force_authenticate(user=cp1)
+        resp = cp_client.post(f'/api/matching/bookings/{booking_id}/commit/')
+        self.assertEqual(resp.status_code, 200, resp.json())
         self.assertEqual(resp.json()['status'], 'committed')
+        self.assertTrue(Notification.objects.filter(
+            user=self.parent, code='booking_committed_parent').exists())
 
         # 7. Đưa đồng hồ tới lead 4h59' trước slot đầu — DETERMINISTIC:
         # tính từ slot THỰC TẾ trong DB (không phụ thuộc thứ chạy test —

@@ -34,6 +34,7 @@ from ..models import (
 )
 from ..services import cancellation_service, reschedule_service
 from ..services.booking_service import (
+    commit_booking,
     lazy_commit_check,
     seconds_left,
     select_carepartner,
@@ -170,6 +171,27 @@ class BookingDetailAPIView(APIView):
             return _forbidden()
         booking = lazy_commit_check(booking)
         return Response(_booking_dict(booking))
+
+
+class BookingCommitAPIView(APIView):
+    """POST commit — Carepartner XÁC NHẬN cam kết nhận đơn (QA 2026-09-10 #2).
+
+    awaiting_commitment → committed. Grab-style: đơn chỉ dừng ở dashboard
+    khi Carepartner bấm xác nhận trong thời hạn (commit_deadline).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        booking = _get_booking(pk)
+        if booking is None:
+            return Response({'code': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.pk != booking.carepartner_id:
+            return _forbidden()
+        booking, changed = commit_booking(booking, actor_user=request.user)
+        body = _booking_dict(booking)
+        body['changed'] = changed
+        return Response(body)
 
 
 class BookingCancelAPIView(APIView):

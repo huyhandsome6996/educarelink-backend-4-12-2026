@@ -222,20 +222,79 @@ def seconds_left(booking, now=None):
     return max(0, int(remaining))
 
 
-def lazy_commit_check(booking):
-    """Đọc booking → nếu quá deadline mà vẫn awaiting → committed NGAY
-    (Step 5 AC4: scheduler chết thì GET vẫn lật trạng thái)."""
+def commit_booking(booking, actor_user=None):
+    """QA 2026-09-10 Vấn đề #2: Carepartner CHỦ ĐỘNG bấm 'Xác nhận cam kết'.
+
+    awaiting_commitment → committed (trước khi hết deadline). Idempotent:
+    gọi 2 lần hoặc gọi khi đã committed → trả booking, changed=False.
+    Return (booking, changed).
+    """
+    if booking.status != BookingStatus.AWAITING_COMMITMENT:
+        # Đã committed / đã từ chối / đã hết hạn → idempotent
+        return Booking.objects.get(pk=booking.pk), False
+    with transaction.atomic():
+        b = Booking.objects.select_for_update().get(pk=booking.pk)
+        if b.status != BookingStatus.AWAITING_COMMITMENT:
+            return Booking.objects.get(pk=booking.pk), False
+        b.committed_at = timezone.now()
+        b.save(update_fields=['committed_at'])
+        transition(b, BookingStatus.COMMITTED, actor='carepartner',
+                   actor_user=actor_user,
+                   reason='Carepartner xác nhận cam kết nhận đơn')
+        slot = b.job.slots.order_by('date').first()
+        ctx = {
+            'time': slot.time_from.strftime('%H:%M') if slot else '',
+            'date': slot.date.strftime('%d/%m/%Y') if slot else '',
+            'name': b.carepartner.get_full_name() or b.carepartner.username,
+        }
+        NotificationService.enqueue(b.carepartner, 'booking_committed', ctx=ctx)
+        NotificationService.enqueue(b.parent, 'booking_committed_parent', ctx=ctx)
+    return Booking.objects.get(pk=booking.pk), True
+
+
+def expire_booking_on_deadline(booking):
+    """QA 2026-09-10 Vấn đề #2 — Grab-style timeout (dùng bởi lazy check
+    và scheduler beat 60s).
+
+    Quá commit_deadline mà vẫn awaiting → EXPIRED_NO_RESPONSE:
+      1. Đơn biến mất khỏi dashboard Carepartner (status hết hạn).
+      2. Thông báo phụ huynh (commit_expired — critical).
+      3. Mở khóa slot của Carepartner không phản hồi.
+      4. Kích hoạt replacement — phụ huynh được đề xuất chọn ứng viên khác.
+    KHÔNG phạt ELO (im lặng trong cửa sổ không phải hủy làm — chính sách
+    phạt chỉ áp cho T0-T6 khi đơn đã committed). Idempotent.
+    """
+    from ..services.cancellation_service import trigger_replacement
+    from .lock_service import LockService
+
     if booking.status != BookingStatus.AWAITING_COMMITMENT:
         return booking
     now = timezone.now()
-    if booking.commit_deadline and booking.commit_deadline <= now:
-        with transaction.atomic():
-            b = Booking.objects.select_for_update().get(pk=booking.pk)
-            if b.status == BookingStatus.AWAITING_COMMITMENT:
-                b.committed_at = now
-                b.save(update_fields=['committed_at'])
-                transition(b, BookingStatus.COMMITTED, actor='system',
-                           reason='Hết cửa sổ cam kết (lazy check)')
-                NotificationService.enqueue(b.carepartner, 'booking_committed', ctx={})
-        return Booking.objects.get(pk=booking.pk)
+    if not (booking.commit_deadline and booking.commit_deadline <= now):
+        return booking
+    with transaction.atomic():
+        b = Booking.objects.select_for_update().get(pk=booking.pk)
+        if b.status != BookingStatus.AWAITING_COMMITMENT:
+            return Booking.objects.get(pk=booking.pk)
+        transition(b, BookingStatus.EXPIRED_NO_RESPONSE, actor='system',
+                   reason='Hết cửa sổ cam kết — Carepartner không phản hồi')
+        LockService.release_locks(b)
+        NotificationService.enqueue(
+            b.parent, 'commit_expired',
+            ctx={'name': b.carepartner.get_full_name() or b.carepartner.username},
+            data={'booking_id': str(b.pk)})
+    booking = Booking.objects.get(pk=booking.pk)
+    trigger_replacement(booking)
+    logger.info('[Commit] Booking %s EXPIRED_NO_RESPONSE — thông báo phụ huynh + chạy replacement', booking.pk)
+    return booking
+
+
+def lazy_commit_check(booking):
+    """Đọc booking → nếu quá deadline mà vẫn awaiting → EXPIRED_NO_RESPONSE
+    (QA 2026-09-10 Vấn đề #2: Grab-style — im lặng = từ chối, KHÔNG còn
+    auto-commit; scheduler chết thì GET vẫn lật trạng thái + chạy replacement)."""
+    if booking.status != BookingStatus.AWAITING_COMMITMENT:
+        return booking
+    if booking.commit_deadline and booking.commit_deadline <= timezone.now():
+        return expire_booking_on_deadline(booking)
     return booking

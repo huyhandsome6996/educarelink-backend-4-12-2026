@@ -37,19 +37,18 @@ const BOOKING_STATUS_STYLE = {
   expired: { color: COLORS.textMuted, bg: '#F3F4F6', icon: 'close-circle' },
 };
 
-// Grid 4 dịch vụ chính EduCareLink (2×2)
+// QA 2026-09-10 #1: Grid 3 dịch vụ chuẩn (Gia sư, Đón trẻ, Trông trẻ)
 const SERVICE_GRID = [
   { id: 1, name: 'Gia sư', icon: 'book', iconBg: '#FFF4ED', color: '#F26522' },
   { id: 2, name: 'Đón trẻ', icon: 'happy', iconBg: '#ECFDF5', color: '#059669' },
   { id: 4, name: 'Trông trẻ', icon: 'people', iconBg: '#FFF4ED', color: '#F26522' },
-  { id: 9, name: 'Hỗ trợ AI', icon: 'hardware-chip', iconBg: '#EDE9FE', color: '#7C3AED' },
 ];
 
 // CareRewards — Ưu đãi điểm thưởng EduCareLink
 const CARE_REWARDS = [
   { id: 1, title: 'Giảm 50k cho lần đặt Gia sư tiếp theo', pts: 100, icon: 'book' },
   { id: 2, title: 'Miễn phí 1 giờ Đón trẻ đầu tiên', pts: 150, icon: 'happy' },
-  { id: 3, title: 'Ưu đãi 20% dịch vụ Dọn dẹp cuối tuần', pts: 200, icon: 'sparkles' },
+  { id: 3, title: 'Ưu đãi 20% dịch vụ Trông trẻ cuối tuần', pts: 200, icon: 'people' },
 ];
 
 // Mẹo hay cho Phụ huynh

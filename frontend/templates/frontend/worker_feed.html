@@ -201,6 +201,30 @@
 
         <!-- Job feed -->
         <div class="max-w-6xl mx-auto px-4 md:px-8 pb-8">
+            <!-- ===== BANNER LUỒNG GHÉP CẶP THỤ ĐỘNG (QA 2026-09-10 #2) ===== -->
+            <div class="mb-6 rounded-2xl p-4 sm:p-5 border border-orange-200/80 bg-gradient-to-r from-orange-50/90 to-amber-50/70 flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                    <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-manrope font-bold text-sm sm:text-base text-textPrimary">
+                        Nhận việc kiểu mới: bạn chỉ cần đợi đơn
+                    </h3>
+                    <p class="text-xs sm:text-sm text-textSecondary leading-relaxed mt-1">
+                        Trang này chỉ là <b>bảng tin tham khảo thị trường</b> — bạn không bấm ứng tuyển nữa.
+                        Phụ huynh đăng việc, hệ thống AI sẽ chọn 8 Carepartner phù hợp nhất (dựa trên lịch rảnh,
+                        khoảng cách, đánh giá & ELO), phụ huynh chọn bạn thì <b>đơn sẽ tự xuất hiện ở
+                        <a href="{% url 'frontend:don_cua_toi' %}" class="text-primary font-bold hover:underline">Nhận đơn mới</a></b>
+                        và bạn chỉ cần xác nhận trong thời hạn quy định.
+                    </p>
+                </div>
+                <a href="{% url 'frontend:don_cua_toi' %}"
+                   class="shrink-0 hidden sm:flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primaryDark transition-all">
+                    <span class="material-symbols-outlined text-base">arrow_forward</span>
+                    Nhận đơn mới
+                </a>
+            </div>
+
             <!-- ===== AI RECOMMENDATIONS SECTION ===== -->
             <div id="ai-recommendations-section" class="mb-6 hidden">
                 <div class="flex items-center justify-between mb-3">
@@ -496,141 +520,22 @@
                         </div>
                     </div>
 
-                    <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
+                    <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between gap-2">
                         <span class="text-xs text-textSecondary font-medium">Đăng bởi ${escapeHtml(t.parent_name || 'Hệ thống')}</span>
-                        <button onclick="event.stopPropagation(); apply(${t.id}, ${JSON.stringify(t).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;')})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
-                            ${t.geofence_lat ? '📍 Ứng tuyển' : 'Ứng tuyển'}
-                        </button>
+                        <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-orange-50 text-primary text-xs font-bold border border-orange-100" title="Luồng ghép cặp thụ động — phụ huynh chọn bạn từ danh sách 8 ứng viên AI đề xuất">
+                            <span class="material-symbols-outlined text-sm">auto_awesome</span>
+                            Chờ phụ huynh chọn
+                        </span>
                     </div>
                 </article>
                 `;
             }).join('');
         }
 
-        // ===== APPLY (với consent cho tracking) =====
-        async function apply(id, taskData) {
-            // Bước 1: Nếu task có geofence → phải đồng ý tracking trước
-            let consentTracking = null;
-            const hasGeofence = taskData && taskData.geofence_lat && taskData.geofence_lng;
-
-            if (hasGeofence) {
-                const agreed = await showConsentModal(taskData);
-                if (!agreed) return; // user không đồng ý → không apply
-                consentTracking = true;
-            } else {
-                // Task không có geofence → confirm bình thường
-                const confirmed = await showConfirmModal(
-                    'Xác nhận ứng tuyển',
-                    'Bạn có muốn ứng tuyển công việc này không?'
-                );
-                if (!confirmed) return;
-            }
-
-            try {
-                const r = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ consent_tracking: consentTracking })
-                });
-                const d = await r.json();
-
-                if (r.ok) {
-                    showToast(d.message || 'Ứng tuyển thành công!', 'success');
-                    setTimeout(() => fetchTasks(), 1500);
-                } else if (d.error === 'CONSENT_REQUIRED') {
-                    // Backend yêu cầu consent → hiện modal
-                    const agreed = await showConsentModal({
-                        title: taskData?.title,
-                        geofence_lat: d.geofence_lat,
-                        geofence_lng: d.geofence_lng,
-                        geofence_radius: d.geofence_radius,
-                    });
-                    if (!agreed) return;
-                    // Retry với consent = true
-                    const r2 = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ consent_tracking: true })
-                    });
-                    const d2 = await r2.json();
-                    if (r2.ok) {
-                        showToast(d2.message || 'Đã ứng tuyển với theo dõi vị trí!', 'success');
-                        setTimeout(() => fetchTasks(), 1500);
-                    } else {
-                        showToast(d2.error || d2.message || 'Không thể ứng tuyển.', 'error');
-                    }
-                } else {
-                    showToast(d.error || d.message || 'Không thể ứng tuyển.', 'error');
-                }
-            } catch (e) {
-                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-            }
-        }
-
-        // ===== CONSENT MODAL (cho tracking) =====
-        function showConsentModal(task) {
-            return new Promise((resolve) => {
-                // Tạo modal element
-                const modalHtml = `
-                <div id="consent-modal-overlay" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
-                        <div class="text-center mb-4">
-                            <div class="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                <span class="material-symbols-outlined text-blue-500 text-3xl" style="font-variation-settings: 'FILL' 1;">location_on</span>
-                            </div>
-                            <h3 class="text-lg font-bold text-textPrimary">Cho phép theo dõi vị trí?</h3>
-                            <p class="text-sm text-textSecondary mt-1">Phụ huynh yêu cầu theo dõi vị trí cho việc này</p>
-                        </div>
-
-                        <div class="bg-blue-50 rounded-xl p-3 mb-4 space-y-2">
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Chỉ chia sẻ <strong>khi đang làm việc</strong></span>
-                            </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Phụ huynh chỉ thấy <strong>vị trí hiện tại</strong>, không lưu lịch sử</span>
-                            </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Bạn có thể <strong>dừng bất cứ lúc nào</strong></span>
-                            </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Dữ liệu mã hóa, chỉ phụ huynh sở hữu việc mới xem</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-                            <p class="text-xs text-amber-700">
-                                ⚠️ Vùng an toàn: bán kính <strong>${(task.geofence_radius || 500).toFixed(0)}m</strong>.
-                                Nếu bạn rời vùng, phụ huynh sẽ nhận chuông cảnh báo.
-                            </p>
-                        </div>
-
-                        <div class="flex gap-2">
-                            <button id="consent-no-btn" class="flex-1 py-3 bg-gray-100 text-textSecondary font-bold text-sm rounded-xl hover:bg-gray-200 transition">
-                                Không nhận việc
-                            </button>
-                            <button id="consent-yes-btn" class="flex-1 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primaryDark transition shadow-md shadow-primary/30">
-                                Đồng ý & nhận việc
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-                const overlay = document.getElementById('consent-modal-overlay');
-                document.getElementById('consent-no-btn').onclick = () => {
-                    overlay.remove();
-                    resolve(false);
-                };
-                document.getElementById('consent-yes-btn').onclick = () => {
-                    overlay.remove();
-                    resolve(true);
-                };
-            });
-        }
+        /* Luồng ứng tuyển chủ động (apply + consent modal) đã bị XÓA
+           theo yêu cầu QA 2026-09-10 Vấn đề #2: Carepartner KHÔNG tự ứng
+           tuyển — phụ huynh chọn từ 8 ứng viên AI đề xuất, đơn tự xuất
+           hiện ở /don-cua-toi/. Endpoint apply cũng đã đóng (403). */
 
         // ===== LOGOUT =====
         function handleLogout() {
