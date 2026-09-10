@@ -80,35 +80,19 @@ class PinEnforcementTestCase(TestCase):
             scheduled_time=timezone.now() + timezone.timedelta(hours=2),
         )
 
-    def test_worker_no_pin_blocked_from_geofence_task(self):
-        """Worker chưa đặt PIN → bị chặn nhận task CÓ geofence (403)."""
-        self.client.force_authenticate(user=self.worker_no_pin)
-        resp = self.client.post(
-            f'/api/worker/tasks/{self.task_with_geofence.id}/apply/',
-            {'consent_tracking': True},
-        )
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.data['error'], 'verification_pin_required')
-        self.assertIn('has_geofence', resp.data)
-        self.assertTrue(resp.data['has_geofence'])
-
-    def test_worker_no_pin_can_apply_no_geofence_task(self):
-        """Worker chưa đặt PIN → vẫn apply được task KHÔNG có geofence."""
-        self.client.force_authenticate(user=self.worker_no_pin)
-        resp = self.client.post(
-            f'/api/worker/tasks/{self.task_no_geofence.id}/apply/',
-        )
-        self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.data['message'], 'Đã ứng tuyển!')
-
-    def test_worker_with_pin_can_apply_geofence_task(self):
-        """Worker đã đặt PIN → nhận task có geofence bình thường."""
-        self.client.force_authenticate(user=self.worker_with_pin)
-        resp = self.client.post(
-            f'/api/worker/tasks/{self.task_with_geofence.id}/apply/',
-            {'consent_tracking': True},
-        )
-        self.assertEqual(resp.status_code, 201)
+    def test_apply_endpoint_closed_passive_matching(self):
+        """QA 2026-09-10 #2: luồng ứng tuyển chủ động đã đóng — mọi apply
+        (có/không PIN, có/không geofence) trả 403 passive_matching_only.
+        Việc được giao qua luồng ghép cặp thụ động (Booking tự xuất hiện)."""
+        for worker in (self.worker_no_pin, self.worker_with_pin):
+            for task in (self.task_with_geofence, self.task_no_geofence):
+                self.client.force_authenticate(user=worker)
+                resp = self.client.post(
+                    f'/api/worker/tasks/{task.id}/apply/',
+                    {'consent_tracking': True},
+                )
+                self.assertEqual(resp.status_code, 403)
+                self.assertEqual(resp.data['error'], 'passive_matching_only')
 
     def test_parent_blocked_approving_worker_no_pin_for_geofence_task(self):
         """Parent → bị chặn approve worker chưa có PIN cho task có geofence (403)."""

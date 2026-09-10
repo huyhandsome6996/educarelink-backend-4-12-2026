@@ -34,6 +34,7 @@ from ..models import (
 )
 from ..services import cancellation_service, reschedule_service
 from ..services.booking_service import (
+    commit_booking,
     lazy_commit_check,
     seconds_left,
     select_carepartner,
@@ -45,15 +46,29 @@ from ..services.lock_service import SlotConflictError
 logger = logging.getLogger('educarelink.matching.api.booking')
 
 
+def _job_address(job):
+    """Địa chỉ hiển thị (best-effort) từ type_data theo loại job — QA 2026-09-11 #4."""
+    td = getattr(job, 'type_data', None) or {}
+    loc = td.get('pickup_location') or td.get('destination_location')
+    if isinstance(loc, dict):
+        return (loc.get('address') or loc.get('label') or loc.get('name') or '').strip()
+    return (td.get('location_note') or '').strip()
+
+
 def _booking_dict(booking):
     b = booking
     first = b.job.slots.order_by('date', 'time_from').first()
+    parent = getattr(b, 'parent', None)
     return {
         'id': str(b.pk),
         'job_id': str(b.job_id),
         'job_title': b.job.title,
+        'job_type': getattr(b.job, 'job_type', ''),
+        'job_address': _job_address(b.job),
         'carepartner_id': str(b.carepartner_id),
         'parent_id': str(b.parent_id),
+        'parent_name': (f"{parent.first_name} {parent.last_name}".strip()
+                        if parent else '') or getattr(parent, 'username', ''),
         'status': b.status,
         'status_label_vi': STATUS_LABELS_VI.get(b.status, b.status),
         'selected_at': b.selected_at,
@@ -153,7 +168,7 @@ class BookingListAPIView(APIView):
         # Lazy commit check cho các đơn đang chờ cam kết (Step 5 AC4)
         for b in qs.filter(status=BookingStatus.AWAITING_COMMITMENT)[:20]:
             lazy_commit_check(b)
-        qs = Booking.objects.filter(
+        qs = Booking.objects.select_related('job', 'parent', 'carepartner').filter(
             pk__in=[b.pk for b in qs[:50]]).order_by('-created_at')
         return Response({'count': qs.count(),
                          'results': [_booking_dict(b) for b in qs]})
@@ -170,6 +185,27 @@ class BookingDetailAPIView(APIView):
             return _forbidden()
         booking = lazy_commit_check(booking)
         return Response(_booking_dict(booking))
+
+
+class BookingCommitAPIView(APIView):
+    """POST commit — Carepartner XÁC NHẬN cam kết nhận đơn (QA 2026-09-10 #2).
+
+    awaiting_commitment → committed. Grab-style: đơn chỉ dừng ở dashboard
+    khi Carepartner bấm xác nhận trong thời hạn (commit_deadline).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        booking = _get_booking(pk)
+        if booking is None:
+            return Response({'code': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.pk != booking.carepartner_id:
+            return _forbidden()
+        booking, changed = commit_booking(booking, actor_user=request.user)
+        body = _booking_dict(booking)
+        body['changed'] = changed
+        return Response(body)
 
 
 class BookingCancelAPIView(APIView):

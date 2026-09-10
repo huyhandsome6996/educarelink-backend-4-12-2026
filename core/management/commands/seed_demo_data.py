@@ -286,6 +286,9 @@ class Command(BaseCommand):
 
         # ═══════════════════════════════════════════════════════════════
         #  PHẦN 2: DANH MỤC DỊCH VỤ & BIỂU GIÁ (PRICING RULES)
+        #  QA 2026-09-10 Vấn đề #1: CHỈ 3 DANH MỤC (Gia sư, Đón trẻ,
+        #  Trông trẻ). Các danh mục cũ bị khóa mềm is_active=False —
+        #  giữ FK dữ liệu lịch sử nhưng cấm đăng việc mới.
         # ═══════════════════════════════════════════════════════════════
         self.stdout.write("\n[2/12] Nạp danh mục dịch vụ & quy tắc biểu giá...")
 
@@ -293,30 +296,26 @@ class Command(BaseCommand):
             {"name": "Gia sư", "icon_name": "BookOpen", "description": "Dạy kèm các môn văn hóa (Toán, Lý, Hóa, Anh...) và kỹ năng mềm từ tiểu học đến THPT."},
             {"name": "Trông trẻ", "icon_name": "Heart", "description": "Trông nom, vui chơi, cho ăn uống và chăm sóc trẻ an toàn tại nhà theo ca linh hoạt."},
             {"name": "Đón trẻ", "icon_name": "Baby", "description": "Đón bé đúng giờ từ trường học hoặc lớp năng khiếu về tận nhà an toàn tuyệt đối."},
-            {"name": "Dọn dẹp nhà cửa", "icon_name": "Home", "description": "Vệ sinh, sắp xếp nhà cửa, phòng ngủ, phòng khách gọn gàng, sạch sẽ."},
-            {"name": "Nấu ăn", "icon_name": "Restaurant", "description": "Chuẩn bị bữa ăn gia đình dinh dưỡng theo khẩu vị và chế độ ăn riêng cho bé."},
-            {"name": "Mua sắm hộ", "icon_name": "ShoppingCart", "description": "Đi siêu thị, chợ mua thực phẩm và đồ dùng theo danh sách, giao tận nơi."},
-            {"name": "Hỗ trợ AI", "icon_name": "SmartToy", "description": "Hướng dẫn sử dụng công cụ AI học tập an toàn, phát triển tư duy sáng tạo cho trẻ."},
-            {"name": "Khác", "icon_name": "MoreHoriz", "description": "Các dịch vụ trợ giúp gia đình đặc thù khác theo thỏa thuận."},
         ]
+        ALLOWED_CATEGORY_NAMES = [c["name"] for c in categories_data]
 
         cats = {}
         for c in categories_data:
             obj, _ = ServiceCategory.objects.update_or_create(
                 name=c["name"],
-                defaults={"icon_name": c["icon_name"], "description": c["description"]}
+                defaults={"icon_name": c["icon_name"], "description": c["description"], "is_active": True}
             )
             cats[c["name"]] = obj
+
+        # Khóa mềm mọi danh mục ngoài 3 danh mục chuẩn (dọn dẹp, nấu ăn,
+        # mua sắm hộ, hỗ trợ AI, khác...) — dữ liệu lịch sử giữ nguyên FK.
+        locked_count = ServiceCategory.objects.exclude(
+            name__in=ALLOWED_CATEGORY_NAMES).update(is_active=False)
 
         pricing_rules = [
             {"name": "Gia sư", "pricing_type": "hourly", "base_fee": 0, "unit_price": 90000, "min_price": 150000, "max_price": 350000},
             {"name": "Trông trẻ", "pricing_type": "hourly", "base_fee": 0, "unit_price": 70000, "min_price": 100000, "max_price": 250000},
             {"name": "Đón trẻ", "pricing_type": "distance", "base_fee": 30000, "unit_price": 15000, "min_price": 70000, "max_price": 180000},
-            {"name": "Dọn dẹp nhà cửa", "pricing_type": "hourly", "base_fee": 0, "unit_price": 100000, "min_price": 180000, "max_price": 400000},
-            {"name": "Nấu ăn", "pricing_type": "hourly", "base_fee": 0, "unit_price": 90000, "min_price": 120000, "max_price": 250000},
-            {"name": "Mua sắm hộ", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 60000, "max_price": 150000},
-            {"name": "Hỗ trợ AI", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 120000, "max_price": 300000},
-            {"name": "Khác", "pricing_type": "fixed", "base_fee": 0, "unit_price": 0, "min_price": 0, "max_price": 0},
         ]
         for pr in pricing_rules:
             PricingRule.objects.update_or_create(
@@ -329,7 +328,9 @@ class Command(BaseCommand):
                     "max_price": pr["max_price"],
                 }
             )
-        self.stdout.write(f"   + Đã thiết lập 8 ServiceCategory và PricingRule tương ứng.")
+        self.stdout.write(f"   + Đã thiết lập 3 ServiceCategory chuẩn và PricingRule tương ứng.")
+        if locked_count:
+            self.stdout.write(f"   + Đã khóa mềm {locked_count} danh mục cũ ngoài 3 danh mục chuẩn (is_active=False).")
 
         # ===============================================================
         #  PHAN 3: CAU HINH NGHIEP VU MATCHING FLOW 1
@@ -463,7 +464,7 @@ class Command(BaseCommand):
                 "school": "Đại học Kinh Tế - Đại học Huế", "major": "Quản trị Kinh doanh",
                 "elo": 1360, "band": "good", "has_vehicle": False, "gender": "female",
                 "skills": ["nau_an", "don_dep", "trong_tre", "choi_cung_be", "ve_tranh"],
-                "qualifications": ["Sinh viên năm cuối ĐH Kinh tế Huế", "Chứng chỉ Nấu ăn Ẩm thực Huế & Dinh dưỡng", "Kinh nghiệm 2 năm phụ giúp việc gia đình"],
+                "qualifications": ["Sinh viên năm cuối ĐH Kinh tế Huế", "Kinh nghiệm 2 năm trông trẻ và giúp việc gia đình", "Chứng chỉ Sơ cấp cứu Nhi khoa"],
                 "summary": "Nhanh nhẹn, sạch sẽ, nấu các món ăn Huế và cơm gia đình chuẩn vị, rất khéo léo khi chơi và tương tác với các bé độ tuổi mẫu giáo.",
                 "jobs_done": 9, "rating": 4.8,
             },
@@ -808,9 +809,9 @@ class Command(BaseCommand):
                 "applicants": ["carepartner_phuoc", "carepartner_hoango"],
             },
             {
-                "key": "t3", "title": "Dọn dẹp tổng vệ sinh căn hộ 2 phòng ngủ cuối tuần",
-                "description": "Căn hộ 75m2 cần lau sàn, lau kính, vệ sinh kỹ khu vực bếp và 2 phòng tắm. Dụng cụ và hóa chất tẩy rửa gia đình chuẩn bị sẵn.",
-                "price": 300000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_yenchi"],
+                "key": "t3", "title": "Gia sư Toán lớp 9 ôn thi giữa kỳ 2 buổi",
+                "description": "Bé yếu phần hằng đẳng thức và biến đổi biểu thức, cần gia sư kiên nhẫn giảng lại lý thuyết kèm bài tập luyện thêm 2 buổi cuối tuần.",
+                "price": 300000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_yenchi"],
                 "loc": "Chung cư Đống Đa, Đường Đống Đa, P. Phú Nhuận, TP. Huế",
                 "lat": 16.4640, "lng": 107.5910, "status": "open", "scheduled": now + timedelta(days=4),
                 "applicants": ["carepartner_mylinh", "carepartner_phuoc", "carepartner_hoango"],
@@ -835,9 +836,9 @@ class Command(BaseCommand):
                 "geofence": {"lat": 16.4602, "lng": 107.6008, "radius": 400},
             },
             {
-                "key": "t6", "title": "Nấu bữa cơm tối gia đình 4 người (món cơm Huế thuần Việt)",
-                "description": "Nấu canh chua cá lóc, thịt kho ruốc sả ớt và vả trộn tôm thịt. Nguyên liệu sạch đã mua sẵn trong tủ lạnh.",
-                "price": 250000, "cat": cats["Nấu ăn"], "parent": parent_dict["phuhuynh_baolinh"],
+                "key": "t6", "title": "Trông bé 4 tuổi tối Thứ 6 (cho ăn + dỗ ngủ)",
+                "description": "Ba mẹ đi sự kiện công ty, cần bạn trông bé 4 tuổi từ 18h-21h: cho bé ăn tối, đọc truyện và dỗ bé ngủ sớm. Nguyên liệu bữa tối chuẩn bị sẵn.",
+                "price": 250000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_baolinh"],
                 "loc": "Khu đô thị An Cựu City, Đường Hoàng Quốc Việt, TP. Huế",
                 "lat": 16.4525, "lng": 107.6045, "status": "in_progress", "scheduled": now + timedelta(hours=1),
                 "accepted_worker": "carepartner_mylinh",
@@ -855,23 +856,23 @@ class Command(BaseCommand):
 
             # ── COMPLETED TASKS (4) ──
             {
-                "key": "t8", "title": "Dọn dẹp nhà vườn cổ đón người thân về thăm Huế",
-                "description": "Tổng vệ sinh gian nhà chính, lau bàn ghế gỗ, dọn dẹp sân vườn và hiên nhà. Đã hoàn thành xuất sắc.",
-                "price": 500000, "cat": cats["Dọn dẹp nhà cửa"], "parent": parent_dict["phuhuynh_minhkhoi"],
+                "key": "t8", "title": "Gia sư Toán lớp 6 chữa bài tập cuối tuần",
+                "description": "Dạy kèm 2 buổi chữa bài tập phân số - tỷ lệ phần trăm, rèn kỹ năng trình bày bài. Đã hoàn thành xuất sắc.",
+                "price": 500000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_minhkhoi"],
                 "loc": "Phố cổ Bao Vinh, P. Hương Vinh, TP. Huế",
                 "lat": 16.4850, "lng": 107.5790, "status": "completed", "scheduled": now - timedelta(days=5),
                 "accepted_worker": "carepartner_mylinh",
-                "review": {"rating": 5, "comment": "Mỹ Linh làm việc rất chăm chỉ, tỉ mỉ từng ngóc ngách, nhà cửa sạch bong kin kít và rất đúng giờ. Rất hài lòng!"},
+                "review": {"rating": 5, "comment": "Mỹ Linh dạy rất kiên nhẫn, bé từ chán Toán giờ chủ động làm bài. Giải thích dễ hiểu và rất đúng giờ. Rất hài lòng!"},
                 "payment_method": "momo_escrow",
             },
             {
-                "key": "t9", "title": "Đi siêu thị Go! Huế mua thực phẩm và đồ chơi cho bé",
-                "description": "Mua sắm theo danh sách thực phẩm tươi sống và sữa bột cho bé, đối chiếu hóa đơn rõ ràng.",
-                "price": 150000, "cat": cats["Mua sắm hộ"], "parent": parent_dict["phuhuynh_congvinh"],
-                "loc": "Siêu thị Go! Huế, Đường Bà Triệu, P. Phú Hội, TP. Huế",
+                "key": "t9", "title": "Đón bé mầm non về nhà cả tuần (Thứ 2 - Thứ 6)",
+                "description": "Đón bé 5 tuổi lúc 16h15 tại trường mầm non, đưa về nhà kiểm soát an toàn, đối chiếu đón đúng người theo hóa đơn ghi nhận ca.",
+                "price": 150000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
+                "loc": "Trường Mầm non Hoa Sen, Đường Bà Triệu, P. Phú Hội, TP. Huế",
                 "lat": 16.4628, "lng": 107.5968, "status": "completed", "scheduled": now - timedelta(days=7),
                 "accepted_worker": "carepartner_tuankiet",
-                "review": {"rating": 5, "comment": "Tuấn Kiệt chọn đồ rất tươi ngon, hóa đơn đối chiếu đầy đủ và giao hàng rất nhanh chóng."},
+                "review": {"rating": 5, "comment": "Tuấn Kiệt đón bé đúng giờ cả tuần, giao bé đúng người và thông báo kịp thời. Rất an tâm."},
                 "payment_method": "cash",
             },
             {
@@ -896,9 +897,9 @@ class Command(BaseCommand):
 
             # ── CANCELLED TASK (1) ──
             {
-                "key": "t12", "title": "Hướng dẫn bé lớp 4 dùng AI học vẽ và học từ vựng",
+                "key": "t12", "title": "Gia sư Tiếng Anh giao tiếp cho bé lớp 3 (đã hủy)",
                 "description": "Phụ huynh hủy vì bé bị ốm phải nhập viện điều trị.",
-                "price": 200000, "cat": cats["Hỗ trợ AI"], "parent": parent_dict["phuhuynh_yenchi"],
+                "price": 200000, "cat": cats["Gia sư"], "parent": parent_dict["phuhuynh_yenchi"],
                 "loc": "15 Lê Lợi, P. Vĩnh Ninh, TP. Huế",
                 "lat": 16.4678, "lng": 107.5855, "status": "cancelled", "scheduled": now - timedelta(days=3),
             },
@@ -1340,7 +1341,7 @@ class Command(BaseCommand):
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
   │ carepartner_tuankiet    │ CarePartner (ĐH K.Học)   │ Gia sư Toán Lý, ELO 1480, có đơn kháng cáo hỏng xe     │
   │ carepartner_hoango      │ CarePartner (ĐH S.Phạm)  │ Mầm non Montessori, ELO 1580, nhận việc trông bé 4 tuổi│
-  │ carepartner_mylinh      │ CarePartner (ĐH K.Tế)    │ Nấu ăn dọn dẹp, ELO 1360, có khiếu nại ép làm thêm việc│
+  │ carepartner_mylinh      │ CarePartner (ĐH K.Tế)    │ Trông trẻ, ELO 1360, có khiếu nại ép làm thêm việc  │
   │ carepartner_phuoc       │ CarePartner (ĐH Y Dược)  │ Đón trẻ tan trường, có cảnh báo SOS bé sốt đang ACTIVE │
   │ carepartner_pending_hai │ CarePartner (Chờ duyệt)  │ Hồ sơ mới ĐH Ngoại Ngữ, bằng cấp chờ Admin duyệt       │
   │ carepartner_locked_trung│ CarePartner (Tạm khóa)   │ Tài khoản bị khóa, dùng để Admin kiểm thử mở khóa      │

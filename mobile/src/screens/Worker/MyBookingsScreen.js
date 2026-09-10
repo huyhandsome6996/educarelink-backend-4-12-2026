@@ -106,6 +106,19 @@ export default function MyBookingsScreen() {
                   </Text>
                 </View>
               )}
+              {/* Đồng bộ web QA 2026-09-11: hiển thị phụ huynh + địa chỉ (field mới của API) */}
+              {item.parent_name ? (
+                <View style={styles.metaRow}>
+                  <Ionicons name="person" size={13} color={COLORS.primary} />
+                  <Text style={styles.meta} numberOfLines={1}>Phụ huynh {item.parent_name}</Text>
+                </View>
+              ) : null}
+              {item.job_address ? (
+                <View style={styles.metaRow}>
+                  <Ionicons name="location" size={13} color={COLORS.primary} />
+                  <Text style={styles.meta} numberOfLines={1}>{item.job_address}</Text>
+                </View>
+              ) : null}
               <View style={styles.metaRow}>
                 <Ionicons name="cash" size={13} color="#0E9F6E" />
                 <Text style={styles.meta}>

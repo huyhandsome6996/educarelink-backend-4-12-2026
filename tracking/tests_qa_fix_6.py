@@ -102,81 +102,23 @@ class QAFix6B1PinRequiredToApplyTestCase(TestCase):
             scheduled_time=timezone.now(),
         )
 
-    def test_b1_worker_without_pin_can_apply_no_geofence(self):
-        """Worker chưa có PIN apply vào task KHÔNG có geofence → thành công.
-        PIN chỉ yêu cầu cho task CÓ tracking (geofence). Task thường không cần."""
-        client = APIClient()
-        client.force_authenticate(user=self.worker_no_pin)
-        resp = client.post(f'/api/worker/tasks/{self.task_no_geofence.id}/apply/', {
-            'consent_tracking': False,
-        }, format='json')
-        self.assertEqual(resp.status_code, 201)
-        # Verify tạo TaskApplication
-        self.assertTrue(
-            TaskApplication.objects.filter(
-                task=self.task_no_geofence, worker=self.worker_no_pin,
-                status='pending',
-            ).exists()
-        )
-
-    def test_b1_worker_without_pin_cannot_apply_geofence_before_consent(self):
-        """Worker chưa có PIN apply vào task có geofence → 403 verification_pin_required
-        (chặn TRƯỚC khi check consent_tracking)."""
-        client = APIClient()
-        client.force_authenticate(user=self.worker_no_pin)
-        resp = client.post(f'/api/worker/tasks/{self.task_with_geofence.id}/apply/', {
-            'consent_tracking': True,
-        }, format='json')
-        # Phải 403 verification_pin_required, KHÔNG phải 400 CONSENT_REQUIRED
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.data['error'], 'verification_pin_required')
+    def test_b1_apply_endpoint_closed_passive_matching(self):
+        """QA 2026-09-10 #2: endpoint /api/worker/tasks/<id>/apply/ đã ĐÓNG
+        (luồng ghép cặp thụ động kiểu Grab). Mọi lời gọi — có/không PIN,
+        có/không geofence/consent — trả 403 passive_matching_only và KHÔNG
+        tạo TaskApplication, KHÔNG tạo LocationConsent."""
+        for worker in (self.worker_no_pin, self.worker_with_pin):
+            for task in (self.task_no_geofence, self.task_with_geofence):
+                client = APIClient()
+                client.force_authenticate(user=worker)
+                resp = client.post(
+                    f'/api/worker/tasks/{task.id}/apply/',
+                    {'consent_tracking': True}, format='json')
+                self.assertEqual(resp.status_code, 403)
+                self.assertEqual(resp.data['error'], 'passive_matching_only')
+        self.assertFalse(TaskApplication.objects.exists())
         self.assertFalse(
-            TaskApplication.objects.filter(
-                task=self.task_with_geofence, worker=self.worker_no_pin
-            ).exists()
-        )
-
-    def test_b1_worker_with_pin_can_apply_no_geofence(self):
-        """Worker đã có PIN apply vào task thường → thành công như cũ."""
-        client = APIClient()
-        client.force_authenticate(user=self.worker_with_pin)
-        resp = client.post(f'/api/worker/tasks/{self.task_no_geofence.id}/apply/', {
-            'consent_tracking': False,
-        }, format='json')
-        self.assertEqual(resp.status_code, 201)
-        self.assertTrue(
-            TaskApplication.objects.filter(
-                task=self.task_no_geofence, worker=self.worker_with_pin,
-                status='pending',
-            ).exists()
-        )
-
-    def test_b1_worker_with_pin_can_apply_geofence_with_consent(self):
-        """Worker đã có PIN apply vào task có geofence + đồng ý consent → 201."""
-        client = APIClient()
-        client.force_authenticate(user=self.worker_with_pin)
-        resp = client.post(f'/api/worker/tasks/{self.task_with_geofence.id}/apply/', {
-            'consent_tracking': True,
-        }, format='json')
-        self.assertEqual(resp.status_code, 201)
-        # Verify consent được tạo
-        self.assertTrue(
-            LocationConsent.objects.filter(
-                task=self.task_with_geofence, worker=self.worker_with_pin,
-                consent='granted',
-            ).exists()
-        )
-
-    def test_b1_worker_with_pin_apply_geofence_without_consent_returns_consent_required(self):
-        """Worker đã có PIN apply vào task có geofence nhưng KHÔNG đồng ý
-        consent → 400 CONSENT_REQUIRED (không phải 403 PIN_REQUIRED)."""
-        client = APIClient()
-        client.force_authenticate(user=self.worker_with_pin)
-        resp = client.post(f'/api/worker/tasks/{self.task_with_geofence.id}/apply/', {
-            'consent_tracking': None,
-        }, format='json')
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.data['error'], 'CONSENT_REQUIRED')
+            LocationConsent.objects.filter(consent='granted').exists())
 
 
 @override_settings(DEBUG=True)

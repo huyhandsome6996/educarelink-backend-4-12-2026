@@ -1,0 +1,291 @@
+{% load static %}
+<!-- ============================================================ -->
+<!-- _worker_sidebar.html — Sidebar CAREPARTNER chuẩn hóa          -->
+<!-- Single Source of Truth cho toàn bộ trang luồng Carepartner    -->
+<!-- (Batch 1 — QA 2026-09-10: trước đây 4 trang worker hardcode   -->
+<!--  4 sidebar khác nhau, còn nhãn kỹ thuật lỗi thời).            -->
+<!-- Hỗ trợ active_tab: feed | jobs | availability | profile       -->
+<!--                    | chatbot | guide | help                   -->
+<!-- ============================================================ -->
+
+<style>
+  /* 1. KHÓA CỨNG KÍCH THƯỚC SIDEBAR 260px — đồng bộ tuyệt đối với
+     _parent_sidebar.html để không bao giờ bị nhảy layout giữa 2 luồng */
+  #sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    background-color: #ffffff !important;
+    border-right: 1px solid #e5e7eb !important;
+    z-index: 40 !important;
+  }
+
+  /* Nội dung chính dịch lề 260px trên desktop (cùng ngưỡng lg=1024px
+     với _parent_chrome.html — không còn vùng 768-1024px bị hụt sidebar) */
+  @media (min-width: 1024px) {
+    main, .main-area, .main-content, .chat-main-area {
+      margin-left: 260px !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  /* 2. TRIỆT TIÊU LAYOUT SHIFT DO THANH CUỘN CỬA SỔ (window scrollbar) */
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* 3. ẨN THANH CUỘN THÔ CỦA SIDEBAR (mượt như sidebar phụ huynh) */
+  .wsb-scroll {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important; /* Firefox & Chrome 121+ */
+    -ms-overflow-style: none !important; /* IE/Edge legacy */
+  }
+  .wsb-scroll::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* 4. ITEM ĐỒNG BỘ VIỀN TRÁI — cùng ngôn ngữ thiết kế với sidebar phụ huynh */
+  .wsb-nav-item {
+    border-left: 4px solid transparent;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .wsb-nav-item.active {
+    border-left-color: #F26522 !important;
+    background-color: rgba(255, 247, 237, 0.9) !important;
+    color: #c2410c !important;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 22;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.fill-icon {
+    font-variation-settings: 'FILL' 1, 'wght' 450, 'GRAD' 0, 'opsz' 22;
+  }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 450, 'GRAD' 0, 'opsz' 22;
+  }
+</style>
+
+<!-- Brand Logo & Context Area -->
+<div class="px-4 py-3.5 border-b border-slate-100/90 shrink-0">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center shadow-sm shrink-0">
+      <img src="/static/images/logo.png" alt="EduCareLink" class="h-7 w-7 object-contain">
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="font-heading font-extrabold text-xl tracking-tight text-slate-900 leading-tight truncate" style="font-family: 'Manrope', sans-serif;">
+        Edu<span class="text-[#F26522]">Care</span>Link
+      </div>
+      <div class="mt-1 flex items-center">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 text-[#c2410c] border border-orange-200/70 font-semibold text-[10px] tracking-wide">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] animate-pulse"></span>
+          Carepartner
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Navigation — MENU CHUẨN THỐNG NHẤT toàn luồng Carepartner -->
+<nav class="flex-1 px-3 py-3 space-y-4 overflow-y-auto wsb-scroll" data-purpose="worker-main-navigation">
+
+  <!-- Group 1: NHẬN VIỆC -->
+  <div class="space-y-1">
+    <div class="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
+      Nhận việc
+    </div>
+
+    <!-- 1. Nhận đơn mới (luồng ghép cặp thụ động kiểu Grab — trang chính) -->
+    <a href="{% url 'frontend:don_cua_toi' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'feed' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'feed' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">notifications_active</span>
+        <span class="truncate">Nhận đơn mới</span>
+      </div>
+      {% if active_tab == 'feed' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+
+    <!-- 2. Lịch rảnh làm việc -->
+    <a href="{% url 'frontend:lich_ranh' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'availability' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'availability' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">event_available</span>
+        <span class="truncate">Lịch rảnh làm việc</span>
+      </div>
+      {% if active_tab == 'availability' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+
+    <!-- 3. Việc của tôi -->
+    <a href="{% url 'frontend:worker_jobs' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'jobs' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'jobs' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">assignment</span>
+        <span class="truncate">Việc của tôi</span>
+      </div>
+      {% if active_tab == 'jobs' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+  </div>
+
+  <!-- Group 2: TÀI KHOẢN -->
+  <div class="space-y-1">
+    <div class="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
+      Tài khoản
+    </div>
+
+    <!-- 4. Hồ sơ của tôi -->
+    <a href="{% url 'frontend:worker_profile' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'profile' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'profile' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">person</span>
+        <span class="truncate">Hồ sơ của tôi</span>
+      </div>
+      {% if active_tab == 'profile' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+
+    <!-- 5. AI Trợ lý -->
+    <a href="{% url 'frontend:worker_chatbot' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'chatbot' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'chatbot' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">smart_toy</span>
+        <span class="truncate">AI Trợ lý</span>
+      </div>
+      {% if active_tab == 'chatbot' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+  </div>
+
+  <!-- Group 3: HỖ TRỢ & HỆ THỐNG -->
+  <div class="space-y-1">
+    <div class="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
+      Hỗ trợ &amp; Hệ thống
+    </div>
+
+    <!-- 6. Hướng dẫn nhận việc -->
+    <a href="/onboarding/worker/"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'guide' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'guide' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">help_outline</span>
+        <span class="truncate">Hướng dẫn nhận việc</span>
+      </div>
+      {% if active_tab == 'guide' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+
+    <!-- 7. Trung tâm trợ giúp -->
+    <a href="{% url 'frontend:help_center' %}"
+       class="wsb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'help' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="material-symbols-outlined text-xl {% if active_tab == 'help' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">support_agent</span>
+        <span class="truncate">Trung tâm trợ giúp</span>
+      </div>
+      {% if active_tab == 'help' %}
+        <span class="w-1.5 h-1.5 rounded-full bg-[#F26522] shrink-0"></span>
+      {% endif %}
+    </a>
+  </div>
+</nav>
+
+<!-- Bottom: User Profile Card & Safe Log out -->
+<div class="p-3 border-t border-slate-200/90 space-y-2 bg-slate-50/50 shrink-0" data-purpose="worker-sidebar-user-footer">
+  <a href="{% url 'frontend:worker_profile' %}"
+     class="flex items-center justify-between p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 transition-all cursor-pointer shadow-xs group">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="relative shrink-0">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm ring-1 ring-white overflow-hidden">
+          <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover"
+               src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
+        </div>
+        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+      </div>
+      <div class="truncate min-w-0">
+        <h4 id="sidebar-name" class="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F26522] transition-colors">Đang tải...</h4>
+        <p id="sidebar-subtitle" class="text-[11px] text-slate-500 truncate">Carepartner</p>
+      </div>
+    </div>
+    <span class="material-symbols-outlined text-slate-400 group-hover:text-slate-600 text-lg shrink-0 transition-colors">chevron_right</span>
+  </a>
+
+  <button onclick="handleLogout()"
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors"
+          type="button">
+    <span class="material-symbols-outlined text-slate-400 group-hover:text-rose-500 text-base">logout</span>
+    <span>Đăng xuất tài khoản</span>
+  </button>
+</div>
+
+<!-- Self-healing script: tên + avatar + logout an toàn (cùng nguồn sự thật
+     /api/profile/ với _parent_chrome.html) -->
+<script>
+  (function initWorkerSidebar() {
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) {
+        const u = JSON.parse(raw);
+        const nameEl = document.getElementById('sidebar-name');
+        const avtEl = document.getElementById('sidebar-avatar');
+        const displayName = u.first_name || u.username || 'Carepartner';
+        if (nameEl && (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim())) {
+          nameEl.textContent = displayName;
+        }
+        if (avtEl && u.avatar_url) {
+          avtEl.src = u.avatar_url;
+        }
+      }
+    } catch (e) { /* im lặng */ }
+
+    if (typeof window.handleLogout !== 'function') {
+      window.handleLogout = function() {
+        if (confirm('Bạn có chắc muốn đăng xuất?')) {
+          try { localStorage.clear(); } catch (e) {}
+          setTimeout(() => { window.location.href = '/login/'; }, 200);
+        }
+      };
+    }
+
+    // Nguồn sự thật duy nhất: /api/profile/ (web login không lưu localStorage 'user')
+    (async function wsbLoadProfile() {
+      try {
+        const nameEl = document.getElementById('sidebar-name');
+        const avtEl = document.getElementById('sidebar-avatar');
+        if (!nameEl || !avtEl) return;
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const r = await fetch('/api/profile/', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!r.ok) return;
+        const p = await r.json();
+        const fullName = (p.first_name && p.last_name)
+          ? (p.first_name + ' ' + p.last_name)
+          : (p.username || 'Carepartner');
+        if (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim()) {
+          nameEl.textContent = fullName;
+        }
+        if (p.avatar_url) {
+          avtEl.src = p.avatar_url;
+        } else if (avtEl.src.includes('ui-avatars')) {
+          avtEl.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(fullName) + '&background=F26522&color=fff';
+        }
+      } catch (e) { /* im lặng — sidebar vẫn hiển thị mặc định */ }
+    })();
+  })();
+</script>

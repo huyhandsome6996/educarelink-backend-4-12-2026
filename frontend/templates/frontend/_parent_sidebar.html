@@ -197,8 +197,10 @@
       {% endif %}
     </a>
 
-    <!-- 8. Cài đặt / Hồ sơ -->
-    <a href="{% url 'frontend:parent_profile' %}"
+    <!-- 8. Cài đặt / Hồ sơ — Batch 1 Bug #6: nếu người xem là Carepartner
+         (trang dùng chung), script cuối file sẽ tự trỏ link này về hồ sơ
+         Carepartner thay vì hồ sơ Phụ huynh -->
+    <a href="{% url 'frontend:parent_profile' %}" data-psb-settings-link
        class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'profile' or active_tab == 'settings' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'profile' or active_tab == 'settings' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">settings</span>
@@ -213,8 +215,9 @@
 
 <!-- Bottom: User Profile Card & Safe Log out -->
 <div class="p-3 border-t border-slate-200/90 space-y-2 bg-slate-50/50 shrink-0" data-purpose="sidebar-user-footer">
-  <!-- Profile Interactive Capsule -->
-  <a href="{% url 'frontend:parent_profile' %}"
+  <!-- Profile Interactive Capsule — cũng bị script Role-Guard điều hướng lại
+       về hồ sơ Carepartner khi role = worker (Bug #6) -->
+  <a href="{% url 'frontend:parent_profile' %}" data-psb-settings-link
      class="flex items-center justify-between p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 transition-all cursor-pointer shadow-xs group">
     <div class="flex items-center gap-2.5 min-w-0">
       <div class="relative shrink-0">
@@ -244,6 +247,27 @@
 <!-- Self-healing script: Đảm bảo sidebar luôn có tên, avatar và logout trên mọi trang -->
 <script>
   (function initParentSidebar() {
+    // ═══ ROLE GUARD (Batch 1 — Bug #6) ═══
+    // Sidebar phụ huynh có thể được nhúng vào trang dùng chung (don,
+    // vi-credit, khang-cao qua _role_chrome.html — bình thường chỉ chrome
+    // đúng role mới hiển thị). Phòng khi chrome phụ huynh vẫn hiển thị
+    // nhầm cho Carepartner (role chưa kịp xác định / cache), mọi link
+    // Cài đặt/Hồ sơ phải tự chuyển về hồ sơ Carepartner — KHÔNG cho bấm
+    // văng sang luồng phụ huynh.
+    function psbApplyRoleGuard() {
+      var role = null;
+      try { role = localStorage.getItem('role'); } catch (e) {}
+      if (role === 'worker') {
+        document.querySelectorAll('[data-psb-settings-link]').forEach(function (a) {
+          a.setAttribute('href', '{% url "frontend:worker_profile" %}');
+        });
+        var sub = document.getElementById('sidebar-subtitle');
+        if (sub) sub.textContent = 'Carepartner';
+      }
+    }
+    psbApplyRoleGuard();
+    document.addEventListener('DOMContentLoaded', psbApplyRoleGuard);
+
     try {
       const raw = localStorage.getItem('user');
       if (raw) {

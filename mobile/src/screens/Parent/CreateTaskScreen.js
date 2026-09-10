@@ -29,15 +29,12 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
+// QA 2026-09-10 #1: EduCareLink CHỈ còn 3 danh mục — backend chặn 400
+// danh mục khác, mobile đồng bộ hiển thị đúng 3 nhóm này.
 const CATEGORIES = [
   { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi', pricingType: 'hourly' },
   { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần', pricingType: 'distance' },
-  { id: 3, iconName: 'sparkles', name: 'Dọn dẹp', hint: '200.000đ - 400.000đ/ca', pricingType: 'hourly' },
   { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
-  { id: 5, iconName: 'bag', name: 'Mua sắm hộ', hint: '50.000đ - 100.000đ/lần', pricingType: 'fixed' },
-  { id: 6, iconName: 'restaurant', name: 'Nấu ăn', hint: '100.000đ - 200.000đ/lần', pricingType: 'hourly' },
-  { id: 7, iconName: 'hardware-chip', name: 'Hỗ trợ AI', hint: 'Thoả thuận', pricingType: 'fixed' },
-  { id: 8, iconName: 'apps', name: 'Khác', hint: 'Thoả thuận', pricingType: 'fixed' },
 ];
 
 export default function CreateTaskScreen() {

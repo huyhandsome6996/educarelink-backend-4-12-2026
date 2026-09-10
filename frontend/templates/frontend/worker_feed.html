@@ -6,7 +6,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
-    <title>Tìm việc - EduCareLink</title>
+    <title>Nhận việc - EduCareLink</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -123,86 +123,23 @@
         </div>
     </div>
 
-    <!-- ========== SIDEBAR (Desktop) ========== -->
-    <aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
-        <!-- Logo -->
-        <div class="px-6 py-6 border-b border-gray-50">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-                <div>
-                    <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
-                </div>
-            </a>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 px-4 py-6 sidebar-scroll overflow-y-auto">
-            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{% url 'frontend:worker_feed' %}" class="nav-item active flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold">
-                        <span class="material-symbols-outlined text-xl">search</span>
-                        Tìm việc
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_jobs' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">assignment</span>
-                        Việc của tôi
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_profile' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">person</span>
-                        Hồ sơ
-                    </a>
-                </li>
-                <li>
-                    <a href="/onboarding/worker/" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">help</span>
-                        Hướng dẫn
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:help_center' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">help_center</span>
-                        Trung tâm trợ giúp
-                    </a>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- User section at bottom -->
-        <div class="px-4 py-4 border-t border-gray-100">
-            <div class="flex items-center gap-3 px-2">
-                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
-                    <img id="sidebar-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
-                    <p class="text-xs text-textSecondary">Carepartner</p>
-                </div>
-                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
-                    <span class="material-symbols-outlined text-xl">logout</span>
-                </button>
-            </div>
-        </div>
-    </aside>
+    <!-- ========== SIDEBAR + MOBILE NAV CHUẨN CAREPARTNER (Batch 1) ========== -->
+    {% include 'frontend/_worker_chrome.html' with active_tab='feed' %}
 
     <!-- ========== MAIN CONTENT ========== -->
-    <main class="main-area md:ml-[260px] min-h-screen pb-24 md:pb-8">
+    <main class="main-area lg:ml-[260px] min-h-screen pb-24 md:pb-8">
         <!-- Top header bar -->
         <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 md:px-8 py-4">
                 <!-- Mobile: hamburger + title -->
-                <div class="flex items-center justify-between mb-4 md:mb-0">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <!-- Mobile logo -->
                         <div class="md:hidden w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
                             <span class="material-symbols-outlined text-white text-lg filled" style="font-variation-settings: 'FILL' 1;">school</span>
                         </div>
                         <div>
-                            <h1 class="font-manrope font-extrabold text-2xl text-textPrimary">Tìm việc</h1>
+                            <h1 class="font-manrope font-extrabold text-2xl text-textPrimary">Nhận việc</h1>
                             <p id="header-greeting" class="text-sm text-textSecondary mt-0.5">Chào, Carepartner!</p>
                         </div>
                     </div>
@@ -211,133 +148,106 @@
                         <img id="mobile-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
                     </div>
                 </div>
-
-                <!-- Search bar -->
-                <div class="flex gap-3 mt-4 md:mt-4">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary text-xl">search</span>
-                        <input
-                            id="search-input"
-                            type="text"
-                            placeholder="Tìm kiếm công việc..."
-                            class="search-input w-full bg-bg text-textPrimary pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium text-sm transition-all"
-                            oninput="handleSearch(this.value)"
-                        />
-                        <button id="search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-textPrimary hidden transition-all duration-200" onclick="clearSearch()">
-                            <span class="material-symbols-outlined text-lg">close</span>
-                        </button>
-                    </div>
-                    <button class="w-12 h-12 rounded-xl bg-bg border border-gray-200 flex items-center justify-center text-textSecondary hover:text-primary hover:border-primary/30 transition-all duration-200 flex-shrink-0" onclick="showToast('Bộ lọc đang phát triển', 'info')">
-                        <span class="material-symbols-outlined">tune</span>
-                    </button>
-                </div>
             </div>
         </header>
 
-        <!-- Stats bar -->
-        <div class="max-w-6xl mx-auto px-4 md:px-8 py-4">
-            <div class="flex gap-3">
-                <div class="flex-1 bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-primaryLight flex items-center justify-center">
-                            <span class="material-symbols-outlined text-primary text-xl filled" style="font-variation-settings: 'FILL' 1;">work</span>
-                        </div>
-                        <div>
-                            <p id="stat-total" class="font-manrope font-bold text-xl text-textPrimary">0</p>
-                            <p class="text-xs text-textSecondary font-medium">Việc khả dụng</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex-1 bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-success text-xl filled" style="font-variation-settings: 'FILL' 1;">payments</span>
-                        </div>
-                        <div>
-                            <p id="stat-avg" class="font-manrope font-bold text-xl text-textPrimary">0đ</p>
-                            <p class="text-xs text-textSecondary font-medium">Giá trung bình</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- ===== KHU VỰC TRUNG TÂM FLOW 1: ĐƠN MỜI + TRẠNG THÁI SẴN SÀNG (QA 2026-09-11 #4) ===== -->
+        <div class="max-w-6xl mx-auto px-4 md:px-8 py-6 pb-8">
 
-        <!-- Job feed -->
-        <div class="max-w-6xl mx-auto px-4 md:px-8 pb-8">
-            <!-- ===== AI RECOMMENDATIONS SECTION ===== -->
-            <div id="ai-recommendations-section" class="mb-6 hidden">
-                <div class="flex items-center justify-between mb-3">
+            <!-- ===== 1. ĐƠN VIỆC MỚI ĐƯỢC GIAO (CẦN CAM KẾT) ===== -->
+            <section id="offers-section" class="mb-8 hidden">
+                <div class="flex items-center justify-between mb-4">
                     <h2 class="font-manrope font-bold text-lg text-textPrimary flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
-                        AI gợi ý cho bạn
+                        <span class="material-symbols-outlined text-amber-500" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+                        Đơn mời nhận việc
+                        <span id="offers-count" class="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-amber-400 text-white text-xs font-extrabold">0</span>
                     </h2>
-                    <button onclick="loadAIRecommendations(true)" class="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
-                        <span class="material-symbols-outlined text-sm">refresh</span>
-                        Làm mới
-                    </button>
+                    <span class="text-xs text-textSecondary font-medium hidden sm:block">Cần cam kết trước khi hết giờ</span>
                 </div>
-                <div id="ai-recommendations-container" class="space-y-2">
-                    <!-- AI recs sẽ render ở đây -->
+                <div id="offers-container" class="space-y-4">
+                    <!-- Cards render bằng JS -->
                 </div>
-            </div>
+            </section>
 
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-manrope font-bold text-lg text-textPrimary">Việc làm mới nhất</h2>
-                <span id="results-count" class="text-sm text-textSecondary font-medium"></span>
-            </div>
-            <div id="job-feed" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Skeleton loading -->
-                <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="skeleton w-20 h-6"></div>
-                        <div class="skeleton w-24 h-7"></div>
+            <!-- ===== 2. TRẠNG THÁI SẴN SÀNG (khi không có đơn chờ) ===== -->
+            <section id="ready-state" class="mb-8 hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="p-5 sm:p-6 border-b border-gray-50">
+                        <div class="flex items-start gap-4">
+                            <div class="relative shrink-0">
+                                <span class="flex w-12 h-12 rounded-full bg-emerald-50 items-center justify-center">
+                                    <span class="material-symbols-outlined text-success text-2xl" style="font-variation-settings: 'FILL' 1;">task_alt</span>
+                                </span>
+                                <span class="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse"></span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h2 class="font-manrope font-bold text-base sm:text-lg text-textPrimary flex items-center gap-2 flex-wrap">
+                                    Đang sẵn sàng nhận việc theo lịch rảnh
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-success text-[10px] font-bold border border-emerald-100">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span> ONLINE
+                                    </span>
+                                </h2>
+                                <p class="text-sm text-textSecondary mt-1 leading-relaxed">
+                                    Bạn không cần lướt tìm việc nữa. Phụ huynh đăng việc trùng khung giờ rảnh của bạn,
+                                    AI sẽ đề xuất bạn vào Top 8 ứng viên — phụ huynh chọn thì đơn sẽ tự xuất hiện ngay tại đây.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="skeleton w-3/4 h-6 mb-4"></div>
-                    <div class="skeleton w-1/2 h-4 mb-2"></div>
-                    <div class="skeleton w-2/3 h-4 mb-4"></div>
-                    <div class="flex justify-between items-center mt-4">
-                        <div class="skeleton w-28 h-4"></div>
-                        <div class="skeleton w-24 h-9"></div>
+                    <div id="next-shift-box" class="p-5 sm:p-6 bg-bg/60">
+                        <p class="text-xs font-bold uppercase tracking-wider text-textSecondary/70 mb-2">Ca làm việc tiếp theo</p>
+                        <div id="next-shift-info" class="text-sm text-textSecondary">Đang tải lịch rảnh…</div>
+                    </div>
+                    <div class="p-5 sm:p-6 pt-0 flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'frontend:lich_ranh' %}"
+                           class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-sm hover:bg-primaryDark transition-all">
+                            <span class="material-symbols-outlined text-base">event_available</span>
+                            Cập nhật thêm lịch rảnh để nhận thêm nhiều đơn
+                        </a>
+                        <a href="{% url 'frontend:don_cua_toi' %}"
+                           class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-gray-200 text-textSecondary text-sm font-bold hover:border-primary/40 hover:text-primary transition-all">
+                            <span class="material-symbols-outlined text-base">inbox</span>
+                            Xem tất cả đơn của tôi
+                        </a>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="skeleton w-20 h-6"></div>
-                        <div class="skeleton w-24 h-7"></div>
-                    </div>
-                    <div class="skeleton w-3/4 h-6 mb-4"></div>
-                    <div class="skeleton w-1/2 h-4 mb-2"></div>
+            </section>
+
+            <!-- Skeleton lúc tải -->
+            <div id="offers-skeleton">
+                <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="skeleton w-56 h-6 mb-4"></div>
+                    <div class="skeleton w-3/4 h-4 mb-2"></div>
                     <div class="skeleton w-2/3 h-4 mb-4"></div>
-                    <div class="flex justify-between items-center mt-4">
-                        <div class="skeleton w-28 h-4"></div>
-                        <div class="skeleton w-24 h-9"></div>
-                    </div>
+                    <div class="skeleton w-full h-12"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- ========== MOBILE BOTTOM NAV ========== -->
-    <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 shadow-lg" style="display: none;">
-        <div class="flex justify-around items-center px-2 pt-2 pb-6">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-primaryLight text-primary transition-all">
-                <span class="material-symbols-outlined text-2xl filled" style="font-variation-settings: 'FILL' 1;">search</span>
-                <span class="text-[11px] font-bold mt-1">Tìm việc</span>
-            </a>
-            <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">assignment</span>
-                <span class="text-[11px] font-semibold mt-1">Việc của tôi</span>
-            </a>
-            <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">person</span>
-                <span class="text-[11px] font-semibold mt-1">Hồ sơ</span>
-            </a>
-            <a href="{% url 'frontend:help_center' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">help_center</span>
-                <span class="text-[11px] font-semibold mt-1">Trợ giúp</span>
-            </a>
+    <!-- ========== MODAL TỪ CHỐI ĐƠN (8 lý do — đồng bộ don.html) ========== -->
+    <div id="decline-modal" class="hidden fixed inset-0 z-[9998] bg-black/40 flex items-center justify-center px-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col modal-content-enter">
+            <div class="p-5 border-b border-gray-100">
+                <h3 class="font-manrope font-bold text-lg text-textPrimary">Từ chối ca vì lý do bất khả kháng</h3>
+                <p class="text-xs text-textSecondary mt-1">Từ chối đúng lý do bất khả kháng (có ghi chú đầy đủ) giúp bảo vệ điểm uy tín của bạn.</p>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div id="decline-reason-list" class="space-y-2 text-sm"></div>
+                <div class="mt-4">
+                    <label class="text-xs font-bold text-textSecondary mb-1 block" for="decline-note">Ghi chú lý do (bất khả kháng cần ≥ 20 ký tự)</label>
+                    <textarea id="decline-note" rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                              placeholder="Mô tả cụ thể để hệ thống xem xét giảm phạt…"></textarea>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-100 flex gap-3">
+                <button id="decline-close" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-textSecondary font-semibold text-sm hover:bg-gray-50 transition-all">Đóng</button>
+                <button id="decline-submit" class="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-all">Gửi từ chối</button>
+            </div>
         </div>
-    </nav>
+    </div>
+
+    <!-- Mobile bottom nav chuyển vào _worker_chrome.html (Batch 1 — đồng bộ chuẩn 4 tab) -->
 
     <!-- ========== JAVASCRIPT ========== -->
     <script>
@@ -393,9 +303,9 @@
         if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 
         // ===== GLOBAL STATE =====
-        let allTasks = [];
-        let filteredTasks = [];
         let confirmResolve = null;
+        const offerTimers = {};   // bookingId → setInterval đếm ngược cam kết
+        let declineBookingId = null; // đơn đang mở modal từ chối
 
         // ===== TOAST SYSTEM =====
         function showToast(message, type = 'info') {
@@ -468,251 +378,305 @@
             }
         }
 
-        // ===== SEARCH =====
-        function handleSearch(query) {
-            const clearBtn = document.getElementById('search-clear');
-            clearBtn.classList.toggle('hidden', !query);
+        /* ============================================================
+           FLOW 1 — DASHBOARD ĐƠN MỜI (QA 2026-09-11 #4)
+           - Trang /worker/ KHÔNG còn chợ việc tự do (đã xóa grid + search).
+           - Khu vực trung tâm: đơn awaiting_commitment + đồng hồ đếm ngược.
+           - Xác nhận cam kết: POST /api/matching/bookings/<id>/commit/
+           - Từ chối: POST /api/matching/bookings/<id>/cancel/ (8 lý do T0,
+             đồng bộ don.html) — hết giờ hệ thống tự mở khóa + báo phụ huynh.
+           ============================================================ */
 
-            const q = query.trim().toLowerCase();
-            if (!q) {
-                filteredTasks = [...allTasks];
-            } else {
-                filteredTasks = allTasks.filter(t => t.title.toLowerCase().includes(q));
-            }
-            renderTasks();
+        // 8 lý do từ chối trong cửa sổ cam kết — đồng bộ don.html
+        const CANCEL_REASONS = [
+            { code: 'school_schedule', label: 'Trùng lịch học đột xuất', fm: true },
+            { code: 'health', label: 'Sức khỏe không tốt', fm: true },
+            { code: 'family_emergency', label: 'Việc gia đình khẩn cấp', fm: true },
+            { code: 'accident', label: 'Tai nạn / sự cố di chuyển', fm: true },
+            { code: 'wrong_job_info', label: 'Thông tin công việc không đúng mô tả', fm: true },
+            { code: 'transport', label: 'Không thể di chuyển', fm: false },
+            { code: 'personal', label: 'Lý do cá nhân', fm: false },
+            { code: 'other', label: 'Khác (bắt buộc ghi chú)', fm: false },
+        ];
+
+        const JOB_TYPE_LABELS = {
+            tutoring: 'Gia sư', pickup: 'Đón trẻ', childcare: 'Trông trẻ',
+        };
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function formatMoney(v) {
+            const n = parseInt(v) || 0;
+            return new Intl.NumberFormat('vi-VN').format(n) + 'đ';
         }
 
-        function clearSearch() {
-            const input = document.getElementById('search-input');
-            input.value = '';
-            handleSearch('');
-            input.focus();
+        function formatSlot(slot) {
+            if (!slot || !slot.date) return '—';
+            try {
+                const d = new Date(`${slot.date}T${(slot.time_from || '00:00').slice(0, 8)}`);
+                if (isNaN(d)) return `${slot.date}`;
+                const wd = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][d.getDay()];
+                const time = slot.time_to
+                    ? ` · ${slot.time_from.slice(0, 5)} – ${slot.time_to.slice(0, 5)}`
+                    : ` · ${slot.time_from.slice(0, 5)}`;
+                return `${wd}, ${d.toLocaleDateString('vi-VN')}${time}`;
+            } catch (e) { return `${slot.date}`; }
         }
 
-        // ===== STATS =====
-        function updateStats() {
-            const tasks = filteredTasks;
-            document.getElementById('stat-total').textContent = tasks.length;
+        // ===== TẢI DANH SÁCH ĐƠN MỜI (awaiting_commitment) =====
+        async function loadOffers() {
+            const offersSection = document.getElementById('offers-section');
+            const readyState = document.getElementById('ready-state');
+            const skeleton = document.getElementById('offers-skeleton');
+            const container = document.getElementById('offers-container');
 
-            if (tasks.length > 0) {
-                const avg = tasks.reduce((sum, t) => sum + (parseFloat(t.price) || 0), 0) / tasks.length;
-                document.getElementById('stat-avg').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(avg)) + 'đ';
-            } else {
-                document.getElementById('stat-avg').textContent = '0đ';
-            }
+            // Dừng mọi đồng hồ cũ trước khi render lại
+            Object.keys(offerTimers).forEach(id => { clearInterval(offerTimers[id]); delete offerTimers[id]; });
 
-            document.getElementById('results-count').textContent = tasks.length > 0 ? `${tasks.length} việc` : '';
-        }
-
-        // ===== RENDER TASKS =====
-        function renderTasks() {
-            updateStats();
-            const container = document.getElementById('job-feed');
-
-            if (filteredTasks.length === 0) {
-                const isSearching = document.getElementById('search-input').value.trim().length > 0;
+            let rows = [];
+            try {
+                const resp = await apiFetch(API_BASE + '/matching/bookings/?status=awaiting_commitment');
+                const data = await resp.json();
+                rows = Array.isArray(data) ? data : (data.results || []);
+            } catch (e) {
+                console.error(e);
+                skeleton.classList.add('hidden');
                 container.innerHTML = `
-                    <div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                        <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                            <span class="material-symbols-outlined text-4xl text-textSecondary">${isSearching ? 'search_off' : 'work_off'}</span>
-                        </div>
-                        <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">
-                            ${isSearching ? 'Không tìm thấy kết quả' : 'Chưa có việc làm nào'}
-                        </h3>
-                        <p class="text-textSecondary text-sm max-w-xs">
-                            ${isSearching ? 'Thử tìm kiếm với từ khóa khác nhé!' : 'Hiện chưa có công việc nào phù hợp. Hãy quay lại sau!'}
-                        </p>
-                        ${isSearching ? '<button onclick="clearSearch()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">Xóa tìm kiếm</button>' : ''}
-                    </div>
-                `;
+                    <div class="bg-white rounded-2xl border border-red-100 p-6 text-center">
+                        <span class="material-symbols-outlined text-4xl text-error">wifi_off</span>
+                        <p class="text-sm text-textSecondary mt-2">Không tải được đơn mời. Vui lòng thử lại.</p>
+                        <button onclick="init()" class="mt-3 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all">Thử lại</button>
+                    </div>`;
                 return;
             }
 
-            container.innerHTML = filteredTasks.map(t => {
-                const categoryColors = {
-                    'Gia su': { bg: 'bg-blue-50', text: 'text-blue-600' },
-                    'Don tre': { bg: 'bg-teal-50', text: 'text-teal-600' },
-                    'Don dep nha cua': { bg: 'bg-cyan-50', text: 'text-cyan-600' },
-                    'Trong tre': { bg: 'bg-pink-50', text: 'text-pink-600' },
-                    'Mua sam ho': { bg: 'bg-lime-50', text: 'text-lime-600' },
-                    'Nau an': { bg: 'bg-amber-50', text: 'text-amber-600' },
-                    'Ho tro AI': { bg: 'bg-purple-50', text: 'text-purple-600' },
-                    'Khac': { bg: 'bg-primaryLight', text: 'text-primary' },
-                };
-                const cat = categoryColors[t.category_name] || { bg: 'bg-primaryLight', text: 'text-primary' };
-                const categoryLabels = {
-                    'Gia su': 'Gia sư',
-                    'Don tre': 'Đón trẻ',
-                    'Don dep nha cua': 'Dọn dẹp',
-                    'Trong tre': 'Trông trẻ',
-                    'Mua sam ho': 'Đi chợ',
-                    'Nau an': 'Nấu ăn',
-                    'Ho tro AI': 'Hỗ trợ AI',
-                    'Khac': 'Khác',
-                };
-                const catLabel = categoryLabels[t.category_name] || t.category_name || 'Khác';
+            skeleton.classList.add('hidden');
 
+            if (!rows.length) {
+                offersSection.classList.add('hidden');
+                readyState.classList.remove('hidden');
+                loadNextShift();
+                return;
+            }
+
+            readyState.classList.add('hidden');
+            offersSection.classList.remove('hidden');
+            document.getElementById('offers-count').textContent = rows.length;
+
+            container.innerHTML = rows.map(b => {
+                const parentName = escapeHtml(b.parent_name || 'Phụ huynh');
+                const title = escapeHtml(b.job_title || 'Ca chăm sóc');
+                const typeLabel = JOB_TYPE_LABELS[b.job_type] || '';
+                const addr = escapeHtml(b.job_address || '');
+                const fee = formatMoney(b.total_value_vnd);
+                const bId = String(b.id);
                 return `
-                <article class="task-card bg-white rounded-xl p-5 border border-gray-100 shadow-sm cursor-pointer relative group" onclick="if(event.target.tagName !== 'BUTTON') location.href='{% url 'frontend:task_detail' %}?task_id=${t.id}'">
-                    <div class="flex justify-between items-start mb-3">
-                        <span class="${cat.bg} ${cat.text} px-3 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm">category</span>
-                            ${catLabel}
-                        </span>
-                        <span class="font-manrope text-xl font-extrabold text-primary">${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
-                    </div>
-
-                    <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${escapeHtml(t.title)}</h3>
-
-                    <div class="space-y-2 text-sm text-textSecondary">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-base text-primary/60">location_on</span>
-                            <span class="line-clamp-1">${escapeHtml(t.location)}</span>
+                <article class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm offer-card">
+                    <div class="flex items-start gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-base text-primary/60">schedule</span>
-                            <span>${new Date(t.scheduled_time).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-base text-primary/60">person</span>
-                            <span>${escapeHtml(t.parent_name || 'Phụ huynh')}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                        <span class="text-xs text-textSecondary font-medium">Đăng bởi ${escapeHtml(t.parent_name || 'Hệ thống')}</span>
-                        <button onclick="event.stopPropagation(); apply(${t.id}, ${JSON.stringify(t).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/"/g, '&quot;')})" class="px-5 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
-                            ${t.geofence_lat ? '📍 Ứng tuyển' : 'Ứng tuyển'}
-                        </button>
-                    </div>
-                </article>
-                `;
-            }).join('');
-        }
-
-        // ===== APPLY (với consent cho tracking) =====
-        async function apply(id, taskData) {
-            // Bước 1: Nếu task có geofence → phải đồng ý tracking trước
-            let consentTracking = null;
-            const hasGeofence = taskData && taskData.geofence_lat && taskData.geofence_lng;
-
-            if (hasGeofence) {
-                const agreed = await showConsentModal(taskData);
-                if (!agreed) return; // user không đồng ý → không apply
-                consentTracking = true;
-            } else {
-                // Task không có geofence → confirm bình thường
-                const confirmed = await showConfirmModal(
-                    'Xác nhận ứng tuyển',
-                    'Bạn có muốn ứng tuyển công việc này không?'
-                );
-                if (!confirmed) return;
-            }
-
-            try {
-                const r = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ consent_tracking: consentTracking })
-                });
-                const d = await r.json();
-
-                if (r.ok) {
-                    showToast(d.message || 'Ứng tuyển thành công!', 'success');
-                    setTimeout(() => fetchTasks(), 1500);
-                } else if (d.error === 'CONSENT_REQUIRED') {
-                    // Backend yêu cầu consent → hiện modal
-                    const agreed = await showConsentModal({
-                        title: taskData?.title,
-                        geofence_lat: d.geofence_lat,
-                        geofence_lng: d.geofence_lng,
-                        geofence_radius: d.geofence_radius,
-                    });
-                    if (!agreed) return;
-                    // Retry với consent = true
-                    const r2 = await apiFetch(`${API_BASE}/worker/tasks/${id}/apply/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ consent_tracking: true })
-                    });
-                    const d2 = await r2.json();
-                    if (r2.ok) {
-                        showToast(d2.message || 'Đã ứng tuyển với theo dõi vị trí!', 'success');
-                        setTimeout(() => fetchTasks(), 1500);
-                    } else {
-                        showToast(d2.error || d2.message || 'Không thể ứng tuyển.', 'error');
-                    }
-                } else {
-                    showToast(d.error || d.message || 'Không thể ứng tuyển.', 'error');
-                }
-            } catch (e) {
-                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-            }
-        }
-
-        // ===== CONSENT MODAL (cho tracking) =====
-        function showConsentModal(task) {
-            return new Promise((resolve) => {
-                // Tạo modal element
-                const modalHtml = `
-                <div id="consent-modal-overlay" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
-                        <div class="text-center mb-4">
-                            <div class="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                <span class="material-symbols-outlined text-blue-500 text-3xl" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug">
+                                Phụ huynh ${parentName} đã chọn bạn cho ca làm việc này!
+                            </h3>
+                            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                ${typeLabel ? `<span class="px-2 py-0.5 rounded-lg bg-white/80 border border-amber-200 text-[11px] font-bold text-textSecondary">${typeLabel}</span>` : ''}
+                                <span class="font-semibold text-sm text-primary">${title}</span>
                             </div>
-                            <h3 class="text-lg font-bold text-textPrimary">Cho phép theo dõi vị trí?</h3>
-                            <p class="text-sm text-textSecondary mt-1">Phụ huynh yêu cầu theo dõi vị trí cho việc này</p>
-                        </div>
-
-                        <div class="bg-blue-50 rounded-xl p-3 mb-4 space-y-2">
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Chỉ chia sẻ <strong>khi đang làm việc</strong></span>
+                            <div class="mt-2.5 space-y-1.5 text-sm text-textSecondary">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base text-amber-500">event</span>
+                                    <span>${escapeHtml(formatSlot(b.first_slot))}</span>
+                                </div>
+                                ${addr ? `
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base text-amber-500">location_on</span>
+                                    <span class="line-clamp-1">${addr}</span>
+                                </div>` : ''}
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base text-amber-500">payments</span>
+                                    <span class="font-bold text-textPrimary">${fee}</span>
+                                </div>
                             </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Phụ huynh chỉ thấy <strong>vị trí hiện tại</strong>, không lưu lịch sử</span>
+                            <div class="mt-3.5 bg-white/90 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-2.5">
+                                <span class="material-symbols-outlined text-amber-500 text-xl">timer</span>
+                                <span class="text-sm font-medium text-textSecondary">Thời gian suy nghĩ còn lại:</span>
+                                <span id="cd-${bId}" class="font-manrope font-extrabold text-lg text-amber-600 tabular-nums ml-auto">--:--</span>
                             </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Bạn có thể <strong>dừng bất cứ lúc nào</strong></span>
+                            <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                                <button onclick="commitOffer('${bId}')"
+                                        class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-sm hover:bg-primaryDark transition-all">
+                                    <span class="material-symbols-outlined text-base">task_alt</span>
+                                    Xác nhận cam kết nhận việc
+                                </button>
+                                <button onclick="openDeclineModal('${bId}')"
+                                        class="sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-gray-300 text-textSecondary text-sm font-semibold hover:border-red-300 hover:text-red-500 transition-all">
+                                    <span class="material-symbols-outlined text-base">block</span>
+                                    Từ chối ca
+                                </button>
                             </div>
-                            <div class="flex items-start gap-2 text-xs text-blue-700">
-                                <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
-                                <span>Dữ liệu mã hóa, chỉ phụ huynh sở hữu việc mới xem</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-                            <p class="text-xs text-amber-700">
-                                ⚠️ Vùng an toàn: bán kính <strong>${(task.geofence_radius || 500).toFixed(0)}m</strong>.
-                                Nếu bạn rời vùng, phụ huynh sẽ nhận chuông cảnh báo.
+                            <p class="text-[11px] text-textSecondary/80 mt-2.5 leading-relaxed">
+                                Không xác nhận trước khi hết giờ: đơn tự gỡ khỏi dashboard và phụ huynh sẽ được đề xuất người khác.
                             </p>
                         </div>
-
-                        <div class="flex gap-2">
-                            <button id="consent-no-btn" class="flex-1 py-3 bg-gray-100 text-textSecondary font-bold text-sm rounded-xl hover:bg-gray-200 transition">
-                                Không nhận việc
-                            </button>
-                            <button id="consent-yes-btn" class="flex-1 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primaryDark transition shadow-md shadow-primary/30">
-                                Đồng ý & nhận việc
-                            </button>
-                        </div>
                     </div>
-                </div>`;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                </article>`;
+            }).join('');
 
-                const overlay = document.getElementById('consent-modal-overlay');
-                document.getElementById('consent-no-btn').onclick = () => {
-                    overlay.remove();
-                    resolve(false);
-                };
-                document.getElementById('consent-yes-btn').onclick = () => {
-                    overlay.remove();
-                    resolve(true);
-                };
-            });
+            rows.forEach(b => startCountdown(b));
+        }
+
+        // ===== ĐỒNG HỒ ĐẾM NGƯỢC CAM KẾT =====
+        function startCountdown(b) {
+            const el = document.getElementById('cd-' + b.id);
+            if (!el) return;
+            let remaining = parseInt(b.seconds_left) || 0;
+            const tick = () => {
+                if (remaining <= 0) {
+                    clearInterval(offerTimers[b.id]);
+                    delete offerTimers[b.id];
+                    showToast('Một đơn mời đã hết thời gian cam kết và được gỡ khỏi dashboard.', 'warning');
+                    loadOffers();
+                    return;
+                }
+                remaining--;
+                const h = Math.floor(remaining / 3600);
+                const m = Math.floor((remaining % 3600) / 60);
+                const s = remaining % 60;
+                el.textContent = h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
+            };
+            clearInterval(offerTimers[b.id]);
+            tick();
+            offerTimers[b.id] = setInterval(tick, 1000);
+        }
+
+        // ===== XÁC NHẬN CAM KẾT =====
+        async function commitOffer(bookingId) {
+            const ok = await showConfirmModal(
+                'Xác nhận cam kết',
+                'Bạn chắc chắn nhận ca này? Sau khi cam kết, hãy có mặt đúng giờ nhé!'
+            );
+            if (!ok) return;
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/bookings/${bookingId}/commit/`, { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    showToast('Đã cam kết nhận việc! Ca đã chuyển vào "Việc của tôi".', 'success');
+                    loadOffers();
+                } else {
+                    const msg = data.detail || (data.code === 'too_late'
+                        ? 'Đơn đã hết thời gian cam kết.'
+                        : 'Không cam kết được đơn. Vui lòng thử lại.');
+                    showToast(msg, 'error');
+                    loadOffers();
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Không cam kết được đơn. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        // ===== MODAL TỪ CHỐI =====
+        function openDeclineModal(bookingId) {
+            declineBookingId = bookingId;
+            const list = document.getElementById('decline-reason-list');
+            list.innerHTML = CANCEL_REASONS.map((r, i) => `
+                <label class="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 cursor-pointer">
+                    <input type="radio" name="declineReason" value="${r.code}" ${i === 0 ? 'checked' : ''} class="accent-[#F26522]">
+                    <span>${r.label}${r.fm ? ' <span class=\"text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded\">Bất khả kháng</span>' : ''}</span>
+                </label>`).join('');
+            document.getElementById('decline-note').value = '';
+            const modal = document.getElementById('decline-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeDeclineModal() {
+            const modal = document.getElementById('decline-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            declineBookingId = null;
+        }
+
+        async function submitDecline() {
+            if (!declineBookingId) return;
+            const picked = CANCEL_REASONS.find(r => r.code === (document.querySelector('input[name="declineReason"]:checked') || {}).value);
+            const note = document.getElementById('decline-note').value.trim();
+            if (!picked) return showToast('Chọn lý do từ chối.', 'warning');
+            if (picked.fm && note.length < 20) return showToast('Lý do bất khả kháng cần ghi chú ít nhất 20 ký tự.', 'warning');
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/bookings/${declineBookingId}/cancel/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason_code: picked.code, note, evidence: [] })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    closeDeclineModal();
+                    showToast('Đã từ chối ca. Phụ huynh sẽ được thông báo để chọn người khác.', 'info');
+                    loadOffers();
+                } else {
+                    showToast(data.detail || 'Không từ chối được đơn. Vui lòng thử lại.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Không từ chối được đơn. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        document.getElementById('decline-close').onclick = closeDeclineModal;
+        document.getElementById('decline-submit').onclick = submitDecline;
+
+        // ===== CA LÀM VIỆC TIẾP THEO (từ lịch rảnh) =====
+        async function loadNextShift() {
+            const box = document.getElementById('next-shift-info');
+            if (!box) return;
+            try {
+                const resp = await apiFetch(API_BASE + '/matching/carepartners/me/availability/');
+                const data = await resp.json();
+                // Backend Flow 1 Step 4 trả {"windows": [...]}
+                const windows = Array.isArray(data) ? data : (data.windows || data.results || []);
+                if (!windows.length) {
+                    box.innerHTML = `
+                        <p class="text-sm text-textSecondary">Bạn chưa khai lịch rảnh — phụ huynh không thể chọn bạn vào ca nào.</p>
+                        <a href="{% url 'frontend:lich_ranh' %}" class="inline-flex items-center gap-1 text-primary font-bold text-sm mt-1.5 hover:underline">
+                            Khai lịch rảnh ngay <span class="material-symbols-outlined text-base">arrow_forward</span>
+                        </a>`;
+                    return;
+                }
+                const now = new Date();
+                let best = null;
+                for (const w of windows) {
+                    for (let add = 0; add <= 7; add++) {
+                        const d = new Date(now);
+                        d.setDate(d.getDate() + add);
+                        if ((d.getDay() + 6) % 7 !== w.weekday) continue; // JS 0=CN → chuẩn 0=T2
+                        const [fh, fm2] = String(w.time_from).split(':');
+                        const start = new Date(d);
+                        start.setHours(parseInt(fh), parseInt(fm2 || 0), 0, 0);
+                        if (start <= now) continue;
+                        if (!best || start < best.start) best = { start, w };
+                        break; // chỉ xét lần xuất hiện gần nhất của khung này
+                    }
+                }
+                if (!best) {
+                    box.innerHTML = '<p class="text-sm text-textSecondary">Lịch rảnh tuần này đã qua — thêm khung giờ mới để nhận thêm đơn nhé!</p>';
+                    return;
+                }
+                const wd = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][best.start.getDay()];
+                box.innerHTML = `
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-success text-sm font-bold border border-emerald-100">
+                            <span class="material-symbols-outlined text-base">schedule</span>
+                            ${wd} · ${pad2(best.start.getHours())}:${pad2(best.start.getMinutes())} – ${String(best.w.time_to).slice(0, 5)}
+                        </span>
+                        <span class="text-sm text-textSecondary">${best.start.toLocaleDateString('vi-VN')}</span>
+                    </div>`;
+            } catch (e) {
+                console.warn('loadNextShift failed:', e);
+                box.innerHTML = '<p class="text-sm text-textSecondary">Không tải được lịch rảnh. Vui lòng thử lại.</p>';
+            }
         }
 
         // ===== LOGOUT =====
@@ -725,129 +689,47 @@
             });
         }
 
-        // ===== FETCH TASKS (⚡ cached + stale-while-revalidate) =====
-        async function fetchTasks() {
-            try {
-                // ⚡ Sử dụng cachedFetch — cache 60s, stale 5 phút
-                allTasks = await EduPerf.cachedFetch(
-                    'tasks:all',
-                    async () => {
-                        const resp = await apiFetch(API_BASE + "/tasks/");
-                        return await resp.json();
-                    },
-                    { ttl: EduPerf.TTL.LONG, forceRefresh: false }
-                );
-                // Re-apply search filter
-                handleSearch(document.getElementById('search-input').value);
-            } catch (e) {
-                console.error(e);
-                showToast('Không thể tải danh sách việc. Vui lòng thử lại.', 'error');
-                document.getElementById('job-feed').innerHTML = `
-                    <div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                        <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
-                            <span class="material-symbols-outlined text-4xl text-error">wifi_off</span>
-                        </div>
-                        <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Lỗi kết nối</h3>
-                        <p class="text-textSecondary text-sm max-w-xs">Không thể tải danh sách việc làm. Vui lòng thử lại.</p>
-                        <button onclick="init()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">Thử lại</button>
-                    </div>
-                `;
-            }
-        }
-
         // ===== INIT =====
         async function init() {
             try {
-                // Fetch profile
-                const profResp = await apiFetch(API_BASE + "/profile/");
-                const prof = await profResp.json();
-                const displayName = prof.first_name || prof.username || 'Carepartner';
+                // Fetch profile (null-safe — lỗi profile không được chặn đơn mời)
+                let displayName = 'Carepartner';
+                let username = 'W';
+                try {
+                    const profResp = await apiFetch(API_BASE + "/profile/");
+                    if (profResp && profResp.ok) {
+                        const prof = await profResp.json();
+                        displayName = prof.first_name || prof.username || 'Carepartner';
+                        username = prof.username || 'W';
+                    }
+                } catch (e) { console.warn('profile load failed:', e); }
 
-                // Update sidebar
-                document.getElementById('sidebar-name').textContent = displayName;
-                document.getElementById('sidebar-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
+                // Update sidebar (nếu phần tử tồn tại)
+                const nameEl = document.getElementById('sidebar-name');
+                if (nameEl) nameEl.textContent = displayName;
+                const avtEl = document.getElementById('sidebar-avatar');
+                if (avtEl) avtEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=F26522&color=fff`;
 
                 // Update mobile header
-                document.getElementById('mobile-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
-                document.getElementById('header-greeting').textContent = `Chào, ${displayName}!`;
+                const mavtEl = document.getElementById('mobile-avatar');
+                if (mavtEl) mavtEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=F26522&color=fff`;
+                const greetEl = document.getElementById('header-greeting');
+                if (greetEl) greetEl.textContent = `Chào, ${displayName}!`;
 
-                // Fetch tasks
-                await fetchTasks();
-
-                // Load AI recommendations (async, không block)
-                loadAIRecommendations();
+                // Tải đơn mời Flow 1 (awaiting_commitment) hoặc trạng thái sẵn sàng
+                await loadOffers();
             } catch (e) {
                 console.error(e);
                 showToast('Không thể tải thông tin. Vui lòng thử lại.', 'error');
             }
         }
 
-        // ===== AI RECOMMENDATIONS =====
-        async function loadAIRecommendations(forceRefresh = false) {
-            try {
-                const section = document.getElementById('ai-recommendations-section');
-                const container = document.getElementById('ai-recommendations-container');
-
-                // Loading state
-                container.innerHTML = `
-                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-blue-100 flex items-center gap-3">
-                        <div class="spinner" style="border-color: #F26522 transparent transparent transparent;"></div>
-                        <span class="text-sm text-textSecondary">AI đang phân tích hồ sơ của bạn...</span>
-                    </div>
-                `;
-                section.classList.remove('hidden');
-
-                const url = API_BASE + '/ai/recommendations/worker/' + (forceRefresh ? '?_t=' + Date.now() : '');
-                const resp = await apiFetch(url);
-                if (!resp || !resp.ok) {
-                    section.classList.add('hidden');
-                    return;
-                }
-                const data = await resp.json();
-
-                if (!data.has_ai || !data.recommendations || data.recommendations.length === 0) {
-                    section.classList.add('hidden');
-                    return;
-                }
-
-                // Render top 3 recommendations
-                const top3 = data.recommendations.slice(0, 3);
-                container.innerHTML = top3.map(rec => {
-                    const t = rec.task;
-                    if (!t) return '';
-                    const score = rec.match_score;
-                    const scoreColor = score >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                       : score >= 50 ? 'text-amber-600 bg-amber-50 border-amber-200'
-                                       : 'text-gray-500 bg-gray-50 border-gray-200';
-                    const scoreLabel = score >= 80 ? 'Rất phù hợp' : score >= 50 ? 'Phù hợp' : 'Ít phù hợp';
-                    return `
-                    <div class="bg-gradient-to-r from-purple-50 via-white to-blue-50 rounded-xl p-4 border border-blue-100 hover:shadow-md transition cursor-pointer"
-                         onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${t.id}'">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor}">${scoreLabel} ${score}/100</span>
-                                    ${t.has_geofence ? '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">📍 Tracking</span>' : ''}
-                                </div>
-                                <h4 class="font-bold text-sm text-textPrimary line-clamp-1">${escapeHtml(t.title)}</h4>
-                                <p class="text-xs text-textSecondary line-clamp-2 mt-1">${escapeHtml(rec.reason)}</p>
-                                <div class="flex items-center gap-3 mt-2 text-xs text-textMuted">
-                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${escapeHtml(t.location)}</span>
-                                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">payments</span>${new Intl.NumberFormat('vi-VN').format(parseInt(t.price))}đ</span>
-                                </div>
-                            </div>
-                            <span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition">chevron_right</span>
-                        </div>
-                    </div>
-                    `;
-                }).join('');
-
-                section.classList.remove('hidden');
-            } catch (e) {
-                console.warn('AI recommendations load failed:', e);
-                document.getElementById('ai-recommendations-section').classList.add('hidden');
+        // Auto-refresh nhẹ mỗi 60s để bắt đơn mời mới (khi tab đang mở)
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && !Object.keys(offerTimers).length) {
+                loadOffers();
             }
-        }
+        }, 60000);
 
         init();
     </script>

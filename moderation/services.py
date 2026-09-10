@@ -14,6 +14,14 @@ logger = logging.getLogger('educarelink.moderation')
 
 CACHE_TTL = 600  # 10 phút
 
+# ═══════════════════════════════════════════════════════════════════
+# QA 2026-09-10 VẤN ĐỀ #1: EduCareLink CHỈ CÓ 3 DANH MỤC DỊCH VỤ.
+# Nguồn sự thật duy nhất — được core/views.py (gate 400 khi đăng Task),
+# seed_demo_data và scanner quét 60s cùng dùng. Danh mục khác bị khóa
+# mềm (ServiceCategory.is_active=False) — KHÔNG xóa để giữ dữ liệu cũ.
+# ═══════════════════════════════════════════════════════════════════
+ALLOWED_CATEGORY_NAMES = ['Gia sư', 'Đón trẻ', 'Trông trẻ']
+
 
 def _get_gemini_client():
     """⚡ TỐI ƯU: dùng pooled singleton client."""
@@ -325,34 +333,26 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
     except (ValueError, TypeError):
         pass
 
-    # ⚡ CATEGORY CHECK: Chỉ chấp nhận 5 danh mục cốt lõi
-    # Nếu task không chứa bất kỳ từ khóa nào của 5 danh mục → REJECT
+    # ⚡ CATEGORY CHECK (QA 2026-09-10 Vấn đề #1): CHỈ CHẤP NHẬN 3 DANH MỤC
+    # (Gia sư, Đón trẻ, Trông trẻ). Task không chứa bất kỳ từ khóa nào của
+    # 3 nhóm này → REJECT ngay lập tức, không cần AI.
     CATEGORY_KEYWORDS = [
         # 1. Gia sư
         'gia sư', 'gia su', 'dạy kèm', 'day kem', 'học thêm', 'hoc them', 'ôn thi', 'on thi',
         'ngoại ngữ', 'ngoai ngu', 'tiếng anh', 'tieng anh', 'tiếng việt', 'tieng viet',
-        'toán', 'toan', 'lý', 'ly', 'hóa', 'hoa', 'văn', 'lịch sử', 'lich su', 'địa lý', 'dia ly',
-        'piano', 'guitar', 'organ', 'vẽ', 've', 'mỹ thuật', 'my thuat', 'nhạc', 'nhac',
-        'dạy', 'day', 'giaovien', 'giáo viên', 'lớp', 'lop', 'học sinh', 'hoc sinh',
+        'toán', 'toan', 'lý', 'hóa', 'văn', 'lịch sử', 'lich su', 'địa lý', 'dia ly',
+        'piano', 'guitar', 'organ', 'vẽ', 'mỹ thuật', 'my thuat', 'nhạc', 'nhac',
+        'dạy', 'giaovien', 'giáo viên', 'lớp', 'học sinh', 'hoc sinh',
         'sư phạm', 'su pham', ' ôn ', ' kiểu ', ' năng khiếu', 'nang khieu', 'ielts', 'toeic',
         # 2. Đón trẻ
         'đón trẻ', 'don tre', 'đón con', 'don con', 'đưa đón', 'dua don', 'đón bé', 'don be',
         'đón học sinh', 'don hoc sinh', 'đón em', 'don em', 'đưa con', 'dua con',
         'đi học về', 'di hoc ve', 'trường học', 'truong hoc', 'trẻ trường', 'đón hộ', 'don ho',
-        # 3. Dọn dẹp
-        'dọn dẹp', 'don dep', 'lau dọn', 'lau don', 'vệ sinh', 've sinh', 'dọn phòng', 'don phong',
-        'dọn nhà', 'don nha', 'lau nhà', 'lau nha', 'lau sàn', 'lau san', 'chùi', 'chui',
-        'quét', 'quet', 'lau chùi', 'lau chui', 'dọn vệ sinh', 'don ve sinh',
-        'dọn dẹp nhà', 'don dep nha', 'lau dọn nhà', 'lau don nha',
-        # 4. Trông trẻ
+        # 3. Trông trẻ
         'trông trẻ', 'trong tre', 'trông bé', 'trong be', 'trông con', 'trong con',
         'trông em', 'trong em', 'babysitter', 'giữ trẻ', 'giu tre', 'chăm sóc trẻ', 'cham soc tre',
         'chăm bé', 'cham be', 'chăm con', 'cham con', 'người trông trẻ', 'nguoi trong tre',
         'trông trẻ hộ', 'trong tre ho', ' giữ bé ', 'giu be',
-        # 5. Mua sắm hộ
-        'mua sắm', 'mua sam', 'mua hộ', 'mua ho', 'đi chợ', 'di cho', 'mua đồ', 'mua do',
-        'mua giúp', 'mua giup', 'mua thực phẩm', 'mua thuc pham', 'shopping hộ', 'shopping ho',
-        'mua tạp hóa', 'mua tap hoa', 'đi siêu thị', 'di sieu thi', 'mua đồ hộ', 'mua do ho',
     ]
 
     has_category_keyword = any(
@@ -363,7 +363,7 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
         flags.append('khong_lien_quan_danh_muc')
         return {
             'banned': True,
-            'reason': 'Công việc không thuộc 5 danh mục cốt lõi của EduCareLink (Gia sư, Đón trẻ, Dọn dẹp, Trông trẻ, Mua sắm hộ). Vui lòng đăng công việc phù hợp.',
+            'reason': 'Công việc không thuộc 3 danh mục duy nhất của EduCareLink (Gia sư, Đón trẻ, Trông trẻ). Vui lòng đăng công việc phù hợp.',
             'flags': flags,
             'confidence': 0.95,
         }
@@ -377,29 +377,33 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
 
 TASK_MODERATION_PROMPT = """Bạn là hệ thống kiểm duyệt nội dung AI của EduCareLink.
 
-Nhiệm vụ: Kiểm duyệt công việc phụ huynh đăng. CHỈ CHẤP NHẬN 5 DANH MỤC:
+Nhiệm vụ: Kiểm duyệt công việc phụ huynh đăng. CHỈ CHẤP NHẬN ĐÚNG 3 DANH MỤC
+sau đây — BẤT KỂ công việc nào ngoài 3 danh mục này ĐỀU PHẢI REJECTED NGAY,
+không có ngoại lệ, kể cả việc "tốt" hay "hợp pháp":
 
 1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu (piano, guitar, vẽ)
 2. Đón trẻ — đưa đón học sinh, đón con đi học về
-3. Dọn dẹp nhà cửa — lau dọn, vệ sinh, dọn phòng
-4. Trông trẻ — giữ trẻ, babysitter, chăm sóc trẻ
-5. Mua sắm hộ — đi chợ, mua đồ giúp
+3. Trông trẻ — giữ trẻ, babysitter, chăm sóc trẻ
 
-REJECTED nếu:
-- Không thuộc 5 danh mục trên (ví dụ: nấu ăn, dắt chó, rửa xe, trồng cây, chuyển nhà, làm bánh, bán hàng, xăm hình, karaoke, massage, xem bói, đầu tư, crypto, đa cấp, cho vay, hẹn hò, tuyển nhân viên, hack, crack)
+REJECTED ngay lập tức nếu:
+- KHÔNG thuộc đúng 3 danh mục trên. Ví dụ bị chặn: nấu ăn, dọn dẹp nhà cửa,
+  mua sắm hộ, đi chợ, rửa xe, dắt chó, trồng cây, chuyển nhà, làm bánh, bán hàng,
+  xăm hình, karaoke, massage, xem bói, đầu tư, crypto, đa cấp, cho vay, hẹn hò,
+  tuyển nhân viên, hack, crack, sửa chữa điện nước, trị liệu...
 - Vi phạm pháp luật VN (bạo lực, ma túy, cờ bạc, vũ khí, lừa đảo, hiếp dâm, mua bán người, chính trị phản động, tự sát)
 - Vi phạm tiêu chuẩn cộng đồng (bóc lột giá < 20.000đ/giờ, nude, khiêu dâm, prostitution, hookup, tuyển người yêu, quấy rối, phân biệt đối xử)
 - Spam, quảng cáo, link đáng ngờ, tin nhắn vô nghĩa
 
-APPROVED nếu: thuộc 1 trong 5 danh mục trên + hợp pháp + đạo đức.
+APPROVED chỉ khi: thuộc đúng 1 trong 3 danh mục trên + hợp pháp + đạo đức.
 
 ⚠️ CHỐNG NÉ FILTER: Người đăng có thể cố tình viết sai chính tả, chèn dấu
 chấm/gạch/khoảng trắng giữa các chữ cái (vd "đ.ị.t", "d_i_t"), dùng ký tự
 Unicode nhìn giống chữ cái thường (Cyrillic, fullwidth), số thay chữ
-(1337speak: "d1t", "vl"), hoặc viết tắt/teencode để né bộ lọc từ khóa.
-LUÔN đọc hiểu Ý NGHĨA THỰC SỰ đằng sau cách viết, không chỉ so khớp chữ
-nguyên văn — nếu nội dung thực chất vi phạm dù được viết lách bằng ký tự
-lạ, vẫn REJECTED.
+(1337speak: "d1t", "vl"), hoặc viết tắt/teencode để né bộ lọc từ khóa,
+hoặc gói việc không thuộc 3 danh mục trong lời mô tả nghe giống chăm trẻ
+(vd "trông bé" nhưng thực chất là nấu ăn + dọn nhà). LUÔN đọc hiểu Ý NGHĨA
+THỰC SỰ đằng sau cách viết, không chỉ so khớp chữ nguyên văn — nếu nội dung
+thực chất vi phạm dù được viết lách bằng ký tự lạ, vẫn REJECTED.
 
 OUTPUT BẮT BUỘC: chỉ trả JSON thuần, không markdown fence, không text thừa.
 {"verdict": "APPROVED", "confidence": 0.95, "flags": [], "explanation": "tiếng Việt", "suggestion": ""}

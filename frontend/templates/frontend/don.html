@@ -16,7 +16,7 @@
     {% include 'frontend/_matching_common.html' %}
 </head>
 <body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
-{% include 'frontend/_parent_chrome.html' with active_tab='matching' %}
+{% include 'frontend/_role_chrome.html' with active_tab='matching' worker_tab='feed' %}
 <header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90 lg:ml-[260px]">
     <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
         <a href="javascript:history.back()" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
@@ -24,9 +24,6 @@
             <span>Quay lại</span>
         </a>
         <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Chi tiết đơn ghép cặp</span>
-        <span class="text-xs font-bold text-[#F26522] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
-            Flow 1
-        </span>
     </div>
 </header>
 
@@ -52,6 +49,21 @@
                 <div id="countdown" class="text-2xl sm:text-3xl font-extrabold text-[#F26522] mt-1 font-headline tracking-tight"></div>
             </div>
             <div id="meta" class="text-sm text-gray-600 mt-4 space-y-1.5 bg-gray-50 p-3.5 rounded-xl border border-gray-100"></div>
+        </div>
+
+        <!-- Hành động CarePartner: XÁC NHẬN / TỪ CHỐI cam kết (Grab-style) -->
+        <div id="commitActions" class="hidden mcm-card space-y-3 border-orange-200 bg-orange-50/40">
+            <h3 class="font-headline font-bold text-[#1A1A2E] text-base">Bạn có nhận công việc này không?</h3>
+            <p class="text-xs text-gray-500 leading-relaxed">Đơn sẽ tự biến mất khỏi dashboard của bạn nếu bạn không xác nhận trước khi hết thời gian. Từ chối hoặc hết hạn đều được thông báo về phụ huynh để họ chọn người khác.</p>
+            <div class="flex gap-2.5 flex-wrap">
+                <button id="commitBtn" class="bg-[#F26522] hover:bg-[#D4541E] text-white rounded-xl px-6 py-3 font-extrabold text-sm shadow-sm transition flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">check_circle</span>
+                    Xác nhận cam kết
+                </button>
+                <button id="declineBtn" class="bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl px-5 py-3 font-bold text-sm transition">
+                    Từ chối đơn
+                </button>
+            </div>
         </div>
 
         <!-- Hành động CarePartner -->
@@ -144,6 +156,7 @@
   const STATUS_STYLE = {
     awaiting_commitment: ['Chờ cam kết', '#F26522'], committed: ['Đã cam kết', '#0E9F6E'],
     in_progress: ['Đang làm', '#2563EB'], completed: ['Hoàn thành', '#0E9F6E'],
+    declined_in_window: ['Đã từ chối', '#DC2626'], expired_no_response: ['Hết hạn phản hồi', '#6B7280'],
     cancelled_by_carepartner: ['CarePartner đã hủy', '#DC2626'],
     cancelled_by_parent: ['Phụ huynh đã hủy', '#DC2626'],
     no_show: ['Không đến làm', '#DC2626'], suspected_no_show: ['Nghi ngờ không đến', '#F5A623'],
@@ -190,6 +203,12 @@
     const isCP = MY_ID && String(booking.carepartner_id) === String(MY_ID);
     const isParent = MY_ID && String(booking.parent_id) === String(MY_ID);
 
+    // Hành động CP: xác nhận / từ chối cam kết (Grab-style)
+    const commitActions = document.getElementById('commitActions');
+    if (isCP && booking.status === 'awaiting_commitment') {
+      commitActions.classList.remove('hidden');
+    } else { commitActions.classList.add('hidden'); }
+
     // Hành động CP
     const cpActions = document.getElementById('cpActions');
     if (isCP && ['committed', 'in_progress'].includes(booking.status)) {
@@ -217,6 +236,20 @@
     if (isParent && booking.status === 'suspected_no_show') noShow.classList.remove('hidden');
     else noShow.classList.add('hidden');
   }
+
+  document.getElementById('commitBtn').onclick = async () => {
+    const r = await authFetch(`${API_BASE}/matching/bookings/${bookingId}/commit/`, { method: 'POST' });
+    if (r.ok) {
+      toast('Đã cam kết nhận đơn! Nhớ có mặt đúng giờ nhé.');
+      load();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      toast(d.detail ? d.detail : 'Đơn không còn ở trạng thái chờ cam kết.', false);
+      load();
+    }
+  };
+  // Từ chối = hủy trong cửa sổ cam kết (T0) — mở modal 8 lý do có sẵn
+  document.getElementById('declineBtn').onclick = () => document.getElementById('cancelBtn').click();
 
   document.getElementById('startBtn').onclick = async () => {
     const r = await authFetch(`${API_BASE}/matching/bookings/${bookingId}/start/`, { method: 'POST' });
