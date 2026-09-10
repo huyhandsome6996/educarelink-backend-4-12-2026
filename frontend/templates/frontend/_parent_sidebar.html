@@ -7,11 +7,60 @@
 <!-- ============================================================ -->
 
 <style>
-  .psb-scroll::-webkit-scrollbar { width: 4px; }
-  .psb-scroll::-webkit-scrollbar-track { background: transparent; }
-  .psb-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-  .psb-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-  .psb-scroll { scrollbar-width: thin; }
+  /* 1. KHÓA CỨNG KÍCH THƯỚC SIDEBAR TUYỆT ĐỐI (260px) TRÊN MỌI TRANG VÀ ENGINE CSS */
+  #sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    background-color: #ffffff !important;
+    border-right: 1px solid #e5e7eb !important;
+    z-index: 40 !important;
+  }
+
+  /* Đảm bảo nội dung chính luôn dịch lề 260px trên desktop */
+  @media (min-width: 1024px) {
+    main, .main-content, .chat-main-area, .main-area {
+      margin-left: 260px !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  /* 2. TRIỆT TIÊU LAYOUT SHIFT DO THANH CUỘN CỬA SỔ (WINDOW SCROLLBAR) */
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* 3. LÀM MƯỢT VÀ ẨN THANH CUỘN THÔ CỦA SIDEBAR TRÊN WINDOWS CHROME */
+  /* Vẫn cho phép cuộn mượt bằng con lăn chuột/trackpad nhưng không hiển thị thanh cuộn thô 17px gây co giãn */
+  .psb-scroll {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important; /* Firefox & Chrome 121+ */
+    -ms-overflow-style: none !important; /* IE/Edge legacy */
+  }
+  .psb-scroll::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* 4. ĐỒNG BỘ CẤU TRÚC VIỀN TRÁI VÀ PADDING ITEM ĐỂ KHÔNG BAO GIỜ BỊ GIẬT/LỆCH PIXEL */
+  .psb-nav-item {
+    border-left: 4px solid transparent;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .psb-nav-item.active {
+    border-left-color: #F26522 !important;
+    background-color: rgba(255, 247, 237, 0.9) !important;
+    color: #c2410c !important;
+  }
 
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 22;
@@ -28,7 +77,7 @@
 </style>
 
 <!-- Brand Logo & Context Area -->
-<div class="p-5 border-b border-slate-100/90 shrink-0">
+<div class="px-4 py-3.5 border-b border-slate-100/90 shrink-0">
   <div class="flex items-center gap-3">
     <!-- Logo Icon Box using project logo -->
     <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center shadow-sm shrink-0">
@@ -51,7 +100,7 @@
 </div>
 
 <!-- Main Navigation List with Categorized Grouping -->
-<nav class="flex-1 px-3 py-4 space-y-6 overflow-y-auto psb-scroll" data-purpose="main-navigation">
+<nav class="flex-1 px-3 py-3 space-y-4 overflow-y-auto psb-scroll" data-purpose="main-navigation">
 
   <!-- Group 1: QUẢN LÝ & DỊCH VỤ -->
   <div class="space-y-1">
@@ -61,7 +110,7 @@
 
     <!-- 1. Trang chủ -->
     <a href="{% url 'frontend:parent_home' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'home' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'home' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'home' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">home</span>
         <span class="truncate">Trang chủ</span>
@@ -73,7 +122,7 @@
 
     <!-- 2. Việc của tôi -->
     <a href="{% url 'frontend:parent_tasks' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'tasks' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'tasks' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'tasks' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">assignment</span>
         <span class="truncate">Việc của tôi</span>
@@ -85,7 +134,7 @@
 
     <!-- 3. Nhật ký chăm sóc -->
     <a href="{% url 'frontend:parent_care_diary_history' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'diary' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'diary' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'diary' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">auto_stories</span>
         <span class="truncate">Nhật ký chăm sóc</span>
@@ -97,17 +146,17 @@
 
     <!-- 4. Đăng việc ghép cặp (Special with High Contrast Badge) -->
     <a href="{% url 'frontend:dang_viec_select' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'matching' or active_tab == 'create' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-700 hover:bg-orange-50/70 hover:text-[#c2410c] group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'matching' or active_tab == 'create' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-700 hover:bg-orange-50/70 hover:text-[#c2410c] group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl fill-icon text-[#F26522]">auto_awesome</span>
-        <span class="truncate {% if active_tab == 'matching' or active_tab == 'create' %}font-bold text-[#c2410c]{% else %}group-hover:font-semibold transition-colors{% endif %}">Đăng việc ghép cặp</span>
+        <span class="truncate {% if active_tab == 'matching' or active_tab == 'create' %}font-bold text-[#c2410c]{% else %}group-hover:text-[#c2410c] transition-colors{% endif %}">Đăng việc ghép cặp</span>
       </div>
       <span class="px-2 py-0.5 rounded-full bg-[#F26522] text-white font-bold text-[10px] tracking-wide shadow-sm shadow-orange-500/20 shrink-0">MỚI</span>
     </a>
 
     <!-- 5. Ví credit -->
     <a href="{% url 'frontend:vi_credit' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'credit' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'credit' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'credit' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">account_balance_wallet</span>
         <span class="truncate {% if active_tab == 'credit' %}font-bold text-[#c2410c]{% endif %}">Ví credit</span>
@@ -126,7 +175,7 @@
 
     <!-- 6. AI Trợ lý -->
     <a href="{% url 'frontend:chatbot' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'chatbot' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'chatbot' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'chatbot' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">smart_toy</span>
         <span class="truncate">AI Trợ lý</span>
@@ -138,7 +187,7 @@
 
     <!-- 7. Hướng dẫn sử dụng -->
     <a href="/onboarding/parent/"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'help' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'help' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'help' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">help_outline</span>
         <span class="truncate">Hướng dẫn sử dụng</span>
@@ -150,7 +199,7 @@
 
     <!-- 8. Cài đặt / Hồ sơ -->
     <a href="{% url 'frontend:parent_profile' %}"
-       class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all font-medium {% if active_tab == 'profile' or active_tab == 'settings' %}bg-orange-50/80 text-[#c2410c] font-semibold border-l-4 border-[#F26522] rounded-l-none pl-2.5 shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
+       class="psb-nav-item flex items-center justify-between pl-2.5 pr-3 py-2 rounded-xl text-sm font-medium {% if active_tab == 'profile' or active_tab == 'settings' %}active font-semibold rounded-l-none shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 group{% endif %}">
       <div class="flex items-center gap-3 min-w-0">
         <span class="material-symbols-outlined text-xl {% if active_tab == 'profile' or active_tab == 'settings' %}fill-icon text-[#F26522]{% else %}text-slate-400 group-hover:text-slate-600 transition-colors{% endif %}">settings</span>
         <span class="truncate">Cài đặt</span>
