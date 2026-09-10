@@ -281,86 +281,8 @@
         </div>
     </div>
 
-    <!-- ========== SIDEBAR (Desktop) ========== -->
-    <aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
-        <!-- Logo -->
-        <div class="px-6 py-6 border-b border-gray-50">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-                <div>
-                    <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
-                </div>
-            </a>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 px-4 py-6 sidebar-scroll overflow-y-auto">
-            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{% url 'frontend:worker_feed' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">search</span>
-                        Tìm việc
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_jobs' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">assignment</span>
-                        Việc của tôi
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_profile' %}" class="nav-item active flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold">
-                        <span class="material-symbols-outlined text-xl">person</span>
-                        Hồ sơ
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_chatbot' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">smart_toy</span>
-                        AI Trợ lý
-                    </a>
-                </li>
-            </ul>
-            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mt-4 mb-2">Ghép cặp Flow 1</p>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{% url 'frontend:don_cua_toi' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">auto_awesome</span>
-                        Đơn ghép cặp
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:lich_ranh' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">calendar_month</span>
-                        Lịch rảnh ghép cặp
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:ngay_ban' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">event_busy</span>
-                        Ngày bận đột xuất
-                    </a>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- User section at bottom -->
-        <div class="px-4 py-4 border-t border-gray-100">
-            <div class="flex items-center gap-3 px-2">
-                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
-                    <img id="sidebar-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff" alt="Avatar"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
-                    <p id="sidebar-role" class="text-xs text-textSecondary">Carepartner</p>
-                </div>
-                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
-                    <span class="material-symbols-outlined text-xl">logout</span>
-                </button>
-            </div>
-        </div>
-    </aside>
+    <!-- ========== SIDEBAR + MOBILE NAV CHUẨN CAREPARTNER (Batch 1) ========== -->
+    {% include 'frontend/_worker_chrome.html' with active_tab='profile' %}
 
     <!-- ========== PARENT BACK BANNER (visible only when parent views carepartner profile) ========== -->
     <div id="parent-back-banner" class="parent-back-banner md:ml-[260px]">
@@ -377,7 +299,7 @@
     </div>
 
     <!-- ========== MAIN CONTENT ========== -->
-    <main class="main-area md:ml-[260px] min-h-screen pb-24 md:pb-8">
+    <main class="main-area lg:ml-[260px] min-h-screen pb-24 md:pb-8">
         <!-- Top header bar -->
         <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
             <div class="px-4 md:px-8 py-4">
@@ -621,7 +543,7 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </button>
-                    <!-- Lịch rảnh (ghép cặp Flow 1) -->
+                    <!-- Lịch rảnh làm việc -->
                     <a href="{% url 'frontend:lich_ranh' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
@@ -631,7 +553,7 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </a>
-                    <!-- Ngày bận đột xuất (Flow 1) -->
+                    <!-- Ngày bận đột xuất -->
                     <a href="{% url 'frontend:ngay_ban' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
@@ -641,7 +563,7 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </a>
-                    <!-- Đơn ghép cặp của tôi (Flow 1) -->
+                    <!-- Đơn ghép cặp của tôi -->
                     <a href="{% url 'frontend:don_cua_toi' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -697,23 +619,7 @@
         </div>
     </main>
 
-    <!-- ========== MOBILE BOTTOM NAV ========== -->
-    <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 shadow-lg" style="display: none;">
-        <div class="flex justify-around items-center px-2 pt-2 pb-6">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">search</span>
-                <span class="text-[11px] font-semibold mt-1">Tìm việc</span>
-            </a>
-            <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">assignment</span>
-                <span class="text-[11px] font-semibold mt-1">Việc của tôi</span>
-            </a>
-            <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-primaryLight text-primary transition-all">
-                <span class="material-symbols-outlined text-2xl filled" style="font-variation-settings: 'FILL' 1;">person</span>
-                <span class="text-[11px] font-bold mt-1">Hồ sơ</span>
-            </a>
-        </div>
-    </nav>
+    <!-- Mobile bottom nav chuyển vào _worker_chrome.html (Batch 1 — đồng bộ chuẩn 4 tab) -->
 
     <!-- ========== NOTIFICATION PANEL ========== -->
     <div id="notification-panel" class="fixed top-0 right-0 h-full w-full md:w-[400px] bg-white shadow-2xl z-[100] transform translate-x-full transition-transform duration-300 ease-in-out">
@@ -1192,11 +1098,12 @@
                 const backBanner = document.getElementById('parent-back-banner');
                 if (backBanner) backBanner.classList.add('visible');
 
-                // Ẩn sidebar (phụ huynh không cần thấy menu carepartner)
-                const sidebar = document.querySelector('.sidebar');
+                // Ẩn sidebar + mobile nav (phụ huynh không cần thấy menu carepartner)
+                // Batch 1: sidebar giờ nằm trong _worker_chrome.html (id="sidebar",
+                // nav id="worker-bottom-nav") — giữ selector cũ cho tương thích ngược.
+                const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
                 if (sidebar) sidebar.style.display = 'none';
-                // Ẩn mobile bottom nav
-                const mobileNav = document.querySelector('.mobile-bottom-nav');
+                const mobileNav = document.querySelector('.mobile-bottom-nav') || document.getElementById('worker-bottom-nav');
                 if (mobileNav) mobileNav.style.display = 'none';
                 // Bỏ margin-left của main content
                 const mainArea = document.querySelector('.main-area');
