@@ -3209,16 +3209,62 @@ class AdminFeedbackExcelAPIView(APIView):
 
         ROLE_LABELS = {c[0]: c[1] for c in LandingSurvey.ROLE_CHOICES}
         SERVICE_LABELS = {
+            # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi
+            'tutoring': 'Gia sư học tập tại nhà', 'pickup': 'Đưa đón bé tan học',
+            'childcare': 'Trông trẻ & Chơi cùng con tại nhà',
+            # Giá trị cũ (dữ liệu khảo sát cũ vẫn hiển thị đúng)
             'gia-su': 'Gia sư tại nhà', 'cham-soc-tre': 'Chăm sóc trẻ em',
             'don-dep': 'Dọn dẹp nhà cửa', 'mua-sam': 'Mua sắm hộ',
             'an-toan': 'Định vị & an toàn', 'nhat-ky': 'Nhật ký chăm sóc',
         }
         EXPERIENCE_LABELS = {'chua': 'Chưa có kinh nghiệm', 'duoi-1-nam': 'Dưới 1 năm', '1-3-nam': '1-3 năm', 'tren-3-nam': 'Trên 3 năm'}
-        RATE_LABELS = {'duoi-30k': 'Dưới 30.000đ', '30-50k': '30.000-50.000đ', '50-80k': '50.000-80.000đ', 'tren-80k': 'Trên 80.000đ'}
+        RATE_LABELS = {
+            # Mức giá mới 2026 (thực tế thị trường)
+            '60-85k': '60.000–85.000đ/giờ', '85-120k': '85.000–120.000đ/giờ',
+            '120-180k': '120.000–180.000đ/giờ', 'tren-180k': 'Trên 180.000đ/giờ',
+            # Mức giá cũ
+            'duoi-30k': 'Dưới 30.000đ', '30-50k': '30.000-50.000đ', '50-80k': '50.000-80.000đ', 'tren-80k': 'Trên 80.000đ',
+        }
         INTEREST_LEVEL_LABELS = {'rat-quan-tam': 'Rất quan tâm', 'quan-tam': 'Quan tâm', 'binh-thuong': 'Bình thường'}
-        NECESSITY_LABELS = {'rat-can': 'Rất cần thiết', 'can': 'Cần thiết', 'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết'}
+        NECESSITY_LABELS = {
+            # Mức độ mới 2026
+            'rat-cap-bach': 'Rất cấp bách — cần ngay trong tuần này', 'can-thiet': 'Cần thiết — thay đổi trong tháng tới',
+            # Mức độ cũ
+            'rat-can': 'Rất cần thiết', 'can': 'Cần thiết', 'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết',
+        }
         USED_BEFORE_LABELS = {'chua-tung': 'Chưa từng', 'da-tung': 'Đã từng', 'dang-dung': 'Đang dùng'}
         FACTOR_LABELS = {'gia-re': 'Giá hợp lý', 'uy-tin': 'Đáng tin cậy', 'kinh-nghiem': 'Kinh nghiệm', 'gan-nha': 'Gần nhà', 'co-danh-gia': 'Có đánh giá tốt', 'co-xac-minh': 'Đã xác minh danh tính'}
+        CP_TYPE_LABELS = {
+            'sv-nam-1-2': 'Sinh viên năm 1–2', 'sv-nam-3-4': 'Sinh viên năm 3–4 / mới tốt nghiệp',
+            'su-pham': 'Sinh viên/GV Sư phạm, Mầm non, GD tiểu học', 'da-di-lam': 'Người đã đi làm muốn làm thêm',
+        }
+        TRANSPORT_LABELS = {
+            'xe-may': 'Xe máy riêng (có bằng A1)', 'cong-cong': 'Phương tiện công cộng (buýt/Metro)',
+            'di-bo-xe-dap': 'Đi bộ / Xe đạp (bán kính 1–2 km)',
+        }
+        SLOT_LABELS = {
+            'chieu-tan-truong': 'Ca chiều tan trường 16:30–18:30', 'toi-trong-tuan': 'Tối trong tuần 18:30–21:00',
+            'cuoi-tuan': 'Cả ngày cuối tuần (T7 & CN)', 'linh-hoat-hoc-ky': 'Linh hoạt theo lịch học kỳ',
+            'tan-tam-1630-1830': 'Giờ cao điểm tan tầm 16:30–18:30', 'toi-1830-2100': 'Buổi tối 18:30–21:00',
+            'linh-hoat-dot-xuat': 'Linh hoạt đột xuất khi bận',
+        }
+        MOTIVATION_LABELS = {
+            'flow1': 'Hệ thống tự ghép đơn thông minh (Flow 1)', 'thulao': 'Đảm bảo thù lao 100% (ký quỹ)',
+            'elo': 'Thăng hạng ELO — nhận ca VIP', 'an-toan': 'An toàn cá nhân & thông tin minh bạch',
+        }
+        CHILD_AGE_LABELS = {
+            'duoi-3': 'Dưới 3 tuổi (nhà trẻ)', '3-6': '3–6 tuổi (mẫu giáo)',
+            '6-11': '6–11 tuổi (tiểu học)', 'tren-11': 'Trên 11 tuổi (THCS)',
+        }
+        TRUST_FACTOR_LABELS = {
+            'ly-lich': 'Lý lịch xác thực (CCCD + thẻ SV)', 'live-gps': 'Định vị Live GPS + PIN/ảnh',
+            'chuyen-mon': 'Năng lực chuyên môn (bảng điểm/IELTS)', 'dung-gio': 'Tính kỷ luật & đúng giờ',
+            'danh-gia': 'Đánh giá 5 sao từ phụ huynh khác', 'minh-bach-tai-chinh': 'Minh bạch tài chính ký quỹ',
+        }
+        BUDGET_LABELS = {
+            '70-100k': '70.000–100.000đ/giờ', '100-150k': '100.000–150.000đ/giờ',
+            '150-220k': '150.000–220.000đ/giờ', 'don-50-80k': 'Theo lượt: 50.000–80.000đ/lượt đón',
+        }
 
         def _fmt_ra(role, ra):
             if not ra or not isinstance(ra, dict): return ''
@@ -3226,17 +3272,28 @@ class AdminFeedbackExcelAPIView(APIView):
             if role == 'carepartner':
                 svcs = ra.get('services', [])
                 if svcs and isinstance(svcs, list): parts.append('Dịch vụ: ' + ', '.join(SERVICE_LABELS.get(s, s) for s in svcs))
-                for k, lbls in [('experience', EXPERIENCE_LABELS), ('expected_rate', RATE_LABELS), ('interest_level', INTEREST_LEVEL_LABELS)]:
+                for k, lbls in [('experience', EXPERIENCE_LABELS), ('expected_rate', RATE_LABELS),
+                                ('interest_level', INTEREST_LEVEL_LABELS), ('carepartner_type', CP_TYPE_LABELS),
+                                ('transport_method', TRANSPORT_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
+                for k, lbls in [('available_slots', SLOT_LABELS), ('motivations', MOTIVATION_LABELS)]:
+                    vals = ra.get(k)
+                    if vals and isinstance(vals, list): parts.append(lbls.get(vals[0], vals[0]) if len(vals) == 1 else ', '.join(lbls.get(v, v) for v in vals))
             else:
-                ints = ra.get('interests', [])
+                ints = ra.get('services', ra.get('interests', []))
                 if ints and isinstance(ints, list): parts.append('Quan tâm: ' + ', '.join(SERVICE_LABELS.get(i, i) for i in ints))
-                for k, lbls in [('necessity', NECESSITY_LABELS), ('used_service_before', USED_BEFORE_LABELS)]:
+                for k, lbls in [('necessity', NECESSITY_LABELS), ('used_service_before', USED_BEFORE_LABELS),
+                                ('child_age', CHILD_AGE_LABELS), ('budget_range', BUDGET_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
+                for k, lbls in [('busy_slots', SLOT_LABELS)]:
+                    vals = ra.get(k)
+                    if vals and isinstance(vals, list): parts.append(', '.join(lbls.get(v, v) for v in vals))
                 factors = ra.get('important_factors', [])
                 if factors and isinstance(factors, list): parts.append('Yếu tố: ' + ', '.join(FACTOR_LABELS.get(f, f) for f in factors))
+                trusts = ra.get('trust_factors', [])
+                if trusts and isinstance(trusts, list): parts.append('Yếu tố tin tưởng: ' + ', '.join(TRUST_FACTOR_LABELS.get(f, f) for f in trusts))
             return ' | '.join(parts)
 
         # ======== DESIGN SYSTEM (borderless-first, 3-color rule) ========
