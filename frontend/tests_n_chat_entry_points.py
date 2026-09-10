@@ -70,13 +70,29 @@ class ChatEntryPointGatingTests(TestCase):
         )
 
     def test_web_parent_completed_branch_has_chat(self):
-        """N-001: nhánh completed phải có nút chat (QA bắt được thiếu)."""
+        """N-001: nhánh completed PHẢI có entry chat (24h sau hoàn thành vẫn chat).
+
+        Cơ chế chuẩn hiện tại: nhánh completed gắn placeholder .chat-24h-slot
+        (data-task-id); runtime checkChatWindow() hỏi backend trạng thái cửa sổ
+        24h rồi chat24hButtonHtml() fill nút /chat/?task_id= khi state=open,
+        hoặc nút khóa khi quá 24h. Link tĩnh trong nhánh completed sẽ phá gate
+        24h của backend → test khẳng định placeholder + hàm fill đều tồn tại.
+        """
         resp = self.client.get('/parent/tasks/')
-        branches = _extract_status_branches(resp.content.decode())
+        source = resp.content.decode()
+        branches = _extract_status_branches(source)
         self.assertIn('completed', branches, 'Template phải có nhánh completed')
         self.assertIn(
-            '/chat/?task_id=', branches['completed'],
-            'BUG N-001: nhánh completed parent_tasks thiếu nút chat (24h sau hoàn thành vẫn chat được)',
+            'chat-24h-slot', branches['completed'],
+            'BUG N-001: nhánh completed parent_tasks thiếu placeholder cửa sổ chat 24h',
+        )
+        self.assertIn(
+            '/chat/?task_id=', source,
+            'Hàm chat24hButtonHtml phải sinh nút /chat/?task_id= khi cửa sổ mở',
+        )
+        self.assertIn(
+            'chat24hButtonHtml', source,
+            'Phải có hàm fill nút chat theo trạng thái gate 24h',
         )
 
     def test_web_parent_cancelled_branch_no_chat_required(self):
@@ -98,12 +114,18 @@ class ChatEntryPointGatingTests(TestCase):
         self.assertIn('/chat/?task_id=', branches['accepted'])
 
     def test_web_worker_completed_branch_has_chat(self):
-        """Worker web — nhánh completed có nút chat (đã có sẵn, giữ regression)."""
+        """Worker web — nhánh completed có entry chat qua slot runtime 24h
+        (giữ regression theo cơ chế chat-24h-slot + chat24hButtonHtml)."""
         resp = self.client.get('/worker/my-jobs/')
         source = resp.content.decode()
         branches = _extract_status_branches(source)
         self.assertIn('completed', branches)
-        self.assertIn('/chat/?task_id=', branches['completed'])
+        self.assertIn(
+            'chat-24h-slot', branches['completed'],
+            'Nhánh completed worker_jobs thiếu placeholder cửa sổ chat 24h',
+        )
+        self.assertIn('/chat/?task_id=', source,
+                      'Hàm chat24hButtonHtml phải sinh nút /chat/?task_id= khi cửa sổ mở')
 
     # ── MOBILE: parse file JS trực tiếp (không có hạ tầng test JS runtime) ──
 
