@@ -24,6 +24,8 @@ from datetime import datetime as _dt, time as _time
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 
+from performance.spatial import haversine_distance_optimized
+
 from ..config import get_config, get_int
 from ..constants import MATCH_LEVEL_LABELS_VI
 from ..models import (
@@ -137,15 +139,18 @@ def _batch_proposal_counts(user_ids, when=None):
 
 
 def haversine_km(lat1, lng1, lat2, lng2):
-    """Khoảng cách lớn-đường tròn (km)."""
+    """Khoảng cách lớn-đường tròn (km) — Task perf 6.
+
+    Delegate sang performance.spatial.haversine_distance_optimized (bản tối
+    ưu đã được dùng thật ở core/views.py — gom bước chuyển radian, nhanh hơn
+    khi gọi hàng loạt). LƯU Ý ĐƠN VỊ: hàm đó trả MÉT (EARTH_RADIUS_M) →
+    chia /1000 giữ đúng đơn vị KM cho toàn bộ logic phía sau (so sánh với
+    radius, distance_km trả client...). Chữ ký + đơn vị trả về GIỮ NGUYÊN —
+    không sửa nơi gọi.
+    """
     if None in (lat1, lng1, lat2, lng2):
         return None
-    R = 6371.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dl = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return haversine_distance_optimized(lat1, lng1, lat2, lng2) / 1000.0
 
 
 def _major_match_bonus(major, job_type):
