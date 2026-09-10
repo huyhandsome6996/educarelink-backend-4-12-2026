@@ -39,6 +39,19 @@ export default function JobTypeSelectScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary || '#1A1A2E'} />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Đăng việc mới</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <Text style={styles.heading}>Bạn cần gì?</Text>
       <Text style={styles.sub}>Chọn loại công việc để bắt đầu đăng</Text>
       {JOB_TYPES.map((item) => (
@@ -64,7 +77,26 @@ export default function JobTypeSelectScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, padding: SIZES.padding },
-  heading: { fontSize: 24, fontWeight: '700', color: COLORS.text, marginTop: 24 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary || '#1A1A2E',
+  },
+  heading: { fontSize: 24, fontWeight: '700', color: COLORS.textPrimary || '#1A1A2E', marginTop: 8 },
   sub: { fontSize: 14, color: COLORS.gray, marginTop: 6, marginBottom: 20 },
   card: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white,
