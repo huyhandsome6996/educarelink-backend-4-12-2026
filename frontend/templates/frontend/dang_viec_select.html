@@ -89,7 +89,7 @@
     }
     .card-tutoring:hover .card-arrow {
       transform: translateX(6px);
-      color: #EA580C;
+      color: #ffffff !important;
     }
     .card-tutoring:hover .card-action-btn {
       background: linear-gradient(135deg, #F26522, #EA580C);
@@ -106,7 +106,7 @@
     }
     .card-childcare:hover .card-arrow {
       transform: translateX(6px);
-      color: #047857;
+      color: #ffffff !important;
     }
     .card-childcare:hover .card-action-btn {
       background: linear-gradient(135deg, #0E9F6E, #047857);
@@ -123,7 +123,7 @@
     }
     .card-pickup:hover .card-arrow {
       transform: translateX(6px);
-      color: #1D4ED8;
+      color: #ffffff !important;
     }
     .card-pickup:hover .card-action-btn {
       background: linear-gradient(135deg, #2563EB, #1D4ED8);
@@ -133,6 +133,11 @@
 
     .card-arrow {
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+    }
+
+    .card-action-btn:hover .card-arrow,
+    .service-card:hover .card-action-btn .card-arrow {
+      color: #ffffff !important;
     }
 
     /* Page Entrance Animation */
