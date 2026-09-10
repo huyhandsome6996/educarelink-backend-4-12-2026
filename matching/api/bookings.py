@@ -46,15 +46,29 @@ from ..services.lock_service import SlotConflictError
 logger = logging.getLogger('educarelink.matching.api.booking')
 
 
+def _job_address(job):
+    """Địa chỉ hiển thị (best-effort) từ type_data theo loại job — QA 2026-09-11 #4."""
+    td = getattr(job, 'type_data', None) or {}
+    loc = td.get('pickup_location') or td.get('destination_location')
+    if isinstance(loc, dict):
+        return (loc.get('address') or loc.get('label') or loc.get('name') or '').strip()
+    return (td.get('location_note') or '').strip()
+
+
 def _booking_dict(booking):
     b = booking
     first = b.job.slots.order_by('date', 'time_from').first()
+    parent = getattr(b, 'parent', None)
     return {
         'id': str(b.pk),
         'job_id': str(b.job_id),
         'job_title': b.job.title,
+        'job_type': getattr(b.job, 'job_type', ''),
+        'job_address': _job_address(b.job),
         'carepartner_id': str(b.carepartner_id),
         'parent_id': str(b.parent_id),
+        'parent_name': (f"{parent.first_name} {parent.last_name}".strip()
+                        if parent else '') or getattr(parent, 'username', ''),
         'status': b.status,
         'status_label_vi': STATUS_LABELS_VI.get(b.status, b.status),
         'selected_at': b.selected_at,
@@ -154,7 +168,7 @@ class BookingListAPIView(APIView):
         # Lazy commit check cho các đơn đang chờ cam kết (Step 5 AC4)
         for b in qs.filter(status=BookingStatus.AWAITING_COMMITMENT)[:20]:
             lazy_commit_check(b)
-        qs = Booking.objects.filter(
+        qs = Booking.objects.select_related('job', 'parent', 'carepartner').filter(
             pk__in=[b.pk for b in qs[:50]]).order_by('-created_at')
         return Response({'count': qs.count(),
                          'results': [_booking_dict(b) for b in qs]})
