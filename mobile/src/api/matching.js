@@ -49,6 +49,10 @@ export const cancelBookingByParent = (bookingId, note = '') =>
 export const reportNoShow = (bookingId, arrived) =>
   apiClient.post(`${BASE}/bookings/${bookingId}/report-no-show/`, { arrived });
 
+// QA 2026-09-10 #2: CP xác nhận cam kết nhận đơn (Grab-style)
+export const commitBooking = (bookingId) =>
+  apiClient.post(`${BASE}/bookings/${bookingId}/commit/`);
+
 export const startBooking = (bookingId) =>
   apiClient.post(`${BASE}/bookings/${bookingId}/start/`);
 

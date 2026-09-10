@@ -727,16 +727,19 @@ class RegressionTests(TestCase):
         )
         self.client = APIClient()
 
-    def test_worker_not_recommended_can_still_apply(self):
-        """Worker không được gợi ý (xa quá) vẫn ứng tuyển được qua /worker/tasks/<id>/apply/."""
+    def test_apply_endpoint_closed_passive_matching(self):
+        """QA 2026-09-10 #2: endpoint apply đã đóng (luồng thụ động kiểu Grab)
+        — việc gần hay xa không còn ý nghĩa ứng tuyển, trả 403 passive_matching_only."""
         self.client.force_authenticate(user=self.worker_far)
         resp = self.client.post(
             f'/api/worker/tasks/{self.task.id}/apply/'
         )
-        self.assertIn(resp.status_code, (200, 201))
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.data['error'], 'passive_matching_only')
 
-    def test_worker_without_availability_can_still_apply(self):
-        """Worker không khai báo availability vẫn ứng tuyển được."""
+    def test_worker_without_availability_gets_closed_apply(self):
+        """Worker không khai báo availability vẫn nhận 403 passive_matching_only
+        (không còn ứng tuyển chủ động; availability ảnh hưởng đề xuất thay vì apply)."""
         worker_no_avail = User.objects.create_user(
             username='worker_no_avail', password='p', role='worker',
             is_approved=True, latitude=NEAR_LAT, longitude=NEAR_LNG,
@@ -745,7 +748,8 @@ class RegressionTests(TestCase):
         resp = self.client.post(
             f'/api/worker/tasks/{self.task.id}/apply/'
         )
-        self.assertIn(resp.status_code, (200, 201))
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.data['error'], 'passive_matching_only')
 
     def test_task_candidates_api_still_works(self):
         """TaskCandidatesAPIView vẫn trả đúng ứng tuyển cho việc của phụ huynh."""

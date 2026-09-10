@@ -1,0 +1,71 @@
+{% load static %}
+<!-- ============================================================ -->
+<!-- _role_chrome.html — Chrome TRUNG GIAN theo vai trò cho các     -->
+<!-- trang dùng chung cả 2 luồng (don.html, vi_credit.html,         -->
+<!-- khang_cao.html) — QA 2026-09-10 Bug #6: trước đây các trang    -->
+<!-- này include CỨNG _parent_chrome.html → Carepartner bấm         -->
+<!-- "Cài đặt" bị văng sang giao diện Phụ huynh.                    -->
+<!--                                                                -->
+<!-- Cách hoạt động: render sẵn CẢ HAI chrome trong wrapper ẩn,     -->
+<!-- rồi JS đọc role (localStorage 'role', fallback /api/profile/)  -->
+<!-- để hiển thị đúng chrome. Trang chủ yếu là phụ huynh nên mặc    -->
+<!-- định hiển thị chrome phụ huynh khi chưa xác định được role     -->
+<!-- (tránh flash trống), worker sẽ được chuyển ngay khi biết role. -->
+<!-- Tham số:                                                       -->
+<!--   active_tab  — tab active cho chrome PHỤ HUYNH                -->
+<!--   worker_tab  — tab active cho chrome CAREPARTNER (mặc định:   -->
+<!--                 'feed' — trang chính Nhận đơn mới)             -->
+<!-- ============================================================ -->
+
+<div id="chrome-parent-slot" style="display:none;">
+{% include 'frontend/_parent_chrome.html' with active_tab=active_tab %}
+</div>
+
+<div id="chrome-worker-slot" style="display:none;">
+{% include 'frontend/_worker_chrome.html' with active_tab=worker_tab|default:'feed' %}
+</div>
+
+<script>
+  (function resolveRoleChrome() {
+    var shown = false;
+    function showChrome(role) {
+      if (shown) return;
+      shown = true;
+      var parentSlot = document.getElementById('chrome-parent-slot');
+      var workerSlot = document.getElementById('chrome-worker-slot');
+      if (!parentSlot || !workerSlot) return;
+      if (role === 'worker') {
+        workerSlot.style.display = '';
+        parentSlot.style.display = 'none';
+      } else {
+        // parent / admin / chưa rõ → chrome phụ huynh (mặc định)
+        parentSlot.style.display = '';
+        workerSlot.style.display = 'none';
+      }
+    }
+
+    // 1) Nguồn nhanh: localStorage 'role' (login.html lưu sau khi đăng nhập)
+    try {
+      var role = localStorage.getItem('role');
+      if (role) showChrome(role);
+    } catch (e) { /* localStorage chặn → fallback bên dưới */ }
+
+    // 2) Fallback chắc chắn: /api/profile/ trả role thật từ DB
+    (async function fetchRole() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) { if (!shown) showChrome('parent'); return; }
+        const r = await fetch('/api/profile/', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (r.ok) {
+          const p = await r.json();
+          showChrome(p.role || 'parent');
+        } else if (!shown) {
+          showChrome('parent');
+        }
+      } catch (e) { if (!shown) showChrome('parent'); }
+    })();
+
+    // Nhấn nhanh chrome mặc định để không có khung hình trống khi chậm mạng
+    setTimeout(function () { if (!shown) showChrome('parent'); }, 600);
+  })();
+</script>

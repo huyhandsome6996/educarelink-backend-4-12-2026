@@ -142,89 +142,11 @@
         </div>
     </div>
 
-    <!-- ========== SIDEBAR (Desktop) ========== -->
-    <aside class="sidebar fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 shadow-sm">
-        <!-- Logo -->
-        <div class="px-6 py-6 border-b border-gray-50">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex items-center gap-2">
-                <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-                <div>
-                    <span class="font-manrope font-extrabold text-xl text-textPrimary">Edu</span><span class="font-manrope font-extrabold text-xl text-secondary">Care</span><span class="font-manrope font-extrabold text-xl text-textPrimary">Link</span>
-                </div>
-            </a>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 px-4 py-6 sidebar-scroll overflow-y-auto">
-            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mb-3">Menu</p>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{% url 'frontend:worker_feed' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">search</span>
-                        Tìm việc
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_jobs' %}" class="nav-item active flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold">
-                        <span class="material-symbols-outlined text-xl">assignment</span>
-                        Việc của tôi
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:worker_profile' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">person</span>
-                        Hồ sơ
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:help_center' %}" class="nav-item flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">help_center</span>
-                        Trung tâm trợ giúp
-                    </a>
-                </li>
-            </ul>
-            <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-textSecondary/50 mt-4 mb-2">Ghép cặp Flow 1</p>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{% url 'frontend:don_cua_toi' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">auto_awesome</span>
-                        Đơn ghép cặp
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:lich_ranh' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">calendar_month</span>
-                        Lịch rảnh ghép cặp
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'frontend:ngay_ban' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-textSecondary hover:text-textPrimary">
-                        <span class="material-symbols-outlined text-xl">event_busy</span>
-                        Ngày bận đột xuất
-                    </a>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- User section at bottom -->
-        <div class="px-4 py-4 border-t border-gray-100">
-            <div class="flex items-center gap-3 px-2">
-                <div class="w-10 h-10 rounded-full overflow-hidden bg-primaryLight flex-shrink-0">
-                    <img id="sidebar-avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=W&background=F26522&color=fff"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Carepartner</p>
-                    <p class="text-xs text-textSecondary">Carepartner</p>
-                </div>
-                <button onclick="handleLogout()" class="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center text-textSecondary hover:text-error transition-all duration-200" title="Đăng xuất">
-                    <span class="material-symbols-outlined text-xl">logout</span>
-                </button>
-            </div>
-        </div>
-    </aside>
+    <!-- ========== SIDEBAR + MOBILE NAV CHUẨN CAREPARTNER (Batch 1) ========== -->
+    {% include 'frontend/_worker_chrome.html' with active_tab='jobs' %}
 
     <!-- ========== MAIN CONTENT ========== -->
-    <main class="main-area md:ml-[260px] min-h-screen pb-24 md:pb-8">
+    <main class="main-area lg:ml-[260px] min-h-screen pb-24 md:pb-8">
         <!-- Top header bar -->
         <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 md:px-8 py-4">
@@ -246,15 +168,11 @@
                 </div>
             </div>
 
-            <!-- Tab filter bar -->
+            <!-- Tab filter bar — QA 2026-09-11 #5: chỉ còn 2 tab Sắp làm / Lịch sử
+                 (đã xóa tab "Chờ duyệt" — luồng thụ động không có ứng tuyển chờ duyệt) -->
             <div class="max-w-6xl mx-auto px-4 md:px-8 border-t border-gray-50">
                 <div class="flex gap-1">
-                    <button onclick="setTab('pending')" id="tab-pending" class="tab-btn active flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-textSecondary rounded-t-lg">
-                        <span class="material-symbols-outlined text-lg">schedule</span>
-                        <span>Chờ duyệt</span>
-                        <span id="badge-pending" class="hidden ml-1 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold flex items-center justify-center badge-pulse">0</span>
-                    </button>
-                    <button onclick="setTab('accepted')" id="tab-accepted" class="tab-btn flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-textSecondary rounded-t-lg">
+                    <button onclick="setTab('accepted')" id="tab-accepted" class="tab-btn active flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-textSecondary rounded-t-lg">
                         <span class="material-symbols-outlined text-lg">event_available</span>
                         <span>Sắp làm</span>
                         <span id="badge-accepted" class="hidden ml-1 min-w-[20px] h-5 px-1.5 rounded-full bg-green-500 text-white text-[11px] font-bold flex items-center justify-center">0</span>
@@ -270,12 +188,23 @@
 
         <!-- Job list content -->
         <div class="max-w-6xl mx-auto px-4 md:px-8 py-6">
+            <!-- View toggle: Danh sách / Lịch biểu (QA 2026-09-11 #5) -->
+            <div class="flex items-center justify-between mb-4 gap-3">
+                <div id="view-toggle" class="inline-flex bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                    <button id="view-btn-list" onclick="setViewMode('list')" class="view-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                        <span class="material-symbols-outlined text-base">view_list</span> Dạng danh sách
+                    </button>
+                    <button id="view-btn-calendar" onclick="setViewMode('calendar')" class="view-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                        <span class="material-symbols-outlined text-base">calendar_month</span> Dạng lịch biểu
+                    </button>
+                </div>
+                <button onclick="fetchJobs()" class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-textSecondary hover:text-primary hover:border-primary/30 transition-all shrink-0" title="Làm mới">
+                    <span class="material-symbols-outlined text-lg">refresh</span>
+                </button>
+            </div>
+
             <!-- Stats summary -->
             <div class="grid grid-cols-3 gap-3 mb-6">
-                <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
-                    <p id="stat-pending" class="font-manrope font-bold text-2xl text-amber-500">0</p>
-                    <p class="text-xs text-textSecondary font-medium mt-1">Chờ duyệt</p>
-                </div>
                 <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
                     <p id="stat-accepted" class="font-manrope font-bold text-2xl text-green-500">0</p>
                     <p class="text-xs text-textSecondary font-medium mt-1">Sắp làm</p>
@@ -284,9 +213,30 @@
                     <p id="stat-completed" class="font-manrope font-bold text-2xl text-blue-500">0</p>
                     <p class="text-xs text-textSecondary font-medium mt-1">Hoàn thành</p>
                 </div>
+                <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+                    <p id="stat-earnings" class="font-manrope font-bold text-2xl text-primary">0đ</p>
+                    <p class="text-xs text-textSecondary font-medium mt-1">Thu nhập (đã hoàn thành)</p>
+                </div>
             </div>
 
-            <!-- Job grid -->
+            <!-- ===== Dạng LỊCH BIỂU (ẩn mặc định) ===== -->
+            <div id="calendar-view" class="hidden mb-6">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <button onclick="shiftWeek(-1)" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-textSecondary">
+                            <span class="material-symbols-outlined">chevron_left</span>
+                        </button>
+                        <p id="week-label" class="font-manrope font-bold text-sm text-textPrimary">Tuần này</p>
+                        <button onclick="shiftWeek(1)" class="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-textSecondary">
+                            <span class="material-symbols-outlined">chevron_right</span>
+                        </button>
+                    </div>
+                    <div id="week-grid" class="grid grid-cols-1 sm:grid-cols-7 gap-px bg-gray-100"></div>
+                </div>
+                <p class="text-[11px] text-textSecondary/70 mt-2 text-center">Chỉ hiển thị ca đã cam kết (Sắp làm) — đối chiếu với lịch học trên giảng đường để tránh trùng giờ thi.</p>
+            </div>
+
+            <!-- Job grid (dạng danh sách) -->
             <div id="jobs-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Skeleton loading -->
                 <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
@@ -319,27 +269,7 @@
         </div>
     </main>
 
-    <!-- ========== MOBILE BOTTOM NAV ========== -->
-    <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 shadow-lg" style="display: none;">
-        <div class="flex justify-around items-center px-2 pt-2 pb-6">
-            <a href="{% url 'frontend:worker_feed' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">search</span>
-                <span class="text-[11px] font-semibold mt-1">Tìm việc</span>
-            </a>
-            <a href="{% url 'frontend:worker_jobs' %}" class="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-primaryLight text-primary transition-all">
-                <span class="material-symbols-outlined text-2xl filled" style="font-variation-settings: 'FILL' 1;">assignment</span>
-                <span class="text-[11px] font-bold mt-1">Việc của tôi</span>
-            </a>
-            <a href="{% url 'frontend:worker_profile' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">person</span>
-                <span class="text-[11px] font-semibold mt-1">Hồ sơ</span>
-            </a>
-            <a href="{% url 'frontend:help_center' %}" class="flex flex-col items-center justify-center px-4 py-2 text-textSecondary hover:text-textPrimary transition-all">
-                <span class="material-symbols-outlined text-2xl">help_center</span>
-                <span class="text-[11px] font-semibold mt-1">Trợ giúp</span>
-            </a>
-        </div>
-    </nav>
+    <!-- Mobile bottom nav chuyển vào _worker_chrome.html (Batch 1 — đồng bộ chuẩn 4 tab) -->
 
     <!-- ========== JAVASCRIPT ========== -->
     <script>
@@ -395,8 +325,11 @@
         if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 
         // ===== GLOBAL STATE =====
-        let allApps = [];
-        let currentTab = 'pending';
+        let allApps = [];        // việc legacy (Task/TaskApplication) — /worker/my-jobs/
+        let allBookings = [];    // đơn ghép cặp Flow 1 — /matching/bookings/
+        let currentTab = 'accepted'; // mặc định "Sắp làm" — không còn tab Chờ duyệt
+        let viewMode = 'list';   // 'list' | 'calendar'
+        let weekOffset = 0;      // lịch tuần: 0 = tuần này
         let confirmResolve = null;
 
         // ===== TOAST SYSTEM =====
@@ -474,16 +407,9 @@
         // ===== STATUS HELPERS =====
         function getStatusConfig(status) {
             const configs = {
-                pending: {
-                    label: 'Chờ duyệt',
-                    bgColor: 'bg-amber-50',
-                    textColor: 'text-amber-700',
-                    borderColor: 'border-amber-200',
-                    dotColor: 'bg-amber-500',
-                    icon: 'schedule'
-                },
+                // --- Legacy (TaskApplication) ---
                 accepted: {
-                    label: 'Đã duyệt',
+                    label: 'Đã xác nhận',
                     bgColor: 'bg-emerald-50',
                     textColor: 'text-emerald-700',
                     borderColor: 'border-emerald-200',
@@ -505,9 +431,146 @@
                     borderColor: 'border-red-200',
                     dotColor: 'bg-red-500',
                     icon: 'cancel'
+                },
+                // --- Booking Flow 1 (matching) ---
+                committed: {
+                    label: 'Đã cam kết',
+                    bgColor: 'bg-emerald-50',
+                    textColor: 'text-emerald-700',
+                    borderColor: 'border-emerald-200',
+                    dotColor: 'bg-emerald-500',
+                    icon: 'task_alt'
+                },
+                in_progress: {
+                    label: 'Đang làm',
+                    bgColor: 'bg-blue-50',
+                    textColor: 'text-blue-700',
+                    borderColor: 'border-blue-200',
+                    dotColor: 'bg-blue-500',
+                    icon: 'play_circle'
+                },
+                suspected_no_show: {
+                    label: 'Nghi ngờ không đến',
+                    bgColor: 'bg-amber-50',
+                    textColor: 'text-amber-700',
+                    borderColor: 'border-amber-200',
+                    dotColor: 'bg-amber-500',
+                    icon: 'warning'
+                },
+                cancelled_by_carepartner: {
+                    label: 'Đã hủy',
+                    bgColor: 'bg-red-50',
+                    textColor: 'text-red-700',
+                    borderColor: 'border-red-200',
+                    dotColor: 'bg-red-500',
+                    icon: 'cancel'
+                },
+                cancelled_by_parent: {
+                    label: 'Phụ huynh đã hủy',
+                    bgColor: 'bg-red-50',
+                    textColor: 'text-red-700',
+                    borderColor: 'border-red-200',
+                    dotColor: 'bg-red-500',
+                    icon: 'cancel'
+                },
+                expired_no_response: {
+                    label: 'Hết hạn phản hồi',
+                    bgColor: 'bg-gray-100',
+                    textColor: 'text-gray-600',
+                    borderColor: 'border-gray-200',
+                    dotColor: 'bg-gray-400',
+                    icon: 'history_toggle_off'
+                },
+                declined_in_window: {
+                    label: 'Đã từ chối',
+                    bgColor: 'bg-red-50',
+                    textColor: 'text-red-700',
+                    borderColor: 'border-red-200',
+                    dotColor: 'bg-red-500',
+                    icon: 'block'
+                },
+                no_show: {
+                    label: 'Không đến làm',
+                    bgColor: 'bg-red-50',
+                    textColor: 'text-red-700',
+                    borderColor: 'border-red-200',
+                    dotColor: 'bg-red-500',
+                    icon: 'person_off'
                 }
             };
-            return configs[status] || configs.pending;
+            return configs[status] || {
+                label: status_label_vi_safe(status),
+                bgColor: 'bg-gray-100',
+                textColor: 'text-gray-600',
+                borderColor: 'border-gray-200',
+                dotColor: 'bg-gray-400',
+                icon: 'help'
+            };
+        }
+
+        function status_label_vi_safe(status) {
+            const labels = {
+                seeking_replacement: 'Đang tìm người thay',
+                awaiting_review: 'Chờ đánh giá',
+            };
+            return labels[status] || status;
+        }
+
+        // Nhóm trạng thái: upcoming (Sắp làm) / history (Lịch sử)
+        const UPCOMING_BOOKING = ['committed', 'in_progress', 'suspected_no_show'];
+        const HISTORY_BOOKING = ['completed', 'cancelled_by_carepartner', 'cancelled_by_parent',
+                                 'expired_no_response', 'declined_in_window', 'no_show'];
+
+        function isUpcoming(item) {
+            if (item.kind === 'booking') return UPCOMING_BOOKING.includes(item.status);
+            return item.status === 'accepted';
+        }
+
+        function isHistory(item) {
+            if (item.kind === 'booking') return HISTORY_BOOKING.includes(item.status);
+            return item.status === 'completed' || item.status === 'rejected';
+        }
+
+        // Gộp 2 nguồn (booking + legacy) thành danh sách hiển thị thống nhất
+        function buildUnifiedItems() {
+            const items = [];
+            for (const b of allBookings) {
+                const slot = b.first_slot || {};
+                let when = null;
+                try { when = slot.date ? new Date(`${slot.date}T${String(slot.time_from || '00:00').slice(0, 8)}`) : null; } catch (e) {}
+                items.push({
+                    kind: 'booking',
+                    id: b.id,
+                    title: b.job_title || 'Ca chăm sóc',
+                    price: b.total_value_vnd,
+                    when,
+                    whenText: when && !isNaN(when) ? when.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+                    location: b.job_address || '',
+                    parentName: b.parent_name || 'Phụ huynh',
+                    parentUsername: b.parent_name || 'P',
+                    status: b.status,
+                    raw: b,
+                });
+            }
+            for (const a of (Array.isArray(allApps) ? allApps : (allApps && Array.isArray(allApps.results) ? allApps.results : []))) {
+                let when = a.task_scheduled_time ? new Date(a.task_scheduled_time) : null;
+                items.push({
+                    kind: 'legacy',
+                    id: String(a.task_id || a.task || a.id || ''),
+                    title: a.task_title || 'Công việc',
+                    price: a.task_price,
+                    when,
+                    whenText: when && !isNaN(when) ? when.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+                    location: a.task_location || '',
+                    parentName: a.parent_username || 'Phụ huynh',
+                    parentUsername: a.parent_username || 'P',
+                    status: a.status,
+                    raw: a,
+                });
+            }
+            // Mới nhất trước
+            items.sort((x, y) => (y.when && y.when.getTime() || 0) - (x.when && x.when.getTime() || 0));
+            return items;
         }
 
         function formatPrice(price) {
@@ -541,27 +604,19 @@
         }
 
         // ===== UPDATE BADGES & STATS =====
-        function updateBadges() {
-            const pendingCount = allApps.filter(a => a.status === 'pending').length;
-            const acceptedCount = allApps.filter(a => a.status === 'accepted').length;
-            const completedCount = allApps.filter(a => a.status === 'completed' || a.status === 'rejected').length;
+        function updateBadges(items) {
+            const upcomingCount = items.filter(isUpcoming).length;
+            const completedCount = items.filter(i => i.status === 'completed').length;
+            const totalEarnings = items
+                .filter(i => i.status === 'completed')
+                .reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0);
 
-            // Update badges
-            const badgePending = document.getElementById('badge-pending');
+            // Update badges (2 tab)
             const badgeAccepted = document.getElementById('badge-accepted');
             const badgeCompleted = document.getElementById('badge-completed');
 
-            if (pendingCount > 0) {
-                badgePending.textContent = pendingCount;
-                badgePending.classList.remove('hidden');
-                badgePending.classList.add('flex');
-            } else {
-                badgePending.classList.add('hidden');
-                badgePending.classList.remove('flex');
-            }
-
-            if (acceptedCount > 0) {
-                badgeAccepted.textContent = acceptedCount;
+            if (upcomingCount > 0) {
+                badgeAccepted.textContent = upcomingCount;
                 badgeAccepted.classList.remove('hidden');
                 badgeAccepted.classList.add('flex');
             } else {
@@ -579,31 +634,57 @@
             }
 
             // Update stats
-            document.getElementById('stat-pending').textContent = pendingCount;
-            document.getElementById('stat-accepted').textContent = acceptedCount;
-            document.getElementById('stat-completed').textContent = allApps.filter(a => a.status === 'completed').length;
+            document.getElementById('stat-accepted').textContent = upcomingCount;
+            document.getElementById('stat-completed').textContent = completedCount;
+            document.getElementById('stat-earnings').textContent = formatPrice(totalEarnings);
         }
 
-        // ===== RENDER JOB CARDS =====
+        // ===== RENDER =====
         function render() {
-            updateBadges();
+            const items = buildUnifiedItems();
+            updateBadges(items);
+            if (viewMode === 'calendar') {
+                document.getElementById('calendar-view').classList.remove('hidden');
+                document.getElementById('jobs-list').classList.add('hidden');
+                renderCalendar(items.filter(isUpcoming));
+            } else {
+                document.getElementById('calendar-view').classList.add('hidden');
+                document.getElementById('jobs-list').classList.remove('hidden');
+                renderList(items);
+            }
+        }
+
+        // ===== CHẾ ĐỘ XEM: DANH SÁCH / LỊCH BIỂU =====
+        function setViewMode(mode) {
+            viewMode = mode;
+            paintViewToggle();
+            render();
+        }
+
+        function paintViewToggle() {
+            const on = 'bg-primary text-white shadow-sm';
+            const off = 'text-textSecondary hover:text-textPrimary';
+            const btnList = document.getElementById('view-btn-list');
+            const btnCal = document.getElementById('view-btn-calendar');
+            btnList.className = `view-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? on : off}`;
+            btnCal.className = `view-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar' ? on : off}`;
+        }
+
+        // ===== RENDER DANH SÁCH =====
+        function renderList(items) {
             const container = document.getElementById('jobs-list');
 
-            // Filter by current tab
-            const filtered = allApps.filter(a => {
-                if (currentTab === 'pending') return a.status === 'pending';
-                if (currentTab === 'accepted') return a.status === 'accepted';
-                if (currentTab === 'completed') return a.status === 'completed' || a.status === 'rejected';
-                return false;
+            const filtered = items.filter(i => {
+                if (currentTab === 'accepted') return isUpcoming(i);
+                return isHistory(i);
             });
 
             if (filtered.length === 0) {
                 const emptyMessages = {
-                    pending: { icon: 'pending_actions', title: 'Chưa có việc chờ duyệt', desc: 'Các ứng tuyển của bạn sẽ hiển thị ở đây khi đang chờ phụ huynh duyệt.' },
-                    accepted: { icon: 'event_available', title: 'Chưa có việc sắp làm', desc: 'Khi phụ huynh duyệt ứng tuyển, việc sẽ xuất hiện ở đây.' },
-                    completed: { icon: 'history', title: 'Chưa có lịch sử', desc: 'Các công việc đã hoàn thành hoặc bị từ chối sẽ hiển thị ở đây.' }
+                    accepted: { icon: 'event_available', title: 'Chưa có việc sắp làm', desc: 'Ca đã cam kết từ dashboard Nhận việc sẽ xuất hiện ở đây. Đơn mời mới sẽ hiện ở trang Nhận việc.' },
+                    completed: { icon: 'history', title: 'Chưa có lịch sử', desc: 'Các ca đã hoàn thành hoặc đã hủy sẽ hiển thị ở đây.' }
                 };
-                const msg = emptyMessages[currentTab] || emptyMessages.pending;
+                const msg = emptyMessages[currentTab] || emptyMessages.accepted;
 
                 container.innerHTML = `
                     <div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
@@ -617,41 +698,60 @@
                 return;
             }
 
-            container.innerHTML = filtered.map(a => {
-                const status = getStatusConfig(a.status);
+            container.innerHTML = filtered.map(i => {
+                const status = getStatusConfig(i.status);
 
-                // Action buttons based on status
+                // Action buttons theo nguồn + trạng thái
                 let actionButtons = '';
-                if (a.status === 'pending') {
+                if (i.kind === 'booking') {
+                    if (i.status === 'committed') {
+                        actionButtons = `
+                            <button onclick="startShift('${i.id}')" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                                <span class="material-symbols-outlined text-sm align-middle" style="font-variation-settings: 'FILL' 1;">play_arrow</span> Bắt đầu ca (Check-in)
+                            </button>
+                            <button onclick="location.href='/don/${i.id}/'" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
+                                Chi tiết đơn
+                            </button>
+                        `;
+                    } else if (i.status === 'in_progress') {
+                        actionButtons = `
+                            <button onclick="completeShift('${i.id}')" class="px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-xs hover:bg-emerald-600 transition-all duration-200 active:scale-95 shadow-sm shadow-emerald-500/20">
+                                <span class="material-symbols-outlined text-sm align-middle" style="font-variation-settings: 'FILL' 1;">check_circle</span> Kết thúc ca
+                            </button>
+                            <button onclick="location.href='/don/${i.id}/'" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
+                                Chi tiết đơn
+                            </button>
+                        `;
+                    } else {
+                        actionButtons = `
+                            <button onclick="location.href='/don/${i.id}/'" class="px-4 py-2 rounded-xl border border-gray-200 text-textSecondary font-semibold text-xs hover:bg-gray-50 transition-all duration-200 active:scale-95">
+                                Chi tiết đơn
+                            </button>
+                        `;
+                    }
+                } else if (i.status === 'accepted') {
                     actionButtons = `
-                        <span class="px-4 py-2 rounded-xl bg-amber-50 text-amber-600 font-semibold text-xs flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-sm">schedule</span>
-                            Chờ phụ huynh duyệt
-                        </span>
-                    `;
-                } else if (a.status === 'accepted') {
-                    actionButtons = `
-                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${a.task_id || a.task}&task_title=${encodeURIComponent(a.task_title || '')}'" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
+                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${i.id}&task_title=${encodeURIComponent(i.title)}'" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primaryDark transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20">
                             <span class="material-symbols-outlined text-sm align-middle" style="font-variation-settings: 'FILL' 1;">edit_note</span> Ghi nhật ký
                         </button>
-                        <button onclick="location.href='/chat/?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl bg-blue-500 text-white font-semibold text-xs hover:bg-blue-600 transition-all duration-200 active:scale-95 shadow-sm shadow-blue-500/20">
+                        <button onclick="location.href='/chat/?task_id=${i.id}'" class="px-4 py-2 rounded-xl bg-blue-500 text-white font-semibold text-xs hover:bg-blue-600 transition-all duration-200 active:scale-95 shadow-sm shadow-blue-500/20">
                             <span class="material-symbols-outlined text-sm align-middle">chat</span> Nhắn tin phụ huynh
                         </button>
-                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
+                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${i.id}'" class="px-4 py-2 rounded-xl border border-primary/30 text-primary font-semibold text-xs hover:bg-primaryLight transition-all duration-200 active:scale-95">
                             Chi tiết
                         </button>
                     `;
-                } else if (a.status === 'completed') {
+                } else if (i.status === 'completed') {
                     actionButtons = `
-                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${a.task_id || a.task}&task_title=${encodeURIComponent(a.task_title || '')}'" class="px-4 py-2 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-all duration-200 active:scale-95">
+                        <button onclick="location.href='{% url 'frontend:worker_care_diary' %}?task_id=${i.id}&task_title=${encodeURIComponent(i.title)}'" class="px-4 py-2 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-all duration-200 active:scale-95">
                             <span class="material-symbols-outlined text-sm align-middle">edit_note</span> Nhật ký
                         </button>
-                        <div id="chat-slot-${a.task_id || a.task}" class="chat-24h-slot inline-block" data-task-id="${a.task_id || a.task}"></div>
-                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${a.task_id || a.task}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
+                        <div id="chat-slot-${i.id}" class="chat-24h-slot inline-block" data-task-id="${i.id}"></div>
+                        <button onclick="location.href='{% url 'frontend:task_detail' %}?task_id=${i.id}'" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold text-xs hover:bg-blue-50 transition-all duration-200 active:scale-95">
                             Xem lại
                         </button>
                     `;
-                } else if (a.status === 'rejected') {
+                } else if (i.status === 'rejected' || i.status === 'declined_in_window') {
                     actionButtons = `
                         <span class="text-xs text-red-500 font-medium">Đã bị từ chối</span>
                     `;
@@ -668,40 +768,40 @@
                                 <span class="material-symbols-outlined text-sm filled" style="font-variation-settings: 'FILL' 1;">${status.icon}</span>
                                 ${status.label}
                             </span>
-                            <span class="font-manrope text-xl font-extrabold text-primary">${formatPrice(a.task_price)}</span>
+                            <span class="font-manrope text-xl font-extrabold text-primary">${formatPrice(i.price)}</span>
                         </div>
 
                         <!-- Task title -->
-                        <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${escapeHtml(a.task_title)}</h3>
+                        <h3 class="font-manrope font-bold text-base text-textPrimary leading-snug mb-3 line-clamp-2">${escapeHtml(i.title)}</h3>
 
                         <!-- Details -->
                         <div class="space-y-2 text-sm text-textSecondary mb-4">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined text-base text-primary/60">schedule</span>
-                                <span>${formatDateTime(a.task_scheduled_time)}</span>
+                                <span>${i.whenText}</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <span class="material-symbols-outlined text-base text-primary/60 mt-0.5">location_on</span>
-                                <span class="line-clamp-1">${escapeHtml(a.task_location)}</span>
+                                <span class="line-clamp-1">${escapeHtml(i.location || '—')}</span>
                             </div>
                         </div>
 
                         <!-- Parent info -->
                         <div class="bg-bg rounded-xl p-3 flex items-center justify-between mb-4">
                             <div class="flex items-center gap-3">
-                                <img class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" src="https://ui-avatars.com/api/?name=${encodeURIComponent(a.parent_username || 'P')}&background=F26522&color=fff&size=36" alt="${escapeHtml(a.parent_username)}"/>
+                                <img class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" src="https://ui-avatars.com/api/?name=${encodeURIComponent(i.parentUsername || 'P')}&background=F26522&color=fff&size=36" alt="${escapeHtml(i.parentUsername)}"/>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wider font-bold text-textSecondary/60">Phụ huynh</p>
-                                    <p class="font-semibold text-sm text-textPrimary">${escapeHtml(a.parent_username || 'Phụ huynh')}</p>
+                                    <p class="font-semibold text-sm text-textPrimary">${escapeHtml(i.parentName)}</p>
                                 </div>
                             </div>
-                            <button data-parent-username="${escapeHtml(a.parent_username)}" class="contact-parent-btn w-9 h-9 rounded-full bg-primaryLight flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all duration-200" title="Nhắn tin">
+                            <button data-parent-username="${escapeHtml(i.parentUsername)}" class="contact-parent-btn w-9 h-9 rounded-full bg-primaryLight flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all duration-200" title="Nhắn tin">
                                 <span class="material-symbols-outlined text-lg">chat_bubble</span>
                             </button>
                         </div>
 
                         <!-- Action buttons -->
-                        <div class="flex items-center gap-2 justify-end">
+                        <div class="flex items-center gap-2 justify-end flex-wrap">
                             ${actionButtons}
                         </div>
                     </div>
@@ -709,8 +809,108 @@
                 `;
             }).join('');
 
-            // Cửa sổ chat 24h: kiểm tra trạng thái thật từ server sau khi render
+            // Cửa sổ chat 24h: kiểm tra trạng thái thật từ server sau khi render (legacy completed)
             patchChat24hSlots();
+        }
+
+        // ===== LỊCH TUẦN (dạng lịch biểu) =====
+        function startOfWeek(offsetWeeks = 0) {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            const dow = (d.getDay() + 6) % 7; // 0 = Thứ 2
+            d.setDate(d.getDate() - dow + offsetWeeks * 7);
+            return d;
+        }
+
+        function shiftWeek(delta) {
+            weekOffset += delta;
+            render();
+        }
+
+        function renderCalendar(upcomingItems) {
+            const grid = document.getElementById('week-grid');
+            const label = document.getElementById('week-label');
+            const weekStart = startOfWeek(weekOffset);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+
+            label.textContent = weekOffset === 0
+                ? `Tuần này · ${weekStart.toLocaleDateString('vi-VN')} – ${weekEnd.toLocaleDateString('vi-VN')}`
+                : `${weekStart.toLocaleDateString('vi-VN')} – ${weekEnd.toLocaleDateString('vi-VN')}`;
+
+            const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let html = '';
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(weekStart);
+                day.setDate(day.getDate() + i);
+                const isToday = day.getTime() === today.getTime();
+                const dayItems = upcomingItems
+                    .filter(it => it.when && !isNaN(it.when) &&
+                        it.when.getFullYear() === day.getFullYear() &&
+                        it.when.getMonth() === day.getMonth() &&
+                        it.when.getDate() === day.getDate())
+                    .sort((a, b) => a.when - b.when);
+
+                const chips = dayItems.length
+                    ? dayItems.map(it => `
+                        <button onclick="location.href='${it.kind === 'booking' ? '/don/' + it.id + '/' : '{% url 'frontend:task_detail' %}?task_id=' + it.id}'"
+                                class="w-full text-left rounded-xl px-2.5 py-2 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200/80 hover:border-primary transition-all">
+                            <p class="text-[11px] font-extrabold text-primary leading-none">${it.when.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p class="text-[11px] font-semibold text-textPrimary line-clamp-2 mt-1 leading-tight">${escapeHtml(it.title)}</p>
+                            <p class="text-[10px] text-textSecondary mt-0.5">${getStatusConfig(it.status).label}</p>
+                        </button>`).join('')
+                    : '<p class="text-[11px] text-gray-300 text-center py-2">—</p>';
+
+                html += `
+                    <div class="bg-white p-2.5 min-h-[110px] ${isToday ? 'ring-2 ring-inset ring-primary/40' : ''}">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-[11px] font-bold ${isToday ? 'text-primary' : 'text-textSecondary'} uppercase tracking-wide">${dayNames[i]}</p>
+                            <span class="text-[10px] font-semibold ${isToday ? 'bg-primary text-white' : 'bg-gray-100 text-textSecondary'} rounded-full px-1.5 py-0.5">${day.getDate()}/${day.getMonth() + 1}</span>
+                        </div>
+                        <div class="space-y-1.5">${chips}</div>
+                    </div>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        // ===== BẮT ĐẦU / KẾT THÚC CA (booking Flow 1) =====
+        async function startShift(bookingId) {
+            const ok = await showConfirmModal('Bắt đầu ca', 'Xác nhận bạn đã có mặt và bắt đầu ca làm việc?');
+            if (!ok) return;
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/bookings/${bookingId}/start/`, { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    showToast('Đã bắt đầu ca. Chúc bạn làm việc thuận lợi!', 'success');
+                    fetchJobs();
+                } else {
+                    showToast(data.detail || 'Không bắt đầu được ca. Vui lòng thử lại.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Không bắt đầu được ca. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        async function completeShift(bookingId) {
+            const ok = await showConfirmModal('Kết thúc ca', 'Xác nhận ca làm việc đã hoàn tất?');
+            if (!ok) return;
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/bookings/${bookingId}/complete/`, { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    showToast('Đã kết thúc ca. Đơn chuyển sang chờ đánh giá.', 'success');
+                    fetchJobs();
+                } else {
+                    showToast(data.detail || 'Không kết thúc được ca. Vui lòng thử lại.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Không kết thúc được ca. Vui lòng thử lại.', 'error');
+            }
         }
 
 
@@ -786,11 +986,27 @@
             });
         }
 
-        // ===== FETCH JOBS =====
+        // ===== FETCH JOBS — 2 nguồn: booking Flow 1 + việc legacy =====
         async function fetchJobs() {
             try {
-                const resp = await apiFetch(API_BASE + "/worker/my-jobs/");
-                allApps = await resp.json();
+                const [bookingsResp, appsResp] = await Promise.allSettled([
+                    apiFetch(API_BASE + '/matching/bookings/'),
+                    apiFetch(API_BASE + '/worker/my-jobs/')
+                ]);
+
+                allBookings = [];
+                if (bookingsResp.status === 'fulfilled' && bookingsResp.value && bookingsResp.value.ok) {
+                    const bData = await bookingsResp.value.json();
+                    allBookings = Array.isArray(bData) ? bData : (bData.results || []);
+                }
+
+                allApps = [];
+                if (appsResp.status === 'fulfilled' && appsResp.value && appsResp.value.ok) {
+                    const aData = await appsResp.value.json();
+                    // Chuẩn hóa: mảng thuần hoặc object phân trang {results}
+                    allApps = Array.isArray(aData) ? aData : (aData && Array.isArray(aData.results) ? aData.results : []);
+                }
+
                 render();
             } catch (e) {
                 console.error(e);
@@ -802,7 +1018,7 @@
                         </div>
                         <h3 class="font-manrope font-bold text-lg text-textPrimary mb-2">Lỗi kết nối</h3>
                         <p class="text-textSecondary text-sm max-w-xs">Không thể tải danh sách việc làm. Vui lòng thử lại.</p>
-                        <button onclick="init()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">Thử lại</button>
+                        <button onclick="fetchJobs()" class="mt-4 px-5 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primaryDark transition-all duration-200">Thử lại</button>
                     </div>
                 `;
             }
@@ -811,20 +1027,32 @@
         // ===== INIT =====
         async function init() {
             try {
-                // Fetch profile for sidebar info
-                const profResp = await apiFetch(API_BASE + "/profile/");
-                const prof = await profResp.json();
-                const displayName = prof.first_name || prof.username || 'Carepartner';
+                // Fetch profile for sidebar info (null-safe)
+                let displayName = 'Carepartner';
+                let username = 'W';
+                try {
+                    const profResp = await apiFetch(API_BASE + "/profile/");
+                    if (profResp && profResp.ok) {
+                        const prof = await profResp.json();
+                        displayName = prof.first_name || prof.username || 'Carepartner';
+                        username = prof.username || 'W';
+                    }
+                } catch (e) { console.warn('profile load failed:', e); }
 
-                // Update sidebar
-                document.getElementById('sidebar-name').textContent = displayName;
-                document.getElementById('sidebar-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
+                // Update sidebar (nếu phần tử tồn tại)
+                const nameEl = document.getElementById('sidebar-name');
+                if (nameEl) nameEl.textContent = displayName;
+                const avtEl = document.getElementById('sidebar-avatar');
+                if (avtEl) avtEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=F26522&color=fff`;
 
                 // Update mobile header
-                document.getElementById('mobile-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username || 'W')}&background=F26522&color=fff`;
-                document.getElementById('header-greeting').textContent = `Quản lý công việc của bạn`;
+                const mavtEl = document.getElementById('mobile-avatar');
+                if (mavtEl) mavtEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=F26522&color=fff`;
+                const greetEl = document.getElementById('header-greeting');
+                if (greetEl) greetEl.textContent = 'Quản lý công việc của bạn';
 
-                // Fetch jobs
+                // Khởi tạo toggle + tải dữ liệu
+                paintViewToggle();
                 await fetchJobs();
             } catch (e) {
                 console.error(e);

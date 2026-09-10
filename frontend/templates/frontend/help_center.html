@@ -191,10 +191,13 @@
     <!-- ===== TOAST CONTAINER ===== -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- ===== DESKTOP SIDEBAR (hidden on mobile) ===== -->
-    <aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
-{% include 'frontend/_parent_sidebar.html' with active_tab='help' %}
-    </aside>
+    <!-- ===== CHROME THEO VAI TRÒ (QA 2026-09-11 — Vấn đề 3) =====
+         URL /worker/help-center/ là trang DÙNG CHUNG cả 2 vai trò (1 route duy nhất
+         name='help_center'), nên KHÔNG thể chọn sidebar theo request.path.
+         Dùng _role_chrome.html: render sẵn cả 2 chrome (ẩn), JS đọc role
+         (localStorage 'role' → fallback /api/profile/) để hiện đúng sidebar:
+         Carepartner → _worker_sidebar (active_tab='help'), Phụ huynh → _parent_sidebar. -->
+{% include 'frontend/_role_chrome.html' with active_tab='help' worker_tab='help' %}
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="lg:ml-[260px] min-h-screen flex flex-col chat-main-area">

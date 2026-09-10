@@ -16,7 +16,7 @@ import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import {
   getBookingDetail, cancelBooking, cancelBookingByParent,
-  reportNoShow, startBooking, completeBooking, respondReschedule,
+  reportNoShow, startBooking, completeBooking, respondReschedule, commitBooking,
   CANCEL_REASONS,
 } from '../../api/matching';
 
@@ -163,11 +163,20 @@ export default function BookingDetailScreen() {
             <Text style={styles.countdownTitle}>Thời gian cam kết còn lại</Text>
             <Text style={styles.countdown}>{mm}:{ss}</Text>
             <Text style={styles.countdownHint}>
-              Đơn sẽ tự động xác nhận khi hết thời gian này.
+              Nếu bạn không xác nhận trước khi hết thời gian, đơn sẽ tự bị hủy
+              khỏi dashboard và phụ huynh sẽ được thông báo để chọn người khác.
             </Text>
           </View>
         )}
 
+        {/* HÀNH ĐỘNG CP — XÁC NHẬN CAM KẾT (Grab-style, QA 2026-09-10 #2) */}
+        {isCarePartner && booking.status === 'awaiting_commitment' && (
+          <TouchableOpacity style={[styles.actionBtn, styles.primaryBtn]}
+            disabled={actionLoading}
+            onPress={() => run(() => commitBooking(bookingId), 'Đã cam kết nhận đơn. Nhớ có mặt đúng giờ nhé!')}>
+            <Text style={styles.primaryBtnText}>Xác nhận cam kết</Text>
+          </TouchableOpacity>
+        )}
         {/* HÀNH ĐỘNG CP */}
         {isCarePartner && (booking.status === 'committed' || booking.status === 'suspected_no_show') && (
           <TouchableOpacity style={[styles.actionBtn, styles.primaryBtn]}

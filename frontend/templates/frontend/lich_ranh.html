@@ -5,7 +5,7 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
-    <title>EduCareLink — Lịch rảnh ghép cặp</title>
+    <title>EduCareLink — Lịch rảnh làm việc</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
@@ -16,20 +16,18 @@
     {% include 'frontend/_matching_common.html' %}
 </head>
 <body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90">
+{% include 'frontend/_worker_chrome.html' with active_tab='availability' %}
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90 lg:ml-[260px]">
     <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <a href="/worker/" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+        <a href="/don-cua-toi/" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Tìm việc</span>
+            <span>Đơn của tôi</span>
         </a>
-        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Lịch rảnh ghép cặp</span>
-        <span class="text-xs font-bold text-[#F26522] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
-            Flow 1
-        </span>
+        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Lịch rảnh làm việc</span>
     </div>
 </header>
 
-<main class="max-w-2xl mx-auto px-4 py-8 space-y-4 mcm-fade-in">
+<main class="max-w-2xl mx-auto px-4 py-8 space-y-4 mcm-fade-in lg:ml-[260px]">
     <div class="bg-white border border-orange-200/80 rounded-2xl p-4 sm:p-5 shadow-sm">
         <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-[#F26522] text-xl shrink-0 mt-0.5">event_available</span>
@@ -82,7 +80,8 @@
     const data = await resp.json();
     const wrap = document.getElementById('list');
     wrap.innerHTML = '';
-    const rows = Array.isArray(data) ? data : (data.results || []);
+    // Backend Flow 1 Step 4 trả {"windows": [...]} — chấp nhận cả mảng thuần/pagination cho an toàn
+    const rows = Array.isArray(data) ? data : (data.windows || data.results || []);
     if (!rows.length) {
       wrap.innerHTML = '<div class="py-8 text-center text-gray-400">Chưa có khung giờ nào. Thêm khung đầu tiên nhé!</div>';
       return;
@@ -111,6 +110,30 @@
     }
   }
 
+  // Gộp khung giờ bị chồng lấn: PUT khung cũ thành khoảng hợp nhất (backend trả id trong merge_suggestion)
+  async function applyMerge(s) {
+    const arr = Array.isArray(s) ? s : [s];
+    const first = arr[0];
+    if (!first) return load();
+    // Hợp nhất toàn bộ khoảng gợi ý + khung đang thêm thành 1 khoảng bao trùm
+    const froms = arr.map(x => String(x.time_from || '').slice(0, 8)).concat([document.getElementById('timeFrom').value]);
+    const tos = arr.map(x => String(x.time_to || '').slice(0, 8)).concat([document.getElementById('timeTo').value]);
+    const timeFrom = froms.sort()[0], timeTo = tos.sort()[tos.length - 1];
+    const weekday = Number(document.getElementById('weekday').value);
+    const resp = await authFetch(`${API_BASE}/matching/carepartners/me/availability/${first.id}/`, {
+      method: 'PUT', body: JSON.stringify({ weekday, time_from: timeFrom, time_to: timeTo }) });
+    if (resp.ok) {
+      // Nếu có nhiều khung cũ trùng → xóa nốt các khung còn lại sau khi gộp
+      for (const extra of arr.slice(1)) {
+        await authFetch(`${API_BASE}/matching/carepartners/me/availability/${extra.id}/`, { method: 'DELETE' });
+      }
+      toast(`Đã gộp thành ${timeFrom.slice(0, 5)} – ${timeTo.slice(0, 5)}.`);
+    } else {
+      toast('Không gộp được khung giờ. Vui lòng thử lại.', false);
+    }
+    load();
+  }
+
   document.getElementById('addBtn').onclick = async () => {
     const timeFrom = document.getElementById('timeFrom').value, timeTo = document.getElementById('timeTo').value;
     const weekday = Number(document.getElementById('weekday').value);
@@ -119,9 +142,21 @@
     const resp = await authFetch(API_BASE + '/matching/carepartners/me/availability/', {
       method: 'POST', body: JSON.stringify({ weekday, time_from: timeFrom, time_to: timeTo }) });
     if (resp.status === 201) { toast('Đã thêm khung giờ.'); load(); }
+    else if (resp.status === 400) {
+      const j = await resp.json().catch(() => ({}));
+      if (j.code === 'overlap_windows' && j.merge_suggestion) {
+        const s = Array.isArray(j.merge_suggestion) ? j.merge_suggestion : [j.merge_suggestion];
+        const froms = s.map(x => String(x.time_from || '').slice(0, 5)).concat([timeFrom.slice(0, 5)]);
+        const tos = s.map(x => String(x.time_to || '').slice(0, 5)).concat([timeTo.slice(0, 5)]);
+        const msg = `Khung giờ bị trùng. Bạn có muốn gộp thành ${froms.sort()[0]} – ${tos.sort()[tos.length - 1]} không?`;
+        if (confirm(msg)) await applyMerge(j.merge_suggestion);
+      } else {
+        toast(j.detail || (typeof j === 'object' && Object.values(j).length ? Object.values(j).flat()[0] : 'Không thêm được khung giờ.'), false);
+      }
+    }
     else {
       const j = await resp.json().catch(() => ({}));
-      toast(j.detail || (typeof j === 'object' ? Object.values(j).flat()[0] : 'Không thêm được.'), false);
+      toast(j.detail || (typeof j === 'object' && Object.values(j).length ? Object.values(j).flat()[0] : 'Không thêm được.'), false);
     }
   };
 
