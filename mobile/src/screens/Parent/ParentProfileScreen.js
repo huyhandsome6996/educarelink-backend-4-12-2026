@@ -32,7 +32,7 @@ const MENU_ITEMS = [
   { id: 'children', icon: 'people', label: 'Quản lý bé', target: null },
   { id: 'payment', icon: 'card', label: 'Phương thức thanh toán', target: 'PaymentSetup' },
   { id: 'notifications', icon: 'notifications', label: 'Cài đặt thông báo', target: 'Notifications' },
-  { id: 'security', icon: 'shield-lock', label: 'Bảo mật & Quyền riêng tư', target: null },
+  { id: 'security', icon: 'shield-checkmark', label: 'Bảo mật & Quyền riêng tư', target: null },
   { id: 'help', icon: 'help-circle', label: 'Trợ giúp & Hỗ trợ', target: 'HelpCenter' },
   { id: 'about', icon: 'information-circle', label: 'Về EduCareLink', target: null },
 ];

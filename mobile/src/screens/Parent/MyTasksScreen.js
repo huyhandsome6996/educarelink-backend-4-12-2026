@@ -228,7 +228,7 @@ export default function MyTasksScreen() {
             </View>
             {task.status === 'open' && (
               <View style={styles.cardInfoItem}>
-                <Ionicons name="person-search-outline" size={14} color={COLORS.onSurfaceVariant} />
+                <Ionicons name="search-outline" size={14} color={COLORS.onSurfaceVariant} />
                 <Text style={[styles.cardInfoText, { fontStyle: 'italic' }]}>Đang tìm CarePartner...</Text>
               </View>
             )}
