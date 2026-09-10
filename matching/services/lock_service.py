@@ -252,6 +252,90 @@ def invalidate_availability_cache(carepartner, date=None):
             pass  # LocMem: TTL 60s tự hết — chấp nhận trễ tối đa 60s
 
 
+def load_slot_context(user_ids, dates):
+    """Batch-load toàn bộ dữ liệu lịch cho N carepartner × M ngày trong ĐÚNG 5 query.
+
+    Khử N+1 cho matching engine: trước đây find_candidates() gọi
+    covers_all_slots() cho từng CP → available_slots() tự chạy 4-5 query
+    mỗi cặp (CP, ngày) → tổng O(N×D×5) query. Hàm này gom toàn bộ thành:
+
+      1. CarePartnerAvailability (lịch tuần)          — 1 query
+      2. CarePartnerBlackout                          — 1 query
+      3. Booking đang chiếm slot (busy statuses)      — 1 query
+         + JobSlot của các booking đó (prefetch)      — 1 query
+      4. SlotLock (hard + soft còn hạn)               — 1 query
+
+    Trả về dict 4 map theo key (user_id, date):
+      {'avail': {(uid, d): [(tf, tt), ...]},
+       'blackouts': {(uid, d): [(tf, tt), ...]},   # blackout cả ngày → (00:00, 23:59:59.999999)
+       'busy': {(uid, d): [(tf, tt), ...]},
+       'locks': {(uid, d): [(tf, tt), ...]}}       # CHỈ lock đang chặn (hard / soft còn hạn)
+
+    Context truyền ngược vào available_slots()/covers_all_slots() qua tham
+    số `prefetched`. Luồng đặt ca (lock_service, booking) KHÔNG dùng path
+    này — nơi đó vẫn query trực tiếp + bypass cache trong transaction
+    (nhận xét gốc giữ nguyên, không đụng vào).
+    """
+    from django.db.models import Prefetch
+
+    from ..models import CarePartnerAvailability, CarePartnerBlackout, JobSlot
+
+    ctx = {'avail': {}, 'blackouts': {}, 'busy': {}, 'locks': {}}
+    user_ids = list(user_ids)
+    dates = list(dates)
+    if not user_ids or not dates:
+        return ctx
+    date_set = set(dates)
+    weekdays = {d.weekday() for d in dates}
+
+    # 1. Lịch tuần — gom theo (cp, date) khớp weekday
+    for row in (CarePartnerAvailability.objects
+                .filter(carepartner_id__in=user_ids, weekday__in=weekdays)
+                .order_by('carepartner_id', 'weekday', 'time_from')):
+        for d in dates:
+            if d.weekday() == row.weekday:
+                ctx['avail'].setdefault((row.carepartner_id, d), []).append(
+                    (row.time_from, row.time_to))
+
+    # 2. Blackout trong các ngày yêu cầu (cả ngày → cắt toàn bộ)
+    for b in (CarePartnerBlackout.objects
+              .filter(carepartner_id__in=user_ids, date__in=dates)):
+        if b.time_from is None or b.time_to is None:
+            cut = (_time.min, _time.max)
+        else:
+            cut = (b.time_from, b.time_to)
+        ctx['blackouts'].setdefault((b.carepartner_id, b.date), []).append(cut)
+
+    # 3. Booking đang chiếm slot — prefetch JobSlot đúng các ngày cần (2 query)
+    busy_bookings = (Booking.objects
+                     .filter(carepartner_id__in=user_ids,
+                             status__in=BUSY_BOOKING_STATUSES,
+                             job__slots__date__in=dates)
+                     .distinct()
+                     .prefetch_related(
+                         Prefetch('job__slots',
+                                  queryset=JobSlot.objects.filter(date__in=dates))))
+    for booking in busy_bookings:
+        for slot in booking.job.slots.all():
+            if slot.date in date_set:
+                ctx['busy'].setdefault((booking.carepartner_id, slot.date), []).append(
+                    (slot.time_from, slot.time_to))
+
+    # 4. SlotLock đang chặn (hard, hoặc soft còn hạn)
+    now = timezone.now()
+    for lock in (SlotLock.objects
+                 .filter(carepartner_id__in=user_ids, date__in=dates)):
+        if lock.lock_type == SlotLock.LockType.HARD:
+            active = True
+        else:
+            active = bool(lock.expires_at and lock.expires_at > now)
+        if active:
+            ctx['locks'].setdefault((lock.carepartner_id, lock.date), []).append(
+                (lock.time_from, lock.time_to))
+
+    return ctx
+
+
 def expand_weekly_windows(carepartner, date):
     """Lịch tuần của CP cho 1 ngày cụ thể → list (time_from, time_to)."""
     from ..models import CarePartnerAvailability
@@ -285,13 +369,18 @@ def _subtract_intervals(base, cuts):
     return merged
 
 
-def available_slots(carepartner, date, use_cache=True):
+def available_slots(carepartner, date, use_cache=True, prefetched=None):
     """available_slots(cp, date) = weekly_windows MINUS blackouts MINUS
     booked_slots(awaiting_commitment|committed|reschedule_requested|in_progress)
     MINUS slot_locks (soft còn hạn + hard).                         (Step 9.3)
 
     Trong transaction (booking) PHẢI bypass cache — tự nhận diện qua
     connection.in_atomic_block.
+
+    prefetched: dict từ load_slot_context() (batch cho matching engine).
+    Khi truyền, hàm KHÔNG query và KHÔNG đụng cache — chỉ tra dict theo
+    (carepartner.pk, date). Không truyền → hành vi cũ nguyên vẹn (query
+    trực tiếp + cache 60s, transaction tự bypass cache).
     """
     from django.core.cache import cache
     from django.db import connection
@@ -299,6 +388,15 @@ def available_slots(carepartner, date, use_cache=True):
     from ..models import CarePartnerBlackout
 
     cp_id = carepartner.pk
+
+    # ── Batch mode (matching engine): bản chụp nhất quán tải trước ──
+    if prefetched is not None:
+        base = list(prefetched['avail'].get((cp_id, date), []))
+        blackout_cuts = list(prefetched['blackouts'].get((cp_id, date), []))
+        busy_cuts = list(prefetched['busy'].get((cp_id, date), []))
+        lock_cuts = list(prefetched['locks'].get((cp_id, date), []))
+        return _subtract_intervals(base, blackout_cuts + busy_cuts + lock_cuts)
+
     in_atomic = connection.in_atomic_block
     use_cache = use_cache and not in_atomic
 
@@ -342,16 +440,20 @@ def available_slots(carepartner, date, use_cache=True):
     return slots
 
 
-def covers_all_slots(carepartner, required_slots):
+def covers_all_slots(carepartner, required_slots, prefetched=None):
     """Hard filter matching (Step 2.2.1 #2): CP phải cover ĐỦ MỌI slot.
 
     required_slots: list (date, time_from, time_to). Trả (ok: bool, missing: list).
+
+    prefetched: dict từ load_slot_context() — truyền xuống available_slots()
+    để tránh query từng CP (matching engine). None → hành vi cũ nguyên vẹn.
     """
     missing = []
     cache_by_date = {}
     for date, time_from, time_to in required_slots:
         if date not in cache_by_date:
-            cache_by_date[date] = available_slots(carepartner, date)
+            cache_by_date[date] = available_slots(carepartner, date,
+                                                  prefetched=prefetched)
         covered = any(tf <= time_from and time_to <= tt
                       for tf, tt in cache_by_date[date])
         if not covered:

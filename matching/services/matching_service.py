@@ -18,7 +18,9 @@ Soft scoring (Step 11.6 — trọng số từ DB MatchingWeight):
 
 import logging
 import math
+from datetime import datetime as _dt, time as _time
 
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 
 from ..config import get_config, get_int
@@ -29,7 +31,7 @@ from ..models import (
     MatchingWeight,
 )
 from .elo_service import EloService
-from .lock_service import covers_all_slots
+from .lock_service import covers_all_slots, load_slot_context
 
 logger = logging.getLogger('educarelink.matching.engine')
 
@@ -42,6 +44,95 @@ def get_active_weights():
     if not weights:
         logger.error('[Matching] Chưa seed MatchingWeight — matching sẽ sai!')
     return weights
+
+
+# Bán kính Trái Đất (km) — khớp công thức haversine bên dưới (R=6371.0)
+_EARTH_RADIUS_KM = 6371.0
+
+
+def _bounding_box_q(latitude, longitude, delta_km):
+    """Q() lọc SQL theo khung chữ nhật ngoại tiếp bán kính delta_km quanh job.
+
+    CÁCH CHỌN DELTA (an toàn tuyệt đối — KHÔNG loại nhầm CP hợp lệ):
+    Caller truyền delta_km = max(DEFAULT_MAX_RADIUS_KM, MAX(max_radius_km) của
+    mọi CarePartnerProfile) — 1 query aggregate rẻ. Bất kỳ CP nào sống sót qua
+    hard-filter bán kính (km <= profile.max_radius_km hoặc default) đều cách
+    job <= delta_km, nên nằm trong khung này. Khung là SIÊU TẬP của đường tròn
+    bán kính delta_km theo mô hình cầu khớp đúng haversine (R=6371):
+      - Vĩ độ: |Δφ| <= alpha = delta_km / R (rad) — chính xác tuyệt đối trên cầu.
+      - Kinh độ: điểm cách trung tâm góc cầu alpha có |Δλ| tối đa tại vĩ độ cao
+        nhất của vòng tròn (|φ0| + alpha) → |Δλ| <= alpha / cos(|φ0| + alpha).
+        Nếu vòng tròn chạm cực (|φ0| + alpha >= 90°) hoặc khung vượt ±180°
+        (qua kinh tuyến ngày) → BỎ lọc kinh độ (siêu tập, an toàn).
+    CP không có tọa độ (lat/lng NULL) KHÔNG bị loại — khớp hành vi cũ (km None
+    → không lọc bán kính, newcomer-friendly).
+
+    Trả Q() (không lọc) khi job thiếu tọa độ hoặc delta không dương.
+    """
+    if latitude is None or longitude is None or not delta_km or delta_km <= 0:
+        return Q()
+    alpha = delta_km / _EARTH_RADIUS_KM  # radian — góc cầu tối đa
+    lat_delta = math.degrees(alpha)
+    lat_q = (Q(user__latitude__isnull=True)
+             | Q(user__latitude__gte=latitude - lat_delta,
+                 user__latitude__lte=latitude + lat_delta))
+
+    max_phi = abs(math.radians(latitude)) + alpha
+    if max_phi < math.pi / 2:  # vòng tròn không chạm cực
+        lng_delta = math.degrees(alpha / math.cos(max_phi))
+        lng_min, lng_max = longitude - lng_delta, longitude + lng_delta
+        if lng_min >= -180.0 and lng_max <= 180.0:  # không vướng kinh tuyến ngày
+            lng_q = (Q(user__longitude__isnull=True)
+                     | Q(user__longitude__gte=lng_min,
+                         user__longitude__lte=lng_max))
+            # KM là None khi ÍT NHẤT MỘT toạ độ NULL → phải pass; cả hai có
+            # giá trị mới chịu lọc khung. Viết là (NULL một trong hai) OR
+            # (đủ khung vĩ độ AND đủ khung kinh độ) — không được AND rời
+            # từng chiều vì sẽ loại CP chỉ có lng ngoài khung nhưng lat NULL.
+            return lat_q | lng_q | (lat_q & lng_q)
+    return lat_q
+
+
+def _batch_latest_reviews(user_ids):
+    """{user_id: review_mới_nhất_text} — MỘT query cho toàn bộ CP (khử N+1
+    _latest_review_text vốn chạy 1 query .first() mỗi CP trong vòng lặp).
+
+    Kỹ thuật: order theo -created_at, giữ bản ghi ĐẦU TIÊN của mỗi reviewee
+    — tương đương .order_by('-created_at').first() per user (SQLite không
+    hỗ trợ DISTINCT ON của Postgres). Tách Python tạo dict trước vòng lặp.
+    """
+    from core.models import Review
+    if not user_ids:
+        return {}
+    out = {}
+    remaining = set(user_ids)
+    rows = (Review.objects.filter(reviewee_id__in=user_ids)
+            .only('reviewee_id', 'comment', 'created_at')
+            .order_by('-created_at', 'reviewee_id'))
+    for r in rows:
+        if r.reviewee_id in remaining:
+            remaining.discard(r.reviewee_id)
+            out[r.reviewee_id] = (r.comment or '')[:120]
+            if not remaining:
+                break
+    return out
+
+
+def _batch_proposal_counts(user_ids, when=None):
+    """{user_id: số CandidateProposal hôm nay} — 1 query GROUP BY cho toàn bộ
+    CP (khử N+1 EloService.can_receive_proposal vốn COUNT mỗi CP).
+    Ngày lịch theo timezone hiện hành — khớp đúng cách tính trong
+    can_receive_proposal (timezone.localdate)."""
+    when = when or timezone.now()
+    if not user_ids:
+        return {}
+    day_start = timezone.make_aware(
+        _dt.combine(timezone.localdate(when), _time.min))
+    rows = (CandidateProposal.objects
+            .filter(carepartner_id__in=user_ids, proposed_at__gte=day_start)
+            .values('carepartner_id')
+            .annotate(n=Count('id')))
+    return {row['carepartner_id']: row['n'] for row in rows}
 
 
 def haversine_km(lat1, lng1, lat2, lng2):
@@ -179,11 +270,34 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     candidates = []
     pool_qualified = 0
 
-    profiles = (CarePartnerProfile.objects
-                .select_related('user', 'band')
-                .filter(user__role='worker',
-                        user__is_active=True,
-                        user__is_approved=True))
+    # ── TASK perf 1.1: bounding-box filter TRƯỚC ở SQL ──
+    # delta = bán kính lớn nhất có thể trong hệ thống (max của mọi
+    # profile.max_radius_km và DEFAULT_MAX_RADIUS_KM) → khung là siêu tập
+    # của mọi đường tròn bán kính từng CP → KHÔNG loại nhầm ai (chi tiết
+    # chứng minh trong docstring _bounding_box_q). CP không có tọa độ
+    # (NULL) vẫn đi qua khung — khớp hành vi cũ.
+    max_profile_radius = (CarePartnerProfile.objects
+                          .aggregate(m=Max('max_radius_km'))['m']) or 0
+    box_q = _bounding_box_q(job.latitude, job.longitude,
+                            max(default_radius, max_profile_radius))
+
+    profiles = list((CarePartnerProfile.objects
+                     .select_related('user', 'band')
+                     .filter(user__role='worker',
+                             user__is_active=True,
+                             user__is_approved=True)
+                     .filter(box_q)))
+
+    # ── TASK perf 1.2 + 1.3: batch-load trước vòng lặp (khử N+1) ──
+    # Lịch rảnh: 5 query cho TOÀN BỘ CP × ngày (trước đây 4-5 query × CP × ngày).
+    cp_user_ids = [p.user_id for p in profiles]
+    unique_dates = sorted({d for d, _, _ in required_slots})
+    slot_ctx = load_slot_context(cp_user_ids, unique_dates)
+    # Review mới nhất: 1 query (trước đây 1 query .first() mỗi CP).
+    latest_reviews = _batch_latest_reviews(cp_user_ids)
+    # Số đề xuất hôm nay: 1 query GROUP BY (trước đây 1 COUNT mỗi CP qua
+    # can_receive_proposal → giờ truyền sẵn qua tham số today_count).
+    proposal_counts = _batch_proposal_counts(cp_user_ids)
 
     for profile in profiles:
         user = profile.user
@@ -192,7 +306,8 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # ── Hard filters ──
         if not EloService.is_matchable(profile):
             continue
-        ok_cover, _missing = covers_all_slots(user, required_slots)
+        ok_cover, _missing = covers_all_slots(user, required_slots,
+                                              prefetched=slot_ctx)
         if not ok_cover:
             continue
         km = haversine_km(job.latitude, job.longitude, user.latitude, user.longitude)
@@ -210,7 +325,8 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # restricted chỉ vào pool khi < 8 (chỉnh sau khi biết pool đủ điều kiện)
         if not EloService.is_allowed_in_pool(profile, pool_qualified - 1) and pool_qualified - 1 >= top_n:
             continue
-        if not EloService.can_receive_proposal(user):
+        if not EloService.can_receive_proposal(
+                user, profile=profile, today_count=proposal_counts.get(user.pk, 0)):
             continue
 
         # ── Sub-scores ──
@@ -245,7 +361,7 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
             'match_level': level,
             'match_level_vi': MATCH_LEVEL_LABELS_VI.get(level, level),
             'top_skills': (profile.skills or [])[:4],
-            'latest_review': _latest_review_text(user),
+            'latest_review': latest_reviews.get(user.pk, ''),
             'response_tag': 'replies_fast' if (profile.responses_total and
                                                profile.responded_within_sla / profile.responses_total >= 0.8) else '',
             'availability_fit': 'full',

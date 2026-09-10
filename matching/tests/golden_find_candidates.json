@@ -1,0 +1,130 @@
+{
+ "total_matched": 8,
+ "candidates": [
+  {
+   "display_name": "cp_best",
+   "school": "ĐH Sư phạm Hà Nội",
+   "major": "Sư phạm Toán",
+   "rating": 4.8,
+   "completed_jobs": 20,
+   "distance_km": 0.1,
+   "match_score": 92,
+   "match_level": "very_high",
+   "match_level_vi": "Rất phù hợp",
+   "top_skills": [
+    "toan",
+    "tieu_hoc"
+   ],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_mid",
+   "school": "",
+   "major": "",
+   "rating": 4.0,
+   "completed_jobs": 10,
+   "distance_km": 1.1,
+   "match_score": 84,
+   "match_level": "high",
+   "match_level_vi": "Phù hợp cao",
+   "top_skills": [
+    "toan"
+   ],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_reviewed",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": 0.2,
+   "match_score": 71,
+   "match_level": "medium",
+   "match_level_vi": "Phù hợp",
+   "top_skills": [],
+   "latest_review": "Chăm chỉ, đúng giờ, trẻ rất thích",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_no_coords",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": null,
+   "match_score": 69,
+   "match_level": "medium",
+   "match_level_vi": "Phù hợp",
+   "top_skills": [],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_vehicle",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": 5.6,
+   "match_score": 67,
+   "match_level": "medium",
+   "match_level_vi": "Phù hợp",
+   "top_skills": [],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_low_elo",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": 0.4,
+   "match_score": 62,
+   "match_level": "medium",
+   "match_level_vi": "Phù hợp",
+   "top_skills": [],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_custom_radius",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": 3.3,
+   "match_score": 60,
+   "match_level": "medium",
+   "match_level_vi": "Phù hợp",
+   "top_skills": [],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  },
+  {
+   "display_name": "cp_far",
+   "school": "",
+   "major": "",
+   "rating": 0.0,
+   "completed_jobs": 0,
+   "distance_km": 18.9,
+   "match_score": 55,
+   "match_level": "low",
+   "match_level_vi": "Có thể cân nhắc",
+   "top_skills": [],
+   "latest_review": "",
+   "response_tag": "",
+   "availability_fit": "full"
+  }
+ ]
+}

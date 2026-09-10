@@ -311,22 +311,32 @@ class EloService:
         return True
 
     @staticmethod
-    def can_receive_proposal(carepartner, when=None):
-        """Throttle đề xuất/ngày theo band, đếm theo ngày lịch VN (Step 6.6.5)."""
+    def can_receive_proposal(carepartner, when=None, profile=None, today_count=None):
+        """Throttle đề xuất/ngày theo band, đếm theo ngày lịch VN (Step 6.6.5).
+
+        profile: truyền sẵn CarePartnerProfile (matching engine đã load cùng
+        select_related band) → bỏ get_or_create query mỗi lần gọi.
+        today_count: số đề xuất hôm nay đã đếm BATCH cho nhiều CP (1 query
+        GROUP BY thay vì COUNT từng CP) → None thì tự đếm như cũ.
+
+        Không truyền gì → hành vi cũ nguyên vẹn (get_profile + COUNT).
+        """
         when = when or timezone.now()
-        profile = EloService.get_profile(carepartner)
+        if profile is None:
+            profile = EloService.get_profile(carepartner)
         if not EloService.is_matchable(profile, when):
             return False
         band = profile.band
         if band is None or band.max_proposals_per_day is None:
             return True
-        day_start = timezone.make_aware(
-            _dt.combine(timezone.localdate(when), _time.min))
-        count = CandidateProposal.objects.filter(
-            carepartner=carepartner, proposed_at__gte=day_start).count()
-        if count >= band.max_proposals_per_day:
+        if today_count is None:
+            day_start = timezone.make_aware(
+                _dt.combine(timezone.localdate(when), _time.min))
+            today_count = CandidateProposal.objects.filter(
+                carepartner=carepartner, proposed_at__gte=day_start).count()
+        if today_count >= band.max_proposals_per_day:
             logger.warning('[ELO] Throttle: %s (band %s) đã nhận %d đề xuất hôm nay',
-                           carepartner_id(carepartner), band.name, count)
+                           carepartner_id(carepartner), band.name, today_count)
             return False
         return True
 
