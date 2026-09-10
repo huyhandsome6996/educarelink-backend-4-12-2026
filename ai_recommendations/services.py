@@ -14,6 +14,7 @@ AI Recommendation Service — dùng Gemini để gợi ý việc + đánh giá �
    - Parent chỉ tham khảo, quyền quyết định vẫn là parent
 """
 
+import hashlib
 import logging
 import json
 from datetime import timedelta
@@ -32,6 +33,21 @@ WORKER_CACHE_PREFIX = 'ai_rec_worker_'
 PARENT_CACHE_PREFIX = 'ai_rec_parent_'
 
 
+def _stable_hash(values):
+    """Hash XÁC ĐỊNH (deterministic) cho cache key — Task perf 2.
+
+    Trước đây dùng built-in hash() của Python: bị randomize theo
+    PYTHONHASHSEED mỗi lần process khởi động → cùng 1 danh sách ID sinh
+    key KHÁC NHAU giữa các Gunicorn worker / sau mỗi restart → cache hit
+    rate gần như 0. md5 đủ dùng cho cache key (không phải mục đích bảo
+    mật), cắt 12 hex đầu = 48 bit — xác suất collision thực tế ~0 với
+    số lượng key của app (birthday bound ~16.7 triệu key).
+    """
+    sorted_ids = sorted(int(v) for v in values)
+    id_str = ','.join(str(v) for v in sorted_ids)
+    return hashlib.md5(id_str.encode('utf-8')).hexdigest()[:12]
+
+
 def build_worker_cache_key(worker_id, task_ids):
     """
     Build cache key cho worker recommendations — phải khớp đúng logic
@@ -41,8 +57,7 @@ def build_worker_cache_key(worker_id, task_ids):
         worker_id: int
         task_ids: iterable of int (sẽ được sort + hash)
     """
-    sorted_ids = sorted(int(tid) for tid in task_ids)
-    return f'{WORKER_CACHE_PREFIX}{worker_id}_{hash(tuple(sorted_ids))}'
+    return f'{WORKER_CACHE_PREFIX}{worker_id}_{_stable_hash(task_ids)}'
 
 
 def build_parent_cache_key(task_id, app_ids):
@@ -54,8 +69,7 @@ def build_parent_cache_key(task_id, app_ids):
         task_id: int
         app_ids: iterable of int (sẽ được sort + hash)
     """
-    sorted_ids = sorted(int(aid) for aid in app_ids)
-    return f'{PARENT_CACHE_PREFIX}{task_id}_{hash(tuple(sorted_ids))}'
+    return f'{PARENT_CACHE_PREFIX}{task_id}_{_stable_hash(app_ids)}'
 
 
 def _get_gemini_client():
