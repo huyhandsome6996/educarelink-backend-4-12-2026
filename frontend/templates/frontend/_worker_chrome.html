@@ -1,0 +1,66 @@
+{% load static %}
+<!-- ============================================================ -->
+<!-- _worker_chrome.html — Khung điều hướng dùng chung MỌI trang    -->
+<!-- luồng Carepartner (Batch 1 — QA 2026-09-10).                   -->
+<!-- Tham số: active_tab = feed | jobs | availability | profile     -->
+<!--                    | chatbot | guide | help                    -->
+<!-- Gồm: sidebar desktop + bottom-nav mobile chuẩn 4 tab Carepartner -->
+<!-- (Nhận việc · Lịch rảnh · Việc của tôi · Hồ sơ) + runtime user.  -->
+<!-- ============================================================ -->
+
+<!-- ===== SIDEBAR (Desktop ≥1024px) — đồng bộ pattern _parent_chrome ===== -->
+<aside id="sidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:bg-surface lg:border-r lg:border-border lg:z-40">
+{% include 'frontend/_worker_sidebar.html' with active_tab=active_tab %}
+</aside>
+
+<!-- ===== BOTTOM NAV (Mobile <1024px) — chuẩn 4 tab Carepartner ===== -->
+<nav id="worker-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border shadow-lg">
+    <div class="flex justify-around items-center px-2 py-2" style="padding-bottom: max(0.6rem, env(safe-area-inset-bottom));">
+        <!-- Nhận việc -->
+        <a href="{% url 'frontend:don_cua_toi' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 {% if active_tab == 'feed' %}bg-orange-50 text-primary font-bold{% else %}text-textSecondary hover:text-textPrimary{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'feed' %} filled{% endif %}">notifications_active</span>
+            <span class="{% if active_tab == 'feed' %}font-bold{% else %}font-medium{% endif %} text-[10px] mt-0.5">Nhận việc</span>
+        </a>
+        <!-- Lịch rảnh -->
+        <a href="{% url 'frontend:lich_ranh' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 {% if active_tab == 'availability' %}bg-orange-50 text-primary font-bold{% else %}text-textSecondary hover:text-textPrimary{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'availability' %} filled{% endif %}">event_available</span>
+            <span class="{% if active_tab == 'availability' %}font-bold{% else %}font-medium{% endif %} text-[10px] mt-0.5">Lịch rảnh</span>
+        </a>
+        <!-- Việc của tôi -->
+        <a href="{% url 'frontend:worker_jobs' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 {% if active_tab == 'jobs' %}bg-orange-50 text-primary font-bold{% else %}text-textSecondary hover:text-textPrimary{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'jobs' %} filled{% endif %}">assignment</span>
+            <span class="{% if active_tab == 'jobs' %}font-bold{% else %}font-medium{% endif %} text-[10px] mt-0.5">Việc của tôi</span>
+        </a>
+        <!-- Hồ sơ -->
+        <a href="{% url 'frontend:worker_profile' %}"
+           class="flex flex-col items-center justify-center rounded-xl px-3.5 py-1.5 {% if active_tab == 'profile' %}bg-orange-50 text-primary font-bold{% else %}text-textSecondary hover:text-textPrimary{% endif %} transition-all">
+            <span class="material-symbols-outlined text-xl{% if active_tab == 'profile' %} filled{% endif %}">person</span>
+            <span class="{% if active_tab == 'profile' %}font-bold{% else %}font-medium{% endif %} text-[10px] mt-0.5">Hồ sơ</span>
+        </a>
+    </div>
+</nav>
+
+<style>
+    /* Chừa chỗ cho bottom-nav trên mobile để nội dung không bị che
+       (đồng bộ _parent_chrome.html) */
+    @media (max-width: 1023px) {
+        main, .main-area, .chat-main-area { padding-bottom: 5.5rem; }
+    }
+</style>
+
+<script>
+  // Runtime cho sidebar worker: đăng xuất + hiển thị tên/avatar (null-safe).
+  // _worker_sidebar.html đã có script riêng — script này chỉ đảm bảo
+  // handleLogout tồn tại ngay cả khi sidebar bị include lỗi.
+  (function () {
+    window.handleLogout = window.handleLogout || function () {
+      if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        try { localStorage.clear(); } catch (e) {}
+        setTimeout(() => { window.location.href = '/login/'; }, 200);
+      }
+    };
+  })();
+</script>

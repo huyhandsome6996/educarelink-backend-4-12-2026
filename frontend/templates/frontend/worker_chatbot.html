@@ -220,58 +220,8 @@
     <!-- ===== TOAST CONTAINER ===== -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- ===== DESKTOP SIDEBAR (hidden on mobile) ===== -->
-    <aside id="sidebar" class="hidden lg:flex fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-gray-100 flex-col z-40 shadow-sm">
-        <!-- Logo -->
-        <div class="px-6 py-6 border-b border-gray-50">
-            <div class="flex items-center gap-2.5">
-                <div class="w-10 h-10 flex items-center justify-center">
-                    <img src="/static/images/logo.png" alt="EduCareLink" class="h-8 w-8 rounded-lg object-contain">
-                </div>
-                <div>
-                    <h1 class="font-headline font-extrabold text-lg text-textPrimary leading-none tracking-tight">EduCareLink</h1>
-                    <p class="text-[10px] text-textSecondary font-medium tracking-wide uppercase mt-0.5">Carepartner</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 px-4 py-6 space-y-1.5 sidebar-scroll overflow-y-auto">
-            <a href="{% url 'frontend:worker_feed' %}" class="sidebar-link">
-                <span class="material-symbols-outlined text-xl">work</span>
-                <span>Tìm việc</span>
-            </a>
-            <a href="{% url 'frontend:worker_jobs' %}" class="sidebar-link">
-                <span class="material-symbols-outlined text-xl">assignment</span>
-                <span>Việc của tôi</span>
-            </a>
-            <a href="{% url 'frontend:worker_profile' %}" class="sidebar-link">
-                <span class="material-symbols-outlined text-xl">person</span>
-                <span>Hồ sơ</span>
-            </a>
-            <a href="{% url 'frontend:worker_chatbot' %}" class="sidebar-link active">
-                <span class="material-symbols-outlined text-xl">smart_toy</span>
-                <span>AI Trợ lý</span>
-            </a>
-        </nav>
-
-        <!-- User Info + Logout -->
-        <div class="px-4 pb-6 border-t border-gray-50 pt-4">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-full bg-primaryLight flex items-center justify-center overflow-hidden ring-2 ring-primary/10">
-                    <img id="sidebar-avatar" alt="Avatar" class="w-full h-full object-cover" src="https://ui-avatars.com/api/?name=User&background=F26522&color=fff"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p id="sidebar-name" class="font-semibold text-sm text-textPrimary truncate">Đang tải...</p>
-                    <p class="text-[11px] text-textSecondary">Carepartner</p>
-                </div>
-            </div>
-            <button onclick="handleLogout()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-textSecondary hover:bg-red-50 hover:text-red-500 transition-all text-sm font-medium">
-                <span class="material-symbols-outlined text-lg">logout</span>
-                <span>Đăng xuất</span>
-            </button>
-        </div>
-    </aside>
+    <!-- ===== SIDEBAR + MOBILE NAV CHUẨN CAREPARTNER (Batch 1) ===== -->
+    {% include 'frontend/_worker_chrome.html' with active_tab='chatbot' %}
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="lg:ml-[260px] min-h-screen flex flex-col chat-main-area">
@@ -368,27 +318,7 @@
         </div>
     </div>
 
-    <!-- ===== MOBILE BOTTOM NAV (hidden on desktop) ===== -->
-    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-2 pt-2 pb-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <div class="flex justify-around items-center">
-            <a href="{% url 'frontend:worker_feed' %}" class="mobile-nav-item">
-                <span class="material-symbols-outlined text-xl">work</span>
-                <span>Tìm việc</span>
-            </a>
-            <a href="{% url 'frontend:worker_jobs' %}" class="mobile-nav-item">
-                <span class="material-symbols-outlined text-xl">assignment</span>
-                <span>Việc của tôi</span>
-            </a>
-            <a href="{% url 'frontend:worker_profile' %}" class="mobile-nav-item">
-                <span class="material-symbols-outlined text-xl">person</span>
-                <span>Hồ sơ</span>
-            </a>
-            <a href="{% url 'frontend:worker_chatbot' %}" class="mobile-nav-item active">
-                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
-                <span>AI Trợ lý</span>
-            </a>
-        </div>
-    </nav>
+    <!-- Mobile bottom nav chuyển vào _worker_chrome.html (Batch 1 — đồng bộ chuẩn 4 tab) -->
 
     <!-- ===== JAVASCRIPT ===== -->
     <script>
