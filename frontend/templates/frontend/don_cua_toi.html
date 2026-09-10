@@ -5,131 +5,957 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
-    <title>EduCareLink — Nhận đơn mới</title>
+    <title>EduCareLink — Đơn ghép cặp của tôi</title>
     <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
-        .booking-card {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        .booking-card { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .booking-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(26, 26, 46, 0.08); }
+        @keyframes ucbellShake {
+            0%, 100% { transform: rotate(0deg); }
+            15% { transform: rotate(14deg); }
+            30% { transform: rotate(-12deg); }
+            45% { transform: rotate(9deg); }
+            60% { transform: rotate(-6deg); }
+            75% { transform: rotate(3deg); }
         }
-        .booking-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(26, 26, 46, 0.08);
-            border-color: rgba(242, 101, 34, 0.35);
+        .uc-bell-shake { animation: ucbellShake 1.6s ease-in-out infinite; transform-origin: top center; }
+        @keyframes ucBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        .uc-blink { animation: ucBlink 1.2s ease-in-out infinite; }
+        @keyframes ucRadar {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+            70% { box-shadow: 0 0 0 9px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
         }
+        .uc-radar-dot { animation: ucRadar 1.8s infinite; }
+        @keyframes ucFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .uc-fade-in { animation: ucFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .uc-scroll-x::-webkit-scrollbar { display: none; }
+        .uc-scroll-x { scrollbar-width: none; -ms-overflow-style: none; }
+        .uc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            border-radius: 12px; font-weight: 800; font-size: 13px; padding: 10px 14px;
+            transition: all 0.18s ease; cursor: pointer; white-space: nowrap; border: none; }
+        .uc-btn:active { transform: scale(0.97); }
+        .uc-btn-primary { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #fff;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35); }
+        .uc-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(245, 158, 11, 0.45); }
+        .uc-btn-ghost { background: #fff; color: #4B5563; border: 1.5px solid #E5E7EB; }
+        .uc-btn-ghost:hover { background: #F9FAFB; color: #1A1A2E; }
+        .uc-btn-danger { background: #fff; color: #DC2626; border: 1.5px solid #FECACA; }
+        .uc-btn-danger:hover { background: #FEF2F2; }
+        .uc-btn-blue { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #fff;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3); }
+        .uc-btn-emerald { background: linear-gradient(135deg, #0E9F6E 0%, #057A55 100%); color: #fff;
+            box-shadow: 0 4px 14px rgba(14, 159, 110, 0.3); }
+        .uc-modal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end;
+            justify-content: center; background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(3px); }
+        @media (min-width: 640px) { .uc-modal { align-items: center; } }
+        .uc-modal-card { background: #fff; width: 100%; max-width: 480px; border-radius: 22px 22px 0 0;
+            max-height: 90vh; overflow-y: auto; box-shadow: 0 -8px 40px rgba(0,0,0,0.22); }
+        @media (min-width: 640px) { .uc-modal-card { border-radius: 22px; } }
+        .uc-choice { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px;
+            border: 1.5px solid #E5E7EB; border-radius: 13px; cursor: pointer; transition: all 0.15s ease;
+            font-size: 13.5px; line-height: 1.45; background: #fff; }
+        .uc-choice:hover { border-color: #F26522; background: #FFFBF7; }
+        .uc-choice input { margin-top: 2px; accent-color: #F26522; width: 16px; height: 16px; flex-shrink: 0; }
+        .uc-choice input:checked + .uc-choice-text { font-weight: 700; color: #1A1A2E; }
+        .uc-tab { white-space: nowrap; padding: 8px 14px; border-radius: 999px; font-size: 12.5px;
+            font-weight: 800; border: 1.5px solid #E5E7EB; background: #fff; color: #4B5563;
+            cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px; }
+        .uc-tab:hover { background: #F9FAFB; }
+        .uc-tab.active { background: #F26522; border-color: #F26522; color: #fff; box-shadow: 0 3px 10px rgba(242, 101, 34, 0.3); }
+        .uc-tab .uc-badge { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px;
+            display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; }
+        .uc-tab.active .uc-badge { background: rgba(255,255,255,0.25); color: #fff; }
+        .uc-tab:not(.active) .uc-badge { background: #F3F4F6; color: #6B7280; }
+        .uc-tab .uc-badge.uc-badge-hot { background: #FEE2E2 !important; color: #DC2626 !important; }
     </style>
     {% include 'frontend/_matching_common.html' %}
 </head>
 <body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
 {% include 'frontend/_worker_chrome.html' with active_tab='feed' %}
+
+<!-- ================= TOP HEADER ================= -->
 <header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90 lg:ml-[260px]">
-    <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <a href="/worker/" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+        <a href="/worker/" class="flex items-center gap-1 text-sm font-bold text-gray-600 hover:text-[#F26522] transition shrink-0">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Bảng tin việc</span>
+            <span class="hidden sm:inline">Dashboard</span>
         </a>
-        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Nhận đơn mới</span>
+        <span class="font-headline font-extrabold text-[#1A1A2E] text-base truncate">Đơn ghép cặp của tôi</span>
+        <div class="flex items-center gap-2 shrink-0">
+            <button id="receive-toggle" type="button"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold border transition bg-emerald-50 text-emerald-700 border-emerald-200"
+                    title="Bật/tắt trạng thái nhận đơn">
+                <span id="receive-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span id="receive-label">Đang nhận đơn</span>
+            </button>
+            <a href="/don-cua-toi/" class="relative w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-[#F26522] transition" title="Đơn mới">
+                <span class="material-symbols-outlined text-[19px]">notifications</span>
+                <span id="bell-badge" class="hidden absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center"></span>
+            </a>
+        </div>
     </div>
 </header>
 
-<main class="max-w-2xl mx-auto px-4 py-8 mcm-fade-in lg:ml-[260px]">
-    <!-- Tab lọc -->
-    <div class="flex gap-2 overflow-x-auto pb-3 mb-2 scrollbar-none" id="tabs"></div>
-    <div id="loading" class="text-center py-20 text-gray-400">
-        <div class="w-12 h-12 border-3 border-gray-200 border-t-[#F26522] rounded-full animate-spin mx-auto mb-3"></div>
+<main class="max-w-3xl mx-auto px-4 py-5 lg:ml-[260px] pb-28">
+
+    <!-- ================= URGENT BANNER (đơn chờ cam kết sắp hết hạn) ================= -->
+    <div id="urgent-banner" class="hidden uc-fade-in rounded-2xl overflow-hidden shadow-lg shadow-amber-200/50 border border-amber-300">
+        <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-4 py-3.5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/25 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-white text-[26px] uc-bell-shake">notifications_active</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-white font-headline font-extrabold text-sm">Bạn có đơn đang chờ cam kết!</span>
+                    <span id="urgent-count-chip" class="hidden text-[10px] font-extrabold bg-white/25 text-white px-2 py-0.5 rounded-full"></span>
+                </div>
+                <div class="text-white/95 text-xs mt-0.5 truncate" id="urgent-title">Đơn ghép cặp mới vừa được phụ huynh chọn bạn.</div>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-[10px] font-bold text-white/85 uppercase tracking-wide">Còn lại</div>
+                <div id="urgent-timer" class="font-headline font-extrabold text-2xl text-white tabular-nums leading-none mt-0.5">--:--</div>
+            </div>
+        </div>
+        <div class="bg-white px-4 py-3 flex items-center justify-between gap-3">
+            <div class="text-xs text-gray-500 min-w-0">
+                <span id="urgent-info" class="block truncate">Cam kết trước khi hết hạn để khóa ca làm.</span>
+            </div>
+            <button id="urgent-commit-btn" type="button" class="uc-btn uc-btn-primary shrink-0">
+                <span class="material-symbols-outlined text-[17px]">bolt</span> Cam kết nhận đơn ngay
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= COCKPIT MINI — 4 CHỈ SỐ ================= -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+        <div class="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[#F26522] text-[19px]">hourglass_top</span>
+                </div>
+                <span class="text-[11px] font-bold text-gray-500 leading-tight">Đơn chờ<br/>phản hồi</span>
+            </div>
+            <div id="stat-pending" class="font-headline font-extrabold text-2xl text-[#F26522] mt-2 uc-blink text-[#F59E0B]">0</div>
+        </div>
+        <div class="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-blue-600 text-[19px]">today</span>
+                </div>
+                <span class="text-[11px] font-bold text-gray-500 leading-tight">Ca làm<br/>hôm nay</span>
+            </div>
+            <div id="stat-today" class="font-headline font-extrabold text-2xl text-blue-600 mt-2">0</div>
+        </div>
+        <div class="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-teal-600 text-[19px]">military_tech</span>
+                </div>
+                <span class="text-[11px] font-bold text-gray-500 leading-tight">Hạng tín<br/>nhiệm</span>
+            </div>
+            <div id="stat-tier" class="font-headline font-extrabold text-lg text-teal-600 mt-2.5 truncate">—</div>
+        </div>
+        <div class="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-emerald-600 text-[19px]">savings</span>
+                </div>
+                <span class="text-[11px] font-bold text-gray-500 leading-tight">Thu nhập dự kiến<br/>tuần này</span>
+            </div>
+            <div id="stat-week" class="font-headline font-extrabold text-xl text-emerald-600 mt-2 truncate">0đ</div>
+        </div>
+    </div>
+
+    <!-- ================= FILTER DOCK ================= -->
+    <div class="mt-5 bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm">
+        <div id="tabs" class="flex gap-2 overflow-x-auto pb-1 uc-scroll-x"></div>
+        <div class="flex flex-col sm:flex-row gap-2 mt-3">
+            <div class="relative flex-1">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[19px]">search</span>
+                <input id="search-input" type="text" placeholder="Tìm theo tên phụ huynh, mã đơn, địa chỉ..."
+                       class="w-full border border-gray-200 rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition"/>
+            </div>
+            <select id="service-filter"
+                    class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition sm:w-52">
+                <option value="">Tất cả dịch vụ</option>
+                <option value="tutoring">📚 Gia sư</option>
+                <option value="pickup">🚗 Đón trẻ</option>
+                <option value="childcare">🧸 Trông trẻ</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ================= LOADING / LIST / EMPTY ================= -->
+    <div id="loading" class="text-center py-16 text-gray-400">
+        <div class="w-12 h-12 border-[3px] border-gray-200 border-t-[#F26522] rounded-full animate-spin mx-auto mb-3"></div>
         <p class="font-medium text-sm">Đang tải danh sách đơn...</p>
     </div>
-    <div id="list" class="space-y-3.5"></div>
+
+    <div id="list" class="space-y-4 mt-4"></div>
+
+    <div id="empty-state" class="hidden bg-white rounded-2xl p-10 text-center border border-gray-200 mt-4 uc-fade-in">
+        <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">📭</div>
+        <h3 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Không có đơn nào ở mục này</h3>
+        <p class="text-sm text-gray-500 mt-1.5 max-w-sm mx-auto">Khi phụ huynh chọn bạn qua hệ thống ghép cặp thông minh, đơn sẽ xuất hiện tại đây kèm đồng hồ cam kết. Hãy đảm bảo lịch rảnh luôn được cập nhật.</p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-2.5 mt-5">
+            <a href="/lich-ranh/" class="uc-btn uc-btn-primary w-full sm:w-auto"><span>📅</span> Cập nhật lịch rảnh</a>
+            <a href="/worker/" class="uc-btn uc-btn-ghost w-full sm:w-auto"><span class="material-symbols-outlined text-[17px]">search</span> Xem việc làm</a>
+        </div>
+    </div>
 </main>
 
+<!-- ================= MODAL: CAM KẾT NHẬN ĐƠN ================= -->
+<div id="commit-modal" class="hidden uc-modal">
+    <div class="uc-modal-card uc-fade-in">
+        <div class="px-5 pt-5 pb-4 border-b border-gray-100">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Cam kết nhận đơn</h3>
+                    <p class="text-xs text-gray-500 mt-1">Xác nhận trong thời hạn để khóa ca làm với phụ huynh.</p>
+                </div>
+                <button type="button" data-close-modal="commit-modal" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-4">
+            <div class="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                <div id="cm-title" class="font-headline font-extrabold text-[#1A1A2E] text-sm">—</div>
+                <div id="cm-slot" class="text-xs text-gray-600 mt-1.5">—</div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-amber-200/80">
+                    <span class="text-xs font-bold text-gray-500">Thù lao thực nhận (80%)</span>
+                    <span id="cm-payout" class="font-headline font-extrabold text-emerald-600">—</span>
+                </div>
+                <div class="flex items-center justify-between mt-1.5">
+                    <span class="text-[11px] text-gray-400">Giá trị đơn (ký quỹ 100%)</span>
+                    <span id="cm-total" class="text-xs font-bold text-gray-500">—</span>
+                </div>
+            </div>
+            <div class="mt-4 space-y-2.5">
+                <label class="uc-choice">
+                    <input type="checkbox" id="cm-check-1"/>
+                    <span class="uc-choice-text">Tôi cam kết <b>có mặt đúng giờ</b> theo khung thời gian làm việc đã thống nhất.</span>
+                </label>
+                <label class="uc-choice">
+                    <input type="checkbox" id="cm-check-2"/>
+                    <span class="uc-choice-text">Tôi hiểu rằng <b>hủy đơn sau khi cam kết</b> sẽ bị trừ điểm tín nhiệm theo quy chế và có thể phải đền bù phụ huynh.</span>
+                </label>
+            </div>
+        </div>
+        <div class="px-5 pb-5 pt-1 flex gap-2.5">
+            <button type="button" data-close-modal="commit-modal" class="uc-btn uc-btn-ghost flex-1">Để sau</button>
+            <button id="cm-confirm-btn" type="button" disabled class="uc-btn uc-btn-emerald flex-[1.6] disabled:opacity-50 disabled:cursor-not-allowed">
+                <span class="material-symbols-outlined text-[17px]">verified</span> Xác nhận cam kết
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL: TỪ CHỐI / HỦY ĐƠN ================= -->
+<div id="reject-modal" class="hidden uc-modal">
+    <div class="uc-modal-card uc-fade-in">
+        <div class="px-5 pt-5 pb-4 border-b border-gray-100">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Từ chối đơn này?</h3>
+                    <p class="text-xs text-gray-500 mt-1">Lý do của bạn giúp AI ghép cặp đề xuất đơn phù hợp hơn cho bạn sau này.</p>
+                </div>
+                <button type="button" data-close-modal="reject-modal" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-4">
+            <div id="rm-warn" class="hidden mb-3 rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-semibold">
+                ⚠️ Đơn này đang ở trạng thái <b>Đã cam kết</b>. Việc hủy sẽ bị trừ điểm tín nhiệm và có thể phải đền bù theo quy chế.
+            </div>
+            <div id="rm-reasons" class="space-y-2"></div>
+            <div class="mt-3">
+                <label class="text-xs font-bold text-gray-600" for="rm-note">Ghi chú lý do <span class="hidden font-extrabold text-red-500" id="rm-note-required-hint">(* bắt buộc với lý do bất khả kháng, tối thiểu 20 ký tự)</span></label>
+                <textarea id="rm-note" rows="2" placeholder="Ví dụ: Tôi bận thi học kỳ trùng khung giờ này..."
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1.5 focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition"></textarea>
+            </div>
+        </div>
+        <div class="px-5 pb-5 pt-1 flex gap-2.5">
+            <button type="button" data-close-modal="reject-modal" class="uc-btn uc-btn-ghost flex-1">Quay lại</button>
+            <button id="rm-send-btn" type="button" class="uc-btn flex-[1.4]" style="background:linear-gradient(135deg,#EF4444 0%,#DC2626 100%);color:#fff;box-shadow:0 4px 14px rgba(220,38,38,0.3);">
+                Gửi từ chối
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-  const FILTERS = [
-    { key: '', label: 'Tất cả' },
-    { key: 'awaiting_commitment', label: 'Chờ cam kết' },
-    { key: 'committed', label: 'Đã cam kết' },
-    { key: 'in_progress', label: 'Đang làm' },
-    { key: 'completed', label: 'Hoàn thành' },
-    { key: 'cancelled_by_carepartner', label: 'Đã hủy' },
-  ];
-  const STATUS_COLORS = {
-    awaiting_commitment: '#F26522', committed: '#0E9F6E', in_progress: '#2563EB',
-    completed: '#0E9F6E', cancelled_by_carepartner: '#DC2626', cancelled_by_parent: '#DC2626',
-    no_show: '#DC2626', suspected_no_show: '#F5A623', seeking_replacement: '#F5A623',
-  };
-  const APPEALABLE = ['cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show'];
-  let current = '';
+/* ═══════════════════════════════════════════════════════════════
+   ĐƠN GHÉP CẶP CỦA TÔI — luồng thụ động Flow 1 (khóa thiết kế Stitch)
+   Dữ liệu thật: GET /api/matching/bookings/ — không dữ liệu cứng.
+   ═══════════════════════════════════════════════════════════════ */
 
-  function renderTabs() {
-    const tabs = document.getElementById('tabs');
-    tabs.innerHTML = '';
-    FILTERS.forEach((f) => {
-      const b = document.createElement('button');
-      b.className = 'whitespace-nowrap px-4 py-2 rounded-full text-xs font-extrabold border transition shadow-sm ' +
-        (current === f.key ? 'bg-[#F26522] text-white border-[#F26522]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50');
-      b.textContent = f.label;
-      b.onclick = () => { current = f.key; renderTabs(); load(); };
-      tabs.appendChild(b);
-    });
+const FILTERS = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'pending', label: 'Chờ cam kết' },
+  { key: 'committed', label: 'Đã cam kết' },
+  { key: 'ongoing', label: 'Đang làm' },
+  { key: 'completed', label: 'Hoàn thành' },
+  { key: 'cancelled', label: 'Đã hủy' },
+];
+
+const PENDING_STATUSES = ['awaiting_commitment'];
+const COMMITTED_STATUSES = ['committed', 'reschedule_requested'];
+const ONGOING_STATUSES = ['in_progress', 'suspected_no_show'];
+const COMPLETED_STATUSES = ['completed', 'awaiting_review'];
+const CANCELLED_STATUSES = ['cancelled_by_carepartner', 'cancelled_by_parent',
+  'no_show', 'no_show_unconfirmed', 'declined_in_window', 'expired_no_response'];
+const APPEALABLE = ['cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show'];
+
+const STATUS_META = {
+  awaiting_commitment:      { label: 'Chờ cam kết', bg: '#F59E0B', border: 'border-amber-400', chip: 'bg-amber-50 text-amber-700 border-amber-200' },
+  committed:                { label: 'Đã cam kết', bg: '#0E9F6E', border: 'border-emerald-400', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  reschedule_requested:     { label: 'Đang xin đổi giờ', bg: '#7C3AED', border: 'border-purple-300', chip: 'bg-purple-50 text-purple-700 border-purple-200' },
+  in_progress:              { label: 'Đang làm', bg: '#2563EB', border: 'border-blue-400', chip: 'bg-blue-50 text-blue-700 border-blue-200' },
+  suspected_no_show:        { label: 'Nghi ngờ không đến', bg: '#F5A623', border: 'border-orange-300', chip: 'bg-orange-50 text-orange-700 border-orange-200' },
+  awaiting_review:          { label: 'Chờ đánh giá', bg: '#0D9488', border: 'border-teal-300', chip: 'bg-teal-50 text-teal-700 border-teal-200' },
+  completed:                { label: 'Hoàn thành', bg: '#057A55', border: 'border-gray-200/80', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  cancelled_by_carepartner: { label: 'Bạn đã hủy', bg: '#DC2626', border: 'border-red-300', chip: 'bg-red-50 text-red-700 border-red-200' },
+  cancelled_by_parent:      { label: 'Phụ huynh đã hủy', bg: '#DC2626', border: 'border-gray-200/80', chip: 'bg-red-50 text-red-700 border-red-200' },
+  no_show:                  { label: 'Không đến làm', bg: '#DC2626', border: 'border-red-300', chip: 'bg-red-50 text-red-700 border-red-200' },
+  no_show_unconfirmed:      { label: 'Chưa xác nhận không đến', bg: '#DC2626', border: 'border-red-300', chip: 'bg-red-50 text-red-700 border-red-200' },
+  declined_in_window:       { label: 'Đã từ chối', bg: '#6B7280', border: 'border-gray-200/80', chip: 'bg-gray-100 text-gray-600 border-gray-200' },
+  expired_no_response:      { label: 'Hết hạn phản hồi', bg: '#6B7280', border: 'border-gray-200/80', chip: 'bg-gray-100 text-gray-600 border-gray-200' },
+  disputed:                 { label: 'Có tranh chấp', bg: '#B45309', border: 'border-amber-300', chip: 'bg-amber-50 text-amber-700 border-amber-200' },
+};
+
+/* 8 lý do hủy chuẩn backend (matching/constants.py CANCEL_REASONS)
+   fm = force majeure → bắt buộc ghi chú >= 20 ký tự */
+const CANCEL_REASONS = [
+  { code: 'school_schedule', label: 'Trùng lịch học đột xuất', fm: true },
+  { code: 'health', label: 'Sức khỏe không tốt', fm: true },
+  { code: 'family_emergency', label: 'Việc gia đình khẩn cấp', fm: true },
+  { code: 'accident', label: 'Tai nạn / sự cố di chuyển', fm: true },
+  { code: 'wrong_job_info', label: 'Thông tin công việc không đúng mô tả', fm: true },
+  { code: 'transport', label: 'Không thể di chuyển', fm: false },
+  { code: 'personal', label: 'Lý do cá nhân', fm: false },
+  { code: 'other', label: 'Khác (bắt buộc ghi chú)', fm: false, needNote: true },
+];
+
+const CATEGORY_META = {
+  tutoring:  { icon: '📚', name: 'Gia sư',   chip: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  pickup:    { icon: '🚗', name: 'Đón trẻ',  chip: 'bg-amber-50 text-amber-700 border-amber-200' },
+  childcare: { icon: '🧸', name: 'Trông trẻ', chip: 'bg-teal-50 text-teal-700 border-teal-200' },
+};
+
+let allBookings = [];
+let activeFilter = 'all';
+let searchQ = '';
+let serviceQ = '';
+let tickTimer = null;
+let refetchArmed = true;
+let currentSelectedId = null;
+const deadlineTs = {}; // booking id → timestamp hết hạn cam kết
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function metaOf(b) {
+  return STATUS_META[b.status] || { label: b.status_label_vi || b.status, bg: '#6B7280', border: 'border-gray-200/80', chip: 'bg-gray-100 text-gray-600 border-gray-200' };
+}
+
+function catOf(b) {
+  const key = b.category_code || b.job_type || '';
+  return CATEGORY_META[key] || { icon: '📋', name: b.category_name_vi || 'Ghép cặp', chip: 'bg-gray-100 text-gray-600 border-gray-200' };
+}
+
+function mapsUrl(b) {
+  const loc = b.location_info || {};
+  if (loc.latitude != null && loc.longitude != null) {
+    return 'https://www.google.com/maps/search/?api=1&query=' + loc.latitude + ',' + loc.longitude;
   }
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc.address || b.job_address || '');
+}
 
-  async function load() {
-    try {
-      const resp = await authFetch(API_BASE + '/matching/bookings/' + (current ? `?status=${current}` : ''));
-      if (!resp.ok) { toast('Không tải được danh sách đơn. Vui lòng thử lại.', false); return; }
-      const data = await resp.json();
-      document.getElementById('loading').classList.add('hidden');
-      const list = document.getElementById('list');
-      list.innerHTML = '';
-      const rows = data.results || [];
-      if (!rows.length) {
-        list.innerHTML = `
-          <div class="bg-white rounded-2xl p-10 text-center border border-gray-200">
-            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">📋</div>
-            <h3 class="font-headline font-bold text-base text-[#1A1A2E]">Chưa có đơn nào ở mục này</h3>
-            <p class="text-xs text-gray-500 mt-1">Khi bạn được phụ huynh chọn, các đơn ghép cặp sẽ hiển thị tại đây.</p>
-          </div>`;
-        return;
+function parentPhone(b) {
+  return (b.parent_info && b.parent_info.phone) || '';
+}
+
+/* ───────────────────────── FETCH + THỐNG KÊ ───────────────────────── */
+
+async function fetchBookings() {
+  try {
+    const resp = await authFetch(API_BASE + '/matching/bookings/');
+    if (!resp.ok) { toast('Không tải được danh sách đơn. Vui lòng thử lại.', false); hideLoading(); return; }
+    const data = await resp.json();
+    allBookings = Array.isArray(data) ? data : (data.results || []);
+    computeCockpit();
+    updateUrgentBanner();
+    renderTabs();
+    renderBookingsList();
+    hideLoading();
+  } catch (err) {
+    console.warn(err);
+    hideLoading();
+    toast('Không tải được danh sách đơn. Vui lòng thử lại.', false);
+  }
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading');
+  if (el) el.classList.add('hidden');
+}
+
+function localTodayISO() {
+  return new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD theo giờ máy
+}
+
+function weekRange() {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7; // 0 = Thứ 2
+  const monday = new Date(now); monday.setDate(now.getDate() - day);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const iso = (d) => d.toLocaleDateString('sv-SE');
+  return [iso(monday), iso(sunday)];
+}
+
+function slotDateISO(b) {
+  const s = b.first_slot;
+  if (!s || !s.date) return '';
+  return String(s.date).slice(0, 10);
+}
+
+async function computeCockpit() {
+  const pending = allBookings.filter(b => b.status === 'awaiting_commitment').length;
+  const todayISO = localTodayISO();
+  const today = allBookings.filter(b => slotDateISO(b) === todayISO
+    && [...COMMITTED_STATUSES, ...ONGOING_STATUSES].includes(b.status)).length;
+  const [wFrom, wTo] = weekRange();
+  const weekEarn = allBookings
+    .filter(b => {
+      const d = slotDateISO(b);
+      if (!d || d < wFrom || d > wTo) return false;
+      return [...PENDING_STATUSES, ...COMMITTED_STATUSES, ...ONGOING_STATUSES].includes(b.status)
+        || b.status === 'completed';
+    })
+    .reduce((sum, b) => sum + (parseFloat(b.carepartner_payout_vnd) || 0), 0);
+
+  setElText('stat-pending', pending);
+  setElText('stat-today', today);
+  setElText('stat-week', fmtVND(weekEarn));
+  const bell = document.getElementById('bell-badge');
+  if (bell) {
+    if (pending > 0) { bell.textContent = pending; bell.classList.remove('hidden'); }
+    else bell.classList.add('hidden');
+  }
+}
+
+async function loadTier() {
+  try {
+    const resp = await authFetch(API_BASE + '/profile/');
+    if (!resp.ok) return;
+    const profile = await resp.json();
+    setElText('stat-tier', profile.tier_label || 'Chưa xếp hạng');
+  } catch (e) { /* im lặng — hiển thị dấu gạch */ }
+}
+
+/* ───────────────────────── URGENT BANNER ───────────────────────── */
+
+function updateUrgentBanner() {
+  const banner = document.getElementById('urgent-banner');
+  if (!banner) return;
+  const urgents = allBookings
+    .filter(b => b.status === 'awaiting_commitment' && (b.commit_seconds_left || 0) > 0)
+    .sort((a, b2) => (a.commit_seconds_left || 0) - (b2.commit_seconds_left || 0));
+
+  if (!urgents.length) {
+    banner.classList.add('hidden');
+    delete deadlineTs['__urgent__'];
+    return;
+  }
+  const u = urgents[0];
+  banner.classList.remove('hidden');
+  deadlineTs['__urgent__'] = Date.now() + (u.commit_seconds_left || 0) * 1000;
+
+  const s = u.first_slot || {};
+  document.getElementById('urgent-title').textContent =
+    (u.job_title || 'Đơn ghép cặp mới') + ' — phụ huynh đang chờ bạn xác nhận.';
+  document.getElementById('urgent-info').textContent =
+    [s.day_of_week_vi, s.date_vi, s.time_from_vi && s.time_to_vi ? s.time_from_vi + '–' + s.time_to_vi : '']
+      .filter(Boolean).join(' · ') + (u.location_info && u.location_info.address ? ' · ' + u.location_info.address : '');
+  const chip = document.getElementById('urgent-count-chip');
+  if (urgents.length > 1) {
+    chip.textContent = '+' + (urgents.length - 1) + ' đơn khác';
+    chip.classList.remove('hidden');
+  } else chip.classList.add('hidden');
+
+  document.getElementById('urgent-commit-btn').onclick = () => openCommitModal(u.id);
+}
+
+/* ───────────────────────── COUNTDOWN ENGINE ───────────────────────── */
+
+function fmtTimer(totalSec) {
+  if (totalSec <= 0) return '00:00';
+  const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+  return (h > 0 ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function startTick() {
+  if (tickTimer) clearInterval(tickTimer);
+  tickTimer = setInterval(() => {
+    let anyZero = false;
+    for (const [key, ts] of Object.entries(deadlineTs)) {
+      const left = Math.floor((ts - Date.now()) / 1000);
+      if (key === '__urgent__') {
+        const el = document.getElementById('urgent-timer');
+        if (el) el.textContent = left <= 0 ? '00:00 (Đã hết hạn)' : fmtTimer(left);
+      } else {
+        const el = document.querySelector('[data-cd-id="' + key + '"]');
+        if (el) el.textContent = left <= 0 ? '00:00 (Đã hết hạn)' : fmtTimer(left);
       }
-      for (const b of rows) {
-        const color = STATUS_COLORS[b.status] || '#6B7280';
-        const s = b.first_slot || {};
-        const card = document.createElement('a');
-        card.href = `/don/${b.id}/`;
-        card.className = 'booking-card block bg-white rounded-2xl p-5 shadow-sm border border-gray-200/80 group';
-        card.innerHTML = `
-          <div class="flex items-center justify-between gap-2">
-            <div class="font-headline font-extrabold text-[#1A1A2E] text-base truncate group-hover:text-[#F26522] transition">${b.job_title || 'Công việc ghép cặp'}</div>
-            <span class="text-xs font-extrabold px-3 py-1 rounded-full text-white shrink-0 shadow-sm" style="background:${color}">${b.status_label_vi || b.status}</span>
-          </div>
-          <div class="text-xs sm:text-sm text-gray-500 mt-2 flex items-center gap-2">
-            <span>📅</span>
-            <span>${s.date || '—'} · ${s.time_from ? s.time_from.slice(0, 5) : ''}–${s.time_to ? s.time_to.slice(0, 5) : ''}</span>
-          </div>
-          <div class="text-xs sm:text-sm font-bold text-[#1A1A2E] mt-1.5 flex items-center gap-2">
-            <span>💰</span>
-            <span>${fmtVND(b.total_value_vnd)}</span>
-            ${b.compensation_vnd > 0 ? `<span class="text-[#F5A623] font-semibold text-xs">· Đền bù ${fmtVND(b.compensation_vnd)}</span>` : ''}
-          </div>
-          ${APPEALABLE.includes(b.status)
-            ? `<div class="mt-3.5 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                 <span class="inline-block text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-bold">⚖️ Có thể kháng cáo ELO</span>
-                 <span class="text-xs text-[#F26522] font-extrabold hover:underline" onclick="event.preventDefault(); window.location.href='/khang-cao/${b.id}/';">Kháng cáo ngay →</span>
-               </div>`
-            : ''}`;
-        list.appendChild(card);
-      }
-    } catch (err) {
-      console.warn(err);
-      document.getElementById('loading').classList.add('hidden');
-      toast('Không tải được danh sách đơn. Vui lòng thử lại.', false);
+      if (left <= 0) anyZero = true;
     }
+    if (anyZero && refetchArmed) {
+      refetchArmed = false;
+      toast('Một đơn cam kết đã hết hạn. Đang cập nhật trạng thái...', false);
+      setTimeout(fetchBookings, 1500);
+      setTimeout(() => { refetchArmed = true; }, 8000);
+    }
+  }, 1000);
+}
+
+/* ───────────────────────── TABS + FILTER ───────────────────────── */
+
+function groupOf(b) {
+  if (PENDING_STATUSES.includes(b.status)) return 'pending';
+  if (COMMITTED_STATUSES.includes(b.status)) return 'committed';
+  if (ONGOING_STATUSES.includes(b.status)) return 'ongoing';
+  if (COMPLETED_STATUSES.includes(b.status)) return 'completed';
+  if (CANCELLED_STATUSES.includes(b.status)) return 'cancelled';
+  return 'other';
+}
+
+function renderTabs() {
+  const wrap = document.getElementById('tabs');
+  if (!wrap) return;
+  const counts = { all: allBookings.length, pending: 0, committed: 0, ongoing: 0, completed: 0, cancelled: 0 };
+  allBookings.forEach(b => { const g = groupOf(b); if (counts[g] !== undefined) counts[g] += 1; });
+  wrap.innerHTML = '';
+  FILTERS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'uc-tab' + (activeFilter === f.key ? ' active' : '');
+    const hot = (f.key === 'pending' && counts.pending > 0);
+    btn.innerHTML = esc(f.label)
+      + ' <span class="uc-badge' + (hot ? ' uc-badge-hot' : '') + '">' + counts[f.key] + '</span>';
+    btn.onclick = () => { activeFilter = f.key; renderTabs(); renderBookingsList(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderBookingsList() {
+  const list = document.getElementById('list');
+  const empty = document.getElementById('empty-state');
+  if (!list) return;
+
+  let rows = allBookings.filter(b => {
+    if (activeFilter !== 'all' && groupOf(b) !== activeFilter) return false;
+    if (serviceQ && (b.category_code || b.job_type || '') !== serviceQ) return false;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      const hay = [b.job_title, b.parent_name, b.job_address, (b.id || '').slice(0, 8), (b.id || '')]
+        .join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  // Sắp: chờ cam kết gấp nhất lên đầu, sau đó theo ngày tạo giảm dần
+  rows = rows.sort((a, b) => {
+    const ap = a.status === 'awaiting_commitment' ? (a.commit_seconds_left || 0) : Infinity;
+    const bp = b.status === 'awaiting_commitment' ? (b.commit_seconds_left || 0) : Infinity;
+    if (ap !== bp) return ap - bp;
+    return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+  });
+
+  if (!rows.length) {
+    list.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+  list.innerHTML = '';
+  rows.forEach(b => list.appendChild(buildCard(b)));
+}
+
+/* ───────────────────────── CARD BUILDERS ───────────────────────── */
+
+function buildCard(b) {
+  const meta = metaOf(b);
+  const cat = catOf(b);
+  const s = b.first_slot || {};
+  const slotTxt = [s.day_of_week_vi, s.date_vi, s.time_from_vi && s.time_to_vi ? s.time_from_vi + '–' + s.time_to_vi : '']
+    .filter(Boolean).join(' · ') || 'Chưa có khung giờ';
+  const addr = (b.location_info && b.location_info.address) || b.job_address || '';
+  const phone = parentPhone(b);
+  const payout = parseFloat(b.carepartner_payout_vnd) || 0;
+
+  const card = document.createElement('div');
+  card.className = 'booking-card bg-white rounded-2xl border-2 shadow-sm overflow-hidden ' + meta.border;
+  card.setAttribute('data-id', b.id);
+
+  let body = `
+    <div class="p-4 sm:p-5">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-lg shrink-0">${cat.icon}</span>
+          <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full border ${cat.chip} shrink-0">${esc(cat.name)}</span>
+          ${b.status === 'in_progress' ? '<span class="w-2.5 h-2.5 rounded-full bg-blue-500 uc-radar-dot shrink-0" title="Đang chia sẻ Live GPS"></span>' : ''}
+        </div>
+        <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-full text-white shrink-0" style="background:${meta.bg}">${esc(b.status_label_vi || meta.label)}</span>
+      </div>
+      <div class="font-headline font-extrabold text-[#1A1A2E] text-[15px] sm:text-base mt-2.5 leading-snug">${esc(b.job_title || 'Công việc ghép cặp')}</div>
+      <div class="text-xs font-bold text-gray-400 mt-0.5">Mã đơn #${esc(String(b.id).slice(0, 8).toUpperCase())}</div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3.5">
+        <div class="flex items-center gap-2 text-xs sm:text-[13px] text-gray-600 bg-gray-50 rounded-xl px-3 py-2.5">
+          <span class="material-symbols-outlined text-[17px] text-gray-400">event</span>
+          <span class="truncate">${esc(slotTxt)}</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs sm:text-[13px] text-gray-600 bg-gray-50 rounded-xl px-3 py-2.5">
+          <span class="material-symbols-outlined text-[17px] text-gray-400">location_on</span>
+          <span class="truncate">${esc(addr || 'Địa chỉ xem trong chi tiết đơn')}</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-2 mt-3.5 pt-3.5 border-t border-gray-100">
+        <div>
+          <div class="font-headline font-extrabold text-lg text-emerald-600">${fmtVND(payout)}</div>
+          <div class="text-[11px] text-gray-400 font-semibold">Thù lao thực nhận${b.total_value_vnd ? ' · đơn ' + fmtVND(b.total_value_vnd) : ''}</div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <a href="${mapsUrl(b)}" target="_blank" rel="noopener" class="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-[#F26522] transition" title="Chỉ đường trên Google Maps">
+            <span class="material-symbols-outlined text-[18px]">map</span>
+          </a>
+          ${phone ? `<a href="tel:${esc(phone)}" class="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-emerald-600 transition" title="Gọi phụ huynh">
+            <span class="material-symbols-outlined text-[18px]">call</span>
+          </a>` : ''}
+          <a href="/don/${esc(b.id)}/" class="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-blue-600 transition" title="Chi tiết đơn">
+            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+          </a>
+        </div>
+      </div>
+      <div id="card-actions-${esc(b.id)}" class="mt-3.5"></div>
+    </div>`;
+
+  card.innerHTML = body;
+  const actions = card.querySelector('#card-actions-' + CSS.escape(b.id));
+  if (actions) actions.innerHTML = buildActions(b, phone);
+  return card;
+}
+
+function buildActions(b, phone) {
+  const s = b.first_slot || {};
+  const slotShort = [s.day_of_week_vi || s.date_vi, s.time_from_vi && s.time_to_vi ? s.time_from_vi + '–' + s.time_to_vi : ''].filter(Boolean).join(' · ');
+
+  if (b.status === 'awaiting_commitment') {
+    deadlineTs[b.id] = Date.now() + (b.commit_seconds_left || 0) * 1000;
+    return `
+      <div class="rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
+        <span class="text-xs font-bold text-amber-700">Đồng hồ cam kết</span>
+        <span class="font-headline font-extrabold text-xl text-amber-600 tabular-nums" data-cd-id="${esc(b.id)}">${fmtTimer(b.commit_seconds_left || 0)}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-2.5">
+        <button type="button" class="uc-btn uc-btn-primary col-span-2" data-act="commit" data-id="${esc(b.id)}">
+          <span class="material-symbols-outlined text-[17px]">bolt</span> Cam kết nhận đơn
+        </button>
+        <button type="button" class="uc-btn uc-btn-danger" data-act="reject" data-id="${esc(b.id)}">Từ chối</button>
+        <a href="/don/${esc(b.id)}/" class="uc-btn uc-btn-ghost">Chi tiết</a>
+      </div>`;
   }
 
-  renderTabs();
-  load();
+  if (b.status === 'committed' || b.status === 'reschedule_requested') {
+    return `
+      <div class="grid grid-cols-2 gap-2">
+        <a href="${mapsUrl(b)}" target="_blank" rel="noopener" class="uc-btn uc-btn-ghost"><span class="material-symbols-outlined text-[17px]">map</span> Chỉ đường</a>
+        ${phone ? `<a href="tel:${esc(phone)}" class="uc-btn uc-btn-ghost"><span class="material-symbols-outlined text-[17px]">call</span> Gọi phụ huynh</a>` : `<a href="/don/${esc(b.id)}/" class="uc-btn uc-btn-ghost">Chi tiết</a>`}
+        <button type="button" class="uc-btn uc-btn-blue col-span-2" data-act="start" data-id="${esc(b.id)}">
+          <span class="material-symbols-outlined text-[17px]">play_circle</span> Bắt đầu làm ${slotShort ? '(' + esc(slotShort) + ')' : ''}
+        </button>
+        <button type="button" class="uc-btn uc-btn-danger col-span-2" data-act="reject" data-id="${esc(b.id)}">Hủy ca làm này</button>
+      </div>`;
+  }
+
+  if (b.status === 'in_progress' || b.status === 'suspected_no_show') {
+    return `
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" class="uc-btn" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;" data-act="sos" data-id="${esc(b.id)}">
+          <span class="material-symbols-outlined text-[17px]">sos</span> SOS khẩn cấp
+        </button>
+        <a href="${mapsUrl(b)}" target="_blank" rel="noopener" class="uc-btn uc-btn-ghost"><span class="material-symbols-outlined text-[17px]">location_on</span> Live GPS</a>
+        <button type="button" class="uc-btn uc-btn-emerald col-span-2" data-act="complete" data-id="${esc(b.id)}">
+          <span class="material-symbols-outlined text-[17px]">task_alt</span> Xác nhận trả bé / Hoàn thành ca
+        </button>
+      </div>`;
+  }
+
+  if (b.status === 'completed' || b.status === 'awaiting_review') {
+    const done = b.status === 'completed';
+    return `
+      <div class="rounded-xl ${done ? 'bg-emerald-50 border-emerald-200' : 'bg-teal-50 border-teal-200'} border px-3.5 py-2.5 flex items-center justify-between gap-2">
+        <span class="text-xs font-bold ${done ? 'text-emerald-700' : 'text-teal-700'}">${done ? '💰 Đã giải ngân vào ví tín dụng' : '⏳ Đang chờ phụ huynh đánh giá'}</span>
+        <span class="text-xs font-extrabold ${done ? 'text-emerald-700' : 'text-teal-700'}">${done ? '+' + fmtVND(parseFloat(b.carepartner_payout_vnd) || 0) : '—'}</span>
+      </div>
+      <a href="/don/${esc(b.id)}/" class="uc-btn uc-btn-ghost w-full mt-2">Xem sao kê & đánh giá</a>`;
+  }
+
+  if (APPEALABLE.includes(b.status)) {
+    const cancelledAt = b.cancelled_at ? new Date(b.cancelled_at) : null;
+    let daysLeft = 0;
+    if (cancelledAt && !isNaN(cancelledAt)) {
+      daysLeft = 7 - Math.floor((Date.now() - cancelledAt.getTime()) / 86400000);
+      daysLeft = Math.max(0, Math.min(7, daysLeft));
+    }
+    const canAppeal = daysLeft > 0;
+    return `
+      <div class="rounded-xl bg-red-50 border border-red-200 px-3.5 py-3">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-bold text-red-700">⚠️ Đơn bị phạt điểm tín nhiệm</span>
+          <span class="text-xs font-extrabold text-red-700">${canAppeal ? '⚖️ Kháng cáo còn ' + daysLeft + ' ngày' : 'Hết hạn kháng cáo'}</span>
+        </div>
+        ${b.compensation_vnd > 0 ? `<div class="text-[11px] text-red-600 mt-1.5 font-semibold">Đã đền bù phụ huynh: ${fmtVND(b.compensation_vnd)}</div>` : ''}
+        ${canAppeal ? `<a href="/khang-cao/${esc(b.id)}/" class="uc-btn mt-2.5 w-full" style="background:linear-gradient(135deg,#EF4444 0%,#DC2626 100%);color:#fff;">⚖️ Kháng cáo ngay →</a>` : ''}
+      </div>`;
+  }
+
+  // cancelled_by_parent / declined / expired / disputed — không hành động
+  return `
+    <div class="rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-xs text-gray-500 font-semibold text-center">
+      ${b.status === 'cancelled_by_parent' ? 'Phụ huynh đã hủy đơn — bạn không bị trừ điểm tín nhiệm.' : 'Đơn đã kết thúc.'}
+      <a href="/don/${esc(b.id)}/" class="text-[#F26522] font-extrabold hover:underline">Xem chi tiết</a>
+    </div>`;
+}
+
+/* ───────────────────────── ACTIONS ───────────────────────── */
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  const act = btn.getAttribute('data-act');
+  if (act === 'commit') openCommitModal(id);
+  else if (act === 'reject') openRejectModal(id);
+  else if (act === 'start') handleStartJob(id);
+  else if (act === 'complete') handleCompleteJob(id);
+  else if (act === 'sos') handleSOS(id);
+});
+
+function bookingById(id) {
+  return allBookings.find(b => b.id === id) || null;
+}
+
+window.openCommitModal = function (id) {
+  const b = bookingById(id);
+  if (!b) { toast('Không tìm thấy đơn này.', false); return; }
+  currentSelectedId = id;
+  const s = b.first_slot || {};
+  setElText('cm-title', b.job_title || 'Công việc ghép cặp');
+  setElText('cm-slot', [s.day_of_week_vi, s.date_vi, s.time_from_vi && s.time_to_vi ? s.time_from_vi + '–' + s.time_to_vi : ''].filter(Boolean).join(' · ')
+    + ((b.location_info && b.location_info.address) ? ' — ' + b.location_info.address : ''));
+  setElText('cm-payout', fmtVND(b.carepartner_payout_vnd));
+  setElText('cm-total', fmtVND(b.total_value_vnd));
+  const c1 = document.getElementById('cm-check-1'), c2 = document.getElementById('cm-check-2');
+  if (c1) c1.checked = false;
+  if (c2) c2.checked = false;
+  updateCommitBtn();
+  openModal('commit-modal');
+};
+
+function updateCommitBtn() {
+  const c1 = document.getElementById('cm-check-1'), c2 = document.getElementById('cm-check-2');
+  const btn = document.getElementById('cm-confirm-btn');
+  if (btn) btn.disabled = !(c1 && c1.checked && c2 && c2.checked);
+}
+
+window.openRejectModal = function (id) {
+  const b = bookingById(id);
+  if (!b) { toast('Không tìm thấy đơn này.', false); return; }
+  currentSelectedId = id;
+  const wrap = document.getElementById('rm-reasons');
+  wrap.innerHTML = '';
+  CANCEL_REASONS.forEach((r, i) => {
+    const label = document.createElement('label');
+    label.className = 'uc-choice';
+    label.innerHTML = `<input type="radio" name="rm-reason" value="${esc(r.code)}" ${i === 0 ? '' : ''}/>
+      <span class="uc-choice-text">${esc(r.label)}${r.fm ? ' <span class="text-[10px] font-extrabold text-amber-600">(bất khả kháng)</span>' : ''}</span>`;
+    wrap.appendChild(label);
+  });
+  wrap.querySelectorAll('input[name="rm-reason"]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const r = CANCEL_REASONS.find(x => x.code === inp.value);
+      document.getElementById('rm-note-required-hint').classList.toggle('hidden', !(r && (r.fm || r.needNote)));
+    });
+  });
+  document.getElementById('rm-note').value = '';
+  document.getElementById('rm-note-required-hint').classList.add('hidden');
+  const warn = document.getElementById('rm-warn');
+  if (warn) warn.classList.toggle('hidden', b.status !== 'committed' && b.status !== 'reschedule_requested');
+  openModal('reject-modal');
+};
+
+window.handleStartJob = async function (id) {
+  if (!confirm('Bắt đầu ca làm việc ngay bây giờ? Hệ thống sẽ kích hoạt chia sẻ vị trí cho phụ huynh.')) return;
+  try {
+    const resp = await authFetch(`${API_BASE}/matching/bookings/${id}/start/`, { method: 'POST' });
+    const j = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      toast('Đã bắt đầu ca làm việc. Chúc bạn một ca an toàn!', true);
+      fetchBookings();
+    } else {
+      toast(j.detail || 'Không bắt đầu được ca làm. Vui lòng thử lại.', false);
+    }
+  } catch (e) { toast('Lỗi kết nối. Vui lòng thử lại.', false); }
+};
+
+window.handleCompleteJob = async function (id) {
+  if (!confirm('Xác nhận đã hoàn thành ca / trả bé an toàn cho phụ huynh?')) return;
+  try {
+    const resp = await authFetch(`${API_BASE}/matching/bookings/${id}/complete/`, { method: 'POST' });
+    const j = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      toast('Đã hoàn thành ca làm! Thù lao sẽ được giải ngân vào ví của bạn.', true);
+      fetchBookings();
+    } else {
+      toast(j.detail || 'Không hoàn thành được đơn. Vui lòng thử lại.', false);
+    }
+  } catch (e) { toast('Lỗi kết nối. Vui lòng thử lại.', false); }
+};
+
+window.handleSOS = function (id) {
+  const b = bookingById(id);
+  const phone = b ? parentPhone(b) : '';
+  if (phone) {
+    if (confirm('SOS — Gọi ngay cho phụ huynh (' + phone + ')? Nếu là tình huống khẩn cấp tính mạng, hãy gọi 113 trước.')) {
+      window.location.href = 'tel:' + phone;
+    }
+  } else {
+    toast('Không có số điện thoại phụ huynh. Hãy gọi tổng đài hỗ trợ 113 nếu khẩn cấp.', false);
+  }
+};
+
+/* ───────────────────────── MODAL EXECUTION ───────────────────────── */
+
+function openModal(id) { const m = document.getElementById(id); if (m) m.classList.remove('hidden'); }
+function closeModal(id) { const m = document.getElementById(id); if (m) m.classList.add('hidden'); }
+
+document.querySelectorAll('[data-close-modal]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.getAttribute('data-close-modal')));
+});
+['commit-modal', 'reject-modal'].forEach(mid => {
+  const m = document.getElementById(mid);
+  if (m) m.addEventListener('click', (e) => { if (e.target === m) closeModal(mid); });
+});
+
+const cmConfirm = document.getElementById('cm-confirm-btn');
+if (cmConfirm) cmConfirm.addEventListener('click', async () => {
+  if (!currentSelectedId) return;
+  cmConfirm.disabled = true;
+  cmConfirm.innerHTML = '<span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span> Đang gửi...';
+  try {
+    const resp = await authFetch(`${API_BASE}/matching/bookings/${currentSelectedId}/commit/`, { method: 'POST' });
+    const j = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      closeModal('commit-modal');
+      toast(j.changed === false ? 'Bạn đã cam kết đơn này trước đó.' : 'Cam kết thành công! Ca làm đã được khóa cho bạn.', true);
+      fetchBookings();
+    } else {
+      toast(j.detail || 'Không cam kết được đơn. Có thể đơn đã hết hạn.', false);
+      fetchBookings();
+    }
+  } catch (e) { toast('Lỗi kết nối. Vui lòng thử lại.', false); }
+  cmConfirm.disabled = false;
+  cmConfirm.innerHTML = '<span class="material-symbols-outlined text-[17px]">verified</span> Xác nhận cam kết';
+});
+
+const rmSend = document.getElementById('rm-send-btn');
+if (rmSend) rmSend.addEventListener('click', async () => {
+  if (!currentSelectedId) return;
+  const chosen = document.querySelector('input[name="rm-reason"]:checked');
+  if (!chosen) { toast('Vui lòng chọn lý do từ chối.', false); return; }
+  const reason = CANCEL_REASONS.find(x => x.code === chosen.value) || {};
+  const note = document.getElementById('rm-note').value.trim();
+  if ((reason.fm && note.length < 20) || reason.needNote) {
+    toast(reason.fm ? 'Lý do bất khả kháng cần ghi chú tối thiểu 20 ký tự để được miễn phạt.' : 'Lý do "Khác" cần ghi chú rõ hơn.', false);
+    return;
+  }
+  rmSend.disabled = true;
+  rmSend.textContent = 'Đang gửi...';
+  try {
+    const resp = await authFetch(`${API_BASE}/matching/bookings/${currentSelectedId}/cancel/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason_code: chosen.value, note })
+    });
+    const j = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      closeModal('reject-modal');
+      toast('Đã gửi từ chối. Hệ thống sẽ chuyển đơn cho ứng viên khác phù hợp hơn.', false);
+      fetchBookings();
+    } else {
+      toast(j.detail || 'Không gửi được yêu cầu. Vui lòng thử lại.', false);
+    }
+  } catch (e) { toast('Lỗi kết nối. Vui lòng thử lại.', false); }
+  rmSend.disabled = false;
+  rmSend.textContent = 'Gửi từ chối';
+});
+
+/* ───────────────────────── SAFETY SETTERS + INIT ───────────────────────── */
+
+function setElText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+/* Công tắc trạng thái nhận đơn (hiển thị, lưu máy) */
+(function initReceiveToggle() {
+  const toggle = document.getElementById('receive-toggle');
+  if (!toggle) return;
+  const dot = document.getElementById('receive-dot');
+  const label = document.getElementById('receive-label');
+  const apply = (on) => {
+    toggle.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold border transition '
+      + (on ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200');
+    if (dot) { dot.className = 'w-2 h-2 rounded-full ' + (on ? 'bg-emerald-500' : 'bg-gray-400'); }
+    if (label) label.textContent = on ? 'Đang nhận đơn' : 'Tạm dừng nhận đơn';
+  };
+  let on = localStorage.getItem('ecl_receive_orders') !== 'off';
+  apply(on);
+  toggle.addEventListener('click', () => {
+    on = !on;
+    localStorage.setItem('ecl_receive_orders', on ? 'on' : 'off');
+    apply(on);
+    toast(on ? 'Đã bật nhận đơn ghép cặp.' : 'Đã tạm dừng nhận đơn ghép cặp.', on);
+  });
+})();
+
+const searchInput = document.getElementById('search-input');
+if (searchInput) {
+  let deb = null;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(deb);
+    deb = setTimeout(() => { searchQ = searchInput.value.trim(); renderBookingsList(); }, 200);
+  });
+}
+const serviceSelect = document.getElementById('service-filter');
+if (serviceSelect) serviceSelect.addEventListener('change', () => { serviceQ = serviceSelect.value; renderBookingsList(); });
+
+renderTabs();
+loadTier();
+fetchBookings();
+startTick();
 </script>
 </body>
 </html>
+
