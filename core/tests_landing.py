@@ -24,17 +24,21 @@ User = get_user_model()
 
 
 VALID_CP_ROLE_ANSWERS = {
-    'services': ['cham-soc-tre', 'an-toan'],
-    'experience': 'duoi-1-nam',
-    'expected_rate': '30-50k',
-    'interest_level': 'quan-tam',
+    'services': ['tutoring', 'pickup'],
+    'carepartner_type': 'sv-nam-3-4',
+    'transport_method': 'xe-may',
+    'available_slots': ['chieu-tan-truong', 'toi-trong-tuan'],
+    'expected_rate': '85-120k',
+    'motivations': ['flow1', 'thulao'],
 }
 
 VALID_PH_ROLE_ANSWERS = {
-    'interests': ['gia-su', 'cham-soc-tre'],
-    'necessity': 'can',
-    'used_service_before': 'da-tung',
-    'important_factors': ['gia-re', 'uy-tin'],
+    'services': ['tutoring', 'pickup'],
+    'child_age': '6-11',
+    'busy_slots': ['tan-tam-1630-1830'],
+    'trust_factors': ['ly-lich', 'live-gps'],
+    'budget_range': '100-150k',
+    'necessity': 'can-thiet',
 }
 
 
@@ -66,15 +70,17 @@ class LandingSurveyTestCase(TestCase):
         self.assertEqual(LandingSurvey.objects.count(), 1)
         obj = LandingSurvey.objects.first()
         self.assertEqual(obj.role, 'phu-huynh')
-        self.assertEqual(obj.role_answers['interests'], ['gia-su', 'cham-soc-tre'])
-        self.assertEqual(obj.role_answers['necessity'], 'can')
+        self.assertEqual(obj.role_answers['services'], ['tutoring', 'pickup'])
+        self.assertEqual(obj.role_answers['child_age'], '6-11')
+        self.assertEqual(obj.role_answers['necessity'], 'can-thiet')
 
     def test_create_carepartner_survey_success(self):
         resp = self.client.post('/api/landing/survey/', self.valid_cp, format='json')
         self.assertEqual(resp.status_code, 201)
         obj = LandingSurvey.objects.get(role='carepartner')
-        self.assertEqual(obj.role_answers['services'], ['cham-soc-tre', 'an-toan'])
-        self.assertEqual(obj.role_answers['experience'], 'duoi-1-nam')
+        self.assertEqual(obj.role_answers['services'], ['tutoring', 'pickup'])
+        self.assertEqual(obj.role_answers['carepartner_type'], 'sv-nam-3-4')
+        self.assertEqual(obj.role_answers['transport_method'], 'xe-may')
 
     def test_survey_email_optional(self):
         payload = self.valid_parent.copy()
@@ -132,13 +138,31 @@ class LandingSurveyTestCase(TestCase):
 
     def test_cp_missing_services_400(self):
         payload = self.valid_cp.copy()
-        payload['role_answers'] = {'experience': 'duoi-1-nam', 'expected_rate': '30-50k', 'interest_level': 'quan-tam'}
+        payload['role_answers'] = {'carepartner_type': 'sv-nam-3-4', 'transport_method': 'xe-may', 'expected_rate': '85-120k'}
         resp = self.client.post('/api/landing/survey/', payload, format='json')
         self.assertEqual(resp.status_code, 400)
 
     def test_ph_missing_necessity_400(self):
         payload = self.valid_parent.copy()
-        payload['role_answers'] = {'interests': ['gia-su']}
+        payload['role_answers'] = {'services': ['tutoring'], 'child_age': '6-11', 'budget_range': '100-150k'}
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_ph_missing_child_age_400(self):
+        payload = self.valid_parent.copy()
+        payload['role_answers'] = {'services': ['tutoring'], 'budget_range': '100-150k', 'necessity': 'can-thiet'}
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_ph_missing_budget_400(self):
+        payload = self.valid_parent.copy()
+        payload['role_answers'] = {'services': ['tutoring'], 'child_age': '6-11', 'necessity': 'can-thiet'}
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_cp_missing_expected_rate_400(self):
+        payload = self.valid_cp.copy()
+        payload['role_answers'] = {'services': ['tutoring'], 'carepartner_type': 'sv-nam-3-4', 'transport_method': 'xe-may'}
         resp = self.client.post('/api/landing/survey/', payload, format='json')
         self.assertEqual(resp.status_code, 400)
 
@@ -164,6 +188,9 @@ class LandingSignupTestCase(TestCase):
             'signup_type': 'tu-van',
             'preferred_time_slot': 'sang',
             'trial_consent': False,
+            'interested_service': 'pickup',
+            'location_city': 'TP. Hồ Chí Minh',
+            'location_district': 'Bình Thạnh',
             'note': '',
         }
         self.valid_trial = {
@@ -174,6 +201,9 @@ class LandingSignupTestCase(TestCase):
             'signup_type': 'dung-thu',
             'preferred_time_slot': '',
             'trial_consent': True,
+            'interested_service': 'tutoring',
+            'location_city': 'Hà Nội',
+            'location_district': 'Cầu Giấy',
             'note': 'Tôi muốn thử nghiệm tính năng định vị',
         }
 
@@ -200,6 +230,26 @@ class LandingSignupTestCase(TestCase):
         payload['trial_consent'] = False
         resp = self.client.post('/api/landing/signup/', payload, format='json')
         self.assertEqual(resp.status_code, 400)
+
+    def test_signup_missing_service_400(self):
+        payload = self.valid_consult.copy()
+        payload['interested_service'] = ''
+        resp = self.client.post('/api/landing/signup/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_signup_missing_city_400(self):
+        payload = self.valid_consult.copy()
+        payload['location_city'] = ''
+        resp = self.client.post('/api/landing/signup/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_signup_stores_service_and_location(self):
+        resp = self.client.post('/api/landing/signup/', self.valid_trial, format='json')
+        self.assertEqual(resp.status_code, 201)
+        obj = LandingSignup.objects.first()
+        self.assertEqual(obj.interested_service, 'tutoring')
+        self.assertEqual(obj.location_city, 'Hà Nội')
+        self.assertEqual(obj.location_district, 'Cầu Giấy')
 
     def test_missing_required_fields(self):
         for field in ['full_name', 'phone', 'email', 'role']:

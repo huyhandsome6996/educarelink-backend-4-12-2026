@@ -292,12 +292,18 @@ Phân tích các số liệu sau từ landing page EduCareLink và đưa ra insi
 **CÂU TRẢ LỜI CHI TIẾT (Phụ huynh - 20 mẫu mới nhất):**
 {json.dumps(ph_answers, ensure_ascii=False, indent=2) if ph_answers else 'Chưa có'}
 
-Hãy phân tích:
+Hãy phân tích với góc nhìn NGHIỆP VỤ EduCareLink — nền tảng Giáo dục & Chăm sóc Trẻ em
+với 3 dịch vụ cốt lõi: Gia sư học tập, Đưa đón bé tan học, Trông trẻ tại nhà:
+
 1. Đánh giá tổng thể — số liệu này có tốt cho cuộc thi không?
-2. Insight từ câu trả lời — nhu cầu chính của từng nhóm là gì?
-3. Điểm mạnh/điểm yếu từ phản hồi
-4. Gợi ý hành động cụ thể để tăng conversion rate
-5. 3 số liệu highlight quan trọng nhất nên đưa vào báo cáo
+2. Cân đối 3 dịch vụ cốt lõi: Tỷ lệ phụ huynh cần Đưa đón trẻ so với Gia sư và Trông trẻ ra sao?
+   Dịch vụ nào đang là "nỗi đau" lớn nhất (khung giờ tan tầm 16:30–18:30 có đang áp đảo không)?
+3. Độ chênh lệch (gap) mức giá: Mức thù lao kỳ vọng của CarePartner so với mức chi phí phụ huynh
+   sẵn sàng chi trả — đề xuất bảng giá hợp lý cho từng dịch vụ (gia sư theo giờ, đón trẻ theo lượt, trông trẻ theo giờ).
+4. Phân bố khu vực: Dữ liệu tỉnh/thành + quận/huyện từ form đăng ký — đề xuất kế hoạch
+   tuyển dụng CarePartner sinh viên theo quận/huyện và cách sắp xếp ưu tiên địa bàn.
+5. Điểm mạnh/điểm yếu từ phản hồi + gợi ý hành động cụ thể để tăng conversion rate
+6. 3 số liệu highlight quan trọng nhất nên đưa vào báo cáo cuộc thi
 
 Trả lời bằng tiếng Việt, ngắn gọn, súc tích, định dạng Markdown.
 """
