@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { getBlackouts, addBlackout, deleteBlackout } from '../../api/matching';
+import { formatDateToYMD } from '../../utils/date';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -57,7 +58,7 @@ export default function BlackoutScreen() {
   const pickDate = (_e, selected) => {
     setShowPicker(Platform.OS === 'ios');
     if (!selected) return;
-    const date = selected.toISOString().slice(0, 10);
+    const date = formatDateToYMD(selected);
     const payload = {
       date, reason,
       time_from: allDay ? null : timeFrom,

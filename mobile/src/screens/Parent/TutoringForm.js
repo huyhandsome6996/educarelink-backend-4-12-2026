@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { createJob, publishJob } from '../../api/matching';
 import JobLocationPicker from '../../components/JobLocationPicker';
+import { formatDateToYMD, getTodayYMD, extractErrorMessage } from '../../utils/date';
 
 // DateTimePicker chỉ trên native
 let DateTimePicker;
@@ -72,8 +73,8 @@ export default function TutoringForm() {
   const addDate = (_event, selected) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (!selected) return;
-    const iso = selected.toISOString().slice(0, 10);
-    const today = new Date().toISOString().slice(0, 10);
+    const iso = formatDateToYMD(selected);
+    const today = getTodayYMD();
     if (iso < today) {
       Alert.alert('Không hợp lệ', 'Không được chọn ngày trong quá khứ.');
       return;
@@ -116,12 +117,17 @@ export default function TutoringForm() {
     if (!rate || Number(rate) <= 0)
       return Alert.alert('Thiếu thông tin', 'Vui lòng nhập học phí/giờ (VNĐ > 0).');
 
+    // Tự động điền yêu cầu mặc định nếu phụ huynh chưa kịp nhập
+    const finalRequirements =
+      requirements.trim() ||
+      `Dạy kèm môn ${subject.trim()}, hướng dẫn bài tập và hỗ trợ bé rèn luyện kiến thức vững vàng.`;
+
     setSubmitting(true);
     try {
       const { data: job } = await createJob({
         job_type: 'tutoring',
         subject: subject.trim(),
-        specific_requirements: requirements.trim(),
+        specific_requirements: finalRequirements,
         dates,
         time_from: timeFrom,
         time_to: timeTo,
@@ -147,13 +153,8 @@ export default function TutoringForm() {
         ]
       );
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      Alert.alert(
-        'Lỗi',
-        typeof detail === 'string'
-          ? detail
-          : 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.'
-      );
+      const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
+      Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
     }

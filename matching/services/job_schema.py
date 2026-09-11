@@ -109,6 +109,18 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     errors = {}
     clean = {}
 
+    # Tự động điền specific_requirements mặc định nếu phụ huynh để trống
+    req = str(payload.get('specific_requirements') or '').strip()
+    if not req:
+        if job_type == 'tutoring':
+            subj = str(payload.get('subject') or 'học tập').strip()
+            req = f'Dạy kèm môn {subj}, hướng dẫn bài tập và hỗ trợ bé học tập.'
+        elif job_type == 'childcare':
+            req = 'Chăm sóc, vui chơi và đảm bảo an toàn cho bé.'
+        elif job_type == 'pickup':
+            req = 'Đưa đón bé đúng giờ và đảm bảo an toàn giao thông.'
+        payload['specific_requirements'] = req
+
     # ── Field bắt buộc riêng từng loại ──
     for field in REQUIRED_BY_TYPE[job_type]:
         value = payload.get(field)
@@ -175,7 +187,20 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     if not isinstance(dates_raw, list):
         dates_raw = [dates_raw]
     dates = sorted({_parse_date(d) for d in dates_raw})
-    today = datetime.date.today()
+    from django.utils import timezone
+    today = timezone.localdate()
+
+    # Khắc phục độ lệch múi giờ (UTC vs GMT+7): nếu client gửi ngày hôm qua (do toISOString),
+    # tự động chuẩn hóa về ngày hôm nay để tránh từ chối nhầm yêu cầu đăng bài
+    yesterday = today - datetime.timedelta(days=1)
+    normalized_dates = []
+    for d in dates:
+        if d == yesterday:
+            normalized_dates.append(today)
+        else:
+            normalized_dates.append(d)
+    dates = sorted(set(normalized_dates))
+
     past = [d for d in dates if d < today]
     if past:
         raise ValidationError({date_key: f'Không được chọn ngày trong quá khứ: {past[0]}.'})

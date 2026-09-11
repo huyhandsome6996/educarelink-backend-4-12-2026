@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { createJob, publishJob } from '../../api/matching';
 import JobLocationPicker from '../../components/JobLocationPicker';
+import { formatDateToYMD, getTodayYMD, extractErrorMessage } from '../../utils/date';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -96,8 +97,9 @@ export default function ChildcareForm() {
   const addDate = (_e, selected) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (!selected) return;
-    const iso = selected.toISOString().slice(0, 10);
-    if (iso < new Date().toISOString().slice(0, 10))
+    const iso = formatDateToYMD(selected);
+    const today = getTodayYMD();
+    if (iso < today)
       return Alert.alert('Không hợp lệ', 'Không được chọn ngày trong quá khứ.');
     if (!dates.includes(iso)) setDates([...dates, iso].sort());
   };
@@ -112,10 +114,12 @@ export default function ChildcareForm() {
     if (!ageGroup) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn độ tuổi của trẻ.');
     if (Number(numChildren) < 1) return Alert.alert('Thiếu thông tin', 'Số lượng trẻ phải từ 1 trở lên.');
     if (duties.length === 0) return Alert.alert('Thiếu thông tin', 'Chọn ít nhất 1 việc chăm sóc bé.');
-    if (!requirements.trim()) return Alert.alert('Thiếu thông tin', 'Nhập yêu cầu cụ thể đối với bảo mẫu.');
     if (dates.length === 0) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn ngày làm việc.');
     if (!location) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn vị trí trên bản đồ.');
     if (!rate || Number(rate) <= 0) return Alert.alert('Thiếu thông tin', 'Nhập mức phí/giờ hợp lệ.');
+
+    const finalRequirements =
+      requirements.trim() || 'Chăm sóc, vui chơi tương tác và đảm bảo an toàn tuyệt đối cho bé.';
 
     setSubmitting(true);
     try {
@@ -125,7 +129,7 @@ export default function ChildcareForm() {
         number_of_children: Number(numChildren),
         care_duties: duties,
         medical_allergy_notes: allergyNotes.trim(),
-        specific_requirements: requirements.trim(),
+        specific_requirements: finalRequirements,
         dates,
         time_from: timeFrom,
         time_to: timeTo,
@@ -150,13 +154,8 @@ export default function ChildcareForm() {
         ]
       );
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      Alert.alert(
-        'Lỗi',
-        typeof detail === 'string'
-          ? detail
-          : 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.'
-      );
+      const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
+      Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
     }
