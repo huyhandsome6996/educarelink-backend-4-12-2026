@@ -31,8 +31,8 @@ describe('app.json — plugin âm thanh critical (BUG #1)', () => {
     expect(fs.statSync(p).size).toBeGreaterThan(100000); // ~258KB siren 3s
   });
 
-  test('version = 1.4.3 và android.versionCode = 26 (25/24 đã phát hành internal — vc26 là bản QA + Stitch don-cua-toi mới)', () => {
-    expect(appJson.version).toBe('1.4.3');
-    expect(appJson.android.versionCode).toBe(26);
+  test('version = 1.4.4 và android.versionCode = 27 (26 đã lên internal — vc27 chặn treo đăng bài: timeout 45/60s + thông báo lỗi thân thiện)', () => {
+    expect(appJson.version).toBe('1.4.4');
+    expect(appJson.android.versionCode).toBe(27);
   });
 });
