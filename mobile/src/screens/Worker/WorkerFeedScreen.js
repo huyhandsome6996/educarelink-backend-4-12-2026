@@ -1,625 +1,304 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl, TextInput, Platform, Alert, Animated } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+// WorkerFeedScreen.js — Trang chủ CarePartner (Flow ghép cặp AI mới)
+// CHỈ hiển thị đơn mà Phụ huynh đã CHỌN carepartner này (awaiting_commitment).
+// Không có ứng tuyển tự do. Bấm vào đơn → xem chi tiết → Xác nhận hoặc Huỷ.
+
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar,
+  ActivityIndicator, RefreshControl, Animated,
+} from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { getAllTasks, applyTask, getMyJobsAsWorker } from '../../api/tasks';
-import { getWorkerRecommendations } from '../../api/ai_recommendations';
+import { getBookings } from '../../api/matching';
 import NotificationBell from '../../components/NotificationBell';
-import VerificationPinSetupModal from '../../components/VerificationPinSetupModal';
-import { COLORS, SHADOWS, SIZES, TYPO, FRAGMENTS } from '../../theme/colors';
-import { CATEGORY_ICONS, renderCategoryIcon } from '../../theme/categoryIcons';
+import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
-// Sync 100% với web task_create_1.html (Material Symbols → Ionicons)
-const CATEGORY_MAP = [
-  { id: 1, name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 2, name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 3, name: 'Dọn dẹp', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 4, name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 5, name: 'Mua sắm', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 6, name: 'Nấu ăn', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 7, name: 'Chuyển đồ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 8, name: 'Khác', color: COLORS.primary, bg: COLORS.primaryLight },
-];
+const formatSlot = (slot) => {
+  if (!slot) return '';
+  return `${slot.date} · ${(slot.time_from || '').slice(0, 5)} – ${(slot.time_to || '').slice(0, 5)}`;
+};
 
 export default function WorkerFeedScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { user, refreshUser } = useAuth();
-  const [tasks, setTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
-  const [appliedTaskIds, setAppliedTaskIds] = useState([]);
-  const [searchFocused, setSearchFocused] = useState(false);
+  const [error, setError] = useState('');
+
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  const bounceRef = useRef(null);
 
-  // LỖ HỔNG #1 fix: state cho VerificationPinSetupModal + retry flow
-  const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [pendingApplyTaskId, setPendingApplyTaskId] = useState(null); // task cần retry sau khi đặt PIN
-  const [applyLoading, setApplyLoading] = useState(null); // taskId đang apply (loading state cho button)
-
-  // AI Recommendations state
-  const [aiRecs, setAiRecs] = useState([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiHasError, setAiHasError] = useState(false);
-
-  const fetchTasks = async () => {
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError('');
     try {
-      const res = await getAllTasks();
-      // Chỉ hiện các việc đang 'open'
-      setTasks(res.data.filter(t => t.status === 'open'));
-
-      // Lấy danh sách việc sinh viên đã ứng tuyển
-      const jobsRes = await getMyJobsAsWorker();
-      const ids = jobsRes.data.map(job => job.task);
-      setAppliedTaskIds(ids);
-    } catch (e) { console.error(e); }
-    finally { setIsLoading(false); setRefreshing(false); }
-  };
-
-  // ===== AI RECOMMENDATIONS =====
-  const loadAIRecommendations = async (forceRefresh = false) => {
-    setAiLoading(true);
-    setAiHasError(false);
-    try {
-      const res = await getWorkerRecommendations(forceRefresh);
-      if (res.data?.has_ai && res.data?.recommendations?.length > 0) {
-        setAiRecs(res.data.recommendations.slice(0, 3));
-      } else {
-        setAiRecs([]);
-      }
-    } catch (e) {
-      console.warn('AI recommendations failed:', e);
-      setAiHasError(true);
-      setAiRecs([]);
+      // Chỉ lấy đơn trạng thái "awaiting_commitment" — phụ huynh vừa chọn mình
+      const { data } = await getBookings({ role: 'carepartner', status: 'awaiting_commitment' });
+      setBookings(data.results ?? data ?? []);
+    } catch {
+      setError('Không tải được đơn. Kéo xuống để thử lại.');
     } finally {
-      setAiLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchTasks();
-    loadAIRecommendations();
   }, []);
 
-  // Empty state bounce animation
-  // Fix H12: store animation ref và stop() trong cleanup để tránh memory leak.
-  // Trước đây Animated.loop start nhưng không có cleanup → animation tiếp
-  // tục chạy ngay cả khi component unmount.
-  const bounceAnimRef = useRef(null);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Bounce animation khi danh sách rỗng
   useEffect(() => {
-    if (!isLoading && tasks.length === 0) {
-      bounceAnimRef.current = Animated.loop(
+    if (!loading && bookings.length === 0) {
+      bounceRef.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(bounceAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: -8, duration: 600, useNativeDriver: true }),
           Animated.timing(bounceAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
         ])
       );
-      bounceAnimRef.current.start();
-      return () => {
-        if (bounceAnimRef.current) {
-          bounceAnimRef.current.stop();
-          bounceAnimRef.current = null;
-        }
-      };
+      bounceRef.current.start();
+      return () => { bounceRef.current?.stop(); };
     }
-  }, [isLoading, tasks.length, bounceAnim]);
-
-  const bounceTransform = bounceAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -8],
-  });
-
-  // LỖ HỔNG #1 fix: handleApply với PIN enforcement
-  // - Phát hiện error `verification_pin_required` → mở VerificationPinSetupModal
-  // - Sau khi đặt PIN thành công → retry apply tự động (không mất context)
-  // - Loading state trên button apply để tránh double-tap
-  // - Gửi consent_tracking khi task có geofence (backend yêu cầu)
-  const handleApply = useCallback((taskId) => {
-    // Tìm task để check geofence → gửi consent_tracking nếu cần
-    const task = tasks.find(t => t.id === taskId);
-    const hasGeofence = !!(task?.geofence_lat && task?.geofence_lng);
-
-    const startApply = async () => {
-      setApplyLoading(taskId);
-      try {
-        // consent_tracking: true nếu task có geofence (worker đồng ý tracking)
-        const res = await applyTask(taskId, hasGeofence ? true : null);
-        setAppliedTaskIds(prev => [...prev, taskId]);
-        if (Platform.OS === 'web') {
-          alert('✅ Thành công! Đã ứng tuyển!');
-        } else {
-          Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
-        }
-      } catch (e) {
-        const errorCode = e.response?.data?.error;
-        const msg = e.response?.data?.message || 'Thao tác thất bại.';
-
-        // ================================================================
-        // LỖ HỔNG #1: Bắt error verification_pin_required → mở PIN setup
-        // Thay vì show generic alert, điều hướng worker đặt PIN.
-        // Sau khi đặt xong, retry apply tự động (pendingApplyTaskId).
-        // ================================================================
-        if (errorCode === 'verification_pin_required') {
-          setPendingApplyTaskId(taskId);
-          setPinModalVisible(true);
-        } else if (errorCode === 'CONSENT_REQUIRED') {
-          // Task có geofence nhưng worker chưa đồng ý tracking
-          // Hiện dialog hỏi đồng ý → retry với consent_tracking=true
-          if (Platform.OS === 'web') {
-            if (window.confirm('Việc này yêu cầu theo dõi vị trí. Bạn đồng ý chia sẻ vị trí?')) {
-              setApplyLoading(taskId);
-              applyTask(taskId, true)
-                .then(res => {
-                  setAppliedTaskIds(prev => [...prev, taskId]);
-                  Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
-                })
-                .catch(err => {
-                  const errCode2 = err.response?.data?.error;
-                  if (errCode2 === 'verification_pin_required') {
-                    setPendingApplyTaskId(taskId);
-                    setPinModalVisible(true);
-                  } else {
-                    Alert.alert('Lỗi', err.response?.data?.message || 'Thao tác thất bại.');
-                  }
-                })
-                .finally(() => setApplyLoading(null));
-            }
-          } else {
-            Alert.alert(
-              'Theo dõi vị trí',
-              'Việc này yêu cầu theo dõi vị trí. Bạn đồng ý chia sẻ vị trí khi làm việc?',
-              [
-                { text: 'Huỷ', style: 'cancel' },
-                {
-                  text: 'Đồng ý',
-                  onPress: () => {
-                    setApplyLoading(taskId);
-                    applyTask(taskId, true)
-                      .then(res => {
-                        setAppliedTaskIds(prev => [...prev, taskId]);
-                        Alert.alert('✅', res.data.message || 'Đã ứng tuyển!');
-                      })
-                      .catch(err => {
-                        const errCode2 = err.response?.data?.error;
-                        if (errCode2 === 'verification_pin_required') {
-                          setPendingApplyTaskId(taskId);
-                          setPinModalVisible(true);
-                        } else {
-                          Alert.alert('Lỗi', err.response?.data?.message || 'Thao tác thất bại.');
-                        }
-                      })
-                      .finally(() => setApplyLoading(null));
-                  },
-                },
-              ]
-            );
-          }
-        } else {
-          // Generic error
-          if (Platform.OS === 'web') {
-            alert(`Thông báo: ${msg}`);
-          } else {
-            Alert.alert('Thông báo', msg);
-          }
-        }
-      } finally {
-        setApplyLoading(null);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Bạn muốn ứng tuyển việc này?')) {
-        startApply();
-      }
-    } else {
-      Alert.alert('Ứng tuyển', 'Bạn muốn ứng tuyển việc này?', [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Ứng tuyển', onPress: startApply },
-      ]);
-    }
-  }, [tasks]);
-
-  // LỖ HỔNG #1 fix: callback khi đặt PIN thành công
-  // → refresh user (cập nhật has_verification_pin) → retry apply task đang chờ
-  const handlePinSetupSuccess = useCallback(async () => {
-    await refreshUser();
-    if (pendingApplyTaskId) {
-      const taskIdToRetry = pendingApplyTaskId;
-      setPendingApplyTaskId(null);
-      setPinModalVisible(false);
-      // Retry apply — lúc này user đã có PIN → backend cho phép
-      setApplyLoading(taskIdToRetry);
-      try {
-        const task = tasks.find(t => t.id === taskIdToRetry);
-        const hasGeofence = !!(task?.geofence_lat && task?.geofence_lng);
-        const res = await applyTask(taskIdToRetry, hasGeofence ? true : null);
-        setAppliedTaskIds(prev => [...prev, taskIdToRetry]);
-        Alert.alert('✅ Thành công', 'Đã đặt mã cá nhân và ứng tuyển thành công!');
-      } catch (e) {
-        const msg = e.response?.data?.message || 'Ứng tuyển thất bại sau khi đặt mã.';
-        Alert.alert('Lỗi', msg);
-      } finally {
-        setApplyLoading(null);
-      }
-    } else {
-      setPinModalVisible(false);
-    }
-  }, [pendingApplyTaskId, refreshUser, tasks]);
-
-
-  // Fix M11: thêm null check cho task.title và task.location — nếu task
-  // từ API thiếu field sẽ crash khi gọi .toLowerCase().
-  const filtered = tasks.filter(t =>
-    (t.title || '').toLowerCase().includes(search.toLowerCase()) ||
-    (t.location || '').toLowerCase().includes(search.toLowerCase())
-  );
+  }, [loading, bookings.length, bounceAnim]);
 
   const displayName = user?.first_name || user?.username || 'Bạn';
 
-  const renderItem = ({ item: task }) => {
-    const hasApplied = appliedTaskIds.includes(task.id);
-    const cat = CATEGORY_MAP.find(c => c.id === task.category) || CATEGORY_MAP[7];
+  const renderItem = ({ item }) => {
+    const price = item.total_value_vnd ?? item.job_price ?? 0;
+    const title = item.job_title || 'Công việc được giao';
+    const parentName = item.parent_name || 'Phụ huynh';
+    const address = item.job_address || '';
+    const slot = item.first_slot;
+
     return (
-      <TouchableOpacity style={styles.card} activeOpacity={0.9}
-        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
-        {/* Card header */}
-        <View style={styles.cardHeader}>
-          <View style={styles.categoryPill}>
-            <View style={styles.catIconCircle}>
-              {renderCategoryIcon(cat.id, 16, COLORS.primary)}
-            </View>
-            <Text style={styles.categoryPillText}>{cat.name}</Text>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
+      >
+        {/* Badge + giá */}
+        <View style={styles.badgeRow}>
+          <View style={styles.badge}>
+            <Ionicons name="time-outline" size={12} color={COLORS.primary} />
+            <Text style={styles.badgeText}>Chờ xác nhận của bạn</Text>
           </View>
-          <Text style={styles.cardPrice}>{parseInt(task.price).toLocaleString('vi-VN')}đ</Text>
+          <Text style={styles.cardPrice}>{Number(price).toLocaleString('vi-VN')}đ</Text>
         </View>
 
-        {/* Title */}
-        <Text style={styles.cardTitle} numberOfLines={2}>{task.title}</Text>
+        {/* Tiêu đề */}
+        <Text style={styles.cardTitle} numberOfLines={2}>{title}</Text>
 
-        {/* Meta info */}
-        <View style={styles.metaSection}>
-          <View style={styles.metaRow}>
-            <View style={styles.metaIconBox}>
-              <Ionicons name="time-outline" size={14} color={COLORS.primary} />
+        {/* Meta */}
+        <View style={styles.metaBox}>
+          {slot ? (
+            <View style={styles.metaRow}>
+              <View style={styles.metaIcon}>
+                <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
+              </View>
+              <Text style={styles.metaText}>{formatSlot(slot)}</Text>
             </View>
-            <Text style={styles.metaText}>{new Date(task.scheduled_time).toLocaleString('vi-VN')}</Text>
-          </View>
-          <View style={styles.metaRow}>
-            <View style={styles.metaIconBox}>
-              <Ionicons name="location-outline" size={14} color={COLORS.primary} />
+          ) : null}
+          {address ? (
+            <View style={styles.metaRow}>
+              <View style={styles.metaIcon}>
+                <Ionicons name="location-outline" size={13} color={COLORS.primary} />
+              </View>
+              <Text style={styles.metaText} numberOfLines={1}>{address}</Text>
             </View>
-            <Text style={styles.metaText}>{task.location}</Text>
-          </View>
+          ) : null}
         </View>
 
         {/* Footer */}
         <View style={styles.cardFooter}>
-          <View style={styles.parentInfo}>
-            <View style={styles.parentAvatar}>
-              <Text style={styles.parentAvatarText}>{task.parent_name?.[0]?.toUpperCase() || 'P'}</Text>
+          <View style={styles.parentRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{parentName[0]?.toUpperCase() || 'P'}</Text>
             </View>
-            <Text style={styles.parentLabel}>{task.parent_name}</Text>
+            <Text style={styles.parentName}>{parentName} đã chọn bạn</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.applyBtn, (hasApplied || applyLoading === task.id) && styles.applyBtnDisabled]}
-            onPress={() => handleApply(task.id)}
-            disabled={hasApplied || !!applyLoading}
-            activeOpacity={0.85}
-          >
-            {applyLoading === task.id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name={hasApplied ? "checkmark" : "paper-plane"} size={14} color="#fff" />
-            )}
-            <Text style={styles.applyBtnText}>
-              {applyLoading === task.id ? 'Đang gửi...' : hasApplied ? 'Đã ứng tuyển' : 'Ứng tuyển'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.arrowCircle}>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+          </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-
-  const listHeaderComponent = React.useMemo(() => (
-    <>
-      {/* ===== AI RECOMMENDATIONS SECTION ===== */}
-      {aiRecs.length > 0 && (
-        <View style={styles.aiSection}>
-          <View style={styles.aiHeader}>
-            <View style={styles.aiHeaderLeft}>
-              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
-              <Text style={styles.aiHeaderTitle}>AI gợi ý cho bạn</Text>
-            </View>
-            <TouchableOpacity onPress={() => loadAIRecommendations(true)} disabled={aiLoading}>
-              <Ionicons name="refresh" size={16} color={COLORS.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {aiLoading && aiRecs.length === 0 ? (
-            <View style={styles.aiLoadingBox}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.aiLoadingText}>AI đang phân tích hồ sơ của bạn...</Text>
-            </View>
-          ) : (
-            aiRecs.map((rec, idx) => {
-              const t = rec.task;
-              if (!t) return null;
-              const score = rec.match_score || 0;
-              const scoreColor = score >= 80 ? COLORS.success : score >= 50 ? COLORS.warning : COLORS.textMuted;
-              const scoreLabel = score >= 80 ? 'Rất phù hợp' : score >= 50 ? 'Phù hợp' : 'Ít phù hợp';
-              return (
-                <TouchableOpacity
-                  key={`ai_${idx}`}
-                  style={styles.aiCard}
-                  onPress={() => navigation.navigate('TaskDetail', { taskId: t.id })}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.aiCardHeader}>
-                    <View style={[styles.aiScoreBadge, { backgroundColor: scoreColor + '20', borderColor: scoreColor }]}>
-                      <Text style={[styles.aiScoreText, { color: scoreColor }]}>{scoreLabel} {score}</Text>
-                    </View>
-                    {t.has_geofence && (
-                      <View style={styles.aiGeoBadge}>
-                        <Ionicons name="location" size={10} color={COLORS.info} />
-                        <Text style={styles.aiGeoText}>Tracking</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.aiTaskTitle} numberOfLines={1}>{t.title}</Text>
-                  <Text style={styles.aiReason} numberOfLines={2}>{rec.reason}</Text>
-                  <View style={styles.aiCardMeta}>
-                    <View style={styles.aiMetaItem}>
-                      <Ionicons name="location-outline" size={11} color={COLORS.textMuted} />
-                      <Text style={styles.aiMetaText} numberOfLines={1}>{t.location}</Text>
-                    </View>
-                    <Text style={styles.aiPrice}>{parseInt(t.price).toLocaleString('vi-VN')}đ</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </View>
-      )}
-
-      <Text style={styles.listHeader}>{filtered.length} việc làm mới nhất</Text>
-    </>
-  ), [aiRecs, aiLoading, navigation, filtered.length]);
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        {/* Decorative circles */}
-        <View style={styles.headerDeco1} />
-        <View style={styles.headerDeco2} />
-        <View style={styles.headerDeco3} />
+        <View style={styles.deco1} />
+        <View style={styles.deco2} />
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerGreet}>Carepartner</Text>
+            <Text style={styles.greet}>CarePartner</Text>
             <Text style={styles.headerName}>Chào, {displayName}!</Text>
           </View>
           <NotificationBell />
         </View>
-        {/* Search bar */}
-        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-          <Ionicons name="search-outline" size={18} color={searchFocused ? COLORS.primary : COLORS.textMuted} />
-          <TextInput style={styles.searchInput} placeholder="Tìm kiếm công việc..."
-            placeholderTextColor={COLORS.textMuted} value={search} onChangeText={setSearch}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)} />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <Text style={styles.headerSub}>
+          Phụ huynh đã chọn bạn — hãy xem chi tiết và quyết định nhận hay huỷ.
+        </Text>
       </View>
 
-      {isLoading ? (
+      {loading ? (
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 60 }} />
+      ) : error ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="cloud-offline-outline" size={44} color="#d1d5db" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => load()}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        <FlatList data={filtered} keyExtractor={i => i.id.toString()} renderItem={renderItem}
+        <FlatList
+          data={bookings}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks(); loadAIRecommendations(); }} tintColor={COLORS.primary} />}
-          ListHeaderComponent={listHeaderComponent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor={COLORS.primary}
+            />
+          }
+          ListHeaderComponent={
+            bookings.length > 0 ? (
+              <Text style={styles.sectionHeader}>
+                {bookings.length} đơn chờ xác nhận
+              </Text>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Animated.View style={[styles.emptyIconCircle, { transform: [{ translateY: bounceTransform }] }]}>
-                <Ionicons name="search-outline" size={36} color={COLORS.primary} />
+              <Animated.View style={[styles.emptyCircle, { transform: [{ translateY: bounceAnim }] }]}>
+                <Ionicons name="briefcase-outline" size={36} color={COLORS.primary} />
               </Animated.View>
-              <Text style={styles.emptyTitle}>Không tìm thấy công việc</Text>
-              <Text style={styles.emptyText}>Kéo xuống để làm mới danh sách</Text>
+              <Text style={styles.emptyTitle}>Chưa có công việc nào</Text>
+              <Text style={styles.emptyText}>
+                Khi phụ huynh chọn bạn từ danh sách AI gợi ý, đơn sẽ hiển thị tại đây để bạn xác nhận.
+              </Text>
+              <TouchableOpacity
+                style={styles.goJobsBtn}
+                onPress={() => navigation.navigate('MyBookings')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="list-outline" size={16} color="#fff" />
+                <Text style={styles.goJobsBtnText}>Xem toàn bộ đơn của tôi</Text>
+              </TouchableOpacity>
             </View>
           }
         />
       )}
-
-      {/* LỖ HỔNG #1 fix: VerificationPinSetupModal — mở khi worker chưa đặt PIN nhận task có tracking */}
-      <VerificationPinSetupModal
-        visible={pinModalVisible}
-        onClose={() => { setPinModalVisible(false); setPendingApplyTaskId(null); }}
-        onSuccess={handlePinSetupSuccess}
-        isChange={false}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  // === HEADER ===
+  // Header
   header: {
     backgroundColor: COLORS.primary,
     paddingBottom: 20, paddingHorizontal: 20,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-    overflow: 'hidden',
-    position: 'relative',
+    overflow: 'hidden', position: 'relative',
   },
-  headerDeco1: {
+  deco1: {
     position: 'absolute', top: -30, right: -20,
     width: 120, height: 120, borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  headerDeco2: {
+  deco2: {
     position: 'absolute', bottom: -15, left: -25,
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  headerDeco3: {
-    position: 'absolute', top: 20, right: 80,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  headerTop: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 10,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  headerGreet: { ...TYPO.overline, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' },
-  headerName: { ...TYPO.h2, color: COLORS.textOnPrimary },
-  notifBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  greet: { color: 'rgba(255,255,255,0.7)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
+  headerName: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  headerSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12.5, lineHeight: 18 },
+  // List
+  list: { padding: SIZES.md, paddingBottom: 40 },
+  sectionHeader: {
+    fontSize: 12, fontWeight: '700', color: COLORS.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: SIZES.radiusMd,
-    paddingHorizontal: 14, height: 48, gap: 10,
-    borderWidth: 1.5, borderColor: 'transparent',
-    ...SHADOWS.small,
-  },
-  searchBarFocused: {
-    ...FRAGMENTS.inputFocus,
-    ...SHADOWS.inputFocus,
-  },
-  searchInput: { flex: 1, ...TYPO.body, color: COLORS.textPrimary },
-  // === LIST ===
-  list: { padding: SIZES.md, paddingBottom: 30 },
-  listHeader: {
-    ...TYPO.overline, color: COLORS.textMuted,
-    marginBottom: 12,
-  },
-  // === CARD ===
+  // Card
   card: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd, padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMd,
+    padding: 16, marginBottom: 12,
     ...SHADOWS.cardHover,
     borderLeftWidth: 4, borderLeftColor: COLORS.primary,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  categoryPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: SIZES.radiusSm, paddingHorizontal: 10, paddingVertical: 6,
-    backgroundColor: COLORS.primaryLight,
+  badgeRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 8,
   },
-  catIconCircle: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: 'rgba(242,101,34,0.12)', justifyContent: 'center', alignItems: 'center',
+  badge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.primaryLight, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4,
   },
-  catImage: { width: 14, height: 14 },
-  categoryPillText: { ...TYPO.caption, color: COLORS.primary },
-  cardPrice: { ...TYPO.h3, color: COLORS.primary },
-  cardTitle: { ...TYPO.h4, color: COLORS.textPrimary, marginBottom: 10 },
-  // === META ===
-  metaSection: { gap: 6, marginBottom: 12 },
-  metaRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  metaIconBox: {
+  badgeText: { color: COLORS.primary, fontSize: 11, fontWeight: '700' },
+  cardPrice: { color: COLORS.primary, fontSize: 16, fontWeight: '900' },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10 },
+  metaBox: { gap: 6, marginBottom: 12 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  metaIcon: {
     width: 26, height: 26, borderRadius: 13,
     backgroundColor: COLORS.surfaceAlt, justifyContent: 'center', alignItems: 'center',
   },
-  metaText: { ...TYPO.bodySmall, color: COLORS.textSecondary, flex: 1 },
-  // === FOOTER ===
+  metaText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
+  // Footer card
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border,
   },
-  parentInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  parentAvatar: {
+  parentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  avatar: {
     width: 30, height: 30, borderRadius: 15,
     backgroundColor: COLORS.primarySoft, justifyContent: 'center', alignItems: 'center',
   },
-  parentAvatarText: { color: COLORS.primary, ...TYPO.buttonSmall },
-  parentLabel: { ...TYPO.caption, color: COLORS.textMuted, fontWeight: '600' },
-  applyBtn: {
-    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusSm,
-    paddingHorizontal: 14, paddingVertical: 9,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    ...SHADOWS.small,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  avatarText: { color: COLORS.primary, fontSize: 14, fontWeight: '800' },
+  parentName: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600' },
+  arrowCircle: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
   },
-  applyBtnDisabled: {
-    backgroundColor: COLORS.textMuted,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-    opacity: 0.7,
-  },
-  applyBtnText: { color: COLORS.textOnPrimary, ...TYPO.buttonSmall },
-  // === EMPTY ===
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyIconCircle: {
+  // Empty
+  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 30, gap: 12 },
+  emptyCircle: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.small,
   },
-  emptyTitle: { ...TYPO.h4, color: COLORS.textPrimary },
-  emptyText: { ...TYPO.bodySmall, color: COLORS.textMuted },
-
-  // === AI RECOMMENDATIONS ===
-  aiSection: {
-    marginBottom: 16,
-  },
-  aiHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10,
-  },
-  aiHeaderLeft: {
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
+  emptyText: { fontSize: 13.5, color: COLORS.textMuted, textAlign: 'center', lineHeight: 20 },
+  goJobsBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd,
+    paddingHorizontal: 20, paddingVertical: 12, marginTop: 8,
+    ...SHADOWS.small,
   },
-  aiHeaderTitle: {
-    ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700',
+  goJobsBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  // Error
+  errorBox: { alignItems: 'center', paddingTop: 80, gap: 12, paddingHorizontal: 30 },
+  errorText: { fontSize: 14, color: COLORS.textMuted, textAlign: 'center' },
+  retryBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 20,
+    paddingHorizontal: 24, paddingVertical: 10,
   },
-  aiLoadingBox: {
-    flexDirection: 'row', gap: 10, alignItems: 'center',
-    backgroundColor: COLORS.primaryLight, padding: 14, borderRadius: SIZES.radiusMd,
-    borderWidth: 1, borderColor: COLORS.primarySoft,
-  },
-  aiLoadingText: { ...TYPO.bodySmall, color: COLORS.primary },
-  aiCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusMd,
-    padding: 14, marginBottom: 8,
-    borderLeftWidth: 3, borderLeftColor: COLORS.primary,
-    ...SHADOWS.cardHover,
-  },
-  aiCardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
-  },
-  aiScoreBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: SIZES.radiusXs,
-    borderWidth: 1,
-  },
-  aiScoreText: { ...TYPO.caption, fontWeight: '700', fontSize: 10 },
-  aiGeoBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: COLORS.infoBg, borderRadius: SIZES.radiusXs,
-    paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1, borderColor: '#bfdbfe',
-  },
-  aiGeoText: { ...TYPO.caption, fontSize: 9, color: COLORS.info, fontWeight: '700' },
-  aiTaskTitle: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4 },
-  aiReason: { ...TYPO.bodySmall, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 8 },
-  aiCardMeta: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border,
-  },
-  aiMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-  aiMetaText: { ...TYPO.caption, color: COLORS.textMuted, flex: 1 },
-  aiPrice: { ...TYPO.bodySmall, color: COLORS.primary, fontWeight: '900' },
-});
+  retryText: { color: '#fff', fontWeight: '700' },
+});

@@ -234,6 +234,7 @@ function WorkerFeedStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkerFeedMain" component={WorkerFeedScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
       <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
       <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
