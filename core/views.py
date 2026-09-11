@@ -3245,6 +3245,7 @@ class AdminFeedbackExcelAPIView(APIView):
         SLOT_LABELS = {
             'chieu-tan-truong': 'Ca chiều tan trường 16:30–18:30', 'toi-trong-tuan': 'Tối trong tuần 18:30–21:00',
             'cuoi-tuan': 'Cả ngày cuối tuần (T7 & CN)', 'linh-hoat-hoc-ky': 'Linh hoạt theo lịch học kỳ',
+            'sang-ngay-thuong': 'Sáng ngày thường 07:30–11:30 (trông bé mầm non)',
             'tan-tam-1630-1830': 'Giờ cao điểm tan tầm 16:30–18:30', 'toi-1830-2100': 'Buổi tối 18:30–21:00',
             'linh-hoat-dot-xuat': 'Linh hoạt đột xuất khi bận',
         }
@@ -3265,6 +3266,20 @@ class AdminFeedbackExcelAPIView(APIView):
             '70-100k': '70.000–100.000đ/giờ', '100-150k': '100.000–150.000đ/giờ',
             '150-220k': '150.000–220.000đ/giờ', 'don-50-80k': 'Theo lượt: 50.000–80.000đ/lượt đón',
         }
+        # Bộ câu hỏi sắc bén 2026-09-12 — câu hỏi mới (dữ liệu cũ không có key này, bỏ qua an toàn)
+        CURRENT_SOLUTION_LABELS = {
+            'nguoi-than': 'Ông bà / người thân trông giúp', 'bao-mau-nguoi-quen': 'Bảo mẫu / người trông qua người quen',
+            'trung-tam': 'Trung tâm / gia sư chuyên nghiệp', 'tu-xoay-xo': 'Bố mẹ tự xoay xở',
+        }
+        PAIN_POINT_LABELS = {
+            'kho-tin': 'Không biết tin ai (không kiểm tra được lý lịch)', 'khong-giam-sat': 'Không theo dõi được con khi vắng mặt',
+            'hay-nghi-dot-xuat': 'Người trông hay nghỉ đột xuất', 'gio-tan-tam': 'Giờ đón con trùng giờ làm việc bận nhất',
+            'chua-biet-gia': 'Không biết mức giá hợp lý',
+        }
+        CONCERN_LABELS = {
+            'trach-nhiem-su-co': 'Trách nhiệm khi bé gặp sự cố', 'di-chuyen-an-toan': 'An toàn di chuyển / chở bé giờ tan tầm',
+            'ky-nang-xu-ly': 'Chưa tự tin xử lý bé quấy khóc', 'lich-hoc': 'Sợ ca làm đè lên lịch học',
+        }
 
         def _fmt_ra(role, ra):
             if not ra or not isinstance(ra, dict): return ''
@@ -3277,17 +3292,19 @@ class AdminFeedbackExcelAPIView(APIView):
                                 ('transport_method', TRANSPORT_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
-                for k, lbls in [('available_slots', SLOT_LABELS), ('motivations', MOTIVATION_LABELS)]:
+                for k, lbls in [('available_slots', SLOT_LABELS), ('motivations', MOTIVATION_LABELS),
+                                ('concerns', CONCERN_LABELS)]:
                     vals = ra.get(k)
                     if vals and isinstance(vals, list): parts.append(lbls.get(vals[0], vals[0]) if len(vals) == 1 else ', '.join(lbls.get(v, v) for v in vals))
             else:
                 ints = ra.get('services', ra.get('interests', []))
                 if ints and isinstance(ints, list): parts.append('Quan tâm: ' + ', '.join(SERVICE_LABELS.get(i, i) for i in ints))
                 for k, lbls in [('necessity', NECESSITY_LABELS), ('used_service_before', USED_BEFORE_LABELS),
-                                ('child_age', CHILD_AGE_LABELS), ('budget_range', BUDGET_LABELS)]:
+                                ('child_age', CHILD_AGE_LABELS), ('budget_range', BUDGET_LABELS),
+                                ('current_solution', CURRENT_SOLUTION_LABELS)]:
                     v = ra.get(k)
                     if v: parts.append(lbls.get(v, v))
-                for k, lbls in [('busy_slots', SLOT_LABELS)]:
+                for k, lbls in [('busy_slots', SLOT_LABELS), ('pain_points', PAIN_POINT_LABELS)]:
                     vals = ra.get(k)
                     if vals and isinstance(vals, list): parts.append(', '.join(lbls.get(v, v) for v in vals))
                 factors = ra.get('important_factors', [])
