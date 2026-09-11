@@ -25,9 +25,12 @@ import {
   RefreshControl,
   Platform,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { SUPPORT_HOTLINE } from '../../config/appConfig';
 import { useAuth } from '../../context/AuthContext';
 import { getBookings } from '../../api/matching';
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
@@ -155,8 +158,14 @@ export default function ParentHomeScreen() {
         {/* 1. HERO TOP BRAND HEADER (#F26522 SIGNATURE ORANGE GRADIENT) */}
         {/* ============================================================ */}
         <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
-          {/* Top Row: User Profile Greeting & Notification */}
+          {/* Top Row: Logo thương hiệu + User Profile Greeting & Notification */}
           <View style={styles.headerTopRow}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.headerBrandLogo}
+              contentFit="contain"
+              transition={0}
+            />
             <TouchableOpacity
               style={styles.userInfoRow}
               onPress={() => navigation.navigate('ParentTabs', { screen: 'ParentProfile' })}
@@ -515,10 +524,14 @@ export default function ParentHomeScreen() {
                     onPress={() => {
                       Alert.alert(
                         'Tổng đài Khẩn cấp SOS',
-                        'Bạn cần hỗ trợ an toàn ngay lập tức? Hotline EduCareLink 24/7: 1900 6868',
+                        `Bạn cần hỗ trợ an toàn ngay lập tức? Hotline EduCareLink 24/7: ${SUPPORT_HOTLINE}`,
                         [
                           { text: 'Đóng', style: 'cancel' },
-                          { text: 'Gọi 1900 6868', style: 'destructive', onPress: () => {} },
+                          {
+                            text: `Gọi ${SUPPORT_HOTLINE}`,
+                            style: 'destructive',
+                            onPress: () => { Linking.openURL(`tel:${SUPPORT_HOTLINE}`).catch(() => {}); },
+                          },
                         ]
                       );
                     }}
@@ -742,6 +755,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  headerBrandLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
   },
   userInfoRow: {
     flexDirection: 'row',

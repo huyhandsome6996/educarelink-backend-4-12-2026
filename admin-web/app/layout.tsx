@@ -5,6 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'EduCareLink Admin — Ghép cặp',
   description: 'Quản trị Flow ghép cặp Phụ huynh ↔ CarePartner',
+  icons: { icon: '/logo.png' },
 };
 
 const NAV = [
@@ -21,7 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="vi">
       <body>
         <header className="topbar">
-          <span className="brand">🎓 EduCareLink Admin</span>
+          <span className="brand">
+            <img src="/logo.png" alt="Logo EduCareLink" width={22} height={22} style={{ verticalAlign: '-4px', marginRight: 6 }} />
+            EduCareLink Admin
+          </span>
           <nav className="nav">
             {NAV.map((item) => (
               <Link key={item.href} href={item.href}>{item.label}</Link>

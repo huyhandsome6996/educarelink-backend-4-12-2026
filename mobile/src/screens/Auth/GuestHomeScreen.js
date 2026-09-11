@@ -32,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, TYPO } from '../../theme/colors';
 import apiClient from '../../api/client';
+import { Image } from 'expo-image';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_WIDTH = Math.min(SCREEN_WIDTH - 32, 398);
@@ -307,9 +308,14 @@ export default function GuestHomeScreen() {
       {/* BEGIN: TopBrandBar */}
       <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
         <View style={styles.brandRow}>
-          {/* Logo Icon */}
+          {/* Logo chính thức EduCareLink */}
           <View style={styles.logoBadge}>
-            <Ionicons name="heart" size={20} color="#FFFFFF" />
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.logoBadgeImg}
+              contentFit="contain"
+              transition={0}
+            />
           </View>
           {/* Brand Name & Tag */}
           <View>
@@ -761,14 +767,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#F26522',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#F26522',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
+  },
+  logoBadgeImg: {
+    width: 28,
+    height: 28,
   },
   brandTitle: {
     fontSize: 17,

@@ -235,7 +235,12 @@ export default function RegisterScreen({ route }) {
 
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <View style={styles.brandRow}>
-            <Ionicons name="school" size={32} color={COLORS.primary} />
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.brandLogoImg}
+              contentFit="contain"
+              transition={0}
+            />
             <Text style={styles.brandName}>EduCareLink</Text>
           </View>
           <Text style={styles.title}>Bắt đầu hành trình</Text>
@@ -482,6 +487,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 24,
+  },
+  brandLogoImg: {
+    width: 40,
+    height: 40,
   },
   brandName: {
     ...TYPO.h2,

@@ -14,6 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
+import { SUPPORT_HOTLINE } from '../../config/appConfig';
 import { useAuth } from '../../context/AuthContext';
 import {
   getBookingDetail, cancelBooking, cancelBookingByParent,
@@ -713,10 +714,10 @@ export default function BookingDetailScreen() {
 
             <TouchableOpacity
               style={stitchStyles.hotlineCallBtn}
-              onPress={() => Linking.openURL('tel:19006828')}
+              onPress={() => Linking.openURL(`tel:${SUPPORT_HOTLINE}`)}
             >
               <Ionicons name="call" size={18} color="#EA580C" />
-              <Text style={stitchStyles.hotlineCallText}>1900 6828 (Nhánh 2)</Text>
+              <Text style={stitchStyles.hotlineCallText}>Hotline {SUPPORT_HOTLINE}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

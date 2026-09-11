@@ -11,6 +11,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useAuth } from '../../context/AuthContext';
 import { getBookings } from '../../api/matching';
 import NotificationBell from '../../components/NotificationBell';
@@ -197,11 +198,19 @@ export default function WorkerFeedScreen() {
         <View style={styles.headerDecoRing1} />
         <View style={styles.headerDecoRing2} />
 
-        {/* Dòng trên cùng: Badge xác thực + Trạng thái + Chuông thông báo */}
+        {/* Dòng trên cùng: Logo thương hiệu + Badge xác thực + Trạng thái + Chuông thông báo */}
         <View style={styles.headerTopBar}>
-          <View style={styles.verifiedBadgeHeader}>
-            <Ionicons name="shield-checkmark" size={12} color="#fff" />
-            <Text style={styles.verifiedBadgeHeaderText}>CAREPARTNER ĐÃ ĐỐI SOÁT</Text>
+          <View style={styles.headerBrandGroup}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.headerBrandLogo}
+              contentFit="contain"
+              transition={0}
+            />
+            <View style={styles.verifiedBadgeHeader}>
+              <Ionicons name="shield-checkmark" size={12} color="#fff" />
+              <Text style={styles.verifiedBadgeHeaderText}>CAREPARTNER ĐÃ ĐỐI SOÁT</Text>
+            </View>
           </View>
 
           <View style={styles.headerRightActions}>
@@ -376,6 +385,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  headerBrandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  headerBrandLogo: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
   },
   verifiedBadgeHeader: {
     flexDirection: 'row',

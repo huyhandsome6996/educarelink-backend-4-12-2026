@@ -63,7 +63,8 @@ Chúng tôi KHÔNG bán dữ liệu của bạn. Dữ liệu chỉ được chia
 Chúng tôi có thể cập nhật chính sách; phiên bản mới sẽ được thông báo trong ứng dụng.
 
 ## 10. Liên hệ
-- Email hỗ trợ: [ĐIỀN EMAIL THẬT]
+- Email hỗ trợ: hello@educarelink.vn
+- Hotline hỗ trợ: 0862427404
 - Đơn vị vận hành: [ĐIỀN TÊN ĐƠN VỊ/CÁ NHÂN]
 - Địa chỉ: [ĐIỀN ĐỊA CHỈ]
 
