@@ -244,7 +244,10 @@ def expand_slot_dates(type_data):
     """Tạo danh sách date từ dates + recurrence weekly (tối đa 12 tuần)."""
     from datetime import date as d, timedelta
 
-    dates = {d.fromisoformat(x) for x in type_data['_dates']}
+    raw_dates = type_data.get('_dates') or type_data.get('dates') or type_data.get('pickup_dates') or []
+    dates = {d.fromisoformat(str(x)) for x in raw_dates if x}
+    if not dates:
+        return []
     recurrence = type_data.get('recurrence') or {}
     if recurrence.get('pattern') == 'weekly':
         until = d.fromisoformat(recurrence['until'])
