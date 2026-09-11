@@ -172,6 +172,41 @@ class LandingSurveyTestCase(TestCase):
         resp = self.client.post('/api/landing/survey/', payload, format='json')
         self.assertEqual(resp.status_code, 400)
 
+    def test_survey_new_sharp_keys_2026_accepted(self):
+        """Bộ câu hỏi sắc bén 2026-09-12: current_solution / pain_points (PH),
+        experience / concerns (CP) — key mới optional phải lưu trữ trọn vẹn."""
+        payload = self.valid_parent.copy()
+        payload['role_answers'] = {
+            'services': ['pickup'],
+            'child_age': '3-6',
+            'current_solution': 'nguoi-than',
+            'pain_points': ['gio-tan-tam', 'kho-tin'],
+            'busy_slots': ['tan-tam-1630-1830'],
+            'budget_range': 'don-50-80k',
+            'necessity': 'rat-cap-bach',
+        }
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 201)
+        obj = LandingSurvey.objects.filter(role='phu-huynh').first()
+        self.assertEqual(obj.role_answers['current_solution'], 'nguoi-than')
+        self.assertEqual(obj.role_answers['pain_points'], ['gio-tan-tam', 'kho-tin'])
+
+        payload_cp = self.valid_cp.copy()
+        payload_cp['role_answers'] = {
+            'services': ['childcare'],
+            'carepartner_type': 'su-pham',
+            'experience': '1-3-nam',
+            'transport_method': 'di-bo-xe-dap',
+            'available_slots': ['sang-ngay-thuong'],
+            'expected_rate': '60-85k',
+            'concerns': ['trach-nhiem-su-co', 'ky-nang-xu-ly'],
+        }
+        resp = self.client.post('/api/landing/survey/', payload_cp, format='json')
+        self.assertEqual(resp.status_code, 201)
+        obj_cp = LandingSurvey.objects.filter(role='carepartner').first()
+        self.assertEqual(obj_cp.role_answers['experience'], '1-3-nam')
+        self.assertEqual(obj_cp.role_answers['concerns'], ['trach-nhiem-su-co', 'ky-nang-xu-ly'])
+
 
 @override_settings(DEBUG=True)
 class LandingSignupTestCase(TestCase):
