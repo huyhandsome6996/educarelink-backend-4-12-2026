@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { COLORS, SHADOWS, TYPO } from '../../theme/colors';
 import { getOAuthConfig } from '../../api/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 
@@ -196,6 +197,12 @@ export default function LoginScreen() {
       </TouchableOpacity>
 
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={styles.brandLogo}
+          contentFit="contain"
+          transition={0}
+        />
         <Text style={styles.title}>Chào mừng trở lại</Text>
         <Text style={styles.subtitle}>Đăng nhập để tiếp tục kết nối</Text>
       </Animated.View>
@@ -359,6 +366,11 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   header: { alignItems: 'center', marginBottom: 32 },
+  brandLogo: {
+    width: 92,
+    height: 92,
+    marginBottom: 14,
+  },
   title: {
     ...TYPO.h1,
     color: COLORS.primary,

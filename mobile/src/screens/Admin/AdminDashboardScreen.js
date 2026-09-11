@@ -263,7 +263,15 @@ export default function AdminDashboardScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Admin Dashboard</Text>
+        <View style={styles.headerTitleRow}>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.headerLogo}
+            contentFit="contain"
+            transition={0}
+          />
+          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+        </View>
         <NotificationBell color="#fff" />
       </View>
 
@@ -348,7 +356,13 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: SIZES.radiusSm,
     backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { ...TYPO.h4, color: '#fff', fontWeight: '800', flex: 1, marginLeft: 12 },
+  headerTitle: { ...TYPO.h4, color: '#fff', fontWeight: '800' },
+  headerTitleRow: {
+    flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 12,
+  },
+  headerLogo: {
+    width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', marginRight: 10,
+  },
   tabs: {
     flexDirection: 'row', backgroundColor: COLORS.surface,
     paddingHorizontal: 16, paddingBottom: 12,

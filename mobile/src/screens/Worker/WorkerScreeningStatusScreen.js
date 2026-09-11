@@ -7,11 +7,12 @@
 // ============================================================
 
 import React, {useState, useRef, useEffect} from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Animated, ActivityIndicator} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, Animated, ActivityIndicator, Linking} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
+import { SUPPORT_HOTLINE, openSupportHotline } from '../../config/appConfig';
 import { useAuth } from '../../context/AuthContext';
 import { getMyCredentials } from '../../api/tasks';
 import { getProfile } from '../../api/auth';
@@ -362,7 +363,7 @@ export default function WorkerScreeningStatusScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.supportBtn}
-            onPress={() => showComingSoon('Liên hệ hỗ trợ')}
+            onPress={() => { openSupportHotline(Linking).then((ok) => { if (!ok) Alert.alert('EduCareLink', `Hotline hỗ trợ: ${SUPPORT_HOTLINE}`); }); }}
             activeOpacity={0.7}
           >
             <Ionicons name="headset" size={20} color={COLORS.primary} />
