@@ -415,6 +415,33 @@ export default function ParentHomeScreen() {
               <Text style={styles.aiBannerButtonText}>Thử ngay →</Text>
             </View>
           </TouchableOpacity>
+
+          {/* PILLAR 5 / SHOWCASE: Danh sách ứng viên CarePartner tuyển chọn (Stitch AI) */}
+          <TouchableOpacity
+            style={styles.stitchShowcaseBanner}
+            onPress={() => navigation.navigate('CandidatesList')}
+            activeOpacity={0.9}
+          >
+            <View style={styles.stitchShowcaseLeft}>
+              <View style={styles.stitchShowcasePillRow}>
+                <View style={styles.stitchShowcasePill}>
+                  <Ionicons name="sparkles" size={12} color="#059669" style={{ marginRight: 4 }} />
+                  <Text style={styles.stitchShowcasePillText}>AI GHÉP CẶP CHUẨN XÁC</Text>
+                </View>
+                <View style={styles.stitchShowcaseBadge}>
+                  <Text style={styles.stitchShowcaseBadgeText}>TOP 8</Text>
+                </View>
+              </View>
+              <Text style={styles.stitchShowcaseTitle}>Ứng viên CarePartner Tuyển Chọn</Text>
+              <Text style={styles.stitchShowcaseSubtitle}>
+                Thuật toán ELO đã quét & xếp hạng · 100% sinh viên giỏi ĐH Sư Phạm, Ngoại Thương, Bách Khoa
+              </Text>
+            </View>
+            <View style={styles.stitchShowcaseBtn}>
+              <Text style={styles.stitchShowcaseBtnText}>Xem ngay</Text>
+              <Ionicons name="arrow-forward" size={13} color="#ffffff" style={{ marginLeft: 3 }} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* ============================================================ */}
@@ -1326,6 +1353,85 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#F26522',
+  },
+
+  // STITCH SHOWCASE BANNER
+  stitchShowcaseBanner: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...SHADOWS.small,
+  },
+  stitchShowcaseLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  stitchShowcasePillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  stitchShowcasePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  stitchShowcasePillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#047857',
+    letterSpacing: 0.2,
+  },
+  stitchShowcaseBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  stitchShowcaseBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  stitchShowcaseTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  stitchShowcaseSubtitle: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  stitchShowcaseBtn: {
+    backgroundColor: '#F26522',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  stitchShowcaseBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 
   // 4. RADAR ACTIVE LIVE TRACKING
