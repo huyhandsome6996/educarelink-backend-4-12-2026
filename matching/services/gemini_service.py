@@ -193,7 +193,10 @@ def _parse_with_gemini(job):
         except Exception as exc:
             logger.warning('[Gemini] Parse lỗi lần %d: %s', attempt, exc)
             _log_call(tpl, 0, 0, _time.time() - started, 'error')
-            continue
+            # QA 2026-09-11: Gemini KHÔNG khả dụng (timeout/quota/network) thì
+            # đừng thử lại — attempt 2 chỉ tốn thêm ~14s ngân sách rồi vẫn
+            # fallback. Chỉ attempt 2 cho trường hợp SAI SCHEMA (repair) phía dưới.
+            break
 
         latency = int((_time.time() - started) * 1000)
         try:
