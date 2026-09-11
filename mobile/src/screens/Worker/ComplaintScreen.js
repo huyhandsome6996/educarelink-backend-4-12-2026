@@ -13,10 +13,10 @@ const COMPLAINT_TYPES = [
   { value: 'exploitation', label: 'Bóc lột sức lao động', icon: 'alert-circle' },
   { value: 'abuse', label: 'Ngược đãi (thể chất/tinh thần)', icon: 'heart-dislike' },
   { value: 'harassment', label: 'Quấy rối / xúc phạm', icon: 'warning' },
-  { value: 'non_payment', label: 'Không trả / trả thiếu tiền', icon: 'cash-off' },
+  { value: 'non_payment', label: 'Không trả / trả thiếu tiền', icon: 'cash-outline' },
   { value: 'fraud', label: 'Gian lận / lừa đảo', icon: 'bug' },
-  { value: 'unsafe', label: 'Môi trường không an toàn', icon: 'shield-off' },
-  { value: 'other', label: 'Khác', icon: 'dots-horizontal' },
+  { value: 'unsafe', label: 'Môi trường không an toàn', icon: 'shield-outline' },
+  { value: 'other', label: 'Khác', icon: 'ellipsis-horizontal' },
 ];
 
 export default function ComplaintScreen() {

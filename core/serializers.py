@@ -238,15 +238,24 @@ class LandingSurveySerializer(serializers.ModelSerializer):
         ra = attrs.get('role_answers', {}) or {}
         errors = {}
         if role == 'carepartner':
-            if not ra.get('services') or not isinstance(ra['services'], list) or len(ra['services']) == 0:
-                errors['role_answers'] = 'Vui lòng chọn ít nhất 1 dịch vụ.'
-            if not ra.get('experience'):
-                errors['role_answers'] = 'Vui lòng chọn kinh nghiệm.'
+            # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi Gia sư/Đón trẻ/Trông trẻ
+            services = ra.get('services')
+            if not services or not isinstance(services, list) or len(services) == 0:
+                errors['role_answers'] = 'Vui lòng chọn ít nhất 1 dịch vụ mong muốn nhận.'
+            if not ra.get('carepartner_type'):
+                errors['role_answers'] = 'Vui lòng chọn đối tượng hiện tại của bạn.'
+            if not ra.get('transport_method'):
+                errors['role_answers'] = 'Vui lòng chọn phương tiện di chuyển.'
             if not ra.get('expected_rate'):
-                errors['role_answers'] = 'Vui lòng chọn mức lương mong muốn.'
-            if not ra.get('interest_level'):
-                errors['role_answers'] = 'Vui lòng chọn mức độ quan tâm.'
+                errors['role_answers'] = 'Vui lòng chọn mức thù lao kỳ vọng.'
         elif role == 'phu-huynh':
+            services = ra.get('services')
+            if not services or not isinstance(services, list) or len(services) == 0:
+                errors['role_answers'] = 'Vui lòng chọn ít nhất 1 dịch vụ bạn quan tâm.'
+            if not ra.get('child_age'):
+                errors['role_answers'] = 'Vui lòng chọn độ tuổi của bé.'
+            if not ra.get('budget_range'):
+                errors['role_answers'] = 'Vui lòng chọn mức chi phí sẵn sàng chi trả.'
             if not ra.get('necessity'):
                 errors['role_answers'] = 'Vui lòng chọn mức độ cần thiết.'
         if errors:
@@ -260,7 +269,8 @@ class LandingSignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = LandingSignup
         fields = ['full_name', 'phone', 'email', 'role', 'signup_type',
-                  'preferred_time_slot', 'trial_consent', 'note']
+                  'preferred_time_slot', 'trial_consent', 'note',
+                  'interested_service', 'location_city', 'location_district']
 
     def validate_phone(self, value):
         import re
@@ -270,8 +280,30 @@ class LandingSignupSerializer(serializers.ModelSerializer):
                 'Số điện thoại không hợp lệ (cần 9–14 chữ số).')
         return value
 
+    def validate_interested_service(self, value):
+        valid = {c[0] for c in LandingSignup.SERVICE_CHOICES}
+        if value and value not in valid:
+            raise serializers.ValidationError('Dịch vụ quan tâm không hợp lệ.')
+        return value
+
+    def validate_location_city(self, value):
+        valid = {c[0] for c in LandingSignup.CITY_CHOICES}
+        if value and value not in valid:
+            raise serializers.ValidationError('Tỉnh/Thành phố không hợp lệ.')
+        return value
+
     def validate(self, attrs):
         signup_type = attrs.get('signup_type', '')
+
+        # Dịch vụ quan tâm + khu vực — bắt buộc để đội ngũ tư vấn trúng đích
+        if not attrs.get('interested_service'):
+            raise serializers.ValidationError({
+                'interested_service': 'Vui lòng chọn dịch vụ bạn quan tâm nhất.'
+            })
+        if not attrs.get('location_city'):
+            raise serializers.ValidationError({
+                'location_city': 'Vui lòng chọn tỉnh/thành phố của bạn.'
+            })
 
         # Tư vấn: khung giờ gọi lại là bắt buộc
         if signup_type == 'tu-van':

@@ -222,8 +222,21 @@ class NgayBanView(TemplateView):
 
 
 class DonCuaToiView(TemplateView):
-    """Danh sách đơn ghép cặp của CarePartner, lọc theo trạng thái."""
+    """Danh sách đơn ghép cặp của CarePartner, lọc theo trạng thái.
+
+    Phân quyền theo quy tắc trang CarePartner (Stitch 2026-09-11):
+    chưa đăng nhập → /login/; phụ huynh → /parent/.
+    """
+
     template_name = "frontend/don_cua_toi.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated:
+            return redirect('/login/?next=/don-cua-toi/')
+        if getattr(user, 'role', '') == 'parent':
+            return redirect('/parent/')
+        return super().dispatch(request, *args, **kwargs)
 
 
 class KhangCaoView(TemplateView):

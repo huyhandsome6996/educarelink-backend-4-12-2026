@@ -55,31 +55,107 @@ def _job_address(job):
     return (td.get('location_note') or '').strip()
 
 
+# Nhãn dịch vụ tiếng Việt theo job_type — phục vụ UI Đơn của tôi (Stitch 2026-09-11)
+CATEGORY_NAME_VI = {
+    'tutoring': 'Gia sư',
+    'pickup': 'Đón trẻ',
+    'childcare': 'Trông trẻ',
+}
+
+WEEKDAY_NAMES_VI = {
+    0: 'Thứ Hai', 1: 'Thứ Ba', 2: 'Thứ Tư', 3: 'Thứ Năm',
+    4: 'Thứ Sáu', 5: 'Thứ Bảy', 6: 'Chủ Nhật',
+}
+
+
+def _first_slot_view(first):
+    """Bổ sung hiển thị tiếng Việt cho first_slot (date vi + thứ + "Hôm nay")."""
+    if not first:
+        return None
+    view = {'date': first.date, 'time_from': first.time_from, 'time_to': first.time_to}
+    try:
+        local_date = timezone.localtime(timezone.now()).date()
+        days_ahead = (first.date - local_date).days
+        if days_ahead == 0:
+            view['day_of_week_vi'] = 'Hôm nay'
+        elif days_ahead == 1:
+            view['day_of_week_vi'] = 'Ngày mai'
+        else:
+            view['day_of_week_vi'] = WEEKDAY_NAMES_VI[first.date.weekday()]
+        view['date_vi'] = first.date.strftime('%d/%m/%Y')
+        view['time_from_vi'] = first.time_from.strftime('%H:%M') if first.time_from else ''
+        view['time_to_vi'] = first.time_to.strftime('%H:%M') if first.time_to else ''
+    except Exception:
+        pass
+    return view
+
+
 def _booking_dict(booking):
     b = booking
     first = b.job.slots.order_by('date', 'time_from').first()
     parent = getattr(b, 'parent', None)
+    job = b.job
+    td = getattr(job, 'type_data', None) or {}
+
+    # Thù lao thực nhận 80% (quy chế giải ngân ký quỹ 80/20)
+    payout_vnd = int(round((b.total_value_vnd or 0) * 0.8))
+    if (b.total_value_vnd or 0) > 0 and payout_vnd < 1:
+        payout_vnd = 1
+
+    # Thông tin bé (nếu job có type_data chi tiết — additive, không mock dữ liệu)
+    child_info = {
+        'age_group': td.get('child_age_group', ''),
+        'number_of_children': td.get('number_of_children'),
+        'notes': (td.get('medical_allergy_notes') or td.get('care_duties')
+                  or td.get('transport_note') or td.get('location_note') or ''),
+    }
+
+    # Thông tin phụ huynh hiển thị cho CarePartner (từ record User đã select_related)
+    parent_info = {
+        'full_name': (f"{parent.first_name} {parent.last_name}".strip()
+                      if parent else '') or getattr(parent, 'username', ''),
+        'phone': getattr(parent, 'phone_number', '') or '',
+        'avatar_url': getattr(parent, 'avatar_url', '') or '',
+    }
+
+    # Vị trí làm việc — nút Chỉ đường ưu tiên toạ độ, fallback địa chỉ chữ
+    loc = td.get('pickup_location') or td.get('destination_location')
+    loc_addr = ''
+    if isinstance(loc, dict):
+        loc_addr = (loc.get('address') or loc.get('label') or loc.get('name') or '').strip()
+
     return {
         'id': str(b.pk),
         'job_id': str(b.job_id),
         'job_title': b.job.title,
         'job_type': getattr(b.job, 'job_type', ''),
         'job_address': _job_address(b.job),
+        'category_code': getattr(b.job, 'job_type', ''),
+        'category_name_vi': CATEGORY_NAME_VI.get(getattr(b.job, 'job_type', ''), ''),
         'carepartner_id': str(b.carepartner_id),
         'parent_id': str(b.parent_id),
         'parent_name': (f"{parent.first_name} {parent.last_name}".strip()
                         if parent else '') or getattr(parent, 'username', ''),
+        'parent_info': parent_info,
+        'child_info': child_info,
+        'location_info': {
+            'address': _job_address(b.job) or loc_addr,
+            'latitude': getattr(b.job, 'latitude', None),
+            'longitude': getattr(b.job, 'longitude', None),
+        },
         'status': b.status,
         'status_label_vi': STATUS_LABELS_VI.get(b.status, b.status),
         'selected_at': b.selected_at,
         'commit_deadline': b.commit_deadline,
         'seconds_left': seconds_left(b),
+        'commit_seconds_left': seconds_left(b),
         'total_value_vnd': b.total_value_vnd,
+        'carepartner_payout_vnd': payout_vnd,
         'compensation_vnd': b.compensation_vnd,
         'elo_delta_applied': b.elo_delta_applied,
         'cancel_reason_code': b.cancel_reason_code,
-        'first_slot': ({'date': first.date, 'time_from': first.time_from,
-                        'time_to': first.time_to} if first else None),
+        'cancelled_at': b.cancelled_at,
+        'first_slot': _first_slot_view(first),
     }
 
 

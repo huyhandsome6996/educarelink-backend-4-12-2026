@@ -812,7 +812,7 @@ export default function LiveTrackingScreen() {
         ) : (
           <View style={styles.notTrackingBox}>
             <View style={styles.notTrackingIcon}>
-              <Ionicons name="location-off-outline" size={48} color={COLORS.textMuted} />
+              <Ionicons name="location-outline" size={48} color={COLORS.textMuted} />
             </View>
             <Text style={styles.notTrackingTitle}>Carepartner chưa chia sẻ vị trí</Text>
             <Text style={styles.notTrackingText}>
