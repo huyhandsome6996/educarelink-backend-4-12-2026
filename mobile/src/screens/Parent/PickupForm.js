@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
 import { createJob, publishJob } from '../../api/matching';
 import JobLocationPicker from '../../components/JobLocationPicker';
+import { formatDateToYMD, getTodayYMD, extractErrorMessage } from '../../utils/date';
 
 let DateTimePicker;
 if (Platform.OS !== 'web') {
@@ -108,8 +109,9 @@ export default function PickupForm() {
   const addDate = (_e, selected) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (!selected) return;
-    const iso = selected.toISOString().slice(0, 10);
-    if (iso < new Date().toISOString().slice(0, 10))
+    const iso = formatDateToYMD(selected);
+    const today = getTodayYMD();
+    if (iso < today)
       return Alert.alert('Không hợp lệ', 'Không được chọn ngày trong quá khứ.');
     if (!dates.includes(iso)) setDates([...dates, iso].sort());
   };
@@ -134,8 +136,10 @@ export default function PickupForm() {
     if (!pickupLocation) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn điểm đón trên bản đồ.');
     if (destType === 'other_address' && !destLocation)
       return Alert.alert('Thiếu thông tin', 'Vui lòng chọn điểm đến trên bản đồ (địa chỉ khác).');
-    if (!requirements.trim()) return Alert.alert('Thiếu thông tin', 'Nhập yêu cầu an toàn cụ thể.');
     if (!rate || Number(rate) <= 0) return Alert.alert('Thiếu thông tin', 'Nhập mức phí đề xuất hợp lệ.');
+
+    const finalRequirements =
+      requirements.trim() || 'Đưa đón bé đúng giờ, đội mũ bảo hiểm và đảm bảo an toàn giao thông.';
 
     setSubmitting(true);
     try {
@@ -154,7 +158,7 @@ export default function PickupForm() {
         destination_note: destNote,
         transport_method: transportMethod || undefined,
         transport_note: transportNote,
-        specific_requirements: requirements.trim(),
+        specific_requirements: finalRequirements,
         // vị trí chính = điểm đón
         latitude: pickupLocation.latitude,
         longitude: pickupLocation.longitude,
@@ -176,13 +180,8 @@ export default function PickupForm() {
         ]
       );
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      Alert.alert(
-        'Lỗi',
-        typeof detail === 'string'
-          ? detail
-          : 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.'
-      );
+      const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
+      Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
     }
