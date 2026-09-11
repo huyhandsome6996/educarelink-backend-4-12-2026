@@ -307,7 +307,7 @@ function WorkerTabs() {
             );
           }
           let iconName;
-          if (route.name === 'WorkerFeed') iconName = focused ? 'search' : 'search-outline';
+          if (route.name === 'WorkerFeed') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'MatchingAvailability') iconName = focused ? 'calendar' : 'calendar-outline';
           else if (route.name === 'MyJobs') iconName = focused ? 'briefcase' : 'briefcase-outline';
           else if (route.name === 'WorkerProfile') iconName = focused ? 'person' : 'person-outline';
@@ -322,7 +322,7 @@ function WorkerTabs() {
         tabBarHideOnKeyboard: false,
       })}
     >
-      <Tab.Screen name="WorkerFeed" component={WorkerFeedStack} options={{ tabBarLabel: 'Tìm việc' }} />
+      <Tab.Screen name="WorkerFeed" component={WorkerFeedStack} options={{ tabBarLabel: 'Trang chủ' }} />
       <Tab.Screen name="MatchingAvailability" component={WorkerAvailabilityStack} options={{ tabBarLabel: 'Lịch rảnh' }} />
       <Tab.Screen name="WorkerChatbot" component={WorkerChatbotScreen} options={{ tabBarLabel: 'AI Trợ lý' }} />
       <Tab.Screen name="MyJobs" component={WorkerJobsStack} options={{ tabBarLabel: 'Công việc' }} />
