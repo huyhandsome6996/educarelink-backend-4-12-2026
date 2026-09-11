@@ -50,7 +50,7 @@ class FullFlowIntegrationTest(MatchingTestBase):
         self.cps = []
         for i, (rating, dist) in enumerate([('cpa', 4.9), ('cpb', 4.5), ('cpc', 4.0)]):
             cp = User.objects.create_user(rating, password='x', role='worker',
-                                          is_approved=True,
+                                          is_approved=True, qualifications=['ky_nang_song'],
                                           latitude=21.0 + i * 0.01, longitude=105.8)
             EloService.get_profile(cp)
             CarePartnerAvailability.objects.create(
@@ -58,6 +58,7 @@ class FullFlowIntegrationTest(MatchingTestBase):
             profile = EloService.get_profile(cp)
             profile.rating_avg = {'cpa': 4.9, 'cpb': 4.5, 'cpc': 4.0}[rating]
             profile.review_count = 10
+            profile.skills = ['ky_nang_song']
             profile.effective_elo = 1200
             profile.save()
             self.cps.append(cp)

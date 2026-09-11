@@ -128,10 +128,13 @@ def _booking_dict(booking):
         'id': str(b.pk),
         'job_id': str(b.job_id),
         'job_title': b.job.title,
+        'job_description': getattr(b.job, 'description', '') or '',
         'job_type': getattr(b.job, 'job_type', ''),
         'job_address': _job_address(b.job),
         'category_code': getattr(b.job, 'job_type', ''),
         'category_name_vi': CATEGORY_NAME_VI.get(getattr(b.job, 'job_type', ''), ''),
+        'hourly_rate_vnd': getattr(b.job, 'hourly_rate_vnd', 0),
+        'type_data': td,
         'carepartner_id': str(b.carepartner_id),
         'parent_id': str(b.parent_id),
         'parent_name': (f"{parent.first_name} {parent.last_name}".strip()
