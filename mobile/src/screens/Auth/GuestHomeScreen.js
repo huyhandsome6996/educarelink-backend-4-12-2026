@@ -1,53 +1,164 @@
 // ============================================================
-// GuestHomeScreen — Redesign khớp Stitch AI HTML mockup
-// Layout (mobile-native):
-// - Header: gradient cam (#a63b00 → #f26522), bo tròn dưới 32px
-//   avatar trái + "Xin chào 👋" + nút support_agent phải
-// - CTA Button: pill trắng chồng lên header, text cam, icon login
-// - Banner Carousel: horizontal scroll, 85% width, 28px radius
-// - Service Grid: 2×2 grid, icon tròn trên nền #FFF4ED
-// - Rewards Section: horizontal scroll tier cards (Đồng, Bạc, Vàng)
-// - Trust Section: 2×2 grid feature cards
-// - Bottom Nav: 5 tabs, AI FAB nổi ở giữa
-// Chức năng: navigate Login/Register khi nhấn CTA/tab Tài khoản
+// GuestHomeScreen — Thiết kế theo chuẩn Stitch AI & kết nối Backend EduCareLink
+// - Sticky Header: Logo gradient, EduCareLink, Hotline 1900 6828, VN pill + live status
+// - Hero Promo Carousel: 3 poster chuyển động (Gia sư, Đón trẻ, MoMo Escrow) autoplay 4s
+// - Quick Stats: 50.000+ Phụ huynh, 4.9★ Đánh giá, 100% CCCD gắn chip
+// - Service Ecosystem: 4 Bento Cards (Gia sư, Đón trẻ, Trông trẻ, AI Radar)
+// - Safety & Trust: 3 lớp xác thực độc quyền
+// - Parent Testimonial: Review chân thực & bảo chứng hài lòng
+// - Student Partner Banner: Dành cho sinh viên đăng ký CarePartner (120k-200k/h)
+// - Fixed Bottom Action Dock: "Bắt đầu kết nối ngay" + "Đăng nhập tại đây"
+// - Bottom Navigation: 5 tabs với nút AI Trợ lý nổi bật ở giữa
+// - Role Selection Modal: Chọn vai trò Phụ huynh / Sinh viên để chuyển tiếp chính xác
 // ============================================================
 
-import React, { useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, Animated, Platform,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  Dimensions,
+  Animated,
+  Platform,
+  Linking,
+  Modal,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, SHADOWS, TYPO } from '../../theme/colors';
+import apiClient from '../../api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CAROUSEL_WIDTH = Math.min(SCREEN_WIDTH - 32, 398);
 
-// Service categories (2×2 grid — khớp HTML mockup)
-const SERVICE_CATEGORIES = [
-  { id: 1, icon: 'book', name: 'Gia sư' },
-  { id: 2, icon: 'walk', name: 'Đón trẻ' },
-  { id: 3, icon: 'heart', name: 'Trông trẻ' },
-  { id: 4, icon: 'hardware-chip', name: 'Hỗ trợ AI' },
+// 3 slides theo chuẩn Stitch Mockup
+const HERO_SLIDES = [
+  {
+    id: 1,
+    badgeText: 'Top 5% SV Sư Phạm & Ngoại Thương',
+    badgeIcon: 'star',
+    badgeColor: '#FDE047',
+    headline: 'Gia sư kèm cặp tận tâm\nngay tại gia đình',
+    subtext: 'An tâm gửi gắm, trọn vẹn yêu thương với sinh viên ưu tú.',
+    promoBadge: 'GIẢM 50K CA ĐẦU',
+    btnText: 'Đặt ngay',
+    iconName: 'school',
+    roleTarget: 'parent',
+    bgMain: '#EA580C',
+    bgBottom: '#C2410C',
+    glowColor: 'rgba(234, 88, 12, 0.35)',
+  },
+  {
+    id: 2,
+    badgeText: 'GPS định vị 2 chiều trực tiếp',
+    badgeIcon: 'navigate',
+    badgeColor: '#6EE7B7',
+    headline: 'Đón con tan trường\nchuẩn xác từng phút',
+    subtext: 'Cập nhật ảnh điểm danh tại cổng trường và lộ trình về nhà.',
+    promoBadge: 'Chỉ từ 90k/chuyến',
+    btnText: 'Xem lộ trình',
+    iconName: 'walk',
+    roleTarget: 'parent',
+    bgMain: '#0284C7',
+    bgBottom: '#075985',
+    glowColor: 'rgba(2, 132, 199, 0.3)',
+  },
+  {
+    id: 3,
+    badgeText: 'Bảo chứng 100% MoMo Escrow',
+    badgeIcon: 'shield-checkmark',
+    badgeColor: '#FDE047',
+    headline: 'Minh bạch tuyệt đối\nan toàn tài chính',
+    subtext: 'Chỉ giải ngân khi buổi dạy hoàn tất đúng tiến độ và cam kết.',
+    promoBadge: 'An tâm 100%',
+    btnText: 'Khám phá',
+    iconName: 'shield-checkmark',
+    roleTarget: 'parent',
+    bgMain: '#059669',
+    bgBottom: '#064E3B',
+    glowColor: 'rgba(5, 150, 105, 0.3)',
+  },
 ];
 
-// Tier cards for rewards section
-const TIER_CARDS = [
-  { id: 1, symbol: 'Cu', name: 'Đồng (Copper)', desc: 'Bắt đầu hành trình', bg: '#fed7aa', color: '#ea580c' },
-  { id: 2, symbol: 'Ag', name: 'Bạc (Silver)', desc: 'Mở khóa ưu đãi', bg: '#e5e7eb', color: '#6b7280' },
-  { id: 3, symbol: 'Au', name: 'Vàng (Gold)', desc: 'Đặc quyền cao cấp', bg: '#fef3c7', color: '#d97706' },
+// 4 Trụ Cột Dịch Vụ Chủ Lực
+const SERVICE_ECOSYSTEM = [
+  {
+    id: 'tutor',
+    title: 'Gia sư tại nhà',
+    desc: 'Toán, Tiếng Việt/Văn, Ngoại ngữ & luyện chữ chuẩn sư phạm.',
+    price: 'Từ 120k/h',
+    icon: 'book',
+    iconBg: '#FFF7ED',
+    iconBorder: '#FED7AA',
+    iconColor: '#EA580C',
+    priceColor: '#EA580C',
+    role: 'parent',
+  },
+  {
+    id: 'pickup',
+    title: 'Đón trẻ an toàn',
+    desc: 'Đón tận cổng trường về nhà, GPS định vị & bảo hiểm hành trình.',
+    price: 'Từ 90k/lượt',
+    icon: 'walk',
+    iconBg: '#EFF6FF',
+    iconBorder: '#BFDBFE',
+    iconColor: '#0284C7',
+    priceColor: '#0284C7',
+    role: 'parent',
+  },
+  {
+    id: 'childcare',
+    title: 'Trông trẻ tại nhà',
+    desc: 'Chăm sóc bé, hỗ trợ ăn uống, trò chuyện rèn kỹ năng cảm xúc.',
+    price: 'Từ 100k/h',
+    icon: 'heart',
+    iconBg: '#FFF1F2',
+    iconBorder: '#FECDD3',
+    iconColor: '#E11D48',
+    priceColor: '#E11D48',
+    role: 'parent',
+  },
+  {
+    id: 'ai_radar',
+    title: 'AI Trợ Lý Radar',
+    badge: 'MỚI',
+    desc: 'Tìm kiếm & tự động ghép đôi CarePartner thích hợp trong 30s.',
+    price: 'Miễn phí trải nghiệm',
+    icon: 'hardware-chip',
+    iconBg: '#FFF7ED',
+    iconBorder: '#FDBA74',
+    iconColor: '#F26522',
+    priceColor: '#EA580C',
+    isAi: true,
+    role: 'parent',
+  },
 ];
 
-// Trust & Safety features
-const TRUST_FEATURES = [
-  { id: 1, icon: 'book', name: 'Nhật ký Chăm sóc' },
-  { id: 2, icon: 'camera', name: 'Xác thực bằng ảnh' },
-  { id: 3, icon: 'location', name: 'Theo dõi GPS' },
-  { id: 4, icon: 'people', name: 'Gợi ý ghép cặp' },
+// 3 Lớp Cam Kết Xác Thực
+const SAFETY_PILLARS = [
+  {
+    id: 1,
+    title: 'Xác minh CCCD chip & Thẻ sinh viên',
+    desc: 'Đối soát hồ sơ trực tiếp với danh sách sinh viên trường ĐH uy tín.',
+  },
+  {
+    id: 2,
+    title: 'Giám sát lộ trình GPS 2 chiều',
+    desc: 'Phụ huynh theo dõi trực tiếp vị trí và nhận thông báo theo thời gian thực.',
+  },
+  {
+    id: 3,
+    title: 'Bảo lãnh ký quỹ MoMo Escrow 100%',
+    desc: 'Học phí được giữ trung gian, chỉ chi trả khi phụ huynh xác nhận hài lòng.',
+  },
 ];
 
-// Bottom nav items
+// Bottom Nav
 const NAV_ITEMS = [
   { id: 1, icon: 'home', iconOutline: 'home-outline', label: 'Trang chủ', active: true },
   { id: 2, icon: 'receipt', iconOutline: 'receipt-outline', label: 'Hoạt động', active: false },
@@ -60,635 +171,1322 @@ export default function GuestHomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  // Fade-in animation
+  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUpAnim = useRef(new Animated.Value(30)).current;
+  const slideUpAnim = useRef(new Animated.Value(24)).current;
+  const modalSlideAnim = useRef(new Animated.Value(300)).current;
 
+  // States
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isBackendOnline, setIsBackendOnline] = useState(true);
+  const [roleModalVisible, setRoleModalVisible] = useState(false);
+
+  // Carousel ref
+  const carouselScrollRef = useRef(null);
+
+  // Health-check backend live
   useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .get('/health/')
+      .then((res) => {
+        if (isMounted && res?.data?.status === 'ok') {
+          setIsBackendOnline(true);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsBackendOnline(false);
+      });
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(slideUpAnim, {
         toValue: 0,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }),
     ]).start();
+
+    return () => {
+      isMounted = false;
+    };
   }, [fadeAnim, slideUpAnim]);
 
-  const goToLogin = () => navigation.navigate('Login');
-  const goToRegister = () => navigation.navigate('Register');
+  // Autoplay Hero Carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => {
+        const next = (prev + 1) % HERO_SLIDES.length;
+        if (carouselScrollRef.current) {
+          carouselScrollRef.current.scrollTo({
+            x: next * (CAROUSEL_WIDTH + 12),
+            animated: true,
+          });
+        }
+        return next;
+      });
+    }, 4000);
 
-  // Banner width = 85% of screen
-  const bannerWidth = SCREEN_WIDTH * 0.85;
+    return () => clearInterval(timer);
+  }, []);
+
+  // Modal Handler
+  const openRoleModal = () => {
+    setRoleModalVisible(true);
+    Animated.spring(modalSlideAnim, {
+      toValue: 0,
+      tension: 65,
+      friction: 11,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeRoleModal = () => {
+    Animated.timing(modalSlideAnim, {
+      toValue: 300,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setRoleModalVisible(false);
+    });
+  };
+
+  const handleSelectRole = (role) => {
+    closeRoleModal();
+    navigation.navigate('Register', { role });
+  };
+
+  const handleCallHotline = () => {
+    Linking.openURL('tel:19006828').catch(() => {
+      Alert.alert('Hotline EduCareLink', 'Tổng đài hỗ trợ: 1900 6828 (Miễn phí)');
+    });
+  };
+
+  const handleNavPress = (item) => {
+    if (item.id === 1) {
+      // Home
+      return;
+    }
+    if (item.id === 5) {
+      // Tài khoản
+      navigation.navigate('Login');
+      return;
+    }
+    if (item.isFab) {
+      // AI button
+      Alert.alert(
+        'AI Trợ Lý EduCareLink',
+        'Tính năng AI tự động ghép cặp và phân tích nhu cầu. Hãy tạo tài khoản hoặc đăng nhập để trải nghiệm!',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('Login') },
+          { text: 'Đăng ký', onPress: openRoleModal },
+        ]
+      );
+      return;
+    }
+    // Hoạt động / Cộng đồng
+    Alert.alert(
+      'Yêu cầu đăng nhập',
+      `Vui lòng đăng nhập để truy cập tính năng ${item.label}.`,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Đăng nhập', onPress: () => navigation.navigate('Login') },
+      ]
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#a63b00" translucent />
+    <View style={styles.screenContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      {/* === HEADER — Gradient cam, bo tròn dưới === */}
-      <View style={[styles.headerWrapper, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.headerGradient}>
-          {/* Top gradient overlay */}
-          <View style={styles.gradientTop} />
-          <View style={styles.gradientBottom} />
-        </View>
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <View style={styles.headerAvatar}>
-              <Ionicons name="person-circle" size={28} color="#fff" />
-            </View>
-            <Text style={styles.headerGreeting}>Xin chào 👋</Text>
+      {/* BEGIN: TopBrandBar */}
+      <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
+        <View style={styles.brandRow}>
+          {/* Logo Icon */}
+          <View style={styles.logoBadge}>
+            <Ionicons name="heart" size={20} color="#FFFFFF" />
           </View>
+          {/* Brand Name & Tag */}
+          <View>
+            <Text style={styles.brandTitle}>
+              EduCare<Text style={styles.brandHighlight}>Link</Text>
+            </Text>
+            <Text style={styles.brandSubtitle}>CARE WITH LOVE & TECH</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions (Hotline + Status/VN) */}
+        <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.headerSupportBtn}
-            onPress={goToLogin}
-            activeOpacity={0.7}
+            style={styles.hotlineBtn}
+            onPress={handleCallHotline}
+            activeOpacity={0.75}
           >
-            <Ionicons name="headset" size={22} color="#fff" />
+            <Ionicons name="headset" size={14} color={COLORS.primary} />
+            <Text style={styles.hotlineText}>1900 6828</Text>
           </TouchableOpacity>
+
+          <View style={styles.countryPill}>
+            <Text style={styles.flagEmoji}>🇻🇳</Text>
+            <Text style={styles.countryText}>VN</Text>
+            {isBackendOnline && <View style={styles.onlineDot} />}
+          </View>
         </View>
       </View>
+      {/* END: TopBrandBar */}
 
+      {/* Main Content Stream */}
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollArea}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* === CTA Button — Pill trắng chồng lên header === */}
-        <Animated.View style={[styles.ctaContainer, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}>
-          <TouchableOpacity
-            style={styles.ctaButton}
-            onPress={goToLogin}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="log-in" size={22} color={COLORS.primary} />
-            <Text style={styles.ctaText}>Đăng nhập / Tạo tài khoản</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* === Banner Carousel === */}
-        <Animated.View style={[styles.bannerSection, { opacity: fadeAnim }]}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={bannerWidth + 16}
-            decelerationRate="fast"
-            contentContainerStyle={styles.bannerScroll}
-          >
-            {/* Banner 1 — Primary gradient */}
-            <TouchableOpacity
-              style={[styles.bannerCard, { width: bannerWidth }]}
-              onPress={goToLogin}
-              activeOpacity={0.9}
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }}>
+          {/* BEGIN: HeroPromoCarousel */}
+          <View style={styles.carouselSection}>
+            <ScrollView
+              ref={carouselScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CAROUSEL_WIDTH + 12}
+              decelerationRate="fast"
+              contentContainerStyle={styles.carouselScrollContent}
+              onMomentumScrollEnd={(e) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const idx = Math.round(offsetX / (CAROUSEL_WIDTH + 12));
+                setActiveSlide(idx);
+              }}
             >
-              <View style={styles.banner1Bg}>
-                <View style={styles.bannerDecorCircle1} />
-                <View style={styles.bannerDecorCircle2} />
-                <View style={styles.bannerTextWrap}>
-                  <Text style={styles.bannerTitle}>Tìm CarePartner{'\n'}phù hợp ngay</Text>
-                  <Text style={styles.bannerSubtitle}>An tâm gửi gắm, trọn vẹn yêu thương</Text>
-                </View>
-                <View style={styles.bannerIconWrap}>
-                  <Ionicons name="school" size={48} color="rgba(255,255,255,0.3)" />
-                </View>
-              </View>
-            </TouchableOpacity>
+              {HERO_SLIDES.map((slide, idx) => (
+                <View
+                  key={slide.id}
+                  style={[
+                    styles.heroCard,
+                    {
+                      width: CAROUSEL_WIDTH,
+                      backgroundColor: slide.bgMain,
+                      shadowColor: slide.bgMain,
+                    },
+                  ]}
+                >
+                  {/* Decorative corner icon watermark */}
+                  <View style={styles.cardWatermarkWrap}>
+                    <Ionicons name={slide.iconName} size={110} color="rgba(255,255,255,0.12)" />
+                  </View>
 
-            {/* Banner 2 — Secondary gradient */}
-            <TouchableOpacity
-              style={[styles.bannerCard, { width: bannerWidth }]}
-              onPress={goToLogin}
-              activeOpacity={0.9}
-            >
-              <View style={styles.banner2Bg}>
-                <View style={[styles.bannerDecorCircle1, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-                <View style={[styles.bannerDecorCircle2, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-                <View style={styles.bannerTextWrap}>
-                  <Text style={styles.bannerTitle}>Trở thành{'\n'}CarePartner</Text>
-                  <Text style={styles.bannerSubtitle}>Kiếm thêm thu nhập, linh hoạt thời gian</Text>
-                </View>
-                <View style={styles.bannerIconWrap}>
-                  <Ionicons name="people" size={48} color="rgba(255,255,255,0.3)" />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </ScrollView>
-        </Animated.View>
+                  {/* Top content */}
+                  <View>
+                    <View style={styles.floatingPill}>
+                      <Ionicons name={slide.badgeIcon} size={12} color={slide.badgeColor} />
+                      <Text style={styles.floatingPillText}>{slide.badgeText}</Text>
+                    </View>
 
-        {/* === Service Grid — 2×2 === */}
-        <Animated.View style={[styles.serviceSection, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}>
-          {/* Row 1 */}
-          <View style={styles.serviceRow}>
-            {SERVICE_CATEGORIES.slice(0, 2).map((cat) => (
+                    <Text style={styles.heroHeadline}>{slide.headline}</Text>
+                    <Text style={styles.heroSubtext}>{slide.subtext}</Text>
+                  </View>
+
+                  {/* Bottom action bar */}
+                  <View style={styles.heroBottomBar}>
+                    <View style={styles.promoBadgeWrap}>
+                      <Text style={styles.promoBadgeText}>{slide.promoBadge}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.heroCtaBtn}
+                      onPress={openRoleModal}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.heroCtaText}>{slide.btnText}</Text>
+                      <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Carousel Indicators */}
+            <View style={styles.indicatorRow}>
+              {HERO_SLIDES.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.indicatorDot,
+                    activeSlide === i && styles.indicatorActivePill,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+          {/* END: HeroPromoCarousel */}
+
+          {/* BEGIN: QuickStatsBanner */}
+          <View style={styles.statsBanner}>
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>50.000+</Text>
+              <Text style={styles.statLabel}>Phụ huynh tin chọn</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <View style={styles.statInlineValue}>
+                <Text style={styles.statValue}>4.9</Text>
+                <Text style={styles.starGold}>★</Text>
+              </View>
+              <Text style={styles.statLabel}>Đánh giá hài lòng</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <View style={styles.statInlineValue}>
+                <Ionicons name="shield-checkmark" size={15} color="#0E9F6E" style={{ marginRight: 2 }} />
+                <Text style={styles.statValue}>100%</Text>
+              </View>
+              <Text style={styles.statLabel}>CCCD gắn chip</Text>
+            </View>
+          </View>
+          {/* END: QuickStatsBanner */}
+
+          {/* BEGIN: ServiceEcosystemGrid */}
+          <View style={styles.serviceSection}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.sectionTitle}>Hệ Sinh Thái Dịch Vụ</Text>
+                <Text style={styles.sectionSubtitle}>Tiêu chuẩn đồng hành toàn diện cho trẻ em</Text>
+              </View>
               <TouchableOpacity
-                key={cat.id}
-                style={styles.serviceItem}
-                onPress={goToLogin}
+                style={styles.pillarCountLink}
+                onPress={openRoleModal}
                 activeOpacity={0.7}
               >
-                <View style={styles.serviceIconCircle}>
-                  <Ionicons name={cat.icon} size={28} color={COLORS.primary} />
-                </View>
-                <Text style={styles.serviceLabel}>{cat.name}</Text>
+                <Text style={styles.pillarCountText}>4 Trụ cột</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
               </TouchableOpacity>
-            ))}
-          </View>
-          {/* Row 2 */}
-          <View style={styles.serviceRow}>
-            {SERVICE_CATEGORIES.slice(2, 4).map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={styles.serviceItem}
-                onPress={goToLogin}
-                activeOpacity={0.7}
-              >
-                <View style={styles.serviceIconCircle}>
-                  <Ionicons name={cat.icon} size={28} color={COLORS.primary} />
-                </View>
-                <Text style={styles.serviceLabel}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
+            </View>
 
-        {/* === Rewards Section === */}
-        <Animated.View style={[styles.rewardsSection, { opacity: fadeAnim }]}>
-          <Text style={styles.sectionTitle}>Điểm thưởng & Hạng CarePartner</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.rewardsScroll}
-          >
-            {TIER_CARDS.map((tier) => (
-              <TouchableOpacity
-                key={tier.id}
-                style={styles.tierCard}
-                onPress={goToLogin}
-                activeOpacity={0.85}
-              >
-                <View style={[styles.tierBadge, { backgroundColor: tier.bg }]}>
-                  <Text style={[styles.tierSymbol, { color: tier.color }]}>{tier.symbol}</Text>
-                </View>
-                <View style={styles.tierInfo}>
-                  <Text style={styles.tierName}>{tier.name}</Text>
-                  <Text style={styles.tierDesc}>{tier.desc}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animated.View>
+            <View style={styles.bentoGrid}>
+              {SERVICE_ECOSYSTEM.map((svc) => (
+                <TouchableOpacity
+                  key={svc.id}
+                  style={[
+                    styles.bentoCard,
+                    svc.isAi && styles.aiBentoCard,
+                  ]}
+                  onPress={openRoleModal}
+                  activeOpacity={0.8}
+                >
+                  <View>
+                    <View style={[styles.bentoIconBox, { backgroundColor: svc.iconBg, borderColor: svc.iconBorder }]}>
+                      <Ionicons name={svc.icon} size={22} color={svc.iconColor} />
+                    </View>
+                    <View style={styles.bentoTitleRow}>
+                      <Text style={styles.bentoTitle}>{svc.title}</Text>
+                      {svc.badge && (
+                        <View style={styles.bentoNewBadge}>
+                          <Text style={styles.bentoNewBadgeText}>{svc.badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.bentoDesc} numberOfLines={2}>
+                      {svc.desc}
+                    </Text>
+                  </View>
 
-        {/* === Trust & Safety Section === */}
-        <Animated.View style={[styles.trustSection, { opacity: fadeAnim }]}>
-          <Text style={styles.sectionTitle}>An toàn & Tin cậy</Text>
-          {/* Row 1 */}
-          <View style={styles.trustRow}>
-            {TRUST_FEATURES.slice(0, 2).map((feat) => (
-              <View key={feat.id} style={styles.trustCard}>
-                <Ionicons name={feat.icon} size={24} color={COLORS.primary} />
-                <Text style={styles.trustLabel}>{feat.name}</Text>
+                  <View style={styles.bentoBottomRow}>
+                    <Text style={[styles.bentoPrice, { color: svc.priceColor }]}>
+                      {svc.price}
+                    </Text>
+                    <Ionicons
+                      name={svc.isAi ? 'flash' : 'add-circle'}
+                      size={18}
+                      color={svc.isAi ? COLORS.primary : '#94A3B8'}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {/* END: ServiceEcosystemGrid */}
+
+          {/* BEGIN: SafetyCommitment */}
+          <View style={styles.safetyCard}>
+            <View style={styles.safetyHeaderRow}>
+              <View style={styles.safetyIconBadge}>
+                <Ionicons name="shield-checkmark" size={18} color="#0E9F6E" />
               </View>
-            ))}
-          </View>
-          {/* Row 2 */}
-          <View style={styles.trustRow}>
-            {TRUST_FEATURES.slice(2, 4).map((feat) => (
-              <View key={feat.id} style={styles.trustCard}>
-                <Ionicons name={feat.icon} size={24} color={COLORS.primary} />
-                <Text style={styles.trustLabel}>{feat.name}</Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
+              <Text style={styles.safetyMainTitle}>Cam Kết Xác Thực 3 Lớp Độc Quyền</Text>
+            </View>
 
-        {/* Bottom spacer for nav bar */}
-        <View style={{ height: 100 }} />
+            <View style={styles.safetyList}>
+              {SAFETY_PILLARS.map((item) => (
+                <View key={item.id} style={styles.safetyItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#0E9F6E" style={styles.safetyCheckIcon} />
+                  <View style={styles.safetyItemTextWrap}>
+                    <Text style={styles.safetyItemTitle}>{item.title}</Text>
+                    <Text style={styles.safetyItemDesc}>{item.desc}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+          {/* END: SafetyCommitment */}
+
+          {/* BEGIN: ParentTestimonialCard */}
+          <View style={styles.testimonialCard}>
+            <View style={styles.testimonialHeader}>
+              <View style={styles.testimonialUserRow}>
+                <View style={styles.testimonialAvatar}>
+                  <Text style={styles.testimonialAvatarText}>TT</Text>
+                </View>
+                <View>
+                  <View style={styles.testimonialNameRow}>
+                    <Text style={styles.testimonialName}>Chị Thu Trang</Text>
+                    <Text style={styles.verifiedTag}>● Đã xác thực</Text>
+                  </View>
+                  <Text style={styles.testimonialMeta}>Mẹ bé Hải Nam · Q. Cầu Giấy (18 ca hoàn thành)</Text>
+                </View>
+              </View>
+              <Text style={styles.starRating}>★★★★★</Text>
+            </View>
+            <Text style={styles.testimonialQuote}>
+              “Bạn gia sư Bách Khoa kèm con tôi môn Toán rất kiên nhẫn. Thích nhất là tính năng theo dõi GPS và giải ngân MoMo an toàn 100%!”
+            </Text>
+          </View>
+          {/* END: ParentTestimonialCard */}
+
+          {/* BEGIN: StudentPartnerBanner */}
+          <View style={styles.studentBanner}>
+            <View style={styles.studentBannerLeft}>
+              <View style={styles.studentPill}>
+                <Text style={styles.studentPillText}>DÀNH CHO SINH VIÊN</Text>
+              </View>
+              <Text style={styles.studentTitle}>Trở thành CarePartner</Text>
+              <Text style={styles.studentDesc}>
+                Thu nhập 120k - 200k/h · Tự do chủ động thời gian theo lịch học.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.studentCtaBtn}
+              onPress={() => handleSelectRole('worker')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.studentCtaText}>Đăng ký ngay</Text>
+            </TouchableOpacity>
+          </View>
+          {/* END: StudentPartnerBanner */}
+
+          {/* BEGIN: StickyBottomActionDock */}
+          <View style={styles.inlineCtaSection}>
+            <TouchableOpacity
+              style={styles.primaryFullBtn}
+              onPress={openRoleModal}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.primaryFullBtnText}>Bắt đầu kết nối ngay</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={styles.loginPromptRow}>
+              <Text style={styles.loginPromptLabel}>Đã có tài khoản?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.loginPromptLink}>Đăng nhập tại đây</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.securityRow}>
+              <Ionicons name="lock-closed" size={12} color="#0E9F6E" />
+              <Text style={styles.securityText}>Bảo mật thông tin theo tiêu chuẩn an toàn dữ liệu số</Text>
+            </View>
+          </View>
+          {/* END: StickyBottomActionDock */}
+        </Animated.View>
       </ScrollView>
 
-      {/* === Bottom Navigation Bar === */}
-      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      {/* BEGIN: FixedBottomNavBar */}
+      <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         {NAV_ITEMS.map((item) => {
           if (item.isFab) {
-            // Center FAB — raised AI button
             return (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.fabContainer}
-                onPress={goToLogin}
-                activeOpacity={0.85}
-              >
-                <View style={styles.fabButton}>
-                  <Ionicons name={item.icon} size={28} color="#fff" />
-                </View>
-                <Text style={styles.fabLabel}>{item.label}</Text>
-              </TouchableOpacity>
+              <View key={item.id} style={styles.fabCenterWrap}>
+                <TouchableOpacity
+                  style={styles.fabButton}
+                  onPress={() => handleNavPress(item)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="hardware-chip" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+                <Text style={styles.fabLabel}>AI</Text>
+              </View>
             );
           }
           return (
             <TouchableOpacity
               key={item.id}
-              style={styles.navItem}
-              onPress={item.id === 5 ? goToLogin : goToLogin}
+              style={styles.navTabItem}
+              onPress={() => handleNavPress(item)}
               activeOpacity={0.7}
             >
               <Ionicons
                 name={item.active ? item.icon : item.iconOutline}
-                size={24}
-                color={item.active ? COLORS.primaryDeep : COLORS.onSurfaceVariant}
+                size={22}
+                color={item.active ? COLORS.primary : '#64748B'}
               />
-              <Text style={[
-                styles.navLabel,
-                item.active && styles.navLabelActive,
-              ]}>
+              <Text
+                style={[
+                  styles.navTabLabel,
+                  item.active && styles.navTabLabelActive,
+                ]}
+              >
                 {item.label}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
+      {/* END: FixedBottomNavBar */}
+
+      {/* BEGIN: RoleSelectionModal */}
+      <Modal
+        visible={roleModalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeRoleModal}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={closeRoleModal}
+        >
+          <Animated.View
+            style={[
+              styles.modalSheet,
+              {
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+                transform: [{ translateY: modalSlideAnim }],
+              },
+            ]}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Chọn vai trò của bạn</Text>
+                <Text style={styles.modalSubtitle}>EduCareLink tối ưu trải nghiệm theo nhu cầu riêng</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={closeRoleModal}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Role Options */}
+            <View style={styles.roleOptionsList}>
+              {/* Option 1: Phụ huynh */}
+              <TouchableOpacity
+                style={styles.roleCard}
+                onPress={() => handleSelectRole('parent')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.roleCardLeft}>
+                  <View style={[styles.roleIconWrap, { backgroundColor: '#FFEDD5' }]}>
+                    <Ionicons name="people" size={26} color={COLORS.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.roleCardTitle}>Tôi là Phụ huynh</Text>
+                    <Text style={styles.roleCardDesc}>
+                      Cần tìm Gia sư, Đón trẻ hoặc Trông trẻ tại nhà
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Option 2: Sinh viên / CarePartner */}
+              <TouchableOpacity
+                style={styles.roleCard}
+                onPress={() => handleSelectRole('worker')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.roleCardLeft}>
+                  <View style={[styles.roleIconWrap, { backgroundColor: '#D1FAE5' }]}>
+                    <Ionicons name="school" size={26} color="#047857" />
+                  </View>
+                  <View>
+                    <Text style={styles.roleCardTitle}>Tôi là Sinh viên (CarePartner)</Text>
+                    <Text style={styles.roleCardDesc}>
+                      Nhận lịch dạy, đưa đón & tăng thêm thu nhập
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Disclaimer */}
+            <Text style={styles.modalDisclaimer}>
+              Bằng việc tiếp tục, bạn đồng ý với Điều khoản sử dụng & Chính sách bảo mật của EduCareLink.
+            </Text>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+      {/* END: RoleSelectionModal */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContainer: {
     flex: 1,
-    backgroundColor: COLORS.surfaceWarm || '#fff8f6',
+    backgroundColor: '#F8FAFC',
   },
-
-  // === HEADER ===
-  headerWrapper: {
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingBottom: 48, // extra space for CTA overlap
-    overflow: 'hidden',
+  headerContainer: {
+    backgroundColor: 'rgba(248, 250, 252, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     zIndex: 20,
   },
-  headerGradient: {
-    ...StyleSheet.absoluteFillObject,
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  gradientTop: {
+  logoBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F26522',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  brandTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+    lineHeight: 20,
+  },
+  brandHighlight: {
+    color: '#F26522',
+  },
+  brandSubtitle: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 1.2,
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hotlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  hotlineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  countryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  flagEmoji: {
+    fontSize: 11,
+  },
+  countryText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0E9F6E',
+    marginLeft: 2,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  carouselSection: {
+    marginBottom: 16,
+  },
+  carouselScrollContent: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  heroCard: {
+    minHeight: 195,
+    borderRadius: 24,
+    padding: 18,
+    justifyContent: 'space-between',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  cardWatermarkWrap: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: '#a63b00',
+    right: -4,
+    bottom: -6,
+    pointerEvents: 'none',
   },
-  gradientBottom: {
+  floatingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+  floatingPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  heroHeadline: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 26,
+    marginBottom: 6,
+  },
+  heroSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    lineHeight: 17,
+    maxWidth: 240,
+  },
+  heroBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    paddingTop: 10,
+    marginTop: 10,
+  },
+  promoBadgeWrap: {
+    backgroundColor: '#FBBF24',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  promoBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.5,
+  },
+  heroCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  indicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
+  },
+  indicatorActivePill: {
+    width: 22,
+    backgroundColor: '#F26522',
+    borderRadius: 3,
+  },
+  statsBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#F1F5F9',
+  },
+  statInlineValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  starGold: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '900',
+    marginLeft: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  serviceSection: {
+    marginBottom: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    lineHeight: 20,
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  pillarCountLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  pillarCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  bentoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  bentoCard: {
+    width: (SCREEN_WIDTH - 42) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 13,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-between',
+    minHeight: 146,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  aiBentoCard: {
+    borderColor: '#FED7AA',
+    backgroundColor: '#FFFDF9',
+  },
+  bentoIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bentoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 3,
+  },
+  bentoTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  bentoNewBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  bentoNewBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#C2410C',
+  },
+  bentoDesc: {
+    fontSize: 10,
+    color: '#64748B',
+    lineHeight: 14.5,
+  },
+  bentoBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    marginTop: 8,
+  },
+  bentoPrice: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  safetyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  safetyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  safetyIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  safetyMainTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  safetyList: {
+    gap: 9,
+  },
+  safetyItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  safetyCheckIcon: {
+    marginTop: 1,
+  },
+  safetyItemTextWrap: {
+    flex: 1,
+  },
+  safetyItemTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  safetyItemDesc: {
+    fontSize: 10.5,
+    color: '#64748B',
+    lineHeight: 14.5,
+  },
+  testimonialCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 18,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 18,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  testimonialHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  testimonialUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  testimonialAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFEDD5',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  testimonialAvatarText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  testimonialNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  testimonialName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  verifiedTag: {
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  testimonialMeta: {
+    fontSize: 9.5,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  starRating: {
+    fontSize: 11,
+    color: '#F59E0B',
+    letterSpacing: 1,
+  },
+  testimonialQuote: {
+    fontSize: 11.5,
+    fontStyle: 'italic',
+    color: '#334155',
+    lineHeight: 17,
+  },
+  studentBanner: {
+    backgroundColor: '#0F172A',
+    borderRadius: 18,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  studentBannerLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  studentPill: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.4)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    marginBottom: 6,
+  },
+  studentPillText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#6EE7B7',
+    letterSpacing: 0.4,
+  },
+  studentTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 3,
+  },
+  studentDesc: {
+    fontSize: 10.5,
+    color: '#CBD5E1',
+    lineHeight: 14.5,
+  },
+  studentCtaBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  studentCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  inlineCtaSection: {
+    gap: 9,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  primaryFullBtn: {
+    width: '100%',
+    backgroundColor: '#F26522',
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  primaryFullBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  loginPromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  loginPromptLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  loginPromptLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
+    textDecorationLine: 'underline',
+  },
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  securityText: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  bottomNavBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    backgroundColor: COLORS.primary, // #F26522
-  },
-  headerContent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-around',
     paddingTop: 8,
-    paddingBottom: 12,
-    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  headerLeft: {
+  navTabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navTabLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  navTabLabelActive: {
+    color: '#EA580C',
+    fontWeight: '700',
+  },
+  fabCenterWrap: {
+    flex: 1,
+    alignItems: 'center',
+    marginTop: -20,
+  },
+  fabButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#F26522',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#F26522',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fabLabel: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#EA580C',
+    marginTop: 2,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 12,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleOptionsList: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  roleCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+    paddingRight: 10,
   },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  roleIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerGreeting: {
-    ...TYPO.h3,
-    color: '#fff',
+  roleCardTitle: {
+    fontSize: 14,
     fontWeight: '700',
-  },
-  headerSupportBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // === SCROLL ===
-  scrollView: {
-    flex: 1,
-    marginTop: -24, // overlap into header
-    zIndex: 30,
-  },
-  scrollContent: {
-    paddingTop: 0,
-  },
-
-  // === CTA BUTTON ===
-  ctaContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  ctaButton: {
-    backgroundColor: '#fff',
-    borderRadius: 999,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  },
-  ctaText: {
-    ...TYPO.h4,
-    fontSize: 17,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-
-  // === BANNER CAROUSEL ===
-  bannerSection: {
-    paddingTop: 16,
-    marginBottom: 16,
-  },
-  bannerScroll: {
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  bannerCard: {
-    borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
-  },
-  banner1Bg: {
-    backgroundColor: COLORS.primary,
-    width: '100%',
-    height: 160,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    overflow: 'hidden',
-  },
-  banner2Bg: {
-    backgroundColor: '#2DB84B',
-    width: '100%',
-    height: 160,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    overflow: 'hidden',
-  },
-  bannerDecorCircle1: {
-    position: 'absolute',
-    top: -30,
-    right: -20,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  bannerDecorCircle2: {
-    position: 'absolute',
-    bottom: -40,
-    right: 40,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  bannerTextWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  bannerTitle: {
-    ...TYPO.h2,
-    color: '#fff',
-    marginBottom: 6,
-    lineHeight: 28,
-  },
-  bannerSubtitle: {
-    ...TYPO.bodySmall,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 18,
-  },
-  bannerIconWrap: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    opacity: 0.6,
-  },
-
-  // === SERVICE GRID ===
-  serviceSection: {
-    marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
-  },
-  serviceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  serviceItem: {
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    paddingVertical: 8,
-  },
-  serviceIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFF4ED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  serviceLabel: {
-    ...TYPO.caption,
-    color: COLORS.onSurface,
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-
-  // === REWARDS SECTION ===
-  rewardsSection: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    ...TYPO.h3,
-    color: COLORS.onSurface,
-    marginBottom: 16,
-  },
-  rewardsScroll: {
-    gap: 16,
-    paddingRight: 20,
-  },
-  tierCard: {
-    minWidth: SCREEN_WIDTH * 0.65,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
-  },
-  tierBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tierSymbol: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  tierInfo: {
-    flex: 1,
-  },
-  tierName: {
-    ...TYPO.h5,
-    color: COLORS.onSurface,
+    color: '#0F172A',
     marginBottom: 2,
   },
-  tierDesc: {
-    ...TYPO.caption,
-    color: COLORS.outline,
-    fontWeight: '500',
-    fontSize: 12,
-  },
-
-  // === TRUST SECTION ===
-  trustSection: {
-    marginBottom: 32,
-    paddingHorizontal: 20,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  trustCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 16,
-    gap: 8,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
-  },
-  trustLabel: {
-    ...TYPO.body,
-    color: COLORS.onSurface,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
-  // === BOTTOM NAV ===
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.surfaceContainerHigh || '#fde3da',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    paddingTop: 8,
-    paddingHorizontal: 8,
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 12,
-    zIndex: 50,
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 64,
-    paddingBottom: 2,
-  },
-  navLabel: {
-    ...TYPO.caption,
-    color: COLORS.onSurfaceVariant,
+  roleCardDesc: {
     fontSize: 11,
-    marginTop: 4,
-    fontWeight: '500',
+    color: '#64748B',
+    lineHeight: 15,
   },
-  navLabelActive: {
-    color: COLORS.primaryDeep,
-    fontWeight: '700',
-  },
-
-  // === FAB (Center AI button) ===
-  fabContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 80,
-    position: 'relative',
-    top: -24,
-  },
-  fabButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-    shadowColor: '#F26522',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 32,
-    elevation: 12,
-  },
-  fabLabel: {
-    ...TYPO.caption,
-    color: COLORS.primaryDeep,
-    fontWeight: '700',
-    marginTop: 4,
-    fontSize: 12,
+  modalDisclaimer: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 15,
+    paddingHorizontal: 10,
   },
 });
