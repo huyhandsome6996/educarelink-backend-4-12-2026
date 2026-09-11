@@ -14,7 +14,8 @@ const BASE = '/matching';
 export const createJob = (payload) => apiClient.post(`${BASE}/jobs/`, payload);
 
 // Đăng bài + chạy AI parse (Gemini, fallback rule-based) + tạo JobSlots
-export const publishJob = (jobId) => apiClient.post(`${BASE}/jobs/${jobId}/publish/`);
+export const publishJob = (jobId) =>
+  apiClient.post(`${BASE}/jobs/${jobId}/publish/`, null, { timeout: 60000 });
 
 // === ỨNG VIÊN (Step 2/3) ===
 // body: { job_id } → { total_matched, candidates: [max 8] }

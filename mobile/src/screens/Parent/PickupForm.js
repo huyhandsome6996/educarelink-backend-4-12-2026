@@ -142,6 +142,7 @@ export default function PickupForm() {
       requirements.trim() || 'Đưa đón bé đúng giờ, đội mũ bảo hiểm và đảm bảo an toàn giao thông.';
 
     setSubmitting(true);
+    let createdJobId = null;
     try {
       const { data: job } = await createJob({
         job_type: 'pickup',
@@ -164,6 +165,7 @@ export default function PickupForm() {
         longitude: pickupLocation.longitude,
         hourly_rate_vnd: Number(rate),
       });
+      createdJobId = job?.id;
 
       const { data: published } = await publishJob(job.id);
       Alert.alert(
@@ -180,8 +182,22 @@ export default function PickupForm() {
         ]
       );
     } catch (err) {
-      const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
-      Alert.alert('Lỗi', msg);
+      if (createdJobId) {
+        Alert.alert(
+          'Đã tạo bài đăng',
+          'Bài đăng đã được lưu trên hệ thống. Hệ thống AI đang tìm kiếm ứng viên phù hợp.',
+          [
+            {
+              text: 'Xem ứng viên',
+              onPress: () => navigation.navigate('CandidatesList', { jobId: createdJobId }),
+            },
+            { text: 'Đóng', style: 'cancel' },
+          ]
+        );
+      } else {
+        const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
+        Alert.alert('Lỗi', msg);
+      }
     } finally {
       setSubmitting(false);
     }
