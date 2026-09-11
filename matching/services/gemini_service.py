@@ -29,18 +29,26 @@ PROMPT_VERSION = 'v1'
 
 # Keyword map rule-based (fallback khi Gemini chết / không có API key)
 SKILL_KEYWORDS = {
-    'toan': ['toan', 'math'],
-    'van': ['van', 'ngu van', 'literature'],
-    'tieng_anh': ['anh', 'english', 'tieng anh'],
-    'ly': ['vat ly', 'ly'],
-    'hoa': ['hoa hoc', 'hoa'],
-    'sinh': ['sinh hoc', 'sinh'],
-    'su_pham': ['su pham', 'sư phạm'],
+    'toan': ['toan', 'math', 'đại số', 'hình học'],
+    'van': ['van', 'ngu van', 'ngữ văn', 'literature', 'tiếng việt', 'tieng viet'],
+    'luyen_chu_dep': ['luyện chữ', 'luyen chu', 'chữ đẹp', 'chu dep', 'rèn chữ', 'ren chu', 'viết chữ', 'viet chu', 'tập viết', 'tap viet'],
+    'tieng_anh': ['anh', 'english', 'tieng anh', 'tiếng anh', 'ielts', 'toeic'],
+    'ly': ['vat ly', 'ly', 'vật lý'],
+    'hoa': ['hoa hoc', 'hoa', 'hóa học'],
+    'sinh': ['sinh hoc', 'sinh', 'sinh học'],
+    'su_pham': ['su pham', 'sư phạm', 'giáo dục'],
+    'mam_non': ['mầm non', 'mam non', 'mẫu giáo', 'mau giao'],
+    'trong_tre': ['trông trẻ', 'trong tre', 'chăm sóc trẻ', 'cham soc tre', 'giữ trẻ', 'giu tre'],
+    'don_tre': ['đón trẻ', 'don tre', 'đưa đón', 'dua don', 'đón bé', 'don be'],
+    'so_cap_cuu': ['sơ cấp cứu', 'so cap cuu', 'y tế', 'y te', 'an toàn'],
+    'nau_an': ['nấu ăn', 'nau an', 'dinh dưỡng', 'dinh duong', 'ăn dặm'],
+    'choi_cung_be': ['chơi cùng bé', 'choi cung be', 'hoạt náo', 'kể chuyện'],
     'mc': ['mc', 'mai múng', 'dẫn chương trình', 'dan chuong trinh'],
     'ky_nang_song': ['kỹ năng sống', 'ky nang song', 'soft skill'],
     'dan_piano': ['piano', 'đàn', 'dan'],
-    've': ['vẽ', 've tranh', 'hội họa'],
+    've': ['vẽ', 've tranh', 'hội họa', 'mỹ thuật'],
     'tieu_hoc': ['tiểu học', 'tieu hoc', 'cấp 1'],
+    'lap_trinh': ['lập trình', 'lap trinh', 'scratch', 'stem', 'robotics'],
     'kien_nhan': ['kiên nhẫn', 'kien nhan', 'nhẫn nại'],
     'cham_soc_tre': ['chăm sóc trẻ', 'cham soc tre', 'trông trẻ', 'trong tre'],
     'da_uoi': ['đa uô~', 'gọi bé dậy'],
@@ -106,9 +114,28 @@ def rule_based_parse(job):
     }
 
 
-def _auto_title(job, subject):
+def _auto_title(job, subject=''):
+    type_data = getattr(job, 'type_data', None) or {}
+    if getattr(job, 'job_type', '') == 'tutoring':
+        subj = subject or type_data.get('subject') or 'Kèm học 1:1'
+        return f"Gia sư {subj}".strip()[:80]
+    elif getattr(job, 'job_type', '') == 'childcare':
+        from .job_schema import CHILD_AGE_GROUPS
+        age_group = type_data.get('child_age_group')
+        age_str = CHILD_AGE_GROUPS.get(age_group, '')
+        num = type_data.get('number_of_children', 1)
+        age_part = f" ({age_str})" if age_str else ""
+        return f"Trông {num} bé{age_part}".strip()[:80]
+    elif getattr(job, 'job_type', '') == 'pickup':
+        place = (
+            type_data.get('school_or_pickup_place_name') or
+            type_data.get('pickup_location_note') or
+            'trường học'
+        )
+        num = type_data.get('number_of_children', 1)
+        return f"Đón {num} bé tại {place}".strip()[:80]
     titles = {'tutoring': 'Gia sư', 'childcare': 'Trông trẻ', 'pickup': 'Đón trẻ'}
-    return f"{titles.get(job.job_type, 'Công việc')} {subject}".strip()[:80]
+    return f"{titles.get(getattr(job, 'job_type', ''), 'Công việc')} {subject}".strip()[:80]
 
 
 # JSON schema rút gọn của kết quả parse (Step 11.3)

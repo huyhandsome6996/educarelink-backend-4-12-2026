@@ -66,26 +66,90 @@ const DEMO_CANDIDATES = [
     display_name: 'Nguyễn Thu Hà',
     gender: 'female',
     school: 'ĐH Sư Phạm Hà Nội',
-    major: 'Sư phạm Toán (Năm 3)',
+    major: 'Sư phạm Giáo dục Tiểu học',
     match_level: 'very_high',
     match_level_vi: 'Rất phù hợp',
     match_score: 96,
-    rating: 4.9,
+    rating: 4.95,
     completed_jobs: 48,
     distance_km: 1.2,
-    top_skills: ['Toán tiểu học', 'Kiên nhẫn', 'Luyện chữ đẹp', 'Giao tiếp tốt'],
-    latest_review: 'Gia sư dạy rất có tâm, bé nhà mình tiến bộ vượt bậc sau 1 tháng. Rất lễ phép và đúng giờ!',
+    top_skills: ['Luyện chữ đẹp', 'Tiểu học', 'Kiên nhẫn', 'Sư phạm'],
+    latest_review: 'Cô giáo dạy luyện chữ cực kỳ kiên nhẫn và ân cần. Sau 10 buổi nét chữ bé tiến bộ vượt bậc, tròn và đều tăm tắp!',
     response_tag: 'Phản hồi < 5 phút',
   },
   {
     carepartner_id: 'cp-7102',
+    display_name: 'Đỗ Hoàng Ngân',
+    gender: 'female',
+    school: 'ĐH Sư Phạm Hà Nội',
+    major: 'Giáo dục Mầm non',
+    match_level: 'very_high',
+    match_level_vi: 'Rất phù hợp',
+    match_score: 95,
+    rating: 5.0,
+    completed_jobs: 38,
+    distance_km: 1.4,
+    top_skills: ['Trông trẻ', 'Mầm non', 'Montessori', 'Sơ cấp cứu'],
+    latest_review: 'Cô Ngân trông bé rất khéo và chu đáo, bé quấn cô như người nhà. Gia đình hoàn toàn yên tâm gửi gắm.',
+    response_tag: 'Phản hồi < 3 phút',
+  },
+  {
+    carepartner_id: 'cp-6531',
+    display_name: 'Lê Thảo Vy',
+    gender: 'female',
+    school: 'ĐH Sư Phạm Hà Nội',
+    major: 'Sư phạm Ngữ Văn & Tiểu học',
+    match_level: 'very_high',
+    match_level_vi: 'Rất phù hợp',
+    match_score: 93,
+    rating: 4.9,
+    completed_jobs: 35,
+    distance_km: 1.8,
+    top_skills: ['Luyện chữ đẹp', 'Ngữ văn', 'Rèn chữ', 'Kiên nhẫn'],
+    latest_review: 'Phương pháp rèn chữ chuẩn nét thanh nét đậm, tư thế ngồi và cách cầm bút chuẩn y khoa.',
+    response_tag: 'Phản hồi < 5 phút',
+  },
+  {
+    carepartner_id: 'cp-5420',
+    display_name: 'Nguyễn Hữu Phước',
+    gender: 'male',
+    school: 'ĐH Y Hà Nội',
+    major: 'Bác sĩ Đa khoa (Năm 4)',
+    match_level: 'high',
+    match_level_vi: 'Phù hợp cao',
+    match_score: 91,
+    rating: 4.9,
+    completed_jobs: 34,
+    distance_km: 1.5,
+    top_skills: ['Đón trẻ', 'Sơ cấp cứu', 'Lái xe an toàn', 'Đúng giờ'],
+    latest_review: 'Đón bé luôn đúng giờ hẹn, lái xe cẩn thận, đội mũ bảo hiểm chỉnh tề cho con. Rất yên tâm!',
+    response_tag: 'Phản hồi < 5 phút',
+  },
+  {
+    carepartner_id: 'cp-4319',
+    display_name: 'Vũ Khánh An',
+    gender: 'female',
+    school: 'ĐH Y Hà Nội',
+    major: 'Điều dưỡng Nhi khoa (Năm 4)',
+    match_level: 'high',
+    match_level_vi: 'Phù hợp cao',
+    match_score: 90,
+    rating: 4.95,
+    completed_jobs: 31,
+    distance_km: 2.2,
+    top_skills: ['Chăm bé sơ sinh', 'Sơ cấp cứu nhi', 'Dỗ ăn', 'Vệ sinh'],
+    latest_review: 'Có kiến thức y tế nên trông trẻ rất an tâm, xử lý các tình huống quấy sốt của bé rất chuyên nghiệp.',
+    response_tag: 'Phản hồi < 5 phút',
+  },
+  {
+    carepartner_id: 'cp-3208',
     display_name: 'Trần Thị Minh Thư',
     gender: 'female',
     school: 'ĐH Ngoại Thương',
     major: 'Kinh tế Quốc tế (IELTS 8.0)',
-    match_level: 'very_high',
-    match_level_vi: 'Rất phù hợp',
-    match_score: 94,
+    match_level: 'high',
+    match_level_vi: 'Phù hợp cao',
+    match_score: 89,
     rating: 5.0,
     completed_jobs: 32,
     distance_km: 1.6,
@@ -94,100 +158,36 @@ const DEMO_CANDIDATES = [
     response_tag: 'Phản hồi < 3 phút',
   },
   {
-    carepartner_id: 'cp-6531',
-    display_name: 'Lê Hoàng Nam',
-    gender: 'male',
-    school: 'ĐH Bách Khoa Hà Nội',
-    major: 'Khoa học Máy tính (Năm 4)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 91,
-    rating: 4.8,
-    completed_jobs: 26,
-    distance_km: 2.1,
-    top_skills: ['Tư duy logic', 'Toán nâng cao', 'Lập trình Scratch'],
-    latest_review: 'Kèm toán tư duy rất bài bản, rèn thói quen tự giác làm bài cho con.',
-    response_tag: 'Phản hồi < 10 phút',
-  },
-  {
-    carepartner_id: 'cp-5420',
-    display_name: 'Phạm Phương Linh',
-    gender: 'female',
-    school: 'ĐH Quốc Gia Hà Nội',
-    major: 'Sư phạm Tiểu học (Năm 2)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 89,
-    rating: 4.9,
-    completed_jobs: 19,
-    distance_km: 2.5,
-    top_skills: ['Kèm bài tập về nhà', 'Chăm sóc chu đáo', 'Đọc truyện'],
-    latest_review: 'Rất dịu dàng, khéo léo dỗ bé học tập trung không bị xao nhãng.',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-4319',
-    display_name: 'Vũ Thảo Trang',
-    gender: 'female',
-    school: 'ĐH Y Hà Nội',
-    major: 'Bác sĩ Đa khoa (Năm 3)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 87,
-    rating: 5.0,
-    completed_jobs: 15,
-    distance_km: 2.8,
-    top_skills: ['Sơ cấp cứu y tế', 'Dinh dưỡng cho bé', 'Kỹ năng mềm'],
-    latest_review: 'Có chuyên môn y khoa nên gia đình rất an tâm khi nhờ em đồng hành cùng bé.',
-    response_tag: 'Phản hồi < 15 phút',
-  },
-  {
-    carepartner_id: 'cp-3208',
+    carepartner_id: 'cp-2197',
     display_name: 'Đỗ Đức Anh',
     gender: 'male',
-    school: 'ĐH Sư Phạm Hà Nội',
-    major: 'Sư phạm Vật lý (Năm 3)',
+    school: 'ĐH Giao Thông Vận Tải',
+    major: 'Kỹ thuật Giao thông',
     match_level: 'medium',
     match_level_vi: 'Phù hợp',
-    match_score: 85,
-    rating: 4.7,
-    completed_jobs: 22,
-    distance_km: 3.1,
-    top_skills: ['Kèm Khoa học', 'Toán thực nghiệm', 'Nhiệt tình'],
-    latest_review: 'Bạn nam năng nổ, dạy kèm khoa học rất trực quan sinh động.',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-2197',
-    display_name: 'Hoàng Mai Chi',
-    gender: 'female',
-    school: 'ĐH Hà Nội (HANU)',
-    major: 'Ngôn ngữ Anh (Năm 3)',
-    match_level: 'medium',
-    match_level_vi: 'Phù hợp',
-    match_score: 83,
-    rating: 4.8,
-    completed_jobs: 14,
-    distance_km: 3.4,
-    top_skills: ['Tiếng Anh mầm non', 'Hát & múa', 'Kể chuyện'],
-    latest_review: 'Tác phong chuyên nghiệp, đúng giờ và rất chu đáo với bé.',
+    match_score: 86,
+    rating: 4.88,
+    completed_jobs: 25,
+    distance_km: 2.0,
+    top_skills: ['Đón trẻ an toàn', 'Thông thạo đường', 'Cẩn thận'],
+    latest_review: 'Đức Anh rất nhiệt tình và chu đáo, luôn gọi điện báo khi đã đón được bé.',
     response_tag: 'Phản hồi < 10 phút',
   },
   {
     carepartner_id: 'cp-1086',
-    display_name: 'Ngô Thanh Tùng',
+    display_name: 'Lê Hoàng Nam',
     gender: 'male',
     school: 'ĐH Bách Khoa Hà Nội',
-    major: 'Kỹ thuật Cơ điện tử',
+    major: 'Khoa học Máy tính (Năm 4)',
     match_level: 'medium',
     match_level_vi: 'Phù hợp',
-    match_score: 81,
-    rating: 4.6,
-    completed_jobs: 11,
-    distance_km: 3.8,
-    top_skills: ['Đúng giờ', 'Đưa đón an toàn', 'Kiên nhẫn'],
-    latest_review: 'Rất cẩn thận khi điều khiển phương tiện, lễ phép với gia đình.',
-    response_tag: 'Phản hồi < 5 phút',
+    match_score: 84,
+    rating: 4.8,
+    completed_jobs: 26,
+    distance_km: 2.5,
+    top_skills: ['Toán tư duy', 'Toán nâng cao', 'Lập trình Scratch'],
+    latest_review: 'Kèm toán tư duy rất bài bản, rèn thói quen tự giác làm bài cho con.',
+    response_tag: 'Phản hồi < 10 phút',
   },
 ];
 
@@ -202,12 +202,41 @@ export default function CandidatesListScreen() {
   const route = useRoute();
   const jobId = route.params?.jobId;
   const passedJob = route.params?.job;
-
+  const isDemoPreview = !jobId;
   const [jobInfo, setJobInfo] = useState(passedJob || DEMO_JOB);
-  const [candidates, setCandidates] = useState(DEMO_CANDIDATES);
-  const [totalMatched, setTotalMatched] = useState(DEMO_CANDIDATES.length);
-  const [loading, setLoading] = useState(!!jobId);
+  const [candidates, setCandidates] = useState(
+    Array.isArray(passedCandidates)
+      ? passedCandidates
+      : isDemoPreview
+      ? DEMO_CANDIDATES
+      : []
+  );
+  const [totalMatched, setTotalMatched] = useState(
+    typeof passedTotal === 'number'
+      ? passedTotal
+      : Array.isArray(passedCandidates)
+      ? passedCandidates.length
+      : isDemoPreview
+      ? DEMO_CANDIDATES.length
+      : 0
+  );
+  // Nếu đã nhận danh sách ứng viên được tải trước từ modal tìm kiếm -> loading = false ngay lập tức!
+  const [loading, setLoading] = useState(!!jobId && !Array.isArray(passedCandidates));
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+
+  // Ghi nhớ cờ đã có dữ liệu prefetch để tránh load() đè spinner khi focus lần đầu
+  const hasPrefetchedRef = useRef(Array.isArray(passedCandidates));
+
+  useEffect(() => {
+    if (passedJob) setJobInfo(passedJob);
+    if (Array.isArray(passedCandidates)) {
+      setCandidates(passedCandidates);
+      setTotalMatched(typeof passedTotal === 'number' ? passedTotal : passedCandidates.length);
+      setLoading(false);
+      hasPrefetchedRef.current = true;
+    }
+  }, [passedCandidates, passedTotal, passedJob]);
 
   // Bộ lọc & Sắp xếp tương tác (Stitch Filter Pills)
   const [currentSort, setCurrentSort] = useState('score'); // 'score' | 'distance' | 'rating'
@@ -232,38 +261,52 @@ export default function CandidatesListScreen() {
   }, [pulseAnim]);
 
   // Tải danh sách ứng viên
-  const load = useCallback(async () => {
+  const load = useCallback(async (isRefresh = false) => {
     if (!jobId) {
-      // Khi mở xem thử nghiệm từ trang chủ, dùng DEMO_CANDIDATES
+      // Khi mở xem thử nghiệm từ trang chủ không có jobId, dùng DEMO_CANDIDATES
       setCandidates(DEMO_CANDIDATES);
-      setTotalMatched(24);
+      setTotalMatched(DEMO_CANDIDATES.length);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    // Nếu vừa nhận dữ liệu prefetch và không phải người dùng chủ động kéo refresh
+    if (!isRefresh && hasPrefetchedRef.current) {
+      hasPrefetchedRef.current = false;
+      setLoading(false);
+      return;
+    }
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
     try {
       const { data: res } = await getMatchingCandidates(jobId);
-      if (res?.candidates && res.candidates.length > 0) {
+      if (res?.job) {
+        setJobInfo((prev) => ({ ...prev, ...res.job }));
+      }
+      if (res?.candidates) {
         setCandidates(res.candidates);
-        setTotalMatched(res.total_matched || res.candidates.length);
+        setTotalMatched(res.total_matched !== undefined ? res.total_matched : res.candidates.length);
       } else {
-        // Fallback demo data để người dùng luôn xem được giao diện hoàn chỉnh
-        setCandidates(DEMO_CANDIDATES);
-        setTotalMatched(res?.total_matched || DEMO_CANDIDATES.length);
+        setCandidates([]);
+        setTotalMatched(0);
       }
     } catch (err) {
       const code = err?.response?.data?.code;
       if (code === 'slot_taken') {
         setError('Đơn vừa được chọn bởi người khác. Vui lòng làm mới.');
       } else {
-        // Nếu lỗi mạng, hiển thị demo để phụ huynh vẫn trải nghiệm được giao diện
-        setCandidates(DEMO_CANDIDATES);
-        setTotalMatched(24);
+        setError('Không thể tải danh sách ứng viên lúc này.');
+        setCandidates([]);
+        setTotalMatched(0);
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [jobId]);
 
@@ -332,6 +375,7 @@ export default function CandidatesListScreen() {
               navigation.navigate('CandidateProfileV2', {
                 candidate: selectedCandidate,
                 jobId: 'demo-job-1',
+                job: jobInfo,
               }),
           },
         ]
@@ -390,7 +434,17 @@ export default function CandidatesListScreen() {
         </View>
 
         {/* Profile Info Main Row */}
-        <View style={styles.heroProfileRow}>
+        <TouchableOpacity
+          style={styles.heroProfileRow}
+          onPress={() =>
+            navigation.navigate('CandidateProfileV2', {
+              candidate: c,
+              jobId: jobId || 'demo',
+              job: jobInfo,
+            })
+          }
+          activeOpacity={0.9}
+        >
           <View style={styles.heroAvatarWrapper}>
             <View style={[styles.heroAvatar, { backgroundColor: color }]}>
               <Text style={styles.heroAvatarText}>{initial}</Text>
@@ -434,7 +488,7 @@ export default function CandidatesListScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Skills Chips */}
         <View style={styles.skillsRow}>
@@ -464,6 +518,7 @@ export default function CandidatesListScreen() {
               navigation.navigate('CandidateProfileV2', {
                 candidate: c,
                 jobId: jobId || 'demo',
+                job: jobInfo,
               })
             }
             activeOpacity={0.8}
@@ -498,7 +553,17 @@ export default function CandidatesListScreen() {
 
     return (
       <View key={c.carepartner_id} style={styles.standardCard}>
-        <View style={styles.stdTopRow}>
+        <TouchableOpacity
+          style={styles.stdTopRow}
+          onPress={() =>
+            navigation.navigate('CandidateProfileV2', {
+              candidate: c,
+              jobId: jobId || 'demo',
+              job: jobInfo,
+            })
+          }
+          activeOpacity={0.9}
+        >
           {/* Avatar with rank pill */}
           <View style={styles.stdAvatarWrapper}>
             <View style={[styles.stdAvatar, { backgroundColor: color }]}>
@@ -540,7 +605,7 @@ export default function CandidatesListScreen() {
               <Text style={styles.stdFastTag}>⚡ {c.response_tag || 'Phản hồi nhanh'}</Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Skills Chips */}
         <View style={styles.stdSkillsRow}>
@@ -559,6 +624,7 @@ export default function CandidatesListScreen() {
               navigation.navigate('CandidateProfileV2', {
                 candidate: c,
                 jobId: jobId || 'demo',
+                job: jobInfo,
               })
             }
             activeOpacity={0.8}
@@ -590,37 +656,50 @@ export default function CandidatesListScreen() {
         <View style={styles.jobCapsuleTopRow}>
           <View style={styles.categoryBadge}>
             <Ionicons
-              name={jobInfo.category_icon || 'school'}
+              name={
+                jobInfo.category_icon ||
+                (jobInfo.job_type === 'childcare' ? 'heart' : jobInfo.job_type === 'pickup' ? 'car' : 'school')
+              }
               size={13}
               color="#EA580C"
               style={{ marginRight: 4 }}
             />
             <Text style={styles.categoryBadgeText}>
-              {jobInfo.category_label || 'GIA SƯ & KÈM HỌC 1:1'}
+              {jobInfo.category_label ||
+                (jobInfo.job_type === 'childcare'
+                  ? 'CHĂM SÓC & TRÔNG TRẺ'
+                  : jobInfo.job_type === 'pickup'
+                  ? 'ĐƯA ĐÓN TRẺ AN TOÀN'
+                  : 'GIA SƯ & KÈM HỌC 1:1')}
             </Text>
           </View>
           <Text style={styles.hourlyFeeText}>
             {jobInfo.hourly_rate_vnd
-              ? `${jobInfo.hourly_rate_vnd.toLocaleString('vi-VN')}đ/giờ`
+              ? `${Number(jobInfo.hourly_rate_vnd).toLocaleString('vi-VN')}đ/giờ`
               : '120.000đ/giờ'}
           </Text>
         </View>
 
         <Text style={styles.jobTitleText} numberOfLines={2}>
-          {jobInfo.title || 'Gia sư Toán & Tiếng Anh kèm bé lớp 4'}
+          {jobInfo.title ||
+            (jobInfo.job_type === 'childcare'
+              ? 'Chăm sóc & Trông trẻ tại nhà'
+              : jobInfo.job_type === 'pickup'
+              ? 'Đưa đón bé đi học an toàn'
+              : 'Gia sư kèm học 1:1')}
         </Text>
 
         <View style={styles.jobMetaList}>
           <View style={styles.jobMetaRow}>
             <Ionicons name="calendar-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
             <Text style={styles.jobMetaText}>
-              {jobInfo.schedule || '18:00 - 20:00 (Thứ 2, 4, 6)'}
+              {jobInfo.schedule || 'Lịch học linh hoạt'}
             </Text>
           </View>
           <View style={styles.jobMetaRow}>
             <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
             <Text style={styles.jobMetaText}>
-              {jobInfo.location_note || 'Cách bạn 1.2 km (Quận Cầu Giấy, Hà Nội)'}
+              {jobInfo.location_note || 'Hà Nội'}
             </Text>
           </View>
         </View>
@@ -640,14 +719,18 @@ export default function CandidatesListScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.radarTitleText}>
-              Tuyển chọn {displayedCandidates.length} CarePartner xuất sắc nhất
+              {candidates.length > 0
+                ? `Tuyển chọn ${displayedCandidates.length} CarePartner xuất sắc nhất`
+                : 'Đang mở rộng quét mạng lưới CarePartner...'}
             </Text>
             <Text style={styles.radarSubtitleText}>
-              Khớp 100% lịch học · Ưu tiên gần nhà · Đã đối soát CCCD & Thẻ SV
+              {candidates.length > 0
+                ? 'Khớp chuyên môn · Ưu tiên gần nhà · Đã đối soát CCCD & Thẻ SV'
+                : 'Chưa có ứng viên khớp chuyên môn rảnh ca này. Đang phát tín hiệu tiếp tục.'}
             </Text>
           </View>
         </View>
-        <Ionicons name="sparkles" size={20} color="#059669" />
+        <Ionicons name="sparkles" size={20} color={candidates.length > 0 ? '#059669' : '#F59E0B'} />
       </View>
 
       {/* 3. FILTER & SORT PILLS */}
@@ -808,7 +891,7 @@ export default function CandidatesListScreen() {
           ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={load} colors={['#F26522']} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#F26522']} />
           }
           renderItem={({ item, index }) => {
             // Render Card #1 với Hero Spotlight Layout
@@ -820,22 +903,50 @@ export default function CandidatesListScreen() {
           }}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color="#94A3B8" />
-              <Text style={styles.emptyTitle}>Chưa có ứng viên khớp bộ lọc</Text>
-              <Text style={styles.emptySubtitle}>
-                Vui lòng tắt bớt điều kiện lọc hoặc chọn xem lại tất cả ứng viên.
-              </Text>
-              <TouchableOpacity
-                style={styles.resetFilterBtn}
-                onPress={() => {
-                  setCurrentSort('score');
-                  setFilterFemaleOnly(false);
-                }}
-              >
-                <Text style={styles.resetFilterBtnText}>Xem tất cả ứng viên</Text>
-              </TouchableOpacity>
-            </View>
+            candidates.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="search-outline" size={38} color="#F26522" />
+                </View>
+                <Text style={styles.emptyTitle}>Chưa có CarePartner phù hợp</Text>
+                <Text style={styles.emptySubtitle}>
+                  Hiện chưa có CarePartner nào có kỹ năng & kinh nghiệm về "{jobInfo.title || 'công việc này'}" rảnh vào khung giờ đã chọn ({jobInfo.schedule || 'ca này'}).
+                </Text>
+                <View style={styles.emptyAdviceCard}>
+                  <Text style={styles.emptyAdviceTitle}>💡 Gợi ý cho bạn:</Text>
+                  <Text style={styles.emptyAdviceText}>• Thử nới rộng khung giờ hoặc chọn ngày khác để có thêm ứng viên rảnh lịch.</Text>
+                  <Text style={styles.emptyAdviceText}>• Hệ thống vẫn đang phát thông báo tới các sinh viên chuyên ngành quanh khu vực của bạn.</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.resetFilterBtn}
+                  onPress={() => load(true)}
+                  activeOpacity={0.85}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="refresh" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.resetFilterBtnText}>Tìm kiếm lại</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="filter-outline" size={42} color="#94A3B8" />
+                <Text style={styles.emptyTitle}>Không có ứng viên khớp bộ lọc</Text>
+                <Text style={styles.emptySubtitle}>
+                  Có {candidates.length} ứng viên phù hợp kỹ năng nhưng chưa khớp tiêu chí lọc hiện tại.
+                </Text>
+                <TouchableOpacity
+                  style={styles.resetFilterBtn}
+                  onPress={() => {
+                    setCurrentSort('score');
+                    setFilterFemaleOnly(false);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.resetFilterBtnText}>Xem tất cả {candidates.length} ứng viên</Text>
+                </TouchableOpacity>
+              </View>
+            )
           }
         />
       )}
@@ -1593,6 +1704,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyAdviceCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 14,
+    width: '90%',
+  },
+  emptyAdviceTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  emptyAdviceText: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 4,
   },
 
   // 10. MODAL STYLES

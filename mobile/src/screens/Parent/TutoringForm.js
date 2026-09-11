@@ -20,9 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES } from '../../theme/colors';
-import { createJob, publishJob } from '../../api/matching';
+import { createJob, publishJob, getMatchingCandidates } from '../../api/matching';
 import JobLocationPicker from '../../components/JobLocationPicker';
 import { formatDateToYMD, getTodayYMD, extractErrorMessage } from '../../utils/date';
+import SearchingCarePartnerModal from '../../components/SearchingCarePartnerModal';
 
 // DateTimePicker chỉ trên native
 let DateTimePicker;
@@ -59,6 +60,9 @@ export default function TutoringForm() {
   const [locationNote, setLocationNote] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [searchStatus, setSearchStatus] = useState('searching');
+  const [searchError, setSearchError] = useState('');
 
   // Safe area insets with fallback for test runners
   let insets = { top: 12, bottom: 20, left: 0, right: 0 };
@@ -123,7 +127,11 @@ export default function TutoringForm() {
       `Dạy kèm môn ${subject.trim()}, hướng dẫn bài tập và hỗ trợ bé rèn luyện kiến thức vững vàng.`;
 
     setSubmitting(true);
+    setSearchModalVisible(true);
+    setSearchStatus('searching');
+    setSearchError('');
     let createdJobId = null;
+    const searchStartTime = Date.now();
     try {
       const { data: job } = await createJob({
         job_type: 'tutoring',
@@ -140,36 +148,75 @@ export default function TutoringForm() {
       createdJobId = job?.id;
 
       // Đăng + chạy AI parse ngay (Step 1.2 → ai_parsed + tạo slots)
-      const { data: published } = await publishJob(job.id);
-      Alert.alert(
-        'Đã đăng bài',
-        published.needs_admin_review
-          ? 'Bài đăng của bạn đang chờ kiểm duyệt an toàn.'
-          : `Hệ thống đã tìm được ứng viên cho bạn. (${published.ai_parse_status === 'ok' ? 'AI đã phân tích' : 'Đã phân tích'})`,
-        [
-          {
-            text: 'Xem ứng viên',
-            onPress: () => navigation.navigate('CandidatesList', { jobId: job.id }),
-          },
-          { text: 'Để sau', style: 'cancel' },
-        ]
-      );
+      const { data: pubRes } = await publishJob(job.id);
+
+      // Tải trước danh sách ứng viên ngay trong lúc modal tìm kiếm đang quét sóng radar
+      let matchedCandidates = null;
+      let totalMatched = null;
+      let freshJob = null;
+      try {
+        const { data: candRes } = await getMatchingCandidates(job.id);
+        matchedCandidates = candRes?.candidates || null;
+        totalMatched = candRes?.total_matched || null;
+        freshJob = candRes?.job || null;
+      } catch (candErr) {
+        // Dự phòng demo nếu kết nối chậm
+      }
+
+      const scheduleStr = `${timeFrom} - ${timeTo} (${dates.length} buổi)`;
+      const richJob = {
+        ...job,
+        ...(freshJob || {}),
+        title: pubRes?.title || freshJob?.title || job.title || `Gia sư ${subject.trim()}`,
+        category_label: freshJob?.category_label || pubRes?.category_label || 'Gia sư & Kèm học 1:1',
+        category_icon: freshJob?.category_icon || pubRes?.category_icon || 'school',
+        hourly_rate_vnd: Number(rate),
+        schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
+        location_note: locationNote || 'Cầu Giấy, Hà Nội',
+      };
+
+      // Giữ modal chạy tối thiểu 1.2s để tạo cảm giác quét radar chân thực
+      const elapsed = Date.now() - searchStartTime;
+      const minDisplayTime = 1200;
+      if (elapsed < minDisplayTime) {
+        await new Promise((resolve) => setTimeout(resolve, minDisplayTime - elapsed));
+      }
+
+      // Đã tìm thấy ứng viên -> chuyển sang trạng thái thành công
+      setSearchStatus('success');
+
+      // Tự động nhảy thẳng qua trang hiển thị ứng viên và render ngay lập tức!
+      setTimeout(() => {
+        setSearchModalVisible(false);
+        navigation.navigate('CandidatesList', {
+          jobId: job.id,
+          job: richJob,
+          candidates: matchedCandidates,
+          totalMatched,
+        });
+      }, 600);
     } catch (err) {
       if (createdJobId) {
-        Alert.alert(
-          'Đã tạo bài đăng',
-          'Bài đăng đã được lưu trên hệ thống. Hệ thống AI đang tìm kiếm ứng viên phù hợp.',
-          [
-            {
-              text: 'Xem ứng viên',
-              onPress: () => navigation.navigate('CandidatesList', { jobId: createdJobId }),
-            },
-            { text: 'Đóng', style: 'cancel' },
-          ]
-        );
+        // Đã lưu bài đăng thành công -> tự động chuyển sang xem ứng viên
+        setSearchStatus('success');
+        const fallbackSchedule = `${timeFrom} - ${timeTo} (${dates.length} buổi)`;
+        const fallbackRichJob = {
+          id: createdJobId,
+          title: `Gia sư ${subject.trim()}`,
+          category_label: 'Gia sư & Kèm học 1:1',
+          category_icon: 'school',
+          hourly_rate_vnd: Number(rate),
+          schedule: fallbackSchedule,
+          location_note: locationNote || 'Cầu Giấy, Hà Nội',
+        };
+        setTimeout(() => {
+          setSearchModalVisible(false);
+          navigation.navigate('CandidatesList', { jobId: createdJobId, job: fallbackRichJob });
+        }, 600);
       } else {
         const msg = extractErrorMessage(err, 'Không đăng được bài. Vui lòng kiểm tra lại thông tin.');
-        Alert.alert('Lỗi', msg);
+        setSearchStatus('error');
+        setSearchError(msg);
       }
     } finally {
       setSubmitting(false);
@@ -517,6 +564,16 @@ export default function TutoringForm() {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Bottom Sheet Animation: Đang tìm kiếm CarePartner */}
+      <SearchingCarePartnerModal
+        visible={searchModalVisible}
+        status={searchStatus}
+        serviceType="Gia sư & Kèm học 1:1"
+        serviceIcon="school"
+        errorMessage={searchError}
+        onClose={() => setSearchModalVisible(false)}
+      />
     </View>
   );
 }

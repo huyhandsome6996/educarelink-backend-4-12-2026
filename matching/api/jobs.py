@@ -28,15 +28,48 @@ from rest_framework import serializers
 
 
 class JobPostSerializer(serializers.ModelSerializer):
+    category_label = serializers.SerializerMethodField()
+    category_icon = serializers.SerializerMethodField()
+    schedule = serializers.SerializerMethodField()
+
     class Meta:
         model = JobPost
         fields = ['id', 'job_type', 'title', 'description', 'type_data',
                   'hourly_rate_vnd', 'status', 'ai_parse_status',
                   'latitude', 'longitude', 'location_note', 'recurrence',
-                  'clarification_questions', 'total_matched', 'created_at']
+                  'clarification_questions', 'total_matched', 'created_at',
+                  'category_label', 'category_icon', 'schedule']
         read_only_fields = ['id', 'title', 'description', 'status',
                             'ai_parse_status', 'type_data', 'recurrence',
-                            'clarification_questions', 'total_matched', 'created_at']
+                            'clarification_questions', 'total_matched', 'created_at',
+                            'category_label', 'category_icon', 'schedule']
+
+    def get_category_label(self, obj):
+        mapping = {
+            'tutoring': 'Gia sư & Kèm học 1:1',
+            'childcare': 'Chăm sóc & Trông trẻ tại nhà',
+            'pickup': 'Đưa đón trẻ an toàn',
+        }
+        return mapping.get(obj.job_type, 'Dịch vụ chăm sóc')
+
+    def get_category_icon(self, obj):
+        mapping = {
+            'tutoring': 'school',
+            'childcare': 'heart',
+            'pickup': 'car',
+        }
+        return mapping.get(obj.job_type, 'briefcase')
+
+    def get_schedule(self, obj):
+        td = obj.type_data or {}
+        time_from = td.get('time_from') or td.get('pickup_time_from') or '18:00'
+        time_to = td.get('time_to') or td.get('pickup_time_to') or '20:00'
+        dates = td.get('dates') or td.get('pickup_dates') or []
+        if dates:
+            count = len(dates)
+            unit = 'buổi' if obj.job_type == 'tutoring' else 'ngày'
+            return f"{time_from} - {time_to} ({count} {unit})"
+        return f"{time_from} - {time_to}"
 
 
 class JobPostCreateAPIView(CreateAPIView):
@@ -84,9 +117,33 @@ class JobPostCreateAPIView(CreateAPIView):
             gender = None
             notice = 'Để đảm bảo công bằng, yêu cầu giới tính không áp dụng cho việc gia sư.'
 
+        # Tự động gán tiêu đề ban đầu chuẩn xác theo type_data
+        initial_title = ''
+        if job_type == 'tutoring':
+            subj = type_data.get('subject') or 'Kèm học 1:1'
+            initial_title = f"Gia sư {subj}".strip()[:80]
+        elif job_type == 'childcare':
+            from ..services.job_schema import CHILD_AGE_GROUPS
+            age_group = type_data.get('child_age_group')
+            age_str = CHILD_AGE_GROUPS.get(age_group, '')
+            num = type_data.get('number_of_children', 1)
+            age_part = f" ({age_str})" if age_str else ""
+            initial_title = f"Trông {num} bé{age_part}".strip()[:80]
+        elif job_type == 'pickup':
+            place = (
+                type_data.get('school_or_pickup_place_name') or
+                type_data.get('pickup_location_note') or
+                'trường học'
+            )
+            num = type_data.get('number_of_children', 1)
+            initial_title = f"Đón {num} bé tại {place}".strip()[:80]
+        else:
+            initial_title = f"Công việc {job_type}".strip()[:80]
+
         job = JobPost.objects.create(
             parent=request.user,
             job_type=job_type,
+            title=initial_title,
             hourly_rate_vnd=hourly_rate,
             latitude=float(latitude), longitude=float(longitude),
             location_note=request.data.get('location_note', '') or
@@ -178,12 +235,16 @@ class JobPostPublishAPIView(APIView):
                 transition(job, JobPostStatus.AI_PARSED, actor='system',
                            reason=f'Parse xong ({parse_status})')
 
+        serializer_data = JobPostSerializer(job).data
         return Response({
             'id': str(job.pk),
             'status': job.status,
             'status_label_vi': job.get_status_display(),
             'ai_parse_status': job.ai_parse_status,
             'title': job.title,
+            'category_label': serializer_data.get('category_label'),
+            'category_icon': serializer_data.get('category_icon'),
+            'schedule': serializer_data.get('schedule'),
             'clarification_questions': job.clarification_questions,
             'slots_created': job.slots.count(),
             'needs_admin_review': job.needs_admin_review,
@@ -201,10 +262,15 @@ def _create_slots(job):
         logger.warning('[JobPublish] expand_slot_dates lỗi: %s', exc)
         return
     from datetime import time as dtime
-    tf_parts = (type_data.get('time_from') or '00:00').split(':')
-    tt_parts = (type_data.get('time_to') or '00:00').split(':')
+    tf_str = type_data.get('time_from') or type_data.get('pickup_time_from') or '18:00'
+    tt_str = type_data.get('time_to') or type_data.get('pickup_time_to') or '20:00'
+    tf_parts = tf_str.split(':')
+    tt_parts = tt_str.split(':')
     tf = dtime(int(tf_parts[0]), int(tf_parts[1]))
     tt = dtime(int(tt_parts[0]), int(tt_parts[1]))
+    if tf >= tt:
+        # Dự phòng an toàn nếu thời gian kết thúc nhỏ hơn hoặc bằng bắt đầu
+        tt = dtime(min(23, tf.hour + 1), tf.minute)
     for d in dates:
         JobSlot.objects.get_or_create(
             job=job, date=d, time_from=tf,
@@ -277,4 +343,5 @@ class CandidatesAPIView(APIView):
         for cand in result['candidates']:
             cand['match_level_vi'] = matching_service.label_vi_for_level(cand['match_level'])
         result['match_level_labels_vi'] = MATCH_LEVEL_LABELS_VI
+        result['job'] = JobPostSerializer(job).data
         return Response(result)
