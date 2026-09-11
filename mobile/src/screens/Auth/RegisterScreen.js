@@ -109,12 +109,19 @@ const renderImagePicker = (label, image, setter) => (
   </View>
 );
 
-export default function RegisterScreen() {
+export default function RegisterScreen({ route }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState('parent');
+  const initialRole = route?.params?.role === 'worker' ? 'worker' : 'parent';
+  const [selectedRole, setSelectedRole] = useState(initialRole);
+
+  useEffect(() => {
+    if (route?.params?.role) {
+      setSelectedRole(route.params.role);
+    }
+  }, [route?.params?.role]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
