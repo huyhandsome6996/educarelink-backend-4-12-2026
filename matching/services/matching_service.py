@@ -77,15 +77,15 @@ def _major_match_bonus(major, job_type, required_skills=None):
     if any('tieng_' in s or s in ('ielts', 'toeic', 'ngoai_ngu') for s in req_set):
         lang_matches = []
         if any(s in ('tieng_anh', 'ielts', 'toeic') for s in req_set):
-            lang_matches.extend(['tiếng anh', 'tieng anh', 'english', 'sư phạm anh'])
+            lang_matches.extend(['tiếng anh', 'tieng anh', 'english', 'sư phạm anh', 'su pham anh', 'ngôn ngữ anh', 'ngon ngu anh'])
         if 'tieng_trung' in req_set:
-            lang_matches.extend(['tiếng trung', 'tieng trung', 'trung quốc', 'hán ngữ', 'han ngu'])
+            lang_matches.extend(['tiếng trung', 'tieng trung', 'trung quốc', 'hán ngữ', 'han ngu', 'sư phạm tiếng trung'])
         if 'tieng_nhat' in req_set:
-            lang_matches.extend(['tiếng nhật', 'tieng nhat', 'nhật bản', 'nhat ban'])
+            lang_matches.extend(['tiếng nhật', 'tieng nhat', 'nhật bản', 'nhat ban', 'sư phạm tiếng nhật'])
         if 'tieng_han' in req_set:
-            lang_matches.extend(['tiếng hàn', 'tieng han', 'hàn quốc'])
+            lang_matches.extend(['tiếng hàn', 'tieng han', 'hàn quốc', 'sư phạm tiếng hàn'])
         if 'tieng_phap' in req_set:
-            lang_matches.extend(['tiếng pháp', 'tieng phap', 'pháp'])
+            lang_matches.extend(['tiếng pháp', 'tieng phap', 'pháp', 'sư phạm tiếng pháp'])
         if 'tieng_nga' in req_set or 'tieng_a_rap_co' in req_set:
             lang_matches.extend(['tiếng nga', 'tiếng ả rập', 'a rap'])
         if lang_matches:
@@ -102,15 +102,31 @@ def _major_match_bonus(major, job_type, required_skills=None):
     if req_set & art_skills:
         return 1 if any(kw in major_l for kw in art_kw) else 0
 
-    # 2. Đối với gia sư tiểu học / văn hóa thông thường hoặc chăm sóc:
-    elementary_tutoring = {'tieu_hoc', 'luyen_chu_dep', 'toan', 'tieng_viet', 'on_tap', 'kem_hoc', 'van'}
+    # 2. Đối với gia sư tiểu học / văn hóa phổ thông (Toán, Văn, Lý, Hóa, Sinh...) hoặc chăm sóc:
+    elementary_tutoring = {
+        'tieu_hoc', 'luyen_chu_dep', 'toan', 'tieng_viet', 'on_tap', 'kem_hoc', 'van',
+        'ly', 'hoa', 'sinh'
+    }
     education_kw = ['sư phạm', 'su pham', 'giáo dục', 'giao duc', 'pedagog']
     care_kw = ['sơ cấp', 'so cap', 'chăm sóc', 'cham soc', 'nhi', 'điều dưỡng', 'dieu duong', 'y tế', 'mầm non', 'mam non']
 
-    # Nếu job_type là tutoring: chỉ match education_kw nếu job là kèm tiểu học / văn hóa thông thường HOẶC không có required_skills đặc thù
+    # Nếu job_type là tutoring: match education_kw HOẶC chuyên ngành trực tiếp môn học đó
     if job_type == 'tutoring':
         if not req_set or (req_set & elementary_tutoring):
-            return 1 if any(kw in major_l for kw in education_kw) else 0
+            if any(kw in major_l for kw in education_kw):
+                return 1
+            # Chuyên ngành trực tiếp môn học (Vật lý, Hóa học, Sinh học, Toán học, Ngữ văn...)
+            subject_kw_map = {
+                'toan': ['toán', 'toan', 'math'],
+                'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'tiếng việt', 'tieng viet'],
+                'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li'],
+                'hoa': ['hóa học', 'hoa hoc'],
+                'sinh': ['sinh học', 'sinh hoc'],
+            }
+            for s in (req_set & set(subject_kw_map.keys())):
+                if any(kw in major_l for kw in subject_kw_map[s]):
+                    return 1
+            return 0
         return 0
 
     if job_type == 'childcare' and (any(kw in major_l for kw in education_kw) or any(kw in major_l for kw in care_kw)):
@@ -264,23 +280,16 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         if gender_preference and profile.gender and profile.gender != gender_preference:
             continue
 
-        # ── Hard filter #6: Skill-Gating cho công việc yêu cầu chuyên môn đặc thù ──
-        # Với môn năng khiếu / chuyên môn cao (đàn piano, organ, vẽ, lập trình, ngoại ngữ hiếm...):
+        # ── Hard filter #6: Skill-Gating cho mọi công việc có yêu cầu kỹ năng/chuyên môn ──
+        # Bất kể môn đặc thù (Piano, Vẽ...) hay môn phổ thông (Toán, Văn, Lý, Hóa, Sinh, Ngoại ngữ...):
         # CarePartner PHẢI có ít nhất 1 kỹ năng trùng khớp HOẶC chuyên ngành đại học phù hợp.
-        # Ứng viên không có kỹ năng lẫn chuyên ngành phù hợp sẽ bị LOẠI HOÀN TOÀN khỏi danh sách đề xuất.
-        SPECIALIZED_SKILLS = {
-            'dan_piano', 'piano', 'organ', 'guitar', 'am_nhac', 'thanh_nhac',
-            've', 've_tranh', 'my_thuat', 'hoi_hoa',
-            'lap_trinh', 'scratch', 'stem', 'robotics', 'python',
-            'tieng_nga', 'tieng_a_rap_co', 'tieng_trung', 'tieng_nhat', 'tieng_han', 'tieng_phap', 'tieng_duc',
-            'mua', 'khieu_vu', 'boi_loi', 'co_vua', 'vo_thuat',
-        }
+        # Nếu hoàn toàn không có kỹ năng lẫn chuyên ngành phù hợp, CarePartner KHÔNG
+        # thể dạy/làm công việc này và bị LOẠI HOÀN TOÀN khỏi danh sách đề xuất.
         matched_skills = [s for s in (profile.skills or []) if s in required_skills]
         has_skill_match = len(matched_skills) > 0
         has_major_match = _major_match_bonus(profile.major, job.job_type, required_skills) > 0
-        is_specialized = bool(set(required_skills) & SPECIALIZED_SKILLS)
 
-        if is_specialized and not has_skill_match and not has_major_match:
+        if required_skills and not has_skill_match and not has_major_match:
             continue
 
         pool_qualified += 1
@@ -307,10 +316,10 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         weighted = sum(weights.get(f, 0) * s for f, s in subs.items()) / 100.0
         final = int(round(weighted * band_multiplier))
 
-        # Skill-Gating Score Cap: Với công việc đặc thù (âm nhạc, nghệ thuật, CNTT, ngoại ngữ hiếm...),
-        # nếu ứng viên chỉ vào pool nhờ bằng cấp/chuyên ngành mà chưa có kỹ năng thực tế (hoặc độ phủ kỹ năng thấp),
+        # Skill-Gating Score Cap: Nếu job có required_skills nhưng ứng viên chỉ vào pool nhờ bằng cấp/chuyên ngành
+        # mà chưa có kỹ năng thực tế (hoặc độ phủ kỹ năng thấp < 0.25),
         # khống chế điểm tối đa không vượt quá 68 điểm (tránh điểm ảo 90-100 do các yếu tố phụ)
-        if is_specialized and (not profile.skills or _jaccard(required_skills, profile.skills) < 0.25):
+        if required_skills and (not profile.skills or _jaccard(required_skills, profile.skills) < 0.25):
             final = min(final, 68)
 
         final = max(0, min(100, final))
