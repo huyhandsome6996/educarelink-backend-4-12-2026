@@ -18,6 +18,7 @@ from matching.models import (
 from matching.services.elo_service import EloService
 from matching.tests.base import MatchingTestBase
 from matching.services.matching_service import (
+    _major_match_bonus,
     find_candidates,
     match_level_of,
     subscore_availability,
@@ -350,3 +351,65 @@ class GenderHardFilterTest(MatchingBaseTest):
         result = find_candidates(tutoring_job)
         self.assertEqual([c['carepartner_id'] for c in result['candidates']],
                          [str(m.pk)])
+
+
+class SpecializedSkillGatingTest(MatchingBaseTest):
+    """Regression & Bug tests cho kỹ năng môn đặc thù (Piano, Múa, Vẽ, Ngoại ngữ...).
+    
+    Ngăn chặn tuyệt đối việc gán CarePartner không liên quan (Toán, Trông trẻ...)
+    cho môn đặc thù khi không có người đáp ứng.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.piano_job = JobPost.objects.create(
+            parent=self.parent, job_type='tutoring', hourly_rate_vnd=150000,
+            status='ai_parsed', latitude=21.0, longitude=105.8,
+            ai_parse_result={'required_skills': ['dan_piano'], 'urgency': 'normal'})
+        JobSlot.objects.create(job=self.piano_job, date=MONDAY,
+                               time_from=time(19, 0), time_to=time(21, 0))
+
+    def test_zero_skill_zero_major_excluded_from_pool(self):
+        """dan_piano job loại hoàn toàn candidate có 0 music skill + math major."""
+        self._seed_cp('math_teacher', rating=5.0, reviews=20, effective=1400,
+                      skills=['toan'], major='Sư phạm Toán', school='ĐH Sư Phạm')
+        result = find_candidates(self.piano_job)
+        self.assertEqual(result['total_matched'], 0)
+        self.assertEqual(result['candidates'], [])
+
+    def test_music_major_no_skill_gets_capped_not_excluded(self):
+        """dan_piano job giữ lại candidate có music major nhưng skills=[], điểm bị cap <= 68."""
+        music_cp = self._seed_cp('music_student', rating=5.0, reviews=5, effective=1200,
+                                 skills=[], major='Học viện Âm nhạc', school='Học viện Âm nhạc Quốc gia')
+        result = find_candidates(self.piano_job)
+        self.assertEqual(result['total_matched'], 1)
+        cand = result['candidates'][0]
+        self.assertEqual(cand['carepartner_id'], str(music_cp.pk))
+        self.assertLessEqual(cand['match_score'], 68.0)
+
+    def test_elementary_tutoring_still_gets_general_su_pham_bonus(self):
+        """Elementary tutoring với bằng sư phạm nói chung vẫn nhận _major_match_bonus == 1."""
+        bonus_general = _major_match_bonus('Đại học Sư phạm Hà Nội', 'tutoring', ['tieu_hoc'])
+        self.assertEqual(bonus_general, 1)
+
+        bonus_math_for_math = _major_match_bonus('Sư phạm Toán', 'tutoring', ['toan'])
+        self.assertEqual(bonus_math_for_math, 1)
+
+        # Trái lại, sư phạm toán cho đàn piano phải nhận 0
+        bonus_math_for_piano = _major_match_bonus('Sư phạm Toán', 'tutoring', ['dan_piano'])
+        self.assertEqual(bonus_math_for_piano, 0)
+
+    def test_total_matched_zero_when_no_specialist_available(self):
+        """Mô phỏng đúng bug ban đầu của user; trả về total_matched == 0 khi không có specialist nào rảnh."""
+        # 3 ứng viên xuất sắc nhưng không có ai có chuyên môn đàn piano
+        self._seed_cp('math_cp', rating=4.9, reviews=15, effective=1350,
+                      skills=['toan'], major='Sư phạm Toán', school='ĐH Sư Phạm')
+        self._seed_cp('childcare_cp', rating=5.0, reviews=30, effective=1450,
+                      skills=['trong_tre', 'nau_an'], major='Giáo dục Mầm non', school='ĐH Thủ Đô')
+        self._seed_cp('english_cp', rating=4.8, reviews=12, effective=1300,
+                      skills=['tieng_anh'], major='Ngôn ngữ Anh', school='ĐH Ngoại Ngữ')
+
+        result = find_candidates(self.piano_job)
+        self.assertEqual(result['total_matched'], 0)
+        self.assertEqual(result['candidates'], [])
+

@@ -28,28 +28,38 @@ PROMPT_KEY = 'job_parse'
 PROMPT_VERSION = 'v1'
 
 # Keyword map rule-based (fallback khi Gemini chết / không có API key)
+# QUY TẮC: Không có từ khóa < 4 ký tự (tránh false-positive substring match),
+# ngoại trừ whitelist rõ ràng duy nhất: 'mc'.
 SKILL_KEYWORDS = {
-    'toan': ['toan', 'math', 'đại số', 'hình học'],
-    'van': ['van', 'ngu van', 'ngữ văn', 'literature', 'tiếng việt', 'tieng viet'],
+    'toan': ['toán', 'toan', 'math', 'đại số', 'dai so', 'hình học', 'hinh hoc', 'môn toán', 'mon toan'],
+    'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'tiếng việt', 'tieng viet', 'literature', 'môn văn', 'mon van'],
     'luyen_chu_dep': ['luyện chữ', 'luyen chu', 'chữ đẹp', 'chu dep', 'rèn chữ', 'ren chu', 'viết chữ', 'viet chu', 'tập viết', 'tap viet'],
-    'tieng_anh': ['anh', 'english', 'tieng anh', 'tiếng anh', 'ielts', 'toeic'],
-    'ly': ['vat ly', 'ly', 'vật lý'],
-    'hoa': ['hoa hoc', 'hoa', 'hóa học'],
-    'sinh': ['sinh hoc', 'sinh', 'sinh học'],
-    'su_pham': ['su pham', 'sư phạm', 'giáo dục'],
+    'tieng_anh': ['tiếng anh', 'tieng anh', 'english', 'ielts', 'toeic', 'môn tiếng anh'],
+    'ly': ['vật lý', 'vat ly', 'môn lý', 'mon ly'],
+    'hoa': ['hóa học', 'hoa hoc', 'môn hóa', 'mon hoa'],
+    'sinh': ['sinh học', 'sinh hoc', 'môn sinh', 'mon sinh'],
+    'su_pham': ['sư phạm', 'su pham', 'giáo dục', 'giao duc'],
     'mam_non': ['mầm non', 'mam non', 'mẫu giáo', 'mau giao'],
     'trong_tre': ['trông trẻ', 'trong tre', 'chăm sóc trẻ', 'cham soc tre', 'giữ trẻ', 'giu tre'],
     'don_tre': ['đón trẻ', 'don tre', 'đưa đón', 'dua don', 'đón bé', 'don be'],
     'so_cap_cuu': ['sơ cấp cứu', 'so cap cuu', 'y tế', 'y te', 'an toàn'],
-    'nau_an': ['nấu ăn', 'nau an', 'dinh dưỡng', 'dinh duong', 'ăn dặm'],
-    'choi_cung_be': ['chơi cùng bé', 'choi cung be', 'hoạt náo', 'kể chuyện'],
-    'mc': ['mc', 'mai múng', 'dẫn chương trình', 'dan chuong trinh'],
+    'nau_an': ['nấu ăn', 'nau an', 'dinh dưỡng', 'dinh duong', 'ăn dặm', 'an dam'],
+    'choi_cung_be': ['chơi cùng bé', 'choi cung be', 'hoạt náo', 'hoat nao', 'kể chuyện', 'ke chuyen'],
+    'mc': ['mc', 'dẫn chương trình', 'dan chuong trinh'],
     'ky_nang_song': ['kỹ năng sống', 'ky nang song', 'soft skill'],
-    'dan_piano': ['piano', 'đàn', 'dan'],
-    've': ['vẽ', 've tranh', 'hội họa', 'mỹ thuật'],
-    'tieu_hoc': ['tiểu học', 'tieu hoc', 'cấp 1'],
-    'lap_trinh': ['lập trình', 'lap trinh', 'scratch', 'stem', 'robotics'],
-    'kien_nhan': ['kiên nhẫn', 'kien nhan', 'nhẫn nại'],
+    'dan_piano': ['piano', 'đàn piano', 'dan piano', 'organ', 'đàn organ', 'dan organ', 'keyboard'],
+    've': ['vẽ tranh', 've tranh', 'hội họa', 'hoi hoa', 'mỹ thuật', 'my thuat', 'dạy vẽ', 'day ve', 'học vẽ', 'hoc ve'],
+    'tieu_hoc': ['tiểu học', 'tieu hoc', 'cấp 1', 'cap 1'],
+    'lap_trinh': ['lập trình', 'lap trinh', 'scratch', 'stem', 'robotics', 'python'],
+    'tieng_trung': ['tiếng trung', 'tieng trung', 'tiếng hoa', 'tieng hoa', 'hsk4', 'hsk5', 'hsk6'],
+    'tieng_nhat': ['tiếng nhật', 'tieng nhat', 'jlpt'],
+    'tieng_han': ['tiếng hàn', 'tieng han', 'topik'],
+    'tieng_phap': ['tiếng pháp', 'tieng phap', 'delf', 'dalf'],
+    'mua': ['múa đương đại', 'mua duong dai', 'dạy múa', 'day mua', 'học múa', 'hoc mua', 'múa bale', 'mua bale', 'khieu vu', 'khiêu vũ', 'ballet'],
+    'boi_loi': ['bơi lội', 'boi loi', 'dạy bơi', 'day boi', 'học bơi', 'hoc boi'],
+    'co_vua': ['cờ vua', 'co vua', 'chess'],
+    'vo_thuat': ['võ thuật', 'vo thuat', 'karate', 'taekwondo', 'judo', 'vovinam'],
+    'kien_nhan': ['kiên nhẫn', 'kien nhan', 'nhẫn nại', 'nhan nai'],
     'cham_soc_tre': ['chăm sóc trẻ', 'cham soc tre', 'trông trẻ', 'trong tre'],
     'da_uoi': ['đa uô~', 'gọi bé dậy'],
 }
@@ -65,7 +75,17 @@ def _extract_skills(text):
     text_l = (text or '').lower()
     skills = []
     for code, kws in SKILL_KEYWORDS.items():
-        if any(kw in text_l for kw in kws):
+        matched = False
+        for kw in kws:
+            kw_clean = kw.strip().lower()
+            if not kw_clean:
+                continue
+            # Regex word boundary: không dính từ chữ liền kề để tránh false-positive substring
+            pattern = rf'(?<!\w){re.escape(kw_clean)}(?!\w)'
+            if re.search(pattern, text_l, re.IGNORECASE):
+                matched = True
+                break
+        if matched:
             skills.append(code)
     return skills
 

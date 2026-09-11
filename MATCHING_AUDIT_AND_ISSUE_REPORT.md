@@ -107,7 +107,7 @@ In `matching/services/matching_service.py`:
 When a job specifies specialized skills (`required_skills` like `dan_piano`, `luyen_chu_dep`, `tieng_anh`, `boi_loi`, `lap_trinh`, `ve`):
 1. **Mandatory Skill Intersection**: If `required_skills` contains specialized skills, CarePartners with `jaccard == 0` must NOT be awarded a passing match score.
 2. **Score Cap**: If a candidate has **0 matching skills** for a specialized subject:
-   - Their score MUST be capped at `< 45` (`match_level: 'low'`).
+   - Their score MUST be capped at `< 68` (`match_level: 'medium'` or lower).
    - They should be excluded from `top_candidates` unless the parent explicitly enables "Xem ứng viên ngành khác".
 3. **Major Bonus Restriction**: `_major_match_bonus` must only award bonus points if the candidate's major is actually relevant to the specific subject (e.g. Music / Arts for Piano, not Math Pedagogy for Piano!).
 
