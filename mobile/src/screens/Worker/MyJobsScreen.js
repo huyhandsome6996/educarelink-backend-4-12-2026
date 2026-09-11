@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobsAsWorker } from '../../api/tasks';
+import { getBookings } from '../../api/matching';
 import { checkConsent, grantConsent, triggerSOS, getSOSAlerts, resolveSOS } from '../../api/tracking';
 import { startTracking, stopTracking, isTracking as isLocationTracking, getCurrentTaskId, hasPendingResumeTask } from '../../services/LocationService';
 import NotificationBell from '../../components/NotificationBell';
@@ -11,15 +12,17 @@ import ActiveTrackingBanner from '../../components/ActiveTrackingBanner';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
 
 const TABS = [
-  { key: 'pending',  label: 'Chờ duyệt', icon: 'time-outline' },
-  { key: 'accepted', label: 'Sắp làm', icon: 'checkmark-circle-outline' },
-  { key: 'rejected', label: 'Lịch sử', icon: 'archive-outline' },
+  { key: 'accepted', label: 'Sắp làm', icon: 'calendar-outline' },
+  { key: 'history',  label: 'Lịch sử', icon: 'time-outline' },
 ];
 
 const STATUS_STYLE = {
-  pending:  { color: COLORS.warning, bg: COLORS.warningBg, label: 'Chờ duyệt', icon: 'time' },
-  accepted: { color: COLORS.primary, bg: COLORS.primaryLight, label: 'Đã nhận', icon: 'checkmark-circle' },
-  rejected: { color: COLORS.textMuted, bg: '#f3f4f6', label: 'Bị từ chối', icon: 'close-circle' },
+  accepted:    { color: COLORS.primary, bg: COLORS.primaryLight, label: 'Sắp làm', icon: 'calendar' },
+  committed:   { color: COLORS.primary, bg: COLORS.primaryLight, label: 'Đã cam kết', icon: 'checkmark-circle' },
+  in_progress: { color: '#0284C7', bg: '#e0f2fe', label: 'Đang làm', icon: 'play-circle' },
+  completed:   { color: COLORS.success, bg: '#ecfdf5', label: 'Hoàn thành', icon: 'checkmark-done-circle' },
+  history:     { color: COLORS.textMuted, bg: '#f3f4f6', label: 'Hoàn thành', icon: 'checkmark-done-circle' },
+  rejected:    { color: COLORS.textMuted, bg: '#f3f4f6', label: 'Đã hủy', icon: 'close-circle' },
 };
 
 export default function MyJobsScreen() {
@@ -44,16 +47,66 @@ export default function MyJobsScreen() {
 
   const fetchJobs = async () => {
     try {
-      const res = await getMyJobsAsWorker();
-      setApplications(res.data);
+      const combined = [];
+
+      // 1. Lấy đơn từ hệ thống ghép cặp Flow 1 (Booking)
+      try {
+        const bRes = await getBookings({ role: 'carepartner' });
+        const bookingsList = bRes.data?.results ?? bRes.data ?? [];
+        bookingsList.forEach(b => {
+          // Bỏ qua awaiting_commitment (đơn chưa xác nhận nằm ở Trang chủ)
+          if (b.status === 'awaiting_commitment') return;
+
+          const isUpcoming = ['committed', 'in_progress', 'suspected_no_show'].includes(b.status);
+
+          combined.push({
+            id: `booking_${b.id}`,
+            isBooking: true,
+            bookingId: b.id,
+            task: b.job,
+            task_title: b.job_title || 'Công việc ghép cặp',
+            task_price: b.total_value_vnd || 0,
+            task_scheduled_time: b.first_slot ? `${b.first_slot.date} · ${b.first_slot.time_from?.slice(0, 5)} - ${b.first_slot.time_to?.slice(0, 5)}` : null,
+            task_location: b.job_address || 'Địa điểm theo thỏa thuận',
+            parent_username: b.parent_name || 'Phụ huynh',
+            status: isUpcoming ? 'accepted' : 'history',
+            task_status: b.status === 'completed' ? 'completed' : b.status === 'in_progress' ? 'in_progress' : 'open',
+            raw_status: b.status,
+            status_label: b.status_label_vi || (isUpcoming ? 'Đã cam kết' : 'Hoàn thành'),
+            first_slot: b.first_slot,
+            compensation_vnd: b.compensation_vnd,
+          });
+        });
+      } catch (e) {
+        console.warn('Lỗi tải bookings:', e);
+      }
+
+      // 2. Lấy đơn từ hệ thống TaskApplication (nếu có)
+      try {
+        const res = await getMyJobsAsWorker();
+        const appsList = res.data ?? [];
+        appsList.forEach(a => {
+          // Bỏ qua pending vì theo yêu cầu người dùng "Bỏ cái chờ duyệt đi"
+          if (a.status === 'pending') return;
+          const isHistory = a.task_status === 'completed' || a.status === 'rejected';
+          combined.push({
+            ...a,
+            isBooking: false,
+            status: isHistory ? 'history' : 'accepted',
+            status_label: a.task_status === 'completed' ? 'Hoàn thành' : 'Sắp làm',
+          });
+        });
+      } catch (e) {
+        console.warn('Lỗi tải applications:', e);
+      }
+
+      setApplications(combined);
 
       // ⚡ Auto-stop tracking nếu task đã completed/cancelled
-      // (parent đã update status nhưng app carepartner chưa biết)
       const trackingTaskId = getCurrentTaskId();
       if (trackingTaskId) {
-        const trackingApp = res.data.find(a => a.task === trackingTaskId);
+        const trackingApp = combined.find(a => a.task === trackingTaskId);
         if (trackingApp) {
-          // Check task status (task_status field từ serializer)
           const taskStatus = trackingApp.task_status;
           if (taskStatus && taskStatus !== 'in_progress') {
             console.log(`[MyJobs] Task #${trackingTaskId} status=${taskStatus} → auto stop tracking`);
@@ -69,7 +122,7 @@ export default function MyJobsScreen() {
       }
 
       // Check consent cho các task được accept (task.status='in_progress')
-      const acceptedApps = res.data.filter(a => a.status === 'accepted' && a.task);
+      const acceptedApps = combined.filter(a => a.status === 'accepted' && a.task && !a.isBooking);
       const consents = {};
       await Promise.all(acceptedApps.map(async (app) => {
         try {
@@ -105,12 +158,14 @@ export default function MyJobsScreen() {
   });
 
   const filtered = applications.filter(a => {
-    if (activeTab === 'rejected') return ['rejected', 'completed'].includes(a.status);
-    return a.status === activeTab;
+    if (activeTab === 'history') {
+      return a.status === 'history' || a.task_status === 'completed' || a.status === 'rejected';
+    }
+    return a.status === 'accepted' && a.task_status !== 'completed';
   });
 
   const totalEarned = applications
-    .filter(a => a.status === 'accepted')
+    .filter(a => a.status === 'history' && (a.task_status === 'completed' || a.raw_status === 'completed'))
     .reduce((sum, a) => sum + parseFloat(a.task_price || 0), 0);
 
   const handleOpenConsent = (app) => {
@@ -198,12 +253,28 @@ export default function MyJobsScreen() {
   };
 
   const renderItem = ({ item: app }) => {
-    const st = STATUS_STYLE[app.status] || STATUS_STYLE.rejected;
+    const st = STATUS_STYLE[app.raw_status] || STATUS_STYLE[app.status] || STATUS_STYLE.rejected;
     const consent = consentMap[app.task];
     const showTrackingUI = app.status === 'accepted';
     const isCurrentlyTracking = trackingTaskId === app.task;
+    const formattedTime = app.task_scheduled_time
+      ? (String(app.task_scheduled_time).includes('·')
+          ? app.task_scheduled_time
+          : new Date(app.task_scheduled_time).toLocaleString('vi-VN'))
+      : 'Chưa có';
+
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() => {
+          if (app.isBooking) {
+            navigation.navigate('BookingDetail', { bookingId: app.bookingId });
+          } else if (app.task) {
+            navigation.navigate('TaskDetail', { taskId: app.task });
+          }
+        }}
+      >
         <View style={styles.cardRow}>
           <View style={[styles.statusIcon, { backgroundColor: st.bg }]}>
             <Ionicons name={st.icon} size={20} color={st.color} />
@@ -212,7 +283,7 @@ export default function MyJobsScreen() {
             <View style={styles.cardTop}>
               <View style={[styles.badge, { backgroundColor: st.bg }]}>
                 <View style={[styles.badgeDot, { backgroundColor: st.color }]} />
-                <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
+                <Text style={[styles.badgeText, { color: st.color }]}>{app.status_label || st.label}</Text>
               </View>
               <Text style={styles.price}>
                 {parseInt(app.task_price || 0).toLocaleString('vi-VN')}đ
@@ -221,9 +292,7 @@ export default function MyJobsScreen() {
             <Text style={styles.title} numberOfLines={1}>{app.task_title}</Text>
             <View style={styles.meta}>
               <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.metaText}>
-                {app.task_scheduled_time ? new Date(app.task_scheduled_time).toLocaleString('vi-VN') : 'Chưa có'}
-              </Text>
+              <Text style={styles.metaText}>{formattedTime}</Text>
             </View>
             <View style={styles.meta}>
               <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
@@ -244,8 +313,35 @@ export default function MyJobsScreen() {
           </View>
         )}
 
+        {/* Nút xem chi tiết cho đơn Flow 1 Matching Booking */}
+        {app.isBooking && (
+          <View style={styles.bookingActionRow}>
+            <TouchableOpacity
+              style={styles.detailBtn}
+              onPress={() => navigation.navigate('BookingDetail', { bookingId: app.bookingId })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="document-text-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.detailBtnText}>
+                {app.status === 'accepted' ? 'Chi tiết ca & Thao tác' : 'Xem chi tiết ca làm'}
+              </Text>
+            </TouchableOpacity>
+
+            {['cancelled_by_carepartner', 'no_show', 'no_show_unconfirmed', 'suspected_no_show'].includes(app.raw_status) && (
+              <TouchableOpacity
+                style={styles.appealBtn}
+                onPress={() => navigation.navigate('Appeal', { bookingId: app.bookingId })}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="megaphone-outline" size={14} color="#B45309" />
+                <Text style={styles.appealBtnText}>Kháng cáo ELO</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* === B1 — NÚT GHI NHẬT KÝ CHO TASK HOÀN THÀNH (history tab) === */}
-        {app.status === 'accepted' && (app.task_status === 'completed') && (
+        {(app.status === 'history' || app.task_status === 'completed') && !app.isBooking && (
           <>
             <TouchableOpacity
               style={styles.diaryBtn}
@@ -384,7 +480,7 @@ export default function MyJobsScreen() {
             )}
           </>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -430,10 +526,16 @@ export default function MyJobsScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Animated.View style={[styles.emptyIconCircle, { transform: [{ translateY: bounceTransform }] }]}>
-                <Ionicons name="document-outline" size={36} color={COLORS.primary} />
+                <Ionicons name="briefcase-outline" size={36} color={COLORS.primary} />
               </Animated.View>
-              <Text style={styles.emptyTitle}>Không có việc nào</Text>
-              <Text style={styles.emptyText}>Hãy ứng tuyển công việc từ bảng tin!</Text>
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'accepted' ? 'Chưa có ca làm sắp tới' : 'Chưa có lịch sử công việc'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {activeTab === 'accepted'
+                  ? 'Khi bạn bấm Xác nhận các đơn được giao ở Trang chủ, ca làm sẽ xuất hiện tại đây.'
+                  : 'Các ca làm sau khi hoàn thành sẽ được lưu trữ tại đây.'}
+              </Text>
             </View>
           }
         />
@@ -659,4 +761,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   chatBtnText: { ...TYPO.buttonSmall, color: '#fff', fontWeight: '700' },
+  // Flow 1 Booking actions
+  bookingActionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 10, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  detailBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight, borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  detailBtnText: { ...TYPO.buttonSmall, color: COLORS.primary, fontWeight: '700' },
+  appealBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: SIZES.radiusSm,
+    backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A',
+  },
+  appealBtnText: { ...TYPO.caption, color: '#B45309', fontWeight: '700' },
 });
+
