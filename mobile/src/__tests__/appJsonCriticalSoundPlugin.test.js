@@ -31,8 +31,8 @@ describe('app.json — plugin âm thanh critical (BUG #1)', () => {
     expect(fs.statSync(p).size).toBeGreaterThan(100000); // ~258KB siren 3s
   });
 
-  test('version = 1.4.3 và android.versionCode = 24 (23 hotfix crash onRefresh đã publish Play internal)', () => {
+  test('version = 1.4.3 và android.versionCode = 26 (25/24 đã phát hành internal — vc26 là bản QA + Stitch don-cua-toi mới)', () => {
     expect(appJson.version).toBe('1.4.3');
-    expect(appJson.android.versionCode).toBe(24);
+    expect(appJson.android.versionCode).toBe(26);
   });
 });

@@ -778,6 +778,464 @@ class Command(BaseCommand):
         self._log(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
 
         # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 6B: DỮ LIỆU MẪU ĐA DẠNG MỞ RỘNG (QA toàn diện 2026-09-11)
+        #  - 5 phụ huynh Hà Nội / TP.HCM chuẩn đặc tả + ví credit & nạp MoMo
+        #  - 10 CarePartner đặc tả: minhanh (Hạng Vàng · ELO 1250),
+        #    hoangnam (Kim Cương · 1420), thao (Bạc · 1100), duc (Đồng · 980),
+        #    quynh (đang bị phạt), pending (chờ duyệt), rejected (bị từ chối)
+        #    + 3 CP phân bố quận Hà Nội / TP.HCM cho thuật toán GPS
+        #  - Lịch rảnh tuần chuẩn Flow 1 + Ngày bận đột xuất (blackout)
+        #  - Bookings bổ sung 100% kịch bản: awaiting còn 14' / còn 2',
+        #    committed khóa lịch ngày mai, completed giải ngân 80/20,
+        #    no_show đền bù 50.000đ, bài đăng draft / carepartner_selected
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n[6b/12] Tạo dữ liệu mẫu mở rộng (HN/TP.HCM, 10 CP đặc tả, bookings 100% kịch bản)...")
+
+        # ---- 6B.1. Phụ huynh bổ sung (Hà Nội + TP.HCM) ----
+        extra_parents = [
+            {
+                "username": "parent_lan", "first_name": "Mai Lan", "last_name": "Nguyễn",
+                "email": "mailan.nguyen@gmail.com", "phone_number": "0908010101",
+                "address": "Chung cư Vinhomes Central Park, P. 22, Bình Thạnh, TP. Hồ Chí Minh",
+                "lat": 10.7935, "lng": 106.7220, "credit": 2000000,
+                "credit_note": "Nạp tiền ví MoMo 2.000.000đ — ký quỹ các ca làm",
+            },
+            {
+                "username": "parent_huong", "first_name": "Thu Hương", "last_name": "Ngô",
+                "email": "thuhuong.ngo@gmail.com", "phone_number": "0908020202",
+                "address": "25 Kim Mã Thượng, P. Giảng Võ, Q. Ba Đình, Hà Nội",
+                "lat": 21.0255, "lng": 105.8115, "credit": 1500000,
+                "credit_note": "Nạp credit — 2 con đang cần gia sư Tiếng Anh",
+            },
+            {
+                "username": "parent_long", "first_name": "Trần Long", "last_name": "Phan",
+                "email": "tranlong.phan@gmail.com", "phone_number": "0908030303",
+                "address": "Khu phố 3, P. Tân Phong, Q.7, TP. Hồ Chí Minh (gần Trường Quốc tế Nam Sài Gòn)",
+                "lat": 10.7320, "lng": 106.7190, "credit": 1200000,
+                "credit_note": "Nạp credit — đăng ký đón bé hàng ngày từ trường Quốc tế Nam Sài Gòn",
+            },
+            {
+                "username": "parent_linh", "first_name": "Khánh Linh", "last_name": "Đỗ",
+                "email": "khanhlinh.do@gmail.com", "phone_number": "0908040404",
+                "address": "Khu đô thị Vinhomes Grand Park, P. Linh Tây, TP. Thủ Đức, TP. Hồ Chí Minh",
+                "lat": 10.8580, "lng": 106.7725, "credit": 900000,
+                "credit_note": "Nạp credit — cần trông trẻ cuối tuần",
+            },
+            {
+                "username": "parent_minh", "first_name": "Quang Minh", "last_name": "Vũ",
+                "email": "quangminh.vu@gmail.com", "phone_number": "0908050505",
+                "address": "12 Hàng Bún, P. Thành Công, Q. Ba Đình, Hà Nội",
+                "lat": 21.0330, "lng": 105.8250, "credit": 300000,
+                "credit_note": "Tài khoản mới — vừa nạp credit dùng thử",
+            },
+        ]
+        for p in extra_parents:
+            u, _ = User.objects.update_or_create(
+                username=p["username"],
+                defaults={
+                    "first_name": p["first_name"], "last_name": p["last_name"],
+                    "email": p["email"], "phone_number": p["phone_number"],
+                    "address": p["address"], "role": "parent",
+                    "latitude": p["lat"], "longitude": p["lng"],
+                    "is_active": True, "is_verified": True, "is_approved": True,
+                    "first_login": False,
+                }
+            )
+            u.set_password(TEST_PASSWORD)
+            u.save()
+            parent_dict[p["username"]] = u
+            CreditBalance.objects.update_or_create(parent=u, defaults={"credit_vnd": p["credit"]})
+            CreditTransaction.objects.create(
+                parent=u, amount_vnd=p["credit"],
+                kind="platform_credit", status="issued", note=p["credit_note"])
+            self._log(f"   + [Parent MỚI] {u.get_full_name()} ({u.username}) — Ví {p['credit']:,}đ")
+
+        # ---- 6B.2. CarePartner bổ sung theo đặc tả (10 tài khoản) ----
+        extra_workers = [
+            {
+                "username": "worker_minhanh", "first_name": "Minh Anh", "last_name": "Nguyễn",
+                "email": "minhanh.nguyen@ftu.edu.vn", "phone_number": "0912010101",
+                "address": "91 Chùa Láng, P. Láng Thượng, Q. Đống Đa, Hà Nội",
+                "lat": 21.0180, "lng": 105.8065, "tier": "gold",
+                "elo": 1250, "band": "good",
+                "school": "Đại học Ngoại Thương", "major": "Kinh tế Quốc tế",
+                "has_vehicle": True, "gender": "female",
+                "skills": ["tieng_anh", "ielts", "toan", "tieu_hoc", "cap_1", "kien_nhan"],
+                "qualifications": ["Sinh viên ĐH Ngoại Thương — CCCD & Bằng khen đã duyệt", "IELTS 8.0", "Tỷ lệ hoàn thành 99%"],
+                "summary": "Sinh viên ĐH Ngoại Thương — Hạng Vàng · ELO 1.250, chuyên gia sư Tiếng Anh giao tiếp (IELTS 8.0) cho tiểu học & THCS, tỷ lệ hoàn thành 99%.",
+                "jobs_done": 38, "rating": 4.95,
+            },
+            {
+                "username": "worker_hoangnam", "first_name": "Hoàng Nam", "last_name": "Lê",
+                "email": "hoangnam.le@hcmue.edu.vn", "phone_number": "0912020202",
+                "address": "35 Cầu Giấy, P. Dịch Vọng, Q. Cầu Giấy, Hà Nội",
+                "lat": 21.0285, "lng": 105.7945, "tier": "diamond",
+                "elo": 1420, "band": "trusted",
+                "school": "Đại học Sư Phạm Thể Dục Thể Thao Hà Nội", "major": "Giáo dục Thể chất",
+                "has_vehicle": True, "gender": "male",
+                "skills": ["dontre", "an_toan_giao_thong", "the_thao", "bang_lai_a1", "so_cap_cuu"],
+                "qualifications": ["Sinh viên ĐH SP TDTT Hà Nội", "Bằng lái xe A1 đã đối soát", "Mũ bảo hiểm trẻ em chuẩn"],
+                "summary": "Sinh viên ĐH Sư Phạm TDTT — Hạng Kim Cương · ELO 1.420, có xe máy riêng kèm bằng lái A1 đã đối soát, chuyên đón trẻ an toàn các khung giờ tan học.",
+                "jobs_done": 52, "rating": 4.9,
+            },
+            {
+                "username": "worker_thao", "first_name": "Phương Thảo", "last_name": "Trần",
+                "email": "phuongthao.tran@mtse.edu.vn", "phone_number": "0912030303",
+                "address": "18 Xuân Thủy, P. Dịch Vọng Hậu, Q. Cầu Giấy, Hà Nội",
+                "lat": 21.0310, "lng": 105.7855, "tier": "silver",
+                "elo": 1100, "band": "normal",
+                "school": "Trường CĐ Sư phạm Mầm non Trung ương", "major": "Giáo dục Mầm non",
+                "has_vehicle": False, "gender": "female",
+                "skills": ["trong_tre", "mam_non", "choi_cung_be", "ve_tranh", "ke_chuyen"],
+                "qualifications": ["Giáo viên mầm non thực tập 2 năm", "Chứng chỉ Montessori cơ bản"],
+                "summary": "Giáo viên mầm non — Hạng Bạc · ELO 1.100, chuyên trông trẻ mầm non cuối tuần, giỏi tổ chức trò chơi phát triển trí tuệ.",
+                "jobs_done": 17, "rating": 4.8,
+            },
+            {
+                "username": "worker_duc", "first_name": "Minh Đức", "last_name": "Phạm",
+                "email": "minhduc.pham@hust.edu.vn", "phone_number": "0912040404",
+                "address": "Số 1 Đại Cồ Việt, P. Bách Khoa, Q. Hai Bà Trưng, Hà Nội",
+                "lat": 21.0065, "lng": 105.8345, "tier": "bronze",
+                "elo": 980, "band": "normal",
+                "school": "Đại học Bách Khoa Hà Nội", "major": "Khoa học Máy tính",
+                "has_vehicle": False, "gender": "male",
+                "skills": ["toan", "lap_trinh", "cap_2", "cap_3"],
+                "qualifications": ["Mới tham gia nền tảng", "Giải Nhì Tin học sinh viên"],
+                "summary": "Sinh viên Bách Khoa — Hạng Đồng · ELO 980, mới tham gia nền tảng, nhận dạy Toán & Lập trình tư duy cấp 2-3.",
+                "jobs_done": 2, "rating": 4.5,
+            },
+            {
+                "username": "worker_quynh", "first_name": "Quỳnh Chi", "last_name": "Vũ",
+                "email": "quynhchi.vu@vnu.edu.vn", "phone_number": "0912050505",
+                "address": "144 Xuân Thủy, P. Cầu Giấy, Hà Nội",
+                "lat": 21.0365, "lng": 105.7835, "tier": "silver",
+                "elo": 1040, "band": "normal",
+                "school": "Đại học Khoa học Xã hội & Nhân văn", "major": "Tâm lý học",
+                "has_vehicle": True, "gender": "female",
+                "skills": ["trong_tre", "tam_ly", "ke_chuyen", "ho_tro_hoc_tap"],
+                "qualifications": ["Sinh viên Tâm lý ĐHQG Hà Nội", "Kinh nghiệm 2 năm giữ bé"],
+                "summary": "Sinh viên Tâm lý ĐHQG — Hạng Bạc · ELO 1.040, đang có 1 đơn bị phạt trừ ELO do hỏng xe, đã nộp đơn kháng cáo chờ Admin duyệt.",
+                "jobs_done": 11, "rating": 4.7,
+            },
+            {
+                "username": "worker_pending", "first_name": "Như Ngọc", "last_name": "Hồ",
+                "email": "nhungoc.ho@student.hueuni.edu.vn", "phone_number": "0912060606",
+                "address": "KTX ĐH Khoa học Huế, 77 Nguyễn Huệ, TP. Huế",
+                "lat": 16.4598, "lng": 107.5882, "tier": "bronze",
+                "elo": 1200, "band": "normal", "is_approved": False,
+                "school": "Đại học Khoa học - Đại học Huế", "major": "Ngữ văn",
+                "has_vehicle": False, "gender": "female",
+                "skills": ["ngu_van", "so_cap", "re_chan"],
+                "qualifications": ["Hồ sơ mới nộp — CCCD đang chờ Admin duyệt"],
+                "summary": "Hồ sơ mới nộp, CCCD đang chờ Admin duyệt — chưa thể nhận việc.",
+                "jobs_done": 0, "rating": 0,
+            },
+            {
+                "username": "worker_rejected", "first_name": "Đức Thắng", "last_name": "Lý",
+                "email": "ducthang.ly@gmail.com", "phone_number": "0912070707",
+                "address": "21 An Dương Vương, P. Phú Hội, TP. Huế",
+                "lat": 16.4705, "lng": 107.5985, "tier": "bronze",
+                "elo": 1200, "band": "normal", "is_approved": False,
+                "school": "Cao đẳng Cộng đồng Thừa Thiên Huế", "major": "Kế toán",
+                "has_vehicle": True, "gender": "male",
+                "skills": ["toan", "cap_1"],
+                "qualifications": ["Bằng cấp bị từ chối — ảnh bằng chụp mờ, không đọc được tên trường & số quyết định"],
+                "summary": "Bằng cấp bị từ chối kèm ghi chú của Admin — cần nộp lại minh chứng rõ nét hơn.",
+                "jobs_done": 0, "rating": 0,
+            },
+            {
+                "username": "worker_thanhmai", "first_name": "Thanh Mai", "last_name": "Bùi",
+                "email": "thanhmai.bui@hanoi.edu.vn", "phone_number": "0912080808",
+                "address": "28 Nguyễn Chí Thanh, P. Láng Hạ, Q. Đống Đa, Hà Nội",
+                "lat": 21.0155, "lng": 105.8125, "tier": "silver",
+                "elo": 1150, "band": "normal",
+                "school": "Đại học Sư phạm Hà Nội", "major": "Giáo dục Tiểu học",
+                "has_vehicle": False, "gender": "female",
+                "skills": ["tieu_hoc", "re_chan", "tieng_viet", "toan_tieu_hoc"],
+                "qualifications": ["Sinh viên ĐHSP Hà Nội năm 4", "Kinh nghiệm dạy phụ đạo tiểu học 3 năm"],
+                "summary": "Sinh viên Sư phạm Hà Nội — Hạng Bạc · ELO 1.150, chuyên rèn chữ và kèm Toán tiểu học khu vực Đống Đa, Cầu Giấy.",
+                "jobs_done": 21, "rating": 4.85,
+            },
+            {
+                "username": "worker_giahan", "first_name": "Gia Hân", "last_name": "Chu",
+                "email": "giahan.chu@ueh.edu.vn", "phone_number": "0912090909",
+                "address": "279 Nguyễn Đình Chiểu, P. 5, Q. 3, TP. Hồ Chí Minh",
+                "lat": 10.7830, "lng": 106.6905, "tier": "gold",
+                "elo": 1290, "band": "good",
+                "school": "Đại học Kinh tế TP. Hồ Chí Minh", "major": "Tài chính Quốc tế",
+                "has_vehicle": True, "gender": "female",
+                "skills": ["tieng_anh", "toan", "cap_2", "ielts"],
+                "qualifications": ["Sinh viên UEH — IELTS 7.5", "Gia sư 3 năm cho học sinh Q.3, Q.10"],
+                "summary": "Sinh viên UEH — Hạng Vàng · ELO 1.290, gia sư Tiếng Anh & Toán cấp 2 khu vực trung tâm Sài Gòn, có xe máy di chuyển linh hoạt.",
+                "jobs_done": 33, "rating": 4.92,
+            },
+            {
+                "username": "worker_vietdung", "first_name": "Việt Dũng", "last_name": "Ngô",
+                "email": "vietdung.ngo@hcmut.edu.vn", "phone_number": "0912101010",
+                "address": "268 Lý Thường Kiệt, P. 14, Q. 10, TP. Hồ Chí Minh",
+                "lat": 10.7765, "lng": 106.6660, "tier": "silver",
+                "elo": 1180, "band": "normal",
+                "school": "Đại học Bách Khoa TP. Hồ Chí Minh", "major": "Kỹ thuật Điện tử",
+                "has_vehicle": True, "gender": "male",
+                "skills": ["toan", "vat_ly", "cap_3", "dontre"],
+                "qualifications": ["Sinh viên Bách Khoa TP.HCM", "Bằng lái A1", "Gia sư Lý cấp 3 từ năm nhất"],
+                "summary": "Sinh viên Bách Khoa TP.HCM — Hạng Bạc · ELO 1.180, nhận dạy Vật Lý cấp 3 và đón trẻ khu vực Q.10, Bình Thạnh.",
+                "jobs_done": 19, "rating": 4.75,
+            },
+        ]
+        worker_dict2 = {}
+        for w in extra_workers:
+            u, _ = User.objects.update_or_create(
+                username=w["username"],
+                defaults={
+                    "first_name": w["first_name"], "last_name": w["last_name"],
+                    "email": w["email"], "phone_number": w["phone_number"],
+                    "address": w["address"], "role": "worker",
+                    "latitude": w["lat"], "longitude": w["lng"],
+                    "is_active": True, "is_verified": True,
+                    "is_approved": w.get("is_approved", True),
+                    "first_login": False,
+                    "tier": w["tier"],
+                    "ai_profile_summary": w["summary"],
+                }
+            )
+            u.set_password(TEST_PASSWORD)
+            u.save()
+            worker_dict2[w["username"]] = u
+            band_obj = elo_bands.get(w["band"])
+            profile, _ = CarePartnerProfile.objects.update_or_create(
+                user=u,
+                defaults={
+                    "hidden_elo": w["elo"], "effective_elo": float(w["elo"]),
+                    "band": band_obj, "band_updated_at": now,
+                    "has_vehicle": w["has_vehicle"], "gender": w["gender"],
+                    "school": w["school"], "major": w["major"], "skills": w["skills"],
+                    "jobs_completed": w["jobs_done"],
+                    "rating_avg": w["rating"],
+                    "review_count": max(1, w["jobs_done"] // 3) if w["jobs_done"] else 0,
+                    "responded_within_sla": max(1, w["jobs_done"]),
+                    "responses_total": max(1, w["jobs_done"] + 1),
+                    "streak_count": min(5, w["jobs_done"]),
+                }
+            )
+            for q in w["qualifications"]:
+                CredentialSubmission.objects.get_or_create(
+                    worker=u, credential_type="certificate",
+                    defaults={"title": q[:200],
+                              "status": "approved" if u.is_approved and w["jobs_done"] > 0 else "pending",
+                              "admin_review": q})
+            self._log(f"   + [CP MỚI] {u.get_full_name()} ({u.username}) — ELO {w['elo']} ·{'chờ duyệt' if not u.is_approved else 'đã duyệt'}")
+
+        # ---- 6B.3. Lịch rảnh tuần chuẩn Flow 1 + Blackout ngày bận ----
+        availability_plan = {
+            "worker_minhanh": [(0, "18:00", "21:00"), (2, "18:00", "21:00"), (4, "18:00", "21:00"), (5, "14:00", "18:00")],
+            "worker_hoangnam": [(0, "16:00", "18:30"), (1, "16:00", "18:30"), (2, "16:00", "18:30"), (3, "16:00", "18:30"), (4, "16:00", "18:30")],
+            "worker_thao": [(5, "08:00", "17:00"), (6, "08:00", "17:00")],
+            "worker_giahan": [(1, "17:00", "20:30"), (3, "17:00", "20:30"), (5, "14:00", "19:00")],
+            "worker_thanhmai": [(0, "18:00", "20:30"), (3, "18:00", "20:30"), (6, "08:00", "11:30")],
+        }
+        for uname, windows in availability_plan.items():
+            cp_user = worker_dict2.get(uname)
+            if not cp_user:
+                continue
+            for weekday, tf, tt in windows:
+                CarePartnerAvailability.objects.get_or_create(
+                    carepartner=cp_user, weekday=weekday,
+                    time_from=datetime.time(*map(int, tf.split(":"))),
+                    time_to=datetime.time(*map(int, tt.split(":"))))
+            self._log(f"   + [Lịch rảnh Flow 1] {uname}: {len(windows)} khung giờ/tuần")
+
+        # Blackout — ngày bận đột xuất: worker_minhanh bận thi học kỳ thứ 5 tuần tới
+        # (thứ 5 = weekday 3 → tính ngày thứ 5 kế tiếp từ hôm nay)
+        days_to_thursday = (3 - today.weekday()) % 7 or 7
+        exam_day = today + timedelta(days=days_to_thursday)
+        CarePartnerBlackout.objects.get_or_create(
+            carepartner=worker_dict2["worker_minhanh"], date=exam_day,
+            defaults={"reason": "exam", "note": "Bận thi học kỳ — hệ thống loại khỏi ghép cặp trong ngày này."})
+        CarePartnerBlackout.objects.get_or_create(
+            carepartner=worker_dict2["worker_quynh"], date=today + timedelta(days=3),
+            defaults={"reason": "family", "note": "Về quê việc gia đình — bận cả ngày."})
+        self._log(f"   + [Blackout] worker_minhanh bận thi ngày {exam_day.strftime('%d/%m/%Y')} (cả ngày) + worker_quynh bận sau 3 ngày")
+
+        # ---- 6B.4. Bookings bổ sung — 100% kịch bản kiểm thử ----
+        # Kịch bản F1: Chờ cam kết MỚI TINH — còn đúng 14 phút (worker_minhanh)
+        job6 = JobPost.objects.create(
+            parent=parent_dict["parent_lan"],
+            job_type=JobPost.JobType.TUTORING,
+            title="Gia sư Tiếng Anh giao tiếp cho bé 8 tuổi — lớp 3",
+            description="Bé học lớp 3 trường Quốc tế, cần luyện phát âm và phản xạ giao tiếp. Nhà có sẵn flashcard & phòng học riêng.",
+            hourly_rate_vnd=200000, status="carepartner_selected",
+            latitude=parent_dict["parent_lan"].latitude,
+            longitude=parent_dict["parent_lan"].longitude,
+            location_note="Chung cư Vinhomes Central Park, P. 22, Bình Thạnh",
+            type_data={"subject": "Tiếng Anh giao tiếp", "grade": "Lớp 3",
+                       "child_age_group": "6-11", "number_of_children": 1,
+                       "notes": "Nhà có sẵn flashcard & phòng học riêng"},
+            selected_carepartner=worker_dict2["worker_minhanh"], total_matched=5,
+        )
+        slot6 = JobSlot.objects.create(
+            job=job6, date=today, time_from=datetime.time(18, 30), time_to=datetime.time(20, 30),
+            status=JobSlot.SlotStatus.LOCKED)
+        booking6 = Booking.objects.create(
+            job=job6, carepartner=worker_dict2["worker_minhanh"], parent=parent_dict["parent_lan"],
+            status="awaiting_commitment",
+            selected_at=now - timedelta(minutes=1),
+            commit_deadline=now + timedelta(minutes=14),   # Còn 14 phút đếm ngược — banner khẩn cấp
+            total_value_vnd=400000,
+        )
+        self._log(f"   + [Kịch bản F1] Awaiting còn 14 PHÚT — minhanh/parent_lan: {booking6.id}")
+
+        # Kịch bản F2: Chờ cam kết SẮP HẾT HẠN — còn đúng 2 phút (test timeout)
+        job7 = JobPost.objects.create(
+            parent=parent_dict["parent_huong"],
+            job_type=JobPost.JobType.TUTORING,
+            title="Gia sư Toán tư duy cho bé chuẩn bị vào lớp 1",
+            description="Cần cô/thầy kiên nhẫn rèn tư duy toán qua trò chơi cho bé 5 tuổi rưỡi, 2 buổi tối mỗi tuần.",
+            hourly_rate_vnd=150000, status="carepartner_selected",
+            latitude=parent_dict["parent_huong"].latitude,
+            longitude=parent_dict["parent_huong"].longitude,
+            location_note="25 Kim Mã Thượng, Ba Đình, Hà Nội",
+            type_data={"subject": "Toán tư duy", "grade": "Mẫu giáo lớn",
+                       "child_age_group": "3-6", "number_of_children": 1},
+            selected_carepartner=worker_dict2["worker_thao"], total_matched=4,
+        )
+        JobSlot.objects.create(
+            job=job7, date=today + timedelta(days=1), time_from=datetime.time(19, 0), time_to=datetime.time(20, 30),
+            status=JobSlot.SlotStatus.LOCKED)
+        booking7 = Booking.objects.create(
+            job=job7, carepartner=worker_dict2["worker_thao"], parent=parent_dict["parent_huong"],
+            status="awaiting_commitment",
+            selected_at=now - timedelta(minutes=13),
+            commit_deadline=now + timedelta(minutes=2),    # Còn 2 phút — test phản ứng đồng hồ & timeout
+            total_value_vnd=300000,
+        )
+        self._log(f"   + [Kịch bản F2] Awaiting còn 2 PHÚT — thao/parent_huong: {booking7.id}")
+
+        # Kịch bản F3: Đã cam kết — khóa lịch ngày mai (hiện SĐT + Google Maps)
+        job8 = JobPost.objects.create(
+            parent=parent_dict["parent_long"],
+            job_type=JobPost.JobType.PICKUP,
+            title="Đón bé tan trường Quốc tế Nam Sài Gòn về Q.7",
+            description="Đón bé lúc 16h30 tại cổng trường Quốc tế Nam Sài Gòn, đưa về nhà khu phố 3 Q.7. Đã trang bị mũ bảo hiểm trẻ em.",
+            hourly_rate_vnd=80000, status="carepartner_selected",
+            latitude=parent_dict["parent_long"].latitude,
+            longitude=parent_dict["parent_long"].longitude,
+            location_note="Cổng trường Quốc tế Nam Sài Gòn → Khu phố 3, P. Tân Phong, Q.7",
+            type_data={"school_or_pickup_place_name": "Trường Quốc tế Nam Sài Gòn",
+                       "child_age_group": "6-11", "number_of_children": 1,
+                       "transport_note": "Xe máy — mũ bảo hiểm trẻ em chuẩn"},
+            selected_carepartner=worker_dict2["worker_hoangnam"], total_matched=6,
+        )
+        JobSlot.objects.create(
+            job=job8, date=today + timedelta(days=1), time_from=datetime.time(16, 30), time_to=datetime.time(18, 0),
+            status=JobSlot.SlotStatus.LOCKED)
+        booking8 = Booking.objects.create(
+            job=job8, carepartner=worker_dict2["worker_hoangnam"], parent=parent_dict["parent_long"],
+            status="committed",
+            selected_at=now - timedelta(hours=2),
+            commit_deadline=now - timedelta(hours=1),
+            committed_at=now - timedelta(minutes=90),
+            total_value_vnd=80000,
+        )
+        self._log(f"   + [Kịch bản F3] COMMITTED khóa lịch ngày mai — hoangnam/parent_long: {booking8.id}")
+
+        # Kịch bản F5: Hoàn thành xuất sắc — giải ngân 80% vào ví, 20% phí sàn, +25 ELO
+        job9 = JobPost.objects.create(
+            parent=parent_dict["parent_lan"],
+            job_type=JobPost.JobType.TUTORING,
+            title="Gia sư Tiếng Anh luyện thi Cambridge Starters — đã hoàn thành",
+            description="Luyện đề và phát âm chuẩn Cambridge Starters cho bé 8 tuổi, 2 buổi/tuần.",
+            hourly_rate_vnd=200000, status="completed",
+            latitude=parent_dict["parent_lan"].latitude,
+            longitude=parent_dict["parent_lan"].longitude,
+            location_note="Chung cư Vinhomes Central Park, P. 22, Bình Thạnh",
+            type_data={"subject": "Tiếng Anh Cambridge", "grade": "Lớp 3",
+                       "child_age_group": "6-11", "number_of_children": 1},
+            selected_carepartner=worker_dict2["worker_minhanh"],
+        )
+        JobSlot.objects.create(
+            job=job9, date=today - timedelta(days=2), time_from=datetime.time(18, 30), time_to=datetime.time(20, 30),
+            status=JobSlot.SlotStatus.DONE)
+        booking9 = Booking.objects.create(
+            job=job9, carepartner=worker_dict2["worker_minhanh"], parent=parent_dict["parent_lan"],
+            status="completed",
+            selected_at=now - timedelta(days=4),
+            commit_deadline=now - timedelta(days=4, hours=-1),
+            committed_at=now - timedelta(days=4, hours=-2),
+            started_at=now - timedelta(days=2, hours=2),
+            ended_at=now - timedelta(days=2),
+            total_value_vnd=400000,
+            elo_delta_applied=25,
+        )
+        EloLedger.objects.create(
+            carepartner=worker_dict2["worker_minhanh"], booking=booking9, delta=25,
+            reason_code="job_completed", elo_before=1250, elo_after=1275,
+            note="Hoàn thành xuất sắc buổi dạy Tiếng Anh — phụ huynh đánh giá 5 sao")
+        CreditTransaction.objects.get_or_create(
+            parent=parent_dict["parent_lan"], kind="platform_credit", note__startswith="Ký quỹ & giải ngân ca gia sư",
+            defaults={"amount_vnd": 400000, "status": "used",
+                      "note": "Ký quỹ & giải ngân ca gia sư 400.000đ — CP nhận 320.000đ (80%), phí sàn 80.000đ (20%)"})
+        self._log(f"   + [Kịch bản F5] COMPLETED giải ngân 320.000đ (80%) — minhanh/parent_lan: {booking9.id}")
+
+        # Kịch bản F7: No-show — đền bù ví tín dụng 50.000đ cho phụ huynh + phạt T5
+        job10 = JobPost.objects.create(
+            parent=parent_dict["parent_linh"],
+            job_type=JobPost.JobType.CHILDCARE,
+            title="Trông bé mầm non tối thứ 4 — CP không đến",
+            description="Trông bé 5 tuổi từ 18h-21h, cho bé ăn tối và chơi xếp hình.",
+            hourly_rate_vnd=100000, status="needs_replacement",
+            latitude=parent_dict["parent_linh"].latitude,
+            longitude=parent_dict["parent_linh"].longitude,
+            location_note="Vinhomes Grand Park, Thủ Đức",
+            type_data={"child_age_group": "3-6", "number_of_children": 1,
+                       "care_duties": ["cho_an", "choi_xep_hinh"]},
+            selected_carepartner=worker_dict2["worker_duc"],
+        )
+        booking10 = Booking.objects.create(
+            job=job10, carepartner=worker_dict2["worker_duc"], parent=parent_dict["parent_linh"],
+            status="no_show",
+            selected_at=now - timedelta(days=2),
+            commit_deadline=now - timedelta(days=2, hours=-1),
+            committed_at=now - timedelta(days=1, hours=22),
+            started_at=now - timedelta(days=1, hours=20),
+            total_value_vnd=300000,
+            compensation_vnd=50000,     # Đền bù 50.000đ cho phụ huynh theo quy chế T5
+            elo_delta_applied=-50,
+            cancel_reason_code="other",
+            cancelled_at=now - timedelta(days=1, hours=19),
+            cancelled_by="system",
+            cancel_note="CarePartner không đến sau 20 phút — hệ thống ghi nhận no_show và đền bù phụ huynh.",
+        )
+        EloLedger.objects.create(
+            carepartner=worker_dict2["worker_duc"], booking=booking10, delta=-50,
+            reason_code="T5", elo_before=980, elo_after=930,
+            note="T5 — Không đến làm việc, đền bù phụ huynh 50.000đ từ ví tín dụng")
+        CreditTransaction.objects.get_or_create(
+            parent=parent_dict["parent_linh"], kind="platform_credit", note__startswith="Đền bù no-show",
+            defaults={"amount_vnd": 50000, "status": "issued",
+                      "note": "Đền bù no-show 50.000đ — CP không đến ca trông trẻ tối thứ 4"})
+        self._log(f"   + [Kịch bản F7] NO_SHOW đền bù 50.000đ — duc/parent_linh: {booking10.id}")
+
+        # Kịch bản E1: Bài đăng NHÁP của phụ huynh mới (parent_minh)
+        job11 = JobPost.objects.create(
+            parent=parent_dict["parent_minh"],
+            job_type=JobPost.JobType.CHILDCARE,
+            title="Ca nháp — trông bé cuối tuần (đang soạn)",
+            description="Đang soạn dở: cần người trông bé 4 tuổi chiều Chủ Nhật khi bố mẹ đi sự kiện.",
+            hourly_rate_vnd=100000, status="draft",
+            latitude=parent_dict["parent_minh"].latitude,
+            longitude=parent_dict["parent_minh"].longitude,
+            type_data={"child_age_group": "3-6", "number_of_children": 1},
+        )
+        self._log(f"   + [Kịch bản E1] Bài đăng DRAFT — parent_minh: {job11.id}")
+
+        # Điều chỉnh booking5: hủy cách đây 2 ngày → kháng cáo CÒN 5 NGÀY theo đặc tả
+        booking5.cancelled_at = now - timedelta(days=2)
+        booking5.save(update_fields=["cancelled_at"])
+        self._log("   + Điều chỉnh booking5: hủy cách đây 2 ngày → kháng cáo còn 5 ngày")
+        self._log(f"   + Tổng Flow 1 mở rộng: +5 phụ huynh, +10 CarePartner, +6 booking đặc tả")
+
+        # ═══════════════════════════════════════════════════════════════
         #  PHẦN 7: CORE TASKS (13 CÔNG VIỆC ĐỦ TẤT CẢ TRẠNG THÁI)
         # ═══════════════════════════════════════════════════════════════
         self._log("\n[7/12] Tạo 13 công việc Core Tasks (open, in_progress, completed, cancelled)...")

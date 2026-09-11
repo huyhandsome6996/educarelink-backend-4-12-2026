@@ -441,10 +441,15 @@ class LandingSurvey(models.Model):
         ('phu-huynh', 'Phụ huynh'),
     )
     INTEREST_CHOICES = (
-        ('gia-su', 'Gia sư tại nhà'),
-        ('cham-soc-tre', 'Chăm sóc trẻ em'),
-        ('don-dep', 'Dọn dẹp nhà cửa'),
-        ('mua-sam', 'Mua sắm hộ'),
+        # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi (khóa định vị)
+        ('tutoring', 'Gia sư học tập tại nhà'),
+        ('pickup', 'Đưa đón bé tan học'),
+        ('childcare', 'Trông trẻ & Chơi cùng con tại nhà'),
+        # Giá trị cũ giữ lại để hiển thị dữ liệu khảo sát đã lưu trước đây
+        ('gia-su', 'Gia sư tại nhà (cũ)'),
+        ('cham-soc-tre', 'Chăm sóc trẻ em (cũ)'),
+        ('don-dep', 'Dọn dẹp nhà cửa (cũ)'),
+        ('mua-sam', 'Mua sắm hộ (cũ)'),
         ('an-toan', 'Định vị & an toàn thời gian thực'),
         ('nhat-ky', 'Nhật ký chăm sóc'),
     )
@@ -482,9 +487,21 @@ class LandingSignup(models.Model):
         ('dung-thu', 'Dùng thử miễn phí'),
     )
     TIME_SLOT_CHOICES = (
-        ('sang', 'Buổi sáng (8:00 – 11:00)'),
-        ('chieu', 'Buổi chiều (13:00 – 17:00)'),
-        ('toi', 'Buổi tối (18:00 – 20:00)'),
+        ('sang', 'Sáng (08:30 – 11:30)'),
+        ('chieu', 'Chiều (13:30 – 17:00)'),
+        ('toi', 'Tối (18:30 – 20:30)'),
+    )
+    SERVICE_CHOICES = (
+        ('tutoring', 'Gia sư học tập'),
+        ('pickup', 'Đưa đón bé tan học'),
+        ('childcare', 'Trông trẻ tại nhà'),
+        ('chua-ro', 'Chưa rõ — cần tư vấn thêm'),
+    )
+    CITY_CHOICES = (
+        ('Hà Nội', 'Hà Nội'),
+        ('TP. Hồ Chí Minh', 'TP. Hồ Chí Minh'),
+        ('Đà Nẵng', 'Đà Nẵng'),
+        ('Tỉnh thành khác', 'Tỉnh thành khác'),
     )
 
     full_name = models.CharField(max_length=200)
@@ -500,6 +517,18 @@ class LandingSignup(models.Model):
     trial_consent = models.BooleanField(
         default=False,
         help_text='Đồng ý kích hoạt dùng thử (chỉ cho dùng thử)'
+    )
+    interested_service = models.CharField(
+        max_length=20, choices=SERVICE_CHOICES, blank=True, default='',
+        help_text='Dịch vụ quan tâm nhất (phân khúc thị trường — bổ sung 2026-09-11)'
+    )
+    location_city = models.CharField(
+        max_length=50, choices=CITY_CHOICES, blank=True, default='',
+        help_text='Tỉnh/Thành phố của bạn (địa bàn phủ sóng)'
+    )
+    location_district = models.CharField(
+        max_length=100, blank=True, default='',
+        help_text='Quận/Huyện (VD: Cầu Giấy, Quận 7, TP. Thủ Đức...)'
     )
     note = models.TextField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
