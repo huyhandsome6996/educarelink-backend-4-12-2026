@@ -3251,7 +3251,7 @@ class AdminFeedbackExcelAPIView(APIView):
         }
         MOTIVATION_LABELS = {
             'flow1': 'Hệ thống tự ghép đơn thông minh (Flow 1)', 'thulao': 'Đảm bảo thù lao 100% (ký quỹ)',
-            'elo': 'Thăng hạng ELO — nhận ca VIP', 'an-toan': 'An toàn cá nhân & thông tin minh bạch',
+            'elo': 'Tích lũy điểm uy tín — nhận ca VIP', 'an-toan': 'An toàn cá nhân & thông tin minh bạch',
         }
         CHILD_AGE_LABELS = {
             'duoi-3': 'Dưới 3 tuổi (nhà trẻ)', '3-6': '3–6 tuổi (mẫu giáo)',
@@ -3260,7 +3260,7 @@ class AdminFeedbackExcelAPIView(APIView):
         TRUST_FACTOR_LABELS = {
             'ly-lich': 'Lý lịch xác thực (CCCD + thẻ SV)', 'live-gps': 'Định vị Live GPS + PIN/ảnh',
             'chuyen-mon': 'Năng lực chuyên môn (bảng điểm/IELTS)', 'dung-gio': 'Tính kỷ luật & đúng giờ',
-            'danh-gia': 'Đánh giá 5 sao từ phụ huynh khác', 'minh-bach-tai-chinh': 'Minh bạch tài chính ký quỹ',
+            'danh-gia': 'Đánh giá thật & điểm uy tín từ phụ huynh khác', 'minh-bach-tai-chinh': 'Minh bạch tài chính ký quỹ',
         }
         BUDGET_LABELS = {
             '70-100k': '70.000–100.000đ/giờ', '100-150k': '100.000–150.000đ/giờ',
