@@ -12,5 +12,9 @@ python manage.py migrate
 # bảo vệ: admin / phuhuynh_test / sinhvien_test).
 python manage.py seed_demo_data || echo "⚠️ seed_demo_data failed, continuing deploy..."
 
+# Nạp cấu hình matching ELO & CarePartners chuyên môn cao vào DB
+python manage.py seed_matching_config || echo "⚠️ seed_matching_config failed, continuing deploy..."
+python manage.py seed_specialist_carepartners || echo "⚠️ seed_specialist_carepartners failed, continuing deploy..."
+
 # Re-moderate tất cả task pending sau khi deploy (đảm bảo AI quét task cũ còn kẹt)
 python manage.py remoderate_pending || echo "⚠️ remoderate_pending failed (no pending tasks?), continuing deploy..."
