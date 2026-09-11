@@ -298,12 +298,20 @@ với 3 dịch vụ cốt lõi: Gia sư học tập, Đưa đón bé tan học, 
 1. Đánh giá tổng thể — số liệu này có tốt cho cuộc thi không?
 2. Cân đối 3 dịch vụ cốt lõi: Tỷ lệ phụ huynh cần Đưa đón trẻ so với Gia sư và Trông trẻ ra sao?
    Dịch vụ nào đang là "nỗi đau" lớn nhất (khung giờ tan tầm 16:30–18:30 có đang áp đảo không)?
-3. Độ chênh lệch (gap) mức giá: Mức thù lao kỳ vọng của CarePartner so với mức chi phí phụ huynh
+3. Điểm đau (pain_points): Phụ huynh sợ nhất điều gì khi giao con cho người ngoài — không tin
+   người, không giám sát được, nghỉ đột xuất, giờ tan tầm, hay giá? EduCareLink nên đẩy tính năng
+   nào (Live GPS, ký quỹ, cam kết thay thế ca) lên ưu tiên để hóa giải nỗi đau đó?
+4. Nguồn giải pháp thay thế (current_solution): Phụ huynh đang dùng ai — ông bà, bảo mẫu người
+   quen hay trung tâm? EduCareLink đang cạnh tranh/thay thế thị phần của ai, nên đánh vào đâu?
+5. Độ chênh lệch (gap) mức giá: Mức thù lao kỳ vọng của CarePartner so với mức chi phí phụ huynh
    sẵn sàng chi trả — đề xuất bảng giá hợp lý cho từng dịch vụ (gia sư theo giờ, đón trẻ theo lượt, trông trẻ theo giờ).
-4. Phân bố khu vực: Dữ liệu tỉnh/thành + quận/huyện từ form đăng ký — đề xuất kế hoạch
+6. Nguồn cung (experience + concerns): Tỷ lệ CarePartner đã có kinh nghiệm vs người mới — kế hoạch
+   đào tạo như thế nào? Điều gì khiến sinh viên e ngại (trách nhiệm sự cố, di chuyển, kỹ năng xử lý,
+   lịch học) — nền tảng cần chính sách bảo vệ gì?
+7. Phân bố khu vực: Dữ liệu tỉnh/thành + quận/huyện từ form đăng ký — đề xuất kế hoạch
    tuyển dụng CarePartner sinh viên theo quận/huyện và cách sắp xếp ưu tiên địa bàn.
-5. Điểm mạnh/điểm yếu từ phản hồi + gợi ý hành động cụ thể để tăng conversion rate
-6. 3 số liệu highlight quan trọng nhất nên đưa vào báo cáo cuộc thi
+8. Điểm mạnh/điểm yếu từ phản hồi + gợi ý hành động cụ thể để tăng conversion rate
+9. 3 số liệu highlight quan trọng nhất nên đưa vào báo cáo cuộc thi
 
 Trả lời bằng tiếng Việt, ngắn gọn, súc tích, định dạng Markdown.
 """
