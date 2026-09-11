@@ -116,7 +116,7 @@ class MatchingBaseTest(MatchingTestBase):
                 time_from=time(18, 0), time_to=time(22, 0))
         profile.rating_avg = rating
         profile.review_count = reviews
-        profile.skills = skills or []
+        profile.skills = ['toan'] if skills is None else skills
         profile.school = school
         profile.major = major
         profile.jobs_completed = completed
@@ -412,4 +412,28 @@ class SpecializedSkillGatingTest(MatchingBaseTest):
         result = find_candidates(self.piano_job)
         self.assertEqual(result['total_matched'], 0)
         self.assertEqual(result['candidates'], [])
+
+    def test_zero_skill_business_major_excluded_for_math_job(self):
+        """Candidate 0 skill + business major cho job Toán (required_skills=['toan']) -> total_matched == 0."""
+        # self.job đã có required_skills=['toan']
+        self._seed_cp('biz_cp', skills=[], major='Quản trị Kinh doanh', school='ĐH Kinh tế Quốc dân')
+        result = find_candidates(self.job)
+        self.assertEqual(result['total_matched'], 0)
+        self.assertEqual(result['candidates'], [])
+
+    def test_physics_major_no_skill_retained_for_physics_job(self):
+        """Candidate có major 'Sư phạm Vật Lý' (không có skill ly khai báo) cho job Lý -> vẫn được giữ lại (không bị loại oan nhờ major bonus)."""
+        physics_job = JobPost.objects.create(
+            parent=self.parent, job_type='tutoring', hourly_rate_vnd=120000,
+            status='ai_parsed', latitude=21.0, longitude=105.8,
+            ai_parse_result={'required_skills': ['ly'], 'urgency': 'normal'})
+        JobSlot.objects.create(job=physics_job, date=MONDAY,
+                               time_from=time(19, 0), time_to=time(21, 0))
+        phys_cp = self._seed_cp('phys_teacher', skills=[], major='Sư phạm Vật Lý', school='ĐH Sư Phạm Hà Nội')
+        result = find_candidates(physics_job)
+        self.assertEqual(result['total_matched'], 1)
+        cand = result['candidates'][0]
+        self.assertEqual(cand['carepartner_id'], str(phys_cp.pk))
+        self.assertLessEqual(cand['match_score'], 68.0)
+
 
