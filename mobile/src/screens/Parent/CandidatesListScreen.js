@@ -202,6 +202,8 @@ export default function CandidatesListScreen() {
   const route = useRoute();
   const jobId = route.params?.jobId;
   const passedJob = route.params?.job;
+  const passedCandidates = route.params?.candidates;
+  const passedTotal = route.params?.totalMatched;
   const isDemoPreview = !jobId;
   const [jobInfo, setJobInfo] = useState(passedJob || DEMO_JOB);
   const [candidates, setCandidates] = useState(
