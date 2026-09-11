@@ -35,6 +35,29 @@ export const getTodayYMD = () => {
  * @returns {string}
  */
 export const extractErrorMessage = (err, fallback = 'Không thể thực hiện. Vui lòng kiểm tra lại thông tin.') => {
+  if (!err) return fallback;
+
+  // Lỗi timeout (Axios abort khi quá hạn chờ, thường do AI phân tích lâu)
+  if (err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'))) {
+    return 'Thời gian xử lý quá hạn (hệ thống AI đang phân tích). Vui lòng thử lại hoặc vào danh sách công việc để kiểm tra.';
+  }
+
+  // Lỗi mạng hoặc máy chủ không thể tiếp cận
+  if (err.message === 'Network Error' || (err.message && err.message.toLowerCase().includes('network error'))) {
+    return 'Lỗi kết nối mạng: Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại đường truyền Wi-Fi/4G và thử lại.';
+  }
+
+  const status = err.response?.status;
+  if (status === 401) {
+    return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'Máy chủ đang khởi động hoặc tạm bận. Vui lòng thử lại sau ít phút.';
+  }
+  if (status >= 500) {
+    return 'Lỗi máy chủ nội bộ. Vui lòng thử lại sau giây lát.';
+  }
+
   const data = err?.response?.data;
   if (!data) return err?.message || fallback;
   if (typeof data === 'string') return data;

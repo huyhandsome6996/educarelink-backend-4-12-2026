@@ -53,7 +53,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 45000,
 });
 
 // Interceptor: Tự động gắn Bearer Token vào mọi request
