@@ -574,25 +574,59 @@ class Command(BaseCommand):
 
         # ── Lịch rảnh tuần (CarePartnerAvailability & WorkerAvailability) ──
         # weekday: 0=T2, 1=T3, 2=T4, 3=T5, 4=T6, 5=T7, 6=CN
+        # QA 2026-09-11: form mobile mặc định ca tối 19:00-21:00 nhưng lịch cũ
+        # chỉ mở đến 20:00 → covers_all_slots từ chối hết → "0 ứng viên" với
+        # MỌI bài đăng buổi tối. Nâng lịch mẫu phủ đủ tối 21:30 cả tuần.
         active_cps = [worker_test, worker_dict["carepartner_tuankiet"], worker_dict["carepartner_hoango"],
                       worker_dict["carepartner_mylinh"], worker_dict["carepartner_phuoc"]]
 
+        # Kế hoạch lịch theo từng CP — đảm bảo MỌI khung giờ phổ biến đều có
+        # ≥2-4 CP phủ (chống "0 ứng viên" khi phụ huynh đăng 2 ca tối trùng
+        # nhau — slot là exclusive, 1 CP bị lock không được rớt cả danh sách):
+        # tối 19-21 cả tuần 4 CP, cao điểm đón trẻ 16:30-18:30 ngày thường,
+        # sáng + chiều cuối tuần.
+        availability_plans = {
+            "sinhvien_test": [
+                (0, "17:00", "21:30"), (1, "17:00", "21:30"), (2, "17:00", "21:30"),
+                (3, "17:00", "21:30"), (4, "17:00", "21:30"),
+                (5, "08:00", "11:30"), (5, "17:00", "21:30"),
+                (6, "08:00", "11:30"), (6, "17:00", "21:30"),
+            ],
+            "carepartner_tuankiet": [
+                (0, "16:30", "21:30"), (1, "16:30", "21:30"), (2, "16:30", "21:30"),
+                (3, "16:30", "21:30"), (4, "16:30", "21:30"),
+                (5, "08:00", "12:00"), (5, "17:00", "21:30"),
+            ],
+            "carepartner_hoango": [
+                (0, "17:00", "21:30"), (1, "16:00", "21:00"), (2, "17:00", "21:30"),
+                (3, "16:00", "21:00"), (4, "17:00", "21:30"),
+                (5, "08:00", "11:30"), (5, "14:00", "17:30"),
+                (6, "08:00", "11:30"), (6, "14:00", "17:30"),
+            ],
+            "carepartner_mylinh": [
+                (0, "17:00", "21:00"), (1, "14:00", "21:00"), (2, "17:00", "21:00"),
+                (3, "14:00", "21:00"), (4, "17:00", "21:00"),
+                (5, "14:00", "21:00"), (6, "14:00", "21:00"),
+            ],
+            "carepartner_phuoc": [
+                (0, "16:00", "18:30"), (1, "16:00", "18:30"), (2, "16:00", "18:30"),
+                (3, "16:00", "18:30"), (4, "16:00", "18:30"), (5, "08:00", "11:00"),
+            ],
+        }
+
         for cp in active_cps:
-            # Lịch sáng T2, T4, T6 (08:00 - 12:00)
-            for wd in [0, 2, 4]:
+            plan = availability_plans.get(cp.username, [])
+            for wd, tf, tt in plan:
+                h_from, m_from = int(tf.split(":")[0]), int(tf.split(":")[1])
+                h_to, m_to = int(tt.split(":")[0]), int(tt.split(":")[1])
                 CarePartnerAvailability.objects.update_or_create(
-                    carepartner=cp, weekday=wd, time_from=datetime.time(8, 0), time_to=datetime.time(12, 0)
+                    carepartner=cp, weekday=wd,
+                    time_from=datetime.time(h_from, m_from),
+                    time_to=datetime.time(h_to, m_to)
                 )
                 WorkerAvailability.objects.update_or_create(
-                    worker=cp, weekday=wd + 1, defaults={"start_time": "08:00", "end_time": "12:00"}
-                )
-            # Lịch chiều tối T3, T5, T7, CN (14:00 - 20:00)
-            for wd in [1, 3, 5, 6]:
-                CarePartnerAvailability.objects.update_or_create(
-                    carepartner=cp, weekday=wd, time_from=datetime.time(14, 0), time_to=datetime.time(20, 0)
-                )
-                WorkerAvailability.objects.update_or_create(
-                    worker=cp, weekday=wd + 1, defaults={"start_time": "14:00", "end_time": "20:00"}
+                    worker=cp, weekday=wd + 1,
+                    defaults={"start_time": tf, "end_time": tt}
                 )
 
         # 1 Ngày bận đột xuất (Blackout) cho Tuấn Kiệt (lý do: thi cuối kỳ)

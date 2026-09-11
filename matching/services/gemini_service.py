@@ -188,7 +188,8 @@ def _parse_with_gemini(job):
             response = generate_content_with_fallback(
                 client, contents=[user_content + repair_hint],
                 system_instruction=system,
-                temperature=temperature, max_output_tokens=max_tokens)
+                temperature=temperature, max_output_tokens=max_tokens,
+                disable_thinking=True)  # QA: tắt thinking — parse JSON nhanh 1-3s, tránh thinking ăn hết token trả text rỗng
         except Exception as exc:
             logger.warning('[Gemini] Parse lỗi lần %d: %s', attempt, exc)
             _log_call(tpl, 0, 0, _time.time() - started, 'error')
