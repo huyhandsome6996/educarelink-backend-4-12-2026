@@ -13,9 +13,15 @@ Giải pháp: giữ 1 singleton client cho cả process, reuse connection.
 
 import threading
 import logging
+import os
 from django.conf import settings
 
 logger = logging.getLogger('educarelink.performance.gemini_pool')
+
+# Timeout HTTP của Gemini client (MILLISECONDS) — QA 2026-09-11:
+# trước đây client không set timeout → SDK chờ mặc định rất lâu khi
+# Gemini chậm/quota → request publish treo >26s → mobile axios cắt ngang.
+GEMINI_HTTP_TIMEOUT_MS = int(os.environ.get('GEMINI_HTTP_TIMEOUT_MS', '12000'))
 
 # Singleton client — thread-safe (genai.Client đã handle concurrent calls)
 _gemini_client_singleton = None
@@ -52,8 +58,12 @@ def get_pooled_gemini_client():
 
         try:
             from google import genai
-            _gemini_client_singleton = genai.Client(api_key=gemini_key)
-            logger.info('[GeminiPool] Singleton client initialized')
+            _gemini_client_singleton = genai.Client(
+                api_key=gemini_key,
+                http_options={'timeout': GEMINI_HTTP_TIMEOUT_MS},
+            )
+            logger.info('[GeminiPool] Singleton client initialized (http timeout %sms)',
+                        GEMINI_HTTP_TIMEOUT_MS)
             return _gemini_client_singleton
         except Exception as e:
             logger.warning(f'[GeminiPool] Init failed: {e}')
