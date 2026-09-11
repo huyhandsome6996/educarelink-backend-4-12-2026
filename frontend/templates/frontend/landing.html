@@ -496,7 +496,7 @@
       <div class="form-side">
         <span class="eyebrow">2 phút thôi</span>
         <h2 id="khao-sat-heading">Giúp chúng tôi hiểu đúng điều bạn cần</h2>
-        <p class="lead">Chọn vai trò của bạn bên cạnh để xem bộ câu hỏi phù hợp. EduCareLink ưu tiên thiết kế tính năng theo từng nhóm người dùng.</p>
+        <p class="lead">8 câu ngắn, trả lời bằng 1 cú nhấp — mỗi câu đi thẳng vào thiết kế tính năng cho 3 dịch vụ cốt lõi: <b>Gia sư học tập</b>, <b>Đưa đón bé tan học</b>, <b>Trông trẻ tại nhà</b>.</p>
         <ul class="side-list">
           <li><span class="num" aria-hidden="true">1</span><span class="txt"><b>Không cần tài khoản</b> — điền và gửi trực tiếp, không đăng nhập.</span></li>
           <li><span class="num" aria-hidden="true">2</span><span class="txt"><b>Có thể để trống email</b> — chỉ cần nếu bạn muốn nhận phản hồi.</span></li>
@@ -528,9 +528,9 @@
               <fieldset>
                 <legend class="field-label">Bạn mong muốn nhận những công việc nào trên nền tảng? <span class="req" aria-hidden="true">*</span> <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
                 <div class="choice-grid" role="group" aria-required="true">
-                  <label class="choice"><input type="checkbox" name="cp-services" value="tutoring"><span class="choice-text">📚 Gia sư dạy kèm tại nhà — Toán, Tiếng Anh, Tiếng Việt, luyện thi</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-services" value="pickup"><span class="choice-text">🚗 Đón trẻ tan học — có xe máy riêng, đón bé từ trường về nhà an toàn</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-services" value="childcare"><span class="choice-text">🧸 Trông trẻ &amp; Chơi cùng bé — chăm sóc, đọc sách, tương tác tại nhà phụ huynh</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-services" value="tutoring"><span class="choice-text">📚 Gia sư 1-kèm-1 tại nhà — kèm bài tập hằng ngày, củng cố Toán / Tiếng Anh / Tiếng Việt, luyện thi</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-services" value="pickup"><span class="choice-text">🚗 Đưa đón bé tan học — khung giờ tan tầm 16:30–18:30, có xe máy + bằng lái A1</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-services" value="childcare"><span class="choice-text">🧸 Trông trẻ &amp; chơi cùng bé — chăm bé ăn / ngủ / vui chơi an toàn tại nhà phụ huynh</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn ít nhất 1 dịch vụ mong muốn nhận.</p>
               </fieldset>
@@ -540,12 +540,24 @@
               <fieldset>
                 <legend class="field-label">Bạn hiện đang là đối tượng nào? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="cp-type" value="sv-nam-1-2" required><span class="choice-text">Sinh viên Đại học / Cao đẳng năm 1 – 2</span></label>
-                  <label class="choice"><input type="radio" name="cp-type" value="sv-nam-3-4"><span class="choice-text">Sinh viên năm 3 – 4 hoặc mới tốt nghiệp</span></label>
-                  <label class="choice"><input type="radio" name="cp-type" value="su-pham"><span class="choice-text">Sinh viên / Giáo viên Sư phạm, Mầm non, Giáo dục tiểu học</span></label>
-                  <label class="choice"><input type="radio" name="cp-type" value="da-di-lam"><span class="choice-text">Người đã đi làm có mong muốn làm thêm chăm sóc trẻ ngoài giờ</span></label>
+                  <label class="choice"><input type="radio" name="cp-type" value="sv-nam-1-2" required><span class="choice-text">Sinh viên năm 1 – 2 — muốn kiếm thu nhập sớm, nhận ca ngắn trước</span></label>
+                  <label class="choice"><input type="radio" name="cp-type" value="sv-nam-3-4"><span class="choice-text">Sinh viên năm 3 – 4 / mới tốt nghiệp — nhận ca đều đặn, lâu dài</span></label>
+                  <label class="choice"><input type="radio" name="cp-type" value="su-pham"><span class="choice-text">Sinh viên / Giáo viên Sư phạm, Mầm non, GD tiểu học — ưu tiên ca đúng chuyên ngành</span></label>
+                  <label class="choice"><input type="radio" name="cp-type" value="da-di-lam"><span class="choice-text">Người đã đi làm — làm thêm ca chăm sóc trẻ ngoài giờ hành chính</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn đối tượng của bạn.</p>
+              </fieldset>
+            </div>
+
+            <div class="field" id="field-cp-experience">
+              <fieldset>
+                <legend class="field-label">Kinh nghiệm trông trẻ / dạy kèm thực tế của bạn? <span style="font-weight:500;color:var(--text-muted);">(không bắt buộc)</span></legend>
+                <div class="choice-grid choice-2col" role="radiogroup">
+                  <label class="choice"><input type="radio" name="cp-experience" value="tren-3-nam"><span class="choice-text">Trên 3 năm — từng làm gia sư / trông trẻ chuyên nghiệp</span></label>
+                  <label class="choice"><input type="radio" name="cp-experience" value="1-3-nam"><span class="choice-text">1 – 3 năm — từng chăm bé cho người thân hoặc gia đình quen</span></label>
+                  <label class="choice"><input type="radio" name="cp-experience" value="duoi-1-nam"><span class="choice-text">Dưới 1 năm — mới bắt đầu, có vài lần thực tế</span></label>
+                  <label class="choice"><input type="radio" name="cp-experience" value="chua"><span class="choice-text">Chưa có — sẵn sàng học quy trình an toàn của nền tảng</span></label>
+                </div>
               </fieldset>
             </div>
 
@@ -553,9 +565,9 @@
               <fieldset>
                 <legend class="field-label">Phương tiện di chuyển chính của bạn khi nhận việc là gì? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="cp-transport" value="xe-may" required><span class="choice-text">🛵 Xe máy riêng: đã có bằng lái A1 và sẵn sàng trang bị mũ bảo hiểm trẻ em chuẩn</span></label>
-                  <label class="choice"><input type="radio" name="cp-transport" value="cong-cong"><span class="choice-text">🚌 Phương tiện công cộng: xe buýt / tàu điện đô thị (Metro)</span></label>
-                  <label class="choice"><input type="radio" name="cp-transport" value="di-bo-xe-dap"><span class="choice-text">🚶 Đi bộ / Xe đạp: ưu tiên các ca trong bán kính 1–2 km gần trường hoặc nơi ở</span></label>
+                  <label class="choice"><input type="radio" name="cp-transport" value="xe-may" required><span class="choice-text">🛵 Xe máy riêng + bằng lái A1 — sẵn sàng trang bị mũ bảo hiểm trẻ em chuẩn</span></label>
+                  <label class="choice"><input type="radio" name="cp-transport" value="cong-cong"><span class="choice-text">🚌 Xe buýt / Metro — phù hợp ca tại khu vực có tuyến cố định</span></label>
+                  <label class="choice"><input type="radio" name="cp-transport" value="di-bo-xe-dap"><span class="choice-text">🚶 Đi bộ / xe đạp — ưu tiên ca bán kính 1–2 km quanh nơi ở hoặc trường</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn phương tiện di chuyển.</p>
               </fieldset>
@@ -563,12 +575,13 @@
 
             <div class="field" id="field-cp-slots">
               <fieldset>
-                <legend class="field-label">Khung thời gian bạn có thể nhận ca làm việc trong tuần? <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
+                <legend class="field-label">Khung giờ bạn có thể nhận ca trong tuần? <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
                 <div class="choice-grid" role="group">
-                  <label class="choice"><input type="checkbox" name="cp-slots" value="chieu-tan-truong"><span class="choice-text">Ca chiều tan trường: 16:30 – 18:30 (phù hợp nhận các ca đón bé)</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-slots" value="toi-trong-tuan"><span class="choice-text">Buổi tối trong tuần: 18:30 – 21:00 (phù hợp dạy gia sư / kèm học)</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-slots" value="cuoi-tuan"><span class="choice-text">Cả ngày cuối tuần: Thứ 7 &amp; Chủ Nhật (rảnh nhiều giờ, nhận ca dài)</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-slots" value="linh-hoat-hoc-ky"><span class="choice-text">Linh hoạt theo lịch học của từng học kỳ (đăng ký trên Lịch rảnh tuần)</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-slots" value="sang-ngay-thuong"><span class="choice-text">Sáng ngày thường: 07:30 – 11:30 (trông bé mầm non / đưa bé đến lớp)</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-slots" value="chieu-tan-truong"><span class="choice-text">Chiều tan trường: 16:30 – 18:30 (cao điểm — phù hợp ca đón bé)</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-slots" value="toi-trong-tuan"><span class="choice-text">Tối trong tuần: 18:30 – 21:00 (kèm bài tập, gia sư 1-kèm-1)</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-slots" value="cuoi-tuan"><span class="choice-text">Cả ngày cuối tuần T7 &amp; CN — nhận ca trọn gói, ca dài</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-slots" value="linh-hoat-hoc-ky"><span class="choice-text">Linh hoạt theo lịch học kỳ — tự đăng ký Lịch rảnh từng tuần</span></label>
                 </div>
               </fieldset>
             </div>
@@ -577,12 +590,24 @@
               <fieldset>
                 <legend class="field-label">Mức thù lao bạn kỳ vọng nhận được mỗi giờ làm việc? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid choice-2col" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="cp-rate" value="60-85k" required><span class="choice-text">60.000đ – 85.000đ / giờ (trông bé / đón bé ca ngắn)</span></label>
-                  <label class="choice"><input type="radio" name="cp-rate" value="85-120k"><span class="choice-text">85.000đ – 120.000đ / giờ (gia sư phổ thông / trông trẻ nâng cao)</span></label>
-                  <label class="choice"><input type="radio" name="cp-rate" value="120-180k"><span class="choice-text">120.000đ – 180.000đ / giờ (gia sư chuyên sâu, IELTS, Toán tư duy)</span></label>
-                  <label class="choice"><input type="radio" name="cp-rate" value="tren-180k"><span class="choice-text">Trên 180.000đ / giờ</span></label>
+                  <label class="choice"><input type="radio" name="cp-rate" value="60-85k" required><span class="choice-text">60.000đ – 85.000đ / giờ — trông bé, đón bé ca ngắn</span></label>
+                  <label class="choice"><input type="radio" name="cp-rate" value="85-120k"><span class="choice-text">85.000đ – 120.000đ / giờ — gia sư phổ thông, trông trẻ kèm bài tập</span></label>
+                  <label class="choice"><input type="radio" name="cp-rate" value="120-180k"><span class="choice-text">120.000đ – 180.000đ / giờ — gia sư chuyên sâu: IELTS, Toán tư duy, luyện thi</span></label>
+                  <label class="choice"><input type="radio" name="cp-rate" value="tren-180k"><span class="choice-text">Trên 180.000đ / giờ — hồ sơ mạnh, môn hiếm, kinh nghiệm cao</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn mức thù lao kỳ vọng.</p>
+              </fieldset>
+            </div>
+
+            <div class="field" id="field-cp-concerns">
+              <fieldset>
+                <legend class="field-label">Điều gì khiến bạn còn e ngại khi nhận việc qua nền tảng? <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
+                <div class="choice-grid" role="group">
+                  <label class="choice"><input type="checkbox" name="cp-concerns" value="trach-nhiem-su-co"><span class="choice-text">😰 Trách nhiệm khi bé gặp sự cố — ngã, dị ứng, mệt bất thường</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-concerns" value="di-chuyen-an-toan"><span class="choice-text">🛣️ An toàn khi di chuyển / chở bé qua đường đông giờ tan tầm</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-concerns" value="ky-nang-xu-ly"><span class="choice-text">🧩 Chưa tự tin xử lý bé quấy khóc, không hợp tác</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-concerns" value="lich-hoc"><span class="choice-text">📅 Sợ ca làm đè lên lịch học / thi trên trường</span></label>
+                </div>
               </fieldset>
             </div>
 
@@ -590,10 +615,10 @@
               <fieldset>
                 <legend class="field-label">Điều gì bạn kỳ vọng nhất khi làm việc qua EduCareLink? <span style="font-weight:500;color:var(--text-muted);">(chọn tối đa 2)</span></legend>
                 <div class="choice-grid" role="group">
-                  <label class="choice"><input type="checkbox" name="cp-motivations" value="flow1"><span class="choice-text">🤖 Hệ thống tự ghép đơn thông minh: không phải mất công đăng bài tìm việc hay cạnh tranh hạ giá</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-motivations" value="thulao"><span class="choice-text">💳 Đảm bảo thù lao 100%: tiền được phụ huynh ký quỹ trước, tự động về ví sau khi xong việc</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-motivations" value="elo"><span class="choice-text">📈 Thăng hạng ELO: làm tốt được tích lũy điểm uy tín để nhận các ca VIP thù lao cao</span></label>
-                  <label class="choice"><input type="checkbox" name="cp-motivations" value="an-toan"><span class="choice-text">🛡️ An toàn cá nhân: thông tin phụ huynh được xác minh minh bạch, có trung tâm hỗ trợ khi gặp sự cố</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-motivations" value="flow1"><span class="choice-text">🤖 Đơn tự tìm đến: hệ thống ghép ca khớp lịch — không phải săn đơn, không cạnh tranh hạ giá</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-motivations" value="thulao"><span class="choice-text">💳 Thù lao được ký quỹ trước 100% — hoàn thành là tự động về ví</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-motivations" value="elo"><span class="choice-text">📈 Tích điểm ELO uy tín — điểm cao mở khóa ca VIP thù lao cao</span></label>
+                  <label class="choice"><input type="checkbox" name="cp-motivations" value="an-toan"><span class="choice-text">🛡️ Được bảo vệ: phụ huynh đã xác minh, có trung tâm xử lý sự cố</span></label>
                 </div>
                 <p class="err-msg" role="alert" id="cp-motivations-limit-err" style="display:none;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Bạn chỉ được chọn tối đa 2 kỳ vọng.</p>
               </fieldset>
@@ -606,9 +631,9 @@
               <fieldset>
                 <legend class="field-label">Dịch vụ bạn đang có nhu cầu tìm người hỗ trợ cho con? <span class="req" aria-hidden="true">*</span> <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
                 <div class="choice-grid">
-                  <label class="choice"><input type="checkbox" name="ph-services" value="tutoring"><span class="choice-text">📚 Gia sư học tập tại nhà — kèm Toán, Tiếng Anh, rèn nề nếp học</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-services" value="pickup"><span class="choice-text">🚗 Đưa đón bé tan học — đón bé từ trường về nhà hoặc sang lớp học thêm</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-services" value="childcare"><span class="choice-text">🧸 Trông trẻ &amp; Chơi cùng con tại nhà — chăm bé mầm non, trò chơi phát triển tư duy</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-services" value="tutoring"><span class="choice-text">📚 Gia sư 1-kèm-1 tại nhà — kèm bài tập hằng ngày, củng cố Toán / Tiếng Anh / Tiếng Việt</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-services" value="pickup"><span class="choice-text">🚗 Đưa đón bé tan học — giờ tan tầm 16:30–18:30, giao đúng người, theo dõi được hành trình</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-services" value="childcare"><span class="choice-text">🧸 Trông trẻ tại nhà — bé chưa đi học hoặc sau giờ học: ăn, ngủ, chơi tương tác an toàn</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn ít nhất 1 dịch vụ bạn quan tâm.</p>
               </fieldset>
@@ -618,12 +643,38 @@
               <fieldset>
                 <legend class="field-label">Bé nhà bạn hiện đang ở độ tuổi nào? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid choice-2col" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="ph-child-age" value="duoi-3" required><span class="choice-text">Dưới 3 tuổi (nhà trẻ / mầm non bé)</span></label>
-                  <label class="choice"><input type="radio" name="ph-child-age" value="3-6"><span class="choice-text">3 – 6 tuổi (mẫu giáo lớn, chuẩn bị vào Lớp 1)</span></label>
-                  <label class="choice"><input type="radio" name="ph-child-age" value="6-11"><span class="choice-text">6 – 11 tuổi (Cấp 1 / Tiểu học)</span></label>
-                  <label class="choice"><input type="radio" name="ph-child-age" value="tren-11"><span class="choice-text">Trên 11 tuổi (Cấp 2 / THCS)</span></label>
+                  <label class="choice"><input type="radio" name="ph-child-age" value="duoi-3" required><span class="choice-text">Dưới 3 tuổi — cần người ở cùng trông chặt chẽ</span></label>
+                  <label class="choice"><input type="radio" name="ph-child-age" value="3-6"><span class="choice-text">3 – 6 tuổi — mẫu giáo, cần chơi tương tác + rèn nề nếp</span></label>
+                  <label class="choice"><input type="radio" name="ph-child-age" value="6-11"><span class="choice-text">6 – 11 tuổi — tiểu học, cần đón tan trường + kèm bài tập</span></label>
+                  <label class="choice"><input type="radio" name="ph-child-age" value="tren-11"><span class="choice-text">Trên 11 tuổi — THCS, cần gia sư môn học chuyên sâu</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn độ tuổi của bé.</p>
+              </fieldset>
+            </div>
+
+            <div class="field" id="field-ph-current-solution">
+              <fieldset>
+                <legend class="field-label">Hiện gia đình bạn đang giải quyết việc này bằng cách nào? <span style="font-weight:500;color:var(--text-muted);">(không bắt buộc)</span></legend>
+                <div class="choice-grid choice-2col" role="radiogroup">
+                  <label class="choice"><input type="radio" name="ph-current-solution" value="nguoi-than"><span class="choice-text">👨‍👩‍👧 Ông bà / người thân trông giúp</span></label>
+                  <label class="choice"><input type="radio" name="ph-current-solution" value="bao-mau-nguoi-quen"><span class="choice-text">🤝 Bảo mẫu / người trông qua người quen giới thiệu</span></label>
+                  <label class="choice"><input type="radio" name="ph-current-solution" value="trung-tam"><span class="choice-text">🏢 Trung tâm / gia sư chuyên nghiệp theo hợp đồng</span></label>
+                  <label class="choice"><input type="radio" name="ph-current-solution" value="tu-xoay-xo"><span class="choice-text">🔁 Bố mẹ tự xoay xở — dời giờ làm, nghỉ làm đột xuất</span></label>
+                </div>
+              </fieldset>
+            </div>
+
+            <div class="field" id="field-ph-pain-points">
+              <fieldset>
+                <legend class="field-label">Điều gì khiến gia đình bạn khó khăn nhất khi tìm người hỗ trợ cho con? <span style="font-weight:500;color:var(--text-muted);">(chọn tối đa 2)</span></legend>
+                <div class="choice-grid">
+                  <label class="choice"><input type="checkbox" name="ph-pain-points" value="kho-tin"><span class="choice-text">⚠️ Không biết tin ai — không có cách kiểm tra lý lịch, con người trước khi giao</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-pain-points" value="khong-giam-sat"><span class="choice-text">📵 Không biết con đang thế nào trong lúc vắng mặt</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-pain-points" value="hay-nghi-dot-xuat"><span class="choice-text">🚪 Người trông hay nghỉ đột xuất, không có người thay ngay</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-pain-points" value="gio-tan-tam"><span class="choice-text">⏰ Giờ đón con trùng đúng giờ làm việc bận nhất của bố mẹ</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-pain-points" value="chua-biet-gia"><span class="choice-text">💰 Không biết mức giá hợp lý — sợ trả cao hoặc người làm thiệt</span></label>
+                </div>
+                <p class="err-msg" role="alert" id="ph-pain-limit-err" style="display:none;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Bạn chỉ được chọn tối đa 2 khó khăn.</p>
               </fieldset>
             </div>
 
@@ -631,10 +682,10 @@
               <fieldset>
                 <legend class="field-label">Khung thời gian gia đình bạn cần người hỗ trợ nhất? <span style="font-weight:500;color:var(--text-muted);">(chọn nhiều)</span></legend>
                 <div class="choice-grid">
-                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="tan-tam-1630-1830"><span class="choice-text">Giờ cao điểm tan tầm: 16:30 – 18:30 (cần đón bé tránh kẹt xe)</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="toi-1830-2100"><span class="choice-text">Buổi tối các ngày trong tuần: 18:30 – 21:00 (kèm bài tập về nhà / trông bé)</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="cuoi-tuan"><span class="choice-text">Cuối tuần: Thứ 7 &amp; Chủ Nhật (trông bé trọn gói hoặc học ngoại khóa)</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="linh-hoat-dot-xuat"><span class="choice-text">Linh hoạt đột xuất khi bố mẹ có lịch công tác / họp đột xuất</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="tan-tam-1630-1830"><span class="choice-text">Giờ tan tầm 16:30 – 18:30 — cần đón bé kịp, tránh kẹt xe</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="toi-1830-2100"><span class="choice-text">Tối ngày thường 18:30 – 21:00 — cần người ở cùng / kèm bài tập khi bố mẹ chưa về</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="cuoi-tuan"><span class="choice-text">Cuối tuần T7 &amp; CN — trông bé trọn gói hoặc học thêm ngoại khóa</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-busy-slots" value="linh-hoat-dot-xuat"><span class="choice-text">Đột xuất — công tác / họp bất ngờ, cần người ở lại với con</span></label>
                 </div>
               </fieldset>
             </div>
@@ -643,12 +694,12 @@
               <fieldset>
                 <legend class="field-label">Khi tin tưởng giao con cho CarePartner, điều gì quan trọng nhất với bạn? <span style="font-weight:500;color:var(--text-muted);">(chọn tối đa 3)</span></legend>
                 <div class="choice-grid choice-2col">
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="ly-lich"><span class="choice-text">🛡️ Lý lịch xác thực: CCCD + Thẻ Sinh viên trường ĐH uy tín được duyệt</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="live-gps"><span class="choice-text">📍 An toàn tuyệt đối: định vị Live GPS và xác minh qua ảnh/mã PIN</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="chuyen-mon"><span class="choice-text">🎓 Năng lực chuyên môn: bảng điểm tốt, chứng chỉ IELTS/TOEIC, kinh nghiệm sư phạm</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="dung-gio"><span class="choice-text">⏰ Tính kỷ luật &amp; đúng giờ: cam kết có mặt đúng giờ, không tự ý hủy ca</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="danh-gia"><span class="choice-text">⭐ Đánh giá cộng đồng: nhiều đánh giá 5 sao thực tế từ phụ huynh khác</span></label>
-                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="minh-bach-tai-chinh"><span class="choice-text">💳 Minh bạch tài chính: thanh toán ký quỹ an toàn, chỉ giải ngân khi hoàn tất</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="ly-lich"><span class="choice-text">🛡️ Lý lịch xác thực — CCCD + thẻ sinh viên được duyệt thủ công</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="live-gps"><span class="choice-text">📍 Định vị Live GPS + ảnh xác nhận / mã PIN tại điểm đón</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="chuyen-mon"><span class="choice-text">🎓 Chuyên môn — bảng điểm, chứng chỉ, kinh nghiệm sư phạm</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="dung-gio"><span class="choice-text">⏰ Kỷ luật — cam kết đúng giờ, không tự ý hủy ca</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="danh-gia"><span class="choice-text">⭐ Đánh giá thật — điểm ELO và review từ phụ huynh khác</span></label>
+                  <label class="choice"><input type="checkbox" name="ph-trust-factors" value="minh-bach-tai-chinh"><span class="choice-text">💳 Ký quỹ an toàn — tiền chỉ về tay người trông khi hoàn thành</span></label>
                 </div>
                 <p class="err-msg" role="alert" id="ph-trust-limit-err" style="display:none;"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Bạn chỉ được chọn tối đa 3 yếu tố.</p>
               </fieldset>
@@ -658,10 +709,10 @@
               <fieldset>
                 <legend class="field-label">Mức chi phí bạn sẵn sàng chi trả cho dịch vụ đồng hành cùng con? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid choice-2col" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="ph-budget" value="70-100k" required><span class="choice-text">70.000đ – 100.000đ / giờ (trông trẻ cơ bản / phụ kèm bài)</span></label>
-                  <label class="choice"><input type="radio" name="ph-budget" value="100-150k"><span class="choice-text">100.000đ – 150.000đ / giờ (gia sư kiến thức vững / đón trẻ kèm giữ bé)</span></label>
-                  <label class="choice"><input type="radio" name="ph-budget" value="150-220k"><span class="choice-text">150.000đ – 220.000đ / giờ (gia sư chuyên sâu, luyện thi, Tiếng Anh giao tiếp)</span></label>
-                  <label class="choice"><input type="radio" name="ph-budget" value="don-50-80k"><span class="choice-text">Theo lượt đưa đón: 50.000đ – 80.000đ / lượt đón</span></label>
+                  <label class="choice"><input type="radio" name="ph-budget" value="70-100k" required><span class="choice-text">70.000đ – 100.000đ / giờ — trông bé cơ bản, ngồi kèm bài</span></label>
+                  <label class="choice"><input type="radio" name="ph-budget" value="100-150k"><span class="choice-text">100.000đ – 150.000đ / giờ — gia sư kiến thức vững / đón bé kèm giữ bé</span></label>
+                  <label class="choice"><input type="radio" name="ph-budget" value="150-220k"><span class="choice-text">150.000đ – 220.000đ / giờ — gia sư chuyên sâu: IELTS, Toán tư duy, luyện thi</span></label>
+                  <label class="choice"><input type="radio" name="ph-budget" value="don-50-80k"><span class="choice-text">Theo lượt đưa đón: 50.000đ – 80.000đ / lượt</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn mức chi phí sẵn sàng chi trả.</p>
               </fieldset>
@@ -671,10 +722,10 @@
               <fieldset>
                 <legend class="field-label">Mức độ cần thiết của giải pháp EduCareLink với gia đình bạn lúc này? <span class="req" aria-hidden="true">*</span></legend>
                 <div class="choice-grid" role="radiogroup" aria-required="true">
-                  <label class="choice"><input type="radio" name="ph-necessity" value="rat-cap-bach" required><span class="choice-text">Rất cấp bách — đang cần tìm người hỗ trợ ngay trong tuần này</span></label>
-                  <label class="choice"><input type="radio" name="ph-necessity" value="can-thiet"><span class="choice-text">Cần thiết — đang cân nhắc giải pháp để thay đổi trong tháng tới</span></label>
-                  <label class="choice"><input type="radio" name="ph-necessity" value="quan-tam"><span class="choice-text">Quan tâm tìm hiểu — muốn xem thử tính năng định vị và hồ sơ sinh viên</span></label>
-                  <label class="choice"><input type="radio" name="ph-necessity" value="chua-can"><span class="choice-text">Chưa có nhu cầu lúc này</span></label>
+                  <label class="choice"><input type="radio" name="ph-necessity" value="rat-cap-bach" required><span class="choice-text">Rất cấp bách — đang cần người đến làm trong tuần này</span></label>
+                  <label class="choice"><input type="radio" name="ph-necessity" value="can-thiet"><span class="choice-text">Cần thiết — quyết định dùng trong tháng tới</span></label>
+                  <label class="choice"><input type="radio" name="ph-necessity" value="quan-tam"><span class="choice-text">Tìm hiểu — muốn xem thử hồ sơ CarePartner và tính năng định vị</span></label>
+                  <label class="choice"><input type="radio" name="ph-necessity" value="chua-can"><span class="choice-text">Chưa cần — nhưng muốn biết nền tảng này tồn tại</span></label>
                 </div>
                 <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng chọn một mức độ.</p>
               </fieldset>
@@ -684,7 +735,7 @@
           <!-- ===== COMMON FIELDS (both roles) ===== -->
           <div class="field">
             <label class="field-label" for="survey-feedback">Góp ý của bạn <span style="font-weight:500;color:var(--text-muted);">(không bắt buộc)</span></label>
-            <textarea id="survey-feedback" name="survey-feedback" placeholder="Chia sẻ thêm suy nghĩ của bạn (Ví dụ: Bạn có e ngại điều gì về an toàn khi đón bé? Bạn muốn nền tảng bổ sung thêm tính năng nào để yên tâm hơn?...)"></textarea>
+            <textarea id="survey-feedback" name="survey-feedback" placeholder="Chia sẻ thêm (không bắt buộc): điều gì khiến bạn còn băn khoăn khi giao con cho sinh viên? Bạn muốn EduCareLink bổ sung gì để yên tâm hơn?"></textarea>
           </div>
 
           <div class="field" id="field-survey-email">
@@ -1025,6 +1076,14 @@
       setFieldError(document.getElementById('field-cp-transport'), !transport);
       if(!transport) valid = false; else roleAnswers.transport_method = transport.value;
 
+      // Bộ câu hỏi sắc bén 2026-09: kinh nghiệm + rào cản tham gia (optional)
+      var exp = surveyForm.querySelector('input[name="cp-experience"]:checked');
+      if (exp) roleAnswers.experience = exp.value;
+
+      var concerns = [];
+      surveyForm.querySelectorAll('input[name="cp-concerns"]:checked').forEach(function(cb){ concerns.push(cb.value); });
+      if (concerns.length > 0) roleAnswers.concerns = concerns;
+
       var slots = [];
       surveyForm.querySelectorAll('input[name="cp-slots"]:checked').forEach(function(cb){ slots.push(cb.value); });
       if (slots.length > 0) roleAnswers.available_slots = slots;
@@ -1055,6 +1114,21 @@
       var childAge = surveyForm.querySelector('input[name="ph-child-age"]:checked');
       setFieldError(document.getElementById('field-ph-child-age'), !childAge);
       if(!childAge) valid = false; else roleAnswers.child_age = childAge.value;
+
+      // Bộ câu hỏi sắc bén 2026-09: nguồn giải pháp thay thế + điểm đau (optional)
+      var curSol = surveyForm.querySelector('input[name="ph-current-solution"]:checked');
+      if (curSol) roleAnswers.current_solution = curSol.value;
+
+      var pains = [];
+      surveyForm.querySelectorAll('input[name="ph-pain-points"]:checked').forEach(function(cb){ pains.push(cb.value); });
+      var painLimitErr = document.getElementById('ph-pain-limit-err');
+      if (pains.length > 2) {
+        if (painLimitErr) painLimitErr.style.display = 'block';
+        valid = false;
+      } else {
+        if (painLimitErr) painLimitErr.style.display = 'none';
+        if (pains.length > 0) roleAnswers.pain_points = pains;
+      }
 
       var busySlots = [];
       surveyForm.querySelectorAll('input[name="ph-busy-slots"]:checked').forEach(function(cb){ busySlots.push(cb.value); });
