@@ -956,7 +956,9 @@ File mẫu: `.env.example`. Trên Render: cấu hình qua Dashboard → Settings
 ### OAuth
 | Var | Mặc định | Mô tả |
 |---|---|---|
-| `GOOGLE_OAUTH_CLIENT_ID` | (empty) | Google OAuth Client ID |
+| `GOOGLE_OAUTH_CLIENT_ID` | (empty) | Google OAuth Client ID loại **Web** (dùng cho web flow + audience ID token) |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | (empty) | Client secret của Web client — dùng server-side đổi code lấy token trong web flow `/accounts/google/` |
+| `GOOGLE_OAUTH_CLIENT_ID_ANDROID` | (empty) | Google OAuth Client ID loại **Android** (package `com.educarelink.app` + SHA-1 App Signing) — mobile expo-auth-session dùng redirect scheme `com.googleusercontent.apps.<id>:/oauthredirect` |
 | `FACEBOOK_APP_ID` | (empty) | Facebook App ID |
 | `FACEBOOK_APP_SECRET` | (empty) | Facebook App Secret |
 

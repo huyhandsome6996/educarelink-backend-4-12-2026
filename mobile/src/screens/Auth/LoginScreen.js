@@ -66,16 +66,30 @@ export default function LoginScreen() {
   }, []);
 
   // === GOOGLE OAUTH ===
+  // Ưu tiên ANDROID client id (loại "Android" trên Google Console):
+  //  - redirect scheme riêng com.googleusercontent.apps.<id>:/oauthredirect
+  //  - bắt buộc PKCE (Google chặn implicit flow với client mới)
+  // Fallback: web client id (flow cũ — chỉ dùng được khi backend cũ cấu hình kiểu khác)
   const googleAuthConfig = useMemo(() => {
-    if (!oauthConfig?.google?.enabled || !oauthConfig?.google?.client_id) {
+    const androidId = oauthConfig?.google?.android_client_id;
+    const webId = oauthConfig?.google?.client_id;
+    if (!oauthConfig?.google?.enabled || (!androidId && !webId)) {
       return { clientId: 'disabled', redirectUri: AuthSession.makeRedirectUri() };
     }
+    if (androidId) {
+      return {
+        clientId: androidId,
+        scopes: ['openid', 'email', 'profile'],
+        redirectUri: `com.googleusercontent.apps.${androidId}:/oauthredirect`,
+        usePKCE: true,
+      };
+    }
     return {
-      clientId: oauthConfig.google.client_id,
+      clientId: webId,
       scopes: ['openid', 'email', 'profile'],
       redirectUri: AuthSession.makeRedirectUri(),
     };
-  }, [oauthConfig?.google?.enabled, oauthConfig?.google?.client_id]);
+  }, [oauthConfig?.google?.enabled, oauthConfig?.google?.client_id, oauthConfig?.google?.android_client_id]);
 
   const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
     googleAuthConfig,
@@ -123,11 +137,44 @@ export default function LoginScreen() {
     }
   }, [loginWithOAuth]);
 
+  // Google PKCE flow: response trả CODE (không phải access token) →
+  // đổi code lấy token bằng codeVerifier rồi mới gửi về backend
+  const exchangeGoogleCode = useCallback(async (code) => {
+    const androidId = oauthConfig?.google?.android_client_id;
+    const tokens = await AuthSession.exchangeCodeAsync(
+      {
+        clientId: androidId,
+        code,
+        redirectUri: `com.googleusercontent.apps.${androidId}:/oauthredirect`,
+        extraParams: { code_verifier: googleRequest.codeVerifier },
+      },
+      {
+        tokenEndpoint: 'https://oauth2.googleapis.com/token',
+      }
+    );
+    return tokens.accessToken;
+  }, [oauthConfig?.google?.android_client_id, googleRequest]);
+
   useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      handleOAuthSuccess('google', googleResponse.params?.access_token);
-    }
-  }, [googleResponse, handleOAuthSuccess]);
+    if (googleResponse?.type !== 'success') return;
+    (async () => {
+      try {
+        const isAndroidFlow = !!oauthConfig?.google?.android_client_id;
+        if (isAndroidFlow && googleResponse.params?.code) {
+          // PKCE code flow — đổi code lấy access token
+          const accessToken = await exchangeGoogleCode(googleResponse.params.code);
+          await handleOAuthSuccess('google', accessToken);
+        } else if (googleResponse.params?.access_token) {
+          // Implicit flow (legacy fallback)
+          await handleOAuthSuccess('google', googleResponse.params.access_token);
+        } else {
+          showAlert('Lỗi', 'Phản hồi từ Google không hợp lệ. Vui lòng thử lại.');
+        }
+      } catch (e) {
+        showAlert('Đăng nhập Google thất bại', 'Không đổi được mã xác thực từ Google. Vui lòng thử lại.');
+      }
+    })();
+  }, [googleResponse, handleOAuthSuccess, exchangeGoogleCode, oauthConfig?.google?.android_client_id]);
 
   useEffect(() => {
     if (fbResponse?.type === 'success') {
