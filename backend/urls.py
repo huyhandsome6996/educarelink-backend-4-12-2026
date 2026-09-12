@@ -12,6 +12,11 @@ from core.admin_stats import (
     admin_export_excel,
     admin_ai_analysis,
 )
+from core.oauth_web_views import (
+    GoogleWebCallbackView,
+    GoogleWebCompletePageView,
+    GoogleWebLoginView,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -85,6 +90,11 @@ urlpatterns = [
     path('api/', include('chat.urls')),
     # Flow 1 — Ghép cặp Phụ huynh ↔ CarePartner (JobPost/Booking/ELO/lock)
     path('api/matching/', include('matching.urls')),
+    # Đăng nhập Google cho WEB — redirect_uri PHẢI KHỚP ĐÚNG URI đã đăng ký
+    # trên Google Console: https://educarelink-backend.onrender.com/accounts/google/login/callback/
+    path('accounts/google/login/', GoogleWebLoginView.as_view(), name='google_web_login'),
+    path('accounts/google/login/callback/', GoogleWebCallbackView.as_view(), name='google_web_callback'),
+    path('accounts/google/complete/', GoogleWebCompletePageView.as_view(), name='google_web_complete'),
     # Giao diện Prototype
     path('', include('frontend.urls')),
 ]

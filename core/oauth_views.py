@@ -29,9 +29,21 @@ logger = logging.getLogger('educarelink.oauth')
 User = get_user_model()
 
 # Cấu hình từ env
+# WEB client: dùng cho web (redirect https://educarelink-backend.onrender.com/accounts/google/login/callback/)
+#   + làm audience mặc định cho ID token mobile.
+# ANDROID client: client loại "Android" (package com.educarelink.app + SHA-1 signing)
+#   — client Android KHÔNG có client_secret, redirect scheme riêng
+#   com.googleusercontent.apps.<id>:/oauthredirect. Mobile expo-auth-session dùng id này.
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+GOOGLE_CLIENT_ID_ANDROID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID_ANDROID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
 FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+
+
+def _google_allowed_audiences():
+    """Tập client_id hợp lệ làm audience của ID token Google (web + android)."""
+    return {cid for cid in (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_ID_ANDROID) if cid}
 
 
 def _generate_username(base):
@@ -78,8 +90,8 @@ def _verify_google_id_token(token):
 
     payload = resp.json()
 
-    # Kiểm tra audience (client_id)
-    if payload.get('aud') != GOOGLE_CLIENT_ID:
+    # Kiểm tra audience — chấp nhận cả WEB client lẫn ANDROID client của dự án
+    if payload.get('aud') not in _google_allowed_audiences():
         logger.warning(f"[Google OAuth] Audience mismatch: {payload.get('aud')}")
         return None
 
@@ -87,7 +99,23 @@ def _verify_google_id_token(token):
 
 
 def _verify_google_access_token(access_token):
-    """Xác thực Google access token qua userinfo endpoint. Trả về payload hoặc None."""
+    """Xác thực Google access token qua userinfo endpoint. Trả về payload hoặc None.
+
+    Chống token-substitution (kẻ xấu đem access token của app KHÁC đến đây):
+    introspect token qua tokeninfo và bắt buộc audience phải thuộc dự án.
+    """
+    introspect = http_requests.get(
+        f'https://oauth2.googleapis.com/tokeninfo?access_token={access_token}',
+        timeout=10
+    )
+    if introspect.status_code != 200:
+        logger.warning("[Google OAuth] Access token introspection failed")
+        return None
+    info = introspect.json()
+    if info.get('aud') not in _google_allowed_audiences():
+        logger.warning(f"[Google OAuth] Access token audience mismatch: {info.get('aud')}")
+        return None
+
     resp = http_requests.get(
         'https://www.googleapis.com/oauth2/v3/userinfo',
         headers={'Authorization': f'Bearer {access_token}'},
@@ -106,6 +134,73 @@ def _verify_google_access_token(access_token):
         'picture': data.get('picture', ''),
         'email_verified': data.get('email_verified', False),
     }
+
+
+def _get_or_create_google_user(payload):
+    """Logic dùng chung (API mobile + web flow): tìm/tạo user từ payload Google.
+
+    Trả về (user, None) nếu thành công, hoặc (None, Response lỗi 4xx).
+    Đảm bảo web và mobile hành vi GIỐNG NHAU tuyệt đối với cùng 1 email.
+    """
+    email = payload.get('email', '')
+    given_name = payload.get('given_name', '')
+    family_name = payload.get('family_name', '')
+    picture = payload.get('picture', '')
+    # tokeninfo trả "true"/"false" dạng CHUỖI, userinfo trả boolean —
+    # coerce về bool thật để không làm crash BooleanField is_verified
+    email_verified = payload.get('email_verified', False) in (True, 'true', 'True', 1, '1')
+
+    if not email:
+        return None, Response(
+            {'error': 'Không lấy được email từ tài khoản Google.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Tìm user theo email
+    existing_user = User.objects.filter(email=email).first()
+
+    if existing_user:
+        if existing_user.auth_provider == 'google':
+            if picture and not existing_user.avatar_url:
+                existing_user.avatar_url = picture
+                existing_user.save(update_fields=['avatar_url'])
+            return existing_user, None
+
+        elif existing_user.auth_provider == 'email':
+            return None, Response(
+                {
+                    'error': f'Email {email} đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng email và mật khẩu.',
+                    'code': 'EMAIL_ALREADY_REGISTERED'
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        elif existing_user.auth_provider == 'facebook':
+            return None, Response(
+                {
+                    'error': f'Email {email} đã được liên kết với tài khoản Facebook. Vui lòng đăng nhập bằng Facebook.',
+                    'code': 'EMAIL_LINKED_FACEBOOK'
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+    # Tạo tài khoản Phụ huynh mới
+    username = _generate_username(email)
+    new_user = User.objects.create_user(
+        username=username,
+        email=email,
+        first_name=given_name[:30] if given_name else '',
+        last_name=family_name[:30] if family_name else '',
+        role='parent',
+        auth_provider='google',
+        avatar_url=picture or '',
+        is_verified=email_verified,
+    )
+    new_user.set_unusable_password()
+    new_user.save()
+
+    logger.info(f"[Google OAuth] New parent created: {username} ({email})")
+    return new_user, None
 
 
 class GoogleOAuthAPIView(APIView):
@@ -129,7 +224,7 @@ class GoogleOAuthAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not GOOGLE_CLIENT_ID:
+        if not GOOGLE_CLIENT_ID and not GOOGLE_CLIENT_ID_ANDROID:
             return Response(
                 {'error': 'Đăng nhập Google chưa được cấu hình trên server.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
@@ -150,18 +245,6 @@ class GoogleOAuthAPIView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
 
-            email = payload.get('email', '')
-            given_name = payload.get('given_name', '')
-            family_name = payload.get('family_name', '')
-            picture = payload.get('picture', '')
-            email_verified = payload.get('email_verified', False)
-
-            if not email:
-                return Response(
-                    {'error': 'Không lấy được email từ tài khoản Google.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
         except http_requests.RequestException as e:
             logger.error(f"[Google OAuth] Request error: {e}")
             return Response(
@@ -169,51 +252,10 @@ class GoogleOAuthAPIView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        # Tìm user theo email
-        existing_user = User.objects.filter(email=email).first()
-
-        if existing_user:
-            if existing_user.auth_provider == 'google':
-                if picture and not existing_user.avatar_url:
-                    existing_user.avatar_url = picture
-                    existing_user.save(update_fields=['avatar_url'])
-                return _create_jwt_response(existing_user)
-
-            elif existing_user.auth_provider == 'email':
-                return Response(
-                    {
-                        'error': f'Email {email} đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng email và mật khẩu.',
-                        'code': 'EMAIL_ALREADY_REGISTERED'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
-
-            elif existing_user.auth_provider == 'facebook':
-                return Response(
-                    {
-                        'error': f'Email {email} đã được liên kết với tài khoản Facebook. Vui lòng đăng nhập bằng Facebook.',
-                        'code': 'EMAIL_LINKED_FACEBOOK'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
-
-        # Tạo tài khoản Phụ huynh mới
-        username = _generate_username(email)
-        new_user = User.objects.create_user(
-            username=username,
-            email=email,
-            first_name=given_name[:30] if given_name else '',
-            last_name=family_name[:30] if family_name else '',
-            role='parent',
-            auth_provider='google',
-            avatar_url=picture or '',
-            is_verified=email_verified,
-        )
-        new_user.set_unusable_password()
-        new_user.save()
-
-        logger.info(f"[Google OAuth] New parent created: {username} ({email})")
-        return _create_jwt_response(new_user)
+        user, error_response = _get_or_create_google_user(payload)
+        if error_response is not None:
+            return error_response
+        return _create_jwt_response(user)
 
 
 class FacebookOAuthAPIView(APIView):
@@ -356,11 +398,41 @@ class OAuthConfigAPIView(APIView):
     def get(self, request):
         return Response({
             'google': {
-                'enabled': bool(GOOGLE_CLIENT_ID),
+                'enabled': bool(GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID_ANDROID),
                 'client_id': GOOGLE_CLIENT_ID,
+                # Client loại Android (native sign-in flow cho app mobile) —
+                # client web KHÔNG dùng được cho redirect scheme của app Android.
+                'android_client_id': GOOGLE_CLIENT_ID_ANDROID,
             },
             'facebook': {
                 'enabled': bool(FACEBOOK_APP_ID),
                 'app_id': FACEBOOK_APP_ID,
             },
         })
+
+
+class GoogleCompleteAPIView(APIView):
+    """
+    Đổi one-time code (lưu trong session sau web callback) lấy JWT cho web frontend.
+    GET /api/auth/google/complete/ — dùng 1 lần, session không có code → 401.
+
+    Response GIỐNG HỆT shape /api/auth/login/ để trang google_complete.html
+    tái dùng đúng pattern localStorage của login.html.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        user_id = request.session.pop('google_complete_uid', None)
+        if not user_id:
+            return Response(
+                {'error': 'Phiên đăng nhập Google không hợp lệ hoặc đã được dùng.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        user = User.objects.filter(pk=user_id, auth_provider='google').first()
+        if not user:
+            return Response(
+                {'error': 'Không tìm thấy tài khoản Google tương ứng.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.session.modified = True
+        return _create_jwt_response(user)
