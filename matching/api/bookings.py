@@ -118,6 +118,27 @@ def _booking_dict(booking):
         'avatar_url': getattr(parent, 'avatar_url', '') or '',
     }
 
+    # Thông tin CarePartner hiển thị cho Phụ huynh (Stitch 2026-09-13 —
+    # màn "Việc của tôi" / "Chi tiết đơn" cần Spotlight sinh viên đã chọn).
+    # CHỈ hồ sơ công khai: tên, trường/khoa, đánh giá, số ca hoàn thành, band
+    # tin nhiệm dạng NHÃN. Điểm ELO gốc/hiệu quả (Step 6.7) KHÔNG BAO GIỜ
+    # xuất hiện ở đây — có test chặn lộ số trong matching/tests.
+    cp = b.carepartner
+    cp_profile = getattr(cp, 'carepartner_profile', None)
+    carepartner_info = {
+        'full_name': (f"{cp.first_name} {cp.last_name}".strip()
+                      if cp else '') or getattr(cp, 'username', ''),
+        'phone': getattr(cp, 'phone_number', '') or '',
+        'avatar_url': getattr(cp, 'avatar_url', '') or '',
+        'is_verified': bool(getattr(cp, 'is_verified', False)),
+        'school': getattr(cp_profile, 'school', '') or '',
+        'major': getattr(cp_profile, 'major', '') or '',
+        'rating_avg': round(float(getattr(cp_profile, 'rating_avg', 0) or 0), 1),
+        'jobs_completed': int(getattr(cp_profile, 'jobs_completed', 0) or 0),
+        'trust_band_vi': (cp_profile.band.label_vi
+                          if cp_profile is not None and cp_profile.band else '') or '',
+    }
+
     # Vị trí làm việc — nút Chỉ đường ưu tiên toạ độ, fallback địa chỉ chữ
     loc = td.get('pickup_location') or td.get('destination_location')
     loc_addr = ''
@@ -136,6 +157,7 @@ def _booking_dict(booking):
         'hourly_rate_vnd': getattr(b.job, 'hourly_rate_vnd', 0),
         'type_data': td,
         'carepartner_id': str(b.carepartner_id),
+        'carepartner_info': carepartner_info,
         'parent_id': str(b.parent_id),
         'parent_name': (f"{parent.first_name} {parent.last_name}".strip()
                         if parent else '') or getattr(parent, 'username', ''),
@@ -164,7 +186,9 @@ def _booking_dict(booking):
 
 def _get_booking(pk, user=None):
     try:
-        return Booking.objects.select_related('job', 'carepartner', 'parent').get(pk=pk)
+        return Booking.objects.select_related(
+            'job', 'carepartner', 'parent', 'carepartner__carepartner_profile',
+        ).get(pk=pk)
     except Booking.DoesNotExist:
         return None
 
@@ -247,8 +271,9 @@ class BookingListAPIView(APIView):
         # Lazy commit check cho các đơn đang chờ cam kết (Step 5 AC4)
         for b in qs.filter(status=BookingStatus.AWAITING_COMMITMENT)[:20]:
             lazy_commit_check(b)
-        qs = Booking.objects.select_related('job', 'parent', 'carepartner').filter(
-            pk__in=[b.pk for b in qs[:50]]).order_by('-created_at')
+        qs = Booking.objects.select_related(
+            'job', 'parent', 'carepartner', 'carepartner__carepartner_profile',
+        ).filter(pk__in=[b.pk for b in qs[:50]]).order_by('-created_at')
         return Response({'count': qs.count(),
                          'results': [_booking_dict(b) for b in qs]})
 
