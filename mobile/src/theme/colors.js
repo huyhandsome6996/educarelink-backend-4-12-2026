@@ -68,6 +68,19 @@ export const COLORS = {
   errorDeep:     '#ba1a1a',
   errorContainer:'#ffdad6',
 
+  // Stitch 2026-09-13 — token trạng thái màn "Việc của tôi" / "Chi tiết đơn"
+  // (bản thiết kế Parent UI). Thêm SONG SONG, không đụng token cũ.
+  amber:         '#F59E0B',  // awaiting_commitment / countdown
+  amberBg:       '#FFFBEB',
+  amberBorder:   '#FDE68A',
+  sky:           '#0284C7',  // live GPS / in-progress
+  skyBg:         '#E0F2FE',
+  skyBorder:     '#BAE6FD',
+  canvas:        '#F8FAFC',  // nền tổng thể Stitch (canvas pearl slate)
+  ink:           '#0F172A',  // text primary Stitch (slate-900)
+  inkSecondary:  '#475569',  // text secondary Stitch (slate-600)
+  inkMuted:      '#94A3B8',  // text muted Stitch (slate-400)
+
   // Tier badge tokens (QA-FIX-UI 3.1) — tông be/vàng ấm khớp screen.png
   // Tránh #FFD700 (vàng kim loại chói) và #6B7280 (xám lạnh) không thuộc
   // bảng Warm Professionalism.
