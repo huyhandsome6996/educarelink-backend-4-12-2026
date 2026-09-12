@@ -180,7 +180,7 @@ def admin_export_excel(request):
     # ===== Sheet 2: Khảo sát góp ý =====
     ws2 = wb.create_sheet('Khảo sát góp ý')
     surveys = LandingSurvey.objects.all().order_by('-created_at')
-    headers2 = ['ID', 'Vai trò', 'Câu trả lời (JSON)', 'Góp ý', 'Email', 'IP', 'Thời gian']
+    headers2 = ['ID', 'Vai trò', 'Câu trả lời (JSON)', 'Góp ý', 'Số điện thoại', 'Email', 'IP', 'Thời gian']
     for i, h in enumerate(headers2, 1):
         ws2.cell(row=1, column=i, value=h)
     for idx, s in enumerate(surveys, 2):
@@ -188,13 +188,14 @@ def admin_export_excel(request):
         ws2.cell(row=idx, column=2, value=s.get_role_display())
         ws2.cell(row=idx, column=3, value=json.dumps(s.role_answers, ensure_ascii=False) if s.role_answers else '')
         ws2.cell(row=idx, column=4, value=s.feedback)
-        ws2.cell(row=idx, column=5, value=s.email or '')
-        ws2.cell(row=idx, column=6, value=s.ip_address or '')
+        ws2.cell(row=idx, column=5, value=s.phone or '')
+        ws2.cell(row=idx, column=6, value=s.email or '')
+        ws2.cell(row=idx, column=7, value=s.ip_address or '')
         tz = timezone.get_current_timezone()
-        ws2.cell(row=idx, column=7, value=s.created_at.astimezone(tz).strftime('%d/%m/%Y %H:%M:%S'))
+        ws2.cell(row=idx, column=8, value=s.created_at.astimezone(tz).strftime('%d/%m/%Y %H:%M:%S'))
     style_header(ws2, len(headers2))
     style_cells(ws2, len(headers2), len(surveys) + 1)
-    for col, w in enumerate([6, 18, 60, 50, 30, 18, 22], 1):
+    for col, w in enumerate([6, 18, 60, 50, 16, 30, 18, 22], 1):
         ws2.column_dimensions[get_column_letter(col)].width = w
 
     # ===== Sheet 3: Đăng ký tư vấn/dùng thử =====

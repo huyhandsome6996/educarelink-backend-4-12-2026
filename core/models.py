@@ -460,7 +460,10 @@ class LandingSurvey(models.Model):
         help_text='Bộ câu hỏi riêng theo role (carepartner/phu-huynh)')
     feedback = models.TextField(blank=True, default='',
                                help_text='Góp ý tự do (common cho cả 2 role)')
-    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=30, blank=True, default='',
+                             help_text='Số điện thoại người góp ý')
+    email = models.EmailField(blank=True, default='',
+                              help_text='Email người góp ý')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -34,10 +34,10 @@ class LandingPageVisitAdmin(admin.ModelAdmin):
 
 @admin.register(LandingSurvey)
 class LandingSurveyAdmin(admin.ModelAdmin):
-    list_display = ('id', 'role', 'feedback_short', 'email', 'created_at')
+    list_display = ('id', 'role', 'phone', 'email', 'feedback_short', 'created_at')
     list_filter = ('role', 'created_at')
-    search_fields = ('email', 'feedback')
-    readonly_fields = ('role', 'role_answers', 'feedback', 'email', 'ip_address', 'created_at')
+    search_fields = ('phone', 'email', 'feedback')
+    readonly_fields = ('role', 'role_answers', 'feedback', 'phone', 'email', 'ip_address', 'created_at')
 
     def feedback_short(self, obj):
         return (obj.feedback or '-')[:60]
