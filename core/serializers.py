@@ -210,12 +210,23 @@ class LandingSurveySerializer(serializers.ModelSerializer):
 
     role = 'carepartner' | 'phu-huynh'
     role_answers = JSON object chứa câu hỏi riêng theo role.
-    feedback + email là common.
+    feedback + phone + email là common.
+    Bắt buộc phải có Số điện thoại HOẶC Email để nhận diện người góp ý.
     """
 
     class Meta:
         model = LandingSurvey
-        fields = ['role', 'role_answers', 'feedback', 'email']
+        fields = ['role', 'role_answers', 'feedback', 'phone', 'email']
+
+    def validate_phone(self, value):
+        if not value:
+            return ''
+        import re
+        cleaned = re.sub(r'[\s+()-]', '', value)
+        if not re.match(r'^[0-9]{9,14}$', cleaned):
+            raise serializers.ValidationError(
+                'Số điện thoại không hợp lệ (cần 9–14 chữ số).')
+        return value
 
     def validate_email(self, value):
         if value == '' or value is None:
@@ -237,6 +248,13 @@ class LandingSurveySerializer(serializers.ModelSerializer):
         role = attrs.get('role', '')
         ra = attrs.get('role_answers', {}) or {}
         errors = {}
+
+        # Bắt buộc cung cấp Số điện thoại HOẶC Email để nhận diện người góp ý
+        phone = (attrs.get('phone') or '').strip()
+        email = (attrs.get('email') or '').strip()
+        if not phone and not email:
+            errors['contact'] = 'Vui lòng cung cấp Số điện thoại hoặc Email để chúng tôi biết ai đã góp ý.'
+
         if role == 'carepartner':
             # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi Gia sư/Đón trẻ/Trông trẻ
             services = ra.get('services')

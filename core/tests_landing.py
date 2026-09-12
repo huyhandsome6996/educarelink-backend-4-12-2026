@@ -53,12 +53,14 @@ class LandingSurveyTestCase(TestCase):
             'role': 'phu-huynh',
             'role_answers': VALID_PH_ROLE_ANSWERS.copy(),
             'feedback': 'Tôi cần tìm người trông con',
+            'phone': '0912345678',
             'email': '',
         }
         self.valid_cp = {
             'role': 'carepartner',
             'role_answers': VALID_CP_ROLE_ANSWERS.copy(),
             'feedback': '',
+            'phone': '',
             'email': 'cp@test.com',
         }
 
@@ -70,6 +72,7 @@ class LandingSurveyTestCase(TestCase):
         self.assertEqual(LandingSurvey.objects.count(), 1)
         obj = LandingSurvey.objects.first()
         self.assertEqual(obj.role, 'phu-huynh')
+        self.assertEqual(obj.phone, '0912345678')
         self.assertEqual(obj.role_answers['services'], ['tutoring', 'pickup'])
         self.assertEqual(obj.role_answers['child_age'], '6-11')
         self.assertEqual(obj.role_answers['necessity'], 'can-thiet')
@@ -78,15 +81,39 @@ class LandingSurveyTestCase(TestCase):
         resp = self.client.post('/api/landing/survey/', self.valid_cp, format='json')
         self.assertEqual(resp.status_code, 201)
         obj = LandingSurvey.objects.get(role='carepartner')
+        self.assertEqual(obj.email, 'cp@test.com')
         self.assertEqual(obj.role_answers['services'], ['tutoring', 'pickup'])
         self.assertEqual(obj.role_answers['carepartner_type'], 'sv-nam-3-4')
         self.assertEqual(obj.role_answers['transport_method'], 'xe-may')
 
-    def test_survey_email_optional(self):
+    def test_survey_email_optional_when_phone_provided(self):
         payload = self.valid_parent.copy()
+        payload['phone'] = '0912345678'
         payload['email'] = ''
         resp = self.client.post('/api/landing/survey/', payload, format='json')
         self.assertEqual(resp.status_code, 201)
+
+    def test_survey_phone_optional_when_email_provided(self):
+        payload = self.valid_cp.copy()
+        payload['phone'] = ''
+        payload['email'] = 'cp@test.com'
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_survey_require_phone_or_email_missing_both_400(self):
+        payload = self.valid_parent.copy()
+        payload['phone'] = ''
+        payload['email'] = ''
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('contact', resp.data.get('error', {}))
+
+    def test_survey_invalid_phone_400(self):
+        payload = self.valid_parent.copy()
+        payload['phone'] = '123'
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('phone', resp.data.get('error', {}))
 
     def test_survey_email_validated_when_provided(self):
         payload = self.valid_parent.copy()

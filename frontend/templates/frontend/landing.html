@@ -499,7 +499,7 @@
         <p class="lead">8 câu ngắn, trả lời bằng 1 cú nhấp — mỗi câu đi thẳng vào thiết kế tính năng cho 3 dịch vụ cốt lõi: <b>Gia sư học tập</b>, <b>Đưa đón bé tan học</b>, <b>Trông trẻ tại nhà</b>.</p>
         <ul class="side-list">
           <li><span class="num" aria-hidden="true">1</span><span class="txt"><b>Không cần tài khoản</b> — điền và gửi trực tiếp, không đăng nhập.</span></li>
-          <li><span class="num" aria-hidden="true">2</span><span class="txt"><b>Có thể để trống email</b> — chỉ cần nếu bạn muốn nhận phản hồi.</span></li>
+          <li><span class="num" aria-hidden="true">2</span><span class="txt"><b>Số điện thoại hoặc Email</b> — chỉ cần để lại 1 trong 2 thông tin để nhận diện người góp ý.</span></li>
           <li><span class="num" aria-hidden="true">3</span><span class="txt"><b>Đội ngũ sản phẩm đọc từng câu trả lời</b>, không chỉ tổng hợp số liệu.</span></li>
         </ul>
       </div>
@@ -738,10 +738,19 @@
             <textarea id="survey-feedback" name="survey-feedback" placeholder="Chia sẻ thêm (không bắt buộc): điều gì khiến bạn còn băn khoăn khi giao con cho sinh viên? Bạn muốn EduCareLink bổ sung gì để yên tâm hơn?"></textarea>
           </div>
 
-          <div class="field" id="field-survey-email">
-            <label class="field-label" for="survey-email">Email <span style="font-weight:500;color:var(--text-muted);">(để lại nếu muốn nhận phản hồi)</span></label>
-            <input type="email" id="survey-email" name="survey-email" placeholder="ban@vidu.com" autocomplete="email">
-            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Email chưa đúng định dạng.</p>
+          <div class="field" id="field-survey-contact">
+            <label class="field-label">Thông tin người góp ý <span class="req" aria-hidden="true">*</span> <span style="font-weight:500;color:var(--text-muted);">(vui lòng để lại Số điện thoại HOẶC Email)</span></label>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <label for="survey-phone" style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:4px;font-weight:600;">Số điện thoại</label>
+                <input type="tel" id="survey-phone" name="survey-phone" placeholder="09xx xxx xxx" autocomplete="tel" inputmode="tel">
+              </div>
+              <div style="flex:1;min-width:200px;">
+                <label for="survey-email" style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:4px;font-weight:600;">Email (Gmail)</label>
+                <input type="email" id="survey-email" name="survey-email" placeholder="ban@gmail.com" autocomplete="email">
+              </div>
+            </div>
+            <p class="err-msg" id="survey-contact-err" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span><span id="survey-contact-err-text">Vui lòng nhập Số điện thoại hoặc Email để chúng tôi biết ai đã góp ý.</span></p>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">
@@ -753,7 +762,7 @@
             <span class="material-symbols-outlined filled" aria-hidden="true">task_alt</span>
             <div>
               <h4>Cảm ơn bạn đã dành thời gian góp ý!</h4>
-              <p>Đội ngũ EduCareLink sẽ đọc từng phản hồi để hoàn thiện sản phẩm. Nếu bạn để lại email, chúng tôi sẽ phản hồi khi có cập nhật liên quan.</p>
+              <p>Đội ngũ EduCareLink sẽ đọc từng phản hồi để hoàn thiện sản phẩm. Chúng tôi sẽ phản hồi sớm nhất qua Số điện thoại hoặc Email bạn đã cung cấp.</p>
             </div>
           </div>
         </form>
@@ -1155,11 +1164,29 @@
       if(!nec) valid = false; else roleAnswers.necessity = nec.value;
     }
 
+    var phoneField = document.getElementById('survey-phone');
     var emailField = document.getElementById('survey-email');
-    var emailWrap = emailField.closest('.field');
-    var emailInvalid = emailField.value.trim() !== '' && !isValidEmail(emailField.value.trim());
-    setFieldError(emailWrap, emailInvalid);
-    if(emailInvalid) valid = false;
+    var contactWrap = document.getElementById('field-survey-contact');
+    var contactErrText = document.getElementById('survey-contact-err-text');
+
+    var phoneVal = phoneField ? phoneField.value.trim() : '';
+    var emailVal = emailField ? emailField.value.trim() : '';
+
+    var contactInvalid = false;
+    if (!phoneVal && !emailVal) {
+      contactInvalid = true;
+      if (contactErrText) contactErrText.textContent = 'Vui lòng nhập Số điện thoại HOẶC Email để EduCareLink biết ai đã góp ý.';
+    } else {
+      if (phoneVal && !isValidPhone(phoneVal)) {
+        contactInvalid = true;
+        if (contactErrText) contactErrText.textContent = 'Số điện thoại chưa đúng định dạng (cần 9–14 chữ số).';
+      } else if (emailVal && !isValidEmail(emailVal)) {
+        contactInvalid = true;
+        if (contactErrText) contactErrText.textContent = 'Email chưa đúng định dạng (VD: ten@gmail.com).';
+      }
+    }
+    setFieldError(contactWrap, contactInvalid);
+    if(contactInvalid) valid = false;
 
     if(!valid){
       var firstError = surveyForm.querySelector('.has-error');
@@ -1171,7 +1198,8 @@
       role: isCP ? 'carepartner' : 'phu-huynh',
       role_answers: roleAnswers,
       feedback: surveyForm.querySelector('#survey-feedback').value.trim(),
-      email: emailField.value.trim(),
+      phone: phoneVal,
+      email: emailVal,
       website_url: surveyForm.querySelector('#survey-website').value
     };
 

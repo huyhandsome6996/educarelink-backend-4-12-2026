@@ -3770,7 +3770,7 @@ class AdminFeedbackExcelAPIView(APIView):
         w3.row_dimensions[2].height = 36
         w3.row_dimensions[3].height = 8
 
-        h1 = ['ID', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Email', 'IP', 'Ngày tạo']
+        h1 = ['ID', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Số điện thoại', 'Email', 'IP', 'Ngày tạo']
         hr = 4
         for ci, h in enumerate(h1, start=2):
             w3.cell(row=hr, column=ci, value=h)
@@ -3786,10 +3786,11 @@ class AdminFeedbackExcelAPIView(APIView):
                 w3.cell(row=ri, column=4, value=ss)
                 w3.cell(row=ri, column=5, value=_fmt_ra(s.role, ra))
                 w3.cell(row=ri, column=6, value=s.feedback or '')
-                w3.cell(row=ri, column=7, value=s.email or '')
-                w3.cell(row=ri, column=8, value=s.ip_address or '')
-                w3.cell(row=ri, column=9, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
-                for c in range(2, 10):
+                w3.cell(row=ri, column=7, value=s.phone or '')
+                w3.cell(row=ri, column=8, value=s.email or '')
+                w3.cell(row=ri, column=9, value=s.ip_address or '')
+                w3.cell(row=ri, column=10, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 11):
                     style_data_cell(w3, ri, c, i)
         else:
             empty_msg(w3, 'Chưa có góp ý.')
