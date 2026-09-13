@@ -81,6 +81,13 @@ class HeartbeatSerializer(serializers.Serializer):
     network_type = serializers.CharField(required=False, allow_blank=True, default='')
 
 
+class GpsHeartbeatSerializer(serializers.Serializer):
+    """Input cho GPS heartbeat ngoài ca (Defect 4 — đồng bộ GPS khi mở app/đăng nhập)."""
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    accuracy = serializers.FloatField(required=False, allow_null=True)
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  PHẦN 3 — Random Verification Check
 # ═══════════════════════════════════════════════════════════════════

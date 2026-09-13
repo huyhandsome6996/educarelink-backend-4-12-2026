@@ -19,6 +19,7 @@ Soft scoring (Step 11.6 — trọng số từ DB MatchingWeight):
 import logging
 import math
 
+from django.conf import settings
 from django.utils import timezone
 
 from ..config import get_config, get_int
@@ -192,6 +193,27 @@ def _major_match_bonus(major, job_type, required_skills=None, child_grade_level=
     return 0
 
 
+def get_effective_coordinates(user):
+    """Vị trí HIỆU LỰC của CarePartner cho ghép cặp (Defect 4 — 2026-09-13).
+
+    Ưu tiên GPS real-time (User.current_latitude/longitude) nếu còn "tươi"
+    (< settings.GPS_FRESHNESS_HOURS, mặc định 48h); quá hạn hoặc chưa từng
+    sync → fallback vị trí đăng ký tĩnh (User.latitude/longitude).
+
+    Trả về (lat, lng, from_gps: bool). Ngưỡng cấu hình qua Django settings
+    (GPS_FRESHNESS_HOURS / MAX_GPS_DRIFT_KM) — KHÔNG hard-code, dễ tinh chỉnh
+    khi lên production. Dùng `is not None` thay vì truthiness để không coi
+    tọa độ 0.0 là "không có".
+    """
+    freshness_hours = float(getattr(settings, 'GPS_FRESHNESS_HOURS', 48))
+    if (user.current_latitude is not None and user.current_longitude is not None
+            and user.last_gps_updated_at is not None):
+        age_seconds = (timezone.now() - user.last_gps_updated_at).total_seconds()
+        if age_seconds < freshness_hours * 3600:
+            return user.current_latitude, user.current_longitude, True
+    return user.latitude, user.longitude, False
+
+
 def _jaccard(set_a, set_b):
     a, b = set(set_a or []), set(set_b or [])
     if not a or not b:
@@ -322,7 +344,21 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         ok_cover, _missing = covers_all_slots(user, required_slots)
         if not ok_cover:
             continue
-        km = haversine_km(job.latitude, job.longitude, user.latitude, user.longitude)
+        # ── Defect 4: dùng vị trí HIỆU LỰC (GPS real-time nếu còn tươi) ──
+        eff_lat, eff_lng, from_gps = get_effective_coordinates(user)
+        # Chống "đi công tác / về quê": GPS real-time xa hơn MAX_GPS_DRIFT_KM
+        # (mặc định 50km) so với vị trí ĐÃ ĐĂNG KÝ → CarePartner đang ở xa
+        # nơi đăng ký → LOẠI khỏi match pool (kể cả khớp skill hoàn hảo).
+        if from_gps:
+            drift_km = haversine_km(eff_lat, eff_lng, user.latitude, user.longitude)
+            max_drift_km = float(getattr(settings, 'MAX_GPS_DRIFT_KM', 50))
+            if drift_km is not None and drift_km > max_drift_km:
+                logger.info(
+                    '[Matching] Loại %s: GPS drift %.1fkm > %.0fkm (đăng ký %.4f,%.4f — GPS %.4f,%.4f)',
+                    user.username, drift_km, max_drift_km,
+                    user.latitude or 0, user.longitude or 0, eff_lat or 0, eff_lng or 0)
+                continue
+        km = haversine_km(job.latitude, job.longitude, eff_lat, eff_lng)
         radius = profile.max_radius_km or default_radius
         # Bán kính: CP có phương tiện hoặc khu vực đô thị mở rộng tối đa 35km để luôn có ứng viên phù hợp
         max_allowed_km = max(radius, 35) if profile.has_vehicle else max(radius, 25)

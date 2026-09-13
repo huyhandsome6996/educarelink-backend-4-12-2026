@@ -7,6 +7,7 @@ from .views import (
     SOSCreateAPIView, SOSListAPIView, SOSResolveAPIView,
     AdminTrackingOverviewAPIView, TrackingHealthCheckAPIView,
     HeartbeatAPIView, DeviceStatusAPIView, OfflineAlertsListAPIView,
+    GpsHeartbeatAPIView,
     AdminRunOfflineCheckAPIView, AcknowledgeOfflineAlertAPIView,
     AdminRunRetryPushAPIView,
     # Phan 3 — Random Verification Check
@@ -49,6 +50,8 @@ urlpatterns = [
 
     # Device Heartbeat & Offline Alert (chống tắt máy)
     path('tracking/heartbeat/', HeartbeatAPIView.as_view(), name='tracking-heartbeat'),
+    # Defect 4 (2026-09-13) — GPS heartbeat ngoài ca (đồng bộ vị trí thực tế cho ghép cặp)
+    path('tracking/gps-heartbeat/', GpsHeartbeatAPIView.as_view(), name='tracking-gps-heartbeat'),
     path('tracking/<int:task_id>/device-status/', DeviceStatusAPIView.as_view(), name='tracking-device-status'),
     path('tracking/<int:task_id>/offline-alerts/', OfflineAlertsListAPIView.as_view(), name='tracking-offline-alerts'),
     # Phan 2 — Parent acknowledge offline alert (dừng retry push)

@@ -1588,3 +1588,55 @@ def cancel_pending_verification_checks_for_task(task: Task) -> int:
             f"for Task#{task.id} (task ended — status={task.status})"
         )
     return updated
+
+
+# ════════════════════════════════════════════════════════════════════
+# GPS REAL-TIME CHO GHÉP CẶP (Defect 4 — 2026-09-13)
+# ════════════════════════════════════════════════════════════════════
+
+def user_has_granted_location_consent(user: User) -> bool:
+    """Kiểm tra CarePartner đã từng cấp consent chia sẻ vị trí (SAFETY-LOC-001).
+
+    Tái sử dụng model LocationConsent hiện có (per-task) — KHÔNG tạo cơ chế
+    consent riêng. Vì LocationConsent là OneToOne với Task, với luồng GPS
+    đồng bộ ngoài ca (mở app / đăng nhập) thì "đã có consent" = tồn tại ít
+    nhất 1 LocationConsent của user này với trạng thái 'granted' và chưa
+    revoked sau đó. Consents bị 'revoked'/'denied' không tính.
+    """
+    return LocationConsent.objects.filter(worker=user, consent='granted').exists()
+
+
+def sync_user_gps_coordinates(user: User, latitude, longitude, *, force: bool = False) -> str:
+    """Ghi tọa độ GPS real-time vào User.current_latitude/current_longitude.
+
+    - BẮT BUỘC kiểm tra LocationConsent đã cấp trước khi ghi (raise
+      PermissionError → view trả 403, KHÔNG ghi tọa độ).
+    - Throttle: tối đa 1 lần ghi / GPS_HEARTBEAT_MIN_INTERVAL_SECONDS giây
+      / user để mobile gửi dày cũng không spam DB (trả 'throttled').
+    - force=True bỏ qua throttle (dùng khi caller vừa tự validate consent
+      per-task và cần sync ngay, vd heartbeat trong ca).
+
+    Trả về: 'updated' | 'throttled'. Raise PermissionError khi chưa consent.
+    """
+    # Consent guard — bắt buộc, không optional (SAFETY-LOC-001)
+    if not user_has_granted_location_consent(user):
+        raise PermissionError(
+            "CarePartner chưa đồng ý chia sẻ vị trí — không thể ghi GPS real-time."
+        )
+
+    min_interval = getattr(settings, 'GPS_HEARTBEAT_MIN_INTERVAL_SECONDS', 60)
+    now = timezone.now()
+
+    if (not force and user.last_gps_updated_at
+            and (now - user.last_gps_updated_at).total_seconds() < min_interval):
+        return 'throttled'
+
+    user.current_latitude = float(latitude)
+    user.current_longitude = float(longitude)
+    user.last_gps_updated_at = now
+    user.save(update_fields=['current_latitude', 'current_longitude', 'last_gps_updated_at'])
+    logger.info(
+        f"[tracking] GPS heartbeat | user={user.username} "
+        f"lat={user.current_latitude:.5f} lng={user.current_longitude:.5f}"
+    )
+    return 'updated'
