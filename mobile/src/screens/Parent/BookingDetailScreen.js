@@ -233,7 +233,7 @@ export default function BookingDetailScreen() {
 
           {/* ═══ GIAI ĐOẠN 2 — COMMITTED / IN-PROGRESS ═══ */}
           {isShiftActive && (
-            <ActiveShiftView booking={booking} onCallSupport={() => setSupportModal(true)} />
+            <ActiveShiftView booking={booking} onCallSupport={() => setSupportModal(true)} navigation={navigation} />
           )}
 
           {/* ═══ GIAI ĐOẠN 3 — COMPLETED ═══ */}
@@ -2299,7 +2299,7 @@ function AwaitingCommitmentView({ booking, secondsLeft, onViewFull }) {
 }
 
 // ═══ GIAI ĐOẠN 2 — ACTIVE SHIFT VIEW (committed | in_progress) ═══
-function ActiveShiftView({ booking, onCallSupport }) {
+function ActiveShiftView({ booking, onCallSupport, navigation }) {
   const slot = booking.first_slot;
   const inProgress = booking.status === 'in_progress';
   return (
@@ -2357,6 +2357,24 @@ function ActiveShiftView({ booking, onCallSupport }) {
         phone={booking.carepartner_info?.phone}
         showPhone
       />
+      {/* N-003: chat trong ca — mở TRỰC TIẾP với taskId = booking.task_id
+          (Task mirror backend tạo khi ca bắt đầu). Ẩn khi chưa có task
+          (booking cũ/chưa bắt đầu) — không ship nút chat 404. */}
+      {booking.task_id && (
+        <TouchableOpacity
+          style={parentStyles.chatDetailBtn}
+          onPress={() => navigation.navigate('Chat', {
+            taskId: booking.task_id,
+            taskTitle: booking.job_title,
+          })}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Nhắn tin với Carepartner"
+        >
+          <Ionicons name="chatbubble-ellipses" size={16} color="#0284C7" />
+          <Text style={parentStyles.chatDetailBtnText}>Nhắn tin với Carepartner</Text>
+        </TouchableOpacity>
+      )}
       <ParentJobBento booking={booking} />
       <ParentEscrowCard booking={booking} mode="hold" />
     </>
@@ -2409,11 +2427,19 @@ function CompletedShiftView({ booking, navigation }) {
         )}
       </View>
 
-      {/* RATING & REVIEW + QUICK PRAISE TAGS (Stitch Section C.7) */}
+      {/* RATING & REVIEW + QUICK PRAISE TAGS (Stitch Section C.7)
+          Blocker B: đã đánh giá → hiện rating THẬT từ booking.review,
+          chưa có review → CTA viết đánh giá (đơn cũ không task → disabled) */}
       <View style={parentStyles.reviewCard}>
-        <Text style={parentStyles.reviewPromptTitle}>
-          ⭐ Bạn thấy {cpName} hỗ trợ bé như thế nào? Hãy đánh giá 5 sao để tích điểm uy tín cho em ấy!
-        </Text>
+        {booking.review ? (
+          <Text style={parentStyles.reviewPromptTitle}>
+            ⭐ Bạn đã đánh giá ca này {booking.review.rating} sao — cảm ơn bạn đã góp ý cho {cpName}!
+          </Text>
+        ) : (
+          <Text style={parentStyles.reviewPromptTitle}>
+            ⭐ Bạn thấy {cpName} hỗ trợ bé như thế nào? Hãy đánh giá để tích điểm uy tín cho em ấy!
+          </Text>
+        )}
         <View style={parentStyles.praiseRow}>
           {['Đúng giờ', 'Rất kiên nhẫn', 'Dạy dễ hiểu', 'Bé rất thích'].map((tag) => (
             <View key={tag} style={parentStyles.praiseChip}>
@@ -2424,15 +2450,39 @@ function CompletedShiftView({ booking, navigation }) {
         <TouchableOpacity
           style={parentStyles.reviewSubmitBtn}
           onPress={() => navigation.navigate('Review', {
-            taskId: booking.job_id,
+            taskId: booking.task_id,
             revieweeId: booking.carepartner_id,
           })}
+          disabled={!booking.task_id}
           activeOpacity={0.85}
         >
           <Ionicons name="star" size={14} color="#fff" />
           <Text style={parentStyles.reviewSubmitBtnText}>Viết đánh giá ngay</Text>
         </TouchableOpacity>
+        {!booking.task_id && (
+          <Text style={parentStyles.diaryEmpty}>
+            Ca này chưa hỗ trợ đánh giá trực tiếp (đơn cũ trước khi có ghép cặp tự động).
+          </Text>
+        )}
       </View>
+
+      {/* N-003: cửa sổ chat 24h sau ca — mở TRỰC TIẾP (taskId = Task mirror).
+          Booking cũ không có task → ẩn nút thay vì 404. */}
+      {booking.task_id && (
+        <TouchableOpacity
+          style={parentStyles.chatDetailBtn}
+          onPress={() => navigation.navigate('Chat', {
+            taskId: booking.task_id,
+            taskTitle: booking.job_title,
+          })}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Xem chat với Carepartner (còn 24 giờ sau khi hoàn thành)"
+        >
+          <Ionicons name="chatbubble-ellipses" size={16} color="#0284C7" />
+          <Text style={parentStyles.chatDetailBtnText}>Chat với Carepartner (24h)</Text>
+        </TouchableOpacity>
+      )}
 
       <ParentSpotlightBento info={booking.carepartner_info} showPhone={false} />
 
@@ -3166,6 +3216,19 @@ const parentStyles = StyleSheet.create({
   },
   diaryBtnText: { flex: 1, fontSize: 12.5, fontWeight: '800', color: '#C2410C' },
   diaryEmpty: { fontSize: 11.5, color: '#64748B', lineHeight: 16 },
+  // N-003: nút chat trong chi tiết đơn (ActiveShiftView + CompletedShiftView)
+  chatDetailBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  chatDetailBtnText: { fontSize: 12.5, fontWeight: '800', color: '#0284C7' },
 
   // Review card
   reviewCard: {

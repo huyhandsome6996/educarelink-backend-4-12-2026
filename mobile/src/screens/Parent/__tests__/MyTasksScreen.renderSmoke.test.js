@@ -76,8 +76,10 @@ jest.mock('../../../api/matching', () => ({
 }));
 
 const mockCheckConsent = jest.fn();
+const mockGetLiveLocation = jest.fn();
 jest.mock('../../../api/tracking', () => ({
   checkConsent: (...a) => mockCheckConsent(...a),
+  getLiveLocation: (...a) => mockGetLiveLocation(...a),
 }));
 
 const mockGetTaskModeration = jest.fn();
@@ -121,12 +123,16 @@ const IN_PROGRESS_BOOKING = {
   ...AWAITING_BOOKING,
   id: 'bk-3', status: 'in_progress', status_label_vi: 'Đang thực hiện', seconds_left: 0,
   carepartner_info: { ...AWAITING_BOOKING.carepartner_info, phone: '0912845000' },
+  started_at: '2026-09-15T11:15:00Z',
+  task_id: '889',
 };
 
 const COMPLETED_BOOKING = {
   ...AWAITING_BOOKING,
   id: 'bk-4', status: 'completed', status_label_vi: 'Hoàn thành', seconds_left: 0,
   ended_at: '2026-09-15T13:00:00Z', carepartner_payout_vnd: 240000,
+  task_id: '778',
+  review: null,
 };
 
 const NO_SHOW_BOOKING = {
@@ -150,6 +156,9 @@ beforeEach(() => {
   });
   mockGetCandidates.mockResolvedValue({ data: [] });
   mockGetTaskModeration.mockResolvedValue({ data: {} });
+  // GPS trạng thái thật: chưa đồng ý → "Chưa có tín hiệu" trung thực
+  mockCheckConsent.mockResolvedValue({ data: { granted: false } });
+  mockGetLiveLocation.mockResolvedValue({ data: {} });
 });
 
 jest.setTimeout(20000);
@@ -185,46 +194,120 @@ describe('MyTasksScreen — 4 tab chuẩn vòng đời (Stitch 2026-09-13)', () 
   });
 
   test('Tab 2 "Sắp làm": committed card — hiển thị sinh viên đã cam kết và nút liên hệ', async () => {
-    const { getByText } = await render(<MyTasksScreen />);
+    const { getByText, queryByText } = await render(<MyTasksScreen />);
     await flushEffects();
     await act(async () => {
       fireEvent.press(getByText('Sắp làm (1)'));
     });
-    // committed card — SĐT đã mở khi cam kết
+    // committed card — SĐT đã mở khi cam kết. Chat 1-1 CHỈ mở khi ca bắt đầu
+    // (cửa sổ chat N tạo trên Task mirror lúc in_progress) → KHÔNG có nút chat
+    // tại committed (tránh nút 404 — regression N-003).
     expect(getByText('Sinh viên đã cam kết nhận việc')).toBeTruthy();
     expect(getByText(/Gọi 0912845000/)).toBeTruthy();
-    expect(getByText('Nhắn tin 1-1')).toBeTruthy();
+    expect(queryByText('Nhắn tin 1-1')).toBeNull();
     expect(getByText('Xem lộ trình & chi tiết ca')).toBeTruthy();
     // awaiting KHÔNG ở tab này
     expect(() => getByText(/48 phút 15 giây/)).toThrow();
   });
 
-  test('Tab 3 "Đang làm": in_progress card — hiển thị radar GPS + SOS + Hoàn thành ca', async () => {
+  test('Tab 3 "Đang làm": giờ thật + chat N-003 + SOS + Hoàn thành ca', async () => {
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
+    await flushEffects(); // đợt 2 settle state GPS async
     await act(async () => {
       fireEvent.press(getByText('Đang làm (1)'));
     });
-    // in_progress card — radar + CTA hoàn thành
+    // in_progress card — khung giờ THẬT từ first_slot (không demo 18:00–20:00)
     expect(getByText(/ĐANG LÀM VIỆC/)).toBeTruthy();
-    expect(getByText('Trong vùng an toàn')).toBeTruthy();
+    expect(getByText('Giám sát vị trí trực tiếp')).toBeTruthy();
+    // N-003: nút chat trong ca (booking có task_id = '889')
+    expect(getByText('Nhắn tin với Carepartner')).toBeTruthy();
     expect(getByText('Nghiệm thu & Hoàn thành ca')).toBeTruthy();
     expect(getByText(/Hotline hỗ trợ khẩn cấp 24\/7/)).toBeTruthy();
   });
 
-  test('Tab 4 "Lịch sử": completed + no_show, có biên lai escrow 80/20 + rebook', async () => {
+  test('N-003: nút chat trong ca điều hướng Chat với taskId = task mirror', async () => {
     const { getByText } = await render(<MyTasksScreen />);
+    await flushEffects();
+    await flushEffects();
+    await act(async () => {
+      fireEvent.press(getByText('Đang làm (1)'));
+    });
+    await act(async () => {
+      fireEvent.press(getByText('Nhắn tin với Carepartner'));
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', {
+      taskId: '889', // task mirror — KHÔNG phải job_id
+      taskTitle: 'Gia sư Toán & Tiếng Việt lớp 2 tại nhà',
+    });
+  });
+
+  test('Tab 4 "Lịch sử": completed + no_show, có biên lai escrow 80/20 + rebook', async () => {
+    const { getByText, queryByText } = await render(<MyTasksScreen />);
     await flushEffects();
     await act(async () => {
       fireEvent.press(getByText('Lịch sử (2)'));
     });
     // Biên lai MoMo — payout 80% thật từ API
     expect(getByText(/Đã giải ngân 240.000đ MoMo Escrow/)).toBeTruthy();
-    expect(getByText('Đã đánh giá 5 sao')).toBeTruthy();
+    // Blocker B: chưa review → CTA Đánh giá Carepartner (KHÔNG tự gán 5 sao)
+    expect(getByText('Đánh giá Carepartner')).toBeTruthy();
+    expect(queryByText(/Đã đánh giá 5 sao/)).toBeNull();
+    // N-003: thẻ completed có nút Chat (24h) — task_id = '778'
+    expect(getByText('Chat (24h)')).toBeTruthy();
     expect(getByText('Đặt lại sinh viên này cho tuần sau')).toBeTruthy();
     // Đơn no_show có đền bù
     expect(getByText('Không đến làm')).toBeTruthy();
     expect(getByText(/Đã đền bù 50.000đ credit/)).toBeTruthy();
+  });
+
+  test('Tab 4: review thật từ API hiển thị đúng rating (không bịa)', async () => {
+    mockGetBookings.mockResolvedValue({
+      data: { count: 1, results: [
+        { ...COMPLETED_BOOKING, review: { rating: 4, comment: 'Tạm ổn' } },
+      ] },
+    });
+    const { getByText, queryByText } = await render(<MyTasksScreen />);
+    await flushEffects();
+    await act(async () => {
+      fireEvent.press(getByText('Lịch sử (1)'));
+    });
+    expect(getByText('Bạn đã đánh giá 4 sao')).toBeTruthy();
+    expect(queryByText('Đánh giá Carepartner')).toBeNull();
+  });
+
+  test('Task legacy in_progress/completed có nút chat (N-003 phục hồi) + lọc mirror trùng', async () => {
+    mockGetMyTasksAsParent.mockResolvedValue({
+      data: [
+        { id: 101, title: 'Gia sư Toán lớp 5 (legacy đang làm)', status: 'in_progress', price: '250000', scheduled_time: '2026-09-20T10:00:00Z', location: 'Cầu Giấy, Hà Nội' },
+        { id: 102, title: 'Gia sư Văn lớp 7 (legacy đã xong)', status: 'completed', price: '250000', scheduled_time: '2026-09-12T10:00:00Z', location: 'Hai Bà Trưng, Hà Nội' },
+        { id: '889', title: 'Task mirror trùng booking — phải bị ẩn', status: 'in_progress', price: '300000' },
+      ],
+    });
+    const { getByText, getAllByText, queryByText } = await render(<MyTasksScreen />);
+    await flushEffects();
+    await flushEffects();
+    // Legacy in_progress (tab Đang làm: booking + task legacy, mirror '889' bị lọc)
+    await act(async () => {
+      fireEvent.press(getByText('Đang làm (2)'));
+    });
+    expect(getByText('Gia sư Toán lớp 5 (legacy đang làm)')).toBeTruthy();
+    expect(queryByText('Task mirror trùng booking — phải bị ẩn')).toBeNull();
+    // Nút chat của legacy in_progress điều hướng với taskId = task.id thật.
+    // Tab có 2 nút "Nhắn tin với Carepartner": booking card (trước) + legacy card (sau)
+    await act(async () => {
+      fireEvent.press(getAllByText('Nhắn tin với Carepartner')[1]);
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', {
+      taskId: 101, taskTitle: 'Gia sư Toán lớp 5 (legacy đang làm)',
+    });
+    // Legacy completed (tab Lịch sử: booking completed + no_show + legacy = 3)
+    await act(async () => {
+      fireEvent.press(getByText('Lịch sử (3)'));
+    });
+    expect(getByText('Gia sư Văn lớp 7 (legacy đã xong)')).toBeTruthy();
+    // 2 nút "Chat (24h)": booking completed + legacy completed
+    expect(getAllByText('Chat (24h)').length).toBe(2);
   });
 
   test('Tab 1 hiển thị Task luồng cũ status=open cùng booking awaiting', async () => {

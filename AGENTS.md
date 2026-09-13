@@ -577,6 +577,21 @@ Tất cả API nằm dưới prefix `/api/`. Auth: header `Authorization: Bearer
 > `VERIFICATION_PHOTO_RESPOND_TIMEOUT_SECONDS` (180s), limit ảnh `VERIFICATION_PHOTO_MAX_MB` (5MB).
 > Timeout photo check nhập chung streak anti-spam alert phụ huynh với PIN.
 
+### 6.10b. Booking → Task Mirror (N-003, 2026-09-13 — chat/tracking/đánh giá cho Flow 1)
+
+- `matching.Booking.task` (FK nullable → `core.Task`, migration `0004_booking_task_link`).
+- Service `matching/services/booking_task_bridge.py` — hook TẠI `state.transition()`:
+  - booking → `in_progress`: tạo Task mirror + `TaskApplication(accepted)` rồi Task →
+    `in_progress` → **chat conversation tự mở qua signal chat** (không sửa chat/core).
+  - booking → `awaiting_review`: Task `completed` + `completed_at` = ended_at → chat đóng +24h.
+  - booking hủy/no_show/expired/declined: Task `cancelled` (nếu chưa completed) → chat đóng ngay.
+- Serializer `_booking_dict` trả `task_id` + `review {rating, comment}` — client PHẢI dùng
+  `task_id` cho `navigate('Chat')` và Review. **CẤM dùng `job_id` (JobPost UUID) làm taskId.**
+- Idempotent + atomic + nuốt lỗi (mirror fail không phá luồng booking; client ẩn nút khi
+  `task_id` null). Booking cũ pre-migration không có mirror → nút chat/review tự ẩn.
+- Mobile + web lọc item legacy trùng `task_id` để 1 ca chỉ 1 thẻ (MyTasksScreen,
+  MyJobsScreen, worker_jobs.html).
+
 ### 6.11. AI Recommendations (`ai_recommendations/urls.py`)
 
 | Method | Endpoint | Permission | Mô tả |

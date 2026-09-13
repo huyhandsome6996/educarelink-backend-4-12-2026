@@ -69,6 +69,18 @@ def transition(entity_obj, to_status, actor='system', actor_user=None, reason=''
     )
     logger.info('[State] %s %s: %s → %s (%s)',
                 entity, entity_obj.pk, from_status, to_status, actor)
+
+    # N-003 (QA 2026-09-13): đồng bộ Task mirror (chat/tracking/đánh giá cho
+    # Flow 1). Hook trung tâm tại đây để BẤT KỲ đường đi nào qua state machine
+    # (API start/complete, cancel service, scheduler no_show/expired) đều giữ
+    # Task mirror đồng bộ. Bridge tự nuốt lỗi — không phá luồng transition.
+    if entity == 'booking':
+        try:
+            from .booking_task_bridge import sync_task_mirror_on_transition
+            sync_task_mirror_on_transition(entity_obj, to_status)
+        except Exception:  # phòng hờ — bridge đã tự nuốt, đây là chốt cuối
+            logger.warning('[State] sync task mirror lỗi booking %s',
+                           entity_obj.pk, exc_info=True)
     return entity_obj
 
 
