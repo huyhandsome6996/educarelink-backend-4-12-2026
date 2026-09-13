@@ -14,6 +14,8 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import RandomVerificationModal from './src/components/RandomVerificationModal';
 // Flow 1 Step 8.4 — tiếng kêu to cho push critical (ghép cặp)
 import NotificationListener from './src/components/NotificationListener';
+// Task F (2026-09-14) — popup toàn màn hình "Bạn có đơn mới" + poll 15s
+import JobAssignedModal from './src/components/JobAssignedModal';
 
 // ============================================================
 // Font assets — import tĩnh để Metro bundler ship .ttf vào APK
@@ -370,6 +372,13 @@ function AppContent() {
         Mount ở App root, sống suốt vòng đời app.
       */}
       <NotificationListener />
+      {/**
+        Task F (2026-09-14) — JobAssignedModal: popup TOÀN MÀN HÌNH khi nhận
+        đơn mới (push job_assigned + poll bookings awaiting mỗi 15s phòng
+        miss push). Tự kêu to + rung khi đơn đến. Mount ở App root, chỉ
+        hoạt động khi worker đã login.
+      */}
+      <JobAssignedModal />
     </>
   );
 }

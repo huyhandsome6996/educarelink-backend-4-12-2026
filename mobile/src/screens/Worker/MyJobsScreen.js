@@ -29,6 +29,7 @@ import {
 import { checkConsent, triggerSOS, getSOSAlerts, resolveSOS } from '../../api/tracking';
 import { startTracking, stopTracking, getCurrentTaskId } from '../../services/LocationService';
 import NotificationBell from '../../components/NotificationBell';
+import { getOnboardingStatus } from '../../api/matching';
 import TrackingConsentModal from '../../components/TrackingConsentModal';
 import ActiveTrackingBanner from '../../components/ActiveTrackingBanner';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../../theme/colors';
@@ -118,6 +119,10 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 };
 
 export default function MyJobsScreen() {
+  // Task C (2026-09-14): onboarding gate — skills/lịch rảnh thiếu → banner
+  // "Chưa khai kỹ năng/lịch rảnh thì hệ thống không thể giới thiệu việc".
+  const [onboardingReady, setOnboardingReady] = useState(true);
+  const [onboardingMsg, setOnboardingMsg] = useState('');
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -309,6 +314,19 @@ export default function MyJobsScreen() {
   }, []);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  // Task C: kiểm tra worker đã khai skill + lịch rảnh chưa (onboarding gate)
+  useEffect(() => {
+    let mounted = true;
+    getOnboardingStatus()
+      .then((resp) => {
+        if (!mounted) return;
+        setOnboardingReady(!!resp.data?.ready_for_matching);
+        setOnboardingMsg(resp.data?.message_vi || '');
+      })
+      .catch(() => { /* pending/mạng lỗi — ẩn banner */ });
+    return () => { mounted = false; };
+  }, []);
 
   // ═══════════ PHÂN TAB & SẮP XẾP ═══════════
   const tabOf = useCallback((item) => {
@@ -1124,6 +1142,24 @@ export default function MyJobsScreen() {
         </View>
       </View>
 
+      {/* Task C — banner onboarding khi thiếu skill / lịch rảnh */}
+      {!onboardingReady && !!onboardingMsg && (
+        <View style={styles.onboardingBanner}>
+          <Ionicons name="warning" size={18} color="#B45309" style={{ marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.onboardingTitle}>Hoàn thiện hồ sơ để nhận việc</Text>
+            <Text style={styles.onboardingText}>{onboardingMsg}</Text>
+            <TouchableOpacity
+              style={styles.onboardingCta}
+              onPress={() => navigation.navigate('MatchingAvailability')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.onboardingCtaText}>Khai ngay</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* 4 pill tab vòng đời — active nền #F26522 chữ trắng (Stitch) */}
       <View style={styles.tabs}>
         {TABS.map((tab) => {
@@ -1388,6 +1424,41 @@ function ScrollViewTO({ children, maxHeight }) {
 }
 
 const styles = StyleSheet.create({
+  onboardingBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  onboardingTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  onboardingText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 17,
+  },
+  onboardingCta: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#F26522',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  onboardingCtaText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

@@ -60,11 +60,16 @@ export default function NotificationListener() {
     };
 
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      const klass = notification.request?.content?.data?.class
+      const data = notification.request?.content?.data || {};
+      const klass = data.class
         || (notification.request?.content?.channelId === CRITICAL_CHANNEL_ID ? 'critical' : '');
-      // Foreground Android không phát sound notification → tự phát local
+      const type = data.type || '';
+      // Task F (2026-09-14): playLoud cho MỌI job_assigned khi foreground —
+      // không chỉ khi class==='critical' (phòng payload cũ thiếu data.class).
+      // Android foreground không phát sound notification → tự phát local.
       const isForeground = appState.current === 'active';
-      if (klass === 'critical' && isForeground) {
+      const isJobAssigned = type === 'job_assigned';
+      if (isForeground && (isJobAssigned || klass === 'critical')) {
         playLoud();
       }
     });

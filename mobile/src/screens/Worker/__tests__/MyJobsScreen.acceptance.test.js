@@ -86,6 +86,11 @@ jest.mock('../../../api/matching', () => ({
   commitBooking: (...a) => mockCommitBooking(...a),
   cancelBooking: (...a) => mockCancelBooking(...a),
   requestReschedule: (...a) => mockRequestReschedule(...a),
+  // Task C (2026-09-14): onboarding gate — mặc định "đã sẵn sàng" để không
+  // ảnh hưởng assertion cũ; banner có test riêng phía dưới.
+  getOnboardingStatus: jest.fn().mockResolvedValue({
+    data: { has_skills: true, has_availability: true, ready_for_matching: true, message_vi: '' },
+  }),
   CANCEL_REASONS: [
     { code: 'school_schedule', label: 'Trùng lịch học đột xuất', forceMajeure: true },
     { code: 'health', label: 'Sức khỏe không tốt', forceMajeure: true },
