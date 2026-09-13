@@ -218,10 +218,12 @@ export default function MyJobsScreen() {
 
       // 1. Booking hệ thống ghép cặp Flow 1 — GIỮ TẤT CẢ trạng thái
       //    (trước đây awaiting_commitment bị bỏ qua → defect "không có nơi xử lý")
+      const bookingTaskIds = new Set(); // N-003: task mirror của booking — lọc legacy trùng
       try {
         const bRes = await getBookings({ role: 'carepartner' });
         const bookingsList = bRes.data?.results ?? bRes.data ?? [];
         bookingsList.forEach((b) => {
+          if (b.task_id != null && b.task_id !== '') bookingTaskIds.add(String(b.task_id));
           combined.push({
             id: `booking_${b.id}`,
             kind: 'booking',
@@ -249,12 +251,15 @@ export default function MyJobsScreen() {
         });
       } catch (e) { console.warn('Lỗi tải bookings:', e); }
 
-      // 2. Việc legacy (Task/TaskApplication) — giữ tương thích ngược
+      // 2. Việc legacy (Task/TaskApplication) — giữ tương thích ngược.
+      //    Bỏ qua application của Task mirror đã hiển thị qua booking Flow 1
+      //    (task_id trùng booking.task_id) để không hiện 2 thẻ cho cùng ca.
       try {
         const res = await getMyJobsAsWorker();
         const appsList = res.data ?? [];
         (Array.isArray(appsList) ? appsList : appsList?.results ?? []).forEach((a) => {
           if (a.status === 'pending') return; // theo yêu cầu: bỏ ứng tuyển chờ duyệt
+          if (a.task_id != null && bookingTaskIds.has(String(a.task_id))) return; // trùng mirror Flow 1
           combined.push({
             ...a,
             id: `legacy_${a.task_id || a.task || a.id}`,

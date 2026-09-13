@@ -651,7 +651,14 @@
                     raw: b,
                 });
             }
+            // N-003 (QA 2026-09-13): Task mirror — booking Flow 1 đã hiển thị
+            // qua thẻ booking; application legacy trùng task_id bị lọc để
+            // tránh 2 thẻ cho cùng 1 ca (mobile MyJobsScreen cùng cơ chế).
+            const bookingTaskIds = new Set(allBookings
+                .map(b => (b.task_id != null && b.task_id !== '') ? String(b.task_id) : '')
+                .filter(Boolean));
             for (const a of (Array.isArray(allApps) ? allApps : (allApps && Array.isArray(allApps.results) ? allApps.results : []))) {
+                if (a.task_id != null && bookingTaskIds.has(String(a.task_id))) continue;
                 let when = a.task_scheduled_time ? new Date(a.task_scheduled_time) : null;
                 items.push({
                     kind: 'legacy',

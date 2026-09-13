@@ -188,6 +188,16 @@ def _booking_dict(booking):
         'cancel_reason_code': b.cancel_reason_code,
         'cancelled_at': b.cancelled_at,
         'first_slot': _first_slot_view(first),
+        # N-003 (QA 2026-09-13): id Task mirror (core) tạo khi booking bắt đầu —
+        # client DÙNG ID NÀY cho navigate('Chat', { taskId }) và Review. KHÔNG
+        # BAO GIỜ dùng job_id (JobPost UUID) làm taskId — chat mở trên core.Task.
+        'task_id': str(b.task_id) if b.task_id else None,
+        # Đánh giá thật của phụ huynh cho ca này (Review gắn Task mirror) —
+        # client hiển thị rating thật / CTA "Đánh giá Carepartner", không được
+        # tự gán 5 sao mặc định (Blocker B).
+        'review': ({'rating': b.task.review.rating,
+                    'comment': b.task.review.comment}
+                   if b.task_id and hasattr(b.task, 'review') else None),
     }
 
 
@@ -195,6 +205,7 @@ def _get_booking(pk, user=None):
     try:
         return Booking.objects.select_related(
             'job', 'carepartner', 'parent', 'carepartner__carepartner_profile',
+            'task', 'task__review',  # N-003: task mirror (chat) + review (rating thật)
         ).get(pk=pk)
     except Booking.DoesNotExist:
         return None
@@ -280,6 +291,7 @@ class BookingListAPIView(APIView):
             lazy_commit_check(b)
         qs = Booking.objects.select_related(
             'job', 'parent', 'carepartner', 'carepartner__carepartner_profile',
+            'task', 'task__review',  # N-003: tránh N+1 khi serialize task_id/review
         ).filter(pk__in=[b.pk for b in qs[:50]]).order_by('-created_at')
         return Response({'count': qs.count(),
                          'results': [_booking_dict(b) for b in qs]})

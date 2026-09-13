@@ -438,5 +438,6 @@ CAREPARTNER_TIER_RULES = {
 }
 
 # ── R6: GPS Freshness & Cross-City Drift Guard ──────────────────────
-GPS_FRESHNESS_HOURS = 48
-MAX_GPS_DRIFT_KM = 50.0
+# ⚠️ ĐÃ XÓA khối hardcode cũ (GPS_FRESHNESS_HOURS = 48 / MAX_GPS_DRIFT_KM = 50.0)
+# vì nó GHI ĐÈ biến môi trường (BUG QA 2026-09-13): duy nhất 1 nguồn sự thật
+# là khối env ở trên (≈ dòng 367–375) với cùng giá trị mặc định 48h / 50km.

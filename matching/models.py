@@ -197,6 +197,17 @@ class Booking(models.Model):
     elo_delta_applied = models.IntegerField(default=0,
                                             help_text='Tổng delta ELO đã ghi cho booking')
 
+    # N-003 (QA 2026-09-13): Task "mirror" (core) tạo tự động khi ca bắt đầu
+    # (booking → in_progress) — phục vụ cửa sổ chat (chat module mở trên
+    # core.Task), tracking, đánh giá (Review gắn Task) cho luồng ghép cặp
+    # Flow 1. NULL với booking chưa bắt đầu / booking cũ (pre-migration).
+    # ĐỒNG BỘ trạng thái do matching/services/booking_task_bridge.py đảm nhiệm
+    # (hook trong state.transition) — chat/tracking/core KHÔNG bị sửa.
+    task = models.ForeignKey('core.Task', null=True, blank=True,
+                             on_delete=models.SET_NULL, related_name='flow1_bookings',
+                             help_text='Task mirror (core) của ca làm — chat/tracking/'
+                                       'đánh giá. Tạo khi booking → in_progress.')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

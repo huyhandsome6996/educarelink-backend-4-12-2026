@@ -27,7 +27,7 @@ import { getMyTasksAsParent, getCandidates, updateTaskStatus } from '../../api/t
 import {
   getBookings, cancelBookingByParent, completeBooking, respondReschedule, reportNoShow,
 } from '../../api/matching';
-import { checkConsent } from '../../api/tracking';
+import { checkConsent, getLiveLocation } from '../../api/tracking';
 import { getTaskModeration } from '../../api/moderation';
 import { COLORS, SHADOWS, TYPO, ANIM } from '../../theme/colors';
 import { SUPPORT_HOTLINE } from '../../config/appConfig';
@@ -111,6 +111,26 @@ const fmtViCountdown = (totalSec) => {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m} phút ${String(s).padStart(2, '0')} giây`;
+};
+
+// Tính tiến độ ca thực tế (phút) từ started_at + khung giờ slot.
+// Trả về null khi không đủ dữ liệu — UI ẩn thanh tiến độ thay vì bịa số.
+const computeShiftProgress = (booking) => {
+  const slot = booking?.first_slot;
+  if (!booking?.started_at || !slot?.time_from || !slot?.time_to || !slot?.date) return null;
+  try {
+    const [fh, fm] = String(slot.time_from).split(':').map(Number);
+    const [th, tm] = String(slot.time_to).split(':').map(Number);
+    const totalMin = Math.max(1, (th * 60 + tm) - (fh * 60 + fm));
+    const startMs = new Date(`${slot.date}T${String(slot.time_from).slice(0, 5)}:00+07:00`).getTime();
+    const startedMs = new Date(booking.started_at).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(startedMs)) return null;
+    const anchor = Math.max(startMs, startedMs); // ca bắt đầu đúng giờ hoặc muộn hơn
+    const elapsedMin = Math.floor((Date.now() - anchor) / 60000);
+    return { elapsed: Math.max(0, elapsedMin), total: totalMin };
+  } catch (_) {
+    return null;
+  }
 };
 
 // Đếm ngược đến mốc thời gian ISO
@@ -353,14 +373,16 @@ function OpenTaskCard({ task, navigation, onCancelTask, candidateCount, isCancel
         </View>
       </View>
 
-      {/* AI Matching Prompt Banner */}
+      {/* AI Matching Prompt Banner — SỐ ỨNG VIÊN THẬT từ getCandidates (Blocker B) */}
       <View style={styles.aiPromptBanner}>
         <Ionicons name="sparkles" size={16} color={STITCH.primaryContainer} />
         <Text style={styles.aiPromptText}>
           <Text style={{ fontWeight: '700' }}>
-            Đã có {candidateCount || 3} sinh viên gần nhà
+            {candidateCount > 0
+              ? `Đã có ${candidateCount} sinh viên gần nhà`
+              : 'Chưa có sinh viên nào gần nhà'}
           </Text>{' '}
-          (bán kính &lt; 2km) nộp hồ sơ xét duyệt trực tiếp.
+          (bán kính &lt; 2km){candidateCount > 0 ? ' nộp hồ sơ xét duyệt trực tiếp.' : ' — hệ thống đang tiếp tục tìm kiếm.'}
         </Text>
       </View>
 
@@ -393,7 +415,7 @@ function OpenTaskCard({ task, navigation, onCancelTask, candidateCount, isCancel
 // ═══════════════════════════════════════════════════════════════
 // CARD — TAB 2: SẮP LÀM (COMMITTED — ĐÃ CAM KẾT NHẬN VIỆC)
 // ═══════════════════════════════════════════════════════════════
-function CommittedBookingCard({ booking, onOpenDetail, navigation }) {
+function CommittedBookingCard({ booking, onOpenDetail }) {
   const slot = booking.first_slot;
   const targetIso = useMemo(() => {
     if (!slot?.date) return null;
@@ -453,30 +475,20 @@ function CommittedBookingCard({ booking, onOpenDetail, navigation }) {
         </View>
       </View>
 
-      {/* Direct Contact Grid (Gọi trực tiếp + Nhắn tin 1-1) */}
-      <View style={styles.contactGrid}>
-        <TouchableOpacity
-          style={styles.contactBtn}
-          onPress={() => phone && Linking.openURL(`tel:${phone}`)}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="call" size={16} color={STITCH.primaryContainer} />
-          <Text style={styles.contactBtnText}>
-            {phone ? `Gọi ${phone}` : 'Gọi trực tiếp'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.contactBtn, { backgroundColor: '#E2E7FF' }]}
-          onPress={() => navigation.navigate('Chat', {
-            taskId: booking.job_id,
-            taskTitle: booking.job_title,
-          })}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="chatbubble-ellipses" size={16} color={STITCH.skyActive} />
-          <Text style={[styles.contactBtnText, { color: STITCH.onSurface }]}>Nhắn tin 1-1</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Direct Contact (Gọi trực tiếp — trước giờ làm; chat 1-1 CHỈ mở khi
+          ca đã bắt đầu theo chính sách cửa sổ chat N — conversation được tạo
+          trên core.Task mirror khi booking → in_progress, KHÔNG tồn tại ở
+          giai đoạn committed nên không đặt nút chat ở đây để tránh 404) */}
+      <TouchableOpacity
+        style={styles.contactBtn}
+        onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="call" size={16} color={STITCH.primaryContainer} />
+        <Text style={styles.contactBtnText}>
+          {phone ? `Gọi ${phone}` : 'Gọi trực tiếp cho sinh viên'}
+        </Text>
+      </TouchableOpacity>
 
       {/* View Detail Link */}
       <TouchableOpacity
@@ -491,71 +503,105 @@ function CommittedBookingCard({ booking, onOpenDetail, navigation }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CARD — TAB 3: ĐANG LÀM (IN-PROGRESS — RADAR LIVE GPS & GIÁM SÁT)
+// CARD — TAB 3: ĐANG LÀM (IN-PROGRESS — GIÁM SÁT + CHAT + NGHIỆM THU)
+//
+// QA 2026-09-13 (Blocker A + B):
+//   - N-003: nút "Nhắn tin với Carepartner" MỞ CHAT TRỰC TIẾP (không qua
+//     checkConsent/LiveTracking) với taskId = booking.task_id (core.Task
+//     mirror backend tạo khi ca bắt đầu). Không có task_id → ẩn nút
+//     (chat conversation chưa tồn tại — không ship nút 404).
+//   - Blocker B: xoá sạch dữ liệu demo bịa ("18:00 – 20:00", "45/120",
+//     "38%", "Bán kính 200m", "Cập nhật 45s trước") — giờ ca/progress tính
+//     từ first_slot + started_at thật; GPS hiển thị trạng thái THẬT từ
+//     API tracking (nếu có) hoặc "Chưa có tín hiệu" trung thực.
 // ═══════════════════════════════════════════════════════════════
-function InProgressBookingCard({ booking, onOpenDetail, onComplete, actionLoading }) {
+function InProgressBookingCard({ booking, onOpenDetail, onComplete, actionLoading, navigation }) {
   const isCompleting = actionLoading === `booking-complete-${booking.id}`;
-  const cpName = booking.carepartner_info?.full_name || 'CarePartner';
+  const slot = booking.first_slot;
+  const timeWindow = (slot?.time_from && slot?.time_to)
+    ? `${slot.time_from.slice(0, 5)} – ${slot.time_to.slice(0, 5)}`
+    : '';
+  // Tiến độ thực — thiếu dữ liệu → null → ẩn thanh (không bịa %)
+  const progress = computeShiftProgress(booking);
+  // GPS thật: poll 1 lần khi mount nếu có Task mirror (tracking gắn Task)
+  const gpsState = useBookingGpsStatus(booking.task_id);
 
   return (
     <View style={[styles.card, { borderTopColor: STITCH.skyActive }]}>
-      {/* Live Header with Radar Pulse */}
+      {/* Live Header — khung giờ THẬT từ first_slot (Blocker B) */}
       <View style={styles.cardHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
           <PingDot color={STITCH.secondary} size={8} />
-          <Text style={styles.liveHeaderText}>ĐANG LÀM VIỆC (18:00 – 20:00)</Text>
+          <Text style={styles.liveHeaderText} numberOfLines={1}>
+            ĐANG LÀM VIỆC{timeWindow ? ` (${timeWindow})` : ''}
+          </Text>
         </View>
-        <Text style={styles.progressTimeText}>Đã học 45/120 phút</Text>
+        {progress && (
+          <Text style={styles.progressTimeText}>
+            Đã làm {progress.elapsed}/{progress.total} phút
+          </Text>
+        )}
       </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressBarTrack}>
-        <View style={[styles.progressBarFill, { width: '38%' }]} />
-      </View>
+      {/* Progress Bar — chỉ render khi tính được từ dữ liệu thật */}
+      {progress && (
+        <View style={styles.progressBarTrack}>
+          <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((progress.elapsed / progress.total) * 100))}%` }]} />
+        </View>
+      )}
 
-      {/* Mini Live GPS & Geofence Radar Preview */}
+      {/* Live GPS & Geofence status — dữ liệu THẬT từ API tracking (N-003
+          phụ huynh xem vị trí khi CP đã đồng ý; không có → "Chưa có tín hiệu") */}
       <View style={styles.radarCard}>
         <View style={styles.radarHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <Ionicons name="shield-checkmark" size={16} color={STITCH.secondary} />
-            <Text style={styles.radarTitle}>Trong vùng an toàn</Text>
+            <Text style={styles.radarTitle}>Giám sát vị trí trực tiếp</Text>
           </View>
-          <Text style={styles.radarRadius}>Bán kính 200m</Text>
-        </View>
-
-        {/* Stylized Radar Graphic */}
-        <View style={styles.radarCanvas}>
-          <View style={styles.radarRingOuter} />
-          <View style={styles.radarRingInner} />
-
-          {/* Home Anchor */}
-          <View style={styles.homeAnchor}>
-            <View style={styles.homeCircle}>
-              <Ionicons name="home" size={16} color={STITCH.primaryContainer} />
-            </View>
-            <Text style={styles.homeLabel}>Nhà bạn</Text>
-          </View>
-
-          {/* Mentor Beacon */}
-          <View style={styles.mentorBeacon}>
-            <View style={styles.mentorCircle}>
-              <Ionicons name="school" size={14} color="#FFFFFF" />
-            </View>
-            <Text style={styles.mentorLabel} numberOfLines={1}>{cpName}</Text>
-          </View>
+          <Text style={styles.radarRadius}>
+            {gpsState.lastFixAt ? `Cập nhật ${gpsState.agoText}` : 'Chưa có tín hiệu'}
+          </Text>
         </View>
 
         <View style={styles.radarFooterRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="radio" size={13} color={STITCH.secondary} />
-            <Text style={styles.radarFooterText}>Tín hiệu GPS vệ tinh ổn định</Text>
+            <Ionicons
+              name={gpsState.status === 'live' ? 'radio' : 'radio-off'}
+              size={13}
+              color={gpsState.status === 'live' ? STITCH.secondary : STITCH.slateMuted}
+            />
+            <Text style={styles.radarFooterText}>
+              {gpsState.status === 'live'
+                ? 'Đang chia sẻ vị trí GPS trực tiếp'
+                : gpsState.status === 'denied'
+                  ? 'CarePartner chưa đồng ý chia sẻ vị trí'
+                  : 'Chưa có tín hiệu GPS từ ca làm'}
+            </Text>
           </View>
-          <Text style={styles.radarFooterText}>Cập nhật 45s trước</Text>
         </View>
       </View>
 
       {/* Student On-site Info */}
       <StudentSpotlight info={booking.carepartner_info} compact />
+
+      {/* Chat trực tiếp với CarePartner — N-003: mở chat NGAY trong ca,
+          taskId phải là core.Task id thật (booking.task_id), KHÔNG qua
+          checkConsent/LiveTracking. Ẩn khi chưa có Task mirror. */}
+      {booking.task_id && (
+        <TouchableOpacity
+          style={styles.chatShiftBtn}
+          onPress={() => navigation.navigate('Chat', {
+            taskId: booking.task_id,
+            taskTitle: booking.job_title,
+          })}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Nhắn tin với Carepartner"
+        >
+          <Ionicons name="chatbubble-ellipses" size={16} color={STITCH.skyActive} />
+          <Text style={styles.chatShiftBtnText}>Nhắn tin với Carepartner</Text>
+        </TouchableOpacity>
+      )}
 
       {/* SOS Hotline Button */}
       <TouchableOpacity
@@ -587,14 +633,63 @@ function InProgressBookingCard({ booking, onOpenDetail, onComplete, actionLoadin
   );
 }
 
+// Hook trạng thái GPS thật cho thẻ in_progress (poll 1 lần khi mount —
+// không spam API). Mọi lỗi mạng → 'unknown' ("Chưa có tín hiệu") trung thực.
+function useBookingGpsStatus(taskId) {
+  const [state, setState] = useState({ status: 'unknown', lastFixAt: null, agoText: '' });
+  useEffect(() => {
+    let mounted = true;
+    if (!taskId) return undefined;
+    (async () => {
+      try {
+        const consentRes = await checkConsent(taskId);
+        const consent = consentRes?.data;
+        if (!mounted) return;
+        if (!consent?.granted && !consent?.is_granted) {
+          setState({ status: 'denied', lastFixAt: null, agoText: '' });
+          return;
+        }
+        try {
+          const locRes = await getLiveLocation(taskId);
+          const loc = locRes?.data;
+          if (!mounted) return;
+          const fixAt = loc?.recorded_at || loc?.updated_at || loc?.timestamp || null;
+          const sec = fixAt ? Math.max(0, Math.floor((Date.now() - new Date(fixAt).getTime()) / 1000)) : null;
+          setState({
+            status: sec === null ? 'live' : 'live',
+            lastFixAt: fixAt,
+            agoText: sec === null ? 'vừa xong'
+              : (sec < 60 ? `${sec}s trước` : `${Math.floor(sec / 60)} phút trước`),
+          });
+        } catch (_) {
+          if (mounted) setState({ status: 'unknown', lastFixAt: null, agoText: '' });
+        }
+      } catch (_) {
+        if (mounted) setState({ status: 'unknown', lastFixAt: null, agoText: '' });
+      }
+    })();
+    return () => { mounted = false; };
+  }, [taskId]);
+  return state;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // CARD — TAB 4: LỊCH SỬ (HISTORY — COMPLETED / ARCHIVED)
+//
+// QA 2026-09-13 (Blocker A + B):
+//   - N-003: thẻ completed có nút "Chat (24h)" — mở chat TRỰC TIẾP với
+//     taskId = booking.task_id (Task mirror). Không task_id → ẩn nút.
+//   - Blocker B: ngày giờ từ ended_at thật ('—' khi thiếu); xoá diary excerpt
+//     bịa → link "Xem nhật ký" khi có task_id; đánh giá HIỂN THỊ RATING THẬT
+//     từ booking.review, chưa đánh giá → CTA "Đánh giá Carepartner", KHÔNG
+//     TỰ GÁN "5 sao" mặc định.
 // ═══════════════════════════════════════════════════════════════
 function HistoryBookingCard({ booking, navigation, onOpenDetail }) {
   const isCompleted = booking.status === 'completed';
   const cpName = booking.carepartner_info?.full_name || 'sinh viên';
   const payout = booking.carepartner_payout_vnd
     ?? Math.round((booking.total_value_vnd || 0) * 0.8);
+  const review = booking.review || null;
 
   if (!isCompleted) {
     const reason = CANCEL_REASON_LABELS[booking.cancel_reason_code] || booking.cancel_reason_code;
@@ -625,7 +720,7 @@ function HistoryBookingCard({ booking, navigation, onOpenDetail }) {
 
   return (
     <View style={[styles.card, { borderTopColor: STITCH.secondary }]}>
-      {/* Header */}
+      {/* Header — ngày kết thúc THẬT từ ended_at, thiếu → '—' (Blocker B) */}
       <View style={styles.cardHeader}>
         <StatusPill
           bg="#ECFDF5"
@@ -635,7 +730,7 @@ function HistoryBookingCard({ booking, navigation, onOpenDetail }) {
         >
           Đã giải ngân {money(payout)} MoMo Escrow
         </StatusPill>
-        <Text style={styles.historyDateText}>{fmtEnd(booking.ended_at) || '16/09/2026'}</Text>
+        <Text style={styles.historyDateText}>{fmtEnd(booking.ended_at) || '—'}</Text>
       </View>
 
       <View style={{ marginVertical: 6 }}>
@@ -644,42 +739,68 @@ function HistoryBookingCard({ booking, navigation, onOpenDetail }) {
         </Text>
       </View>
 
-      {/* Care Diary Preview */}
-      <View style={styles.careDiaryBox}>
-        <View style={styles.careDiaryHeader}>
-          <Text style={styles.careDiaryTitle}>Nhật ký buổi học (Care Diary)</Text>
-          <TouchableOpacity
-            onPress={() => {
-              if (booking.task_id) {
-                navigation.navigate('CareDiaryDetail', { taskId: booking.task_id });
-              } else {
-                onOpenDetail(booking);
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.careDiaryLink}>Xem toàn bộ ↗</Text>
-          </TouchableOpacity>
+      {/* Care Diary — chỉ hiện LINK khi ca có Task mirror; KHÔNG bịa trích
+          dẫn nhật ký (Blocker B: demo excerpt đã xoá) */}
+      {booking.task_id && (
+        <View style={styles.careDiaryBox}>
+          <View style={styles.careDiaryHeader}>
+            <Text style={styles.careDiaryTitle}>Nhật ký buổi học (Care Diary)</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('CareDiaryDetail', { taskId: booking.task_id })}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.careDiaryLink}>Xem toàn bộ ↗</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.careDiaryExcerpt} numberOfLines={2}>
-          "Bé hoàn thành tốt bài tập ôn luyện, tập trung nghe giảng và tự giác dọn dẹp bàn học gọn gàng..."
-        </Text>
+      )}
+
+      {/* Review — rating THẬT từ API; chưa đánh giá → CTA; chưa hỗ trợ
+          đánh giá (không Task mirror) → trạng thái trung thực (Blocker B) */}
+      <View style={styles.reviewPromptRow}>
+        {review ? (
+          <View style={[styles.reviewedBtn, { backgroundColor: STITCH.amberLight, borderWidth: 1, borderColor: STITCH.amberBorder }]}>
+            <Ionicons name="star" size={15} color={STITCH.tertiaryContainer} />
+            <Text style={[styles.reviewedBtnText, { color: STITCH.amberDark }]}>
+              Bạn đã đánh giá {review.rating} sao
+            </Text>
+          </View>
+        ) : booking.task_id ? (
+          <TouchableOpacity
+            style={styles.reviewedBtn}
+            onPress={() => navigation.navigate('Review', {
+              taskId: booking.task_id,
+              revieweeId: booking.carepartner_id,
+            })}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Đánh giá Carepartner"
+          >
+            <Ionicons name="star-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.reviewedBtnText}>Đánh giá Carepartner</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.cancelReasonText}>Chưa có đánh giá cho ca này</Text>
+        )}
       </View>
 
-      {/* Review Actions */}
-      <View style={styles.reviewPromptRow}>
+      {/* Chat (24h) — N-003: cửa sổ chat mở đến 24h sau ca hoàn thành.
+          onPress navigate('Chat') TRỰC TIẾP, không qua checkConsent. */}
+      {booking.task_id && (
         <TouchableOpacity
-          style={styles.reviewedBtn}
-          onPress={() => navigation.navigate('Review', {
-            taskId: booking.job_id,
-            revieweeId: booking.carepartner_id,
+          style={styles.chatShiftBtn}
+          onPress={() => navigation.navigate('Chat', {
+            taskId: booking.task_id,
+            taskTitle: booking.job_title,
           })}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Xem chat với Carepartner (còn 24 giờ sau khi hoàn thành)"
         >
-          <Ionicons name="star" size={15} color={STITCH.tertiaryContainer} />
-          <Text style={styles.reviewedBtnText}>Đã đánh giá 5 sao</Text>
+          <Ionicons name="chatbubble-ellipses" size={16} color={STITCH.skyActive} />
+          <Text style={styles.chatShiftBtnText}>Chat (24h)</Text>
         </TouchableOpacity>
-      </View>
+      )}
 
       {/* Re-book Button */}
       <TouchableOpacity
@@ -690,6 +811,101 @@ function HistoryBookingCard({ booking, navigation, onOpenDetail }) {
         <Ionicons name="repeat" size={16} color="#FFFFFF" />
         <Text style={styles.rebookBtnText}>Đặt lại sinh viên này cho tuần sau</Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CARD — LEGACY core.Task (luồng cũ — phục hồi N-003)
+//
+// QA 2026-09-13 (Blocker A): bản Stitch cũ đã XOÁ nhánh in_progress /
+// completed của task legacy → phụ huynh MẤT 2 cửa sổ chat (root cause
+// N-003). Phục hồi ĐÚNG NGHĨA bản origin/main:
+//   - in_progress: nút "Nhắn tin với Carepartner" → navigate('Chat',
+//     { taskId: task.id }) TRỰC TIẾP (không qua checkConsent/LiveTracking).
+//   - completed: nút "Chat (24h)" — cửa sổ 24h sau hoàn thành, cũng trực tiếp.
+// ═══════════════════════════════════════════════════════════════
+function LegacyTaskCard({ task, navigation, candidateCount, isCancelling, onCancelTask }) {
+  const isInProgress = task.status === 'in_progress';
+  const price = task.price != null ? `${Number(task.price).toLocaleString('vi-VN')}đ` : '';
+
+  return (
+    <View style={[styles.card, { borderTopColor: isInProgress ? STITCH.skyActive : STITCH.slateMuted }]}>
+      <View style={styles.cardHeader}>
+        <StatusPill
+          bg={isInProgress ? STITCH.skyLight : '#F1F5F9'}
+          border={isInProgress ? STITCH.skyBorder : '#E2E8F0'}
+          color={isInProgress ? STITCH.skyActive : '#64748B'}
+          icon={isInProgress ? 'navigate-outline' : 'checkmark-circle-outline'}
+        >
+          {isInProgress ? 'Đang thực hiện' : 'Đã hoàn thành'}
+        </StatusPill>
+        {!!price && <Text style={styles.cardPrice}>{price}</Text>}
+      </View>
+
+      <Text style={styles.jobBriefTitle} numberOfLines={2}>{task.title}</Text>
+      {!!task.scheduled_time && (
+        <View style={styles.metaRow}>
+          <Ionicons name="calendar-outline" size={14} color={STITCH.primaryContainer} />
+          <Text style={styles.metaText}>
+            {new Date(task.scheduled_time).toLocaleString('vi-VN', {
+              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+            })}
+          </Text>
+        </View>
+      )}
+      {!!task.location && (
+        <View style={styles.metaRow}>
+          <Ionicons name="location-outline" size={14} color={STITCH.secondary} />
+          <Text style={styles.metaText} numberOfLines={1}>{task.location}</Text>
+        </View>
+      )}
+
+      {/* Hành động theo trạng thái — giữ nguyên nghĩa chat của bản main */}
+      {task.status === 'in_progress' && (
+        <TouchableOpacity
+          style={styles.chatShiftBtn}
+          onPress={() => navigation.navigate('Chat', { taskId: task.id, taskTitle: task.title })}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Nhắn tin với Carepartner"
+        >
+          <Ionicons name="chatbubble-ellipses" size={16} color={STITCH.skyActive} />
+          <Text style={styles.chatShiftBtnText}>Nhắn tin với Carepartner</Text>
+        </TouchableOpacity>
+      )}
+      {task.status === 'completed' && (
+        <TouchableOpacity
+          style={styles.chatShiftBtn}
+          onPress={() => navigation.navigate('Chat', { taskId: task.id, taskTitle: task.title })}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Xem chat với Carepartner (còn 24 giờ sau khi hoàn thành)"
+        >
+          <Ionicons name="chatbubble-ellipses" size={16} color={STITCH.skyActive} />
+          <Text style={styles.chatShiftBtnText}>Chat (24h)</Text>
+        </TouchableOpacity>
+      )}
+      {task.status === 'cancelled' && (
+        <View style={styles.cardActionsRow}>
+          <TouchableOpacity
+            style={styles.btnCancelText}
+            onPress={() => onCancelTask(task)}
+            disabled={isCancelling}
+            activeOpacity={0.8}
+          >
+            {isCancelling ? (
+              <ActivityIndicator size="small" color={STITCH.slateMuted} />
+            ) : (
+              <Text style={styles.btnCancelTextLabel}>Xoá khỏi danh sách</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+      {/* candidateCount: chỉ dùng cho open task — legacy card không hiển thị banner AI bịa số */}
+      {!!(task.status === 'open' && candidateCount > 0) && (
+        <Text style={styles.cancelReasonText}>{candidateCount} ứng viên đã nộp hồ sơ</Text>
+      )}
     </View>
   );
 }
@@ -776,6 +992,14 @@ export default function MyTasksScreen() {
     const in_progress = [];
     const history = [];
 
+    // N-003/QA: Task mirror (core) được backend tạo tự động khi booking bắt
+    // đầu (booking.task_id). Task legacy trùng với mirror sẽ VẪN được thể
+    // hiện qua thẻ booking đầy đủ hơn → lọc khỏi danh sách legacy để tránh
+    // HIỂN THỊ TRÙNG 2 thẻ cho cùng 1 ca.
+    const bookingTaskIds = new Set(
+      bookings.map((b) => (b.task_id != null ? String(b.task_id) : '')).filter(Boolean),
+    );
+
     bookings.forEach((b) => {
       if (PENDING_BOOKING_STATUSES.includes(b.status)) {
         pending.push({ kind: 'booking', data: b });
@@ -789,6 +1013,7 @@ export default function MyTasksScreen() {
     });
 
     tasks.forEach((t) => {
+      if (bookingTaskIds.has(String(t.id))) return; // trùng ca booking Flow 1
       if (t.status === 'open') {
         pending.push({ kind: 'task', data: t });
       } else if (t.status === 'in_progress') {
@@ -908,7 +1133,6 @@ export default function MyTasksScreen() {
             <CommittedBookingCard
               booking={b}
               onOpenDetail={openBookingDetail}
-              navigation={navigation}
             />
           );
         case 'in_progress':
@@ -918,6 +1142,7 @@ export default function MyTasksScreen() {
               onOpenDetail={openBookingDetail}
               onComplete={handleCompleteBooking}
               actionLoading={actionLoading}
+              navigation={navigation}
             />
           );
         default:
@@ -931,7 +1156,7 @@ export default function MyTasksScreen() {
       }
     }
 
-    // item.kind === 'task'
+    // item.kind === 'task' — luồng legacy (core.Task)
     const t = item.data;
     if (t.status === 'open') {
       return (
@@ -944,16 +1169,16 @@ export default function MyTasksScreen() {
         />
       );
     }
+    // N-003 (Blocker A): in_progress / completed của task legacy PHẢI có
+    // thẻ riêng với nút chat — không gộp chung thẻ tĩnh mất chat nữa.
     return (
-      <View style={[styles.card, { borderTopColor: STITCH.slateMuted }]}>
-        <View style={styles.cardHeader}>
-          <StatusPill bg="#F1F5F9" border="#E2E8F0" color="#64748B" icon="close-circle-outline">
-            {t.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
-          </StatusPill>
-          <Text style={styles.cardPrice}>{money(t.price)}</Text>
-        </View>
-        <Text style={styles.jobBriefTitle}>{t.title}</Text>
-      </View>
+      <LegacyTaskCard
+        task={t}
+        navigation={navigation}
+        candidateCount={candidateCounts[t.id]}
+        isCancelling={actionLoading === `${t.id}-cancelled`}
+        onCancelTask={handleCancelTask}
+      />
     );
   }, [
     actionLoading, candidateCounts, navigation, openBookingDetail,
@@ -1678,6 +1903,23 @@ const styles = StyleSheet.create({
     color: STITCH.alertCrimson,
     fontSize: 11,
     fontWeight: '700',
+  },
+  // Nút chat trên thẻ (in_progress + completed legacy/booking) — N-003
+  chatShiftBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: STITCH.skyLight,
+    borderWidth: 1,
+    borderColor: STITCH.skyBorder,
+    borderRadius: 12,
+    paddingVertical: 11,
+  },
+  chatShiftBtnText: {
+    color: STITCH.skyActive,
+    fontSize: 12.5,
+    fontWeight: '800',
   },
   completeShiftBtn: {
     flexDirection: 'row',
