@@ -111,11 +111,14 @@ def _booking_dict(booking):
     }
 
     # Thông tin phụ huynh hiển thị cho CarePartner (từ record User đã select_related)
+    # is_verified (QA 2026-09-13): phục vụ badge "CCCD đã xác minh" trên thẻ
+    # đơn đang chờ cam kết của màn "Việc của tôi" — dữ liệu thật từ User.
     parent_info = {
         'full_name': (f"{parent.first_name} {parent.last_name}".strip()
                       if parent else '') or getattr(parent, 'username', ''),
         'phone': getattr(parent, 'phone_number', '') or '',
         'avatar_url': getattr(parent, 'avatar_url', '') or '',
+        'is_verified': bool(getattr(parent, 'is_verified', False)),
     }
 
     # Thông tin CarePartner hiển thị cho Phụ huynh (Stitch 2026-09-13 —
@@ -174,6 +177,10 @@ def _booking_dict(booking):
         'commit_deadline': b.commit_deadline,
         'seconds_left': seconds_left(b),
         'commit_seconds_left': seconds_left(b),
+        # started_at/ended_at (QA 2026-09-13): màn "Việc của tôi" 4 tab —
+        # Tab 2 đếm ngược giờ bắt đầu ca, Tab 3 hiển thị thời gian hoàn thành.
+        'started_at': b.started_at,
+        'ended_at': b.ended_at,
         'total_value_vnd': b.total_value_vnd,
         'carepartner_payout_vnd': payout_vnd,
         'compensation_vnd': b.compensation_vnd,

@@ -80,6 +80,33 @@ export default function BookingDetailScreen() {
     }
   };
 
+  // Confirmation Jump (QA 2026-09-13): sau khi CarePartner xác nhận cam kết
+  // thành công → điều hướng về "Việc của tôi" tab Sắp làm và highlight đúng
+  // đơn vừa cam kết. KHÔNG áp dụng cho nhánh Parent (dùng chung file này).
+  const handleCommitAndJump = async () => {
+    setActionLoading(true);
+    try {
+      await commitBooking(bookingId);
+      Alert.alert(
+        'Thành công',
+        'Đã cam kết nhận đơn thành công! Ca làm đã chuyển sang mục Sắp làm.',
+        [{
+          text: 'Xem ca sắp làm',
+          onPress: () => navigation.navigate('MyJobs', {
+            screen: 'MyJobsMain',
+            params: { initialTab: 'upcoming', highlightBookingId: String(bookingId) },
+          }),
+        }, { text: 'Ở lại', style: 'cancel' }],
+      );
+      await load();
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      Alert.alert('Không thể xác nhận', typeof detail === 'string' ? detail : 'Không thể xác nhận lúc này, vui lòng thử lại.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const submitCancel = async () => {
     if (isParent) {
       setCancelModal(false);
@@ -755,10 +782,7 @@ export default function BookingDetailScreen() {
             <TouchableOpacity
               style={stitchStyles.confirmDockBtn}
               disabled={actionLoading}
-              onPress={() => run(
-                () => commitBooking(bookingId),
-                'Đã cam kết nhận đơn thành công! Ca làm đã chuyển sang mục Sắp làm.'
-              )}
+              onPress={handleCommitAndJump}
               activeOpacity={0.88}
             >
               {actionLoading ? (

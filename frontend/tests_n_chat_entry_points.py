@@ -172,7 +172,10 @@ class ChatEntryPointGatingTests(TestCase):
                 if f'status === \'{status}\'' in cond:
                     key = status
                     # MyJobsScreen: accepted + task_status completed → completed
-                    if 'task_status' in cond and 'app.status' in cond:
+                    # QA 2026-09-13: nhận thêm biến thể mới sau khi viết lại
+                    # MyJobsScreen 4 tab — legacy completed dùng
+                    # `isLegacy && item.task_status === 'completed'`
+                    if 'task_status' in cond and ('app.status' in cond or 'isLegacy' in cond):
                         key = 'worker_' + status
                     blocks.setdefault(key, []).append(block)
         return blocks
