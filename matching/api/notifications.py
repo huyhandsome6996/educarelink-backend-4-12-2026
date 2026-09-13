@@ -9,12 +9,14 @@ from rest_framework import permissions
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .permissions import WorkerMustBeApproved
 
 from ..models import Notification
 
 
 class NotificationListAPIView(ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # Task C: worker pending bị chặn hộp thư matching (403)
+    permission_classes = [permissions.IsAuthenticated, WorkerMustBeApproved]
 
     def get_queryset(self):
         qs = Notification.objects.filter(user=self.request.user)

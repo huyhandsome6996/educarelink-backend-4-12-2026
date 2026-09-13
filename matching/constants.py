@@ -302,6 +302,8 @@ NOTIFICATION_CODES = {
     'account_suspended':       ('carepartner', 'critical'),
     'appeal_decided':          ('carepartner', 'critical'),
     'blackout_paused':         ('carepartner', 'important'),
+    # Task C (2026-09-14) — cold-start: admin vừa duyệt hồ sơ CarePartner
+    'profile_approved':        ('carepartner', 'important'),
 }
 
 # ═══════════════════════════════════════════════════════════════════
@@ -345,6 +347,14 @@ DEFAULT_CONFIG = {
     # Step 8.5 — auto-replacement retry
     'REPLACEMENT_RETRY_MINUTES': 30,
     'REPLACEMENT_RETRY_WINDOW_HOURS': 6,
+    # Task B (2026-09-14) — khoảng cách là 1 tiêu chí, KHÔNG hard-kill dưới ngưỡng này.
+    # Chỉ loại CP khi xa hơn ngưỡng "bất khả thi đi làm" (mặc định 80km).
+    'HARD_DROP_DISTANCE_KM': 80,
+    # Task B (2026-09-14) — Gemini re-rank top 20 → top 8 (spec 2.2.4 / 11.2 task 8).
+    # False = tắt re-rank (giữ thứ tự rule). Lỗi AI không bao giờ chặn matching.
+    'GEMINI_RERANK_ENABLED': True,
+    # Pool rule-based đưa vào re-rank (chỉ REORDER, không drop phần tử).
+    'GEMINI_RERANK_POOL': 20,
 }
 
 # Nhãn tiếng Việt cho 7 factor matching (Step 11.6)

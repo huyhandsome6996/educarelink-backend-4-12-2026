@@ -1608,7 +1608,24 @@ def user_has_granted_location_consent(user: User) -> bool:
     return LocationConsent.objects.filter(worker=user, consent='granted').exists()
 
 
-def sync_user_gps_coordinates(user: User, latitude, longitude, *, force: bool = False) -> str:
+def user_has_matching_gps_consent(user: User) -> bool:
+    """Task E (2026-09-14): consent GPS CHO GHÉP CẶP — tách khỏi live-tracking.
+
+    Đạt khi MỘT trong 2 điều kiện đúng:
+      1. User.matching_gps_consent = True (toggle onboarding "Cho phép dùng
+         vị trí để gợi ý việc gần bạn"), hoặc
+      2. Từng có LocationConsent 'granted' (consent live-tracking cũ — người
+         đã từng đồng ý chia sẻ vị trí thì heartbeat ngoài ca cũng hợp lệ).
+    Không có consent nào → heartbeat KHÔNG ghi tọa độ; matching dùng địa chỉ
+    hồ sơ (fallback trung thực, không 403 im lặng rồi quên GPS mãi).
+    """
+    if getattr(user, 'matching_gps_consent', False):
+        return True
+    return user_has_granted_location_consent(user)
+
+
+def sync_user_gps_coordinates(user: User, latitude, longitude, *, force: bool = False,
+                             allow_matching_flag: bool = False) -> str:
     """Ghi tọa độ GPS real-time vào User.current_latitude/current_longitude.
 
     - BẮT BUỘC kiểm tra LocationConsent đã cấp trước khi ghi (raise
@@ -1620,8 +1637,13 @@ def sync_user_gps_coordinates(user: User, latitude, longitude, *, force: bool = 
 
     Trả về: 'updated' | 'throttled'. Raise PermissionError khi chưa consent.
     """
-    # Consent guard — bắt buộc, không optional (SAFETY-LOC-001)
-    if not user_has_granted_location_consent(user):
+    # Consent guard — bắt buộc, không optional (SAFETY-LOC-001).
+    # Task E (2026-09-14): chấp nhận CẢ consent matching-GPS (flag User)
+    # LẪN consent live-tracking per-task cũ. Gọi với allow_matching_flag=False
+    # (mặc định) ở luồng tracking trong ca để giữ đúng SAFETY-LOC-001.
+    if allow_matching_flag and user_has_matching_gps_consent(user):
+        pass  # consent matching đủ cho heartbeat ngoài ca
+    elif not user_has_granted_location_consent(user):
         raise PermissionError(
             "CarePartner chưa đồng ý chia sẻ vị trí — không thể ghi GPS real-time."
         )

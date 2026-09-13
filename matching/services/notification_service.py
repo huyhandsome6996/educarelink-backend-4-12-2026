@@ -122,7 +122,12 @@ class NotificationService:
     @staticmethod
     def _build_payload(notif, token_row):
         """Payload Expo push Step 8.4 — critical PHẢI kêu to:
-        channelId educarelink_critical + sound critical_alert.wav + priority max."""
+        channelId educarelink_critical + sound critical_alert.wav + priority max.
+
+        Task F (2026-09-14): data PHẢI kèm class + type + sound — mobile
+        NotificationListener đọc data.class để phát chuông foreground (trước
+        đây thiếu field này → push đến khi app mở có thể KHÔNG kêu).
+        """
         if notif.klass == 'critical':
             return {
                 'to': token_row.token,
@@ -132,6 +137,7 @@ class NotificationService:
                 'priority': 'max', 'ttl': 3600,
                 '_displayInForeground': True,
                 'data': {**(notif.data or {}), 'type': notif.code,
+                         'class': 'critical', 'sound': 'critical_alert.wav',
                          'notification_id': str(notif.pk)},
             }
         if notif.klass == 'important':
@@ -141,10 +147,10 @@ class NotificationService:
                 'sound': 'default', 'priority': 'high', 'ttl': 3600,
                 '_displayInForeground': True,
                 'data': {**(notif.data or {}), 'type': notif.code,
-                         'notification_id': str(notif.pk)},
+                         'class': 'important', 'notification_id': str(notif.pk)},
             }
         # info — chỉ in-app + badge (Step 8.2), không bắn push
         return {'to': token_row.token, 'title': notif.title_vi,
                 'body': notif.body_vi, 'priority': 'default',
                 'data': {**(notif.data or {}), 'type': notif.code,
-                         'notification_id': str(notif.pk)}}
+                         'class': 'info', 'notification_id': str(notif.pk)}}

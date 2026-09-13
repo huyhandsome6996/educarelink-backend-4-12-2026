@@ -95,6 +95,14 @@ class User(AbstractUser):
         null=True, blank=True, db_index=True,
         help_text="Thời điểm GPS real-time được cập nhật lần cuối"
     )
+    # Task E (2026-09-14): consent GPS CHO GHÉP CẶP tách khỏi consent
+    # live-tracking trong ca (LocationConsent per-task). Không consent →
+    # matching fallback địa chỉ hồ sơ, heartbeat không ghi (không 403 im lặng).
+    matching_gps_consent = models.BooleanField(
+        default=False,
+        help_text="CarePartner cho phép dùng vị trí để gợi ý việc gần bạn "
+                  "(consent matching-GPS, tách khỏi live-tracking trong ca)"
+    )
 
     # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
     # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác

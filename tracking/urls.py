@@ -8,6 +8,7 @@ from .views import (
     AdminTrackingOverviewAPIView, TrackingHealthCheckAPIView,
     HeartbeatAPIView, DeviceStatusAPIView, OfflineAlertsListAPIView,
     GpsHeartbeatAPIView,
+    MatchingGpsConsentAPIView,
     AdminRunOfflineCheckAPIView, AcknowledgeOfflineAlertAPIView,
     AdminRunRetryPushAPIView,
     # Phan 3 — Random Verification Check
@@ -52,6 +53,9 @@ urlpatterns = [
     path('tracking/heartbeat/', HeartbeatAPIView.as_view(), name='tracking-heartbeat'),
     # Defect 4 (2026-09-13) — GPS heartbeat ngoài ca (đồng bộ vị trí thực tế cho ghép cặp)
     path('tracking/gps-heartbeat/', GpsHeartbeatAPIView.as_view(), name='tracking-gps-heartbeat'),
+    # Task E — consent GPS cho ghép cặp (tách khỏi live-tracking trong ca)
+    path('tracking/matching-gps-consent/', MatchingGpsConsentAPIView.as_view(),
+         name='tracking-matching-gps-consent'),
     path('tracking/<int:task_id>/device-status/', DeviceStatusAPIView.as_view(), name='tracking-device-status'),
     path('tracking/<int:task_id>/offline-alerts/', OfflineAlertsListAPIView.as_view(), name='tracking-offline-alerts'),
     # Phan 2 — Parent acknowledge offline alert (dừng retry push)

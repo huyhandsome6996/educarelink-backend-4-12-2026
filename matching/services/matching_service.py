@@ -319,8 +319,12 @@ def subscore_skills(required_skills, cp_skills, major, job_type, child_grade_lev
 
 
 def subscore_distance(km, max_radius_km, has_vehicle=False):
+    """Task B/E (2026-09-14): km None → 50 điểm TRUNG TÍNH (không còn 100 —
+    tránh người thiếu tọa độ thắng người có GPS gần job). Không có tọa độ
+    (chưa cấp GPS + không khai địa chỉ) là trạng thái thiếu dữ liệu, không
+    phải ưu tiên tuyệt đối."""
     if km is None:
-        return 100.0  # không có tọa độ → không phạt (newcomer-friendly)
+        return 50.0
     effective = km * (0.75 if has_vehicle else 1.0)
     if max_radius_km <= 0:
         return 0.0
@@ -435,28 +439,28 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # ── Hard filters ──
         if not EloService.is_matchable(profile):
             continue
-        ok_cover, _missing = covers_all_slots(user, required_slots)
+        # Task A (2026-09-14): soft lock giữ cho CHÍNH job này không chặn
+        # CP xuất hiện lại khi parent xem lại danh sách (chỉ soft lock của
+        # job KHÁC mới làm CP bận trong cửa sổ 5 phút).
+        ok_cover, _missing = covers_all_slots(user, required_slots, exclude_job=job)
         if not ok_cover:
             continue
         # ── Defect 4: dùng vị trí HIỆU LỰC (GPS real-time nếu còn tươi) ──
-        eff_lat, eff_lng, from_gps = get_effective_coordinates(user)
-        # Chống "đi công tác / về quê": GPS real-time xa hơn MAX_GPS_DRIFT_KM
-        # (mặc định 50km) so với vị trí ĐÃ ĐĂNG KÝ → CarePartner đang ở xa
-        # nơi đăng ký → LOẠI khỏi match pool (kể cả khớp skill hoàn hảo).
-        if from_gps:
-            drift_km = haversine_km(eff_lat, eff_lng, user.latitude, user.longitude)
-            max_drift_km = float(getattr(settings, 'MAX_GPS_DRIFT_KM', 50))
-            if drift_km is not None and drift_km > max_drift_km:
-                logger.info(
-                    '[Matching] Loại %s: GPS drift %.1fkm > %.0fkm (đăng ký %.4f,%.4f — GPS %.4f,%.4f)',
-                    user.username, drift_km, max_drift_km,
-                    user.latitude or 0, user.longitude or 0, eff_lat or 0, eff_lng or 0)
-                continue
+        # Task B (2026-09-14): BỎ drift-exclude toàn pool (MAX_GPS_DRIFT_KM).
+        # SV Huế đang ở Hà Nội (GPS tươi) phải nhận được việc Hà Nội — GPS
+        # hiện tại mới là vị trí thật; drift so với địa chỉ đăng ký KHÔNG
+        # còn là lý do loại cả pool. Khoảng cách chỉ là MỘT tiêu chí 15%.
+        eff_lat, eff_lng, _from_gps = get_effective_coordinates(user)
         km = haversine_km(job.latitude, job.longitude, eff_lat, eff_lng)
         radius = profile.max_radius_km or default_radius
-        # Bán kính: CP có phương tiện hoặc khu vực đô thị mở rộng tối đa 35km để luôn có ứng viên phù hợp
-        max_allowed_km = max(radius, 35) if profile.has_vehicle else max(radius, 25)
-        if km is not None and km > max_allowed_km:
+        # Task B: bán kính → ĐIỂM PHẠT (subscore_distance = 0 ngoài bán kính),
+        # KHÔNG hard-kill. Chỉ loại khi xa bất khả thi đi làm —
+        # HARD_DROP_DISTANCE_KM (MatchingConfig, mặc định 80km).
+        hard_drop_km = get_int('HARD_DROP_DISTANCE_KM', 80)
+        if km is not None and km > hard_drop_km:
+            logger.info(
+                '[Matching] Loại %s: cách job %.1fkm > HARD_DROP %.0fkm (GPS hiện tại dùng cho distance)',
+                user.username, km, hard_drop_km)
             continue
         # Hard filter #5: parent yêu cầu giới tính cụ thể (chỉ childcare/pickup —
         # tutoring đã bị vô hiệu ở trên) → CP khác giới bị LOẠI trước khi chấm điểm,
@@ -533,13 +537,48 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
             '_elo': effective_elo,
             '_distance': km if km is not None else 9999.0,
             '_completion': subs['completion'],
+            # Task C: cờ exploration — CP mới 0 đơn 0 review
+            '_newbie': (profile.jobs_completed == 0 and profile.review_count == 0),
         })
 
     # Sort desc: điểm match -> điểm kỹ năng chuyên môn -> ELO -> khoảng cách -> tỷ lệ hoàn thành
     candidates.sort(key=lambda c: (-c['match_score'], -c['_skills'], -c['_elo'], c['_distance'], -c['_completion']))
 
     total_matched = len(candidates)
-    top = candidates[:top_n]
+
+    # ── Task B (2026-09-14): Gemini re-rank top 20 → top 8 (spec 2.2.4/11.2 #8) ──
+    # Chỉ REORDER trong pool rule-based, KHÔNG drop phần tử. Gemini chết / hết
+    # timeout / không có key → giữ nguyên thứ tự rule. Matching KHÔNG bao giờ
+    # chết vì AI.
+    rerank_pool_size = max(get_int('GEMINI_RERANK_POOL', 20), top_n)
+    pool = candidates[:rerank_pool_size]
+    why_map = {}
+    if len(pool) >= 2 and get_config('GEMINI_RERANK_ENABLED', True):
+        try:
+            from .gemini_service import rerank_candidates
+            ordered, why_map = rerank_candidates(job, pool)
+            if ordered:
+                pool = ordered
+        except Exception:
+            logger.exception('[Matching] Gemini re-rank lỗi — giữ thứ tự rule')
+            why_map = {}
+    top = pool[:top_n]
+
+    # ── Task C (2026-09-14): Exploration slot — newcomer không bị ghẻ lạnh ──
+    # Nếu top N không có ai 0 đơn + 0 review, chèn 1 newbie (đã pass hard
+    # filter) vào vị trí CUỐI, đẩy người điểm thấp nhất ra. Newbie KHÔNG bao
+    # giờ vượt mặt very_high #1 — slot là #N.
+    if top and not any(c.get('_newbie') for c in top):
+        top_ids = {c['carepartner_id'] for c in top}
+        newbie = next((c for c in candidates[top_n:] if c.get('_newbie')
+                       and c['carepartner_id'] not in top_ids), None)
+        if newbie is None:
+            newbie = next((c for c in candidates if c.get('_newbie')
+                           and c['carepartner_id'] not in top_ids), None)
+        if newbie is not None:
+            logger.info('[Matching] Exploration slot: chèn newbie %s vào #%d cho job %s',
+                        newbie['display_name'], top_n, job.pk)
+            top = top[:-1] + [newbie]
 
     # Ghi đề xuất (throttle đã lọc ở trên) — unique (job, cp)
     now = timezone.now()
@@ -548,10 +587,12 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
             job=job, carepartner_id=cand['carepartner_id'],
             defaults=dict(match_score=cand['match_score'], match_level=cand['match_level'],
                           proposed_at=now))
+        cand['why_recommended_vi'] = why_map.get(cand['carepartner_id'], '')
         cand.pop('_skills', None)
         cand.pop('_elo', None)
         cand.pop('_distance', None)
         cand.pop('_completion', None)
+        cand.pop('_newbie', None)
 
     # Đặc tả Mục 5: nhãn match_level phản ánh ĐÚNG điểm số của ứng viên —
     # đã bỏ đoạn ghi đè 'low' → 'medium' khi pool đủ 8 người (code cũ ép

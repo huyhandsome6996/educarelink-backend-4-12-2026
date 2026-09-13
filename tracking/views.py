@@ -51,6 +51,7 @@ from .services import (
     get_verification_history_for_parent, cancel_verification_check,
     # B5 — xác thực bằng ảnh trong ca
     submit_verification_photo, get_verification_photo,
+    user_has_matching_gps_consent,
 )
 
 logger = logging.getLogger('educarelink.tracking.api')
@@ -442,19 +443,22 @@ class HeartbeatAPIView(APIView):
 
 class GpsHeartbeatAPIView(APIView):
     """
-    POST /api/tracking/gps-heartbeat/  (Defect 4 — 2026-09-13)
+    POST /api/tracking/gps-heartbeat/  (Defect 4 — 2026-09-13, Task E — 2026-09-14)
 
     Body: { latitude, longitude, accuracy? }
 
-    GPS heartbeat NHẸN ngoài ca: CarePartner app gọi khi mở app / đăng nhập /
+    GPS heartbeat NHẸ ngoài ca: CarePartner app gọi khi mở app / đăng nhập /
     đồng bộ nền để cập nhật User.current_latitude/current_longitude cho
     matching engine dùng vị trí thực tế (chống "đăng ký Huế đang ở Hà Nội").
 
-    BẮT BUỘC (không optional):
-    - Kiểm tra LocationConsent đã cấp (SAFETY-LOC-001) — chưa có consent →
-      trả 403 và KHÔNG ghi tọa độ.
-    - Throttle: mỗi user tối đa 1 lần ghi DB / GPS_HEARTBEAT_MIN_INTERVAL_SECONDS
-      giây (60s mặc định) — gửi dày hơn trả 200 với gps_sync='throttled'.
+    CONSENT (Task E — tách khỏi live-tracking trong ca):
+    - Đạt khi user.matching_gps_consent=True HOẶC từng có LocationConsent
+      'granted'. Chưa có consent nào → KHÔNG 403 im lặng nữa: trả 200 với
+      gps_sync='no_matching_consent' để client dừng gửi và matching dùng
+      địa chỉ hồ sơ (fallback trung thực).
+    - Throttle: mỗi user tối đa 1 lần ghi DB /
+      GPS_HEARTBEAT_MIN_INTERVAL_SECONDS giây (60s mặc định) — gửi dày hơn
+      trả 200 với gps_sync='throttled'.
     """
     permission_classes = [IsAuthenticated]
 
@@ -469,16 +473,27 @@ class GpsHeartbeatAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        # Consent guard bắt buộc — chưa có consent → 403, không ghi tọa độ
-        if not user_has_granted_location_consent(request.user):
-            return Response(
-                {'error': 'Bạn chưa đồng ý chia sẻ vị trí — không thể đồng bộ GPS.',
-                 'code': 'no_location_consent'},
-                status=status.HTTP_403_FORBIDDEN)
+        # Consent matching-GPS tách khỏi live-tracking trong ca (Task E).
+        # Không consent → 200 no_matching_consent (client dừng, matching
+        # fallback địa chỉ hồ sơ) — không còn 403 bị nuốt im lặng.
+        if not user_has_matching_gps_consent(request.user):
+            return Response({
+                'status': 'ok',
+                'gps_sync': 'no_matching_consent',
+                'code': 'no_matching_consent',
+                'detail': 'Bạn chưa cho phép dùng vị trí để gợi ý việc. '
+                          'Hệ thống dùng địa chỉ hồ sơ cho khoảng cách.',
+                'consent_endpoint': '/api/tracking/matching-gps-consent/',
+                'current_latitude': request.user.current_latitude,
+                'current_longitude': request.user.current_longitude,
+                'last_gps_updated_at': (request.user.last_gps_updated_at.isoformat()
+                                        if request.user.last_gps_updated_at else None),
+            }, status=status.HTTP_200_OK)
 
         try:
             result = sync_user_gps_coordinates(
-                request.user, data['latitude'], data['longitude'])
+                request.user, data['latitude'], data['longitude'],
+                allow_matching_flag=True)
         except PermissionError:
             return Response(
                 {'error': 'Bạn chưa đồng ý chia sẻ vị trí — không thể đồng bộ GPS.',
@@ -493,6 +508,40 @@ class GpsHeartbeatAPIView(APIView):
             'last_gps_updated_at': (request.user.last_gps_updated_at.isoformat()
                                     if request.user.last_gps_updated_at else None),
         }, status=status.HTTP_200_OK)
+
+
+class MatchingGpsConsentAPIView(APIView):
+    """
+    GET  /api/tracking/matching-gps-consent/  → trạng thái consent hiện tại
+    POST /api/tracking/matching-gps-consent/  {granted: true|false}
+
+    Task E: toggle "Cho phép dùng vị trí để gợi ý việc gần bạn" trên
+    onboarding / hồ sơ CarePartner. Consent này CHỈ phục vụ tính khoảng cách
+    cho matching — KHÔNG mở quyền live-tracking trong ca (vẫn theo
+    LocationConsent per-task SAFETY-LOC-001).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            'matching_gps_consent': bool(getattr(
+                request.user, 'matching_gps_consent', False)),
+        })
+
+    def post(self, request):
+        if request.user.role != 'worker':
+            return Response(
+                {'error': 'Chỉ CarePartner dùng vị trí cho gợi ý việc.'},
+                status=status.HTTP_403_FORBIDDEN)
+        granted = bool(request.data.get('granted'))
+        request.user.matching_gps_consent = granted
+        request.user.save(update_fields=['matching_gps_consent'])
+        return Response({
+            'status': 'ok',
+            'matching_gps_consent': granted,
+            'message_vi': ('Đã BẬT dùng vị trí để gợi ý việc gần bạn.' if granted
+                           else 'Đã TẮT dùng vị trí — hệ thống dùng địa chỉ hồ sơ.'),
+        })
 
 
 class DeviceStatusAPIView(APIView):
