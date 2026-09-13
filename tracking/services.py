@@ -428,11 +428,11 @@ def update_heartbeat(*, task: Task, worker: User,
     - Update_or_create DeviceHeartbeat
     - Nếu có alert active (đã recovered) → tự resolve + push "đã online trở lại"
     """
-    # Verify consent
+    # Verify consent (bắt buộc granted, 403 nếu thiếu hoặc denied/revoked)
     try:
         consent = LocationConsent.objects.get(task=task, worker=worker)
         if consent.consent != 'granted':
-            raise PermissionError(f"Consent hiện tại: {consent.consent} — không thể update heartbeat.")
+            raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
     except LocationConsent.DoesNotExist:
         raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
 
@@ -453,8 +453,8 @@ def update_heartbeat(*, task: Task, worker: User,
             defaults={
                 'worker': worker,
                 'last_seen': now,
-                'last_location_lat': Decimal(str(latitude)) if latitude else None,
-                'last_location_lng': Decimal(str(longitude)) if longitude else None,
+                'last_location_lat': Decimal(str(latitude)) if latitude is not None else None,
+                'last_location_lng': Decimal(str(longitude)) if longitude is not None else None,
                 'device_status': 'online',
                 'battery_level': battery_level,
                 'app_state': app_state,
@@ -463,6 +463,33 @@ def update_heartbeat(*, task: Task, worker: User,
                 'offline_alert_sent': False,
             }
         )
+
+        # Rate limit GPS writes to User model: max 1 write per 60s per user
+        if latitude is not None and longitude is not None:
+            last_gps = worker.last_gps_updated_at
+            if last_gps is None and getattr(worker, 'pk', None):
+                try:
+                    db_last_gps = type(worker).objects.filter(pk=worker.pk).values_list('last_gps_updated_at', flat=True).first()
+                    if db_last_gps is not None:
+                        last_gps = db_last_gps
+                        worker.last_gps_updated_at = db_last_gps
+                except Exception:
+                    pass
+
+            should_update = False
+            if last_gps is None:
+                should_update = True
+            else:
+                if timezone.is_naive(last_gps):
+                    last_gps = timezone.make_aware(last_gps)
+                if (now - last_gps).total_seconds() >= 60:
+                    should_update = True
+
+            if should_update:
+                worker.current_latitude = float(latitude)
+                worker.current_longitude = float(longitude)
+                worker.last_gps_updated_at = now
+                worker.save(update_fields=['current_latitude', 'current_longitude', 'last_gps_updated_at'])
 
         # Nếu có alert active → resolve + notify parent "thiết bị đã online trở lại"
         active_alerts = DeviceOfflineAlert.objects.filter(
