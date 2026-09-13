@@ -3,6 +3,7 @@ import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
 import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { sendGpsHeartbeat } from '../api/tracking';
 import apiClient from '../api/client';
 
 // ====================================================================
@@ -54,6 +55,44 @@ async function syncPushTokenToBackend() {
   }
 }
 
+// ====================================================================
+// Defect 4 (2026-09-13): GPS real-time cho ghép cặp — chống "đăng ký Huế
+// đang ở Hà Nội vẫn bị giao việc Huế".
+//
+// Khi CarePartner mở app / đăng nhập: xin quyền vị trí foreground qua
+// expo-location (CHỈ sync khi user đã cấp quyền = consent phía máy), rồi
+// POST /tracking/gps-heartbeat/ cập nhật current_latitude/longitude.
+// Backend tự chốt consent hệ thống (LocationConsent) — chưa có consent
+// → 403 'no_location_consent', bỏ qua im lặng (bình thường với CP mới).
+// FIRE AND FORGET — không block login, lỗi là non-fatal.
+// ====================================================================
+export async function syncGpsToBackend(user) {
+  try {
+    if (!user || user.role !== 'worker') return;
+    const Location = require('expo-location');
+    if (!Location?.requestForegroundPermissionsAsync) return; // môi trường không có module (vd web/test)
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return; // chưa cấp quyền thiết bị → không xin xung
+    const pos = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy?.Balanced ?? 3,
+    });
+    const lat = pos?.coords?.latitude;
+    const lng = pos?.coords?.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number') return;
+    const res = await sendGpsHeartbeat({
+      latitude: lat,
+      longitude: lng,
+      accuracy: pos.coords.accuracy ?? undefined,
+    });
+    console.log('[AuthContext] GPS heartbeat synced:', res?.data?.gps_sync);
+  } catch (e) {
+    // 403 no_location_consent: CP chưa consent chia sẻ vị trí trên hệ thống —
+    // hành vi hợp lệ, không log lỗi ồn ào.
+    if (e?.response?.status === 403) return;
+    console.warn('[AuthContext] GPS sync failed (non-fatal):', e?.message || e);
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);      // Thông tin user đang đăng nhập
   const [isLoading, setIsLoading] = useState(true); // Kiểm tra token lúc app khởi động
@@ -77,6 +116,8 @@ export function AuthProvider({ children }) {
           if (response.data?.id) {
             await storage.setItem('user_id', String(response.data.id));
           }
+          // Defect 4: GPS sync nền cho CarePartner khi mở lại app (fire-and-forget)
+          syncGpsToBackend(response.data);
         }
       } catch (error) {
         // Token hết hạn hoặc lỗi — xoá hết
@@ -117,6 +158,9 @@ export function AuthProvider({ children }) {
     // Push token sẽ sync nền, không ảnh hưởng login UX.
     syncPushTokenToBackend();
 
+    // Defect 4: GPS real-time sync nền cho CarePartner (fire-and-forget)
+    syncGpsToBackend(profileResp.data);
+
     return profileResp.data;
   };
 
@@ -155,6 +199,9 @@ export function AuthProvider({ children }) {
 
     // v1.1.2 FIX (main): Push token registration — FIRE AND FORGET (giống login)
     syncPushTokenToBackend();
+
+    // Defect 4: GPS real-time sync nền cho CarePartner (fire-and-forget)
+    syncGpsToBackend(profileResp.data);
 
     return profileResp.data;
   };

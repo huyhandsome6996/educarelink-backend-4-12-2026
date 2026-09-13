@@ -145,3 +145,16 @@ export const cancelVerificationCheck = (checkId, reason = '') =>
 // Body: { task_id, points: [{ latitude, longitude, accuracy?, speed?, heading?, recorded_at, client_point_id? }, ...] }
 export const uploadBatchLocations = (payload) =>
   apiClient.post('/tracking/location/batch/', payload);
+
+// ═══════════════════════════════════════════════════════════════════
+// GPS REAL-TIME CHO GHÉP CẶP (Defect 4 — 2026-09-13)
+// ═══════════════════════════════════════════════════════════════════
+// CarePartner gửi GPS hiện tại khi mở app / đăng nhập / đồng bộ nền
+// (KHÔNG cần task) để matching dùng vị trí thực tế — chống "đăng ký Huế
+// đang ở Hà Nội" vẫn bị giao việc Huế.
+// Backend: GpsHeartbeatAPIView — POST /api/tracking/gps-heartbeat/
+//   - Chưa có LocationConsent granted → 403 { code: 'no_location_consent' }
+//   - Throttle 1 lần ghi / 60s / user → 200 { gps_sync: 'throttled' }
+// Body: { latitude, longitude, accuracy? }
+export const sendGpsHeartbeat = (payload) =>
+  apiClient.post('/tracking/gps-heartbeat/', payload);
