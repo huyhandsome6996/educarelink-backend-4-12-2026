@@ -64,3 +64,9 @@
     };
   })();
 </script>
+
+<!-- ===== Task E + F (2026-09-14): GPS heartbeat web + chuông/popup nhận đơn ===== -->
+<!-- GPS: mỗi lần mở trang / mỗi 5 phút → POST /api/tracking/gps-heartbeat/ (cùng API mobile) -->
+<script src="{% static 'js/worker_gps_heartbeat.js' %}"></script>
+<!-- Nhận đơn: poll awaiting_commitment mỗi 15s + ding WebAudio + modal Xác nhận/Chi tiết/Từ chối -->
+<script src="{% static 'js/job_assigned_alert.js' %}"></script>

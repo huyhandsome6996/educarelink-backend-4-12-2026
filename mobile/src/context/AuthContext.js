@@ -1,9 +1,10 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { storage } from '../utils/storage';
 import { login as loginApi, register as registerApi, getProfile } from '../api/auth';
 import { completeOnboarding as completeOnboardingApi } from '../api/onboarding';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { sendGpsHeartbeat } from '../api/tracking';
+import { sendGpsHeartbeat, setMatchingGpsConsent } from '../api/tracking';
 import apiClient from '../api/client';
 
 // ====================================================================
@@ -48,6 +49,13 @@ async function syncPushTokenToBackend() {
     const pushToken = await registerForPushNotificationsAsync();
     if (!pushToken) return;
     await apiClient.patch('/profile/', { expo_push_token: pushToken });
+    // Task F (2026-09-14): upsert DeviceToken đa thiết bị — trước đây bảng này
+    // KHÔNG bao giờ được ghi (chỉ fallback User.expo_push_token).
+    try {
+      await apiClient.post('/matching/device-token/', {
+        platform: 'expo', token: pushToken,
+      });
+    } catch (e2) { /* non-fatal — PATCH profile đã ghi field cũ */ }
     console.log('[AuthContext] Push token synced to backend');
   } catch (e) {
     // Non-fatal — push notification là tính năng phụ, không block app
@@ -59,16 +67,24 @@ async function syncPushTokenToBackend() {
 // Defect 4 (2026-09-13): GPS real-time cho ghép cặp — chống "đăng ký Huế
 // đang ở Hà Nội vẫn bị giao việc Huế".
 //
-// Khi CarePartner mở app / đăng nhập: xin quyền vị trí foreground qua
-// expo-location (CHỈ sync khi user đã cấp quyền = consent phía máy), rồi
-// POST /tracking/gps-heartbeat/ cập nhật current_latitude/longitude.
-// Backend tự chốt consent hệ thống (LocationConsent) — chưa có consent
-// → 403 'no_location_consent', bỏ qua im lặng (bình thường với CP mới).
+// Task E (2026-09-14) — "GPS 100%": gửi khi LOGIN, khi app về FOREGROUND,
+// và LẶP LẠI MỖI 5 PHÚT khi app active (AuthProvider useEffect bên dưới).
+// Xin quyền vị trí foreground qua expo-location (CHỈ sync khi user đã cấp
+// quyền thiết bị), rồi POST /tracking/gps-heartbeat/.
+// Consent hệ thống: User.matching_gps_consent (toggle onboarding) HOẶC
+// LocationConsent 'granted' cũ. Chưa consent → backend trả 200
+// gps_sync='no_matching_consent' → dừng gửi 24h (không spam, không 403 im
+// lặng) — matching tự fallback địa chỉ hồ sơ.
 // FIRE AND FORGET — không block login, lỗi là non-fatal.
 // ====================================================================
+const GPS_NO_CONSENT_BACKOFF_MS = 24 * 60 * 60 * 1000; // 24h
+
 export async function syncGpsToBackend(user) {
   try {
     if (!user || user.role !== 'worker') return;
+    // Đang backoff vì chưa consent matching-GPS → không gửi (trừ khi vừa bật consent)
+    const blockedUntil = parseInt(await storage.getItem('gps_no_consent_until') || '0', 10);
+    if (blockedUntil && Date.now() < blockedUntil) return;
     const Location = require('expo-location');
     if (!Location?.requestForegroundPermissionsAsync) return; // môi trường không có module (vd web/test)
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -84,13 +100,29 @@ export async function syncGpsToBackend(user) {
       longitude: lng,
       accuracy: pos.coords.accuracy ?? undefined,
     });
+    if (res?.data?.gps_sync === 'no_matching_consent') {
+      // Chưa consent hệ thống → backoff 24h; user bật toggle consent sẽ clear
+      await storage.setItem('gps_no_consent_until', String(Date.now() + GPS_NO_CONSENT_BACKOFF_MS));
+      return;
+    }
+    await storage.setItem('gps_no_consent_until', '0');
     console.log('[AuthContext] GPS heartbeat synced:', res?.data?.gps_sync);
   } catch (e) {
-    // 403 no_location_consent: CP chưa consent chia sẻ vị trí trên hệ thống —
-    // hành vi hợp lệ, không log lỗi ồn ào.
-    if (e?.response?.status === 403) return;
+    // Lỗi mạng/định vị — non-fatal, chu kỳ 5 phút sau thử lại
     console.warn('[AuthContext] GPS sync failed (non-fatal):', e?.message || e);
   }
+}
+
+// Task E: bật/tắt consent "Cho phép dùng vị trí để gợi ý việc gần bạn".
+// Bật xong → clear backoff để heartbeat gửi ngay chu kỳ kế tiếp.
+export async function updateMatchingGpsConsent(granted) {
+  const res = await setMatchingGpsConsent(granted);
+  if (granted) {
+    await storage.setItem('gps_no_consent_until', '0');
+  } else {
+    await storage.setItem('gps_no_consent_until', String(Date.now() + GPS_NO_CONSENT_BACKOFF_MS));
+  }
+  return res?.data;
 }
 
 export function AuthProvider({ children }) {
@@ -102,6 +134,23 @@ export function AuthProvider({ children }) {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  // ── Task E (2026-09-14): GPS 100% — app foreground + lặp mỗi 5 phút ──
+  // Login + mở lại app đã sync ở checkToken()/login(). Hook này bảo đảm:
+  // app về 'active' → sync ngay; app active kéo dài → sync mỗi 5 phút.
+  useEffect(() => {
+    if (!user || user.role !== 'worker') return undefined;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncGpsToBackend(user);
+    });
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') syncGpsToBackend(user);
+    }, 5 * 60 * 1000);
+    return () => {
+      sub?.remove?.();
+      clearInterval(interval);
+    };
+  }, [user]);
 
   // Khi app mở lại — kiểm tra xem đã có token chưa
   useEffect(() => {

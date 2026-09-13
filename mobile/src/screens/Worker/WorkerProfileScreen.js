@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Switch } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,38 @@ import VerificationPinSetupModal from '../../components/VerificationPinSetupModa
 export default function WorkerProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, refreshUser } = useAuth();
+  // Task E (2026-09-14): consent GPS CHO GHÉP CẶP — toggle riêng, không
+  // liên quan LocationConsent per-task của live-tracking trong ca.
+  const [gpsConsent, setGpsConsent] = useState(false);
+  const [gpsConsentBusy, setGpsConsentBusy] = useState(false);
+
+  const loadGpsConsent = React.useCallback(async () => {
+    try {
+      const { getMatchingGpsConsent } = require('../../api/tracking');
+      const resp = await getMatchingGpsConsent();
+      setGpsConsent(!!resp.data?.matching_gps_consent);
+    } catch (e) { /* chưa login / mạng lỗi — giữ mặc định */ }
+  }, []);
+
+  React.useEffect(() => { loadGpsConsent(); }, [loadGpsConsent]);
+
+  const handleGpsConsentChange = async (granted) => {
+    setGpsConsentBusy(true);
+    try {
+      const { updateMatchingGpsConsent } = require('../../context/AuthContext');
+      await updateMatchingGpsConsent(granted);
+      setGpsConsent(granted);
+      Alert.alert(
+        granted ? 'Đã bật' : 'Đã tắt',
+        granted
+          ? 'Hệ thống sẽ dùng vị trí hiện tại để gợi ý việc gần bạn.'
+          : 'Hệ thống dùng địa chỉ hồ sơ để tính khoảng cách gợi ý việc.');
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không đổi được cài đặt. Thử lại sau.');
+    } finally {
+      setGpsConsentBusy(false);
+    }
+  };
   const navigation = useNavigation();
   const [isUploading, setIsUploading] = React.useState(false);
 
@@ -372,6 +404,27 @@ export default function WorkerProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Task E (2026-09-14) — Consent GPS cho ghép cặp (tách khỏi live-tracking) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Vị trí &amp; gợi ý việc</Text>
+          <View style={styles.consentRow}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.consentTitle}>Dùng vị trí để gợi ý việc gần bạn</Text>
+              <Text style={styles.consentDesc}>
+                Bật để hệ thống ưu tiên việc gần vị trí hiện tại của bạn. Không bật:
+                dùng địa chỉ hồ sơ. Không ảnh hưởng theo dõi vị trí khi đang làm việc.
+              </Text>
+            </View>
+            <Switch
+              value={gpsConsent}
+              onValueChange={handleGpsConsentChange}
+              trackColor={{ false: '#CBD5E1', true: COLORS.primary }}
+              thumbColor="#fff"
+              disabled={gpsConsentBusy}
+            />
+          </View>
+        </View>
+
         {/* Logout */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutRow}
@@ -638,6 +691,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   actionText: { flex: 1, ...TYPO.bodyLarge, color: COLORS.textPrimary },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  consentTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text || '#0F172A',
+  },
+  consentDesc: {
+    marginTop: 4,
+    fontSize: 12,
+    color: COLORS.textSecondary || '#64748B',
+    lineHeight: 17,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textMuted || '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
   logoutRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
     backgroundColor: COLORS.errorBg + '40',

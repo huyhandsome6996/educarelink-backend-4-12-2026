@@ -369,6 +369,16 @@ export default function AppNavigator() {
               component={user.role === 'worker' ? WorkerOnboardingScreen : ParentOnboardingScreen}
             />
           </>
+        ) : user.role === 'worker' && !user.is_approved ? (
+          // Task C (2026-09-14): CarePartner CHỜ ADMIN DUYỆT — chỉ cho xem
+          // trạng thái screening + hoàn thiện onboarding (skill/lịch/CCCD).
+          // Matching / bookings / feed việc trả 403 từ backend
+          // (WorkerMustBeApproved) cho tới khi is_approved=True.
+          <>
+            <Stack.Screen name="WorkerScreeningStatus" component={WorkerScreeningStatusScreen} />
+            <Stack.Screen name="Onboarding" component={WorkerOnboardingScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+          </>
         ) : user.is_staff ? (
           // Admin → Admin Dashboard + các screen admin mới
           <>

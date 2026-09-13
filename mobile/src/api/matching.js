@@ -136,3 +136,19 @@ export const CANCEL_REASONS = [
   { code: 'personal', label: 'Lý do cá nhân', forceMajeure: false },
   { code: 'other', label: 'Khác (bắt buộc ghi chú)', forceMajeure: false },
 ];
+
+// ═══════════════════════════════════════════════════════════════════
+// Task C/F/E (2026-09-14) — matching chuẩn sản phẩm
+// ═══════════════════════════════════════════════════════════════════
+
+// Task C — trạng thái onboarding worker (skill + lịch rảnh)
+// GET /api/matching/carepartners/me/onboarding-status/
+// → { has_skills, has_availability, ready_for_matching, message_vi }
+export const getOnboardingStatus = () =>
+  apiClient.get(`${BASE}/carepartners/me/onboarding-status/`);
+
+// Task F — đăng ký DeviceToken đa thiết bị (gọi lúc login + khi token đổi)
+// POST /api/matching/device-token/ {platform, token}
+export const registerDeviceToken = (platform, token) =>
+  apiClient.post(`${BASE}/device-token/`, { platform, token });
+

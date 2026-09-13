@@ -158,3 +158,12 @@ export const uploadBatchLocations = (payload) =>
 // Body: { latitude, longitude, accuracy? }
 export const sendGpsHeartbeat = (payload) =>
   apiClient.post('/tracking/gps-heartbeat/', payload);
+
+// Task E (2026-09-14) — consent GPS CHO GHÉP CẶP (tách khỏi live-tracking)
+// GET  /api/tracking/matching-gps-consent/ → { matching_gps_consent }
+// POST /api/tracking/matching-gps-consent/ {granted: bool}
+export const getMatchingGpsConsent = () =>
+  apiClient.get('/tracking/matching-gps-consent/');
+
+export const setMatchingGpsConsent = (granted) =>
+  apiClient.post('/tracking/matching-gps-consent/', { granted });
