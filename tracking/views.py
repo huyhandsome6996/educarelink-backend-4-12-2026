@@ -389,6 +389,8 @@ class HeartbeatAPIView(APIView):
 
     Carepartner app gửi heartbeat mỗi 30s khi đang tracking.
     Backend dùng để phát hiện thiết bị tắt nguồn/mất mạng.
+    Bắt buộc LocationConsent 'granted' (403 nếu thiếu hoặc denied/revoked).
+    Rate limit cập nhật GPS vào User model tối đa 1 lần / 60 giây.
     """
     permission_classes = [IsAuthenticated]
 
