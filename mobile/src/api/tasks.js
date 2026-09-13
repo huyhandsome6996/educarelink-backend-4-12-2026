@@ -5,7 +5,9 @@ import apiClient from './client';
 // (Gemini latency) → timeout mặc định 10s của axios sẽ throw ECONNABORTED dù
 // backend vẫn xử lý thành công. Override per-request thay vì tăng global timeout.
 // (Cùng pattern với mobile/src/api/admin.js — AI_TIMEOUT = 60s cho /admin/chatbot/.)
-const AI_TIMEOUT = 30000; // 30s — đủ margin cho cold start, không buộc user đợi quá lâu
+// Brief AI-chatbot mục 4.3: timeout AI >= 45–60s — Flow 1/2 chatbot có thêm
+// geocode + validate nên tổng thời gian phản hồi có thể lên gần 1 phút.
+const AI_TIMEOUT = 60000; // 60s
 
 // === CHUNG ===
 // Lấy toàn bộ danh sách việc (dùng cho bảng tin sinh viên)
@@ -52,16 +54,30 @@ export const getMyJobsAsWorker = () => apiClient.get('/worker/my-jobs/');
 // Lấy chi tiết hồ sơ carepartner (phục vụ phụ huynh xem hồ sơ ứng viên)
 export const getWorkerProfile = (workerId) => apiClient.get(`/worker/${workerId}/profile/`);
 
-// === CHATBOT (Parent) ===
-// Gửi tin nhắn cho AI chatbot (kèm lịch sử hội thoại để AI hiểu ngữ cảnh)
+// === CHATBOT (Parent) — Flow 1/2 ===
+// Gửi tin nhắn cho AI chatbot (kèm lịch sử hội thoại để AI hiểu ngữ cảnh).
+// Brief 2.2: gửi kèm draft_job_id + toạ độ bản đồ + pending payload để
+// backend cập nhật ĐÚNG bản nháp trong phiên (idempotent, không tạo trùng).
 // BUG-02: override timeout per-request — Gemini trả lời 9-12s trong production,
 // vượt quá global 10s timeout của axios client.
-export const sendChatMessage = (message, history = []) =>
-  apiClient.post('/chatbot/', { message, history }, { timeout: AI_TIMEOUT });
+// Brief 4.3: nhận thêm config (AbortSignal) để huỷ request khi unmount.
+export const sendChatMessage = (message, history = [], extra = {}, config = {}) =>
+  apiClient.post(
+    '/chatbot/',
+    {
+      message,
+      history,
+      draft_job_id: extra.draftJobId || null,
+      latitude: extra.latitude ?? null,
+      longitude: extra.longitude ?? null,
+      pending_job_payload: extra.pendingJobPayload ?? null,
+    },
+    { timeout: AI_TIMEOUT, ...config },
+  );
 
 // === WORKER CHATBOT (riêng cho Carepartner) — đồng bộ với web (worker_chatbot.html) ===
-export const sendWorkerChatMessage = (message, history = []) =>
-  apiClient.post('/worker/chatbot/', { message, history }, { timeout: AI_TIMEOUT });
+export const sendWorkerChatMessage = (message, history = [], config = {}) =>
+  apiClient.post('/worker/chatbot/', { message, history }, { timeout: AI_TIMEOUT, ...config });
 
 // === HELP CENTER — đồng bộ với web (help_center.html) ===
 // HelpCenterAPIView cũng gọi Gemini → cùng timeout override.
