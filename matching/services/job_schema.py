@@ -68,7 +68,7 @@ REQUIRED_BY_TYPE = {
 }
 
 OPTIONAL_BY_TYPE = {
-    'tutoring': ['location_note'],
+    'tutoring': ['child_age', 'school_level', 'subject_code', 'tutor_seniority_preference', 'location_note'],
     'childcare': ['medical_allergy_notes', 'location_note'],
     'pickup': ['pickup_location_note', 'destination_note', 'transport_note',
                'transport_method'],
@@ -138,6 +138,33 @@ def validate_job_payload(job_type, payload, user_role='parent'):
         clean['subject'] = str(clean['subject']).strip()
         if len(clean['subject']) < 2:
             errors['subject'] = 'Môn học/kỹ năng cần ít nhất 2 ký tự.'
+
+        # child_age validation: [6, 18]
+        child_age = payload.get('child_age')
+        if child_age not in (None, ''):
+            try:
+                age_int = int(child_age)
+                if not (6 <= age_int <= 18):
+                    errors['child_age'] = 'Tuổi của trẻ phải từ 6 đến 18.'
+                else:
+                    clean['child_age'] = age_int
+            except (TypeError, ValueError):
+                errors['child_age'] = 'Tuổi của trẻ phải là số nguyên từ 6 đến 18.'
+
+        # subject_code validation: support list[str] or str
+        subj_code = payload.get('subject_code')
+        if subj_code not in (None, '', []):
+            if isinstance(subj_code, list):
+                clean['subject_code'] = [str(s).strip() for s in subj_code if str(s).strip()]
+            elif isinstance(subj_code, str):
+                clean['subject_code'] = str(subj_code).strip()
+            else:
+                errors['subject_code'] = 'Mã môn học không hợp lệ.'
+
+        if payload.get('school_level'):
+            clean['school_level'] = str(payload.get('school_level')).strip()
+        if payload.get('tutor_seniority_preference'):
+            clean['tutor_seniority_preference'] = str(payload.get('tutor_seniority_preference')).strip()
 
     if job_type in ('childcare', 'pickup'):
         if clean.get('child_age_group') not in CHILD_AGE_GROUPS:
@@ -211,6 +238,12 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     if clean['time_to'] <= clean['time_from']:
         raise ValidationError({'time_to': 'Giờ kết thúc phải sau giờ bắt đầu.'})
 
+    t_from = _parse_time(clean['time_from'])
+    t_to = _parse_time(clean['time_to'])
+    duration_mins = (t_to.hour * 60 + t_to.minute) - (t_from.hour * 60 + t_from.minute)
+    if job_type == 'tutoring' and duration_mins < 30:
+        raise ValidationError({'time_to': 'Giờ kết thúc phải sau giờ bắt đầu ít nhất 30 phút.'})
+
     # ── Recurrence (tùy chọn) ──
     recurrence = payload.get('recurrence') or {}
     if recurrence:
@@ -231,7 +264,8 @@ def validate_job_payload(job_type, payload, user_role='parent'):
 
     # ── Location note / các field optional ──
     for field in OPTIONAL_BY_TYPE[job_type]:
-        clean[field] = str(payload.get(field) or '').strip()
+        if field not in clean and field not in ('child_age', 'subject_code'):
+            clean[field] = str(payload.get(field) or '').strip()
 
     # Điểm đón pickup → dùng như vị trí chính nếu chưa có
     if job_type == 'pickup' and payload.get('pickup_location'):

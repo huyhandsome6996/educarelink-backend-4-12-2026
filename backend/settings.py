@@ -423,3 +423,7 @@ CAREPARTNER_TIER_RULES = {
         "min_avg_rating": 4.5,
     },
 }
+
+# ── R6: GPS Freshness & Cross-City Drift Guard ──────────────────────
+GPS_FRESHNESS_HOURS = 48
+MAX_GPS_DRIFT_KM = 50.0

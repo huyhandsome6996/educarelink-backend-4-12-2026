@@ -504,6 +504,30 @@ class Command(BaseCommand):
                 "summary": "Tài khoản bị tạm khóa do vi phạm hủy ca không báo trước. Dùng để demo tính năng Admin mở khóa.",
                 "jobs_done": 3, "rating": 3.2,
             },
+            {
+                "username": "carepartner_van_hue", "first_name": "Mai Phương", "last_name": "Lê",
+                "email": "maiphuong.le@student.hueuni.edu.vn", "phone_number": "0987112233",
+                "address": "32 Lê Lợi, P. Vĩnh Ninh, TP. Huế",
+                "lat": 16.4682, "lng": 107.5895, "is_approved": True, "is_active": True,
+                "school": "Đại học Sư Phạm - Đại học Huế", "major": "Sư phạm Ngữ Văn (Năm 3)",
+                "elo": 1540, "band": "trusted", "has_vehicle": True, "gender": "female",
+                "skills": ["van", "ngu_van", "tieng_viet", "luyen_chu_dep", "tieu_hoc", "cap_2", "kien_nhan", "lich_su"],
+                "qualifications": ["Sinh viên năm 3 ĐH Sư Phạm - Đại học Huế", "Sư phạm Ngữ Văn", "Chứng chỉ Luyện chữ đẹp", "Bằng lái xe máy A1"],
+                "summary": "Sinh viên năm 3 khoa Sư phạm Ngữ Văn - ĐH Sư Phạm Huế, nhiệt tình, kiên nhẫn, chuyên kèm Văn, Tiếng Việt và rèn chữ cho học sinh tiểu học và cấp 2.",
+                "jobs_done": 20, "rating": 4.95,
+            },
+            {
+                "username": "carepartner_tieuhoc_hue", "first_name": "Anh Thư", "last_name": "Nguyễn Hoàng",
+                "email": "anhthu.nguyen@student.hueuni.edu.vn", "phone_number": "0987445566",
+                "address": "45 Đống Đa, TP. Huế",
+                "lat": 16.4635, "lng": 107.5912, "is_approved": True, "is_active": True,
+                "school": "Đại học Sư Phạm - Đại học Huế", "major": "Giáo dục Tiểu học",
+                "elo": 1510, "band": "trusted", "has_vehicle": True, "gender": "female",
+                "skills": ["toan", "tieng_viet", "tu_nhien_xa_hoi", "luyen_chu_dep", "am_nhac", "van"],
+                "qualifications": ["Sinh viên ĐH Sư Phạm - Đại học Huế", "Chuyên ngành Giáo dục Tiểu học", "Chứng chỉ Sơ cấp cứu Nhi khoa"],
+                "summary": "Sinh viên ĐH Sư Phạm Huế chuyên ngành Giáo dục Tiểu học, giàu kinh nghiệm phụ đạo các môn tiểu học, rèn chữ và kỹ năng sống cho bé.",
+                "jobs_done": 18, "rating": 4.9,
+            },
         ]
 
         worker_dict = {"sinhvien_test": worker_test}
@@ -519,7 +543,7 @@ class Command(BaseCommand):
                 "gender": "female",
                 "school": "Đại học Sư Phạm - Đại học Huế",
                 "major": "Sư phạm Toán học",
-                "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao"],
+                "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao", "tieng_viet", "van"],
                 "jobs_completed": 18,
                 "rating_avg": 4.95,
                 "review_count": 16,
@@ -578,7 +602,8 @@ class Command(BaseCommand):
         # chỉ mở đến 20:00 → covers_all_slots từ chối hết → "0 ứng viên" với
         # MỌI bài đăng buổi tối. Nâng lịch mẫu phủ đủ tối 21:30 cả tuần.
         active_cps = [worker_test, worker_dict["carepartner_tuankiet"], worker_dict["carepartner_hoango"],
-                      worker_dict["carepartner_mylinh"], worker_dict["carepartner_phuoc"]]
+                      worker_dict["carepartner_mylinh"], worker_dict["carepartner_phuoc"],
+                      worker_dict["carepartner_van_hue"], worker_dict["carepartner_tieuhoc_hue"]]
 
         # Kế hoạch lịch theo từng CP — đảm bảo MỌI khung giờ phổ biến đều có
         # ≥2-4 CP phủ (chống "0 ứng viên" khi phụ huynh đăng 2 ca tối trùng
@@ -611,6 +636,16 @@ class Command(BaseCommand):
             "carepartner_phuoc": [
                 (0, "16:00", "18:30"), (1, "16:00", "18:30"), (2, "16:00", "18:30"),
                 (3, "16:00", "18:30"), (4, "16:00", "18:30"), (5, "08:00", "11:00"),
+            ],
+            "carepartner_van_hue": [
+                (0, "17:00", "21:30"), (1, "17:00", "21:30"), (2, "17:00", "21:30"),
+                (3, "17:00", "21:30"), (4, "17:00", "21:30"),
+                (5, "08:00", "21:30"), (6, "08:00", "21:30"),
+            ],
+            "carepartner_tieuhoc_hue": [
+                (0, "17:00", "21:30"), (1, "17:00", "21:30"), (2, "17:00", "21:30"),
+                (3, "17:00", "21:30"), (4, "17:00", "21:30"),
+                (5, "08:00", "21:30"), (6, "08:00", "21:30"),
             ],
         }
 
