@@ -31,8 +31,8 @@ describe('app.json — plugin âm thanh critical (BUG #1)', () => {
     expect(fs.statSync(p).size).toBeGreaterThan(100000); // ~258KB siren 3s
   });
 
-  test('version = 1.4.5 và android.versionCode = 28 (27 đã phát hành — vc28 gói đồng bộ logo + hotline 0862427404 + splash có logo)', () => {
-    expect(appJson.version).toBe('1.4.5');
-    expect(appJson.android.versionCode).toBe(28);
+  test('version = 1.4.6 và android.versionCode = 29 (vc29 gói matching chuẩn sản phẩm: GPS distance 15%, khóa đơn độc quyền, chuông+popup nhận đơn)', () => {
+    expect(appJson.version).toBe('1.4.6');
+    expect(appJson.android.versionCode).toBe(29);
   });
 });
