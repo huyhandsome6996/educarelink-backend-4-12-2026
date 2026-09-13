@@ -87,7 +87,7 @@ export default function JobLocationPicker({ value, onChange }) {
         <Ionicons name="search-outline" size={17} color="#94A3B8" style={{ marginLeft: 4 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm địa điểm (VD: Linh Đàm, Cầu Giấy...)"
+          placeholder="Tìm địa điểm (VD: 126 Lê Lợi, TP. Huế...)"
           placeholderTextColor="#94A3B8"
           value={searchText}
           onChangeText={setSearchText}

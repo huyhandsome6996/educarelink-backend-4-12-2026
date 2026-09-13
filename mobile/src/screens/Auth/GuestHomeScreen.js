@@ -550,7 +550,7 @@ export default function GuestHomeScreen() {
                     <Text style={styles.testimonialName}>Chị Thu Trang</Text>
                     <Text style={styles.verifiedTag}>● Đã xác thực</Text>
                   </View>
-                  <Text style={styles.testimonialMeta}>Mẹ bé Hải Nam · Q. Cầu Giấy (18 ca hoàn thành)</Text>
+                  <Text style={styles.testimonialMeta}>Mẹ bé Hải Nam · TP. Huế (18 ca hoàn thành)</Text>
                 </View>
               </View>
               <Text style={styles.starRating}>★★★★★</Text>

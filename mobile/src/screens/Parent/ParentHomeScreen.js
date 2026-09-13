@@ -186,7 +186,7 @@ export default function ParentHomeScreen() {
                 <View style={styles.locationSubtitleRow}>
                   <Ionicons name="location" size={12} color="#FED7AA" />
                   <Text style={styles.locationSubtitleText} numberOfLines={1}>
-                    Cầu Giấy, Hà Nội · EduCare An Toàn
+                    {user?.address || 'Khu vực của bạn'} · EduCare An Toàn
                   </Text>
                 </View>
               </View>

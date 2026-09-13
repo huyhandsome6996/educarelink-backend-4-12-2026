@@ -175,7 +175,9 @@ export default function ChildcareForm() {
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'heart',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
-        location_note: locationNote || 'Cầu Giấy, Hà Nội',
+        // Defect 2: bỏ hard-code 'Cầu Giấy, Hà Nội' — dùng label reverse-geocoding
+        // nếu phụ huynh không nhập ghi chú, fallback trung tính nếu chưa có gì
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
       };
 
       // Giữ modal chạy tối thiểu 1.2s để tạo cảm giác quét radar chân thực
@@ -209,7 +211,7 @@ export default function ChildcareForm() {
           category_icon: 'heart',
           hourly_rate_vnd: Number(rate),
           schedule: fallbackSchedule,
-          location_note: locationNote || 'Cầu Giấy, Hà Nội',
+          location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         };
         setTimeout(() => {
           setSearchModalVisible(false);

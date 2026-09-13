@@ -57,7 +57,7 @@ const DEMO_JOB = {
   category_icon: 'school',
   hourly_rate_vnd: 120000,
   schedule: '18:00 - 20:00 (Thứ 2, 4, 6)',
-  location_note: 'Cách bạn 1.2 km (Quận Cầu Giấy, Hà Nội)',
+  location_note: 'Cách bạn 1.2 km (TP. Huế)',
 };
 
 const DEMO_CANDIDATES = [
@@ -65,7 +65,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-8824',
     display_name: 'Nguyễn Thu Hà',
     gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
+    school: 'ĐH Sư Phạm - Đại học Huế',
     major: 'Sư phạm Giáo dục Tiểu học',
     match_level: 'very_high',
     match_level_vi: 'Rất phù hợp',
@@ -81,7 +81,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-7102',
     display_name: 'Đỗ Hoàng Ngân',
     gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
+    school: 'ĐH Sư Phạm - Đại học Huế',
     major: 'Giáo dục Mầm non',
     match_level: 'very_high',
     match_level_vi: 'Rất phù hợp',
@@ -97,7 +97,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-6531',
     display_name: 'Lê Thảo Vy',
     gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
+    school: 'ĐH Sư Phạm - Đại học Huế',
     major: 'Sư phạm Ngữ Văn & Tiểu học',
     match_level: 'very_high',
     match_level_vi: 'Rất phù hợp',
@@ -113,7 +113,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-5420',
     display_name: 'Nguyễn Hữu Phước',
     gender: 'male',
-    school: 'ĐH Y Hà Nội',
+    school: 'ĐH Y Dược - Đại học Huế',
     major: 'Bác sĩ Đa khoa (Năm 4)',
     match_level: 'high',
     match_level_vi: 'Phù hợp cao',
@@ -129,7 +129,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-4319',
     display_name: 'Vũ Khánh An',
     gender: 'female',
-    school: 'ĐH Y Hà Nội',
+    school: 'ĐH Y Dược - Đại học Huế',
     major: 'Điều dưỡng Nhi khoa (Năm 4)',
     match_level: 'high',
     match_level_vi: 'Phù hợp cao',
@@ -145,7 +145,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-3208',
     display_name: 'Trần Thị Minh Thư',
     gender: 'female',
-    school: 'ĐH Ngoại Thương',
+    school: 'Đại học Kinh Tế - Đại học Huế',
     major: 'Kinh tế Quốc tế (IELTS 8.0)',
     match_level: 'high',
     match_level_vi: 'Phù hợp cao',
@@ -161,7 +161,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-2197',
     display_name: 'Đỗ Đức Anh',
     gender: 'male',
-    school: 'ĐH Giao Thông Vận Tải',
+    school: 'Đại học Ngoại Ngữ - Đại học Huế',
     major: 'Kỹ thuật Giao thông',
     match_level: 'medium',
     match_level_vi: 'Phù hợp',
@@ -177,7 +177,7 @@ const DEMO_CANDIDATES = [
     carepartner_id: 'cp-1086',
     display_name: 'Lê Hoàng Nam',
     gender: 'male',
-    school: 'ĐH Bách Khoa Hà Nội',
+    school: 'Đại học Khoa học - Đại học Huế',
     major: 'Khoa học Máy tính (Năm 4)',
     match_level: 'medium',
     match_level_vi: 'Phù hợp',
@@ -414,7 +414,7 @@ export default function CandidatesListScreen() {
   const renderHeroCard = (c) => {
     const initial = getInitial(c.display_name);
     const color = AVATAR_COLORS[0];
-    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'ĐH Sư Phạm Hà Nội';
+    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'Sinh viên EduCareLink đã đối soát';
     const ratingStr = c.rating != null ? Number(c.rating).toFixed(1) : '5.0';
     const distanceStr = c.distance_km != null ? `${c.distance_km} km` : '1.2 km';
     const skills = c.top_skills && c.top_skills.length ? c.top_skills : ['Toán tiểu học', 'Kiên nhẫn', 'Giao tiếp tốt'];
@@ -508,7 +508,7 @@ export default function CandidatesListScreen() {
             <Text style={styles.heroReviewText}>
               "{c.latest_review || 'Gia sư dạy rất có tâm, bé nhà mình tiến bộ vượt bậc sau 1 tháng.'}"
             </Text>
-            <Text style={styles.heroReviewAuthor}>— Phụ huynh đã sử dụng dịch vụ tại Cầu Giấy</Text>
+            <Text style={styles.heroReviewAuthor}>— Phụ huynh tại {c.location_district || 'khu vực của bạn'}</Text>
           </View>
         </View>
 
@@ -548,7 +548,7 @@ export default function CandidatesListScreen() {
     const rank = index + 1;
     const initial = getInitial(c.display_name);
     const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
-    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'ĐH Quốc Gia Hà Nội';
+    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'Sinh viên EduCareLink đã đối soát';
     const ratingStr = c.rating != null ? Number(c.rating).toFixed(1) : '5.0';
     const distanceStr = c.distance_km != null ? `${c.distance_km} km` : '2.0 km';
     const skills = c.top_skills && c.top_skills.length ? c.top_skills : ['Nhiệt tình', 'Đúng giờ'];
@@ -701,7 +701,7 @@ export default function CandidatesListScreen() {
           <View style={styles.jobMetaRow}>
             <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
             <Text style={styles.jobMetaText}>
-              {jobInfo.location_note || 'Hà Nội'}
+              {jobInfo.location_note || 'Vị trí đã chọn trên bản đồ'}
             </Text>
           </View>
         </View>
@@ -910,23 +910,23 @@ export default function CandidatesListScreen() {
                 <View style={styles.emptyIconCircle}>
                   <Ionicons name="search-outline" size={38} color="#F26522" />
                 </View>
-                <Text style={styles.emptyTitle}>Chưa có CarePartner phù hợp</Text>
+                <Text style={styles.emptyTitle}>Chưa tìm thấy CarePartner phù hợp trong khu vực</Text>
                 <Text style={styles.emptySubtitle}>
-                  Hiện chưa có CarePartner nào có kỹ năng & kinh nghiệm về "{jobInfo.title || 'công việc này'}" rảnh vào khung giờ đã chọn ({jobInfo.schedule || 'ca này'}).
+                  Thử điều chỉnh khung giờ, giảm tiêu chí hoặc mở rộng bán kính tìm kiếm quanh địa điểm đã chọn.
                 </Text>
                 <View style={styles.emptyAdviceCard}>
                   <Text style={styles.emptyAdviceTitle}>💡 Gợi ý cho bạn:</Text>
-                  <Text style={styles.emptyAdviceText}>• Thử nới rộng khung giờ hoặc chọn ngày khác để có thêm ứng viên rảnh lịch.</Text>
-                  <Text style={styles.emptyAdviceText}>• Hệ thống vẫn đang phát thông báo tới các sinh viên chuyên ngành quanh khu vực của bạn.</Text>
+                  <Text style={styles.emptyAdviceText}>• Nới rộng khung giờ hoặc chọn ngày khác để có thêm ứng viên rảnh lịch.</Text>
+                  <Text style={styles.emptyAdviceText}>• Hệ thống liên tục quét mạng lưới CarePartner đã đối soát CCCD & Thẻ SV quanh "{jobInfo.location_note || 'vị trí đã chọn'}".</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.resetFilterBtn}
-                  onPress={() => load(true)}
+                  onPress={() => navigation.goBack()}
                   activeOpacity={0.85}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="refresh" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.resetFilterBtnText}>Tìm kiếm lại</Text>
+                    <Ionicons name="options-outline" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.resetFilterBtnText}>Điều chỉnh yêu cầu / Đổi khung giờ</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -993,7 +993,7 @@ export default function CandidatesListScreen() {
                     {selectedCandidate.display_name}
                   </Text>
                   <Text style={styles.modalCandidateSchool} numberOfLines={1}>
-                    {selectedCandidate.school || 'Đại học Sư Phạm Hà Nội'}
+                    {selectedCandidate.school || 'Sinh viên EduCareLink đã đối soát'}
                   </Text>
                   <Text style={styles.modalCandidateScore}>
                     Điểm phù hợp: {selectedCandidate.match_score}/100 · Cách{' '}

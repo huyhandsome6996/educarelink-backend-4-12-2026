@@ -204,7 +204,7 @@ function getDynamicReviews(candidate) {
     reviews.push({
       id: 'rev-1',
       authorName: 'Chị Phương Mai',
-      authorSub: 'Phụ huynh bé lớp 4 · Cầu Giấy, Hà Nội',
+      authorSub: 'Phụ huynh bé lớp 4 · TP. Huế',
       avatarLetter: 'M',
       avatarBg: '#FFE4E6',
       avatarColor: '#E11D48',
@@ -216,7 +216,7 @@ function getDynamicReviews(candidate) {
     reviews.push({
       id: 'rev-1',
       authorName: 'Chị Phương Mai',
-      authorSub: 'Phụ huynh bé lớp 4 · Cầu Giấy, Hà Nội',
+      authorSub: 'Phụ huynh bé lớp 4 · TP. Huế',
       avatarLetter: 'M',
       avatarBg: '#FFE4E6',
       avatarColor: '#E11D48',
@@ -229,7 +229,7 @@ function getDynamicReviews(candidate) {
   reviews.push({
     id: 'rev-2',
     authorName: 'Anh Quốc Tuấn',
-    authorSub: 'Phụ huynh bé 7 tuổi · Tây Hồ, Hà Nội',
+    authorSub: 'Phụ huynh bé 7 tuổi · TP. Huế',
     avatarLetter: 'T',
     avatarBg: '#DBEAFE',
     avatarColor: '#2563EB',
@@ -318,8 +318,8 @@ export default function CandidateProfileV2Screen() {
       age: inferred.age,
       academic_year: inferred.year,
       academic_type: inferred.type,
-      school: rawCandidate?.school || 'ĐH Sư Phạm Hà Nội',
-      major: rawCandidate?.major || 'Sư phạm Toán',
+      school: rawCandidate?.school || 'Sinh viên EduCareLink đã đối soát',
+      major: rawCandidate?.major || '',
       match_score: rawCandidate?.match_score != null ? rawCandidate.match_score : 96,
       match_level_vi: rawCandidate?.match_level_vi || 'Rất phù hợp',
       rating: rawCandidate?.rating != null ? Number(rawCandidate.rating).toFixed(1) : '4.9',
@@ -341,7 +341,7 @@ export default function CandidateProfileV2Screen() {
     return {
       title: passedJob?.title || 'Toán lớp 5 & Rèn tư duy',
       schedule: passedJob?.schedule || 'Thứ 3, Thứ 5 (19:00 - 21:00)',
-      location_note: passedJob?.location_note || 'Chung cư Sunrise, Tây Hồ, Hà Nội',
+      location_note: passedJob?.location_note || 'Vị trí đã chọn trên bản đồ',
       hourly_rate_vnd: passedJob?.hourly_rate_vnd || 120000,
     };
   }, [passedJob]);
