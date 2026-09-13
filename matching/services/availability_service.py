@@ -87,7 +87,13 @@ def split_midnight(weekday, time_from, time_to):
 
 
 def create_blackout(carepartner, date, time_from=None, time_to=None, reason='other', note=''):
-    """Tạo blackout với toàn bộ rule Step 9.2. Raise Error classes → API map 409/400."""
+    """Tạo blackout với toàn bộ rule Step 9.2. Raise Error classes → API map 409/400.
+
+    Brief AI-chatbot mục 3.2: blackout mới TRÙNG/CHỒNG LẤN blackout cùng ngày đã
+    có → GỘP (widen) thay vì tạo bản ghi trùng; nếu đã phủ trọn khoảng mới thì
+    chỉ báo "đã có sẵn". Row trả về mang attribute `was_merged` (True khi gộp,
+    False khi tạo mới; True-không-đổi khi đã phủ sẵn).
+    """
     today = timezone.localdate()
 
     # Max 30 blackout tương lai (config)
@@ -115,10 +121,47 @@ def create_blackout(carepartner, date, time_from=None, time_to=None, reason='oth
         raise BlackoutConflictError(
             'Ngày này bạn đang có đơn đã xác nhận. Hãy hủy hoặc đổi giờ đơn trước khi khai bận.')
 
+    # ── Merge chồng lấn cùng ngày (brief 3.2) ──
+    same_day = list(CarePartnerBlackout.objects.filter(carepartner=carepartner, date=date))
+    overlapping = []
+    for b in same_day:
+        if b.time_from is None or time_from is None:
+            # 1 trong 2 là "bận cả ngày" → gộp thành cả ngày
+            overlapping.append(b)
+        elif _overlaps(time_from, time_to, b.time_from, b.time_to):
+            overlapping.append(b)
+    if overlapping:
+        any_full_day = time_from is None or any(
+            b.time_from is None for b in overlapping)
+        if any_full_day:
+            merged_from, merged_to = None, None
+        else:
+            merged_from = min([time_from] + [b.time_from for b in overlapping])
+            merged_to = max([time_to] + [b.time_to for b in overlapping])
+
+        # Đã có blackout phủ TRỌN khoảng mới → không đổi gì, chỉ báo có sẵn
+        fully_covered = any(
+            (b.time_from is None)
+            or (merged_from is not None and b.time_from <= merged_from and merged_to <= b.time_to)
+            for b in overlapping
+        )
+        base = overlapping[0]
+        if not fully_covered:
+            base.time_from, base.time_to = merged_from, merged_to
+            base.save(update_fields=['time_from', 'time_to'])
+        # Gộp các row còn lại vào base để không còn trùng lấn
+        for extra in overlapping[1:]:
+            extra.delete()
+        invalidate_availability_cache(carepartner, date)
+        check_14_day_pause(carepartner)
+        base.was_merged = True
+        return base
+
     blackout = CarePartnerBlackout.objects.create(
         carepartner=carepartner, date=date,
         time_from=time_from, time_to=time_to,
         reason=reason, note=note)
+    blackout.was_merged = False
     invalidate_availability_cache(carepartner, date)
     check_14_day_pause(carepartner)
     return blackout

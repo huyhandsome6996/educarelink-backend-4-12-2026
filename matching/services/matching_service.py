@@ -224,8 +224,14 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     Trả dict theo API contract Step 2.4:
     {total_matched, candidates: [... max 8 ...]}
     Ghi CandidateProposal cho từng CP được đề xuất (throttle theo band).
+
+    LƯU Ý top_n=0 (chatbot preview): CHỈ ĐẾM total_matched, KHÔNG ghi
+    CandidateProposal (không tác dụng phụ) — chatbot_engine dựa vào hành vi này.
     """
-    top_n = top_n or get_int('MAX_CANDIDATES', MAX_CANDIDATES_DEFAULT)
+    # Fix chatbot-preview: top_n=0 là HỢP LỆ (chỉ đếm, không ghi proposal).
+    # `top_n or default` cũ biến 0 thành default — gây side effect khi preview.
+    if top_n is None:
+        top_n = get_int('MAX_CANDIDATES', MAX_CANDIDATES_DEFAULT)
     weights = get_active_weights()
     parsed = job.ai_parse_result or {}
     required_skills = parsed.get('required_skills') or []

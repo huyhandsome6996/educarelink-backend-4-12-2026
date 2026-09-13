@@ -242,7 +242,10 @@ class BlackoutListCreateAPIView(generics.ListCreateAPIView):
         except TooManyBlackoutsError as exc:
             return Response({'code': 'too_many_blackouts',
                              'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(BlackoutSerializer(blackout).data, status=status.HTTP_201_CREATED)
+        data = BlackoutSerializer(blackout).data
+        # Brief AI-chatbot 3.2: UI biết đây là gộp/bận đã có sẵn để báo đúng
+        data['merged'] = bool(getattr(blackout, 'was_merged', False))
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class BlackoutDetailAPIView(generics.DestroyAPIView):
