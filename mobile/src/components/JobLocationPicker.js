@@ -10,7 +10,7 @@
 //   latitude/longitude thô gây tràn viền, mờ nhòe.
 // ============================================================
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
 import apiClient from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import MapPickerModal from './MapPickerModal';
 
 let WebView = null;
@@ -37,7 +38,7 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const DEFAULT_LAT = 21.0278; // Hà Nội
+const DEFAULT_LAT = 21.0278; // Hà Nội — chỉ dùng khi user CHƯA có tọa độ đăng ký
 const DEFAULT_LNG = 105.8342;
 
 function buildMapHtml(lat, lng, hasValue) {
@@ -137,9 +138,24 @@ export default function JobLocationPicker({ value, onChange }) {
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const { user } = useAuth();
 
-  const initialLat = value?.latitude ?? DEFAULT_LAT;
-  const initialLng = value?.longitude ?? DEFAULT_LNG;
+  // ── Defect 2 (2026-09-13): khởi tạo viewport theo vị trí user đã đăng ký ──
+  // Nếu user đã có address/latitude/longitude (vd tại TP. Huế) → bản đồ mở
+  // tại đó thay vì hard-code Hà Nội, tránh payload job mang tọa độ lệch ~540km.
+  // useMemo: chỉ tính lại khi user.id đổi để html bản đồ không reload liên tục.
+  const userFallback = useMemo(() => {
+    const lat = Number(user?.latitude);
+    const lng = Number(user?.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)
+        && (lat !== 0 || lng !== 0)) {
+      return { latitude: lat, longitude: lng };
+    }
+    return { latitude: DEFAULT_LAT, longitude: DEFAULT_LNG };
+  }, [user?.id, user?.latitude, user?.longitude]);
+
+  const initialLat = value?.latitude ?? userFallback.latitude;
+  const initialLng = value?.longitude ?? userFallback.longitude;
   const hasValue = !!(value?.latitude && value?.longitude);
 
   const mapHtml = buildMapHtml(initialLat, initialLng, hasValue);
@@ -308,7 +324,7 @@ export default function JobLocationPicker({ value, onChange }) {
         <Ionicons name="search-outline" size={17} color="#94A3B8" style={{ marginLeft: 4 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm địa điểm (VD: Linh Đàm, Cầu Giấy...)"
+          placeholder="Tìm địa điểm (VD: 126 Lê Lợi, TP. Huế...)"
           placeholderTextColor="#94A3B8"
           value={searchText}
           onChangeText={setSearchText}
@@ -422,7 +438,7 @@ export default function JobLocationPicker({ value, onChange }) {
       {showModal && (
         <MapPickerModal
           visible={showModal}
-          initialCoords={value || { latitude: DEFAULT_LAT, longitude: DEFAULT_LNG }}
+          initialCoords={value || userFallback}
           onPick={handleModalPick}
           onClose={() => setShowModal(false)}
         />

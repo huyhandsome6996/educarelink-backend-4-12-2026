@@ -199,7 +199,7 @@ export default function PickupForm() {
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'car',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
-        location_note: pickupNote || schoolName.trim() || 'Hà Nội',
+        location_note: pickupNote || schoolName.trim() || pickupLocation?.label || 'Vị trí đã chọn trên bản đồ',
       };
 
       // Giữ modal chạy tối thiểu 1.2s để tạo cảm giác quét radar chân thực
@@ -233,7 +233,7 @@ export default function PickupForm() {
           category_icon: 'car',
           hourly_rate_vnd: Number(rate),
           schedule: fallbackSchedule,
-          location_note: pickupNote || schoolName.trim() || 'Hà Nội',
+          location_note: pickupNote || schoolName.trim() || pickupLocation?.label || 'Vị trí đã chọn trên bản đồ',
         };
         setTimeout(() => {
           setSearchModalVisible(false);
