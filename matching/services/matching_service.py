@@ -56,8 +56,13 @@ def haversine_km(lat1, lng1, lat2, lng2):
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def _major_match_bonus(major, job_type, required_skills=None):
-    """Chuyên ngành khớp loại job và yêu cầu kỹ năng cụ thể (Step 11.6 skills)."""
+def _major_match_bonus(major, job_type, required_skills=None, child_grade_level=None):
+    """Chuyên ngành khớp loại job và yêu cầu kỹ năng cụ thể (Step 11.6 skills).
+
+    child_grade_level (Defect 3): khối lớp phụ huynh chọn (type_data.child_grade_level).
+    None/'' = không giới hạn cấp học — giữ nguyên hành vi cũ, không raise KeyError
+    với dữ liệu job cũ thiếu field trong type_data.
+    """
     if not major:
         return 0
     major_l = major.lower()
@@ -131,23 +136,47 @@ def _major_match_bonus(major, job_type, required_skills=None):
 
     # Nếu job_type là tutoring: match education_kw HOẶC chuyên ngành trực tiếp môn học đó
     if job_type == 'tutoring':
+        # Chuyên ngành trực tiếp môn học (Vật lý, Hóa học, Sinh học, Toán học, Ngữ văn...)
+        subject_kw_map = {
+            'toan': ['toán', 'toan', 'math'],
+            # Defect 1: bổ sung biến thể "sư phạm văn" / "văn chương" (có dấu + không dấu)
+            'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
+                    'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
+            'ngu_van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
+                        'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
+            'tieng_viet': ['tiếng việt', 'tieng viet', 'ngữ văn', 'ngu van', 'văn học', 'van hoc',
+                           'sư phạm văn', 'su pham van', 'tiểu học', 'tieu hoc'],
+            'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li'],
+            'hoa': ['hóa học', 'hoa hoc'],
+            'sinh': ['sinh học', 'sinh hoc'],
+        }
+
+        # ── Defect 3 (2026-09-13): bonus/verify theo khối lớp phụ huynh đã chọn ──
+        # child_grade_level RỖNG hoặc KHÔNG TỒN TẠI (dữ liệu job cũ tạo trước khi
+        # có field này trong type_data) → coi như "không giới hạn cấp học":
+        # bỏ qua bonus/filter theo cấp học, KHÔNG raise KeyError — chạy đúng
+        # logic cũ bên dưới.
+        grade_l = str(child_grade_level or '').strip().lower()
+        if grade_l in ('secondary_grade_6_9', 'high_school_grade_10_12'):
+            # THCS / THPT: chuyên ngành phải khớp ĐÚNG môn học cụ thể —
+            # không nhận "sư phạm chung". Nếu job không khai báo kỹ năng/môn
+            # nào (req_set rỗng) thì giữ education_kw để không chặn oan.
+            if not req_set:
+                return 1 if any(kw in major_l for kw in education_kw) else 0
+            for s in (req_set & set(subject_kw_map.keys())):
+                if any(kw in major_l for kw in subject_kw_map[s]):
+                    return 1
+            return 0
+        if grade_l == 'preschool_prep':
+            # Tiền tiểu học (4-6 tuổi): sư phạm / giáo dục / mầm non đều được cộng điểm
+            if not req_set or (req_set & elementary_tutoring):
+                return 1 if (any(kw in major_l for kw in education_kw)
+                             or any(kw in major_l for kw in care_kw)) else 0
+            return 0
+
         if not req_set or (req_set & elementary_tutoring):
             if any(kw in major_l for kw in education_kw):
                 return 1
-            # Chuyên ngành trực tiếp môn học (Vật lý, Hóa học, Sinh học, Toán học, Ngữ văn...)
-            subject_kw_map = {
-                'toan': ['toán', 'toan', 'math'],
-                # Defect 1: bổ sung biến thể "sư phạm văn" / "văn chương" (có dấu + không dấu)
-                'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
-                        'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
-                'ngu_van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
-                            'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
-                'tieng_viet': ['tiếng việt', 'tieng viet', 'ngữ văn', 'ngu van', 'văn học', 'van hoc',
-                               'sư phạm văn', 'su pham van', 'tiểu học', 'tieu hoc'],
-                'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li'],
-                'hoa': ['hóa học', 'hoa hoc'],
-                'sinh': ['sinh học', 'sinh hoc'],
-            }
             for s in (req_set & set(subject_kw_map.keys())):
                 if any(kw in major_l for kw in subject_kw_map[s]):
                     return 1
@@ -179,9 +208,9 @@ def subscore_availability(covered, required):
     return covered / required * 100.0
 
 
-def subscore_skills(required_skills, cp_skills, major, job_type):
+def subscore_skills(required_skills, cp_skills, major, job_type, child_grade_level=None):
     j = _jaccard(required_skills, cp_skills)
-    major_bonus = _major_match_bonus(major, job_type, required_skills)
+    major_bonus = _major_match_bonus(major, job_type, required_skills, child_grade_level)
     return 60.0 * j + 40.0 * major_bonus
 
 
@@ -254,6 +283,8 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     weights = get_active_weights()
     parsed = job.ai_parse_result or {}
     required_skills = parsed.get('required_skills') or []
+    # Defect 3: khối lớp phụ huynh chọn (job cũ thiếu field → None = không giới hạn)
+    child_grade_level = (job.type_data or {}).get('child_grade_level') or None
 
     # ── Hard filter #5: giới tính (flow1-step2-matching-engine.md dòng 57) ──
     # Bất biến Step 11.4: tutoring KHÔNG BAO GIỜ lọc theo giới tính. Bất biến này
@@ -312,7 +343,8 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # thể dạy/làm công việc này và bị LOẠI HOÀN TOÀN khỏi danh sách đề xuất.
         matched_skills = [s for s in (profile.skills or []) if s in required_skills]
         has_skill_match = len(matched_skills) > 0
-        has_major_match = _major_match_bonus(profile.major, job.job_type, required_skills) > 0
+        has_major_match = _major_match_bonus(profile.major, job.job_type, required_skills,
+                                             child_grade_level) > 0
 
         if required_skills and not has_skill_match and not has_major_match:
             continue
@@ -331,7 +363,8 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
 
         subs = {
             'availability': subscore_availability(len(required_slots), len(required_slots)),
-            'skills': subscore_skills(required_skills, profile.skills or [], profile.major, job.job_type),
+            'skills': subscore_skills(required_skills, profile.skills or [], profile.major,
+                                      job.job_type, child_grade_level),
             'distance': subscore_distance(km, radius, profile.has_vehicle),
             'rating': subscore_rating(profile.rating_avg, profile.review_count),
             'completion': subscore_completion(profile.jobs_completed, profile.jobs_cancelled, profile.jobs_no_show),

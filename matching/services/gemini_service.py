@@ -117,6 +117,10 @@ def rule_based_parse(job):
         'summary_vi': (job.description or subject)[:160],
         'required_skills': _extract_skills(full_text),
         'category_tags': _extract_skills(full_text),
+        # Defect 3 (2026-09-13): passthrough khối lớp + ưu tiên gia sư từ type_data
+        # (rule-based fallback không được làm mất thông tin phụ huynh đã chọn)
+        'child_grade_level': (job.type_data or {}).get('child_grade_level') or None,
+        'tutor_seniority_preference': (job.type_data or {}).get('tutor_seniority_preference') or None,
         'dates': type_data.get('_dates') or [],
         'recurrence': type_data.get('recurrence') or {},
         'time_from': type_data.get('time_from'),
@@ -164,6 +168,8 @@ RESPONSE_SCHEMA_KEYS = {
     'time_from', 'time_to', 'hourly_rate_vnd', 'urgency', 'safety_flags',
     'safety_severity', 'needs_admin_review', 'gender_preference',
     'clarification_questions', 'field_confidence',
+    # Defect 3: khối lớp / độ tuổi + ưu tiên gia sư (optional — có thể null)
+    'child_grade_level', 'tutor_seniority_preference',
 }
 
 
@@ -308,7 +314,11 @@ def seed_default_prompt_template():
                 'job_type (giữ nguyên giá trị đầu vào - KHÔNG được đổi), title_vi, summary_vi, '
                 'required_skills (list code kỹ năng: toan, van, tieng_anh, ly, hoa, sinh, '
                 'su_pham, mc, ky_nang_song, dan_piano, ve, tieu_hoc, kien_nhan, cham_soc_tre), '
-                'category_tags (list), dates (list YYYY-MM-DD), recurrence (object hoặc {}), '
+                'category_tags (list), '
+                'child_grade_level (1 trong: preschool_prep|primary_grade_1_5|secondary_grade_6_9|'
+                'high_school_grade_10_12|null — suy từ mô tả nếu có), '
+                'tutor_seniority_preference (student_year_1_2|student_year_3_4|graduate|no_preference|null), '
+                'dates (list YYYY-MM-DD), recurrence (object hoặc {}), '
                 'time_from, time_to, hourly_rate_vnd (int), urgency (normal|high), '
                 'safety_flags (list: child_involved|off_platform_payment|overnight_risk|...), '
                 'safety_severity (low|medium|high), needs_admin_review (bool), '

@@ -55,6 +55,25 @@ TRANSPORT_METHODS = {
     'parent_arranged': 'Phụ huynh sắp xếp phương tiện',
 }
 
+# ── Defect 3 (2026-09-13): khối lớp / độ tuổi của bé cho job GIA SƯ ──
+# 4 mức chuẩn (IM brief Task 3). Lưu vào JobPost.type_data['child_grade_level'].
+# Dữ liệu cũ tạo trước khi có field sẽ KHÔNG có key này → matching coi như
+# "không giới hạn cấp học" (bỏ qua bonus/filter theo cấp học, không raise KeyError).
+CHILD_GRADE_LEVELS = {
+    'preschool_prep': 'Tiền tiểu học (4 - 6 tuổi)',
+    'primary_grade_1_5': 'Tiểu học (Lớp 1 - 5)',
+    'secondary_grade_6_9': 'THCS (Lớp 6 - 9)',
+    'high_school_grade_10_12': 'THPT (Lớp 10 - 12)',
+}
+
+# ── Defect 3 (2026-09-13): ưu tiên độ tuổi gia sư (optional) ──
+TUTOR_SENIORITY_PREFERENCES = {
+    'student_year_1_2': 'Sinh viên năm 1-2',
+    'student_year_3_4': 'Sinh viên năm 3-4 (Ưu tiên Sư phạm)',
+    'graduate': 'Cử nhân / Đã tốt nghiệp',
+    'no_preference': 'Không yêu cầu',
+}
+
 JOB_TYPES = ('tutoring', 'childcare', 'pickup')
 
 # Định nghĩa field bắt buộc + optional theo từng loại (Step 1)
@@ -68,7 +87,9 @@ REQUIRED_BY_TYPE = {
 }
 
 OPTIONAL_BY_TYPE = {
-    'tutoring': ['location_note'],
+    # Defect 3: thêm child_grade_level + tutor_seniority_preference (đều optional —
+    # payload cũ không gửi 2 field này vẫn tạo job bình thường).
+    'tutoring': ['location_note', 'child_grade_level', 'tutor_seniority_preference'],
     'childcare': ['medical_allergy_notes', 'location_note'],
     'pickup': ['pickup_location_note', 'destination_note', 'transport_note',
                'transport_method'],
@@ -232,6 +253,19 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     # ── Location note / các field optional ──
     for field in OPTIONAL_BY_TYPE[job_type]:
         clean[field] = str(payload.get(field) or '').strip()
+
+    # ── Defect 3: validate khối lớp + ưu tiên gia sư (chỉ tutoring, đều optional) ──
+    if job_type == 'tutoring':
+        grade_level = clean.get('child_grade_level')
+        if grade_level and grade_level not in CHILD_GRADE_LEVELS:
+            raise ValidationError({
+                'child_grade_level': (f'Khối lớp không hợp lệ: {grade_level!r}. '
+                                      f'Chọn 1 trong: {", ".join(CHILD_GRADE_LEVELS)}.')})
+        seniority = clean.get('tutor_seniority_preference')
+        if seniority and seniority not in TUTOR_SENIORITY_PREFERENCES:
+            raise ValidationError({
+                'tutor_seniority_preference': (f'Ưu tiên gia sư không hợp lệ: {seniority!r}. '
+                                               f'Chọn 1 trong: {", ".join(TUTOR_SENIORITY_PREFERENCES)}.')})
 
     # Điểm đón pickup → dùng như vị trí chính nếu chưa có
     if job_type == 'pickup' and payload.get('pickup_location'):
