@@ -97,7 +97,9 @@ export const SENIORITY_OPTIONS = [
   { key: 'student_year_1_2', label: 'Sinh viên năm 1-2' },
   { key: 'student_year_3_4', label: 'Sinh viên năm 3-4 (Ưu tiên Sư phạm)' },
   { key: 'graduate', label: 'Cử nhân / Đã tốt nghiệp' },
-  { key: 'any', label: 'Không yêu cầu' },
+  // Hotfix 2026-09-14: key phải khớp TUTOR_SENIORITY_PREFERENCES phía backend
+  // ('any' từng khiến đăng việc tutoring bị 400 "Ưu tiên gia sư không hợp lệ")
+  { key: 'no_preference', label: 'Không yêu cầu' },
 ];
 
 export function getSchoolLevel(age) {
@@ -148,7 +150,7 @@ export default function TutoringForm() {
   const navigation = useNavigation();
   const [childAge, setChildAge] = useState(8);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [seniorityPreference, setSeniorityPreference] = useState('any');
+  const [seniorityPreference, setSeniorityPreference] = useState('no_preference');
   const [subject, setSubject] = useState('');
   const [requirements, setRequirements] = useState('');
   const [dates, setDates] = useState([]); // 'YYYY-MM-DD'

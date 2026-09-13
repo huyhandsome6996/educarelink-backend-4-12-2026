@@ -547,3 +547,40 @@ class TutoringCurriculumGpsAcceptanceTest(MatchingTestBase):
         payload_valid_edge_18 = dict(base_payload, child_age=18)
         cleaned_18 = validate_job_payload('tutoring', payload_valid_edge_18, user_role='parent')
         self.assertEqual(cleaned_18['child_age'], 18)
+
+    # ─────────────────────────────────────────────────────────────────
+    # AC-B9: Hotfix 2026-09-14 — mobile gửi 'any' cho ưu tiên gia sư
+    # ─────────────────────────────────────────────────────────────────
+    def test_ac_b9_seniority_alias_any_normalized_to_no_preference(self):
+        """AC-B9: App mobile 1.4.6 gửi tutor_seniority_preference='any' (label
+        'Không yêu cầu') → backend phải chuẩn hóa về 'no_preference' thay vì
+        từ chối 400 'Ưu tiên gia sư không hợp lệ' (lỗi chặn đăng việc tutoring)."""
+        today = timezone.localdate()
+        valid_date = str(today + timedelta(days=1))
+
+        base_payload = {
+            'subject': 'Toán lớp 3',
+            'specific_requirements': 'Kèm toán cơ bản',
+            'dates': [valid_date],
+            'time_from': '19:00',
+            'time_to': '21:00',
+            'child_age': 8,
+            'school_level': 'cap_1',
+            'subject_code': ['toan'],
+        }
+
+        # 1. 'any' (bản mobile cũ) → chuẩn hóa về 'no_preference', KHÔNG raise
+        payload_any = dict(base_payload, tutor_seniority_preference='any')
+        cleaned_any = validate_job_payload('tutoring', payload_any, user_role='parent')
+        self.assertEqual(cleaned_any.get('tutor_seniority_preference'), 'no_preference')
+
+        # 2. Giá trị chuẩn vẫn pass xuyên suốt
+        payload_std = dict(base_payload, tutor_seniority_preference='student_year_3_4')
+        cleaned_std = validate_job_payload('tutoring', payload_std, user_role='parent')
+        self.assertEqual(cleaned_std.get('tutor_seniority_preference'), 'student_year_3_4')
+
+        # 3. Giá trị lạ hoàn toàn vẫn bị từ chối như trước
+        payload_garbage = dict(base_payload, tutor_seniority_preference='robot_3000')
+        with self.assertRaises(ValidationError) as ctx:
+            validate_job_payload('tutoring', payload_garbage, user_role='parent')
+        self.assertIn('tutor_seniority_preference', ctx.exception.detail)

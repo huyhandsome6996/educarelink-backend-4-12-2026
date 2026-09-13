@@ -308,4 +308,22 @@ describe('TutoringForm Acceptance Suite (AC-M1 to AC-M5)', () => {
       expect(tree.getByTestId('dock-price-text').props.children[1]).toBe('300.000');
     });
   });
+
+  // ── AC-M6: Seniority keys must match backend contract (Hotfix 2026-09-14) ─
+  describe('AC-M6: Seniority Option Keys Contract', () => {
+    it('only sends backend-valid keys and defaults to no_preference (not "any")', async () => {
+      // Backend TUTOR_SENIORITY_PREFERENCES chỉ nhận 4 giá trị này
+      const BACKEND_VALID = ['student_year_1_2', 'student_year_3_4', 'graduate', 'no_preference'];
+      const keys = SENIORITY_OPTIONS.map((o) => o.key);
+
+      keys.forEach((k) => expect(BACKEND_VALID).toContain(k));
+      // 'any' từng khiến backend 400 "Ưu tiên gia sư không hợp lệ"
+      expect(keys).not.toContain('any');
+
+      const tree = await render(<TutoringForm />);
+      // Chip mặc định "Không yêu cầu" phải dùng key chuẩn no_preference
+      expect(tree.getByTestId('seniority-chip-no_preference')).toBeTruthy();
+      expect(tree.queryByTestId('seniority-chip-any')).toBeNull();
+    });
+  });
 });
