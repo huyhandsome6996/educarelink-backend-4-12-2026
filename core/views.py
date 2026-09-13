@@ -3048,8 +3048,13 @@ class AdminFeedbackStatsAPIView(APIView):
             return Response({
                 'period_days': int(request.query_params.get('days', 30)),
                 'visits': {'total': 0, 'unique_ips': 0, 'by_date': []},
-                'surveys': {'total': 0, 'by_type': [], 'by_date': [], 'by_necessity': [], 'by_interest': []},
-                'signups': {'total': 0, 'trial_count': 0, 'consult_count': 0, 'by_type': [], 'by_role': [], 'by_date': []},
+                'surveys': {'total': 0, 'by_type': [], 'by_date': [], 'by_interest': [], 'by_necessity': [],
+                            'by_child_age': [], 'by_budget': [], 'by_current_solution': [], 'by_pain_points': [],
+                            'by_busy_slots': [], 'by_trust_factors': [], 'by_cp_type': [], 'by_experience': [],
+                            'by_transport': [], 'by_rate': [], 'by_slots': [], 'by_concerns': [],
+                            'by_motivations': [], 'recent': []},
+                'signups': {'total': 0, 'trial_count': 0, 'consult_count': 0, 'by_type': [], 'by_role': [],
+                            'by_date': [], 'by_service': [], 'by_city': [], 'by_time_slot': []},
                 '_error': str(e),
             }, status=200)
 
@@ -3088,48 +3093,147 @@ class AdminFeedbackStatsAPIView(APIView):
             .order_by('date')
         )
 
-        # Trích dịch vụ quan tâm từ role_answers
+        # ============================================================
+        # Bộ nhãn KHỚP ĐÚNG form thu thập dữ liệu 2026 trên /landing/
+        # (form khảo sát 8 câu/role + form đăng ký tư vấn/dùng thử)
+        # ============================================================
         SERVICE_LABELS = {
-            'gia-su': 'Gia sư tại nhà',
-            'cham-soc-tre': 'Chăm sóc trẻ em',
-            'don-dep': 'Dọn dẹp nhà cửa',
-            'mua-sam': 'Mua sắm hộ',
-            'an-toan': 'Định vị & an toàn',
-            'nhat-ky': 'Nhật ký chăm sóc',
+            # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi
+            'tutoring': 'Gia sư học tập tại nhà', 'pickup': 'Đưa đón bé tan học',
+            'childcare': 'Trông trẻ & Chơi cùng con tại nhà',
+            # Giá trị cũ (dữ liệu khảo sát đã lưu trước đây)
+            'gia-su': 'Gia sư tại nhà', 'cham-soc-tre': 'Chăm sóc trẻ em',
+            'don-dep': 'Dọn dẹp nhà cửa', 'mua-sam': 'Mua sắm hộ',
+            'an-toan': 'Định vị & an toàn', 'nhat-ky': 'Nhật ký chăm sóc',
         }
-        all_services = []
+        NECESSITY_LABELS = {
+            # Mức độ mới 2026 (khớp form landing)
+            'rat-cap-bach': 'Rất cấp bách — cần ngay trong tuần này',
+            'can-thiet': 'Cần thiết — dùng trong tháng tới',
+            'quan-tam': 'Tìm hiểu — xem thử hồ sơ & định vị',
+            'chua-can': 'Chưa cần — muốn biết nền tảng tồn tại',
+            # Mức độ cũ
+            'rat-can': 'Rất cần thiết', 'can': 'Cần thiết',
+            'binh-thuong': 'Bình thường', 'chua-can': 'Chưa cần thiết',
+        }
+        CHILD_AGE_LABELS = {
+            'duoi-3': 'Dưới 3 tuổi', '3-6': '3 – 6 tuổi (mầm non)',
+            '6-11': '6 – 11 tuổi (tiểu học)', 'tren-11': 'Trên 11 tuổi (THCS)',
+        }
+        BUDGET_LABELS = {
+            '70-100k': '70.000–100.000đ/giờ', '100-150k': '100.000–150.000đ/giờ',
+            '150-220k': '150.000–220.000đ/giờ', 'don-50-80k': 'Theo lượt đón: 50.000–80.000đ/lượt',
+        }
+        CURRENT_SOLUTION_LABELS = {
+            'nguoi-than': 'Ông bà / người thân trông giúp',
+            'bao-mau-nguoi-quen': 'Bảo mẫu / người quen giới thiệu',
+            'trung-tam': 'Trung tâm / gia sư chuyên nghiệp',
+            'tu-xoay-xo': 'Bố mẹ tự xoay xở',
+        }
+        PAIN_POINT_LABELS = {
+            'kho-tin': 'Không biết tin ai', 'khong-giam-sat': 'Không giám sát được khi vắng mặt',
+            'hay-nghi-dot-xuat': 'Người trông hay nghỉ đột xuất',
+            'gio-tan-tam': 'Giờ đón trùng giờ làm bận nhất', 'chua-biet-gia': 'Không biết mức giá hợp lý',
+        }
+        TRUST_FACTOR_LABELS = {
+            'ly-lich': 'Lý lịch xác thực (CCCD + thẻ SV)', 'live-gps': 'Định vị Live GPS + PIN/ảnh',
+            'chuyen-mon': 'Chuyên môn (bảng điểm/chứng chỉ)', 'dung-gio': 'Kỷ luật & đúng giờ',
+            'danh-gia': 'Đánh giá thật & điểm uy tín', 'minh-bach-tai-chinh': 'Ký quỹ an toàn',
+        }
+        CP_TYPE_LABELS = {
+            'sv-nam-1-2': 'Sinh viên năm 1 – 2', 'sv-nam-3-4': 'Sinh viên năm 3 – 4 / mới tốt nghiệp',
+            'su-pham': 'Sư phạm / Mầm non / GD tiểu học', 'da-di-lam': 'Người đã đi làm',
+        }
+        EXPERIENCE_LABELS = {
+            'tren-3-nam': 'Trên 3 năm', '1-3-nam': '1 – 3 năm',
+            'duoi-1-nam': 'Dưới 1 năm', 'chua': 'Chưa có kinh nghiệm',
+        }
+        TRANSPORT_LABELS = {
+            'xe-may': 'Xe máy riêng + bằng A1', 'cong-cong': 'Xe buýt / Metro',
+            'di-bo-xe-dap': 'Đi bộ / xe đạp (1–2 km)',
+        }
+        SLOT_LABELS = {
+            # CP slots
+            'sang-ngay-thuong': 'Sáng ngày thường 07:30–11:30', 'chieu-tan-truong': 'Chiều tan trường 16:30–18:30',
+            'toi-trong-tuan': 'Tối trong tuần 18:30–21:00', 'cuoi-tuan': 'Cuối tuần T7 & CN',
+            'linh-hoat-hoc-ky': 'Linh hoạt theo lịch học kỳ',
+            # PH busy slots
+            'tan-tam-1630-1830': 'Giờ tan tầm 16:30–18:30', 'toi-1830-2100': 'Tối 18:30–21:00',
+            'linh-hoat-dot-xuat': 'Đột xuất — công tác / họp bất ngờ',
+        }
+        RATE_LABELS = {
+            '60-85k': '60.000–85.000đ/giờ', '85-120k': '85.000–120.000đ/giờ',
+            '120-180k': '120.000–180.000đ/giờ', 'tren-180k': 'Trên 180.000đ/giờ',
+            # Mức giá cũ
+            'duoi-30k': 'Dưới 30.000đ', '30-50k': '30.000-50.000đ',
+            '50-80k': '50.000-80.000đ', 'tren-80k': 'Trên 80.000đ',
+        }
+        CONCERN_LABELS = {
+            'trach-nhiem-su-co': 'Trách nhiệm khi bé gặp sự cố', 'di-chuyen-an-toan': 'An toàn di chuyển / chở bé',
+            'ky-nang-xu-ly': 'Chưa tự tin xử lý bé quấy khóc', 'lich-hoc': 'Sợ ca làm đè lịch học',
+        }
+        MOTIVATION_LABELS = {
+            'flow1': 'Đơn tự tìm đến (ghép ca khớp lịch)', 'thulao': 'Thù lao ký quỹ 100%',
+            'elo': 'Tích điểm uy tín — mở khóa ca VIP', 'an-toan': 'Được bảo vệ bởi nền tảng',
+        }
+
+        def _to_chart(counter, labels, key_name):
+            return [
+                {key_name: k, 'label': labels.get(k, k), 'count': v}
+                for k, v in counter.most_common(10)
+            ]
+
+        # === 1 PASS duy nhất qua surveys — tổng hợp đủ 16 câu hỏi 2026 ===
+        svc_c, nec_c, age_c, budget_c, sol_c, pain_c, busy_c, trust_c = (Counter() for _ in range(8))
+        cpt_c, exp_c, tra_c, slot_c, rate_c, con_c, mot_c = (Counter() for _ in range(7))
         for s in surveys.iterator():
             ra = s.role_answers or {}
-            # CarePartner: services list
-            if isinstance(ra.get('services'), list):
-                all_services.extend(ra['services'])
-            # Phụ huynh: interests list
-            if isinstance(ra.get('interests'), list):
-                all_services.extend(ra['interests'])
-        service_counts = Counter(all_services)
-        by_interest = [
-            {'interest': k, 'label': SERVICE_LABELS.get(k, k), 'count': v}
-            for k, v in service_counts.most_common(10)
-        ]
+            if not isinstance(ra, dict):
+                continue
+            # Dịch vụ quan tâm (cả 2 role — key 'services' mới, 'interests' cũ)
+            for k in ('services', 'interests'):
+                vals = ra.get(k)
+                if isinstance(vals, list):
+                    svc_c.update(str(v) for v in vals)
+            is_ph = (s.role == 'phu-huynh')
+            is_cp = (s.role == 'carepartner')
+            if is_ph:
+                if ra.get('necessity'): nec_c[ra['necessity']] += 1
+                if ra.get('child_age'): age_c[ra['child_age']] += 1
+                if ra.get('budget_range'): budget_c[ra['budget_range']] += 1
+                if ra.get('current_solution'): sol_c[ra['current_solution']] += 1
+                for key, c in (('pain_points', pain_c), ('busy_slots', busy_c), ('trust_factors', trust_c)):
+                    vals = ra.get(key)
+                    if isinstance(vals, list):
+                        c.update(str(v) for v in vals)
+            if is_cp:
+                if ra.get('necessity'): nec_c[ra['necessity']] += 1
+                if ra.get('carepartner_type'): cpt_c[ra['carepartner_type']] += 1
+                if ra.get('experience'): exp_c[ra['experience']] += 1
+                if ra.get('transport_method'): tra_c[ra['transport_method']] += 1
+                if ra.get('expected_rate'): rate_c[ra['expected_rate']] += 1
+                for key, c in (('available_slots', slot_c), ('concerns', con_c), ('motivations', mot_c)):
+                    vals = ra.get(key)
+                    if isinstance(vals, list):
+                        c.update(str(v) for v in vals)
 
-        # Trích necessity từ role_answers (chỉ Phụ huynh)
-        NECESSITY_LABELS = {
-            'rat-can': 'Rất cần thiết',
-            'can': 'Cần thiết',
-            'binh-thuong': 'Bình thường',
-            'chua-can': 'Chưa cần thiết',
-        }
-        all_necessity = []
-        for s in surveys.filter(role='phu-huynh').iterator():
-            ra = s.role_answers or {}
-            nec = ra.get('necessity')
-            if nec:
-                all_necessity.append(nec)
-        necessity_counts = Counter(all_necessity)
-        by_necessity = [
-            {'necessity': k, 'label': NECESSITY_LABELS.get(k, k), 'count': v}
-            for k, v in necessity_counts.most_common()
-        ]
+        by_interest = _to_chart(svc_c, SERVICE_LABELS, 'interest')
+        by_necessity = _to_chart(nec_c, NECESSITY_LABELS, 'necessity')
+        # --- Phụ huynh (8 câu khảo sát 2026) ---
+        by_child_age = _to_chart(age_c, CHILD_AGE_LABELS, 'child_age')
+        by_budget = _to_chart(budget_c, BUDGET_LABELS, 'budget')
+        by_current_solution = _to_chart(sol_c, CURRENT_SOLUTION_LABELS, 'solution')
+        by_pain_points = _to_chart(pain_c, PAIN_POINT_LABELS, 'pain_point')
+        by_busy_slots = _to_chart(busy_c, SLOT_LABELS, 'slot')
+        by_trust_factors = _to_chart(trust_c, TRUST_FACTOR_LABELS, 'factor')
+        # --- Người đồng hành (8 câu khảo sát 2026) ---
+        by_cp_type = _to_chart(cpt_c, CP_TYPE_LABELS, 'cp_type')
+        by_experience = _to_chart(exp_c, EXPERIENCE_LABELS, 'experience')
+        by_transport = _to_chart(tra_c, TRANSPORT_LABELS, 'transport')
+        by_rate = _to_chart(rate_c, RATE_LABELS, 'rate')
+        by_slots = _to_chart(slot_c, SLOT_LABELS, 'slot')
+        by_concerns = _to_chart(con_c, CONCERN_LABELS, 'concern')
+        by_motivations = _to_chart(mot_c, MOTIVATION_LABELS, 'motivation')
 
         # === SIGNUP STATS ===
         signups = LandingSignup.objects.filter(created_at__gte=since)
@@ -3149,6 +3253,69 @@ class AdminFeedbackStatsAPIView(APIView):
             .order_by('date')
         )
 
+        # === SIGNUP: khớp form đăng ký tư vấn / dùng thử trên /landing/ ===
+        SU_SERVICE_LABELS = {c[0]: c[1] for c in LandingSignup.SERVICE_CHOICES}
+        SU_CITY_LABELS = {c[0]: c[1] for c in LandingSignup.CITY_CHOICES}
+        SU_SLOT_LABELS = {c[0]: c[1] for c in LandingSignup.TIME_SLOT_CHOICES}
+        by_signup_service = list(
+            signups.exclude(interested_service='').values('interested_service')
+            .annotate(count=Count('id')).order_by('-count')
+        )
+        by_signup_city = list(
+            signups.exclude(location_city='').values('location_city')
+            .annotate(count=Count('id')).order_by('-count')
+        )
+        by_signup_slot = list(
+            signups.exclude(preferred_time_slot='').values('preferred_time_slot')
+            .annotate(count=Count('id')).order_by('-count')
+        )
+
+        # === GÓP Ý GẦN NHẤT (bảng chi tiết — dùng chung bộ nhãn 2026) ===
+        def _fmt_role_answers(role, ra):
+            if not isinstance(ra, dict):
+                return []
+            parts = []
+            if role == 'carepartner':
+                vals = ra.get('services')
+                if isinstance(vals, list) and vals:
+                    parts.append('Dịch vụ mong muốn: ' + ', '.join(SERVICE_LABELS.get(v, v) for v in vals))
+                for key, lbls in (('carepartner_type', CP_TYPE_LABELS), ('experience', EXPERIENCE_LABELS),
+                                  ('transport_method', TRANSPORT_LABELS), ('expected_rate', RATE_LABELS)):
+                    v = ra.get(key)
+                    if v:
+                        parts.append(lbls.get(v, str(v)))
+                for key, lbls in (('available_slots', SLOT_LABELS), ('motivations', MOTIVATION_LABELS), ('concerns', CONCERN_LABELS)):
+                    vals = ra.get(key)
+                    if isinstance(vals, list) and vals:
+                        parts.append(lbls.get(vals[0], vals[0]) if len(vals) == 1
+                                     else ', '.join(lbls.get(v, str(v)) for v in vals))
+            else:
+                vals = ra.get('services', ra.get('interests', []))
+                if isinstance(vals, list) and vals:
+                    parts.append('Dịch vụ quan tâm: ' + ', '.join(SERVICE_LABELS.get(v, str(v)) for v in vals))
+                for key, lbls in (('child_age', CHILD_AGE_LABELS), ('budget_range', BUDGET_LABELS),
+                                  ('necessity', NECESSITY_LABELS), ('current_solution', CURRENT_SOLUTION_LABELS)):
+                    v = ra.get(key)
+                    if v:
+                        parts.append(lbls.get(v, str(v)))
+                for key, lbls in (('busy_slots', SLOT_LABELS), ('pain_points', PAIN_POINT_LABELS), ('trust_factors', TRUST_FACTOR_LABELS)):
+                    vals = ra.get(key)
+                    if isinstance(vals, list) and vals:
+                        parts.append(', '.join(lbls.get(v, str(v)) for v in vals))
+            return parts
+
+        recent_surveys = []
+        for s in surveys[:20]:
+            recent_surveys.append({
+                'id': s.id,
+                'role': s.role,
+                'answers': _fmt_role_answers(s.role, s.role_answers),
+                'feedback': (s.feedback or '')[:300],
+                'phone': s.phone or '',
+                'email': s.email or '',
+                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '',
+            })
+
         return Response({
             'period_days': days,
             'visits': {
@@ -3160,8 +3327,24 @@ class AdminFeedbackStatsAPIView(APIView):
                 'total': total_surveys,
                 'by_type': by_type,
                 'by_date': by_date,
-                'by_necessity': by_necessity,
                 'by_interest': by_interest,
+                'by_necessity': by_necessity,
+                # --- Phụ huynh (khớp form khảo sát 2026 trên /landing/) ---
+                'by_child_age': by_child_age,
+                'by_budget': by_budget,
+                'by_current_solution': by_current_solution,
+                'by_pain_points': by_pain_points,
+                'by_busy_slots': by_busy_slots,
+                'by_trust_factors': by_trust_factors,
+                # --- Người đồng hành (khớp form khảo sát 2026 trên /landing/) ---
+                'by_cp_type': by_cp_type,
+                'by_experience': by_experience,
+                'by_transport': by_transport,
+                'by_rate': by_rate,
+                'by_slots': by_slots,
+                'by_concerns': by_concerns,
+                'by_motivations': by_motivations,
+                'recent': recent_surveys,
             },
             'signups': {
                 'total': total_signups,
@@ -3170,6 +3353,10 @@ class AdminFeedbackStatsAPIView(APIView):
                 'by_type': by_signup_type,
                 'by_role': by_signup_role,
                 'by_date': signup_by_date,
+                # --- Khớp form đăng ký trên /landing/ ---
+                'by_service': by_signup_service,
+                'by_city': by_signup_city,
+                'by_time_slot': by_signup_slot,
             },
         })
 
@@ -3804,13 +3991,16 @@ class AdminFeedbackExcelAPIView(APIView):
         w4.sheet_view.showGridLines = False
         w4.column_dimensions['A'].width = 3
 
-        w4.merge_cells('B2:K2')
+        w4.merge_cells('B2:N2')
         w4['B2'].value = 'Đăng ký dùng thử / tư vấn'
         w4['B2'].font = title_font; w4['B2'].alignment = title_align
         w4.row_dimensions[2].height = 36
         w4.row_dimensions[3].height = 8
 
-        h2 = ['ID', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loại', 'Khung giờ', 'Dùng thử', 'Ghi chú', 'Ngày tạo']
+        # Cột khớp form đăng ký trên /landing/: full_name, phone, email, role,
+        # signup_type, interested_service, location_city, location_district,
+        # preferred_time_slot, trial_consent, note
+        h2 = ['ID', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loại', 'Dịch vụ quan tâm', 'Tỉnh/TP', 'Quận/Huyện', 'Khung giờ', 'Dùng thử', 'Ghi chú', 'Ngày tạo']
         hr = 4
         for ci, h in enumerate(h2, start=2):
             w4.cell(row=hr, column=ci, value=h)
@@ -3825,11 +4015,14 @@ class AdminFeedbackExcelAPIView(APIView):
                 w4.cell(row=ri, column=5, value=s.email or '')
                 w4.cell(row=ri, column=6, value=s.get_role_display())
                 w4.cell(row=ri, column=7, value=s.get_signup_type_display())
-                w4.cell(row=ri, column=8, value=s.get_preferred_time_slot_display() if s.preferred_time_slot else '')
-                w4.cell(row=ri, column=9, value='Có' if s.trial_consent else 'Không')
-                w4.cell(row=ri, column=10, value=s.note or '')
-                w4.cell(row=ri, column=11, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
-                for c in range(2, 12):
+                w4.cell(row=ri, column=8, value=s.get_interested_service_display() if s.interested_service else '')
+                w4.cell(row=ri, column=9, value=s.location_city or '')
+                w4.cell(row=ri, column=10, value=s.location_district or '')
+                w4.cell(row=ri, column=11, value=s.get_preferred_time_slot_display() if s.preferred_time_slot else '')
+                w4.cell(row=ri, column=12, value='Có' if s.trial_consent else 'Không')
+                w4.cell(row=ri, column=13, value=s.note or '')
+                w4.cell(row=ri, column=14, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 15):
                     style_data_cell(w4, ri, c, i)
         else:
             empty_msg(w4, 'Chưa có đăng ký.')

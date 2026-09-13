@@ -362,7 +362,9 @@ class AdminFeedbackStatsTestCase(TestCase):
         LandingSignup.objects.create(
             full_name='Nguyễn A', phone='0912345678',
             email='a@test.com', role='phu-huynh',
-            signup_type='tu-van', preferred_time_slot='sang'
+            signup_type='tu-van', preferred_time_slot='sang',
+            interested_service='tutoring', location_city='Hà Nội',
+            location_district='Cầu Giấy'
         )
 
     def _login_as_admin(self):
@@ -388,6 +390,82 @@ class AdminFeedbackStatsTestCase(TestCase):
         resp = self.client.get('/api/admin/feedback-stats/?days=365')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data['period_days'], 365)
+
+    def test_stats_2026_question_set(self):
+        """Stats phải tổng hợp ĐỦ 16 câu hỏi 2026 khớp form /landing/ + nhãn tiếng Việt."""
+        self._login_as_admin()
+        # Dữ liệu mới 2026 — 1 PH + 1 CP dùng đúng bộ câu hỏi form landing
+        LandingSurvey.objects.all().delete()
+        LandingSurvey.objects.create(
+            role='phu-huynh', role_answers=VALID_PH_ROLE_ANSWERS.copy(),
+            feedback='Cần gấp', phone='0900000001', ip_address='1.1.1.1')
+        LandingSurvey.objects.create(
+            role='carepartner', role_answers=VALID_CP_ROLE_ANSWERS.copy(),
+            feedback='', email='cp@test.com', ip_address='2.2.2.2')
+        resp = self.client.get('/api/admin/feedback-stats/?days=30')
+        self.assertEqual(resp.status_code, 200)
+        s = resp.data['surveys']
+
+        # Mọi nhóm câu hỏi 2026 phải tồn tại trong response
+        for key in ('by_interest', 'by_necessity', 'by_child_age', 'by_budget',
+                    'by_current_solution', 'by_pain_points', 'by_busy_slots',
+                    'by_trust_factors', 'by_cp_type', 'by_experience',
+                    'by_transport', 'by_rate', 'by_slots', 'by_concerns',
+                    'by_motivations', 'recent'):
+            self.assertIn(key, s, f'Thiếu key {key} trong stats')
+
+        # Dịch vụ quan tâm: nhãn mới 2026 (không còn raw slug 'tutoring')
+        interest_labels = [i['label'] for i in s['by_interest']]
+        self.assertIn('Gia sư học tập tại nhà', interest_labels)
+        self.assertIn('Đưa đón bé tan học', interest_labels)
+
+        # Necessity mới: 'can-thiet' phải dịch sang tiếng Việt
+        nec_labels = [n['label'] for n in s['by_necessity']]
+        self.assertTrue(any('Cần thiết' in lb for lb in nec_labels), nec_labels)
+
+        # Phụ huynh: độ tuổi bé + ngân sách
+        self.assertEqual(s['by_child_age'][0]['label'], '6 – 11 tuổi (tiểu học)')
+        self.assertEqual(s['by_budget'][0]['label'], '100.000–150.000đ/giờ')
+
+        # Phụ huynh: trust factors (multi-select)
+        trust_keys = [t['factor'] for t in s['by_trust_factors']]
+        self.assertIn('ly-lich', trust_keys)
+        self.assertIn('live-gps', trust_keys)
+
+        # CarePartner: loại đối tượng + phương tiện + thù lao
+        self.assertEqual(s['by_cp_type'][0]['label'], 'Sinh viên năm 3 – 4 / mới tốt nghiệp')
+        self.assertEqual(s['by_transport'][0]['label'], 'Xe máy riêng + bằng A1')
+        self.assertEqual(s['by_rate'][0]['label'], '85.000–120.000đ/giờ')
+
+        # CarePartner: motivations + slots (multi-select)
+        self.assertEqual(s['by_motivations'][0]['count'], 1)
+        slot_keys = [x['slot'] for x in s['by_slots']]
+        self.assertIn('chieu-tan-truong', slot_keys)
+
+        # Bảng góp ý gần nhất: đủ dữ liệu + câu trả lời đã dịch sang tiếng Việt
+        self.assertEqual(len(s['recent']), 2)
+        ph_recent = next(r for r in s['recent'] if r['role'] == 'phu-huynh')
+        self.assertTrue(any('6 – 11 tuổi' in a for a in ph_recent['answers']))
+        self.assertEqual(ph_recent['phone'], '0900000001')
+
+        # Signup stats: dịch vụ quan tâm + khu vực + khung giờ
+        sig = resp.data['signups']
+        for key in ('by_service', 'by_city', 'by_time_slot'):
+            self.assertIn(key, sig)
+        self.assertEqual(sig['by_service'][0]['interested_service'], 'tutoring')
+        self.assertEqual(sig['by_time_slot'][0]['preferred_time_slot'], 'sang')
+
+    def test_stats_backward_compat_old_answers(self):
+        """Dữ liệu khảo sát CŨ (interests/gia-su, necessity/rat-can) vẫn hiện đúng nhãn."""
+        self._login_as_admin()
+        resp = self.client.get('/api/admin/feedback-stats/?days=365')
+        self.assertEqual(resp.status_code, 200)
+        s = resp.data['surveys']
+        # setUp tạo survey cũ: interests=['gia-su'], necessity='rat-can'
+        interest_labels = [i['label'] for i in s['by_interest']]
+        self.assertIn('Gia sư tại nhà', interest_labels)
+        nec_labels = [n['label'] for n in s['by_necessity']]
+        self.assertIn('Rất cần thiết', nec_labels)
 
     def test_excel_anonymous_401(self):
         resp = self.client.get('/api/admin/feedback-excel/')
