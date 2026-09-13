@@ -184,7 +184,13 @@ def validate_job_payload(job_type, payload, user_role='parent'):
         if payload.get('school_level'):
             clean['school_level'] = str(payload.get('school_level')).strip()
         if payload.get('tutor_seniority_preference'):
-            clean['tutor_seniority_preference'] = str(payload.get('tutor_seniority_preference')).strip()
+            seniority_raw = str(payload.get('tutor_seniority_preference')).strip()
+            # Hotfix 2026-09-14: mobile gửi 'any' (label "Không yêu cầu") nhưng backend
+            # chỉ nhận 'no_preference' → app 1.4.6 đăng việc tutoring luôn bị 400.
+            # Chuẩn hóa alias cũ về giá trị chuẩn thay vì từ chối.
+            if seniority_raw == 'any':
+                seniority_raw = 'no_preference'
+            clean['tutor_seniority_preference'] = seniority_raw
 
     if job_type in ('childcare', 'pickup'):
         if clean.get('child_age_group') not in CHILD_AGE_GROUPS:
