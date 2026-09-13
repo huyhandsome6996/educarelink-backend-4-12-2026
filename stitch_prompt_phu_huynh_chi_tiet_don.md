@@ -1,205 +1,131 @@
-# 🎨 Prompt Google Stitch AI — Màn hình 2: Chi tiết Đơn việc của Phụ huynh (Parent Booking & Task Detail)
+# 🎨 Prompt Google Stitch AI — Màn hình 1: Chi tiết Đơn việc của Phụ huynh (Parent Booking & Task Detail)
+# Chuyên sâu: Nâng cấp Toàn diện Trải nghiệm "Đã chọn CarePartner & Đang chờ xác nhận" + Liên thông Vòng đời Đơn
 
-> **Trang mục tiêu**: Màn hình Chi tiết Đơn việc & Theo dõi Ca làm của Phụ huynh (`BookingDetailScreen.js` trên Mobile & `/phu-huynh/don/<id>/` trên Web)  
-> **Nền tảng**: EduCareLink — Nền tảng kết nối Phụ huynh với CarePartner / Sinh viên đại học uy tín  
-> **Kiến trúc Trạng thái (State Machine)**:
-> 1. **Giai đoạn 1 — Chờ sinh viên xác nhận (`awaiting_commitment`)**: Phụ huynh xem lại toàn bộ hồ sơ sinh viên đã chọn (Trường ĐH, điểm uy tín, CCCD gắn chip), đồng hồ đếm ngược 60 phút, bảo đảm ký quỹ MoMo Escrow, nút đổi người hoặc hủy đơn.
-> 2. **Giai đoạn 2 — Đã xác nhận / Đang diễn ra (`committed` & `in_progress`)**: Sinh viên đã cam kết nhận ca. Hiển thị bản đồ Live Tracking GPS, vòng an toàn Geofence, kênh liên lạc gọi/chat 1-1, và nút "Xác nhận hoàn thành ca" để giải ngân.
-> 3. **Giai đoạn 3 — Đã hoàn thành (`completed`)**: Ca làm kết thúc. Phụ huynh đánh giá 5 sao cho sinh viên, xem báo cáo nhật ký chăm sóc (Care Diary), xem biên lai giải ngân MoMo Escrow và nút tiện ích 1-chạm "Đặt lại sinh viên này cho tuần sau".  
-> **Hướng dẫn**: Copy toàn bộ nội dung trong khung code dưới đây và dán vào [Google Stitch AI](https://labs.google.com/stitch) để tạo giao diện.
+> **Trang mục tiêu**: Màn hình Chi tiết Đơn việc & Giám sát An toàn của Phụ huynh (`BookingDetailScreen.js` trên Mobile App & `/phu-huynh/don/<id>/` trên Web)  
+> **Dự án**: EduCareLink (educarelink-backend-4-12-2026) — Nền tảng kết nối Phụ huynh với Sinh viên Đại học & CarePartner  
+> **Ngôn ngữ thiết kế**: Google Stitch Design System — Anti-slop, Asymmetric Bento Grid, Dynamic Elevation, Zero Jargon  
+> **Cách sử dụng**: Copy toàn bộ nội dung trong khung code dưới đây và dán vào [Google Stitch AI](https://labs.google.com/stitch) để tạo giao diện.
 
 ---
 
 ```markdown
-You are designing a high-trust, mission-critical detail and tracking screen for an established Vietnamese EdTech & Childcare platform called "EduCareLink" (educarelink-backend-4-12-2026).
-The design must be implemented as a responsive mobile web interface (viewport 390px - 430px, iOS/Android mobile ergonomics) using clean semantic HTML, Tailwind CSS, Google Fonts ('Manrope' + 'Plus Jakarta Sans'), and Google Material Symbols Outlined icons.
+You are an elite Senior Product Designer and Mobile UI/UX Architect designing the signature detail screen for EduCareLink (educarelink-backend-4-12-2026), a high-trust Vietnamese EdTech & Childcare platform connecting parents with vetted university students for home tutoring and child accompaniment.
+
+The screen must be rendered as an ultra-premium, mobile-first responsive web view (viewport 390px - 430px, optimized for iOS Safari & Android Chrome) using semantic HTML5, modern Tailwind CSS, Google Fonts ('Plus Jakarta Sans' + 'Manrope'), and Google Material Symbols Outlined.
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION A — PRODUCT PURPOSE & USER PSYCHOLOGY
+MỤC TIÊU CỐT LÕI & TÂM LÝ PHỤ HUYNH KHI CHỜ XÁC NHẬN
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Screen Purpose:
-This is the "Parent Booking Detail & Live Supervision Screen" (`BookingDetailScreen`).
-A parent opened a specific tutoring or childcare booking to check on its progress, supervise safety, communicate with the student, or review the finished session.
+1. Bối cảnh trải nghiệm:
+Phụ huynh vừa duyệt hồ sơ và bấm "Chọn sinh viên này" cho ca dạy gia sư / chăm sóc bé. Đơn hàng lập tức chuyển sang trạng thái "Chờ sinh viên xác nhận" (`awaiting_commitment`).
+Giao diện trước đây bị đánh giá là thô cứng, đơn điệu, thiếu thông tin và gây cảm giác sốt ruột, bất an cho phụ huynh.
 
-2. Three Distinct Lifecycle States (STRICT STATE MACHINE):
-The interface dynamically adapts its hero cards, actions, and safety tools depending on which phase the order is in:
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ PHASE 1: AWAITING COMMITMENT (`awaiting_commitment`)                        │
-│ • Parent has selected a top candidate; the student has up to 60 mins to    │
-│   confirm commitment.                                                       │
-│ • Key focus: Full transparency on who was selected (University, major,     │
-│   verified CCCD, reputation score), countdown ticking timer, reassuring     │
-│   escrow notice, and button to switch students if urgent.                   │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ 🟢 Student confirms commitment
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ PHASE 2: COMMITTED & IN-PROGRESS (`committed` & `in_progress`)              │
-│ • The student confirmed and is preparing or currently teaching the child.   │
-│ • Key focus: Active Live GPS Tracking Bento, Geofence safe boundary alert,  │
-│   direct 1-1 chat & phone call, emergency SOS trigger, and primary CTA to   │
-│   confirm shift completion when done.                                       │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ 🏁 Parent confirms shift completion
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ PHASE 3: COMPLETED & ARCHIVED (`completed`)                                 │
-│ • The session ended successfully and escrow payout was processed.           │
-│ • Key focus: 5-Star rating & review module, student's Care Diary log,       │
-│   MoMo Escrow transparent receipt breakdown, and 1-tap re-booking button.   │
-└─────────────────────────────────────────────────────────────────────────────┘
+2. Nhu cầu cảm xúc của Phụ huynh trong màn hình này:
+- CẢM GIÁC AN TÂM (Trấn an tuyệt đối): Biết chắc chắn tiền của mình đang được ký quỹ an toàn qua MoMo Escrow, không bị mất mát hay chiếm dụng.
+- RÕ RÀNG MINH BẠCH: Nhìn thấy toàn bộ chân dung người mình vừa chọn (Trường đại học danh tiếng, thẻ sinh viên, CCCD gắn chip, điểm đánh giá sao và số ca đã làm thành công).
+- CHỦ ĐỘNG THỜI GIAN: Đồng hồ đếm ngược sinh động (từng phút giây), hiểu rõ quy tắc tự động (nếu sau 60 phút sinh viên không nhận, hệ thống tự mở lại để chọn người khác ngay).
+- QUYỀN KIỂM SOÁT: Có thể đổi ý, hủy yêu cầu đổi người khác hoặc liên hệ hotline trợ giúp 24/7 chỉ với 1 chạm.
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION B — COLOR TOKENS & VISUAL IDENTITY
+BẢNG MÀU THIẾT KẾ (COLOR TOKENS & ATELIER PALETTE)
 ═══════════════════════════════════════════════════════════════════════════════
 
-- Canvas Background: #F8FAFC (Clean soft pearl slate)
-- Card Surfaces: #FFFFFF with subtle 1px border #E2E8F0 and smooth shadow
-- Brand Signature Orange: #F26522 (Primary highlights, action prompts)
-- Trust Emerald Green: #0E9F6E (Verified badges, confirmed banner, complete CTA, escrow safe)
-- Live Tracking Blue: #0284C7 (GPS tracking active, map boundary)
-- Countdown Amber: #F59E0B (bg-amber-50, border-amber-200, text-amber-800 for timers)
-- Warning / Cancel Red: #EF4444 (Cancel request, SOS button, dispute)
-- Text Primary (Ink): #0F172A (Deep Slate Navy, high legibility)
-- Text Secondary: #475569 (Metadata, timestamps, addresses)
-- Text Muted: #94A3B8 (Captions, helper hints)
-
-Typography:
-- Display, Numbers, Prices: 'Manrope', sans-serif (Weights: 600, 700, 800)
-- Body text & Labels: 'Plus Jakarta Sans', sans-serif (Weights: 400, 500, 600)
-- BANNED: Inter, generic serif fonts, neon glow gradients, pure black (#000000).
+- Nền tổng thể (Canvas Background): #F8FAFC (Slate siêu sáng, mềm mắt, sạch sẽ)
+- Bề mặt Card & Bento (Pure Surface): #FFFFFF với đường viền 1px siêu mảnh #E2E8F0 và đổ bóng đa tầng shadow-sm
+- Màu thương hiệu chính (Signature Orange): #F26522 (Cam ấm áp, kích hoạt hành động, biểu trưng cho sự tận tâm)
+- Màu tín nhiệm & Bảo chứng (Trust Emerald): #0E9F6E (Xanh ngọc lục bảo: CCCD xác thực, Ký quỹ Escrow bảo đảm 100%, Đã cam kết)
+- Màu đếm ngược & Chờ phản hồi (Pending Amber): #F59E0B và nền #FFFBEB, viền #FDE68A (Tạo sự chú ý nhã nhặn, không gây hoảng loạn)
+- Màu định vị trực tiếp (Live GPS Sky): #0284C7 (Xanh bầu trời công nghệ)
+- Màu cảnh báo / Hủy (Alert Crimson): #EF4444 (Nút hủy, khiếu nại, SOS)
+- Màu chữ chính (Ink Navy): #0F172A (Đậm nét, dễ đọc trên màn hình điện thoại)
+- Màu chữ phụ (Muted Slate): #475569 và #94A3B8
+- QUY TẮC CẤM: Không dùng phông Inter, không dùng màu đen tuyền (#000000), không dùng bóng neon tím/xanh, không dùng thuật ngữ máy móc "ELO" (phải dùng "Điểm tín nhiệm" hoặc "Điểm uy tín").
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION C — SCREEN ARCHITECTURE (TOP TO BOTTOM)
+KIẾN TRÚC GIAO DIỆN CHI TIẾT ĐƠN (TỪ TRÊN XUỐNG DƯỚI)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. STICKY TOP APP BAR
-- Left: Circular back button (< arrow).
-- Center:
-  * Order Code: "MÃ ĐƠN #EDC-8492" (font-mono text-xs text-slate-400 font-semibold tracking-wider).
-  * Screen Title: "Chi tiết ca chăm sóc & gia sư" (font-bold text-sm text-slate-800).
-- Right:
-  * 24/7 Hotline support icon ("0862427404") or share button.
+1. STICKY TOP APP BAR (Thanh điều hướng đỉnh cao cấp)
+- Nút Tròn Quay Lại: Nút tròn 40x40 nền trắng viền mảnh xám nhạt, icon mũi tên quay lại.
+- Khu vực Trung tâm:
+  * Huy hiệu mã đơn: "ĐƠN GHÉP CẶP #EDC-9284" (font-mono text-[11px] uppercase tracking-wider text-slate-400 font-bold).
+  * Tiêu đề: "Chi tiết ca dạy & chăm sóc" (font-bold text-sm text-slate-800).
+- Nút Phải: Icon tai nghe hỗ trợ tổng đài 24/7 (Hotline 0862427404) với chấm xanh báo hiệu trực ban.
 
 ─────────────────────────────────────────────────────────────────────────────
-2. HERO BANNER — STATE-SPECIFIC STATUS RIBBON
+2. HERO BANNER: "ĐANG CHỜ SINH VIÊN XÁC NHẬN" (Bento Trấn an & Đếm ngược)
 ─────────────────────────────────────────────────────────────────────────────
-
-■ STATE 1 (Awaiting Commitment):
-- Warm amber container (bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4):
-  * Top Row: Animated hourglass icon + "Đang chờ sinh viên xác nhận cam kết" (font-bold text-amber-900).
-  * Countdown Clock: "⏳ Còn lại: 48 phút 20 giây" (font-extrabold text-xl text-amber-700).
-  * Reassurance Hint: "Hệ thống đã thông báo đến bạn sinh viên. Nếu sau 60 phút bạn sinh viên không nhận, tiền ký quỹ sẽ được giữ nguyên và bạn có thể chọn bạn khác."
-
-■ STATE 2 (Committed & In-Progress):
-- Vibrant emerald/blue container (bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4):
-  * Top Row: Checkmark shield icon + "Sinh viên đã cam kết nhận việc" (font-bold text-emerald-900).
-  * Shift Timing: "Ca học diễn ra hôm nay: 18:00 – 20:00 (2 tiếng)" (font-bold text-emerald-700).
-  * Safe Status: "Đã bật định vị GPS an toàn · Giữ liên lạc trực tiếp qua chat & gọi".
-
-■ STATE 3 (Completed):
-- Pure trust container (bg-slate-100 border border-slate-200 rounded-2xl p-4 mb-4):
-  * Top Row: Medal icon + "Ca làm đã hoàn tất thành công!" (font-bold text-slate-900).
-  * Finished Time: "Hoàn tất lúc 20:05 · 15/09/2026".
-  * Payout Note: "Đã giải ngân 300.000đ từ MoMo Escrow cho sinh viên."
+Một khối Bento bo góc tròn mềm 24px, nền vàng kem ấm áp (bg-amber-50/80 viền 1.5px amber-200), bên trong bao gồm:
+- Hàng trạng thái:
+  * Biểu tượng đồng hồ cát cát vàng động + Nhãn: "Đang chờ sinh viên xác nhận cam kết" (font-bold text-amber-900 text-sm).
+  * Trạng thái nhịp thở (Pulse Dot): Chấm cam phát xung thể hiện hệ thống đang gửi thông báo tức thời tới điện thoại sinh viên.
+- Cụm đồng hồ đếm ngược kích thước lớn:
+  * Số to ấn tượng (Font Manrope font-extrabold text-2xl text-amber-800 tracking-tight):
+    "⏳ 48:25" — kèm nhãn phụ "còn 48 phút 25 giây".
+  * Thanh tiến trình thời gian (Progress bar mảnh bo tròn) thể hiện tỷ lệ thời gian còn lại trong khung 60 phút cam kết.
+- Hộp thông điệp cam kết quyền lợi phụ huynh (Reassurance Card):
+  * Icon chiếc khiên xanh lá nhỏ (#0E9F6E).
+  * Nội dung: "Sinh viên có tối đa 60 phút để xác nhận ca. Tiền tạm giữ của bạn được bảo đảm an toàn 100% trong quỹ MoMo Escrow. Nếu sinh viên quá hạn không nhận, bạn không mất bất kỳ chi phí nào và hệ thống sẽ mở lại đơn ngay lập tức."
 
 ─────────────────────────────────────────────────────────────────────────────
-3. CHOSEN CAREPARTNER SPOTLIGHT BENTO (High Trust Card)
+3. SPOTLIGHT BENTO: HỒ SƠ SINH VIÊN ĐƯỢC CHỌN (Chosen CarePartner Profile)
 ─────────────────────────────────────────────────────────────────────────────
-A dedicated card highlighting the selected university student:
-- Top Profile Row:
-  * Verified Avatar (clean portrait photo with green checkmark shield).
-  * Full Name: "Nguyễn Thị Thu Huyền" (font-bold text-lg text-slate-900).
-  * School & Department: "Đại học Sư phạm Hà Nội · Khoa Giáo dục Tiểu học (Năm 3)".
-- Trust Badges Flow (flex wrap gap-1.5 mt-2):
-  * Badge 1: "🛡️ Đã xác thực CCCD gắn chip" (bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-md)
-  * Badge 2: "🎓 Thẻ sinh viên chính quy" (bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-md)
-  * Badge 3: "⭐ 4.9 (38 ca thành công)" (bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-md)
-  * Badge 4: "🏅 Điểm uy tín: 100/100" (bg-slate-100 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-md)
-- Direct Communication Strip (Active in Phase 2 & 3):
-  * Phone Number: "0912.845.xxx" (Tap to call directly).
-  * Fast Action: "💬 Nhắn tin 1-1 với sinh viên" (Opens real-time chat).
+Khối card trung tâm được thiết kế trang trọng, chứng minh năng lực và sự an tâm tuyệt đối:
+- Hàng tiêu đề thẻ: "HỒ SƠ SINH VIÊN BẠN ĐÃ CHỌN" kèm nút nhỏ "Xem hồ sơ đầy đủ ↗"
+- Khối thông tin định danh:
+  * Ảnh chân dung thẻ sinh viên sắc nét (Avatar 68x68 viền trắng đôi, góc dưới gắn huy hiệu khiên xanh CCCD gắn chip).
+  * Họ và tên: "Nguyễn Thị Thu Huyền" (font-bold text-lg text-slate-900).
+  * Học vấn: "Đại học Sư phạm Hà Nội · Khoa Giáo dục Tiểu học (Năm 3)".
+  * Nhãn xác minh sinh viên: Badge xanh nhạt "Thẻ sinh viên chính quy xác thực 2026".
+- Lưới 4 chỉ số tín nhiệm (2x2 Micro-Bento):
+  * Ô 1: Đánh giá: "⭐ 4.9 / 5.0" (38 phụ huynh hài lòng)
+  * Ô 2: Kinh nghiệm: "42 ca thành công" (Gia sư & Coi trẻ)
+  * Ô 3: Điểm uy tín: "100 / 100" (Hạng Xuất Sắc · Chưa từng hủy ca)
+  * Ô 4: Xác thực: "CCCD gắn chip" (Đối soát căn cước Bộ Công An)
+- Trích đoạn tự bạch & cam kết của sinh viên:
+  * "Em từng có 2 năm kinh nghiệm kèm bé lớp 1-3 môn Toán và Tiếng Việt. Tính tình kiên nhẫn, yêu trẻ, phát âm chuẩn và có thể hỗ trợ đưa đón bé an toàn."
 
 ─────────────────────────────────────────────────────────────────────────────
-4. LIVE GPS TRACKING & GEOFENCE BENTO (Phase 2 Focus)
+4. BENTO LỊCH TRÌNH & CHI TIẾT CÔNG VIỆC (Schedule & Work Details)
 ─────────────────────────────────────────────────────────────────────────────
-Shown prominently when the student has confirmed and the shift is active:
-- Map View Container (rounded-2xl overflow-hidden border border-slate-200 relative):
-  * Interactive / preview map snippet showing student icon & family home icon.
-  * Live status pill floating over map: "🟢 Vị trí trực tiếp: Đang di chuyển cách nhà 650m".
-  * Safe Geofence Ring: Visual circle showing 200m safety radius around family residence.
-  * Safety Pill: "🛡️ Trong vùng an toàn Geofence (Chung cư Vinhomes Smart City)".
-- Emergency Assistance Row:
-  * Button 1: "Mở bản đồ toàn màn hình 📍"
-  * Button 2 (SOS): "🆘 Báo sự cố khẩn cấp (Hotline 24/7: 0862427404)"
+Card trắng viền xám mềm, bố trí theo lối tạp chí tinh giản:
+- Tên công việc: "Gia sư Tiếng Việt & Toán tư duy lớp 2 tại nhà"
+- Thẻ thông tin bé:
+  * "Bé Gia Hưng · 7 tuổi (Lớp 2 trường Vinschool Smart City)"
+  * "Mục tiêu buổi học: Kèm bé làm bài tập tuần 12, luyện chữ và kèm đọc hiểu."
+- Thông tin thời gian & địa điểm:
+  * Hàng 1 (Lịch hẹn): "📅 Thứ Sáu, 19/09/2026 · 18:00 – 20:00 (Thời lượng: 2 tiếng)"
+  * Hàng 2 (Địa chỉ): "📍 Căn 1406 Tòa S2.03, KĐT Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội"
+- Ghi chú dặn dò của phụ huynh:
+  * "Nhà có chuông cửa bên tay phải, ba mẹ có nhà kèm cặp. Nhờ cô giáo mang theo vở bài tập rèn chữ."
 
 ─────────────────────────────────────────────────────────────────────────────
-5. JOB DETAILS & FAMILY SCHEDULE BENTO
+5. BENTO MINH BẠCH TÀI CHÍNH & KÝ QUỸ MOMO ESCROW (Escrow Trust Breakdown)
 ─────────────────────────────────────────────────────────────────────────────
-- Job Title: "Gia sư Tiếng Anh giao tiếp & Kèm làm bài tập lớp 3"
-- Child Information:
-  * "Bé Bảo Nam, 8 tuổi (Học sinh lớp 3 trường Tiểu học Vinschool)"
-  * "Đặc điểm của bé: Thích vẽ tranh, cần người kèm phát âm chuẩn và kiên nhẫn."
-- Schedule & Address:
-  * Icon Calendar: "Thứ Sáu, 19/09/2026 · 18:00 – 20:00 (2 tiếng)"
-  * Icon Location: "Căn hộ 1208, Tòa S2.05 Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội"
-- Specific Requirements:
-  * "1. Kèm bé ôn từ vựng Unit 4 sách Family and Friends."
-  * "2. Luyện phát âm và giao tiếp phản xạ 30 phút."
-  * "3. Ghi lại nhật ký ca học sau khi kết thúc buổi."
+Card tài chính thể hiện sự công bằng và an toàn tuyệt đối của nền tảng:
+- Tiêu đề: "THANH TOÁN & BẢO ĐẢM KÝ QUỸ"
+- Dòng tính toán chi tiết:
+  * Đơn giá: "150.000đ / giờ × 2.0 giờ"
+  * Tổng tiền ca dạy: "300.000đ" (font-extrabold text-xl text-slate-900)
+- Trạng thái dòng tiền:
+  * Trạng thái: "🔒 Đang giữ tại ví MoMo Escrow" (Chưa thanh toán cho sinh viên)
+  * Ghi chú quy tắc: "Khoản tiền này CHỈ được giải ngân cho bạn sinh viên sau khi ca làm hoàn thành và được bạn bấm 'Nghiệm thu hài lòng'. Bạn có thể yêu cầu hoàn tiền nếu có sự cố."
 
 ─────────────────────────────────────────────────────────────────────────────
-6. MOMO ESCROW FINANCIAL TRANSPARENCY CARD
+6. CÁC TRẠNG THÁI LIÊN THÔNG KHI SINH VIÊN BẤM XÁC NHẬN (LIFECYCLE PREVIEW)
 ─────────────────────────────────────────────────────────────────────────────
-Building 100% financial peace of mind for the parent:
-- Escrow Header:
-  * MoMo Logo / Icon + "Ký quỹ MoMo Escrow được bảo vệ 100%"
-- Price Breakdown:
-  * Thù lao ca làm: 300.000đ (150.000đ/giờ x 2 tiếng)
-  * Trạng thái ký quỹ: "Đã tạm giữ an toàn trong ví Escrow"
-  * Cam kết giải ngân: "Hệ thống chỉ chuyển tiền cho sinh viên sau khi bạn bấm 'Xác nhận hoàn thành ca'. Nếu có sự cố, 100% tiền sẽ được hoàn về ví MoMo của bạn."
+(Màn hình được thiết kế sẵn sàng chuyển đổi khi sinh viên thao tác):
+- Khi Sinh viên BẤM NHẬN: Khối đếm ngược biến mất, chuyển thành "Sinh viên đã cam kết ca làm" (Màu xanh ngọc). Mở khoá số điện thoại gọi trực tiếp, nút nhắn tin 1-1 và kích hoạt bản đồ Live Tracking GPS.
+- Khi Ca làm ĐANG DIỄN RA: Xuất hiện bản đồ vệ tinh mini hiển thị GPS thời gian thực của sinh viên, vòng an toàn Geofence 200m quanh nhà, nút gọi SOS khẩn cấp.
+- Khi Ca làm KẾ THÚC: Chuyển sang giao diện Đánh giá 5 sao, xem Nhật ký chăm sóc (Care Diary), xem biên lai giải ngân và nút "Đặt lại sinh viên này".
 
 ─────────────────────────────────────────────────────────────────────────────
-7. CARE DIARY & REVIEW SECTION (Phase 3 Focus)
+7. BOTTOM FLOATING ACTION BAR (Thanh công cụ đáy cố định)
 ─────────────────────────────────────────────────────────────────────────────
-When order status is `completed`:
-- Care Diary Summary Box:
-  * Title: "📝 Nhật ký buổi học từ sinh viên Huyền"
-  * Child study report: "Bé Nam hôm nay phát âm rất tiến bộ, hoàn thành xong 10 câu trắc nghiệm Unit 4 và tự giác dọn sách vở gọn gàng."
-- 5-Star Rating & Review Form:
-  * Rating Stars: ⭐ ⭐ ⭐ ⭐ ⭐
-  * Quick praise tags: "Đúng giờ", "Rất kiên nhẫn", "Dạy dễ hiểu", "Bé rất thích"
-  * Review Input / Review Display: "Cảm ơn em Huyền nhiều, bé nhà chị hào hứng học hẳn ra!"
-
-─────────────────────────────────────────────────────────────────────────────
-8. FIXED BOTTOM ACTION DOCK (Ergonomic Sticky Bar)
-─────────────────────────────────────────────────────────────────────────────
-Dynamically changes based on state:
-
-■ BOTTOM DOCK FOR PHASE 1 (Awaiting Commitment):
-- Dual Buttons:
-  * Secondary (35%): "Đổi sinh viên" (border border-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all)
-  * Primary (65%): "Xem hồ sơ đầy đủ →" (bg-orange-500 text-white font-bold py-3.5 rounded-2xl shadow-md)
-- Micro-text: "Nếu sinh viên không nhận sau 60 phút, đơn sẽ tự mở lại miễn phí."
-
-■ BOTTOM DOCK FOR PHASE 2 (Committed & In-Progress):
-- Dual Buttons:
-  * Secondary (30%): Circular Phone / Chat buttons.
-  * Primary (70%): "✅ Xác nhận hoàn thành ca" (bg-emerald-600 text-white font-extrabold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2)
-- Micro-text: "Bấm khi ca làm đã kết thúc và bạn hài lòng với dịch vụ."
-
-■ BOTTOM DOCK FOR PHASE 3 (Completed):
-- Single Hero CTA:
-  * "🔁 Đặt lại bạn sinh viên này cho tuần sau" (bg-gradient-to-r from-orange-500 to-orange-600 text-white font-extrabold py-3.5 rounded-2xl shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2)
-- Secondary Link: "Xem hóa đơn thanh toán MoMo (VAT)"
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION D — STRICT ANTI-PATTERNS (DO NOT INCLUDE)
-═══════════════════════════════════════════════════════════════════════════════
-- NO using "ELO" terminology — strictly use "Điểm uy tín" or "Điểm tín nhiệm".
-- NO confusing or missing state transitions — each of the 3 phases must have clearly delineated banners and actions.
-- NO unverified worker details — student identity, school, and CCCD must be prominently certified.
-- NO complex nested accordions hiding critical safety or pricing information.
+Thanh dock cố định sát đáy (pb-safe bg-white/95 backdrop-blur-md border-t border-slate-200 p-4):
+- Hàng trên: Thông báo trạng thái nhỏ "Đang chờ sinh viên xác nhận cam kết (còn 48 phút)"
+- Hàng nút hành động:
+  * Nút phụ (Trái - 40%): "Đổi sinh viên / Hủy" (Nền trắng viền đỏ nhạt, text đỏ font-semibold text-xs py-3 rounded-xl flex items-center justify-center gap-1). Khi bấm hiển thị Modal xác nhận hủy đơn không mất phí.
+  * Nút chính (Phải - 60%): "Xem hồ sơ đầy đủ sinh viên" (Nền cam #F26522, text trắng font-bold text-sm py-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5).
 ```

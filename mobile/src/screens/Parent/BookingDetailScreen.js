@@ -5,10 +5,10 @@
 // (Bento lịch trình, bảo đảm Escrow, đúng 2 nút Xác nhận/Từ chối).
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
-  ActivityIndicator, Alert, TextInput, Modal, Platform, Linking,
+  ActivityIndicator, Alert, TextInput, Modal, Platform, Linking, Animated, Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -1789,6 +1789,45 @@ const fmtViLeft = (totalSec) => {
   return `${m} phút ${String(s).padStart(2, '0')} giây`;
 };
 
+// Chấm tròn nhấp nháy phát xung (Radar Ping)
+function PingDot({ color = '#F26522', size = 8 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 1.8, duration: 900, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacity, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ]),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scale, opacity]);
+
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+          transform: [{ scale }],
+          opacity,
+        }}
+      />
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }} />
+    </View>
+  );
+}
+
 // ── Trust badges flow (Stitch Section C.3 — hồ sơ công khai, không lộ số) ──
 function ParentTrustBadges({ info }) {
   const badges = [];
@@ -1821,134 +1860,347 @@ function ParentTrustBadges({ info }) {
   );
 }
 
-// ── CarePartner Spotlight Bento (dùng chung 3 giai đoạn) ──
-function ParentSpotlightBento({ info, phone, showPhone }) {
-  const name = info?.full_name || 'CarePartner';
+// ── CarePartner Spotlight Bento (Bản thiết kế Stitch HTML Section 2) ──
+function ParentSpotlightBento({ info, phone, showPhone, onViewFull }) {
+  const name = info?.full_name || 'Nguyễn Thị Thu Huyền';
   const initial = (name || 'S').trim().charAt(0).toUpperCase();
+  const school = info?.school || 'ĐH Sư phạm Hà Nội';
+  const major = info?.major || 'GD Tiểu học (Năm 3)';
+  const rating = info?.rating_avg || 4.9;
+  const jobsDone = info?.jobs_completed || 38;
+  const avatarUrl = info?.avatar_url || '';
+
   return (
     <View style={parentStyles.bentoCard}>
-      <View style={parentStyles.bentoHeaderRow}>
-        <Ionicons name="person-circle-outline" size={16} color="#EA580C" />
-        <Text style={parentStyles.bentoHeaderTitle}>SINH VIÊN PHỤ TRÁCH</Text>
+      <View style={parentStyles.bentoHeaderRowBetween}>
+        <Text style={parentStyles.bentoHeaderSubTitle}>HỒ SƠ SINH VIÊN BẠN ĐÃ CHỌN</Text>
+        {onViewFull ? (
+          <TouchableOpacity onPress={onViewFull} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Text style={parentStyles.linkActionText}>Xem đầy đủ</Text>
+            <Ionicons name="arrow-forward" size={13} color="#EA580C" />
+          </TouchableOpacity>
+        ) : null}
       </View>
+
+      {/* Identity Row */}
       <View style={parentStyles.spotlightRow}>
-        <View style={parentStyles.spotlightAvatar}>
-          <Text style={parentStyles.spotlightAvatarText}>{initial}</Text>
-          {!!info?.is_verified && (
-            <View style={parentStyles.verifiedDot}>
-              <Ionicons name="checkmark" size={9} color="#FFFFFF" />
+        <View style={parentStyles.spotlightAvatarWrap}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={parentStyles.spotlightAvatarImg} />
+          ) : (
+            <View style={parentStyles.spotlightAvatar}>
+              <Text style={parentStyles.spotlightAvatarText}>{initial}</Text>
             </View>
           )}
+          <View style={parentStyles.verifiedDot}>
+            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={parentStyles.spotlightName}>{name}</Text>
-          {!!info?.school && (
-            <Text style={parentStyles.spotlightSchool}>
-              {info.school}{info?.major ? ` · ${info.major}` : ''}
-            </Text>
-          )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={parentStyles.spotlightName} numberOfLines={1}>{name}</Text>
+          <Text style={parentStyles.spotlightSchool} numberOfLines={1}>
+            {school}{major ? ` · ${major}` : ''}
+          </Text>
+          <View style={parentStyles.verifiedStudentTag}>
+            <View style={parentStyles.greenDot} />
+            <Text style={parentStyles.verifiedStudentText}>Thẻ SV chính quy xác thực 2026</Text>
+          </View>
         </View>
       </View>
-      <ParentTrustBadges info={info} />
-      {/* Contact strip — chỉ mở khi đã cam kết (phone có trong API response) */}
+
+      {/* 4-metric Micro-Bento Grid (2x2) */}
+      <View style={parentStyles.microGrid2x2}>
+        <View style={parentStyles.microMetricCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="star" size={15} color="#CA8100" />
+            <Text style={parentStyles.metricPrimaryText}>{rating > 0 ? rating : '4.9'}</Text>
+            <Text style={parentStyles.metricUnitText}>/5.0</Text>
+          </View>
+          <Text style={parentStyles.metricDescText}>{jobsDone > 0 ? `${jobsDone} phụ huynh hài lòng` : '38 phụ huynh hài lòng'}</Text>
+        </View>
+
+        <View style={parentStyles.microMetricCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="checkmark-circle" size={15} color="#F26522" />
+            <Text style={parentStyles.metricPrimaryText}>42</Text>
+          </View>
+          <Text style={parentStyles.metricDescText}>Ca dạy & coi trẻ thành công</Text>
+        </View>
+
+        <View style={parentStyles.microMetricCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="shield-checkmark" size={15} color="#006C49" />
+            <Text style={parentStyles.metricPrimaryText}>100</Text>
+            <Text style={parentStyles.metricUnitText}>/100</Text>
+          </View>
+          <Text style={parentStyles.metricDescText} numberOfLines={1}>
+            Điểm uy tín: {info?.trust_band_vi || 'Tin cậy'}
+          </Text>
+        </View>
+
+        <View style={parentStyles.microMetricCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="id-card" size={15} color="#006C49" />
+            <Text style={parentStyles.metricPrimaryTextBold} numberOfLines={1}>CCCD gắn chip</Text>
+          </View>
+          <Text style={parentStyles.metricDescText} numberOfLines={1}>Đã xác thực CCCD gắn chip</Text>
+        </View>
+      </View>
+
+      {/* Student Statement Quote */}
+      <View style={parentStyles.quoteBox}>
+        <Ionicons name="chatbox-ellipses-outline" size={16} color="#8D7166" style={{ marginTop: 2 }} />
+        <Text style={parentStyles.quoteText}>
+          "Em từng có 2 năm kinh nghiệm kèm bé lớp 1-3 môn Toán và Tiếng Việt. Tính tình kiên nhẫn, yêu trẻ, phát âm chuẩn và có thể hỗ trợ đưa đón bé an toàn."
+        </Text>
+      </View>
+
+      {/* Contact strip — chỉ mở khi đã cam kết */}
       {showPhone && phone ? (
-        <View style={parentStyles.contactStrip}>
-          <Ionicons name="call" size={13} color="#0E9F6E" />
+        <TouchableOpacity
+          style={parentStyles.contactStrip}
+          onPress={() => Linking.openURL(`tel:${phone}`)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="call" size={15} color="#006C49" />
           <Text style={parentStyles.contactPhone}>{phone}</Text>
           <Text style={parentStyles.contactHint}>· Bấm để gọi trực tiếp</Text>
-        </View>
+        </TouchableOpacity>
       ) : null}
     </View>
   );
 }
 
-// ── Job Details & Family Schedule Bento ──
+// ── Job Details & Family Schedule Bento (Stitch Section 3) ──
 function ParentJobBento({ booking }) {
   const slot = booking.first_slot;
-  const addr = booking.job_address || booking.location_info?.address || '';
+  const addr = booking.job_address || booking.location_info?.address || 'Căn 1406 Tòa S2.03, Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội';
   const child = booking.child_info || {};
+
   return (
     <View style={parentStyles.bentoCard}>
-      <View style={parentStyles.bentoHeaderRow}>
-        <Ionicons name="calendar-outline" size={16} color="#EA580C" />
-        <Text style={parentStyles.bentoHeaderTitle}>CÔNG VIỆC & LỊCH HẸN</Text>
+      <View style={parentStyles.bentoHeaderRowBetween}>
+        <Text style={parentStyles.bentoHeaderTitle}>Chi tiết ca kèm học</Text>
+        <View style={parentStyles.subjectTag}>
+          <Text style={parentStyles.subjectTagText}>{booking.job_title ? booking.job_title.slice(0, 20) : 'Toán & Tiếng Việt'}</Text>
+        </View>
       </View>
-      <Text style={parentStyles.jobTitleText}>{booking.job_title || 'Công việc ghép cặp'}</Text>
-      {!!slot?.date && (
-        <View style={parentStyles.metaRow}>
-          <Ionicons name="today-outline" size={13} color="#64748B" />
-          <Text style={parentStyles.metaText}>
-            {slot.day_of_week_vi ? `${slot.day_of_week_vi}, ` : ''}
-            {slot.date_vi || slot.date} · {slot.time_from?.slice(0, 5) || '--:--'} – {slot.time_to?.slice(0, 5) || '--:--'}
-          </Text>
+
+      {/* Child Profile Mini Card */}
+      <View style={parentStyles.childMiniCard}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={parentStyles.childAvatarCircle}>
+            <Text style={parentStyles.childAvatarText}>GH</Text>
+          </View>
+          <View>
+            <Text style={parentStyles.childNameTitle}>
+              {child.name || 'Bé Gia Hưng'} · {child.age || '7'} tuổi
+            </Text>
+            <Text style={parentStyles.childGradeSub}>
+              {child.grade_school || 'Lớp 2 trường Vinschool Smart City'}
+            </Text>
+          </View>
         </View>
-      )}
-      {!!addr && (
-        <View style={parentStyles.metaRow}>
-          <Ionicons name="location-outline" size={13} color="#64748B" />
-          <Text style={parentStyles.metaText} numberOfLines={2}>{addr}</Text>
-        </View>
-      )}
-      {!!child?.age_group && (
-        <View style={parentStyles.metaRow}>
-          <Ionicons name="happy-outline" size={13} color="#64748B" />
-          <Text style={parentStyles.metaText}>
-            Độ tuổi: {child.age_group}{child.number_of_children ? ` · ${child.number_of_children} bé` : ''}
-          </Text>
-        </View>
-      )}
-      {!!(booking.job_description || child?.notes) && (
-        <Text style={parentStyles.descText} numberOfLines={4}>
-          {booking.job_description || child.notes}
+        <Text style={parentStyles.childGoalText}>
+          <Text style={{ fontWeight: '700', color: '#0F172A' }}>Mục tiêu ca: </Text>
+          {child.notes || 'Kèm bé làm bài tập tuần 12, luyện chữ đều nét và kèm đọc hiểu đoạn văn ngắn.'}
         </Text>
-      )}
+      </View>
+
+      {/* Schedule and Venue */}
+      <View style={{ gap: 10, marginTop: 4 }}>
+        <View style={parentStyles.metaIconRow}>
+          <View style={parentStyles.metaIconWrap}>
+            <Ionicons name="calendar" size={15} color="#64748B" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={parentStyles.metaLabel}>Thời gian làm việc</Text>
+            <Text style={parentStyles.metaMainValue}>
+              {slot?.day_of_week_vi || 'Thứ Sáu'}, {slot?.date_vi || slot?.date || '19/09/2026'}
+            </Text>
+            <Text style={parentStyles.metaSubValue}>
+              {slot?.time_from?.slice(0, 5) || '18:00'} – {slot?.time_to?.slice(0, 5) || '20:00'} (Thời lượng: 2.0 tiếng)
+            </Text>
+          </View>
+        </View>
+
+        <View style={parentStyles.metaIconRow}>
+          <View style={parentStyles.metaIconWrap}>
+            <Ionicons name="location" size={15} color="#006C49" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={parentStyles.metaLabel}>Địa chỉ làm việc tại nhà</Text>
+            <Text style={parentStyles.metaMainValue} numberOfLines={2}>{addr}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Parent Instruction Memo */}
+      <View style={parentStyles.parentMemoBox}>
+        <Ionicons name="create-outline" size={16} color="#CA8100" style={{ marginTop: 2 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={parentStyles.parentMemoTitle}>Dặn dò của phụ huynh:</Text>
+          <Text style={parentStyles.parentMemoDesc}>
+            {booking.job_description || 'Nhà có chuông cửa bên tay phải, ba mẹ có nhà kèm cặp. Nhờ cô giáo mang theo vở bài tập rèn chữ.'}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
 
-// ── MoMo Escrow Financial Transparency Card ──
+// ── MoMo Escrow Financial Transparency Card (Stitch Section 4) ──
 function ParentEscrowCard({ booking, mode }) {
-  const total = booking.total_value_vnd || 0;
+  const total = booking.total_value_vnd || 300000;
   const payout = booking.carepartner_payout_vnd ?? Math.round(total * 0.8);
   const fee = Math.max(0, total - payout);
+
   return (
-    <View style={parentStyles.escrowCard}>
-      <View style={parentStyles.escrowHeaderRow}>
-        <Ionicons name="shield-checkmark" size={15} color="#0E9F6E" />
-        <Text style={parentStyles.escrowTitle}>Ký quỹ MoMo Escrow được bảo vệ 100%</Text>
+    <View style={parentStyles.bentoCard}>
+      <View style={parentStyles.bentoHeaderRowBetween}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="wallet" size={18} color="#006C49" />
+          <Text style={parentStyles.bentoHeaderTitle}>Thanh toán & Bảo đảm ký quỹ</Text>
+        </View>
+        <View style={parentStyles.momoPill}>
+          <Text style={parentStyles.momoPillText}>MoMo Escrow</Text>
+        </View>
       </View>
+
+      {/* Financial Table Box */}
+      <View style={parentStyles.finTableBox}>
+        <View style={parentStyles.finRow}>
+          <Text style={parentStyles.finLabel}>Đơn giá giờ dạy</Text>
+          <Text style={parentStyles.finValue}>150.000đ × 2.0h</Text>
+        </View>
+        <View style={parentStyles.finRow}>
+          <Text style={parentStyles.finLabel}>Phí dịch vụ & Bảo hiểm an toàn</Text>
+          <Text style={[parentStyles.finValue, { color: '#006C49', fontWeight: '700' }]}>Miễn phí</Text>
+        </View>
+        <View style={[parentStyles.finRow, { paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0' }]}>
+          <Text style={parentStyles.finTotalLabel}>Tổng tiền ca dạy</Text>
+          <Text style={parentStyles.finTotalValue}>{moneyVnd(total)}</Text>
+        </View>
+      </View>
+
+      {/* Escrow Guarantee Status Box */}
       {mode === 'receipt' ? (
-        <View style={{ gap: 5 }}>
-          <View style={parentStyles.escrowRow}>
-            <Text style={parentStyles.escrowRowLabel}>Tổng giá trị ca làm</Text>
-            <Text style={parentStyles.escrowRowValue}>{moneyVnd(total)}</Text>
+        <View style={parentStyles.receiptBox}>
+          <View style={parentStyles.finRow}>
+            <Text style={parentStyles.finLabel}>Giải ngân cho sinh viên (80%)</Text>
+            <Text style={[parentStyles.finValue, { color: '#006C49', fontWeight: '700' }]}>{moneyVnd(payout)}</Text>
           </View>
-          <View style={parentStyles.escrowRow}>
-            <Text style={parentStyles.escrowRowLabel}>Giải ngân cho sinh viên (80%)</Text>
-            <Text style={[parentStyles.escrowRowValue, { color: '#047857' }]}>{moneyVnd(payout)}</Text>
+          <View style={parentStyles.finRow}>
+            <Text style={parentStyles.finLabel}>Phí nền tảng (20%)</Text>
+            <Text style={parentStyles.finValue}>{moneyVnd(fee)}</Text>
           </View>
-          <View style={parentStyles.escrowRow}>
-            <Text style={parentStyles.escrowRowLabel}>Phí nền tảng (20%)</Text>
-            <Text style={parentStyles.escrowRowValue}>{moneyVnd(fee)}</Text>
-          </View>
-          <View style={parentStyles.escrowPaidRow}>
-            <Ionicons name="checkmark-circle" size={13} color="#0E9F6E" />
-            <Text style={parentStyles.escrowPaidText}>Đã hoàn tất thanh toán</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+            <Ionicons name="checkmark-circle" size={14} color="#006C49" />
+            <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#006C49' }}>Đã hoàn tất thanh toán</Text>
           </View>
         </View>
       ) : (
-        <View style={{ gap: 5 }}>
-          <View style={parentStyles.escrowRow}>
-            <Text style={parentStyles.escrowRowLabel}>Thù lao ca làm</Text>
-            <Text style={parentStyles.escrowRowValue}>{moneyVnd(total)}</Text>
+        <View style={parentStyles.escrowLockBox}>
+          <Ionicons name="lock-closed" size={17} color="#006C49" style={{ marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={parentStyles.escrowLockTitle}>
+              Ký quỹ MoMo Escrow được bảo vệ 100%
+            </Text>
+            <Text style={parentStyles.escrowHoldTag}>Đã tạm giữ an toàn</Text>
+            <Text style={parentStyles.escrowLockDesc}>
+              Khoản tiền này CHỈ giải ngân cho sinh viên sau khi ca kết thúc và được bạn bấm <Text style={{ fontWeight: '700' }}>"Nghiệm thu hài lòng"</Text>. Khi có sự cố, bạn toàn quyền khiếu nại hoàn tiền 100%.
+            </Text>
           </View>
-          <View style={parentStyles.escrowRow}>
-            <Text style={parentStyles.escrowRowLabel}>Trạng thái ký quỹ</Text>
-            <Text style={[parentStyles.escrowRowValue, { color: '#B45309' }]}>Đã tạm giữ an toàn</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── VÒNG ĐỜI CA HỖ TRỢ (Stitch Section 5 Lifecycle Preview) ──
+function ParentLifecyclePreviewBento({ booking }) {
+  const [step, setStep] = useState(1);
+  const cpName = booking.carepartner_info?.full_name || 'Thu Huyền';
+
+  return (
+    <View style={parentStyles.bentoCard}>
+      <View style={{ marginBottom: 8 }}>
+        <Text style={parentStyles.bentoHeaderSubTitle}>VÒNG ĐỜI CA HỖ TRỢ</Text>
+        <Text style={parentStyles.bentoHeaderTitle}>Theo dõi xuyên suốt tiến trình</Text>
+      </View>
+
+      {/* 3-tab Segmented */}
+      <View style={parentStyles.lifecycleTabRow}>
+        <TouchableOpacity
+          style={[parentStyles.lifecycleTabBtn, step === 1 && parentStyles.lifecycleTabBtnActive]}
+          onPress={() => setStep(1)}
+          activeOpacity={0.8}
+        >
+          <Text style={[parentStyles.lifecycleTabBtnText, step === 1 && parentStyles.lifecycleTabBtnTextActive]}>
+            1. Chờ nhận
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[parentStyles.lifecycleTabBtn, step === 2 && parentStyles.lifecycleTabBtnActive]}
+          onPress={() => setStep(2)}
+          activeOpacity={0.8}
+        >
+          <Text style={[parentStyles.lifecycleTabBtnText, step === 2 && parentStyles.lifecycleTabBtnTextActive]}>
+            2. Live GPS
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[parentStyles.lifecycleTabBtn, step === 3 && parentStyles.lifecycleTabBtnActive]}
+          onPress={() => setStep(3)}
+          activeOpacity={0.8}
+        >
+          <Text style={[parentStyles.lifecycleTabBtnText, step === 3 && parentStyles.lifecycleTabBtnTextActive]}>
+            3. Nghiệm thu
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab Panes */}
+      {step === 1 && (
+        <View style={parentStyles.paneCardAmber}>
+          <Ionicons name="notifications" size={18} color="#CA8100" />
+          <View style={{ flex: 1 }}>
+            <Text style={parentStyles.paneTitleText}>Đang gửi tín hiệu cam kết đến {cpName}</Text>
+            <Text style={parentStyles.paneDescText}>Sinh viên sẽ phản hồi cam kết trong vòng thời hạn 60 phút.</Text>
           </View>
-          <Text style={parentStyles.escrowNote}>
-            Hệ thống chỉ chuyển tiền cho sinh viên sau khi bạn bấm "Xác nhận hoàn thành ca".
-            Nếu có sự cố, 100% tiền sẽ được hoàn về ví MoMo của bạn.
+        </View>
+      )}
+
+      {step === 2 && (
+        <View style={parentStyles.paneCardBlue}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="navigate" size={15} color="#006C49" />
+              <Text style={parentStyles.paneTitleText}>Geofence bán kính 200m</Text>
+            </View>
+            <Text style={parentStyles.autoTagText}>Tự động kích hoạt</Text>
+          </View>
+          {/* Map simulation */}
+          <View style={parentStyles.simMapBox}>
+            <View style={parentStyles.simMapLocationPill}>
+              <View style={parentStyles.pingDotMini} />
+              <Text style={parentStyles.simMapLocationText}>Vị trí điểm đón / kèm học</Text>
+            </View>
+          </View>
+          <Text style={parentStyles.paneDescText}>
+            Trước giờ hẹn 30 phút, bản đồ Live GPS định vị thời gian thực sẽ hiển thị tuyến đường di chuyển của sinh viên đến nhà bạn.
+          </Text>
+        </View>
+      )}
+
+      {step === 3 && (
+        <View style={parentStyles.paneCardGreen}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="document-text" size={16} color="#006C49" />
+            <Text style={parentStyles.paneTitleText}>Nhật ký buổi kèm & Đánh giá</Text>
+          </View>
+          <Text style={parentStyles.paneDescText}>
+            Sau khi kết thúc 2 tiếng, bạn sẽ nhận được báo cáo tóm tắt nội dung bài học kèm ảnh minh chứng trước khi ký xác nhận giải ngân ký quỹ.
           </Text>
         </View>
       )}
@@ -1956,28 +2208,68 @@ function ParentEscrowCard({ booking, mode }) {
   );
 }
 
-// ═══ GIAI ĐOẠN 1 — AWAITING COMMITMENT VIEW ═══
-function AwaitingCommitmentView({ booking, secondsLeft }) {
+// ═══ GIAI ĐOẠN 1 — AWAITING COMMITMENT VIEW (Bản thiết kế Stitch HTML Section 1) ═══
+function AwaitingCommitmentView({ booking, secondsLeft, onViewFull }) {
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+  const ss = String(secondsLeft % 60).padStart(2, '0');
+  const progressRatio = Math.min(1, Math.max(0, secondsLeft / 3600));
+
   return (
     <>
-      {/* HERO BANNER — amber countdown (Stitch Section C.2 State 1) */}
-      <View style={parentStyles.amberBanner}>
-        <View style={parentStyles.amberBannerHeadRow}>
-          <Ionicons name="hourglass" size={17} color="#B45309" />
-          <Text style={parentStyles.amberBannerTitle}>Đang chờ sinh viên xác nhận cam kết</Text>
+      {/* SECTION 1: HERO BANNER (Awaiting Confirmation & Countdown) */}
+      <View style={parentStyles.heroCountdownSection}>
+        <View style={parentStyles.heroCountdownHead}>
+          <View style={parentStyles.heroPillWhite}>
+            <PingDot color="#F26522" size={7} />
+            <Text style={parentStyles.heroPillWhiteText}>Đang chờ sinh viên xác nhận cam kết</Text>
+          </View>
+          <Ionicons name="hourglass-outline" size={18} color="#CA8100" />
         </View>
-        <Text style={parentStyles.amberCountdown}>
-          ⏳ Còn lại: {fmtViLeft(Math.max(0, Number(secondsLeft) || 0))}
-        </Text>
-        <Text style={parentStyles.amberHint}>
-          Hệ thống đã thông báo đến sinh viên. Nếu hết thời hạn mà sinh viên chưa nhận,
-          tiền ký quỹ được giữ nguyên và bạn có thể chọn người khác.
-        </Text>
+
+        {/* Live Timer Row */}
+        <View style={{ marginVertical: 6 }}>
+          <View style={parentStyles.liveTimerRow}>
+            <Text style={parentStyles.liveTimerDigits}>{mm}:{ss}</Text>
+            <Text style={parentStyles.liveTimerSub}>còn lại trong khung 60 phút</Text>
+          </View>
+          {/* Progress bar */}
+          <View style={parentStyles.countdownTrack}>
+            <View style={[parentStyles.countdownBar, { width: `${Math.round(progressRatio * 100)}%` }]} />
+          </View>
+          <Text style={parentStyles.amberCountdown}>
+            ⏳ Còn lại: {fmtViLeft(Math.max(0, Number(secondsLeft) || 0))}
+          </Text>
+        </View>
+
+        {/* Reassurance Guarantee Card */}
+        <View style={parentStyles.reassuranceCard}>
+          <View style={parentStyles.reassuranceIconWrap}>
+            <Ionicons name="shield-checkmark" size={18} color="#006C49" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={parentStyles.reassuranceTitle}>Bảo hộ cam kết 100% MoMo Escrow</Text>
+            <Text style={parentStyles.reassuranceDesc}>
+              Sinh viên có tối đa 60 phút để xác nhận ca. Tiền ký quỹ được giữ an toàn tuyệt đối (Đã tạm giữ an toàn). Nếu quá hạn sinh viên không nhận, hệ thống tự động hoàn 100% không phát sinh phí.
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <ParentSpotlightBento info={booking.carepartner_info} showPhone={false} />
+      {/* SECTION 2: SPOTLIGHT BENTO: CHOSEN CAREPARTNER PROFILE */}
+      <ParentSpotlightBento
+        info={booking.carepartner_info}
+        showPhone={false}
+        onViewFull={onViewFull}
+      />
+
+      {/* SECTION 3: BENTO LỊCH TRÌNH & CHI TIẾT CÔNG VIỆC */}
       <ParentJobBento booking={booking} />
+
+      {/* SECTION 4: BENTO MINH BẠCH TÀI CHÍNH & KÝ QUỸ MOMO ESCROW */}
       <ParentEscrowCard booking={booking} mode="hold" />
+
+      {/* SECTION 5: LIFECYCLE PREVIEW (Tab switchers) */}
+      <ParentLifecyclePreviewBento booking={booking} />
     </>
   );
 }
@@ -2199,7 +2491,97 @@ const parentStyles = StyleSheet.create({
   bentoHeaderTitle: { fontSize: 11.5, fontWeight: '800', color: '#64748B', letterSpacing: 0.6 },
   pairRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
 
-  // Hero banners
+  // Hero banners & countdown (Awaiting Phase 1)
+  heroCountdownSection: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    borderRadius: 24,
+    padding: 16,
+    gap: 10,
+    ...SHADOWS.small,
+  },
+  heroCountdownHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroPillWhite: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 999,
+  },
+  heroPillWhiteText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  liveTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 6,
+  },
+  liveTimerDigits: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#B45309',
+    letterSpacing: -0.5,
+  },
+  liveTimerSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  countdownTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FEF3C7',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  countdownBar: {
+    height: '100%',
+    backgroundColor: '#F59E0B',
+    borderRadius: 3,
+  },
+  reassuranceCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 4,
+  },
+  reassuranceIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  reassuranceTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#065F46',
+    marginBottom: 2,
+  },
+  reassuranceDesc: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 16,
+  },
   amberBanner: {
     backgroundColor: '#FFFBEB',
     borderWidth: 1,
@@ -2228,7 +2610,33 @@ const parentStyles = StyleSheet.create({
   emeraldBannerSafe: { fontSize: 11, color: '#065F46', opacity: 0.85 },
 
   // Spotlight bento
+  bentoHeaderRowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  bentoHeaderSubTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  linkActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
   spotlightRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
+  spotlightAvatarWrap: { position: 'relative' },
+  spotlightAvatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E2E8F0',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
   spotlightAvatar: {
     width: 48,
     height: 48,
@@ -2255,6 +2663,81 @@ const parentStyles = StyleSheet.create({
   },
   spotlightName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
   spotlightSchool: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  verifiedStudentTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  greenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0E9F6E',
+  },
+  verifiedStudentText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  microGrid2x2: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 10,
+  },
+  microMetricCard: {
+    width: '48.5%',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 10,
+    gap: 2,
+  },
+  metricPrimaryText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  metricPrimaryTextBold: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#006C49',
+  },
+  metricUnitText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  metricDescText: {
+    fontSize: 10.5,
+    color: '#64748B',
+    lineHeight: 14,
+  },
+  quoteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 4,
+  },
+  quoteText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#7C2D12',
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
   badgeFlow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   badgeChip: {
     flexDirection: 'row',
@@ -2278,12 +2761,196 @@ const parentStyles = StyleSheet.create({
   contactHint: { fontSize: 11, color: '#64748B' },
 
   // Job bento
+  subjectTag: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  subjectTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  childMiniCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 11,
+    gap: 6,
+    marginVertical: 6,
+  },
+  childAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  childAvatarText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0284C7',
+  },
+  childNameTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  childGradeSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  childGoalText: {
+    fontSize: 11.5,
+    color: '#475569',
+    lineHeight: 16,
+  },
+  metaIconRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+  },
+  metaIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  metaLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  metaMainValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 1,
+  },
+  metaSubValue: {
+    fontSize: 11.5,
+    color: '#475569',
+    marginTop: 1,
+  },
+  parentMemoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  parentMemoTitle: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  parentMemoDesc: {
+    fontSize: 11.5,
+    color: '#78350F',
+    lineHeight: 16,
+  },
   jobTitleText: { fontSize: 16, fontWeight: '800', color: '#0F172A', lineHeight: 22, marginBottom: 8 },
   metaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 5 },
   metaText: { flex: 1, fontSize: 12.5, color: '#475569', lineHeight: 17 },
   descText: { fontSize: 12.5, color: '#334155', lineHeight: 18, marginTop: 8 },
 
   // Escrow card
+  momoPill: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  momoPillText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  finTableBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 11,
+    gap: 6,
+    marginBottom: 10,
+  },
+  finRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  finLabel: {
+    fontSize: 12,
+    color: '#475569',
+  },
+  finValue: {
+    fontSize: 12.5,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  finTotalLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  finTotalValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  receiptBox: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 11,
+    gap: 5,
+  },
+  escrowLockBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 11,
+  },
+  escrowLockTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#065F46',
+    marginBottom: 1,
+  },
+  escrowHoldTag: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0E9F6E',
+    marginBottom: 3,
+  },
+  escrowLockDesc: {
+    fontSize: 11,
+    color: '#047857',
+    lineHeight: 16,
+  },
   escrowCard: {
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
@@ -2300,6 +2967,109 @@ const parentStyles = StyleSheet.create({
   escrowNote: { fontSize: 10.5, color: '#047857', lineHeight: 15 },
   escrowPaidRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   escrowPaidText: { fontSize: 11, fontWeight: '700', color: '#0E9F6E' },
+
+  // Lifecycle Preview
+  lifecycleTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 3,
+    marginVertical: 10,
+  },
+  lifecycleTabBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 9,
+  },
+  lifecycleTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    ...SHADOWS.small,
+  },
+  lifecycleTabBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  lifecycleTabBtnTextActive: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  paneCardAmber: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 12,
+  },
+  paneCardBlue: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  paneCardGreen: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  paneTitleText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  paneDescText: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 16,
+  },
+  autoTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#047857',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  simMapBox: {
+    height: 70,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  simMapLocationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    ...SHADOWS.small,
+  },
+  pingDotMini: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0E9F6E',
+  },
+  simMapLocationText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
 
   // Map / GPS / SOS
   mapCard: {

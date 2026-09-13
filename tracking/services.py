@@ -428,11 +428,11 @@ def update_heartbeat(*, task: Task, worker: User,
     - Update_or_create DeviceHeartbeat
     - Nếu có alert active (đã recovered) → tự resolve + push "đã online trở lại"
     """
-    # Verify consent
+    # Verify consent (bắt buộc granted, 403 nếu thiếu hoặc denied/revoked)
     try:
         consent = LocationConsent.objects.get(task=task, worker=worker)
         if consent.consent != 'granted':
-            raise PermissionError(f"Consent hiện tại: {consent.consent} — không thể update heartbeat.")
+            raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
     except LocationConsent.DoesNotExist:
         raise PermissionError("Carepartner chưa đồng ý chia sẻ vị trí cho task này.")
 
@@ -453,8 +453,8 @@ def update_heartbeat(*, task: Task, worker: User,
             defaults={
                 'worker': worker,
                 'last_seen': now,
-                'last_location_lat': Decimal(str(latitude)) if latitude else None,
-                'last_location_lng': Decimal(str(longitude)) if longitude else None,
+                'last_location_lat': Decimal(str(latitude)) if latitude is not None else None,
+                'last_location_lng': Decimal(str(longitude)) if longitude is not None else None,
                 'device_status': 'online',
                 'battery_level': battery_level,
                 'app_state': app_state,
@@ -463,6 +463,8 @@ def update_heartbeat(*, task: Task, worker: User,
                 'offline_alert_sent': False,
             }
         )
+
+
 
         # Nếu có alert active → resolve + notify parent "thiết bị đã online trở lại"
         active_alerts = DeviceOfflineAlert.objects.filter(

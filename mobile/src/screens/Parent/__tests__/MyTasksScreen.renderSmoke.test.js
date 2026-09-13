@@ -1,16 +1,18 @@
 // ============================================================
 // Render smoke-test MyTasksScreen ("Việc của tôi" Phụ huynh —
-// bản nâng cấp Stitch 2026-09-13, kiến trúc 3 tab 2 luồng).
+// bản nâng cấp Stitch 2026-09-13, kiến trúc 4 tab chuẩn vòng đời).
 //
 // Đảm bảo:
 //   1. Mount KHÔNG ném lỗi, fetch SONG SONG đúng 2 nguồn
 //      (getMyTasksAsParent + getBookings({ role: 'parent' })).
-//   2. Phân loại booking theo đúng tab (state machine Flow 1):
-//      awaiting_commitment → "Chờ xác nhận", committed/in_progress →
-//      "Sắp làm", completed/no_show → "Lịch sử".
+//   2. Phân loại booking theo đúng 4 tab độc lập:
+//      - Tab 1: "Chờ xác nhận" (awaiting_commitment, open tasks)
+//      - Tab 2: "Sắp làm" (committed)
+//      - Tab 3: "Đang làm" (in_progress)
+//      - Tab 4: "Lịch sử" (completed, no_show)
 //   3. Card awaiting hiển thị đồng hồ đếm ngược từ booking.seconds_left
 //      + Spotlight sinh viên đã chọn (không ẩn hồ sơ khi pending).
-//   4. Tab hiển thị số lượng đúng.
+//   4. Tab hiển thị số lượng đúng theo từng tab.
 //   5. Pull-to-refresh tải lại CẢ 2 nguồn.
 //
 // Chạy: npx jest src/screens/Parent/__tests__/MyTasksScreen.renderSmoke.test.js
@@ -152,7 +154,7 @@ beforeEach(() => {
 
 jest.setTimeout(20000);
 
-describe('MyTasksScreen — 3 tab, 2 luồng dữ liệu (Stitch 2026-09-13)', () => {
+describe('MyTasksScreen — 4 tab chuẩn vòng đời (Stitch 2026-09-13)', () => {
   test('mount sạch + fetch song song đúng tham số 2 nguồn', async () => {
     let tree = null;
     let renderError = null;
@@ -169,48 +171,57 @@ describe('MyTasksScreen — 3 tab, 2 luồng dữ liệu (Stitch 2026-09-13)', (
   test('Tab 1 "Chờ xác nhận": booking awaiting hiển thị countdown + spotlight + trạng thái', async () => {
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
-    // Tab active mặc định là pending → đếm 1 (chỉ awaiting; no_show ở lịch sử)
+    // Tab active mặc định là pending → đếm 1 (chỉ awaiting)
     expect(getByText('Chờ xác nhận (1)')).toBeTruthy();
-    // Countdown ribbon từ seconds_left thật của API (48 phút 15 giây)
-    expect(getByText(/còn 48 phút 15 giây/)).toBeTruthy();
-    // Spotlight sinh viên đã chọn — KHÔNG ẩn hồ sơ khi pending
+    // Countdown ribbon từ seconds_left thật của API
+    expect(getByText(/48 phút 15 giây/)).toBeTruthy();
+    // Spotlight sinh viên đã chọn
     expect(getByText('Nguyễn Thị Thu Huyền')).toBeTruthy();
-    expect(getByText('ĐH Sư Phạm Hà Nội · Giáo dục Tiểu học')).toBeTruthy();
-    expect(getByText('Xem chi tiết hồ sơ')).toBeTruthy();
-    expect(getByText('Đổi người / Hủy đơn')).toBeTruthy();
+    expect(getByText(/ĐH Sư Phạm Hà Nội/)).toBeTruthy();
+    expect(getByText('Xem hồ sơ chi tiết')).toBeTruthy();
+    expect(getByText('Đổi người khác')).toBeTruthy();
     // Giá trị đơn
     expect(getByText('300.000đ')).toBeTruthy();
   });
 
-  test('Tab 2 "Sắp làm": committed + in_progress, KHÔNG lẫn awaiting', async () => {
+  test('Tab 2 "Sắp làm": committed card — hiển thị sinh viên đã cam kết và nút liên hệ', async () => {
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
     await act(async () => {
-      fireEvent.press(getByText('Sắp làm (2)'));
+      fireEvent.press(getByText('Sắp làm (1)'));
     });
     // committed card — SĐT đã mở khi cam kết
-    expect(getByText('Sinh viên đã cam kết nhận đơn')).toBeTruthy();
-    expect(getByText(/SĐT: 0912845000 · Đã mở kênh kết nối/)).toBeTruthy();
-    // in_progress card — CTA hoàn thành + badge live
-    expect(getByText('Đang trong ca làm')).toBeTruthy();
-    expect(getByText('Xác nhận hoàn thành ca')).toBeTruthy();
-    // SOS hotline 24/7
-    expect(getByText(/Hotline 0862427404/)).toBeTruthy();
+    expect(getByText('Sinh viên đã cam kết nhận việc')).toBeTruthy();
+    expect(getByText(/Gọi 0912845000/)).toBeTruthy();
+    expect(getByText('Nhắn tin 1-1')).toBeTruthy();
+    expect(getByText('Xem lộ trình & chi tiết ca')).toBeTruthy();
     // awaiting KHÔNG ở tab này
-    expect(() => getByText(/còn 48 phút 15 giây/)).toThrow();
+    expect(() => getByText(/48 phút 15 giây/)).toThrow();
   });
 
-  test('Tab 3 "Lịch sử": completed + no_show, có biên lai escrow 80/20 + prompt đánh giá', async () => {
+  test('Tab 3 "Đang làm": in_progress card — hiển thị radar GPS + SOS + Hoàn thành ca', async () => {
+    const { getByText } = await render(<MyTasksScreen />);
+    await flushEffects();
+    await act(async () => {
+      fireEvent.press(getByText('Đang làm (1)'));
+    });
+    // in_progress card — radar + CTA hoàn thành
+    expect(getByText(/ĐANG LÀM VIỆC/)).toBeTruthy();
+    expect(getByText('Trong vùng an toàn')).toBeTruthy();
+    expect(getByText('Nghiệm thu & Hoàn thành ca')).toBeTruthy();
+    expect(getByText(/Hotline hỗ trợ khẩn cấp 24\/7/)).toBeTruthy();
+  });
+
+  test('Tab 4 "Lịch sử": completed + no_show, có biên lai escrow 80/20 + rebook', async () => {
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
     await act(async () => {
       fireEvent.press(getByText('Lịch sử (2)'));
     });
-    expect(getByText('Đã hoàn thành ca làm')).toBeTruthy();
     // Biên lai MoMo — payout 80% thật từ API
-    expect(getByText(/Đã giải ngân 240.000đ cho sinh viên qua MoMo Escrow/)).toBeTruthy();
-    // Prompt đánh giá
-    expect(getByText(/Bạn thấy Nguyễn Thị Thu Huyền hỗ trợ bé như thế nào/)).toBeTruthy();
+    expect(getByText(/Đã giải ngân 240.000đ MoMo Escrow/)).toBeTruthy();
+    expect(getByText('Đã đánh giá 5 sao')).toBeTruthy();
+    expect(getByText('Đặt lại sinh viên này cho tuần sau')).toBeTruthy();
     // Đơn no_show có đền bù
     expect(getByText('Không đến làm')).toBeTruthy();
     expect(getByText(/Đã đền bù 50.000đ credit/)).toBeTruthy();
@@ -226,8 +237,8 @@ describe('MyTasksScreen — 3 tab, 2 luồng dữ liệu (Stitch 2026-09-13)', (
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
     expect(getByText('Chờ xác nhận (2)')).toBeTruthy();
-    expect(getByText('Đang tìm CarePartner')).toBeTruthy();
-    expect(getByText('Xem ứng viên phù hợp')).toBeTruthy();
+    expect(getByText('Đang tìm sinh viên phù hợp')).toBeTruthy();
+    expect(getByText('Xem danh sách ứng viên để chọn ngay')).toBeTruthy();
     expect(getByText('Hủy việc')).toBeTruthy();
   });
 
@@ -237,7 +248,7 @@ describe('MyTasksScreen — 3 tab, 2 luồng dữ liệu (Stitch 2026-09-13)', (
     const { getByText } = await render(<MyTasksScreen />);
     await flushEffects();
     expect(getByText('Không có đơn nào đang chờ')).toBeTruthy();
-    expect(getByText(/Khi bạn đăng việc mới hoặc chỉ định sinh viên/)).toBeTruthy();
+    expect(getByText(/Khi bạn đăng việc mới hoặc lựa chọn sinh viên/)).toBeTruthy();
   });
 
   test('Pull-to-refresh tải lại CẢ 2 nguồn', async () => {
@@ -259,7 +270,10 @@ describe('MyTasksScreen — 3 tab, 2 luồng dữ liệu (Stitch 2026-09-13)', (
     const { getByText, queryByText, toJSON } = await render(<MyTasksScreen />);
     await flushEffects();
     await act(async () => {
-      fireEvent.press(getByText('Sắp làm (2)'));
+      fireEvent.press(getByText('Sắp làm (1)'));
+    });
+    await act(async () => {
+      fireEvent.press(getByText('Đang làm (1)'));
     });
     await act(async () => {
       fireEvent.press(getByText('Lịch sử (2)'));

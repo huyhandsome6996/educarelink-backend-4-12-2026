@@ -7,8 +7,16 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ActivityInd
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
 import apiClient from '../api/client';
+import { useAuth } from '../context/AuthContext';
+
+const HUE_DEFAULT_LAT = 16.4637; // TP. Huế
+const HUE_DEFAULT_LNG = 107.5908;
 
 export default function JobLocationPicker({ value, onChange }) {
+  const { user } = useAuth();
+  const initialLat = value?.latitude ?? user?.latitude ?? HUE_DEFAULT_LAT;
+  const initialLng = value?.longitude ?? user?.longitude ?? HUE_DEFAULT_LNG;
+
   const [searchText, setSearchText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -23,12 +31,20 @@ export default function JobLocationPicker({ value, onChange }) {
           const lng = pos.coords.longitude;
           let label = 'Vị trí hiện tại của bạn';
           try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
-              headers: { 'User-Agent': 'EduCareLink/1.0' },
+            const resp = await apiClient.get('/matching/geocode/reverse/', {
+              params: { lat, lon: lng },
             });
-            const d = await r.json();
-            if (d?.display_name) label = d.display_name;
+            if (resp.data?.display_name) label = resp.data.display_name;
           } catch {}
+          if (label === 'Vị trí hiện tại của bạn') {
+            try {
+              const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
+                headers: { 'User-Agent': 'EduCareLink/1.0' },
+              });
+              const d = await r.json();
+              if (d?.display_name) label = d.display_name;
+            } catch {}
+          }
           onChange?.({ latitude: lat, longitude: lng, label });
         },
         (err) => {

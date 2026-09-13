@@ -50,7 +50,7 @@ const AVATAR_COLORS = [
   '#4F46E5', // Indigo
 ];
 
-// Dữ liệu mẫu chuẩn Google Stitch khi chưa có job_id cụ thể hoặc đang duyệt demo
+// Dữ liệu mẫu khi chưa có job_id cụ thể
 const DEMO_JOB = {
   title: 'Gia sư Toán & Tiếng Anh kèm bé lớp 4',
   category_label: 'Gia sư & Kèm học 1:1',
@@ -204,13 +204,10 @@ export default function CandidatesListScreen() {
   const passedJob = route.params?.job;
   const passedCandidates = route.params?.candidates;
   const passedTotal = route.params?.totalMatched;
-  const isDemoPreview = !jobId;
   const [jobInfo, setJobInfo] = useState(passedJob || DEMO_JOB);
   const [candidates, setCandidates] = useState(
     Array.isArray(passedCandidates)
       ? passedCandidates
-      : isDemoPreview
-      ? DEMO_CANDIDATES
       : []
   );
   const [totalMatched, setTotalMatched] = useState(
@@ -218,8 +215,6 @@ export default function CandidatesListScreen() {
       ? passedTotal
       : Array.isArray(passedCandidates)
       ? passedCandidates.length
-      : isDemoPreview
-      ? DEMO_CANDIDATES.length
       : 0
   );
   // Nếu đã nhận danh sách ứng viên được tải trước từ modal tìm kiếm -> loading = false ngay lập tức!
@@ -265,9 +260,8 @@ export default function CandidatesListScreen() {
   // Tải danh sách ứng viên
   const load = useCallback(async (isRefresh = false) => {
     if (!jobId) {
-      // Khi mở xem thử nghiệm từ trang chủ không có jobId, dùng DEMO_CANDIDATES
-      setCandidates(DEMO_CANDIDATES);
-      setTotalMatched(DEMO_CANDIDATES.length);
+      setCandidates([]);
+      setTotalMatched(0);
       setLoading(false);
       return;
     }
@@ -508,7 +502,7 @@ export default function CandidatesListScreen() {
             <Text style={styles.heroReviewText}>
               "{c.latest_review || 'Gia sư dạy rất có tâm, bé nhà mình tiến bộ vượt bậc sau 1 tháng.'}"
             </Text>
-            <Text style={styles.heroReviewAuthor}>— Phụ huynh tại {c.location_district || 'khu vực của bạn'}</Text>
+            <Text style={styles.heroReviewAuthor}>— Phụ huynh tại {c.location_district || c.school || 'khu vực của bạn'}</Text>
           </View>
         </View>
 
@@ -906,7 +900,7 @@ export default function CandidatesListScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             candidates.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <View style={styles.emptyContainer} testID="truthful-empty-container">
                 <View style={styles.emptyIconCircle}>
                   <Ionicons name="search-outline" size={38} color="#F26522" />
                 </View>
@@ -920,6 +914,7 @@ export default function CandidatesListScreen() {
                   <Text style={styles.emptyAdviceText}>• Hệ thống liên tục quét mạng lưới CarePartner đã đối soát CCCD & Thẻ SV quanh "{jobInfo.location_note || 'vị trí đã chọn'}".</Text>
                 </View>
                 <TouchableOpacity
+                  testID="empty-adjust-btn"
                   style={styles.resetFilterBtn}
                   onPress={() => navigation.goBack()}
                   activeOpacity={0.85}

@@ -32,7 +32,19 @@ PROMPT_VERSION = 'v1'
 # ngoại trừ whitelist rõ ràng duy nhất: 'mc'.
 SKILL_KEYWORDS = {
     'toan': ['toán', 'toan', 'math', 'đại số', 'dai so', 'hình học', 'hinh hoc', 'môn toán', 'mon toan'],
-    'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'tiếng việt', 'tieng viet', 'literature', 'môn văn', 'mon van'],
+    'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'literature', 'môn văn', 'mon van'],
+    'tieng_viet': ['tiếng việt', 'tieng viet', 'tiengviet', 'môn tiếng việt', 'mon tieng viet'],
+    'tu_nhien_xa_hoi': ['tự nhiên và xã hội', 'tu nhien va xa hoi', 'tự nhiên xã hội', 'tu nhien xa hoi', 'tnxh'],
+    'tin_hoc_cong_nghe': ['tin học và công nghệ', 'tin hoc va cong nghe', 'tin học công nghệ', 'tin hoc cong nghe'],
+    'tin_hoc': ['tin học', 'tin hoc', 'môn tin', 'mon tin', 'informatics', 'computer science'],
+    'cong_nghe': ['công nghệ', 'cong nghe', 'môn công nghệ', 'mon cong nghe'],
+    'giao_duc_cong_dan': ['giáo dục công dân', 'giao duc cong dan', 'môn gdcd', 'gdcd'],
+    'khoa_hoc_tu_nhien': ['khoa học tự nhiên', 'khoa hoc tu nhien', 'khtn', 'môn khtn'],
+    'lich_su_dia_ly': ['lịch sử và địa lý', 'lich su va dia ly', 'lịch sử địa lý', 'lich su dia ly'],
+    'lich_su': ['lịch sử', 'lich su', 'môn lịch sử', 'mon lich su', 'môn sử', 'mon su', 'history'],
+    'dia_ly': ['địa lý', 'dia ly', 'địa lí', 'dia li', 'môn địa', 'mon dia', 'geography'],
+    'giao_duc_kinh_te_phap_luat': ['giáo dục kinh tế và pháp luật', 'giao duc kinh te va phap luat', 'kinh tế pháp luật', 'kinh te phap luat', 'gdkt&pl', 'gdktpl'],
+    'am_nhac': ['âm nhạc', 'am nhac', 'môn âm nhạc', 'mon am nhac', 'môn nhạc', 'mon nhac', 'thanh nhạc', 'thanh nhac', 'music'],
     'luyen_chu_dep': ['luyện chữ', 'luyen chu', 'chữ đẹp', 'chu dep', 'rèn chữ', 'ren chu', 'viết chữ', 'viet chu', 'tập viết', 'tap viet'],
     'tieng_anh': ['tiếng anh', 'tieng anh', 'english', 'ielts', 'toeic', 'môn tiếng anh'],
     'ly': ['vật lý', 'vat ly', 'môn lý', 'mon ly'],
@@ -111,12 +123,25 @@ def rule_based_parse(job):
     elif safety_flags:
         severity = 'medium'
 
+    extracted_skills = _extract_skills(full_text)
+    type_subj_code = type_data.get('subject_code')
+    if type_subj_code:
+        if isinstance(type_subj_code, list):
+            for code in type_subj_code:
+                c = str(code).strip()
+                if c and c not in extracted_skills:
+                    extracted_skills.append(c)
+        elif isinstance(type_subj_code, str):
+            for code in [s.strip() for s in type_subj_code.split(',') if s.strip()]:
+                if code and code not in extracted_skills:
+                    extracted_skills.append(code)
+
     return {
         'job_type': job.job_type,  # AI/KIỂM TRA KHÔNG ĐƯỢC ĐÈ (Step 11.3)
         'title_vi': job.title or _auto_title(job, subject),
         'summary_vi': (job.description or subject)[:160],
-        'required_skills': _extract_skills(full_text),
-        'category_tags': _extract_skills(full_text),
+        'required_skills': extracted_skills,
+        'category_tags': extracted_skills,
         # Defect 3 (2026-09-13): passthrough khối lớp + ưu tiên gia sư từ type_data
         # (rule-based fallback không được làm mất thông tin phụ huynh đã chọn)
         'child_grade_level': (job.type_data or {}).get('child_grade_level') or None,

@@ -146,7 +146,7 @@ export default function ChildcareForm() {
         time_to: timeTo,
         latitude: location.latitude,
         longitude: location.longitude,
-        location_note: locationNote,
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         hourly_rate_vnd: Number(rate),
       });
       createdJobId = job?.id;

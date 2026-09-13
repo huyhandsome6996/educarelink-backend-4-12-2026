@@ -38,8 +38,8 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const DEFAULT_LAT = 21.0278; // Hà Nội — chỉ dùng khi user CHƯA có tọa độ đăng ký
-const DEFAULT_LNG = 105.8342;
+const DEFAULT_LAT = 16.4637; // TP. Huế — fallback khi user chưa có tọa độ đăng ký
+const DEFAULT_LNG = 107.5908;
 
 function buildMapHtml(lat, lng, hasValue) {
   return `
@@ -169,13 +169,12 @@ export default function JobLocationPicker({ value, onChange }) {
         const lng = parseFloat(data.longitude);
         let label = data.label || '';
         if (!label) {
-          // Thử reverse geocoding
+          // Thử reverse geocoding qua backend endpoint chuẩn
           try {
-            const resp = await apiClient.get('/matching/geocode/search/', {
+            const resp = await apiClient.get('/matching/geocode/reverse/', {
               params: { lat, lon: lng },
             });
-            const row = Array.isArray(resp.data?.results) ? resp.data.results[0] : resp.data;
-            label = row?.display_name || '';
+            label = resp.data?.display_name || (Array.isArray(resp.data?.results) ? resp.data.results[0]?.display_name : '') || '';
           } catch {}
           if (!label) {
             try {
