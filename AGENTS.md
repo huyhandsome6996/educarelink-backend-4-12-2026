@@ -198,6 +198,10 @@ User
 ├─ ai_profile_summary: text   # AI tổng hợp điểm mạnh (chưa implement đầy đủ)
 ├─ first_login: bool          # chưa xem onboarding
 ├─ latitude, longitude: float # vị trí user (cho AI distance)
+├─ current_latitude, current_longitude: float  # GPS real-time (Defect 4 — ghi qua
+│   │                                          #  /api/tracking/gps-heartbeat/ khi
+│   │                                          #  LocationConsent đã cấp, throttle 60s)
+├─ last_gps_updated_at: datetime               # mốc GPS lần cuối (db_index)
 └─ (kế thừa từ AbstractUser: username, password, email, first_name, last_name,
     is_staff, is_superuser, is_active, date_joined, last_login)
 ```
@@ -557,6 +561,7 @@ Tất cả API nằm dưới prefix `/api/`. Auth: header `Authorization: Bearer
 | GET | `/api/tracking/sos/<task_id>/` | IsAuthenticated | List SOS alerts của task |
 | POST | `/api/tracking/sos/<sos_id>/resolve/` | IsAuthenticated | Đánh dấu SOS đã giải quyết |
 | GET | `/api/tracking/admin/overview/` | IsAdminUser | Stats tổng quan tracking |
+| POST | `/api/tracking/gps-heartbeat/` | IsAuthenticated (worker) | **Defect 4 (2026-09-13)** — GPS heartbeat ngoài ca: body `{latitude, longitude, accuracy?}` → ghi `User.current_latitude/current_longitude`. BẮT BUỘC kiểm tra `LocationConsent` 'granted' (chưa có → 403 `no_location_consent`, KHÔNG ghi tọa độ); throttle 1 lần / `GPS_HEARTBEAT_MIN_INTERVAL_SECONDS` (60s) / user. Heartbeat trong ca (`/api/tracking/heartbeat/`) có kèm tọa độ cũng sync thêm GPS real-time vào User |
 
 > **[2026-08-23 — B5 Coding Agent]** Module tracking còn các endpoint Phần 1-3 (heartbeat,
 > offline-alerts, verification PIN, batch location, scheduler-health — xem `tracking/urls.py`)
@@ -1000,6 +1005,13 @@ File mẫu: `.env.example`. Trên Render: cấu hình qua Dashboard → Settings
 > **B5 (ảnh):** `VERIFICATION_PHOTO_CHECK_RATIO` (0.3 — tỷ lệ check là ảnh),
 > `VERIFICATION_PHOTO_RESPOND_TIMEOUT_SECONDS` (180 — deadline chụp+nộp ảnh),
 > `VERIFICATION_PHOTO_MAX_MB` (5 — giới hạn dung lượng ảnh).
+
+> **[2026-09-13 — Fix Matching/Geo/GPS Agent]** Env vars GPS real-time cho ghép cặp
+> (Defect 4 — đọc trong `matching_service.py` qua `getattr(settings, ...)`):
+> `GPS_FRESHNESS_HOURS` (48 — GPS quá hạn → fallback vị trí đăng ký tĩnh),
+> `MAX_GPS_DRIFT_KM` (50 — GPS real-time xa vị trí đăng ký quá ngưỡng → loại khỏi
+> match pool, chống "đăng ký Huế đang ở Hà Nội"),
+> `GPS_HEARTBEAT_MIN_INTERVAL_SECONDS` (60 — throttle ghi GPS / user).
 
 > **Sandbox MoMo test credentials** (công khai, có thể đã bị MoMo vô hiệu): `MOMO/F8BBA842ECF85/K951B6PE1waDMi640xX08PD3vg6EkVlz`. Để go-live cần đăng ký business riêng tại https://business.momo.vn/.
 
