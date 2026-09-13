@@ -76,6 +76,11 @@ class User(AbstractUser):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
 
+    # Vị trí GPS thời gian thực (R6: Cross-City Dispatch Guard)
+    current_latitude = models.FloatField(null=True, blank=True)
+    current_longitude = models.FloatField(null=True, blank=True)
+    last_gps_updated_at = models.DateTimeField(null=True, blank=True)
+
     # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
     # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác
     # minh trong lúc task in_progress, carepartner phải nhập đúng mã này để

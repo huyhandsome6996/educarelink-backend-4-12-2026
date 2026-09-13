@@ -16,9 +16,12 @@ Soft scoring (Step 11.6 — trọng số từ DB MatchingWeight):
   Nhãn PHẢN ÁNH ĐÚNG ĐIỂM SỐ — không còn ghi đè low→medium khi pool đầy.
 """
 
+import datetime
 import logging
 import math
+import unicodedata
 
+from django.conf import settings
 from django.utils import timezone
 
 from ..config import get_config, get_int
@@ -34,6 +37,26 @@ from .lock_service import covers_all_slots
 logger = logging.getLogger('educarelink.matching.engine')
 
 MAX_CANDIDATES_DEFAULT = 8
+
+
+def get_effective_coordinates(user):
+    """
+    Trả về (lat, lng) hiệu lực của user:
+    - Nếu user có current_latitude, current_longitude và last_gps_updated_at
+      còn trong thời hạn GPS_FRESHNESS_HOURS (default 48h): trả về tọa độ GPS thời gian thực.
+    - Ngược lại: trả về tọa độ đăng ký (user.latitude, user.longitude).
+    """
+    if user is None:
+        return None, None
+    freshness_hours = getattr(settings, 'GPS_FRESHNESS_HOURS', 48)
+    cur_lat = getattr(user, 'current_latitude', None)
+    cur_lng = getattr(user, 'current_longitude', None)
+    last_gps = getattr(user, 'last_gps_updated_at', None)
+    if cur_lat is not None and cur_lng is not None and last_gps is not None:
+        cutoff = timezone.now() - datetime.timedelta(hours=freshness_hours)
+        if last_gps >= cutoff:
+            return cur_lat, cur_lng
+    return getattr(user, 'latitude', None), getattr(user, 'longitude', None)
 
 
 def get_active_weights():
@@ -56,19 +79,40 @@ def haversine_km(lat1, lng1, lat2, lng2):
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+def _normalize_vi(text):
+    """Chuẩn hóa tiếng Việt: bỏ dấu, chuyển đ/Đ -> d, lowercase."""
+    if not text:
+        return ''
+    t = str(text).lower().replace('đ', 'd').replace('Đ', 'd')
+    t = unicodedata.normalize('NFD', t)
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    return unicodedata.normalize('NFC', t).strip()
+
+
 def _major_match_bonus(major, job_type, required_skills=None):
     """Chuyên ngành khớp loại job và yêu cầu kỹ năng cụ thể (Step 11.6 skills)."""
     if not major:
         return 0
     major_l = major.lower()
+    major_norm = _normalize_vi(major)
     req_set = set(required_skills or [])
+
+    def matches_kw(keywords):
+        for kw in keywords:
+            kw_l = kw.lower()
+            if kw_l in major_l:
+                return True
+            kw_norm = _normalize_vi(kw)
+            if kw_norm and kw_norm in major_norm:
+                return True
+        return False
 
     # 1. Các nhóm môn / kỹ năng đặc thù cao (âm nhạc, CNTT, mỹ thuật, ngoại ngữ...)
     music_skills = {'dan_piano', 'piano', 'organ', 'guitar', 'am_nhac', 'thanh_nhac'}
-    music_kw = ['âm nhạc', 'am nhac', 'piano', 'organ', 'guitar', 'nhạc', 'nhac', 'nghệ thuật', 'nghe thuat']
+    music_kw = ['âm nhạc', 'am nhac', 'piano', 'organ', 'guitar', 'nhạc', 'nhac', 'nghệ thuật', 'nghe thuat', 'thanh nhạc']
 
-    it_skills = {'lap_trinh', 'tin_hoc', 'python', 'scratch', 'cntt'}
-    it_kw = ['công nghệ thông tin', 'tin học', 'khoa học máy tính', 'it', 'cntt', 'phần mềm']
+    it_skills = {'lap_trinh', 'tin_hoc', 'python', 'scratch', 'cntt', 'tin_hoc_cong_nghe'}
+    it_kw = ['công nghệ thông tin', 'tin học', 'khoa học máy tính', 'it', 'cntt', 'phần mềm', 'công nghệ']
 
     art_skills = {'ve', 'my_thuat', 'hoi_hoa'}
     art_kw = ['mỹ thuật', 'my thuat', 'hội họa', 'hoi hoa', 'thiết kế', 'đồ họa']
@@ -88,51 +132,73 @@ def _major_match_bonus(major, job_type, required_skills=None):
             lang_matches.extend(['tiếng pháp', 'tieng phap', 'pháp', 'sư phạm tiếng pháp'])
         if 'tieng_nga' in req_set or 'tieng_a_rap_co' in req_set:
             lang_matches.extend(['tiếng nga', 'tiếng ả rập', 'a rap'])
-        if lang_matches:
-            return 1 if any(kw in major_l for kw in lang_matches) else 0
-        return 0
+        if lang_matches and matches_kw(lang_matches):
+            return 1
 
-    # Nếu công việc yêu cầu kỹ năng đặc thù, chỉ cộng điểm chuyên ngành nếu chuyên ngành THẬT SỰ thuộc lĩnh vực đó
-    if req_set & music_skills:
-        return 1 if any(kw in major_l for kw in music_kw) else 0
+    if req_set & music_skills and matches_kw(music_kw):
+        return 1
 
-    if req_set & it_skills:
-        return 1 if any(kw in major_l for kw in it_kw) else 0
+    if req_set & it_skills and matches_kw(it_kw):
+        return 1
 
-    if req_set & art_skills:
-        return 1 if any(kw in major_l for kw in art_kw) else 0
+    if req_set & art_skills and matches_kw(art_kw):
+        return 1
 
-    # 2. Đối với gia sư tiểu học / văn hóa phổ thông (Toán, Văn, Lý, Hóa, Sinh...) hoặc chăm sóc:
-    elementary_tutoring = {
-        'tieu_hoc', 'luyen_chu_dep', 'toan', 'tieng_viet', 'on_tap', 'kem_hoc', 'van',
-        'ly', 'hoa', 'sinh'
+    # 2. Giáo dục tiểu học / Tier 1 (Cấp 1):
+    primary_edu_kw = ['tiểu học', 'tieu hoc', 'giáo dục tiểu học', 'giao duc tieu hoc', 'sư phạm tiểu học', 'su pham tieu hoc']
+    tier1_skills = {
+        'tieu_hoc', 'tieng_viet', 'toan', 'tu_nhien_xa_hoi', 'luyen_chu_dep',
+        'am_nhac', 'van', 'ngu_van', 'tin_hoc_cong_nghe', 'tin_hoc', 'cong_nghe', 'my_thuat', 've'
     }
+    if job_type == 'tutoring' and matches_kw(primary_edu_kw):
+        if not req_set or (req_set & tier1_skills):
+            return 1
+
+    # 3. Môn học phổ thông cụ thể (Toán, Văn, Lý, Hóa, Sinh, Sử, Địa...)
+    subject_kw_map = {
+        'toan': ['toán', 'toan', 'math', 'toán học', 'toan hoc', 'sư phạm toán', 'su pham toan'],
+        'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van', 'sư phạm ngữ văn', 'su pham ngu van', 'văn', 'van'],
+        'ngu_van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van', 'sư phạm ngữ văn', 'su pham ngu van', 'văn', 'van'],
+        'tieng_viet': ['tiếng việt', 'tieng viet', 'tiểu học', 'tieu hoc', 'ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'sư phạm ngữ văn', 'giáo dục tiểu học', 'giao duc tieu hoc'],
+        'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li', 'sư phạm lý', 'su pham ly', 'sư phạm vật lý', 'su pham vat ly'],
+        'hoa': ['hóa học', 'hoa hoc', 'sư phạm hóa', 'su pham hoa', 'hóa', 'hoa'],
+        'sinh': ['sinh học', 'sinh hoc', 'sư phạm sinh', 'su pham sinh', 'sinh', 'sinh'],
+        'lich_su': ['lịch sử', 'lich su', 'sư phạm sử', 'su pham su', 'sư phạm lịch sử', 'su pham lich su', 'sử', 'su'],
+        'dia_ly': ['địa lý', 'dia ly', 'địa lí', 'dia li', 'sư phạm địa', 'su pham dia', 'sư phạm địa lý', 'su pham dia ly'],
+        'lich_su_dia_ly': ['lịch sử', 'lich su', 'địa lý', 'dia ly', 'địa lí', 'dia li', 'sử', 'su', 'sư phạm sử', 'sư phạm địa'],
+        'khoa_hoc_tu_nhien': ['khoa học tự nhiên', 'khoa hoc tu nhien', 'khtn', 'vật lý', 'vat ly', 'hóa học', 'hoa hoc', 'sinh học', 'sinh hoc'],
+        'tin_hoc': ['tin học', 'tin hoc', 'công nghệ thông tin', 'khoa học máy tính', 'it', 'cntt'],
+        'tin_hoc_cong_nghe': ['tin học', 'tin hoc', 'công nghệ thông tin', 'công nghệ'],
+        'cong_nghe': ['công nghệ', 'cong nghe', 'kỹ thuật', 'ky thuat'],
+        'giao_duc_cong_dan': ['giáo dục công dân', 'giao duc cong dan', 'chính trị', 'luật', 'triết học'],
+        'giao_duc_kinh_te_phap_luat': ['kinh tế', 'pháp luật', 'luật', 'giáo dục công dân'],
+        'tu_nhien_xa_hoi': ['tiểu học', 'tieu hoc', 'giáo dục tiểu học', 'sinh học', 'địa lý', 'khoa học'],
+        'am_nhac': ['âm nhạc', 'am nhac', 'nhạc', 'nhac', 'thanh nhạc', 'thanh nhac', 'piano', 'organ'],
+    }
+
+    if job_type == 'tutoring':
+        for s in req_set:
+            if s in subject_kw_map and matches_kw(subject_kw_map[s]):
+                return 1
+
+    # 4. Sư phạm / giáo dục chung & Chăm sóc
     education_kw = ['sư phạm', 'su pham', 'giáo dục', 'giao duc', 'pedagog']
     care_kw = ['sơ cấp', 'so cap', 'chăm sóc', 'cham soc', 'nhi', 'điều dưỡng', 'dieu duong', 'y tế', 'mầm non', 'mam non']
 
-    # Nếu job_type là tutoring: match education_kw HOẶC chuyên ngành trực tiếp môn học đó
+    all_tutoring_skills = set(subject_kw_map.keys()) | tier1_skills | {
+        'on_tap', 'kem_hoc', 'luyen_thi', 'cap_1', 'cap_2', 'cap_3'
+    }
+
     if job_type == 'tutoring':
-        if not req_set or (req_set & elementary_tutoring):
-            if any(kw in major_l for kw in education_kw):
+        if not req_set or (req_set & all_tutoring_skills):
+            if matches_kw(education_kw):
                 return 1
-            # Chuyên ngành trực tiếp môn học (Vật lý, Hóa học, Sinh học, Toán học, Ngữ văn...)
-            subject_kw_map = {
-                'toan': ['toán', 'toan', 'math'],
-                'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'tiếng việt', 'tieng viet'],
-                'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li'],
-                'hoa': ['hóa học', 'hoa hoc'],
-                'sinh': ['sinh học', 'sinh hoc'],
-            }
-            for s in (req_set & set(subject_kw_map.keys())):
-                if any(kw in major_l for kw in subject_kw_map[s]):
-                    return 1
-            return 0
         return 0
 
-    if job_type == 'childcare' and (any(kw in major_l for kw in education_kw) or any(kw in major_l for kw in care_kw)):
+    if job_type == 'childcare' and (matches_kw(education_kw) or matches_kw(care_kw)):
         return 1
 
-    if job_type == 'pickup' and any(kw in major_l for kw in care_kw):
+    if job_type == 'pickup' and matches_kw(care_kw):
         return 1
 
     return 0
@@ -154,9 +220,15 @@ def subscore_availability(covered, required):
     return covered / required * 100.0
 
 
-def subscore_skills(required_skills, cp_skills, major, job_type):
-    j = _jaccard(required_skills, cp_skills)
+def subscore_skills(required_skills, cp_skills, major, job_type, use_match_ratio=False):
     major_bonus = _major_match_bonus(major, job_type, required_skills)
+    if not required_skills:
+        return 100.0 if major_bonus else 60.0
+    if use_match_ratio:
+        matched = [s for s in (cp_skills or []) if s in required_skills]
+        ratio = len(matched) / len(required_skills)
+        return 60.0 * ratio + 40.0 * major_bonus
+    j = _jaccard(required_skills, cp_skills)
     return 60.0 * j + 40.0 * major_bonus
 
 
@@ -227,8 +299,20 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     """
     top_n = top_n or get_int('MAX_CANDIDATES', MAX_CANDIDATES_DEFAULT)
     weights = get_active_weights()
-    parsed = job.ai_parse_result or {}
-    required_skills = parsed.get('required_skills') or []
+    parsed = getattr(job, 'ai_parse_result', None) or {}
+    required_skills = list(parsed.get('required_skills') or [])
+    type_data = getattr(job, 'type_data', None) or {}
+    sc = type_data.get('subject_code')
+    if sc:
+        if isinstance(sc, list):
+            for c in sc:
+                c_str = str(c).strip()
+                if c_str and c_str not in required_skills:
+                    required_skills.append(c_str)
+        elif isinstance(sc, str):
+            for c in [s.strip() for s in sc.split(',') if s.strip()]:
+                if c and c not in required_skills:
+                    required_skills.append(c)
 
     # ── Hard filter #5: giới tính (flow1-step2-matching-engine.md dòng 57) ──
     # Bất biến Step 11.4: tutoring KHÔNG BAO GIỜ lọc theo giới tính. Bất biến này
@@ -237,7 +321,7 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
     # parse). Dòng dưới đây là lớp phòng thủ thứ 3 NGAY TẠI NƠI TIÊU DÙNG: kể cả
     # gender_preference "lọt" vào job tutoring (ghi thẳng DB, import cũ...) thì vẫn
     # vô hiệu hóa ở đây, không bao giờ dùng để loại ứng viên gia sư.
-    gender_preference = '' if job.job_type == 'tutoring' else (job.gender_preference or '')
+    gender_preference = '' if getattr(job, 'job_type', '') == 'tutoring' else (getattr(job, 'gender_preference', '') or '')
 
     # Required slots từ JobSlot
     if required_slots is None:
@@ -266,7 +350,16 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         ok_cover, _missing = covers_all_slots(user, required_slots)
         if not ok_cover:
             continue
-        km = haversine_km(job.latitude, job.longitude, user.latitude, user.longitude)
+
+        eff_lat, eff_lng = get_effective_coordinates(user)
+        max_drift_km = getattr(settings, 'MAX_GPS_DRIFT_KM', 50.0)
+        drift_dist = haversine_km(job.latitude, job.longitude, eff_lat, eff_lng)
+
+        # Cross-City GPS Guard (R6): Nếu khoảng cách từ job tới GPS hiệu lực > MAX_GPS_DRIFT_KM, loại ứng viên
+        if drift_dist is not None and drift_dist > max_drift_km:
+            continue
+
+        km = drift_dist
         radius = profile.max_radius_km or default_radius
         # Bán kính: CP có phương tiện hoặc khu vực đô thị mở rộng tối đa 35km để luôn có ứng viên phù hợp
         max_allowed_km = max(radius, 35) if profile.has_vehicle else max(radius, 25)
@@ -306,7 +399,7 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
 
         subs = {
             'availability': subscore_availability(len(required_slots), len(required_slots)),
-            'skills': subscore_skills(required_skills, profile.skills or [], profile.major, job.job_type),
+            'skills': subscore_skills(required_skills, profile.skills or [], profile.major, job.job_type, use_match_ratio=True),
             'distance': subscore_distance(km, radius, profile.has_vehicle),
             'rating': subscore_rating(profile.rating_avg, profile.review_count),
             'completion': subscore_completion(profile.jobs_completed, profile.jobs_cancelled, profile.jobs_no_show),
@@ -316,10 +409,9 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         weighted = sum(weights.get(f, 0) * s for f, s in subs.items()) / 100.0
         final = int(round(weighted * band_multiplier))
 
-        # Skill-Gating Score Cap: Nếu job có required_skills nhưng ứng viên chỉ vào pool nhờ bằng cấp/chuyên ngành
-        # mà chưa có kỹ năng thực tế (hoặc độ phủ kỹ năng thấp < 0.25),
-        # khống chế điểm tối đa không vượt quá 68 điểm (tránh điểm ảo 90-100 do các yếu tố phụ)
-        if required_skills and (not profile.skills or _jaccard(required_skills, profile.skills) < 0.25):
+        # Skill-Gating Score Cap: Chỉ khống chế điểm khi ứng viên vào pool CHỈ nhờ bằng cấp/chuyên ngành
+        # mà hoàn toàn không có kỹ năng thực tế nào trùng khớp (has_skill_match == False)
+        if required_skills and not has_skill_match and has_major_match:
             final = min(final, 68)
 
         final = max(0, min(100, final))
