@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
 import apiClient from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import MapPickerModal from './MapPickerModal';
 
 let WebView = null;
@@ -37,8 +38,8 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const DEFAULT_LAT = 21.0278; // Hà Nội
-const DEFAULT_LNG = 105.8342;
+const HUE_DEFAULT_LAT = 16.4637; // TP. Huế
+const HUE_DEFAULT_LNG = 107.5908;
 
 function buildMapHtml(lat, lng, hasValue) {
   return `
@@ -138,8 +139,9 @@ export default function JobLocationPicker({ value, onChange }) {
   const [isLocating, setIsLocating] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const initialLat = value?.latitude ?? DEFAULT_LAT;
-  const initialLng = value?.longitude ?? DEFAULT_LNG;
+  const { user } = useAuth();
+  const initialLat = value?.latitude ?? user?.latitude ?? HUE_DEFAULT_LAT;
+  const initialLng = value?.longitude ?? user?.longitude ?? HUE_DEFAULT_LNG;
   const hasValue = !!(value?.latitude && value?.longitude);
 
   const mapHtml = buildMapHtml(initialLat, initialLng, hasValue);
@@ -153,13 +155,12 @@ export default function JobLocationPicker({ value, onChange }) {
         const lng = parseFloat(data.longitude);
         let label = data.label || '';
         if (!label) {
-          // Thử reverse geocoding
+          // Thử reverse geocoding qua backend endpoint chuẩn
           try {
-            const resp = await apiClient.get('/matching/geocode/search/', {
+            const resp = await apiClient.get('/matching/geocode/reverse/', {
               params: { lat, lon: lng },
             });
-            const row = Array.isArray(resp.data?.results) ? resp.data.results[0] : resp.data;
-            label = row?.display_name || '';
+            label = resp.data?.display_name || (Array.isArray(resp.data?.results) ? resp.data.results[0]?.display_name : '') || '';
           } catch {}
           if (!label) {
             try {
@@ -308,7 +309,7 @@ export default function JobLocationPicker({ value, onChange }) {
         <Ionicons name="search-outline" size={17} color="#94A3B8" style={{ marginLeft: 4 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm địa điểm (VD: Linh Đàm, Cầu Giấy...)"
+          placeholder="Tìm địa điểm (địa chỉ, tên đường...)"
           placeholderTextColor="#94A3B8"
           value={searchText}
           onChangeText={setSearchText}
@@ -422,7 +423,7 @@ export default function JobLocationPicker({ value, onChange }) {
       {showModal && (
         <MapPickerModal
           visible={showModal}
-          initialCoords={value || { latitude: DEFAULT_LAT, longitude: DEFAULT_LNG }}
+          initialCoords={value || { latitude: initialLat, longitude: initialLng }}
           onPick={handleModalPick}
           onClose={() => setShowModal(false)}
         />

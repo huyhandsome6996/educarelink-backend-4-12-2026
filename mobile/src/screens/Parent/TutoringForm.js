@@ -31,14 +31,110 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-const QUICK_SUBJECTS = [
-  '📐 Toán lớp 5',
-  '🇬🇧 Tiếng Anh giao tiếp',
-  '✍️ Luyện chữ đẹp',
-  '🎹 Đàn Piano / Organ',
-  '🎨 Vẽ & Sáng tạo',
-  '🎤 MC nhí & Tự tin',
+export const CURRICULUM_TIERS = {
+  cap_1: {
+    label: 'Cấp 1 (Tiểu học)',
+    ageRange: [6, 10],
+    defaultAge: 8,
+    subjects: [
+      { code: 'toan', name: 'Toán' },
+      { code: 'tieng_viet', name: 'Tiếng Việt' },
+      { code: 'tu_nhien_xa_hoi', name: 'Tự nhiên và Xã hội' },
+      { code: 'am_nhac', name: 'Âm nhạc' },
+      { code: 'my_thuat', name: 'Mỹ thuật' },
+      { code: 'tin_hoc_cong_nghe', name: 'Tin học và Công nghệ' },
+      { code: 'lich_su', name: 'Lịch sử' },
+      { code: 'dia_ly', name: 'Địa lý' },
+      { code: 'tieng_anh', name: 'Tiếng Anh' },
+      { code: 'tieng_trung', name: 'Tiếng Trung' },
+    ],
+  },
+  cap_2: {
+    label: 'Cấp 2 (THCS)',
+    ageRange: [11, 15],
+    defaultAge: 13,
+    subjects: [
+      { code: 'toan', name: 'Toán' },
+      { code: 'van', name: 'Ngữ văn' },
+      { code: 'tieng_anh', name: 'Tiếng Anh' },
+      { code: 'tieng_trung', name: 'Tiếng Trung' },
+      { code: 'giao_duc_cong_dan', name: 'Giáo dục công dân' },
+      { code: 'khoa_hoc_tu_nhien', name: 'Khoa học tự nhiên' },
+      { code: 'lich_su_dia_ly', name: 'Lịch sử và Địa lý' },
+      { code: 'tin_hoc', name: 'Tin học' },
+      { code: 'cong_nghe', name: 'Công nghệ' },
+      { code: 'am_nhac', name: 'Âm nhạc' },
+      { code: 'my_thuat', name: 'Mỹ thuật' },
+      { code: 'hoa', name: 'Hoá học' },
+      { code: 'ly', name: 'Vật lý' },
+      { code: 'sinh', name: 'Sinh học' },
+    ],
+  },
+  cap_3: {
+    label: 'Cấp 3 (THPT)',
+    ageRange: [16, 18],
+    defaultAge: 16,
+    subjects: [
+      { code: 'toan', name: 'Toán' },
+      { code: 'van', name: 'Ngữ văn' },
+      { code: 'tieng_anh', name: 'Tiếng Anh' },
+      { code: 'tieng_trung', name: 'Tiếng Trung' },
+      { code: 'lich_su', name: 'Lịch sử' },
+      { code: 'ly', name: 'Vật lý' },
+      { code: 'hoa', name: 'Hoá học' },
+      { code: 'sinh', name: 'Sinh học' },
+      { code: 'dia_ly', name: 'Địa lý' },
+      { code: 'giao_duc_kinh_te_phap_luat', name: 'Giáo dục kinh tế và Pháp luật' },
+      { code: 'tin_hoc', name: 'Tin học' },
+      { code: 'cong_nghe', name: 'Công nghệ' },
+      { code: 'am_nhac', name: 'Âm nhạc' },
+      { code: 'my_thuat', name: 'Mỹ thuật' },
+    ],
+  },
+};
+
+export const SENIORITY_OPTIONS = [
+  { key: 'student_year_1_2', label: 'Sinh viên năm 1-2' },
+  { key: 'student_year_3_4', label: 'Sinh viên năm 3-4 (Ưu tiên Sư phạm)' },
+  { key: 'graduate', label: 'Cử nhân / Đã tốt nghiệp' },
+  { key: 'any', label: 'Không yêu cầu' },
 ];
+
+export function getSchoolLevel(age) {
+  if (age <= 10) return 'cap_1';
+  if (age <= 15) return 'cap_2';
+  return 'cap_3';
+}
+
+export function parseTimeToMinutes(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+export function calculateTutoringPricing(timeFrom, timeTo, rate, numDates = 0) {
+  const minutesFrom = parseTimeToMinutes(timeFrom);
+  const minutesTo = parseTimeToMinutes(timeTo);
+  const durationMinutes =
+    minutesFrom !== null && minutesTo !== null ? minutesTo - minutesFrom : 0;
+  const isValidTime = durationMinutes >= 30;
+  const sessionDurationHours = isValidTime ? durationMinutes / 60 : 0;
+  const hourlyRate = Number(rate) || 0;
+  const costPerSession = isValidTime ? Math.round(sessionDurationHours * hourlyRate) : 0;
+  const totalEstimatedCost = isValidTime ? costPerSession * numDates : 0;
+  return {
+    durationMinutes,
+    isValidTime,
+    sessionDurationHours,
+    hourlyRate,
+    costPerSession,
+    totalEstimatedCost,
+  };
+}
 
 const QUICK_TAGS = [
   'Kiên nhẫn',
@@ -50,6 +146,9 @@ const QUICK_TAGS = [
 
 export default function TutoringForm() {
   const navigation = useNavigation();
+  const [childAge, setChildAge] = useState(8);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [seniorityPreference, setSeniorityPreference] = useState('any');
   const [subject, setSubject] = useState('');
   const [requirements, setRequirements] = useState('');
   const [dates, setDates] = useState([]); // 'YYYY-MM-DD'
@@ -63,6 +162,32 @@ export default function TutoringForm() {
   const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [searchStatus, setSearchStatus] = useState('searching');
   const [searchError, setSearchError] = useState('');
+
+  const schoolLevel = getSchoolLevel(childAge);
+
+  const updateAge = (newAge) => {
+    const clampedAge = Math.max(6, Math.min(18, newAge));
+    const oldLevel = getSchoolLevel(childAge);
+    const newLevel = getSchoolLevel(clampedAge);
+    setChildAge(clampedAge);
+    if (oldLevel !== newLevel) {
+      const allowedCodes = CURRICULUM_TIERS[newLevel].subjects.map((s) => s.code);
+      setSelectedSubjects((prev) => prev.filter((s) => allowedCodes.includes(s.code)));
+    }
+  };
+
+  const toggleSubject = (subj) => {
+    const isSelected = selectedSubjects.some((s) => s.code === subj.code);
+    if (isSelected) {
+      setSelectedSubjects((prev) => prev.filter((s) => s.code !== subj.code));
+    } else {
+      if (selectedSubjects.length >= 3) {
+        Alert.alert('Giới hạn môn học', 'Chỉ được chọn tối đa 3 môn học cùng lúc.');
+        return;
+      }
+      setSelectedSubjects((prev) => [...prev, subj]);
+    }
+  };
 
   // Safe area insets with fallback for test runners
   let insets = { top: 12, bottom: 20, left: 0, right: 0 };
@@ -112,19 +237,33 @@ export default function TutoringForm() {
     }
   };
 
+  // Tính toán biểu giá phản ứng (dynamic reactive pricing) & kiểm tra hợp lệ
+  const pricing = calculateTutoringPricing(timeFrom, timeTo, rate, dates.length);
+  const { isValidTime, sessionDurationHours, costPerSession, totalEstimatedCost } = pricing;
+  const displayCost = dates.length > 0 ? totalEstimatedCost : costPerSession;
+
   const submit = async () => {
-    if (!subject.trim()) return Alert.alert('Thiếu thông tin', 'Vui lòng nhập môn học / kỹ năng.');
-    if (dates.length === 0) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn ít nhất 1 ngày học.');
-    if (!timeFrom || !timeTo || timeTo <= timeFrom)
-      return Alert.alert('Thiếu thông tin', 'Giờ kết thúc phải sau giờ bắt đầu.');
-    if (!location) return Alert.alert('Thiếu thông tin', 'Vui lòng chọn vị trí trên bản đồ.');
+    const subjectStr =
+      selectedSubjects.length > 0
+        ? selectedSubjects.map((s) => s.name).join(', ')
+        : subject.trim();
+    const subjectCodes = selectedSubjects.map((s) => s.code);
+
+    if (!subjectStr)
+      return Alert.alert('Thiếu thông tin', 'Vui lòng chọn ít nhất 1 môn học.');
+    if (dates.length === 0)
+      return Alert.alert('Thiếu thông tin', 'Vui lòng chọn ít nhất 1 ngày học.');
+    if (!isValidTime)
+      return Alert.alert('Thời gian không hợp lệ', 'Giờ kết thúc phải sau giờ bắt đầu ít nhất 30 phút.');
+    if (!location)
+      return Alert.alert('Thiếu thông tin', 'Vui lòng chọn vị trí trên bản đồ.');
     if (!rate || Number(rate) <= 0)
       return Alert.alert('Thiếu thông tin', 'Vui lòng nhập học phí/giờ (VNĐ > 0).');
 
     // Tự động điền yêu cầu mặc định nếu phụ huynh chưa kịp nhập
     const finalRequirements =
       requirements.trim() ||
-      `Dạy kèm môn ${subject.trim()}, hướng dẫn bài tập và hỗ trợ bé rèn luyện kiến thức vững vàng.`;
+      `Dạy kèm môn ${subjectStr}, hướng dẫn bài tập và hỗ trợ bé rèn luyện kiến thức vững vàng.`;
 
     setSubmitting(true);
     setSearchModalVisible(true);
@@ -135,14 +274,18 @@ export default function TutoringForm() {
     try {
       const { data: job } = await createJob({
         job_type: 'tutoring',
-        subject: subject.trim(),
+        subject: subjectStr,
+        subject_code: subjectCodes,
+        child_age: childAge,
+        school_level: schoolLevel,
+        tutor_seniority_preference: seniorityPreference,
         specific_requirements: finalRequirements,
         dates,
         time_from: timeFrom,
         time_to: timeTo,
         latitude: location.latitude,
         longitude: location.longitude,
-        location_note: locationNote,
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         hourly_rate_vnd: Number(rate),
       });
       createdJobId = job?.id;
@@ -167,12 +310,12 @@ export default function TutoringForm() {
       const richJob = {
         ...job,
         ...(freshJob || {}),
-        title: pubRes?.title || freshJob?.title || job.title || `Gia sư ${subject.trim()}`,
+        title: pubRes?.title || freshJob?.title || job.title || `Gia sư ${subjectStr}`,
         category_label: freshJob?.category_label || pubRes?.category_label || 'Gia sư & Kèm học 1:1',
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'school',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
-        location_note: locationNote || 'Cầu Giấy, Hà Nội',
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
       };
 
       // Giữ modal chạy tối thiểu 1.2s để tạo cảm giác quét radar chân thực
@@ -202,12 +345,12 @@ export default function TutoringForm() {
         const fallbackSchedule = `${timeFrom} - ${timeTo} (${dates.length} buổi)`;
         const fallbackRichJob = {
           id: createdJobId,
-          title: `Gia sư ${subject.trim()}`,
+          title: `Gia sư ${subjectStr}`,
           category_label: 'Gia sư & Kèm học 1:1',
           category_icon: 'school',
           hourly_rate_vnd: Number(rate),
           schedule: fallbackSchedule,
-          location_note: locationNote || 'Cầu Giấy, Hà Nội',
+          location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         };
         setTimeout(() => {
           setSearchModalVisible(false);
@@ -222,8 +365,6 @@ export default function TutoringForm() {
       setSubmitting(false);
     }
   };
-
-  const estimatedPerSession = (Number(rate) || 120000) * 2;
 
   return (
     <View style={styles.container}>
@@ -285,51 +426,149 @@ export default function TutoringForm() {
           </View>
         </View>
 
-        {/* SECTION 1: MÔN HỌC & KỸ NĂNG */}
+        {/* SECTION 1: ĐỘ TUỔI, CẤP HỌC & MÔN HỌC */}
         <View style={styles.sectionCard}>
+          {/* Age Stepper Header */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.label}>
-              Môn học hoặc Kỹ năng bé cần học <Text style={styles.star}>*</Text>
+              Độ tuổi của bé & Cấp học <Text style={styles.star}>*</Text>
             </Text>
-            <Text style={styles.helperHint}>Tùy chọn đa dạng</Text>
+            <View style={styles.tierBadge}>
+              <Text style={styles.tierBadgeText}>{CURRICULUM_TIERS[schoolLevel].label}</Text>
+            </View>
           </View>
 
-          <View style={styles.searchRow}>
-            <Ionicons name="search" size={16} color="#94A3B8" style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="VD: Toán lớp 5, Tiếng Anh giao tiếp, Đàn Piano..."
-              placeholderTextColor="#94A3B8"
-              value={subject}
-              onChangeText={setSubject}
-            />
-            {!!subject && (
-              <TouchableOpacity onPress={() => setSubject('')}>
-                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+          {/* Age Stepper Box */}
+          <View style={styles.ageDisplayBox}>
+            <View>
+              <Text style={styles.ageLabelSub}>Tuổi của học sinh</Text>
+              <Text style={styles.ageValueText} testID="child-age-text">
+                {childAge} tuổi
+              </Text>
+            </View>
+
+            <View style={styles.ageControlsRow}>
+              <TouchableOpacity
+                testID="age-decrement-btn"
+                style={[styles.ageStepperBtn, childAge <= 6 && styles.ageStepperBtnDisabled]}
+                onPress={() => updateAge(childAge - 1)}
+                disabled={childAge <= 6}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.ageStepperBtnText}>－</Text>
               </TouchableOpacity>
-            )}
+
+              <TouchableOpacity
+                testID="age-increment-btn"
+                style={[styles.ageStepperBtn, childAge >= 18 && styles.ageStepperBtnDisabled]}
+                onPress={() => updateAge(childAge + 1)}
+                disabled={childAge >= 18}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.ageStepperBtnText}>＋</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Quick Select Chips */}
-          <Text style={styles.subHint}>Gợi ý chọn nhanh môn học:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-            {QUICK_SUBJECTS.map((s, idx) => {
-              const clean = s.replace(/^[^\w\s]*\s*/, '');
-              const isSelected = subject.includes(clean);
+          {/* Quick Tier Pills */}
+          <Text style={styles.subHint}>Chọn nhanh cấp học chuẩn:</Text>
+          <View style={styles.quickTierRow}>
+            <TouchableOpacity
+              testID="tier-pill-8"
+              style={[styles.quickTierPill, childAge === 8 && styles.quickTierPillActive]}
+              onPress={() => updateAge(8)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.quickTierPillText, childAge === 8 && styles.quickTierPillTextActive]}>
+                8 tuổi (Cấp 1)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              testID="tier-pill-13"
+              style={[styles.quickTierPill, childAge === 13 && styles.quickTierPillActive]}
+              onPress={() => updateAge(13)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.quickTierPillText, childAge === 13 && styles.quickTierPillTextActive]}>
+                13 tuổi (Cấp 2)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              testID="tier-pill-16"
+              style={[styles.quickTierPill, childAge === 16 && styles.quickTierPillActive]}
+              onPress={() => updateAge(16)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.quickTierPillText, childAge === 16 && styles.quickTierPillTextActive]}>
+                16 tuổi (Cấp 3)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Multi-Select Subject Grid */}
+          <View style={[styles.sectionHeaderRow, { marginTop: 14 }]}>
+            <Text style={styles.label}>
+              Môn học cần kèm (Tối đa 3 môn) <Text style={styles.star}>*</Text>
+            </Text>
+            <Text style={[styles.helperHint, selectedSubjects.length > 0 && { color: '#F26522', fontWeight: '700' }]}>
+              {selectedSubjects.length}/3 môn đã chọn
+            </Text>
+          </View>
+
+          <View style={styles.subjectGrid}>
+            {CURRICULUM_TIERS[schoolLevel].subjects.map((subj) => {
+              const isSelected = selectedSubjects.some((s) => s.code === subj.code);
               return (
                 <TouchableOpacity
-                  key={idx}
-                  style={[styles.quickChip, isSelected && styles.quickChipActive]}
-                  onPress={() => setSubject(clean)}
+                  key={subj.code}
+                  testID={`subject-grid-item-${subj.code}`}
+                  style={[styles.subjectGridCard, isSelected && styles.subjectGridCardActive]}
+                  onPress={() => toggleSubject(subj)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.quickChipText, isSelected && styles.quickChipTextActive]}>
-                    {s}
+                  <Text
+                    style={[styles.subjectGridCardText, isSelected && styles.subjectGridCardTextActive]}
+                    numberOfLines={1}
+                  >
+                    {subj.name}
+                  </Text>
+                  {isSelected ? (
+                    <View style={styles.subjectCheckCircle}>
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <View style={styles.subjectUncheckedCircle} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Seniority Preference */}
+          <View style={[styles.sectionHeaderRow, { marginTop: 14 }]}>
+            <Text style={styles.label}>Ưu tiên gia sư</Text>
+            <Text style={styles.helperHint}>Tùy chọn</Text>
+          </View>
+          <View style={styles.seniorityRow}>
+            {SENIORITY_OPTIONS.map((opt) => {
+              const isSelected = seniorityPreference === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  testID={`seniority-chip-${opt.key}`}
+                  style={[styles.seniorityChip, isSelected && styles.seniorityChipActive]}
+                  onPress={() => setSeniorityPreference(opt.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.seniorityChipText, isSelected && styles.seniorityChipTextActive]}>
+                    {opt.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* SECTION 2: ĐẶC ĐIỂM BÉ & YÊU CẦU CỤ THỂ */}
@@ -431,6 +670,16 @@ export default function TutoringForm() {
               </View>
             </View>
           </View>
+
+          {/* Time Validation Warning */}
+          {!isValidTime && (
+            <View style={styles.timeWarningBox} testID="time-warning-box">
+              <Ionicons name="alert-circle" size={15} color="#EF4444" style={{ marginRight: 6 }} />
+              <Text style={styles.timeWarningText} testID="time-warning-text">
+                Giờ kết thúc phải sau giờ bắt đầu ít nhất 30 phút.
+              </Text>
+            </View>
+          )}
 
           {/* Quick Duration Presets */}
           <View style={styles.presetsRow}>
@@ -538,11 +787,26 @@ export default function TutoringForm() {
       {/* 3. STICKY BOTTOM ACTION DOCK */}
       <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dockLeft}>
-          <Text style={styles.dockSub}>Tạm tính 1 ca (2h):</Text>
-          <Text style={styles.dockPrice}>
-            ~{estimatedPerSession.toLocaleString('vi-VN')}
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#64748B' }}>đ</Text>
-          </Text>
+          {isValidTime ? (
+            <>
+              <Text style={styles.dockSub}>
+                {dates.length > 0
+                  ? `Tạm tính (${dates.length} buổi · ${sessionDurationHours}h/ca):`
+                  : `Tạm tính 1 ca (${sessionDurationHours}h):`}
+              </Text>
+              <Text style={styles.dockPrice} testID="dock-price-text">
+                ~{displayCost.toLocaleString('vi-VN')}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#64748B' }}>đ</Text>
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.dockSub}>Tạm tính:</Text>
+              <Text style={[styles.dockPrice, { color: '#EF4444' }]} testID="dock-price-text">
+                -- đ
+              </Text>
+            </>
+          )}
           <View style={styles.guaranteePill}>
             <View style={styles.guaranteeDot} />
             <Text style={styles.guaranteeText}>Bảo vệ hoàn tiền 100%</Text>
@@ -550,9 +814,10 @@ export default function TutoringForm() {
         </View>
 
         <TouchableOpacity
-          style={[styles.dockCtaBtn, submitting && { opacity: 0.6 }]}
+          testID="submit-job-btn"
+          style={[styles.dockCtaBtn, (submitting || !isValidTime) && { opacity: 0.4 }]}
           onPress={submit}
-          disabled={submitting}
+          disabled={submitting || !isValidTime}
           activeOpacity={0.88}
         >
           <View style={styles.ctaTextWrap}>
@@ -1094,5 +1359,194 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     color: '#FED7AA',
     marginTop: 1,
+  },
+
+  // Time Validation Warning
+  timeWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+  },
+  timeWarningText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+
+  // Age Stepper & Tiers
+  ageDisplayBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  ageLabelSub: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  ageValueText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  tierBadge: {
+    backgroundColor: '#FFF4ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  tierBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  ageControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ageStepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.small,
+  },
+  ageStepperBtnDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    opacity: 0.4,
+  },
+  ageStepperBtnText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  quickTierRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  quickTierPill: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickTierPillActive: {
+    backgroundColor: '#FFF4ED',
+    borderColor: '#FED7AA',
+  },
+  quickTierPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  quickTierPillTextActive: {
+    color: '#F26522',
+    fontWeight: '800',
+  },
+
+  // Multi-Select Subject Grid
+  subjectGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  subjectGridCard: {
+    width: '48.5%',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subjectGridCardActive: {
+    backgroundColor: '#FFF4ED',
+    borderColor: '#F26522',
+  },
+  subjectGridCardText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    flex: 1,
+  },
+  subjectGridCardTextActive: {
+    color: '#F26522',
+    fontWeight: '800',
+  },
+  subjectCheckCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F26522',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  subjectUncheckedCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    marginLeft: 4,
+  },
+
+  // Seniority Preferences
+  seniorityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  seniorityChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  seniorityChipActive: {
+    backgroundColor: '#FFF4ED',
+    borderColor: '#FED7AA',
+  },
+  seniorityChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  seniorityChipTextActive: {
+    color: '#EA580C',
+    fontWeight: '800',
   },
 });

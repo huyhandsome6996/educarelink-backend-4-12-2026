@@ -146,7 +146,7 @@ export default function ChildcareForm() {
         time_to: timeTo,
         latitude: location.latitude,
         longitude: location.longitude,
-        location_note: locationNote,
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         hourly_rate_vnd: Number(rate),
       });
       createdJobId = job?.id;
@@ -175,7 +175,7 @@ export default function ChildcareForm() {
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'heart',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
-        location_note: locationNote || 'Cầu Giấy, Hà Nội',
+        location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
       };
 
       // Giữ modal chạy tối thiểu 1.2s để tạo cảm giác quét radar chân thực
@@ -209,7 +209,7 @@ export default function ChildcareForm() {
           category_icon: 'heart',
           hourly_rate_vnd: Number(rate),
           schedule: fallbackSchedule,
-          location_note: locationNote || 'Cầu Giấy, Hà Nội',
+          location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
         };
         setTimeout(() => {
           setSearchModalVisible(false);
