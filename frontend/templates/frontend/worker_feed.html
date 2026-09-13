@@ -153,6 +153,20 @@
         <div class="max-w-6xl mx-auto px-4 md:px-8 py-6 pb-8">
 
             <!-- ===== 1. ĐƠN VIỆC MỚI ĐƯỢC GIAO (CẦN CAM KẾT) ===== -->
+            <!-- Task C (2026-09-14): banner onboarding khi thiếu skill / lịch rảnh -->
+            <div id="onboarding-banner" class="mb-8 hidden">
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
+                    <span class="material-symbols-outlined text-amber-500 text-2xl">warning</span>
+                    <div class="flex-1">
+                        <p class="font-manrope font-bold text-sm text-amber-700">Hoàn thiện hồ sơ để nhận việc</p>
+                        <p class="text-sm text-amber-700/80 mt-1">Chưa khai kỹ năng/lịch rảnh thì hệ thống không thể giới thiệu việc.</p>
+                        <a href="/worker/availability/" class="inline-flex items-center gap-1 mt-3 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primaryDark transition-all">
+                            Khai ngay <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <section id="offers-section" class="mb-8 hidden">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="font-manrope font-bold text-lg text-textPrimary flex items-center gap-2">
@@ -721,6 +735,19 @@
                 showToast('Không thể tải thông tin. Vui lòng thử lại.', 'error');
             }
         }
+
+        // Task C (2026-09-14): onboarding gate — thiếu skill/lịch rảnh → banner
+        (async function checkOnboardingStatus() {
+            try {
+                const resp = await apiFetch(API_BASE + '/matching/carepartners/me/onboarding-status/');
+                if (resp && resp.ok) {
+                    const status = await resp.json();
+                    if (status && status.ready_for_matching === false) {
+                        document.getElementById('onboarding-banner').classList.remove('hidden');
+                    }
+                }
+            } catch (e) { console.warn('onboarding-status check failed:', e); }
+        })();
 
         // Auto-refresh nhẹ mỗi 60s để bắt đơn mời mới (khi tab đang mở)
         setInterval(() => {
