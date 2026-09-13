@@ -40,9 +40,11 @@ from .api.admin_manage import (
     StateLogAdminAPIView,
 )
 from .api.credits import CreditBalanceAPIView
+from .api.device_token import DeviceTokenUpsertAPIView
 from .api.geocode import GeocodeReverseAPIView, GeocodeSearchAPIView
 from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
 from .api.notifications import NotificationListAPIView, UnreadCountAPIView
+from .api.onboarding import OnboardingStatusAPIView
 from .api.trust import TrustAPIView
 
 urlpatterns = [
@@ -83,6 +85,14 @@ urlpatterns = [
          AvailabilityBulkAPIView.as_view(), name='matching-availability-bulk'),
     path('carepartners/me/availability/<uuid:pk>/',
          AvailabilityDetailAPIView.as_view(), name='matching-availability-detail'),
+
+    # ── Task C — trạng thái onboarding (skill + lịch rảnh) ──
+    path('carepartners/me/onboarding-status/',
+         OnboardingStatusAPIView.as_view(), name='matching-onboarding-status'),
+
+    # ── Task F — đăng ký token push đa thiết bị ──
+    path('device-token/', DeviceTokenUpsertAPIView.as_view(),
+         name='matching-device-token'),
 
     # ── Ngày bận (Step 9.2) ──
     path('carepartners/me/blackouts/',

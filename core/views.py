@@ -351,12 +351,23 @@ class LoginAPIView(APIView):
         
         user = authenticate(username=username, password=password)
         if user:
-            # Carepartner phải được admin duyệt mới đăng nhập được
+            # Task C (2026-09-14): CarePartner pending ĐƯỢC login hạn chế —
+            # nhận JWT kèm status=pending_approval + permissions=['onboarding']
+            # để hoàn thiện hồ sơ (skill + lịch rảnh + CCCD). Matching /
+            # bookings / feed việc trả 403 (WorkerMustBeApproved) cho đến khi
+            # admin duyệt. Trước đây 403 hoàn toàn → không thể tự hoàn thiện
+            # hồ sơ → ngày duyệt vẫn bị skill-gate (vòng luẩn quẩn).
             if user.role == 'worker' and not user.is_approved:
                 return Response({
-                    "error": "Tài khoản của bạn đang chờ Admin xét duyệt. Vui lòng đợi.",
-                    "status": "pending_approval"
-                }, status=status.HTTP_403_FORBIDDEN)
+                    "message": "Tài khoản đang chờ duyệt — bạn có thể hoàn thiện "
+                               "hồ sơ (kỹ năng + lịch rảnh) trong khi chờ.",
+                    "status": "pending_approval",
+                    "permissions": ["onboarding"],
+                    "tokens": get_tokens_for_user(user),
+                    "user_id": user.id, "username": user.username,
+                    "role": user.role, "is_staff": user.is_staff,
+                    "is_approved": False,
+                }, status=status.HTTP_200_OK)
             return Response({
                 "message": "Đăng nhập thành công!",
                 "tokens": get_tokens_for_user(user),
@@ -404,6 +415,19 @@ class UserProfileAPIView(APIView):
             if password:
                 user.set_password(password)
                 user.save()
+            # Task F (2026-09-14): expo_push_token đổi → upsert DeviceToken
+            # (chuẩn hóa đa thiết bị — trước đây chỉ fallback User field nên
+            # DeviceToken không bao giờ được ghi).
+            new_token = data.get('expo_push_token')
+            if new_token:
+                try:
+                    from matching.models import DeviceToken
+                    DeviceToken.objects.update_or_create(
+                        user=user, token=str(new_token)[:255],
+                        defaults=dict(platform='expo', is_active=True))
+                except Exception:
+                    logger.exception('[Profile] Upsert DeviceToken lỗi user %s',
+                                     user.username)
             return Response(UserSerializer(user).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

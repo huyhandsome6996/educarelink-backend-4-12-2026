@@ -355,3 +355,129 @@ def seed_default_prompt_template():
             model='gemini-2.5-flash-lite', temperature=0.1, max_output_tokens=1200,
             is_active=True),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Task B (2026-09-14) — GEMINI RE-RANK top 20 → top 8
+# (spec 2.2.4 / 11.2 task 8)
+# ═══════════════════════════════════════════════════════════════════
+
+RERANK_PROMPT_KEY = 'candidate_rerank'
+RERANK_PROMPT_VERSION = 'v1'
+RERANK_TIMEOUT_S = 2.5  # Ngân sách cứng — quá hạn giữ thứ tự rule
+
+
+def rerank_candidates(job, candidates):
+    """Sắp lại thứ tự ứng viên bằng Gemini ngữ nghĩa (CHỈ REORDER, KHÔNG drop).
+
+    Input: job + list candidate dict do rule-engine chọn (tối đa ~20).
+    Output: (ordered_list, why_map) — ordered_list là HOÁN VỊ của input (đủ
+    số lượng, không mất ai), why_map: {carepartner_id: 'why_recommended_vi'}.
+
+    Bảo đảm tuyệt đối:
+      - KHÔNG AI bị drop khỏi pool (nếu Gemini trả thiếu → phần còn lại ghép
+        theo thứ tự rule cũ ở cuối).
+      - KHÔNG lộ ELO / hidden_elo cho AI (chỉ dữ liệu công khai).
+      - Timeout 2.5s — quá hạn / lỗi / không có key → giữ thứ tự rule.
+      - Matching KHÔNG bao giờ chết vì AI (mọi exception nuốt + log).
+      - Mỗi lần gọi AI ghi 1 row AiCallLog (prompt_key='candidate_rerank').
+    """
+    ids = [c['carepartner_id'] for c in candidates]
+    id_set = set(ids)
+    client = get_pooled_gemini_client()
+    if client is None:
+        return None, {}
+
+    payload = {
+        'job': {
+            'job_type': job.job_type,
+            'title': job.title,
+            'hourly_rate_vnd': job.hourly_rate_vnd,
+            'required_skills': list((getattr(job, 'ai_parse_result', None) or {})
+                                    .get('required_skills') or []),
+        },
+        # ẨN ELO — chỉ dữ liệu công khai PH đang thấy (spec 2.2.4)
+        'candidates': [{
+            'id': c['carepartner_id'],
+            'name': c.get('display_name') or '',
+            'school': c.get('school') or '',
+            'major': c.get('major') or '',
+            'skills': c.get('top_skills') or [],
+            'rating': c.get('rating'),
+            'completed_jobs': c.get('completed_jobs'),
+            'distance_km': c.get('distance_km'),
+            'availability_fit': c.get('availability_fit') or '',
+            'latest_review': (c.get('latest_review') or '')[:120],
+        } for c in candidates],
+    }
+    system = (
+        'Bạn là trợ lý xếp hạng ứng viên cho nền tảng EduCareLink (Việt Nam). '
+        'Dựa trên nhu cầu công việc, hãy xếp lại thứ tự các ứng viên: người phù hợp '
+        'nhất (kỹ năng/chuyên ngành đúng môn, kinh nghiệm, đánh giá tốt, khoảng cách '
+        'hợp lý) đứng trước. Trả về CHÍNH XÁC MỘT JSON object (không markdown, không '
+        'giải thích) dạng: {"order": ["<id>", ...], "why": {"<id>": "<1 câu tiếng Việt '
+        'tại sao ứng viên này phù hợp>"}}. BẮT BUỘC: order phải chứa ĐỦ MỌI id của '
+        'danh sách đầu vào, không thêm id lạ, không bỏ id nào. Mỗi why là 1 câu '
+        'tiếng Việt ngắn (tối đa 25 từ).'
+    )
+
+    started = _time.time()
+    user_content = json.dumps(payload, ensure_ascii=False, default=str)
+    tokens_in = len(user_content)
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _call():
+            return generate_content_with_fallback(
+                client, contents=[user_content], system_instruction=system,
+                temperature=0.1, max_output_tokens=1500, disable_thinking=True)
+
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_call)
+        try:
+            response, _model_used = future.result(timeout=RERANK_TIMEOUT_S)
+        except Exception:
+            future.cancel()
+            executor.shutdown(wait=False)
+            _log_rerank_call(tokens_in, 0, int((_time.time() - started) * 1000), 'timeout')
+            return None, {}
+        executor.shutdown(wait=False)
+    except Exception:
+        _log_rerank_call(tokens_in, 0, int((_time.time() - started) * 1000), 'error')
+        return None, {}
+
+    latency = int((_time.time() - started) * 1000)
+    try:
+        text = response.text
+        raw = json.loads(_strip_json_fence(text))
+        order = [str(x) for x in (raw.get('order') or []) if str(x) in id_set]
+        why_raw = raw.get('why') or {}
+        why_map = {}
+        if isinstance(why_raw, dict):
+            for k, v in why_raw.items():
+                k = str(k)
+                if k in id_set and isinstance(v, str) and v.strip():
+                    why_map[k] = v.strip()[:200]
+        # ÉP HOÁN VỊ: id Gemini trả trước, phần còn lại ghép theo thứ tự rule
+        # → KHÔNG BAO GIỜ drop người đã vào top 20 rule-based.
+        seen = set(order)
+        full_order = order + [i for i in ids if i not in seen]
+        by_id = {c['carepartner_id']: c for c in candidates}
+        ordered = [by_id[i] for i in full_order]
+        _log_rerank_call(tokens_in, len(text or ''), latency, 'ok')
+        return ordered, why_map
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        _log_rerank_call(tokens_in, 0, latency, 'error')
+        return None, {}
+
+
+def _log_rerank_call(tokens_in, tokens_out, latency_ms, status):
+    """AiCallLog cho re-rank — không có PromptTemplate DB, ghi trực tiếp."""
+    try:
+        AiCallLog.objects.create(
+            prompt_key=RERANK_PROMPT_KEY, prompt_version=RERANK_PROMPT_VERSION,
+            model=get_preferred_gemini_model(),
+            tokens_in=tokens_in or 0, tokens_out=tokens_out or 0,
+            latency_ms=latency_ms or 0, status=status)
+    except Exception:
+        logger.exception('[Gemini] Ghi AiCallLog (rerank) lỗi')

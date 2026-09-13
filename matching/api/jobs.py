@@ -338,6 +338,17 @@ class CandidatesAPIView(APIView):
             job.total_matched = result['total_matched']
             job.save(update_fields=['total_matched'])
 
+        # Task A (2026-09-14): soft lock 5' (SOFT_LOCK_TTL_SECONDS) cho MỖI CP
+        # vừa được đề xuất — trong lúc phụ huynh đang xem danh sách, phụ huynh
+        # KHÁC không hard-select được cùng CP cùng khung (SlotConflictError
+        # 409 khi select). Soft lock KHÔNG thay hard lock của select_carepartner:
+        # chính job này vẫn xem lại được (exclude_job trong available_slots),
+        # và khi parent chọn CP thì hard lock thay soft lock như bình thường.
+        try:
+            _soft_lock_candidates(job, result['candidates'])
+        except Exception:
+            logger.exception('[Candidates] Soft lock lỗi (không chặn danh sách) job %s', job.pk)
+
         # Nhãn match_level tiếng Việt cho UI (Step 3)
         from ..constants import MATCH_LEVEL_LABELS_VI
         for cand in result['candidates']:
@@ -345,3 +356,22 @@ class CandidatesAPIView(APIView):
         result['match_level_labels_vi'] = MATCH_LEVEL_LABELS_VI
         result['job'] = JobPostSerializer(job).data
         return Response(result)
+
+
+def _soft_lock_candidates(job, candidates):
+    """Task A — giữ chỗ mềm TTL 300s cho các CP đang được PH xem danh sách.
+
+    Mọi lỗi bị nuốt: soft lock là tối ưu cạnh tranh, không được phá API.
+    """
+    from django.contrib.auth import get_user_model
+    from ..services.lock_service import LockService
+
+    if not candidates:
+        return
+    slots = [(s.date, s.time_from, s.time_to) for s in job.slots.all()]
+    if not slots:
+        return
+    User = get_user_model()
+    ids = [c['carepartner_id'] for c in candidates]
+    for cp in User.objects.filter(pk__in=ids):
+        LockService.soft_lock(cp, slots, job=job)

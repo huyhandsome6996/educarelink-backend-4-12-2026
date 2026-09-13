@@ -1,14 +1,19 @@
 """
-tracking/tests_gps_heartbeat.py — Test GPS heartbeat (Defect 4 — 2026-09-13).
+tracking/tests_gps_heartbeat.py — Test GPS heartbeat (Defect 4 — 2026-09-13,
+Task E — 2026-09-14: consent matching-GPS TÁCH khỏi live-tracking).
 
-Kiểm thử theo yêu cầu IM brief (mục VERIFICATION & ACCEPTANCE):
-- POST /api/tracking/gps-heartbeat/ khi CHƯA có LocationConsent → trả 403,
-  KHÔNG ghi current_latitude/current_longitude.
-- Đã có consent 'granted' → 200 + ghi tọa độ + last_gps_updated_at.
+Kiểm thử:
+- POST /api/tracking/gps-heartbeat/ khi KHÔNG có consent nào → 200 với
+  gps_sync='no_matching_consent', KHÔNG ghi tọa độ (client dừng gửi, matching
+  fallback địa chỉ hồ sơ — không còn 403 im lặng rồi quên GPS mãi).
+- Consent live-tracking per-task (LocationConsent 'granted') cũ vẫn được
+  chấp nhận → 200 + ghi tọa độ.
+- Consent matching (User.matching_gps_consent=True) CHỈ đủ để heartbeat ghi
+  dù CHƯA có consent trong ca → Task E "consent matching cho phép ghi".
 - Throttle: gọi lại trong < GPS_HEARTBEAT_MIN_INTERVAL_SECONDS (60s) →
   gps_sync='throttled', không cập nhật lại tọa độ.
 - Parent gọi → 403 (chỉ CarePartner sync GPS).
-- Consent bị 'revoked' sau khi từng grant → 403 lại.
+- GET/POST /api/tracking/matching-gps-consent/ — toggle consent matching.
 - Heartbeat trong ca (POST /api/tracking/heartbeat/) có kèm tọa độ →
   sync thêm GPS real-time vào User.
 
@@ -58,26 +63,57 @@ class GpsHeartbeatEndpointTestCase(TestCase):
             granted_at=timezone.now())
         return task
 
-    # ── 403 khi CHƯA có consent — BẮT BUỘC không ghi tọa độ ──
-    def test_no_consent_returns_403_and_does_not_write(self):
+    # ── KHÔNG consent nào → 200 no_matching_consent, KHÔNG ghi tọa độ ──
+    # (Task E: không còn 403 im lặng — client nhận cờ để dừng gửi + hiện
+    # prompt consent 1 lần; matching fallback địa chỉ hồ sơ)
+    def test_no_consent_returns_no_matching_consent_and_does_not_write(self):
         self.client.force_authenticate(self.worker)
         resp = self.client.post(self.url, self.payload, format='json')
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(resp.data.get('code'), 'no_location_consent')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data.get('gps_sync'), 'no_matching_consent')
+        self.assertEqual(resp.data.get('code'), 'no_matching_consent')
         self.worker.refresh_from_db()
         self.assertIsNone(self.worker.current_latitude)
         self.assertIsNone(self.worker.current_longitude)
         self.assertIsNone(self.worker.last_gps_updated_at)
 
-    def test_revoked_consent_returns_403(self):
+    def test_revoked_consent_without_matching_flag_does_not_write(self):
         self._grant_consent()
-        # revoke consent cuối
+        # revoke consent cuối + chưa bật matching flag → không ghi
         LocationConsent.objects.filter(worker=self.worker).update(consent='revoked')
         self.client.force_authenticate(self.worker)
         resp = self.client.post(self.url, self.payload, format='json')
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data.get('gps_sync'), 'no_matching_consent')
         self.worker.refresh_from_db()
         self.assertIsNone(self.worker.current_latitude)
+
+    def test_matching_consent_flag_allows_heartbeat_write(self):
+        """Task E: consent matching cho phép ghi dù chưa có in-job tracking consent."""
+        self.worker.matching_gps_consent = True
+        self.worker.save(update_fields=['matching_gps_consent'])
+        self.client.force_authenticate(self.worker)
+        resp = self.client.post(self.url, self.payload, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['gps_sync'], 'updated')
+        self.worker.refresh_from_db()
+        self.assertAlmostEqual(self.worker.current_latitude, 21.0285)
+
+    def test_matching_gps_consent_endpoint_toggle(self):
+        """GET/POST /api/tracking/matching-gps-consent/ — bật/tắt consent matching."""
+        self.client.force_authenticate(self.worker)
+        r0 = self.client.get('/api/tracking/matching-gps-consent/')
+        self.assertEqual(r0.status_code, 200)
+        self.assertFalse(r0.data['matching_gps_consent'])
+        r1 = self.client.post('/api/tracking/matching-gps-consent/',
+                              {'granted': True}, format='json')
+        self.assertEqual(r1.status_code, 200)
+        self.assertTrue(r1.data['matching_gps_consent'])
+        self.worker.refresh_from_db()
+        self.assertTrue(self.worker.matching_gps_consent)
+        # Bật consent matching xong → heartbeat ghi được ngay
+        r2 = self.client.post(self.url, self.payload, format='json')
+        self.assertEqual(r2.data['gps_sync'], 'updated')
 
     def test_parent_forbidden(self):
         self.client.force_authenticate(self.parent)

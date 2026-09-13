@@ -68,7 +68,7 @@ class LockService:
         """Rule 2: khóa cứng ALL slots — all-or-nothing.
 
         Caller PHẢI bọc trong transaction.atomic(). Nếu bất kỳ slot nào trùng
-        (hard lock của chính CP / lock cùng job / soft lock người khác /
+        (hard lock của chính CP / lock cùng job / soft lock cùng CP ở job khác /
         booking đang chạy) → SlotConflictError → transaction rollback →
         KHÔNG lock 1 phần. Booking truyền vào được LOẠI TRỪ khỏi conflict
         check (chính nó).
@@ -152,11 +152,18 @@ class LockService:
                                                        lock.time_from, lock.time_to):
                 conflicts.append(lock)
 
-        # 2. Soft lock CÒN HẠN của NGƯỜI KHÁC
+        # 2. Soft lock CÒN HẠN của CHÍNH CP này cho JOB KHÁC (Task A —
+        #    2026-09-14: parent khác đang giữ CP trong 5 phút khi xem danh
+        #    sách → 2 phụ huynh không cùng giữ 1 CP). Soft lock của chính
+        #    job đang xét KHÔNG chặn (parent xem lại danh sách / chọn CP
+        #    vừa xem) — hard_lock sẽ thay soft lock thành hard lock.
         for lock in SlotLock.objects.filter(
                 date=date, lock_type=SlotLock.LockType.SOFT,
-                expires_at__gt=now).exclude(carepartner=carepartner):
-            if cls._overlaps(time_from, time_to, lock.time_from, lock.time_to):
+                carepartner=carepartner, expires_at__gt=now):
+            if job_id is not None and lock.job_id == job_id:
+                continue
+            if cls._overlaps(time_from, time_to,
+                             lock.time_from, lock.time_to):
                 conflicts.append(lock)
 
         # 3. Booking đang chiếm slot (trừ chính booking)
@@ -285,10 +292,15 @@ def _subtract_intervals(base, cuts):
     return merged
 
 
-def available_slots(carepartner, date, use_cache=True):
+def available_slots(carepartner, date, use_cache=True, exclude_job=None):
     """available_slots(cp, date) = weekly_windows MINUS blackouts MINUS
     booked_slots(awaiting_commitment|committed|reschedule_requested|in_progress)
     MINUS slot_locks (soft còn hạn + hard).                         (Step 9.3)
+
+    exclude_job (Task A 2026-09-14): bỏ qua soft lock giữ cho CHÍNH job này
+    (parent đang xem lại danh sách ứng viên — soft lock do lần xem trước tạo)
+    để CP không tự biến mất khỏi pool. Soft lock của job KHÁC vẫn chặn bình
+    thường. Khi exclude_job khác None → BYPASS cache (kết quả phụ thuộc job).
 
     Trong transaction (booking) PHẢI bypass cache — tự nhận diện qua
     connection.in_atomic_block.
@@ -300,7 +312,7 @@ def available_slots(carepartner, date, use_cache=True):
 
     cp_id = carepartner.pk
     in_atomic = connection.in_atomic_block
-    use_cache = use_cache and not in_atomic
+    use_cache = use_cache and not in_atomic and exclude_job is None
 
     if use_cache:
         cached = cache.get(_cache_key(cp_id, date))
@@ -328,11 +340,15 @@ def available_slots(carepartner, date, use_cache=True):
 
     # 4. SlotLock (soft còn hạn + hard)
     now = timezone.now()
+    exclude_job_id = exclude_job.pk if exclude_job is not None else None
     lock_cuts = []
     for lock in SlotLock.objects.filter(carepartner=carepartner, date=date):
         if lock.lock_type == SlotLock.LockType.HARD:
             lock_cuts.append((lock.time_from, lock.time_to))
         elif lock.expires_at and lock.expires_at > now:
+            # Task A: soft lock giữ cho chính job đang xét không tự chặn mình
+            if exclude_job_id is not None and lock.job_id == exclude_job_id:
+                continue
             lock_cuts.append((lock.time_from, lock.time_to))
 
     slots = _subtract_intervals(base, blackout_cuts + busy_cuts + lock_cuts)
@@ -342,16 +358,17 @@ def available_slots(carepartner, date, use_cache=True):
     return slots
 
 
-def covers_all_slots(carepartner, required_slots):
+def covers_all_slots(carepartner, required_slots, exclude_job=None):
     """Hard filter matching (Step 2.2.1 #2): CP phải cover ĐỦ MỌI slot.
 
     required_slots: list (date, time_from, time_to). Trả (ok: bool, missing: list).
+    exclude_job: xem available_slots — soft lock của chính job này không chặn.
     """
     missing = []
     cache_by_date = {}
     for date, time_from, time_to in required_slots:
         if date not in cache_by_date:
-            cache_by_date[date] = available_slots(carepartner, date)
+            cache_by_date[date] = available_slots(carepartner, date, exclude_job=exclude_job)
         covered = any(tf <= time_from and time_to <= tt
                       for tf, tt in cache_by_date[date])
         if not covered:

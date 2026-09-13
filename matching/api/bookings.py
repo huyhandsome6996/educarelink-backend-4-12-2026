@@ -21,6 +21,8 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import permissions, status
+
+from .permissions import WorkerMustBeApproved
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -274,7 +276,8 @@ class SelectCarePartnerAPIView(APIView):
 
 
 class BookingListAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # Task C: worker pending (chưa duyệt) bị chặn feed việc/đơn (403)
+    permission_classes = [permissions.IsAuthenticated, WorkerMustBeApproved]
 
     def get(self, request):
         role = request.query_params.get('role')
@@ -298,7 +301,8 @@ class BookingListAPIView(APIView):
 
 
 class BookingDetailAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # Task C: worker pending (chưa duyệt) bị chặn booking (403)
+    permission_classes = [permissions.IsAuthenticated, WorkerMustBeApproved]
 
     def get(self, request, pk):
         booking = _get_booking(pk)

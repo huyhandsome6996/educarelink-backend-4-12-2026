@@ -55,6 +55,18 @@ def run_replacement_for_job(job, exclude_carepartner=None):
     ]
     excluded.update(over_proposed)
 
+    # Task A (2026-09-14): CP đã TỪ CHỐI trong cửa sổ / HẾT HẠN không phản
+    # hồi / TỰ HỦY đơn của job này KHÔNG được đề xuất lại — replacement đề
+    # xuất NGƯỜI KHÁC (Step 8.5: declined_in_window + expired_no_response
+    # mở khóa rồi trigger_replacement cho người kế tiếp).
+    from ..constants import BookingStatus
+    excluded.update(Booking.objects.filter(
+        job=job,
+        status__in=(BookingStatus.DECLINED_IN_WINDOW,
+                    BookingStatus.EXPIRED_NO_RESPONSE,
+                    BookingStatus.CANCELLED_BY_CAREPARTNER),
+    ).values_list('carepartner_id', flat=True))
+
     attempt_no = ReplacementAttempt.objects.filter(job=job).count() + 1
     result = matching_service.find_candidates(
         job, exclude_carepartners=excluded)

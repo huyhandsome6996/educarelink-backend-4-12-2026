@@ -20,6 +20,7 @@ from django.conf import settings
 from django.db.models import Count, Q
 
 from core.models import User, Task, TaskApplication, WorkerAvailability
+from matching.models import CarePartnerBlackout  # Task D — trừ ngày bận legacy
 
 
 # ISO weekday: Thứ Hai=1 … Chủ Nhật=7
@@ -123,6 +124,22 @@ def find_smart_matches(task, radius_m=None):
         latitude__isnull=False,
         longitude__isnull=False,
     )
+
+    # 2b. Task D (2026-09-14): trừ CarePartnerBlackout (ngày bận đột xuất)
+    # — legacy matcher cũng phải tôn trọng lịch nghỉ đúng NGÀY/GIỜ như Flow 1.
+    # Blackout cả ngày (time_from/time_to null) loại worker khỏi ngày đó;
+    # blackout khung giờ loại khi che phủ giờ bắt đầu task.
+    task_date = task_local.date()
+    blackout_worker_ids = set()
+    for b in CarePartnerBlackout.objects.filter(date=task_date):
+        if b.carepartner_id not in avail_map:
+            continue
+        if b.time_from is None or b.time_to is None:
+            blackout_worker_ids.add(b.carepartner_id)  # bận CẢ NGÀY
+        elif b.time_from <= task_time < b.time_to:
+            blackout_worker_ids.add(b.carepartner_id)
+    if blackout_worker_ids:
+        workers = workers.exclude(id__in=blackout_worker_ids)
 
     if not workers.exists():
         return {

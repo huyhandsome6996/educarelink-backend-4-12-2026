@@ -144,6 +144,9 @@ class Command(BaseCommand):
              '{result}. {admin_note}'),
             ('blackout_paused', 'important', 'carepartner', 'Tạm dừng đề xuất',
              'Bạn đã đánh dấu không rảnh 14 ngày liên tiếp. Hệ thống tạm dừng đề xuất đơn.'),
+            # Task C (2026-09-14) — cold-start sau khi admin duyệt
+            ('profile_approved', 'important', 'carepartner', 'Hồ sơ đã được duyệt',
+             'Hồ sơ đã duyệt — khai lịch rảnh và kỹ năng để nhận việc ngay.'),
         ]
         for code, klass, audience, title, body in tpls:
             NotificationTemplate.objects.update_or_create(
