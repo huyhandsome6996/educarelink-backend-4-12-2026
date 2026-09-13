@@ -3076,9 +3076,9 @@ class AdminFeedbackStatsAPIView(APIView):
                             'by_child_age': [], 'by_budget': [], 'by_current_solution': [], 'by_pain_points': [],
                             'by_busy_slots': [], 'by_trust_factors': [], 'by_cp_type': [], 'by_experience': [],
                             'by_transport': [], 'by_rate': [], 'by_slots': [], 'by_concerns': [],
-                            'by_motivations': [], 'recent': []},
+                            'by_motivations': [], 'recent': [], 'all': []},
                 'signups': {'total': 0, 'trial_count': 0, 'consult_count': 0, 'by_type': [], 'by_role': [],
-                            'by_date': [], 'by_service': [], 'by_city': [], 'by_time_slot': []},
+                            'by_date': [], 'by_service': [], 'by_city': [], 'by_time_slot': [], 'all': []},
                 '_error': str(e),
             }, status=200)
 
@@ -3328,16 +3328,102 @@ class AdminFeedbackStatsAPIView(APIView):
                         parts.append(', '.join(lbls.get(v, str(v)) for v in vals))
             return parts
 
+        # ============================================================
+        # BẢN ĐỒ CÂU HỎI — khớp CHÍNH XÁC form khảo sát 2026 trên /landing/
+        # Dùng cho: chi tiết từng bản ghi (bấm vào là thấy đã chọn gì)
+        # và bảng xem trước dữ liệu trước khi xuất Excel.
+        # ============================================================
+        PH_QUESTIONS = [
+            # (key trong role_answers, text câu hỏi trên form, single/multi)
+            ('services', 'Dịch vụ bạn đang có nhu cầu tìm người hỗ trợ cho con?', 'multi'),
+            ('child_age', 'Bé nhà bạn hiện đang ở độ tuổi nào?', 'single'),
+            ('current_solution', 'Hiện gia đình bạn đang giải quyết việc này bằng cách nào?', 'single'),
+            ('pain_points', 'Điều gì khiến gia đình bạn khó khăn nhất khi tìm người hỗ trợ cho con?', 'multi'),
+            ('busy_slots', 'Khung thời gian gia đình bạn cần người hỗ trợ nhất?', 'multi'),
+            ('trust_factors', 'Khi tin tưởng giao con cho CarePartner, điều gì quan trọng nhất với bạn?', 'multi'),
+            ('budget_range', 'Mức chi phí bạn sẵn sàng chi trả cho dịch vụ đồng hành cùng con?', 'single'),
+            ('necessity', 'Mức độ cần thiết của giải pháp EduCareLink với gia đình bạn lúc này?', 'single'),
+        ]
+        CP_QUESTIONS = [
+            ('services', 'Bạn mong muốn nhận những công việc nào trên nền tảng?', 'multi'),
+            ('carepartner_type', 'Bạn hiện đang là đối tượng nào?', 'single'),
+            ('experience', 'Kinh nghiệm trông trẻ / dạy kèm thực tế của bạn?', 'single'),
+            ('transport_method', 'Phương tiện di chuyển chính của bạn khi nhận việc là gì?', 'single'),
+            ('available_slots', 'Khung giờ bạn có thể nhận ca trong tuần?', 'multi'),
+            ('expected_rate', 'Mức thù lao bạn kỳ vọng nhận được mỗi giờ làm việc?', 'single'),
+            ('concerns', 'Điều gì khiến bạn còn e ngại khi nhận việc qua nền tảng?', 'multi'),
+            ('motivations', 'Điều gì bạn kỳ vọng nhất khi làm việc qua EduCareLink?', 'multi'),
+        ]
+        LABEL_MAPS = {
+            'services': SERVICE_LABELS, 'interests': SERVICE_LABELS,
+            'child_age': CHILD_AGE_LABELS, 'budget_range': BUDGET_LABELS,
+            'necessity': NECESSITY_LABELS, 'current_solution': CURRENT_SOLUTION_LABELS,
+            'pain_points': PAIN_POINT_LABELS, 'busy_slots': SLOT_LABELS,
+            'trust_factors': TRUST_FACTOR_LABELS,
+            'carepartner_type': CP_TYPE_LABELS, 'experience': EXPERIENCE_LABELS,
+            'transport_method': TRANSPORT_LABELS, 'expected_rate': RATE_LABELS,
+            'available_slots': SLOT_LABELS, 'concerns': CONCERN_LABELS,
+            'motivations': MOTIVATION_LABELS,
+        }
+
+        def _translate_val(key, v):
+            lbls = LABEL_MAPS.get(key, {})
+            return lbls.get(v, str(v))
+
+        def _survey_detail_fields(role, ra):
+            """Trả về danh sách {question, answer} khớp từng câu trên form /landing/."""
+            if not isinstance(ra, dict):
+                return []
+            fields = []
+            for key, qtext, qtype in (CP_QUESTIONS if role == 'carepartner' else PH_QUESTIONS):
+                src_key = key
+                if key == 'services' and not ra.get('services') and ra.get('interests'):
+                    src_key = 'interests'  # dữ liệu cũ
+                val = ra.get(src_key)
+                if val in (None, '', []):
+                    continue
+                if isinstance(val, list):
+                    answer = ', '.join(_translate_val(src_key, str(v)) for v in val)
+                else:
+                    answer = _translate_val(src_key, val)
+                fields.append({'question': qtext, 'answer': answer})
+            return fields
+
         recent_surveys = []
-        for s in surveys[:20]:
+        for s in surveys:
             recent_surveys.append({
                 'id': s.id,
                 'role': s.role,
                 'answers': _fmt_role_answers(s.role, s.role_answers),
+                'fields': _survey_detail_fields(s.role, s.role_answers),
+                'services': ', '.join(
+                    _translate_val('services', str(v))
+                    for v in (s.role_answers.get('services', s.role_answers.get('interests', [])) or [])
+                    if isinstance(s.role_answers, dict)
+                ),
                 'feedback': (s.feedback or '')[:300],
                 'phone': s.phone or '',
                 'email': s.email or '',
                 'created_at': s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '',
+            })
+
+        # === TOÀN BỘ ĐĂNG KÝ — đầy đủ mọi cột khớp form /landing/ #dang-ky ===
+        all_signups = []
+        for sg in signups:
+            all_signups.append({
+                'id': sg.id,
+                'full_name': sg.full_name or '',
+                'phone': sg.phone or '',
+                'email': sg.email or '',
+                'role': sg.role,
+                'signup_type': sg.get_signup_type_display(),
+                'interested_service': sg.get_interested_service_display() if sg.interested_service else '',
+                'location_city': sg.location_city or '',
+                'location_district': sg.location_district or '',
+                'preferred_time_slot': sg.get_preferred_time_slot_display() if sg.preferred_time_slot else '',
+                'trial_consent': bool(sg.trial_consent),
+                'note': sg.note or '',
+                'created_at': sg.created_at.strftime('%d/%m/%Y %H:%M') if sg.created_at else '',
             })
 
         return Response({
@@ -3368,7 +3454,9 @@ class AdminFeedbackStatsAPIView(APIView):
                 'by_slots': by_slots,
                 'by_concerns': by_concerns,
                 'by_motivations': by_motivations,
+                # Danh sách ĐẦY ĐỦ mọi bản ghi — bảng xem trước Excel + modal chi tiết
                 'recent': recent_surveys,
+                'all': recent_surveys,
             },
             'signups': {
                 'total': total_signups,
@@ -3381,6 +3469,8 @@ class AdminFeedbackStatsAPIView(APIView):
                 'by_service': by_signup_service,
                 'by_city': by_signup_city,
                 'by_time_slot': by_signup_slot,
+                # Danh sách ĐẦY ĐỦ mọi đăng ký — bảng xem trước Excel
+                'all': all_signups,
             },
         })
 
@@ -4341,3 +4431,42 @@ def _generate_fallback_analysis(surveys, signups, visits=None):
             f'Đăng ký dùng thử: {trial_count}', f'Đăng ký tư vấn: {consult_count}',
         ],
     }
+
+
+class AdminFeedbackResetAPIView(APIView):
+    """RESET TOÀN BỘ dữ liệu thu thập từ landing page.
+
+    Xoá sạch: khảo sát góp ý (LandingSurvey) + đăng ký tư vấn/dùng thử
+    (LandingSignup) + lượt truy cập (LandingPageVisit) — KHÔNG phụ thuộc
+    bộ lọc số ngày, đưa dashboard về trạng thái trống để bắt đầu chiến
+    dịch gửi form mới.
+
+    Chỉ admin mới được gọi. Method POST (an toàn hơn GET — không bị
+    crawler/prefetch kích hoạt vô tình).
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            from .models import LandingSurvey, LandingSignup, LandingPageVisit
+
+            counts = {
+                'surveys': LandingSurvey.objects.count(),
+                'signups': LandingSignup.objects.count(),
+                'visits': LandingPageVisit.objects.count(),
+            }
+            LandingSurvey.objects.all().delete()
+            LandingSignup.objects.all().delete()
+            LandingPageVisit.objects.all().delete()
+            logger.info(f'Admin {getattr(request.user, "username", "?")} reset landing data: {counts}')
+            return Response({
+                'ok': True,
+                'message': f'Đã reset toàn bộ dữ liệu: {counts["surveys"]} góp ý, '
+                           f'{counts["signups"]} đăng ký, {counts["visits"]} lượt truy cập.',
+                'deleted': counts,
+            })
+        except Exception as e:
+            logger.error(f'AdminFeedbackReset error: {e}', exc_info=True)
+            return Response({'ok': False, 'error': f'Không thể reset dữ liệu: {e}'}, status=500)

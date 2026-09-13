@@ -592,3 +592,105 @@ class LandingThrottleTestCase(TestCase):
             resp = self.client.post('/api/landing/survey/', payload, format='json')
             last_statuses.append(resp.status_code)
         self.assertIn(429, last_statuses, 'Expected 429 throttle after >15 requests/min')
+
+
+class AdminFeedbackDataTableAndResetTestCase(TestCase):
+    """Test tính năng 2026-09-14:
+
+    1. GET /api/admin/feedback-stats/ trả về danh sách ĐẦY ĐỦ (surveys.all
+       có `fields` = danh sách câu hỏi + đáp án người dùng đã chọn khớp form
+       /landing/; signups.all có đủ mọi cột form đăng ký).
+    2. POST /api/admin/feedback-reset/ xoá SẠCH mọi dữ liệu thu thập
+       (survey + signup + visit) — chỉ admin.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.admin = User.objects.create_superuser(
+            username='admin', email='admin@test.com', password='testpass123'
+        )
+        LandingSurvey.objects.create(
+            role='phu-huynh', role_answers=VALID_PH_ROLE_ANSWERS.copy(),
+            feedback='Cần người sớm', phone='0900000001', ip_address='1.1.1.1')
+        LandingSurvey.objects.create(
+            role='carepartner', role_answers=VALID_CP_ROLE_ANSWERS.copy(),
+            feedback='', email='cp@test.com', ip_address='2.2.2.2')
+        LandingSignup.objects.create(
+            full_name='Nguyễn B', phone='0998765432', email='b@test.com',
+            role='carepartner', signup_type='dung-thu',
+            interested_service='pickup', location_city='Đà Nẵng',
+            location_district='Sơn Trà', note='Muốn dùng thử cuối tuần')
+
+    def _login_as_admin(self):
+        resp = self.client.post('/api/auth/login/', {'username': 'admin', 'password': 'testpass123'})
+        token = resp.data.get('tokens', {}).get('access') or resp.data.get('access')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+    def test_stats_full_lists_with_structured_fields(self):
+        """surveys.all có `fields` (câu hỏi → đáp án đã chọn, tiếng Việt)."""
+        self._login_as_admin()
+        resp = self.client.get('/api/admin/feedback-stats/?days=365')
+        self.assertEqual(resp.status_code, 200)
+        s = resp.data['surveys']
+        self.assertEqual(len(s['all']), 2)
+
+        ph = next(x for x in s['all'] if x['role'] == 'phu-huynh')
+        qa = {f['question']: f['answer'] for f in ph['fields']}
+        # Đáp án phải được dịch sang nhãn tiếng Việt khớp form /landing/
+        self.assertTrue(any('6 – 11 tuổi' in v for v in qa.values()), qa)
+        self.assertTrue(any('100.000đ – 150.000đ' in v or '100.000–150.000đ' in v for v in qa.values()), qa)
+        self.assertTrue(any('Lý lịch' in v for v in qa.values()), qa)
+        # Đủ dịch vụ quan tâm
+        self.assertIn('Gia sư học tập tại nhà', ph['services'])
+
+        cp = next(x for x in s['all'] if x['role'] == 'carepartner')
+        qa_cp = {f['question']: f['answer'] for f in cp['fields']}
+        self.assertTrue(any('Xe máy' in v for v in qa_cp.values()), qa_cp)
+        self.assertTrue(any('85.000–120.000đ' in v for v in qa_cp.values()), qa_cp)
+
+        # signups.all — đủ mọi cột khớp form đăng ký /landing/ #dang-ky
+        sig_all = resp.data['signups']['all']
+        self.assertEqual(len(sig_all), 1)
+        sg = sig_all[0]
+        for key in ('full_name', 'phone', 'email', 'role', 'signup_type',
+                    'interested_service', 'location_city', 'location_district',
+                    'preferred_time_slot', 'trial_consent', 'note', 'created_at'):
+            self.assertIn(key, sg, f'Thiếu cột {key} trong signups.all')
+        self.assertEqual(sg['full_name'], 'Nguyễn B')
+        self.assertEqual(sg['location_district'], 'Sơn Trà')
+
+    def test_reset_anonymous_401(self):
+        resp = self.client.post('/api/admin/feedback-reset/')
+        self.assertIn(resp.status_code, [401, 403])
+        # Dữ liệu KHÔNG bị xoá khi chưa đăng nhập
+        self.assertEqual(LandingSurvey.objects.count(), 2)
+
+    def test_reset_admin_deletes_everything(self):
+        """POST reset xoá sạch survey + signup + visit, kể cả ngoài bộ lọc ngày."""
+        from core.models import LandingPageVisit
+        LandingPageVisit.objects.create(session_id='sess-1', ip_address='9.9.9.9')
+        LandingPageVisit.objects.create(session_id='sess-2', ip_address='9.9.9.8')
+        self.assertEqual(LandingSurvey.objects.count(), 2)
+        self.assertEqual(LandingSignup.objects.count(), 1)
+        self.assertEqual(LandingPageVisit.objects.count(), 2)
+
+        self._login_as_admin()
+        resp = self.client.post('/api/admin/feedback-reset/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data.get('ok'))
+        self.assertEqual(resp.data['deleted']['surveys'], 2)
+        self.assertEqual(resp.data['deleted']['signups'], 1)
+        self.assertEqual(resp.data['deleted']['visits'], 2)
+
+        # DB phải về 0 — trạng thái trống sẵn sàng chiến dịch mới
+        self.assertEqual(LandingSurvey.objects.count(), 0)
+        self.assertEqual(LandingSignup.objects.count(), 0)
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+        # Stats sau reset cũng phải = 0
+        resp2 = self.client.get('/api/admin/feedback-stats/?days=365')
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(resp2.data['surveys']['total'], 0)
+        self.assertEqual(len(resp2.data['surveys']['all']), 0)
+        self.assertEqual(len(resp2.data['signups']['all']), 0)

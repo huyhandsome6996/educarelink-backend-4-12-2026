@@ -983,6 +983,9 @@
                     <button onclick="loadFeedbackStats()" style="padding:10px 14px;border:1px solid #334155;border-radius:10px;background:#334155;color:#e2e8f0;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">
                         🔄 Làm mới
                     </button>
+                    <button onclick="resetFeedbackData()" id="resetDataBtn" title="Xoá sạch toàn bộ dữ liệu thu thập để bắt đầu chiến dịch mới" style="padding:10px 18px;border:1px solid rgba(239,68,68,.5);border-radius:10px;background:rgba(239,68,68,.12);color:#f87171;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;margin-left:auto;" onmouseover="this.style.background='#ef4444';this.style.color='#fff'" onmouseout="this.style.background='rgba(239,68,68,.12)';this.style.color='#f87171'">
+                        🗑️ Reset dữ liệu
+                    </button>
                 </div>
 
                 <!-- Stats Cards -->
@@ -1116,12 +1119,31 @@
                     <div id="aiAnalysisContent" style="color:#cbd5e1;font-size:14px;line-height:1.7;"></div>
                 </div>
 
-                <!-- Table: Góp ý gần nhất -->
-                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;">
-                    <div style="padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;">
-                        <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">📋 Góp ý gần nhất</h3>
+                <!-- ============================================================
+                     BẢNG DỮ LIỆU THU THẬP — "vỏ bảng" xem trước nội dung file Excel
+                     Bấm vào 1 dòng khảo sát = xem chi tiết người đó đã chọn gì
+                     ============================================================ -->
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                    <h3 style="font-size:16px;font-weight:900;color:#f1f5f9;margin:0;">&#128230; Dữ liệu thu thập — xem trước file Excel</h3>
+                    <span style="font-size:11px;color:#64748b;background:#0f172a;border:1px solid #334155;border-radius:999px;padding:3px 10px;">bấm vào dòng để xem chi tiết từng lựa chọn</span>
+                </div>
+
+                <!-- Bảng 1: Phản hồi khảo sát (khớp sheet "Góp ý" trong file Excel) -->
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:20px;">
+                    <div style="padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">📋 Phản hồi khảo sát <span id="surveyCountBadge" style="font-size:11px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);border-radius:999px;padding:2px 10px;margin-left:6px;">0</span></h3>
+                        <input type="text" id="surveySearch" placeholder="🔍 Tìm theo SĐT / email / nội dung..." oninput="renderSurveyTable()" style="padding:8px 14px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:12px;width:280px;outline:none;">
                     </div>
-                    <div id="recentFeedbackTable" style="overflow-x:auto;"></div>
+                    <div id="surveyDataTable" style="overflow-x:auto;"></div>
+                </div>
+
+                <!-- Bảng 2: Đăng ký tư vấn / dùng thử (khớp sheet "Đăng ký" trong file Excel) -->
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;">
+                    <div style="padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">🚀 Đăng ký tư vấn / dùng thử <span id="signupCountBadge" style="font-size:11px;font-weight:700;color:#22c55e;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);border-radius:999px;padding:2px 10px;margin-left:6px;">0</span></h3>
+                        <input type="text" id="signupSearch" placeholder="🔍 Tìm theo tên / SĐT / email..." oninput="renderSignupTable()" style="padding:8px 14px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:12px;width:280px;outline:none;">
+                    </div>
+                    <div id="signupDataTable" style="overflow-x:auto;"></div>
                 </div>
             </div>
         </div>
@@ -1200,6 +1222,22 @@
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
+
+    <!-- Landing Data Detail Modal — bấm vào dòng là thấy người dùng đã từng chọn gì -->
+    <div class="edit-modal" id="landingDetailModal" onclick="if(event.target===this)closeLandingDetail()">
+        <div class="edit-modal-content" style="width:640px;max-width:94vw;max-height:86vh;overflow-y:auto;">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title" id="landingDetailTitle">Chi tiết bản ghi</div>
+                <button class="modal-close" style="position:static" onclick="closeLandingDetail()">&#10005;</button>
+            </div>
+            <div class="edit-modal-body" id="landingDetailBody">
+                <!-- Dynamic content -->
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-modal-btn btn-cancel" onclick="closeLandingDetail()">Đóng</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Credential Review Modal -->
     <div class="edit-modal" id="credentialModal">
@@ -3093,44 +3131,216 @@
             const suSlotItems = (sig.by_time_slot || []).map(x => ({label: suSlotLabels[x.preferred_time_slot] || x.preferred_time_slot, count: x.count}));
             renderBarChart('chartSignupSlot', suSlotItems, '#fbbf24');
 
-            // === Bảng Góp ý gần nhất (trước đây bị bỏ trống) ===
-            renderRecentFeedback(s.recent || []);
+            // === Bảng dữ liệu thu thập đầy đủ (vỏ bảng xem trước Excel) ===
+            renderSurveyTable();
+            renderSignupTable();
         }
 
-        function renderRecentFeedback(rows) {
-            const wrap = document.getElementById('recentFeedbackTable');
-            if (!wrap) return;
-            if (!rows.length) {
-                wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Chưa có góp ý nào trong khoảng thời gian này.</div>';
-                return;
-            }
-            const roleBadge = r => r.role === 'carepartner'
+        // ===== BẢNG DỮ LIỆU THU THẬP (vỏ bảng xem trước Excel) + CHI TIẾT + RESET =====
+        function roleBadge(r) {
+            return r.role === 'carepartner'
                 ? '<span style="background:rgba(242,101,34,.15);color:#F26522;border:1px solid rgba(242,101,34,.4);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap;">Người đồng hành</span>'
                 : '<span style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.4);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap;">Phụ huynh</span>';
+        }
+
+        function renderSurveyTable() {
+            const wrap = document.getElementById('surveyDataTable');
+            if (!wrap) return;
+            const rows = (feedbackStatsData && feedbackStatsData.surveys && feedbackStatsData.surveys.all) || [];
+            const badge = document.getElementById('surveyCountBadge');
+            if (badge) badge.textContent = rows.length + ' bản ghi';
+            if (!rows.length) {
+                wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Chưa có phản hồi khảo sát nào' + (feedbackStatsData ? ' trong ' + feedbackStatsData.period_days + ' ngày qua' : '') + '. Hãy gửi form /landing/ đến bạn bè — dữ liệu sẽ hiện tại đây.</div>';
+                return;
+            }
+            const q = (document.getElementById('surveySearch') && document.getElementById('surveySearch').value || '').toLowerCase().trim();
+            const filtered = rows.filter(r => !q || [r.phone, r.email, r.feedback, r.services, (r.answers || []).join(' ')].join(' ').toLowerCase().includes(q));
+            if (!filtered.length) {
+                wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Không tìm thấy bản ghi khớp từ khoá.</div>';
+                return;
+            }
             wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
                     <tr style="color:#64748b;text-align:left;border-bottom:1px solid #334155;">
                         <th style="padding:12px 16px;white-space:nowrap;">#</th>
                         <th style="padding:12px 16px;white-space:nowrap;">Vai trò</th>
-                        <th style="padding:12px 16px;">Câu trả lời khảo sát</th>
+                        <th style="padding:12px 16px;">Dịch vụ quan tâm</th>
+                        <th style="padding:12px 16px;">Chi tiết câu trả lời</th>
                         <th style="padding:12px 16px;">Góp ý tự do</th>
-                        <th style="padding:12px 16px;white-space:nowrap;">Liên hệ</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">SDT</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Email</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Thời gian</th>
+                        <th style="padding:12px 16px;white-space:nowrap;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map(r => `
+                        <tr onclick="showSurveyDetail(${r.id})" style="border-bottom:1px solid #1e293b;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(242,101,34,.06)'" onmouseout="this.style.background=''">
+                            <td style="padding:12px 16px;color:#64748b;">${r.id}</td>
+                            <td style="padding:12px 16px;">${roleBadge(r)}</td>
+                            <td style="padding:12px 16px;color:#7dd3fc;max-width:180px;">${r.services ? escapeHtml(r.services) : '<span style="color:#475569;">—</span>'}</td>
+                            <td style="padding:12px 16px;color:#cbd5e1;max-width:320px;">${r.answers && r.answers.length ? r.answers.map(a => escapeHtml(a)).join('<span style="color:#475569;"> · </span>') : '<span style="color:#475569;">—</span>'}</td>
+                            <td style="padding:12px 16px;color:#e2e8f0;max-width:220px;">${r.feedback ? escapeHtml(r.feedback.length > 90 ? r.feedback.slice(0, 90) + '…' : r.feedback) : '<span style="color:#475569;">—</span>'}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;white-space:nowrap;">${escapeHtml(r.phone || '—')}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;max-width:160px;">${escapeHtml(r.email || '—')}</td>
+                            <td style="padding:12px 16px;color:#64748b;white-space:nowrap;">${escapeHtml(r.created_at || '')}</td>
+                            <td style="padding:12px 16px;"><span style="color:#F26522;font-size:12px;font-weight:700;white-space:nowrap;">Xem chi tiết →</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        function renderSignupTable() {
+            const wrap = document.getElementById('signupDataTable');
+            if (!wrap) return;
+            const rows = (feedbackStatsData && feedbackStatsData.signups && feedbackStatsData.signups.all) || [];
+            const badge = document.getElementById('signupCountBadge');
+            if (badge) badge.textContent = rows.length + ' bản ghi';
+            if (!rows.length) {
+                wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Chưa có đăng ký tư vấn / dùng thử nào trong khoảng thời gian này.</div>';
+                return;
+            }
+            const q = (document.getElementById('signupSearch') && document.getElementById('signupSearch').value || '').toLowerCase().trim();
+            const filtered = rows.filter(r => !q || [r.full_name, r.phone, r.email, r.location_city, r.location_district, r.note].join(' ').toLowerCase().includes(q));
+            if (!filtered.length) {
+                wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Không tìm thấy bản ghi khớp từ khoá.</div>';
+                return;
+            }
+            wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="color:#64748b;text-align:left;border-bottom:1px solid #334155;">
+                        <th style="padding:12px 16px;white-space:nowrap;">#</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Họ tên</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">SDT</th>
+                        <th style="padding:12px 16px;">Email</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Vai trò</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Loại</th>
+                        <th style="padding:12px 16px;">Dịch vụ</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Tỉnh/TP</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Quận/Huyện</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Gọi lại</th>
+                        <th style="padding:12px 16px;">Ghi chú</th>
                         <th style="padding:12px 16px;white-space:nowrap;">Thời gian</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${rows.map(r => `
-                        <tr style="border-bottom:1px solid #1e293b;">
+                    ${filtered.map(r => `
+                        <tr onclick="showSignupDetail(${r.id})" style="border-bottom:1px solid #1e293b;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(34,197,94,.06)'" onmouseout="this.style.background=''">
                             <td style="padding:12px 16px;color:#64748b;">${r.id}</td>
+                            <td style="padding:12px 16px;color:#e2e8f0;font-weight:600;white-space:nowrap;">${escapeHtml(r.full_name)}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;white-space:nowrap;">${escapeHtml(r.phone)}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;max-width:160px;">${escapeHtml(r.email)}</td>
                             <td style="padding:12px 16px;">${roleBadge(r)}</td>
-                            <td style="padding:12px 16px;color:#cbd5e1;">${r.answers && r.answers.length ? r.answers.map(a => escapeHtml(a)).join('<span style="color:#475569;"> · </span>') : '<span style="color:#475569;">—</span>'}</td>
-                            <td style="padding:12px 16px;color:#e2e8f0;max-width:280px;">${r.feedback ? escapeHtml(r.feedback) : '<span style="color:#475569;">—</span>'}</td>
-                            <td style="padding:12px 16px;color:#94a3b8;white-space:nowrap;">${escapeHtml(r.phone || r.email || '—')}</td>
+                            <td style="padding:12px 16px;white-space:nowrap;"><span style="background:${r.signup_type && r.signup_type.indexOf('Dùng') === 0 ? 'rgba(167,139,250,.15);color:#a78bfa' : 'rgba(251,191,36,.15);color:#fbbf24'};border:1px solid rgba(148,163,184,.3);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap;">${escapeHtml(r.signup_type || '—')}</span></td>
+                            <td style="padding:12px 16px;color:#7dd3fc;max-width:140px;">${r.interested_service ? escapeHtml(r.interested_service) : '<span style="color:#475569;">—</span>'}</td>
+                            <td style="padding:12px 16px;color:#cbd5e1;white-space:nowrap;">${escapeHtml(r.location_city || '—')}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;white-space:nowrap;">${escapeHtml(r.location_district || '—')}</td>
+                            <td style="padding:12px 16px;color:#94a3b8;white-space:nowrap;">${escapeHtml(r.preferred_time_slot || '—')}</td>
+                            <td style="padding:12px 16px;color:#e2e8f0;max-width:180px;">${r.note ? escapeHtml(r.note.length > 60 ? r.note.slice(0, 60) + '…' : r.note) : '<span style="color:#475569;">—</span>'}</td>
                             <td style="padding:12px 16px;color:#64748b;white-space:nowrap;">${escapeHtml(r.created_at || '')}</td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>`;
+        }
+
+        // ===== MODAL CHI TIẾT — bấm vào là biết họ đã từng chọn cái gì =====
+        function showSurveyDetail(id) {
+            const rows = (feedbackStatsData && feedbackStatsData.surveys && feedbackStatsData.surveys.all) || [];
+            const r = rows.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('landingDetailTitle').innerHTML = 'Chi tiết phản hồi khảo sát #' + r.id;
+            let html = `
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+                    ${roleBadge(r)}
+                    <span style="color:#94a3b8;font-size:12px;">⏰ ${escapeHtml(r.created_at || '')}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;">
+                        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px;">SỐ ĐIỆN THOẠI</div>
+                        <div style="color:#e2e8f0;font-size:13px;">${r.phone ? escapeHtml(r.phone) : '—'}</div>
+                    </div>
+                    <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;">
+                        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px;">EMAIL</div>
+                        <div style="color:#e2e8f0;font-size:13px;word-break:break-all;">${r.email ? escapeHtml(r.email) : '—'}</div>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#64748b;font-weight:800;letter-spacing:.5px;margin-bottom:10px;">NGƯỜI DÙNG ĐÃ CHỌN (${(r.fields || []).length} câu):</div>
+            `;
+            if (r.fields && r.fields.length) {
+                r.fields.forEach((f, i) => {
+                    html += `
+                        <div style="background:#0f172a;border:1px solid #334155;border-left:3px solid #F26522;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:10px;">
+                            <div style="color:#94a3b8;font-size:12px;margin-bottom:5px;">${i + 1}. ${escapeHtml(f.question)}</div>
+                            <div style="color:#38bdf8;font-size:14px;font-weight:700;">→ ${escapeHtml(f.answer)}</div>
+                        </div>`;
+                });
+            } else {
+                html += '<div style="color:#64748b;padding:12px;text-align:center;">Không có câu trả lời khảo sát nào được lưu.</div>';
+            }
+            html += `
+                <div style="font-size:12px;color:#64748b;font-weight:800;letter-spacing:.5px;margin:16px 0 8px;">GÓP Ý TỰ DO:</div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px 16px;color:#e2e8f0;font-size:13px;line-height:1.6;">${r.feedback ? escapeHtml(r.feedback) : '<span style="color:#475569;">Không có góp ý tự do.</span>'}</div>`;
+            document.getElementById('landingDetailBody').innerHTML = html;
+            document.getElementById('landingDetailModal').classList.add('show');
+        }
+
+        function showSignupDetail(id) {
+            const rows = (feedbackStatsData && feedbackStatsData.signups && feedbackStatsData.signups.all) || [];
+            const r = rows.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('landingDetailTitle').innerHTML = 'Chi tiết đăng ký #' + r.id;
+            const items = [
+                ['Họ và tên', r.full_name], ['Số điện thoại', r.phone], ['Email', r.email],
+                ['Bạn là', r.role === 'carepartner' ? 'Sinh viên Carepartner' : 'Phụ huynh'],
+                ['Hình thức đăng ký', r.signup_type], ['Dịch vụ quan tâm nhất', r.interested_service],
+                ['Tỉnh / Thành phố', r.location_city], ['Quận / Huyện', r.location_district],
+                ['Khung giờ thuận tiện gọi lại', r.preferred_time_slot],
+                ['Đồng ý kích hoạt dùng thử', r.trial_consent ? 'Có' : 'Không'],
+                ['Ghi chú thêm', r.note], ['Thời gian đăng ký', r.created_at],
+            ];
+            let html = `<div style="margin-bottom:10px;">${roleBadge(r)}</div>`;
+            items.forEach(([k, v]) => {
+                html += `
+                    <div style="display:flex;gap:12px;padding:9px 14px;background:#0f172a;border:1px solid #334155;border-radius:10px;margin-bottom:8px;">
+                        <div style="min-width:190px;color:#64748b;font-size:12px;font-weight:700;">${k}</div>
+                        <div style="color:#e2e8f0;font-size:13px;flex:1;word-break:break-word;">${v ? escapeHtml(String(v)) : '—'}</div>
+                    </div>`;
+            });
+            document.getElementById('landingDetailBody').innerHTML = html;
+            document.getElementById('landingDetailModal').classList.add('show');
+        }
+
+        function closeLandingDetail() {
+            document.getElementById('landingDetailModal').classList.remove('show');
+        }
+
+        // ===== RESET TOÀN BỘ DỮ LIỆU THU THẬP =====
+        async function resetFeedbackData() {
+            const nSurvey = feedbackStatsData ? (feedbackStatsData.surveys.all || []).length : '?';
+            const nSignup = feedbackStatsData ? (feedbackStatsData.signups.all || []).length : '?';
+            const nVisit = feedbackStatsData ? (feedbackStatsData.visits.total || 0) : '?';
+            const ok1 = confirm(`⚠️ RESET TOÀN BỘ DỮ LIỆU THU THẬP?\n\nSẽ xoá vĩnh viễn:\n• ${nSurvey} phản hồi khảo sát\n• ${nSignup} đăng ký tư vấn / dùng thử\n• ${nVisit} lượt truy cập\n\n(Áp dụng cho TOÀN BỘ dữ liệu mọi thời gian, không phụ thuộc bộ lọc số ngày)`);
+            if (!ok1) return;
+            const ok2 = confirm('❓ Xác nhận lần cuối: dữ liệu sau khi xoá KHÔNG THỂ KHÔI PHỤC.\nBạn chắc chắn muốn reset về trạng thái trống để bắt đầu chiến dịch gửi form mới?');
+            if (!ok2) return;
+            const btn = document.getElementById('resetDataBtn');
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang reset...';
+            try {
+                const res = await apiFetch(`${API_BASE}/admin/feedback-reset/`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+                showToast(data.message || 'Đã reset toàn bộ dữ liệu thu thập.', 'success');
+                await loadFeedbackStats();
+            } catch (e) {
+                showToast('Lỗi reset dữ liệu: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
         }
 
         function exportFeedbackExcel() {

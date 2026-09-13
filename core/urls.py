@@ -30,6 +30,7 @@ from .views import (
     LandingSurveyAPIView, LandingSignupAPIView, LandingTrackVisitAPIView,
     # Admin stats
     AdminFeedbackStatsAPIView, AdminFeedbackExcelAPIView, AdminFeedbackAIAnalysisAPIView,
+    AdminFeedbackResetAPIView,
 )
 # B4 — Phân hạng CarePartner: các view dưới đây là bản override của view gốc
 # (trong core.views) có bổ sung field tier, trỏ URL về tier_views để không
@@ -161,4 +162,5 @@ urlpatterns = [
     path('admin/feedback-stats/', AdminFeedbackStatsAPIView.as_view(), name='admin-feedback-stats'),
     path('admin/feedback-excel/', AdminFeedbackExcelAPIView.as_view(), name='admin-feedback-excel'),
     path('admin/feedback-ai-analysis/', AdminFeedbackAIAnalysisAPIView.as_view(), name='admin-feedback-ai-analysis'),
+    path('admin/feedback-reset/', AdminFeedbackResetAPIView.as_view(), name='admin-feedback-reset'),
 ]
