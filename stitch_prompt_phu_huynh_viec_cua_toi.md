@@ -1,232 +1,177 @@
-# 🎨 Prompt Google Stitch AI — Màn hình 1: Quản lý Công việc Phụ huynh ("Việc của tôi")
+# 🎨 Prompt Google Stitch AI — Màn hình 2: Quản lý Công việc Phụ huynh ("Việc của tôi")
+# Tái cấu trúc Toàn diện: Xoá sạch Luồng cũ — Chuẩn hóa 4 Tab Vòng đời Công việc
 
-> **Trang mục tiêu**: Màn hình Quản lý Công việc của Phụ huynh (`MyTasksScreen.js` trên Mobile & `/phu-huynh/viec-cua-toi/` trên Web)  
-> **Nền tảng**: EduCareLink — Nền tảng kết nối Phụ huynh với CarePartner / Sinh viên đại học uy tín  
-> **Kiến trúc Trạng thái (State Machine)**:
-> 1. **Tab 1 — "Chờ xác nhận" (Danh sách chờ)**: Đơn mới tạo tìm người + Đơn **Phụ huynh đã chọn sinh viên** (đang chờ sinh viên xác nhận cam kết nhận việc, có đếm ngược 60 phút, xem lại thông tin sinh viên đã chọn).
-> 2. **Tab 2 — "Sắp làm" (Ca sắp tới & Đang thực hiện)**: Khi **Sinh viên bấm "Xác nhận nhận việc"**, ca làm TỰ ĐỘNG NHẢY VÀO ĐÂY! Phụ huynh theo dõi chuẩn bị ca, Live GPS định vị trực tiếp, vòng an toàn Geofence, chat/gọi, và nút hoàn thành ca.
-> 3. **Tab 3 — "Lịch sử" (Ca đã hoàn thành & Kết thúc)**: Khi **Ca làm kết thúc**, công việc TỰ ĐỘNG NHẢY VÀO LƯU Ở ĐÂY! Phụ huynh đánh giá 5 sao cho sinh viên, xem biên lai MoMo Escrow giải ngân 80/20, xem nhật ký chăm sóc trẻ (Care Diary) và nút "Đặt lại sinh viên này".  
-> **Hướng dẫn**: Copy toàn bộ nội dung trong khung code dưới đây và dán vào [Google Stitch AI](https://labs.google.com/stitch) để tạo giao diện.
+> **Trang mục tiêu**: Màn hình Quản lý Công việc của Phụ huynh (`MyTasksScreen.js` trên Mobile App & `/phu-huynh/viec-cua-toi/` trên Web)  
+> **Dự án**: EduCareLink (educarelink-backend-4-12-2026) — Nền tảng kết nối Phụ huynh với Sinh viên Đại học & CarePartner  
+> **Quy chuẩn Vòng đời (State Machine)**:
+> 1. **Tab 1 — "Chờ xác nhận"**: Đơn mới đăng tìm ứng viên + Đơn **Đã chọn sinh viên và đang chờ sinh viên bấm nhận việc** (Đếm ngược 60 phút, xem lại hồ sơ sinh viên đã chọn, đổi người nếu cần).
+> 2. **Tab 2 — "Sắp làm"**: Khi sinh viên **ĐÃ BẤM XÁC NHẬN NHẬN VIỆC** nhưng **CHƯA ĐẾN GIỜ LÀM**. Hiển thị thời gian đếm ngược tới giờ bắt đầu ca, kênh liên lạc gọi/chat dặn dò trước khi sinh viên đến.
+> 3. **Tab 3 — "Đang làm"**: Khi ca làm **ĐANG TRONG KHUNG GIỜ THỰC HIỆN**. Kích hoạt radar Live GPS Tracking vị trí sinh viên, vòng bảo vệ an toàn Geofence, nút SOS khẩn cấp và nút "Xác nhận hoàn thành ca".
+> 4. **Tab 4 — "Lịch sử"**: Khi ca làm **HOÀN TẤT HOẶC KẾT THÚC**. Tự động đẩy vào kho lưu trữ: Đánh giá 5 sao, xem Nhật ký chăm sóc (Care Diary), xem biên lai giải ngân MoMo Escrow 80/20 và nút tiện ích "Đặt lại sinh viên này".  
+> **Cách sử dụng**: Copy toàn bộ nội dung trong khung code dưới đây và dán vào [Google Stitch AI](https://labs.google.com/stitch) để tạo giao diện.
 
 ---
 
 ```markdown
-You are designing a signature, high-trust management screen for an established Vietnamese EdTech & Childcare platform called "EduCareLink" (educarelink-backend-4-12-2026).
-The design must be implemented as a responsive mobile web interface (viewport 390px - 430px, iOS/Android mobile ergonomics) using clean semantic HTML, Tailwind CSS, Google Fonts ('Manrope' + 'Plus Jakarta Sans'), and Google Material Symbols Outlined icons.
+You are an elite Senior Product Designer and Mobile UI/UX Architect designing the central job management screen for EduCareLink (educarelink-backend-4-12-2026), a high-trust Vietnamese EdTech & Childcare platform.
+
+This screen is the "Parent My Tasks Hub" (Màn hình "Việc của tôi" của Phụ huynh - `MyTasksScreen`).
+It completely eradicates legacy unstructured task lists and introduces a strictly defined 4-Tab Lifecycle State Machine that mirrors the exact emotional and operational journey of a parent.
+
+The output must be implemented as a modern mobile-first responsive web interface (viewport 390px - 430px) using semantic HTML5, Tailwind CSS, Google Fonts ('Plus Jakarta Sans' + 'Manrope'), and Google Material Symbols Outlined icons.
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION A — PRODUCT PURPOSE & LIFECYCLE STATE MACHINE
+SECTION A — KIẾN TRÚC 4 TAB VÒNG ĐỜI CHUẨN (XOÁ HOÀN TOÀN LUỒNG CŨ)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Screen Purpose:
-This is the "Parent My Tasks Screen" (Màn hình "Việc của tôi" của Phụ huynh).
-Accessed via the "Việc của tôi" tab on the bottom navigation bar.
-Parents use this screen to manage the complete lifecycle of all child tutoring, childcare, and pickup sessions they have booked.
-
-2. Critical 3-Stage State Machine (STRICT BUSINESS LOGIC):
-The screen MUST organize jobs into exactly THREE tabs representing the real-world parent journey:
+Màn hình loại bỏ triệt để các trạng thái hỗn độn trước đây, phân chia thành 4 Tab phân định dứt khoát:
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAB 1: "CHỜ XÁC NHẬN" (Pending Confirmation & Candidate Selection Queue)    │
-│ • State A: New job posted, actively searching for candidates (open).       │
-│ • State B: PARENT HAS SELECTED A STUDENT (awaiting_commitment).             │
-│   👉 The selected student's card is displayed right here in the pending     │
-│      queue for the parent to review! Includes student profile snippet,      │
-│      countdown timer (e.g. 48 mins remaining for student to confirm),       │
-│      and quick actions (view profile, change student, cancel request).      │
+│ TAB 1: "CHỜ XÁC NHẬN" (Đang tìm người hoặc Đang chờ SV xác nhận cam kết)     │
+│ • Nhánh 1A: Đơn mới đăng đang tìm ứng viên (AI đang quét sinh viên 2km).    │
+│ • Nhánh 1B (TRỌNG TÂM): Phụ huynh ĐÃ CHỌN sinh viên, đang chờ sinh viên     │
+│   bấm "Xác nhận cam kết" trong vòng 60 phút.                                │
+│   👉 Hiển thị Avatar sinh viên đã chọn, trường ĐH, điểm sao, đồng hồ đếm     │
+│      ngược 60 phút, nút xem hồ sơ hoặc đổi người khác.                      │
 └──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ 🟢 Student clicks "Xác nhận nhận việc"
+                                       │ 🟢 Sinh viên bấm "Xác nhận nhận ca"
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAB 2: "SẮP LÀM" (Upcoming & In-Progress Sessions)                          │
-│ • The moment the student confirms commitment, the job AUTOMATICALLY LEAPS   │
-│   INTO THIS TAB!                                                            │
-│ • Displays all confirmed upcoming shifts and live active sessions:          │
-│   - Scheduled start time countdown (e.g. "Bắt đầu lúc 18:00 hôm nay").      │
-│   - Real-time GPS Live Tracking & Geofence safe zone banner.                │
-│   - Direct communication: Call phone, 1-1 secure chat, SOS / 24/7 Hotline.  │
-│   - MoMo Escrow 100% safety guarantee badge.                                │
-│   - Primary CTA: "Xác nhận hoàn thành ca" (to release payout).              │
+│ TAB 2: "SẮP LÀM" (Đã có sinh viên cam kết nhưng chưa đến giờ làm)           │
+│ • Khi sinh viên bấm xác nhận, ca làm TỰ ĐỘNG CHUYỂN VÀO TAB NÀY!             │
+│ • Trạng thái: Sinh viên đã nhận ca, hẹn đúng giờ đến nhà làm việc.           │
+│ • Tính năng: Đếm ngược đến giờ bắt đầu ca (VD: "Còn 3 tiếng nữa bắt đầu"),  │
+│   xem thông tin số điện thoại, mở khung chat 1-1 để phụ huynh dặn dò trước. │
 └──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ 🏁 Shift completes & parent confirms
+                                       │ ⏰ Đến giờ làm việc / Sinh viên check-in
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAB 3: "LỊCH SỬ" (Completed & Archived Sessions)                            │
-│ • When the shift finishes, the job AUTOMATICALLY MOVES & SAVES HERE!        │
-│ • Displays all finished and archived sessions for record-keeping:           │
-│   - 5-Star Rating & Review submission for the student.                      │
-│   - Transparent MoMo Escrow payout receipt (80% student, 20% platform).     │
-│   - Care Diary link (view report of what the child ate, studied, did).      │
-│   - 1-Tap "Đặt lại sinh viên này" (Re-book the same tutor for next week).   │
+│ TAB 3: "ĐANG LÀM" (Ca đang trong khung giờ thực hiện trực tiếp)             │
+│ • Khi đến giờ làm hoặc sinh viên bắt đầu ca, ca làm TỰ ĐỘNG CHUYỂN VÀO ĐÂY! │
+│ • Tính năng: Giám sát an toàn tối cao:                                      │
+│   - Live GPS Tracking: Vị trí trực tiếp của sinh viên cập nhật từng phút.   │
+│   - Vòng an toàn Geofence: Báo động nếu rời khỏi bán kính 200m quanh nhà.   │
+│   - Nút khẩn cấp SOS kết nối Hotline 24/7.                                  │
+│   - Nút chính: "Xác nhận hoàn thành ca" (chỉ bấm khi ca kết thúc).           │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ 🏁 Hoàn thành ca & nghiệm thu
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAB 4: "LỊCH SỬ" (Ca đã hoàn tất thành công hoặc đã kết thúc)               │
+│ • Ca làm kết thúc sẽ TỰ ĐỘNG ĐẨY VÀO KHO LƯU TRỮ TẠI ĐÂY!                   │
+│ • Tính năng:                                                                │
+│   - Đánh giá & Viết nhận xét 5 sao cho sinh viên.                           │
+│   - Xem Nhật ký chăm sóc & Báo cáo bài học (Care Diary).                    │
+│   - Minh bạch biên lai giải ngân MoMo Escrow (80% sinh viên / 20% sàn).     │
+│   - Nút tiện ích 1-chạm: "Đặt lại sinh viên này cho tuần sau".              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION B — COLOR TOKENS & VISUAL IDENTITY
+SECTION B — HỆ THỐNG MÀU SẮC & PHONG CÁCH THIẾT KẾ
 ═══════════════════════════════════════════════════════════════════════════════
 
-- Canvas Background: #F8FAFC (Ultra-clean soft pearl slate)
-- Card Surfaces: #FFFFFF with subtle 1px border #E2E8F0 and soft elevation (shadow-sm)
-- Brand Signature Orange: #F26522 (Active tab, primary actions, attention accents)
-- Trust Emerald Green: #0E9F6E (Verified badges, Escrow safe, confirmed status, completed)
-- Active Shift Sky Blue: #0284C7 (Live GPS tracking badge, in-progress shift)
-- Pending Amber / Warm Gold: #F59E0B (Awaiting confirmation pill, countdown timer)
-- Alert Crimson: #EF4444 (Cancel action, SOS button, dispute notice)
-- Text Primary (Ink): #0F172A (Deep Slate Navy, maximum legibility)
-- Text Secondary: #475569 (Metadata, timestamps, addresses)
-- Text Muted: #94A3B8 (Captions, helper hints)
-
-Typography:
-- Numbers, Prices, Display: 'Manrope', sans-serif (Weights: 600, 700, 800) with tabular figures
-- Body text & Labels: 'Plus Jakarta Sans', sans-serif (Weights: 400, 500, 600)
-- BANNED: Inter, generic serif fonts, neon gradient glows, pure black (#000000).
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION C — SCREEN ARCHITECTURE (TOP TO BOTTOM)
-═══════════════════════════════════════════════════════════════════════════════
-
-1. STICKY TOP APP HEADER
-- Top row:
-  * Title: "Việc của tôi" (font-extrabold text-2xl text-slate-900).
-  * Subtitle: "Theo dõi tiến độ gia sư và dịch vụ chăm sóc bé".
-  * Right Action:
-    - Quick "+ Đăng việc mới" compact button (bg-orange-50 text-orange-600 font-bold px-3 py-1.5 rounded-full text-xs flex items-center gap-1 border border-orange-200).
-    - Notification bell with unread dot.
-
-2. THE 3-TAB SEGMENTED CONTROLLER (Pill Container)
-Horizontal segmented container (bg-slate-100 p-1.5 rounded-2xl flex items-center justify-between mb-4):
-- Tab 1: "Chờ xác nhận (2)"
-  * Active indicator: bg-white text-orange-600 font-bold shadow-sm rounded-xl py-2.5 flex-1 text-center flex items-center justify-center gap-1.5
-  * Icon: hourglass_top
-- Tab 2: "Sắp làm (1)"
-  * Inactive indicator: text-slate-500 font-medium py-2.5 flex-1 text-center flex items-center justify-center gap-1.5
-  * Icon: event_available
-- Tab 3: "Lịch sử (8)"
-  * Inactive indicator: text-slate-500 font-medium py-2.5 flex-1 text-center flex items-center justify-center gap-1.5
-  * Icon: history
-
-─────────────────────────────────────────────────────────────────────────────
-3. TAB 1 CONTENT — "CHỜ XÁC NHẬN" (PENDING CONFIRMATION QUEUE)
-─────────────────────────────────────────────────────────────────────────────
-
-Shows jobs currently waiting for confirmation or worker matching:
-
-■ CARD VARIANT 1A: PARENT HAS CHOSEN A STUDENT (HIGHLIGHTED PENDING STATE)
-This is the KEY card the parent wants to review after choosing a CarePartner!
-- Card Container: White card with amber top accent border (border-t-4 border-amber-400).
-- Header Row:
-  * Status Pill: "⏳ Chờ sinh viên xác nhận" (bg-amber-50 text-amber-700 font-bold px-3 py-1 rounded-full text-xs flex items-center gap-1)
-  * Price: "300.000đ" (font-extrabold text-lg text-slate-900)
-- Urgent Countdown Ribbon:
-  * Warm amber box with ticking clock: "Đang chờ sinh viên xác nhận cam kết: còn 48 phút 15 giây"
-  * Micro-text: "Nếu quá thời hạn sinh viên chưa nhận việc, đơn sẽ tự mở lại để bạn chọn người khác."
-- Chosen Student Spotlight Bento:
-  * Student Avatar (clean circular portrait with green verified check badge)
-  * Name: "Nguyễn Thị Thu Huyền"
-  * University & Major: "ĐH Sư Phạm Hà Nội · Khoa Giáo dục Tiểu học"
-  * Trust Metrics: "⭐ 4.9 (38 ca thành công) · 🛡️ Điểm uy tín: 100/100 · Đã xác thực CCCD gắn chip"
-- Job Metadata:
-  * Title: "Gia sư Toán & Tiếng Việt lớp 2 tại nhà"
-  * Schedule: "📅 Thứ Sáu, 19/09/2026 · 18:00 – 20:00 (2 tiếng)"
-  * Address: "Tòa S2.05 Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội"
-- Action Buttons Row:
-  * Primary Outline: "Xem chi tiết hồ sơ" (navigate to profile)
-  * Secondary Subtle: "Đổi người khác / Hủy yêu cầu" (text-red-500 font-medium text-xs hover:underline)
-
-■ CARD VARIANT 1B: NEW JOB POSTED — LOOKING FOR APPLICANTS
-- Status Pill: "🔍 Đang tìm CarePartner" (bg-blue-50 text-blue-700 font-bold px-3 py-1 rounded-full text-xs)
-- Title: "Đón bé 5 tuổi từ trường mầm non về nhà"
-- Schedule: "Thứ Hai, 22/09/2026 · 16:30 – 18:00"
-- AI Matching Banner:
-  * "✨ AI đã tìm thấy 3 sinh viên phù hợp quanh khu vực 2km"
-- Actions:
-  * Button 1: "Xem 3 ứng viên phù hợp →" (bg-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm)
-  * Button 2: "Hủy việc" (text-slate-400 text-xs)
-
-─────────────────────────────────────────────────────────────────────────────
-4. TAB 2 CONTENT — "SẮP LÀM" (UPCOMING & ACTIVE SESSIONS)
-─────────────────────────────────────────────────────────────────────────────
-
-Where jobs LEAP immediately after the student clicks "Xác nhận nhận việc":
-
-■ ACTIVE / UPCOMING CARD:
-- Card Container: White card with emerald/blue top accent border (border-t-4 border-emerald-500).
-- Header Row:
-  * Status Pill: "🟢 Sinh viên đã cam kết nhận đơn" (or "🔵 Đang trong ca làm")
-  * Timing Badge: "Bắt đầu sau 2 giờ" (or "Đang diễn ra: 35 phút còn lại")
-  * Price: "300.000đ" (Escrow đã bảo đảm)
-- Job Title: "Gia sư Tiếng Anh giao tiếp lớp 4"
-- Assigned CarePartner Mini-Bar:
-  * Avatar + "Sinh viên phụ trách: Trần Minh Anh (ĐH Ngoại Thương - 4.95⭐)"
-  * Phone & Direct Contact: "SĐT: 0912.xxx.xxx · Đã mở kênh kết nối"
-- Live Tracking & Safety Card (In-card preview):
-  * Mini map preview with live pin: "📍 Vị trí trực tiếp: Đang bật định vị an toàn"
-  * Safe Zone: "Trong vòng an toàn Geofence (Chung cư Vinhomes Smart City)"
-  * Button: "Xem bản đồ định vị trực tiếp →"
-- Communication & Action Dock:
-  * Primary Button: "Xác nhận hoàn thành ca" (bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20)
-  * Secondary Button: "💬 Nhắn tin trực tiếp" (bg-slate-100 text-slate-700 font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1)
-  * Call Button: Circular phone icon button (border border-slate-200 p-2.5 rounded-xl)
-  * Safety Trigger: "🆘 Báo sự cố khẩn cấp / No-show" (text-xs text-red-500 font-semibold)
-
-─────────────────────────────────────────────────────────────────────────────
-5. TAB 3 CONTENT — "LỊCH SỬ" (COMPLETED & ARCHIVED SESSIONS)
-─────────────────────────────────────────────────────────────────────────────
-
-Where jobs MOVE & SAVE permanently after shift completion:
-
-■ COMPLETED CARD:
-- Card Container: White card with soft slate border (border border-slate-200).
-- Header Row:
-  * Completed Badge: "✅ Đã hoàn thành ca làm" (bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full text-xs)
-  * Completed Timestamp: "15/09/2026 · 20:00"
-  * Amount: "300.000đ" (Đã giải ngân qua MoMo)
-- Job Title: "Kèm bé làm bài tập & Dạy cờ vua cơ bản"
-- CarePartner Info:
-  * Avatar + "Sinh viên: Hoàng Đức Nam (ĐH Bách Khoa Hà Nội)"
-- Rating & Review Section:
-  * If NOT reviewed yet:
-    - Glowing Prompt Box: "⭐ Bạn thấy sinh viên Nam hỗ trợ bé như thế nào? Hãy đánh giá 5 sao để tích điểm uy tín cho em ấy!"
-    - Button: "Viết đánh giá ngay ⭐" (bg-amber-500 text-white font-bold py-2 px-4 rounded-xl text-xs)
-  * If ALREADY reviewed:
-    - Display Rating: "⭐⭐⭐⭐⭐ 'Anh Nam dạy con rất nhiệt tình và chu đáo, bé rất thích học cùng anh!'"
-- Post-Shift Essentials (Trust & Re-booking):
-  * Care Diary Button: "📝 Xem nhật ký chăm sóc bé" (View meals, study notes, child behavior logged by student)
-  * MoMo Escrow Receipt: "🧾 Biên lai thanh toán MoMo (Đã giải ngân 80% cho sinh viên, 20% phí nền tảng)"
-  * 1-Tap Re-book Button: "🔁 Đặt lại bạn sinh viên này cho tuần sau" (bg-orange-50 text-orange-600 font-bold py-2 px-4 rounded-xl text-xs border border-orange-200 flex items-center justify-center gap-1 hover:bg-orange-100 transition-all)
-
-─────────────────────────────────────────────────────────────────────────────
-6. EMPTY STATES FOR EACH TAB
-─────────────────────────────────────────────────────────────────────────────
-- Tab "Chờ xác nhận" Empty:
-  * Icon: check_circle_outline
-  * Title: "Không có đơn nào đang chờ"
-  * Subtext: "Khi bạn đăng việc mới hoặc chỉ định sinh viên, đơn sẽ xuất hiện tại đây để bạn xem lại."
-  * Button: "+ Đăng việc mới ngay"
-- Tab "Sắp làm" Empty:
-  * Icon: event_note
-  * Title: "Chưa có ca làm nào sắp tới"
-  * Subtext: "Khi sinh viên xác nhận cam kết nhận đơn, ca làm sẽ nhảy vào đây để bạn theo dõi."
-- Tab "Lịch sử" Empty:
-  * Icon: history_edu
-  * Title: "Chưa có lịch sử hoàn thành"
-  * Subtext: "Các ca làm sau khi kết thúc sẽ được lưu trữ tại đây kèm đánh giá và hóa đơn MoMo."
-
-─────────────────────────────────────────────────────────────────────────────
-7. BOTTOM NAVIGATION BAR (Parent Role Matching System)
-─────────────────────────────────────────────────────────────────────────────
-Fixed floating bottom bar with 5 items:
-1. Trang chủ (home)
-2. Việc của tôi (assignment — Active in #F26522)
-3. AI Trợ lý (smart_toy — Floating central FAB button)
-4. Theo dõi (map / tracking)
-5. Tài khoản (person)
+- Canvas Background: #F8FAFC (Nền Slate siêu nhẹ, sạch sẽ, chuẩn Atelier)
+- Card Surfaces: #FFFFFF bo góc mềm 20px, viền mảnh 1px #E2E8F0, bóng đổ tự nhiên
+- Màu nhấn Signature: #F26522 (Cam EduCareLink ấm áp, năng động)
+- Màu Phân định 4 Tab (Tab Identity Colors):
+  * Tab 1 Chờ xác nhận: Amber (#F59E0B / bg-amber-50 / border-amber-200)
+  * Tab 2 Sắp làm: Emerald (#0E9F6E / bg-emerald-50 / border-emerald-200)
+  * Tab 3 Đang làm: Active Sky Blue (#0284C7 / bg-sky-50 / border-sky-200) kèm hiệu ứng Ping Pulse
+  * Tab 4 Lịch sử: Muted Slate (#64748B / bg-slate-100)
+- Font Typography:
+  * Số tiền & đếm ngược: 'Manrope', font-extrabold, số liệu dạng tabular
+  * Tiêu đề & nội dung: 'Plus Jakarta Sans', font-semibold & medium
+- QUY TẮC BẮT BUỘC:
+  * Không dùng từ ngữ "ELO" (phải dùng "Điểm uy tín" hoặc "Điểm tín nhiệm").
+  * Không dùng icon emoji ngẫu nhiên, chỉ dùng Google Material Symbols Outlined.
+  * Không để sót rác luồng cũ (không có nút thừa, không có trạng thái không tên).
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION D — STRICT ANTI-PATTERNS (DO NOT INCLUDE)
+SECTION C — BỐ CỤC CHI TIẾT MÀN HÌNH TỪ TRÊN XUỐNG
 ═══════════════════════════════════════════════════════════════════════════════
-- NO using the jargon "ELO" — strictly use "Điểm uy tín" or "Điểm tín nhiệm".
-- NO combining pending and active jobs in a confusing single list without clear stage indicators.
-- NO hiding the chosen student's profile when the order is pending confirmation.
-- NO unverified worker profiles without university and CCCD verified badges.
-- NO generic English text — everything must be natural Vietnamese suitable for Vietnamese parents.
+
+1. STICKY APP HEADER & TẠO VIỆC NHANH
+- Hàng tiêu đề:
+  * Tiêu đề: "Việc của tôi" (font-extrabold text-2xl text-slate-900 tracking-tight).
+  * Phụ đề: "Quản lý và giám sát toàn bộ ca học & coi trẻ của gia đình".
+- Nút tác vụ phải:
+  * Nút nhỏ "+ Đăng việc mới" (bg-orange-500 text-white font-bold text-xs px-3.5 py-2 rounded-full shadow-sm flex items-center gap-1.5).
+
+─────────────────────────────────────────────────────────────────────────────
+2. SEGMENTED CONTROLLER: 4 TAB CHUẨN VÒNG ĐỜI
+─────────────────────────────────────────────────────────────────────────────
+Thanh trượt 4 Tab nằm ngang (bg-slate-200/60 p-1 rounded-2xl flex items-center gap-1 mb-4):
+- Tab 1: [hourglass_top] "Chờ duyệt (2)" -> (Đang Active: nền trắng, chữ cam #F26522, đổ bóng nhẹ, font-bold text-xs py-2.5 px-2 flex-1 text-center)
+- Tab 2: [event_upcoming] "Sắp làm (1)" -> (Chữ slate-600 font-semibold text-xs py-2.5 px-2 flex-1 text-center)
+- Tab 3: [farsight_digital] "Đang làm (1)" -> (Có chấm tròn xanh dương nhấp nháy, chữ sky-700 font-semibold text-xs py-2.5 px-2 flex-1 text-center)
+- Tab 4: [history] "Lịch sử (8)" -> (Chữ slate-500 font-medium text-xs py-2.5 px-2 flex-1 text-center)
+
+─────────────────────────────────────────────────────────────────────────────
+3. NỘI DUNG CHI TIẾT CÁC THẺ THEO TỪNG TAB
+─────────────────────────────────────────────────────────────────────────────
+
+■ TAB 1: NỘI DUNG "CHỜ XÁC NHẬN" (PENDING CONFIRMATION)
+Hiển thị 2 mẫu Card chuẩn mực:
+
+● THẺ 1A (TRỌNG TÂM): ĐÃ CHỌN ĐƯỢC SINH VIÊN — ĐANG CHỜ XÁC NHẬN CAM KẾT
+- Viền trên nhấn màu Amber: border-t-4 border-amber-400 bg-white rounded-2xl p-4 shadow-sm border-x border-b border-slate-100.
+- Thanh trạng thái đầu thẻ:
+  * Huy hiệu: "⏳ Chờ sinh viên xác nhận" (bg-amber-50 text-amber-800 font-bold text-xs px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1)
+  * Số tiền: "300.000đ" (font-extrabold text-base text-slate-900)
+- Dải băng đếm ngược khẩn cấp (Urgent Countdown Ribbon):
+  * Nền vàng hổ phách nhạt (bg-amber-50/90 rounded-xl p-2.5 my-2.5 border border-amber-200/60 flex items-center justify-between):
+    + Bên trái: Icon đồng hồ cát + "Thời hạn xác nhận còn: 48 phút 15 giây" (font-bold text-amber-900 text-xs)
+    + Bên phải: Huy hiệu "Ký quỹ MoMo an toàn 100%" (text-[11px] text-emerald-700 font-semibold)
+- Spotlight Sinh viên được chọn:
+  * Avatar tròn 48x48 có tích xanh CCCD chính chủ.
+  * Tên: "Nguyễn Thị Thu Huyền" · "ĐH Sư phạm Hà Nội"
+  * Nhãn: "⭐ 4.9 (38 ca) · Điểm tín nhiệm: 100 · Xác thực CCCD"
+- Thông tin ca:
+  * "Gia sư Tiếng Việt & Toán lớp 2" · 18:00 – 20:00 Thứ 6 (19/09)
+  * Địa chỉ: Tòa S2.03 Vinhomes Smart City
+- Hàng nút hành động:
+  * Nút "Xem chi tiết đơn & hồ sơ" (bg-slate-900 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex-1 text-center)
+  * Nút "Đổi người khác" (text-red-500 font-semibold text-xs py-2.5 px-3 rounded-xl border border-red-200 hover:bg-red-50)
+
+● THẺ 1B: ĐƠN MỚI ĐĂNG — ĐANG QUÉT ỨNG VIÊN PHÙ HỢP
+- Trạng thái: "🔍 Đang tìm sinh viên phù hợp"
+- AI Matching gợi ý: "✨ Đã có 3 sinh viên gần nhà (bán kính < 2km) nộp hồ sơ"
+- Nút bấm: "Xem danh sách 3 ứng viên để chọn ngay →" (bg-orange-500 text-white font-bold text-xs py-2.5 rounded-xl)
+
+─────────────────────────────────────────────────────────────────────────────
+■ TAB 2: NỘI DUNG "SẮP LÀM" (UPCOMING SESSIONS — ĐÃ CAM KẾT)
+Ca làm đã được sinh viên bấm nhận, đang chuẩn bị tới giờ:
+- Viền trên nhấn màu Xanh Ngọc: border-t-4 border-emerald-500 bg-white rounded-2xl p-4 shadow-sm.
+- Trạng thái: "✅ Sinh viên đã cam kết nhận việc" (bg-emerald-50 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded-full)
+- Đếm ngược bắt đầu: "⏰ Bắt đầu lúc 18:00 hôm nay (Còn 3 tiếng 15 phút)" (font-bold text-sm text-slate-800)
+- Sinh viên phụ trách:
+  * Avatar + Tên: "Trần Minh Quân" · ĐH Ngoại Thương Hà Nội
+  * Nút gọi điện: "📞 Gọi trực tiếp (0982.xxx.xxx)"
+  * Nút nhắn tin: "💬 Chat 1-1 dặn dò bài tập"
+- Nút hành động: "Xem lộ trình & chi tiết ca" (border border-slate-300 font-bold text-xs py-2.5 rounded-xl)
+
+─────────────────────────────────────────────────────────────────────────────
+■ TAB 3: NỘI DUNG "ĐANG LÀM" (ACTIVE SHIFT & LIVE SUPERVISION)
+Ca làm đang diễn ra trong thời gian thực:
+- Viền trên nhấn màu Xanh Bầu Trời Công Nghệ: border-t-4 border-sky-500 bg-white rounded-2xl p-4 shadow-sm.
+- Trạng thái trực tiếp:
+  * "🟢 ĐANG LÀM VIỆC (18:00 – 20:00)" kèm chấm xanh phát xung Radar Pulse.
+- Khối giám sát Live GPS & An toàn Geofence:
+  * Bản đồ thu nhỏ: Hiển thị chấm vị trí sinh viên đang ở căn hộ gia đình.
+  * Tình trạng Geofence: "🛡️ Trong vùng an toàn (Bán kính 200m quanh nhà)".
+  * Cập nhật GPS: "Cập nhật 45 giây trước · Tín hiệu vệ tinh tốt".
+- Nút khẩn cấp SOS: Icon báo động đỏ "🆘 Hotline khẩn cấp 24/7 (0862427404)"
+- Nút hành động chính:
+  * Nút xanh nổi bật: "Nghiệm thu & Hoàn thành ca" (bg-emerald-600 text-white font-bold text-xs py-3 rounded-xl shadow flex items-center justify-center gap-1.5)
+
+─────────────────────────────────────────────────────────────────────────────
+■ TAB 4: NỘI DUNG "LỊCH SỬ" (COMPLETED & ARCHIVED)
+Ca làm đã kết thúc, lưu trữ minh bạch:
+- Trạng thái: "Hoàn tất ca làm · Đã giải ngân 300.000đ MoMo"
+- Thông tin sinh viên & đánh giá:
+  * "Nguyễn Thị Thu Huyền · Kèm bé Nam lớp 3"
+  * Nút "⭐ Đánh giá 5 sao cho sinh viên" (nếu chưa đánh giá)
+  * Nút "Xem Nhật ký buổi học (Care Diary) ↗" (xem báo cáo ảnh bé học bài)
+- Tiện ích tái sử dụng:
+  * Nút "🔁 Đặt lại sinh viên này cho tuần sau" (bg-orange-50 text-orange-600 border border-orange-200 font-bold text-xs py-2.5 rounded-xl)
 ```
