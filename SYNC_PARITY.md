@@ -125,3 +125,41 @@
 ---
 
 *Parity verified: 97% sync between Web and Mobile. 3% gap is expected (mobile-only features, pending screen integrations, Apple manual process).*
+
+---
+
+## Flow 1 Parity — /api/matching/* (Task G — 2026-09-14)
+
+**Nguyên tắc bắt buộc**: Web và mobile dùng CHUNG một backend, một bảng,
+một tài khoản. Đổi dữ liệu ở web → mobile thấy ngay (và ngược lại) vì cùng
+gọi `/api/matching/*` với cùng JWT `POST /api/auth/login/`. KHÔNG nhân bản
+logic — Django template chỉ render, JS gọi API.
+
+| Flow 1 tính năng | Web | Mobile | Endpoint dùng chung |
+|---|---|---|---|
+| Đăng việc (JobPost) | JS form | Form gia sư/trông trẻ/đón trẻ | `POST /api/matching/jobs/` + `/publish/` |
+| Danh sách ứng viên (top 8 + Gemini re-rank) | worker_feed inline | CandidatesListScreen | `POST /api/matching/candidates/` |
+| Chọn CarePartner (exclusive lock) | worker_feed modal | ParentHome/MyTasks | `POST /api/matching/jobs/<id>/select-carepartner/` |
+| Đơn chờ xác nhận (đồng hồ cam kết) | worker_feed poll + ding + modal (15s) | JobAssignedModal (push + poll 15s) | `GET /api/matching/bookings/?status=awaiting_commitment` |
+| Xác nhận cam kết | worker_feed modal | JobAssignedModal nút [Xác nhận] | `POST /api/matching/bookings/<id>/commit/` |
+| Từ chối trong cửa sổ (8 lý do T0) | worker_feed modal | JobAssignedModal nút [Từ chối] | `POST /api/matching/bookings/<id>/cancel/` |
+| Lịch rảnh (CarePartnerAvailability) | lich_ranh.html | AvailabilityScreen | `/api/matching/carepartners/me/availability/` |
+| Ngày bận (blackout đúng ngày/giờ) | lich_ranh.html | BlackoutScreen | `/api/matching/carepartners/me/blackouts/` |
+| Onboarding status (skill + lịch bắt buộc) | onboarding_worker.html | MyJobsScreen banner | `GET /api/matching/carepartners/me/onboarding-status/` |
+| DeviceToken push đa thiết bị | N/A (session web) | AuthContext login | `POST /api/matching/device-token/` |
+| GPS heartbeat (matching distance) | worker_gps_heartbeat.js (mở trang + 5 phút) | syncGpsToBackend (login + foreground + 5 phút) | `POST /api/tracking/gps-heartbeat/` |
+| Consent GPS cho ghép cặp (tách live-tracking) | N/A (mobile-first) | WorkerProfileScreen toggle | `POST /api/tracking/matching-gps-consent/` |
+| Thông báo matching | inbox trang web | NotificationsScreen | `GET /api/matching/notifications/` |
+
+**GPS heartbeat web (mới)**: trang worker (có `_worker_chrome.html`) tự xin
+`navigator.geolocation` và POST heartbeat — "100%" = mỗi lần mở trang + mỗi
+5 phút khi tab mở. Chưa consent → backend trả `no_matching_consent`, client
+dừng 24h, matching fallback địa chỉ hồ sơ.
+
+**Parity smoke test**: `matching/tests/test_job_alerts.py::WebMobileParitySmokeTest`
+— tạo job bằng JWT (web-like), đọc bookings/candidates bằng CÙNG JWT
+(mobile-like) → cùng dữ liệu, không nhân bản.
+
+**Trạng thái Flow 1: 100% cùng API.** Dual stack legacy (`core.Task` +
+`smart_match.py`) vẫn sống cho feed việc cũ — blackout/GPS/exclusive áp cho
+legacy qua `smart_match.py` trừ CarePartnerBlackout (Task D 2026-09-14).

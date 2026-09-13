@@ -1,3 +1,59 @@
+## Matching chuẩn sản phẩm + deploy CH Play 1.4.6 (2026-09-14)
+
+### Bối cảnh
+- QA audit 2026-09-13 (HEAD b1dd5c8): CHƯA ĐẠT — GPS drift-kill loại cả pool, không Gemini re-rank,
+  không exploration slot cho CP mới, payload push thiếu data.class=critical, DeviceToken không bao giờ được ghi.
+- Nhiệm vụ: Task A–G (CODING_AGENT_PROMPT_MATCHING_STANDARD_GPS_NOTIF_CHPLAY.md) → build/submit CH Play.
+
+### Công việc đã làm (Task A–G)
+- **Task B — ranking**: XÓA khối MAX_GPS_DRIFT_KM loại cả pool trong matching_service.find_candidates.
+  Bán kính → điểm phạt (subscore_distance=0 ngoài bán kính); chỉ hard-drop khi km > HARD_DROP_DISTANCE_KM=80 (MatchingConfig).
+  km=None → 50 điểm trung tính (trước đây 100). Sort key giữ nguyên.
+- **Task B — Gemini re-rank** (spec 2.2.4/11.2 #8): rerank_candidates() trong gemini_service.py — input top 20 candidate
+  (ẨN ELO), output hoán vị + why_recommended_vi 1 câu; timeout 2.5s (ThreadPoolExecutor), lỗi/no key → giữ thứ tự rule;
+  log AiCallLog(prompt_key='candidate_rerank'); find_candidates gọi khi pool >= 2 + GEMINI_RERANK_ENABLED (MatchingConfig).
+- **Task E — GPS**: User.matching_gps_consent (migration core.0028) tách consent ghép cặp khỏi live-tracking per-task.
+  GpsHeartbeatAPIView: chưa consent → 200 gps_sync='no_matching_consent' (không còn 403 im lặng); consent flag ĐỦ để ghi.
+  Endpoint mới POST/GET /api/tracking/matching-gps-consent/. sync_user_gps_coordinates(allow_matching_flag=True) cho heartbeat ngoài ca.
+- **Task A — exclusive lock**: CandidatesAPIView soft_lock TTL 300s cho mọi CP vừa đề xuất (2 PH không cùng giữ 1 CP 5').
+  _find_conflicts đổi semantics: soft lock CỦA CHÍNH CP ở JOB KHÁC mới chặn select (soft lock của job đang xét không tự chặn —
+  available_slots(exclude_job=job) bypass). Replacement loại CP có booking declined_in_window/expired_no_response/cancelled_by_carepartner.
+- **Task C — cold-start**: signal pre_save+post_save core.User bắt is_approved False→True → coldstart_service.on_worker_approved
+  (tạo CarePartnerProfile ELO 1200 band normal + push profile_approved — template seed mới, tổng 19 template).
+  LoginAPIView: worker pending nhận JWT + status=pending_approval + permissions=['onboarding']; WorkerMustBeApproved chặn
+  bookings/notifications (403) cho pending. Exploration slot trong find_candidates: top N thiếu newbie → chèn 1 newbie vào #N.
+  GET /api/matching/carepartners/me/onboarding-status/ (has_skills/has_availability/ready_for_matching).
+- **Task D — blackout**: core/services/smart_match.py trừ CarePartnerBlackout (khung giờ giao task start / cả ngày).
+- **Task F — chuông/popup**: _build_payload critical thêm data.class='critical' + data.sound. POST /api/matching/device-token/
+  (upsert DeviceToken). PATCH /profile/ expo_push_token → upsert DeviceToken. Mobile JobAssignedModal (push + poll 15s,
+  Xác nhận/Chi tiết/Từ chối, chuông + rung); NotificationListener playLoud cho MỌI job_assigned. Web: job_assigned_alert.js
+  (poll 15s + ding WebAudio + modal cùng 3 nút), worker_gps_heartbeat.js (mở trang + mỗi 5 phút) — include trong _worker_chrome.html.
+- **Task G — parity**: SYNC_PARITY.md thêm bảng Flow 1 /api/matching/*; smoke test WebMobileParitySmokeTest (cùng JWT tạo job + đọc bookings).
+
+### Test (số thật, chạy local)
+- python manage.py check: 0 issues
+- python manage.py test matching.tests tracking.tests_gps_heartbeat tracking.tests_gps_settings: **245/245 OK**
+- cd mobile && CI=true npx jest: **17 suites, 137/137 PASS** (thêm jobAssignedModalGps.test.js — 7 case)
+- Test mới: test_exclusive_offer (6), test_distance_scoring (8), test_cold_start (8), test_blackout_engine (4), test_job_alerts (6)
+- Sửa test cũ: tests_gps_heartbeat (403 → 200 no_matching_consent theo contract Task E — có chú thích),
+  test_constants seed count 18→19 (template profile_approved), MyJobsScreen.acceptance mock getOnboardingStatus.
+
+### File chính đã sửa
+- matching/: services/matching_service.py, gemini_service.py, lock_service.py, replacement_service.py, notification_service.py,
+  coldstart_service.py (NEW), api/jobs.py, api/permissions.py (NEW), api/device_token.py (NEW), api/onboarding.py (NEW),
+  api/bookings.py, api/notifications.py, urls.py, constants.py, management/commands/seed_matching_config.py
+- core/: models.py (matching_gps_consent), migrations/0028, signals.py (approval hook), views.py (LoginAPIView + profile PATCH DeviceToken)
+- core/services/smart_match.py: trừ blackout
+- tracking/: services.py, views.py (MatchingGpsConsentAPIView), urls.py, tests_gps_heartbeat.py
+- mobile/: App.js, src/components/JobAssignedModal.js (NEW), NotificationListener.js, context/AuthContext.js, api/matching.js, api/tracking.js,
+  navigation/AppNavigator.js, screens/Worker/MyJobsScreen.js, WorkerProfileScreen.js, app.json 1.4.6/vc29
+- frontend/: static/js/worker_gps_heartbeat.js (NEW), static/js/job_assigned_alert.js (NEW), _worker_chrome.html
+- docs: SYNC_PARITY.md, mobile/store-listing/RELEASE_NOTES_1.4.6.md
+
+### Lưu ý cho agent tiếp theo
+- matching config mới (seed_matching_config tự nạp): HARD_DROP_DISTANCE_KM=80, GEMINI_RERANK_ENABLED=true, GEMINI_RERANK_POOL=20.
+- Render cần migrate (core.0028) khi deploy — build.sh đã tự chạy migrate.
+- Soft lock TTL 300s: parent xem candidates → 8 CP bị giữ 5 phút cho job đó; select chính job vẫn OK (exclude_job).
 
 ## "Việc của tôi" 4 tab vòng đời CarePartner + luồng xác nhận booking + parity web (2026-09-13)
 

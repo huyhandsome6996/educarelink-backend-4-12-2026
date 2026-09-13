@@ -1450,3 +1450,15 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   → email SA (educarelink-eas-deploy@educarelink.iam.gserviceaccount.com)
   → role có Release management + chọn app EduCareLink. Chờ owner làm xong
   rồi chạy lại 2 lệnh submit.
+
+---
+
+## 2026-09-14 — Matching chuẩn sản phẩm (Task A–G) + CH Play 1.4.6 vc29
+
+- Backend: bỏ drift-kill GPS, distance 15% (50 điểm nếu thiếu toạ độ), Gemini re-rank top 20→top 8 (2.5s, chỉ reorder),
+  exclusive lock + soft lock 5', cold-start (exploration slot + pending login onboarding-only), legacy blackout,
+  payload class=critical + DeviceToken API, consent matching-GPS riêng (core.0028).
+- Mobile: JobAssignedModal + chuông mọi job_assigned + GPS 5 phút/foreground + consent toggle + onboarding banner + pending login routing.
+- Web: worker_gps_heartbeat.js + job_assigned_alert.js trong _worker_chrome.html.
+- Test: matching+GPS 245/245 OK; mobile jest 137/137 (17 suites).
+- Version: 1.4.6 / versionCode 29 + RELEASE_NOTES_1.4.6.md; EAS build+submit production.
