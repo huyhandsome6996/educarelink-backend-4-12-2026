@@ -519,7 +519,9 @@ class Command(BaseCommand):
                 "gender": "female",
                 "school": "Đại học Sư Phạm - Đại học Huế",
                 "major": "Sư phạm Toán học",
-                "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao"],
+                # Bổ sung tieng_viet/van (Defect 1 — 2026-09-13): sinhvien_test có
+                # skill tieu_hoc tức có dạy tiểu học → cần đủ kèm cả môn Tiếng Việt/Văn.
+                "skills": ["toan", "tieng_anh", "tieu_hoc", "kien_nhan", "phu_dao", "tieng_viet", "van"],
                 "jobs_completed": 18,
                 "rating_avg": 4.95,
                 "review_count": 16,
@@ -1003,6 +1005,36 @@ class Command(BaseCommand):
                 "summary": "Sinh viên UEH — Hạng Vàng · ELO 1.290, gia sư Tiếng Anh & Toán cấp 2 khu vực trung tâm Sài Gòn, có xe máy di chuyển linh hoạt.",
                 "jobs_done": 33, "rating": 4.92,
             },
+            # ── Defect 1 (2026-09-13): 2 gia sư chuyên Văn / Tiểu học tại TP. Huế ──
+            # Trước đây KHÔNG có CarePartner nào ở Huế có major Sư phạm Ngữ Văn hoặc
+            # skills van/ngu_van/tieng_viet → job "Ngữ văn lớp 4" tại Huế bị hard-gating
+            # loại 100% ứng viên (required_skills=['van'] không ai khớp) → 0 candidate.
+            {
+                "username": "carepartner_van_hue", "first_name": "Mai Phương", "last_name": "Lê Thị",
+                "email": "maiphuong.le@dhsphue.edu.vn", "phone_number": "0912111111",
+                "address": "126 Lê Lợi, P. Phú Hội, TP. Huế",
+                "lat": 16.4680, "lng": 107.5890, "tier": "gold",
+                "elo": 1510, "band": "trusted",
+                "school": "Đại học Sư Phạm - Đại học Huế", "major": "Sư phạm Ngữ Văn (Năm 3)",
+                "has_vehicle": True, "gender": "female",
+                "skills": ["van", "ngu_van", "tieng_viet", "luyen_chu_dep", "tieu_hoc", "cap_2", "kien_nhan"],
+                "qualifications": ["Sinh viên năm 3 Khoa Sư phạm Ngữ Văn - ĐH Sư phạm Huế", "Giải Ba Văn hay cấp quốc gia", "Đã đối soát CCCD & Thẻ SV"],
+                "summary": "Sinh viên Sư phạm Ngữ Văn ĐH Sư phạm Huế (năm 3) — Hạng Vàng · ELO 1.510, chuyên kèm Văn, Tiếng Việt & luyện chữ đẹp cho bé tiểu học và THCS, kiên nhẫn, giọng đọc hay.",
+                "jobs_done": 22, "rating": 4.95,
+            },
+            {
+                "username": "carepartner_tieuhoc_hue", "first_name": "Hoàng Anh Thư", "last_name": "Nguyễn",
+                "email": "anhthu.nguyen@dhsphue.edu.vn", "phone_number": "0912122222",
+                "address": "28 Nguyễn Tri Phương, P. Phước Vĩnh, TP. Huế",
+                "lat": 16.4655, "lng": 107.5915, "tier": "silver",
+                "elo": 1440, "band": "trusted",
+                "school": "Đại học Sư Phạm - Đại học Huế", "major": "Giáo dục Tiểu học",
+                "has_vehicle": False, "gender": "female",
+                "skills": ["tieng_viet", "van", "toan", "luyen_chu_dep"],
+                "qualifications": ["Sinh viên Khoa Giáo dục Tiểu học - ĐH Sư phạm Huế", "Kinh nghiệm kèm lớp 1-5 tại mặt bằng Huế", "Đã đối soát CCCD & Thẻ SV"],
+                "summary": "Sinh viên Giáo dục Tiểu học ĐH Sư phạm Huế — chuyên đồng hành kèm cặp bé lớp 1-5: tập đọc, tập viết, Toán tính nhẩm. Dễ thương, nhẹ nhàng với trẻ nhỏ.",
+                "jobs_done": 15, "rating": 4.9,
+            },
             {
                 "username": "worker_vietdung", "first_name": "Việt Dũng", "last_name": "Ngô",
                 "email": "vietdung.ngo@hcmut.edu.vn", "phone_number": "0912101010",
@@ -1067,6 +1099,18 @@ class Command(BaseCommand):
             "worker_thao": [(5, "08:00", "17:00"), (6, "08:00", "17:00")],
             "worker_giahan": [(1, "17:00", "20:30"), (3, "17:00", "20:30"), (5, "14:00", "19:00")],
             "worker_thanhmai": [(0, "18:00", "20:30"), (3, "18:00", "20:30"), (6, "08:00", "11:30")],
+            # Defect 1: gia sư Văn Huế rảnh các ngày trong tuần 17:00–21:30 + cuối tuần
+            "carepartner_van_hue": [
+                (0, "17:00", "21:30"), (1, "17:00", "21:30"), (2, "17:00", "21:30"),
+                (3, "17:00", "21:30"), (4, "17:00", "21:30"),
+                (5, "08:00", "11:30"), (5, "14:00", "21:30"),
+                (6, "08:00", "11:30"), (6, "14:00", "21:30"),
+            ],
+            "carepartner_tieuhoc_hue": [
+                (0, "16:30", "21:00"), (1, "16:30", "21:00"), (2, "16:30", "21:00"),
+                (3, "16:30", "21:00"), (4, "16:30", "21:00"),
+                (5, "08:00", "11:30"), (6, "14:00", "18:00"),
+            ],
         }
         for uname, windows in availability_plan.items():
             cp_user = worker_dict2.get(uname)
