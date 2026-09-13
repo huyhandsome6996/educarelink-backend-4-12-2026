@@ -1,3 +1,17 @@
+### Hotfix đăng việc gia sư 'any' → 1.4.7 vc30 (2026-09-14)
+- **Lỗi người dùng báo cáo** (screenshot 2:23): đăng việc "Gia sư & Kèm học" hiện modal
+  "Chưa thể đăng việc — Ưu tiên gia sư không hợp lệ: 'any'. Chọn 1 trong: student_year_1_2,
+  student_year_3_4, graduate, no_preference" → KHÔNG đăng được việc nào khi ưu tiên để mặc định.
+- **Nguyên nhân gốc**: mobile TutoringForm.js `SENIORITY_OPTIONS` dùng key `'any'` + default
+  state `'any'`, backend `job_schema.validate_job_payload` chỉ nhận 4 giá trị chuẩn trong
+  `TUTOR_SENIORITY_PREFERENCES` → 400 mọi lần submit tutoring không chọn rõ ưu tiên.
+- **Fix 2 phía (commit a8171be)**: backend normalize `'any'` → `'no_preference'` (app 1.4.6
+  đã cài hết lỗi ngay khi Render deploy, không cần update store); mobile đổi key chip +
+  default sang `'no_preference'`. Test hồi quy: AC-B9 backend ('any' pass, giá trị lạ vẫn 400),
+  AC-M6 mobile (keys ⊆ 4 giá trị chuẩn, chip mặc định no_preference).
+- **Verify**: manage.py check OK; matching.tests **232/232 OK**; mobile **17 suites / 138 tests PASS**.
+- Bump **1.4.7 / versionCode 30** + RELEASE_NOTES_1.4.7.md + test kỳ vọng version.
+
 ### Deploy 1.4.6 vc29 (2026-09-14)
 - Render: push main → auto deploy + `migrate` (core.0028) + seed_matching_config (key mới: HARD_DROP_DISTANCE_KM/GEMINI_RERANK_*/template profile_approved). Verify live: `/api/matching/carepartners/me/onboarding-status/` + `/api/tracking/matching-gps-consent/` trả dữ liệu thật với JWT demo → **E2E PASS**.
 - EAS build production ANDROID (1.4.6, vc29): FINISHED — [build log](https://expo.dev/accounts/huybodoi123/projects/educarelink/builds/83faf0c9-de8d-414c-826f-f73d6d032b4f).
