@@ -50,146 +50,15 @@ const AVATAR_COLORS = [
   '#4F46E5', // Indigo
 ];
 
-// Dữ liệu mẫu chuẩn Google Stitch khi chưa có job_id cụ thể hoặc đang duyệt demo
+// Dữ liệu mẫu khi chưa có job_id cụ thể
 const DEMO_JOB = {
   title: 'Gia sư Toán & Tiếng Anh kèm bé lớp 4',
   category_label: 'Gia sư & Kèm học 1:1',
   category_icon: 'school',
   hourly_rate_vnd: 120000,
   schedule: '18:00 - 20:00 (Thứ 2, 4, 6)',
-  location_note: 'Cách bạn 1.2 km (Quận Cầu Giấy, Hà Nội)',
+  location_note: 'Vị trí đã chọn trên bản đồ',
 };
-
-const DEMO_CANDIDATES = [
-  {
-    carepartner_id: 'cp-8824',
-    display_name: 'Nguyễn Thu Hà',
-    gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
-    major: 'Sư phạm Giáo dục Tiểu học',
-    match_level: 'very_high',
-    match_level_vi: 'Rất phù hợp',
-    match_score: 96,
-    rating: 4.95,
-    completed_jobs: 48,
-    distance_km: 1.2,
-    top_skills: ['Luyện chữ đẹp', 'Tiểu học', 'Kiên nhẫn', 'Sư phạm'],
-    latest_review: 'Cô giáo dạy luyện chữ cực kỳ kiên nhẫn và ân cần. Sau 10 buổi nét chữ bé tiến bộ vượt bậc, tròn và đều tăm tắp!',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-7102',
-    display_name: 'Đỗ Hoàng Ngân',
-    gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
-    major: 'Giáo dục Mầm non',
-    match_level: 'very_high',
-    match_level_vi: 'Rất phù hợp',
-    match_score: 95,
-    rating: 5.0,
-    completed_jobs: 38,
-    distance_km: 1.4,
-    top_skills: ['Trông trẻ', 'Mầm non', 'Montessori', 'Sơ cấp cứu'],
-    latest_review: 'Cô Ngân trông bé rất khéo và chu đáo, bé quấn cô như người nhà. Gia đình hoàn toàn yên tâm gửi gắm.',
-    response_tag: 'Phản hồi < 3 phút',
-  },
-  {
-    carepartner_id: 'cp-6531',
-    display_name: 'Lê Thảo Vy',
-    gender: 'female',
-    school: 'ĐH Sư Phạm Hà Nội',
-    major: 'Sư phạm Ngữ Văn & Tiểu học',
-    match_level: 'very_high',
-    match_level_vi: 'Rất phù hợp',
-    match_score: 93,
-    rating: 4.9,
-    completed_jobs: 35,
-    distance_km: 1.8,
-    top_skills: ['Luyện chữ đẹp', 'Ngữ văn', 'Rèn chữ', 'Kiên nhẫn'],
-    latest_review: 'Phương pháp rèn chữ chuẩn nét thanh nét đậm, tư thế ngồi và cách cầm bút chuẩn y khoa.',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-5420',
-    display_name: 'Nguyễn Hữu Phước',
-    gender: 'male',
-    school: 'ĐH Y Hà Nội',
-    major: 'Bác sĩ Đa khoa (Năm 4)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 91,
-    rating: 4.9,
-    completed_jobs: 34,
-    distance_km: 1.5,
-    top_skills: ['Đón trẻ', 'Sơ cấp cứu', 'Lái xe an toàn', 'Đúng giờ'],
-    latest_review: 'Đón bé luôn đúng giờ hẹn, lái xe cẩn thận, đội mũ bảo hiểm chỉnh tề cho con. Rất yên tâm!',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-4319',
-    display_name: 'Vũ Khánh An',
-    gender: 'female',
-    school: 'ĐH Y Hà Nội',
-    major: 'Điều dưỡng Nhi khoa (Năm 4)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 90,
-    rating: 4.95,
-    completed_jobs: 31,
-    distance_km: 2.2,
-    top_skills: ['Chăm bé sơ sinh', 'Sơ cấp cứu nhi', 'Dỗ ăn', 'Vệ sinh'],
-    latest_review: 'Có kiến thức y tế nên trông trẻ rất an tâm, xử lý các tình huống quấy sốt của bé rất chuyên nghiệp.',
-    response_tag: 'Phản hồi < 5 phút',
-  },
-  {
-    carepartner_id: 'cp-3208',
-    display_name: 'Trần Thị Minh Thư',
-    gender: 'female',
-    school: 'ĐH Ngoại Thương',
-    major: 'Kinh tế Quốc tế (IELTS 8.0)',
-    match_level: 'high',
-    match_level_vi: 'Phù hợp cao',
-    match_score: 89,
-    rating: 5.0,
-    completed_jobs: 32,
-    distance_km: 1.6,
-    top_skills: ['Tiếng Anh giao tiếp', 'Phát âm chuẩn', 'Dạy ngữ pháp'],
-    latest_review: 'Phát âm chuẩn bản xứ, phương pháp truyền đạt qua trò chơi bé rất thích.',
-    response_tag: 'Phản hồi < 3 phút',
-  },
-  {
-    carepartner_id: 'cp-2197',
-    display_name: 'Đỗ Đức Anh',
-    gender: 'male',
-    school: 'ĐH Giao Thông Vận Tải',
-    major: 'Kỹ thuật Giao thông',
-    match_level: 'medium',
-    match_level_vi: 'Phù hợp',
-    match_score: 86,
-    rating: 4.88,
-    completed_jobs: 25,
-    distance_km: 2.0,
-    top_skills: ['Đón trẻ an toàn', 'Thông thạo đường', 'Cẩn thận'],
-    latest_review: 'Đức Anh rất nhiệt tình và chu đáo, luôn gọi điện báo khi đã đón được bé.',
-    response_tag: 'Phản hồi < 10 phút',
-  },
-  {
-    carepartner_id: 'cp-1086',
-    display_name: 'Lê Hoàng Nam',
-    gender: 'male',
-    school: 'ĐH Bách Khoa Hà Nội',
-    major: 'Khoa học Máy tính (Năm 4)',
-    match_level: 'medium',
-    match_level_vi: 'Phù hợp',
-    match_score: 84,
-    rating: 4.8,
-    completed_jobs: 26,
-    distance_km: 2.5,
-    top_skills: ['Toán tư duy', 'Toán nâng cao', 'Lập trình Scratch'],
-    latest_review: 'Kèm toán tư duy rất bài bản, rèn thói quen tự giác làm bài cho con.',
-    response_tag: 'Phản hồi < 10 phút',
-  },
-];
 
 export default function CandidatesListScreen() {
   let insets = { top: 12, bottom: 20, left: 0, right: 0 };
@@ -204,13 +73,10 @@ export default function CandidatesListScreen() {
   const passedJob = route.params?.job;
   const passedCandidates = route.params?.candidates;
   const passedTotal = route.params?.totalMatched;
-  const isDemoPreview = !jobId;
   const [jobInfo, setJobInfo] = useState(passedJob || DEMO_JOB);
   const [candidates, setCandidates] = useState(
     Array.isArray(passedCandidates)
       ? passedCandidates
-      : isDemoPreview
-      ? DEMO_CANDIDATES
       : []
   );
   const [totalMatched, setTotalMatched] = useState(
@@ -218,8 +84,6 @@ export default function CandidatesListScreen() {
       ? passedTotal
       : Array.isArray(passedCandidates)
       ? passedCandidates.length
-      : isDemoPreview
-      ? DEMO_CANDIDATES.length
       : 0
   );
   // Nếu đã nhận danh sách ứng viên được tải trước từ modal tìm kiếm -> loading = false ngay lập tức!
@@ -265,9 +129,8 @@ export default function CandidatesListScreen() {
   // Tải danh sách ứng viên
   const load = useCallback(async (isRefresh = false) => {
     if (!jobId) {
-      // Khi mở xem thử nghiệm từ trang chủ không có jobId, dùng DEMO_CANDIDATES
-      setCandidates(DEMO_CANDIDATES);
-      setTotalMatched(DEMO_CANDIDATES.length);
+      setCandidates([]);
+      setTotalMatched(0);
       setLoading(false);
       return;
     }
@@ -508,7 +371,7 @@ export default function CandidatesListScreen() {
             <Text style={styles.heroReviewText}>
               "{c.latest_review || 'Gia sư dạy rất có tâm, bé nhà mình tiến bộ vượt bậc sau 1 tháng.'}"
             </Text>
-            <Text style={styles.heroReviewAuthor}>— Phụ huynh đã sử dụng dịch vụ tại Cầu Giấy</Text>
+            <Text style={styles.heroReviewAuthor}>— Phụ huynh tại {c.location_district || c.school || 'khu vực của bạn'}</Text>
           </View>
         </View>
 
@@ -906,27 +769,23 @@ export default function CandidatesListScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             candidates.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <View style={styles.emptyContainer} testID="truthful-empty-container">
                 <View style={styles.emptyIconCircle}>
                   <Ionicons name="search-outline" size={38} color="#F26522" />
                 </View>
-                <Text style={styles.emptyTitle}>Chưa có CarePartner phù hợp</Text>
+                <Text style={styles.emptyTitle}>Chưa tìm thấy CarePartner phù hợp trong khu vực</Text>
                 <Text style={styles.emptySubtitle}>
-                  Hiện chưa có CarePartner nào có kỹ năng & kinh nghiệm về "{jobInfo.title || 'công việc này'}" rảnh vào khung giờ đã chọn ({jobInfo.schedule || 'ca này'}).
+                  Thử điều chỉnh khung giờ, giảm tiêu chí hoặc mở rộng bán kính tìm kiếm quanh địa điểm đã chọn.
                 </Text>
-                <View style={styles.emptyAdviceCard}>
-                  <Text style={styles.emptyAdviceTitle}>💡 Gợi ý cho bạn:</Text>
-                  <Text style={styles.emptyAdviceText}>• Thử nới rộng khung giờ hoặc chọn ngày khác để có thêm ứng viên rảnh lịch.</Text>
-                  <Text style={styles.emptyAdviceText}>• Hệ thống vẫn đang phát thông báo tới các sinh viên chuyên ngành quanh khu vực của bạn.</Text>
-                </View>
                 <TouchableOpacity
+                  testID="empty-adjust-btn"
                   style={styles.resetFilterBtn}
-                  onPress={() => load(true)}
+                  onPress={() => navigation.goBack()}
                   activeOpacity={0.85}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="refresh" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.resetFilterBtnText}>Tìm kiếm lại</Text>
+                    <Ionicons name="options-outline" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.resetFilterBtnText}>Điều chỉnh yêu cầu / Đổi khung giờ</Text>
                   </View>
                 </TouchableOpacity>
               </View>
