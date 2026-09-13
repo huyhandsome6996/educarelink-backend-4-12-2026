@@ -34,7 +34,7 @@ from .serializers import (
     LocationConsentSerializer, LiveLocationSerializer,
     LocationHistorySerializer, SOSAlertSerializer,
     GrantConsentSerializer, UpdateLocationSerializer, SOSSerializer,
-    HeartbeatSerializer,
+    HeartbeatSerializer, GpsHeartbeatSerializer,
     RandomVerificationCheckSerializer, SetVerificationPinSerializer,
     RespondVerificationCheckSerializer, BatchLocationSerializer,
 )
@@ -43,6 +43,7 @@ from .services import (
     get_live_location, get_location_history, trigger_sos,
     get_accepted_worker,
     update_heartbeat, get_device_status, get_offline_alerts_for_task,
+    sync_user_gps_coordinates, user_has_granted_location_consent,
     check_offline_devices, retry_offline_alert_pushes, acknowledge_offline_alert,
     AlreadyAcknowledgedError,
     set_verification_pin, respond_verification_check,
@@ -412,16 +413,84 @@ class HeartbeatAPIView(APIView):
                 app_state=data.get('app_state', ''),
                 network_type=data.get('network_type', ''),
             )
+            # ── Defect 4 (2026-09-13): sync GPS real-time vào User khi có tọa độ ──
+            # update_heartbeat ở trên ĐÃ kiểm tra LocationConsent granted
+            # (raise PermissionError → 403) nên khi tới đây consent chắc chắn
+            # hợp lệ — ghi current_latitude/current_longitude có throttle
+            # GPS_HEARTBEAT_MIN_INTERVAL_SECONDS để tránh spam DB.
+            gps_status = 'skipped'
+            if data.get('latitude') is not None and data.get('longitude') is not None:
+                try:
+                    gps_status = sync_user_gps_coordinates(
+                        request.user, data['latitude'], data['longitude'])
+                except PermissionError:
+                    gps_status = 'no_consent'
             return Response({
                 'status': 'ok',
                 'heartbeat_id': hb.id,
                 'last_seen': hb.last_seen.isoformat(),
                 'device_status': hb.device_status,
+                'gps_sync': gps_status,
             }, status=status.HTTP_200_OK)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GpsHeartbeatAPIView(APIView):
+    """
+    POST /api/tracking/gps-heartbeat/  (Defect 4 — 2026-09-13)
+
+    Body: { latitude, longitude, accuracy? }
+
+    GPS heartbeat NHẸN ngoài ca: CarePartner app gọi khi mở app / đăng nhập /
+    đồng bộ nền để cập nhật User.current_latitude/current_longitude cho
+    matching engine dùng vị trí thực tế (chống "đăng ký Huế đang ở Hà Nội").
+
+    BẮT BUỘC (không optional):
+    - Kiểm tra LocationConsent đã cấp (SAFETY-LOC-001) — chưa có consent →
+      trả 403 và KHÔNG ghi tọa độ.
+    - Throttle: mỗi user tối đa 1 lần ghi DB / GPS_HEARTBEAT_MIN_INTERVAL_SECONDS
+      giây (60s mặc định) — gửi dày hơn trả 200 với gps_sync='throttled'.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Chỉ CarePartner mới cần GPS real-time cho ghép cặp
+        if request.user.role != 'worker':
+            return Response(
+                {'error': 'Chỉ CarePartner mới được đồng bộ GPS real-time.'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        serializer = GpsHeartbeatSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Consent guard bắt buộc — chưa có consent → 403, không ghi tọa độ
+        if not user_has_granted_location_consent(request.user):
+            return Response(
+                {'error': 'Bạn chưa đồng ý chia sẻ vị trí — không thể đồng bộ GPS.',
+                 'code': 'no_location_consent'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            result = sync_user_gps_coordinates(
+                request.user, data['latitude'], data['longitude'])
+        except PermissionError:
+            return Response(
+                {'error': 'Bạn chưa đồng ý chia sẻ vị trí — không thể đồng bộ GPS.',
+                 'code': 'no_location_consent'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        return Response({
+            'status': 'ok',
+            'gps_sync': result,
+            'current_latitude': request.user.current_latitude,
+            'current_longitude': request.user.current_longitude,
+            'last_gps_updated_at': (request.user.last_gps_updated_at.isoformat()
+                                    if request.user.last_gps_updated_at else None),
+        }, status=status.HTTP_200_OK)
 
 
 class DeviceStatusAPIView(APIView):

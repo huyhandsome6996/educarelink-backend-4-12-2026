@@ -361,6 +361,19 @@ TRACKING_OFFLINE_THRESHOLD = int(os.environ.get('TRACKING_OFFLINE_THRESHOLD', '6
 TRACKING_OFFLINE_CHECK_ENABLED = os.environ.get('TRACKING_OFFLINE_CHECK_ENABLED', 'true').lower() == 'true'
 TRACKING_OFFLINE_CHECK_INTERVAL = int(os.environ.get('TRACKING_OFFLINE_CHECK_INTERVAL', '1'))  # phút
 
+# ── GPS REAL-TIME CHO GHÉP CẶP (Defect 4 — 2026-09-13) ──
+# Ngưỡng "tươi" của GPS real-time: chỉ dùng current_latitude/longitude khi
+# last_gps_updated_at còn trong khoảng này; quá hạn → fallback vị trí đăng ký tĩnh.
+GPS_FRESHNESS_HOURS = int(os.environ.get('GPS_FRESHNESS_HOURS', '48'))
+
+# Chống "đi công tác / về quê": GPS real-time cách vị trí ĐÃ ĐĂNG KÝ xa hơn ngưỡng
+# này (km) → CarePartner bị loại khỏi match pool (không giao việc khi xa nhà).
+MAX_GPS_DRIFT_KM = float(os.environ.get('MAX_GPS_DRIFT_KM', '50'))
+
+# Rate-limit ghi GPS: mỗi user chỉ ghi DB tối đa 1 lần trong khoảng này (giây)
+# để mobile gửi heartbeat dày cũng không spam ghi DB liên tục.
+GPS_HEARTBEAT_MIN_INTERVAL_SECONDS = int(os.environ.get('GPS_HEARTBEAT_MIN_INTERVAL_SECONDS', '60'))
+
 # QA-FIX-2 / C: schedulers KHÔNG chạy trong web worker mặc định (tránh
 # duplicate khi WEB_CONCURRENCY=2). Chạy qua Render Cron Job hoặc worker
 # dyno riêng: python manage.py run_tracking_schedulers --once

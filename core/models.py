@@ -76,6 +76,26 @@ class User(AbstractUser):
     latitude = models.FloatField(null=True, blank=True, help_text="Vĩ độ (latitude) từ bản đồ")
     longitude = models.FloatField(null=True, blank=True, help_text="Kinh độ (longitude) từ bản đồ")
 
+    # ----> GPS REAL-TIME (Defect 4 — 2026-09-13) ----
+    # Tọa độ GPS hiện tại của CarePartner, đồng bộ từ mobile (expo-location)
+    # qua POST /api/tracking/gps-heartbeat/ hoặc kèm heartbeat trong ca.
+    # Chỉ ghi khi LocationConsent đã được cấp (403 nếu chưa) + throttle 1
+    # lần / GPS_HEARTBEAT_MIN_INTERVAL_SECONDS giây / user để tránh spam DB.
+    # Matching dùng tọa độ này khi còn "tươi" (< GPS_FRESHNESS_HOURS giờ);
+    # quá hạn → fallback về latitude/longitude tĩnh đăng ký.
+    current_latitude = models.FloatField(
+        null=True, blank=True,
+        help_text="Vĩ độ GPS real-time lần cuối (nullable — chưa từng sync thì None)"
+    )
+    current_longitude = models.FloatField(
+        null=True, blank=True,
+        help_text="Kinh độ GPS real-time lần cuối (nullable — chưa từng sync thì None)"
+    )
+    last_gps_updated_at = models.DateTimeField(
+        null=True, blank=True, db_index=True,
+        help_text="Thời điểm GPS real-time được cập nhật lần cuối"
+    )
+
     # ----> MÃ CÁ NHÂN XÁC MINH (Phần 3 — Random Verification) ----
     # Carepartner đăng ký 1 mã PIN 4-6 số. Khi hệ thống bất ngờ yêu cầu xác
     # minh trong lúc task in_progress, carepartner phải nhập đúng mã này để
