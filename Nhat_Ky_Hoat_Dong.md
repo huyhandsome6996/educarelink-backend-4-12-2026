@@ -1,3 +1,8 @@
+### Deploy 1.4.6 vc29 (2026-09-14)
+- Render: push main → auto deploy + `migrate` (core.0028) + seed_matching_config (key mới: HARD_DROP_DISTANCE_KM/GEMINI_RERANK_*/template profile_approved). Verify live: `/api/matching/carepartners/me/onboarding-status/` + `/api/tracking/matching-gps-consent/` trả dữ liệu thật với JWT demo → **E2E PASS**.
+- EAS build production ANDROID (1.4.6, vc29): FINISHED — [build log](https://expo.dev/accounts/huybodoi123/projects/educarelink/builds/83faf0c9-de8d-414c-826f-f73d6d032b4f).
+- Submit CH Play: **track internal — THÀNH CÔNG** (release "1.4.6" vc29 status=completed, thay 1.4.5/vc28; tester nhận update ngay như các bản 1.4.4/1.4.5 trước).
+- Track production: Google trả `FAILED_PRECONDITION` khi gán vc29 (cả status completed lẫn staged 50%) — Console cho thấy production CHƯA TỪNG có release (các bản trước đi internal/alpha): tài khoản cá nhân mới phải đạt điều kiện closed-testing (20 tester × 14 ngày) trước khi mở production. Cần promote trong Play Console khi đủ điều kiện — không thể bypass bằng API.
 ## Matching chuẩn sản phẩm + deploy CH Play 1.4.6 (2026-09-14)
 
 ### Bối cảnh
