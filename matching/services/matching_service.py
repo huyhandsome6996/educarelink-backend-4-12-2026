@@ -74,8 +74,23 @@ def _major_match_bonus(major, job_type, required_skills=None):
     art_kw = ['mỹ thuật', 'my thuat', 'hội họa', 'hoi hoa', 'thiết kế', 'đồ họa']
 
     # Ngoại ngữ cụ thể
+    # ⚠️ Defect 1 (2026-09-13): 'tieng_viet' (Tiếng Việt — môn Văn tiểu học) KHÔNG
+    # phải ngoại ngữ. Trước đây 'tieng_' in s bắt cả 'tieng_viet' vào nhánh ngoại
+    # ngữ nhưng lang_matches không có keyword cho nó → hàm luôn trả 0 dù major
+    # "Sư phạm Ngữ Văn" khớp hoàn hảo → hard-gating loại oan gia sư Văn.
+    # Các biến thể có dấu/không dấu đã test (bắt buộc liệt kê — tránh bug âm thầm
+    # chuẩn hóa tiếng Việt như case font Manrope_800extraBold):
+    #   ngữ văn | ngu van | văn học | van hoc | sư phạm văn | su pham van |
+    #   văn chương | van chuong | tiếng việt | tieng viet | tiểu học | tieu hoc |
+    #   giáo dục tiểu học | giao duc tieu hoc
     if any('tieng_' in s or s in ('ielts', 'toeic', 'ngoai_ngu') for s in req_set):
         lang_matches = []
+        if 'tieng_viet' in req_set:
+            lang_matches.extend([
+                'tiếng việt', 'tieng viet', 'ngữ văn', 'ngu van', 'văn học', 'van hoc',
+                'sư phạm văn', 'su pham van', 'văn chương', 'van chuong',
+                'sư phạm', 'su pham', 'giáo dục tiểu học', 'giao duc tieu hoc', 'tiểu học', 'tieu hoc',
+            ])
         if any(s in ('tieng_anh', 'ielts', 'toeic') for s in req_set):
             lang_matches.extend(['tiếng anh', 'tieng anh', 'english', 'sư phạm anh', 'su pham anh', 'ngôn ngữ anh', 'ngon ngu anh'])
         if 'tieng_trung' in req_set:
@@ -105,9 +120,13 @@ def _major_match_bonus(major, job_type, required_skills=None):
     # 2. Đối với gia sư tiểu học / văn hóa phổ thông (Toán, Văn, Lý, Hóa, Sinh...) hoặc chăm sóc:
     elementary_tutoring = {
         'tieu_hoc', 'luyen_chu_dep', 'toan', 'tieng_viet', 'on_tap', 'kem_hoc', 'van',
+        'ngu_van',  # Defect 1: biến thể skill "ngữ văn" (profile CP dùng code này)
         'ly', 'hoa', 'sinh'
     }
-    education_kw = ['sư phạm', 'su pham', 'giáo dục', 'giao duc', 'pedagog']
+    education_kw = ['sư phạm', 'su pham', 'giáo dục', 'giao duc', 'pedagog',
+                    # Defect 1: biến thể chuyên ngành tiểu học (có dấu / không dấu)
+                    'giáo dục tiểu học', 'giao duc tieu hoc', 'tiểu học', 'tieu hoc',
+                    'gd tiểu học', 'gd tieu hoc', 'primary education']
     care_kw = ['sơ cấp', 'so cap', 'chăm sóc', 'cham soc', 'nhi', 'điều dưỡng', 'dieu duong', 'y tế', 'mầm non', 'mam non']
 
     # Nếu job_type là tutoring: match education_kw HOẶC chuyên ngành trực tiếp môn học đó
@@ -118,7 +137,13 @@ def _major_match_bonus(major, job_type, required_skills=None):
             # Chuyên ngành trực tiếp môn học (Vật lý, Hóa học, Sinh học, Toán học, Ngữ văn...)
             subject_kw_map = {
                 'toan': ['toán', 'toan', 'math'],
-                'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'tiếng việt', 'tieng viet'],
+                # Defect 1: bổ sung biến thể "sư phạm văn" / "văn chương" (có dấu + không dấu)
+                'van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
+                        'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
+                'ngu_van': ['ngữ văn', 'ngu van', 'văn học', 'van hoc', 'sư phạm văn', 'su pham van',
+                            'văn chương', 'van chuong', 'tiếng việt', 'tieng viet'],
+                'tieng_viet': ['tiếng việt', 'tieng viet', 'ngữ văn', 'ngu van', 'văn học', 'van hoc',
+                               'sư phạm văn', 'su pham van', 'tiểu học', 'tieu hoc'],
                 'ly': ['vật lý', 'vat ly', 'vật lí', 'vat li'],
                 'hoa': ['hóa học', 'hoa hoc'],
                 'sinh': ['sinh học', 'sinh hoc'],
