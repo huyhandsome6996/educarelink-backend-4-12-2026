@@ -516,6 +516,89 @@
             scrollToBottom();
         }
 
+        // ===== FLOW 1/2 — CARD KHAI BẬN (blackout) XÁC NHẬN 1-TAP =====
+        // Brief 3.1: AI chỉ TRÍCH XUẤT — card bấm xác nhận thì mới lưu thật
+        // (POST /api/matching/carepartners/me/blackouts/).
+        function addBlackoutCard(action) {
+            const time = getCurrentTime();
+            const khung = action.time_from && action.time_to
+                ? `${action.time_from} - ${action.time_to}`
+                : 'Bận cả ngày';
+            const conflict = action.conflicts_with_booking;
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-3 msg-animate';
+            msgDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <div class="max-w-[85%] lg:max-w-[70%]">
+                    <div class="task-card-chat bg-surface rounded-2xl border border-border overflow-hidden">
+                        <div class="px-5 pt-4 pb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined filled text-lg text-primary" style="font-variation-settings: 'FILL' 1;">event_busy</span>
+                                <h4 class="font-bold text-textPrimary text-base">Xác nhận khai ngày bận</h4>
+                            </div>
+                            <div class="text-sm text-textSecondary space-y-1 mb-3">
+                                <div><span class="font-semibold text-textPrimary">Ngày:</span> ${escapeHtml(action.date)}</div>
+                                <div><span class="font-semibold text-textPrimary">Khung giờ:</span> ${escapeHtml(khung)}</div>
+                                <div><span class="font-semibold text-textPrimary">Lý do:</span> ${escapeHtml(action.reason_label || 'Khác')}</div>
+                                ${action.note ? `<div><span class="font-semibold text-textPrimary">Ghi chú:</span> ${escapeHtml(action.note)}</div>` : ''}
+                            </div>
+                            ${conflict
+                                ? `<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">⚠️ Ngày này bạn đang có đơn đã xác nhận — cần hủy hoặc đổi giờ đơn trước khi khai bận.</div>`
+                                : ''}
+                            <button data-blackout-confirm onclick='confirmBlackoutAction(this, ${JSON.stringify(action).replace(/'/g, "&#39;")})'
+                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                Xác nhận khai bận
+                            </button>
+                        </div>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        async function confirmBlackoutAction(btn, action) {
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Đang lưu...';
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/carepartners/me/blackouts/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: action.date,
+                        time_from: action.time_from,
+                        time_to: action.time_to,
+                        reason: action.reason,
+                        note: action.note || '',
+                    }),
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    showToast(data.detail || 'Không lưu được ngày bận. Thử lại nhé.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    return;
+                }
+                const mergedMsg = data.merged
+                    ? 'Ngày bận này đã trùng lịch có sẵn — mình đã gộp lại cho gọn nhé.'
+                    : 'Đã lưu ngày bận. CarePartner khác sẽ không được ghép với bạn trong khoảng này.';
+                btn.innerHTML = '<span class="material-symbols-outlined text-lg">check_circle</span> Đã lưu';
+                showToast(mergedMsg, 'success');
+                addBotMessage('✅ ' + mergedMsg);
+            } catch (e) {
+                console.error('Blackout error:', e);
+                showToast('Lỗi kết nối khi lưu ngày bận. Thử lại nhé.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
         // Show typing indicator
         function showTyping() {
             const typingDiv = document.createElement('div');
@@ -613,7 +696,12 @@
                 const botResponseText = data.response || '';
                 chatHistory.push({ role: 'assistant', text: botResponseText });
 
-                // Add the AI text reply (advisory only, no task creation)
+                // ===== FLOW 1/2 — card khai bận 1-tap =====
+                if (data.type === 'blackout_action' && data.blackout_action) {
+                    addBlackoutCard(data.blackout_action);
+                }
+
+                // Add the AI text reply (advisory hoặc hướng dẫn khai bận)
                 if (data.response) {
                     addBotMessage(data.response);
                 }

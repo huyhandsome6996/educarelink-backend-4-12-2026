@@ -388,6 +388,15 @@
         // Lưu lịch sử chat để gửi kèm cho AI hiểu ngữ cảnh
         let chatHistory = [];
 
+        // ===== FLOW 1/2 — TRẠNG THÁI DRAFT TRONG PHIÊN CHAT =====
+        // Id bản nháp đang giữ: gửi kèm mỗi lượt chat để backend CẬP NHẬT
+        // đúng bản nháp này (không tạo trùng JobPost).
+        let currentDraftJobId = null;
+        // Payload chờ xác nhận vị trí trên bản đồ (location_confirm).
+        let pendingLocationPayload = null;
+        // Toạ độ phụ huynh đã chọn trên bản đồ (dùng cho các lượt sau).
+        let pickedCoords = null;
+
         // ===== TOAST NOTIFICATION SYSTEM =====
         function showToast(message, type = 'success', duration = 4000) {
             const container = document.getElementById('toast-container');
@@ -538,21 +547,73 @@
             scrollToBottom();
         }
 
-        // Add task card in chat
-        function addTaskCard(task) {
+        // ===== FLOW 1/2 — CARD BẢN NHÁP CÔNG VIỆC =====
+        const JOB_TYPE_META = {
+            tutoring: { name: 'Gia sư', icon: 'menu_book', color: '#F26522' },
+            childcare: { name: 'Trông trẻ', icon: 'stroller', color: '#8B5CF6' },
+            pickup: { name: 'Đón trẻ', icon: 'child_care', color: '#2DB84B' },
+        };
+
+        // Đăng bản nháp + chuyển sang trang chọn CarePartner
+        async function publishAndGoToCandidates(jobId, btn) {
+            if (!jobId) return;
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Đang đăng...';
+            try {
+                const resp = await apiFetch(`${API_BASE}/matching/jobs/${jobId}/publish/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (!resp) return;
+                const pub = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    showToast(pub.detail || 'Không đăng được bài. Bạn thử lại nhé.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    return;
+                }
+                if (pub.code === 'ai_failed') {
+                    showToast('Bài đã đăng nhưng AI phân tích chưa xong. Thử lại sau ít phút nhé.', 'warning');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    return;
+                }
+                currentDraftJobId = null;
+                showToast('Đăng bài thành công! Đang chuyển tới danh sách CarePartner...', 'success');
+                setTimeout(() => { window.location.href = `/ung-vien/${jobId}/`; }, 700);
+            } catch (e) {
+                console.error('Publish error:', e);
+                showToast('Lỗi kết nối khi đăng bài. Thử lại nhé.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
+        // Giữ draft, cho phép sửa qua chat
+        function editDraftInChat() {
+            chatInput.focus();
+            chatInput.value = 'Mình muốn sửa: ';
+            showToast('Nhắn thông tin cần sửa — AI sẽ cập nhật lại chính bản nháp này.', 'info');
+        }
+
+        function addJobDraftCard(jobDraft) {
             const time = getCurrentTime();
-            const formattedPrice = formatPrice(task.price || 0);
-            const categoryMap = {
-                1: { name: 'Gia sư', icon: 'menu_book', color: '#F26522' },
-                2: { name: 'Đón trẻ', icon: 'child_care', color: '#2DB84B' },
-                3: { name: 'Dọn dẹp', icon: 'cleaning_services', color: '#3B82F6' },
-                4: { name: 'Trông trẻ', icon: 'stroller', color: '#8B5CF6' },
-                5: { name: 'Mua sắm hộ', icon: 'shopping_bag', color: '#EC4899' },
-                6: { name: 'Nấu ăn', icon: 'restaurant', color: '#F59E0B' },
-                7: { name: 'Hỗ trợ AI', icon: 'smart_toy', color: '#6366F1' },
-                8: { name: 'Khác', icon: 'more_horiz', color: '#6B7280' },
-            };
-            const cat = categoryMap[task.category] || categoryMap[1];
+            currentDraftJobId = jobDraft.id || null;
+            const meta = JOB_TYPE_META[jobDraft.job_type] || JOB_TYPE_META.tutoring;
+            const isDraft = (jobDraft.status === 'draft');
+            const matched = jobDraft.preview_matched;
+            const rate = formatPrice(jobDraft.hourly_rate_vnd || 0) + '/giờ';
+
+            const matchedHtml = (matched === undefined || matched === null)
+                ? ''
+                : (matched > 0
+                    ? `<span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1"><span class="material-symbols-outlined text-sm">radar</span>Ước tính ${matched} CarePartner phù hợp</span>`
+                    : `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1"><span class="material-symbols-outlined text-sm">radar</span>Chưa có CP khớp ngay</span>`);
+
+            const zeroHint = (jobDraft.zero_match_hint)
+                ? `<div class="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">${escapeHtml(jobDraft.zero_match_hint)}</div>`
+                : '';
 
             const msgDiv = document.createElement('div');
             msgDiv.className = 'flex items-start gap-3 msg-animate';
@@ -561,37 +622,71 @@
                     <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
                 </div>
                 <div class="max-w-[85%] lg:max-w-[70%]">
-                    <div class="bg-primaryLight rounded-2xl rounded-tl-md px-5 py-3.5 mb-2">
-                        <p class="text-textPrimary text-[0.9375rem] leading-relaxed">Tôi đã tạo việc thành công cho bạn! Xem chi tiết bên dưới 👇</p>
-                    </div>
-                    <!-- Task Card -->
                     <div class="task-card-chat bg-surface rounded-2xl border border-border overflow-hidden">
-                        <!-- Card Header -->
+                        <!-- Header -->
                         <div class="px-5 pt-4 pb-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: ${cat.color}15;">
-                                    <span class="material-symbols-outlined filled text-lg" style="font-variation-settings: 'FILL' 1; color: ${cat.color};">${cat.icon}</span>
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: ${meta.color}15;">
+                                    <span class="material-symbols-outlined filled text-lg" style="font-variation-settings: 'FILL' 1; color: ${meta.color};">${meta.icon}</span>
                                 </div>
-                                <span class="text-xs font-bold text-textSecondary uppercase tracking-wide">${cat.name}</span>
+                                <span class="text-xs font-bold text-textSecondary uppercase tracking-wide">${meta.name}</span>
                             </div>
-                            <span class="font-headline font-extrabold text-lg text-primary">${formattedPrice}</span>
+                            <span class="font-headline font-extrabold text-base text-primary">${rate}</span>
                         </div>
-                        <!-- Card Body -->
+                        <!-- Body -->
                         <div class="px-5 pb-4">
-                            <h4 class="font-bold text-textPrimary text-base leading-snug mb-2">${escapeHtml(task.title || '')}</h4>
-                            <p class="text-textSecondary text-sm line-clamp-2 mb-3">${escapeHtml(task.description || '')}</p>
-                            <div class="flex items-center gap-4 text-xs text-textMuted">
-                                ${task.location ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${escapeHtml(task.location)}</span>` : ''}
-                                ${task.scheduled_time ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>${escapeHtml(task.scheduled_time)}</span>` : ''}
+                            <h4 class="font-bold text-textPrimary text-base leading-snug mb-1.5">${escapeHtml(jobDraft.title || '')}</h4>
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${isDraft ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}">${isDraft ? 'BẢN NHÁP — CHƯA ĐĂNG' : 'ĐÃ ĐĂNG'}</span>
+                                ${matchedHtml}
                             </div>
+                            <p class="text-textSecondary text-sm line-clamp-2 mb-2.5">${escapeHtml(jobDraft.description || '')}</p>
+                            <div class="flex items-center flex-wrap gap-x-4 gap-y-1 text-xs text-textMuted">
+                                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>${escapeHtml(jobDraft.schedule || 'Chưa rõ lịch')}</span>
+                                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${escapeHtml(jobDraft.location_display || 'Đã chọn trên bản đồ')}</span>
+                            </div>
+                            ${zeroHint}
                         </div>
-                        <!-- Card Footer -->
-                        <div class="px-5 py-3 bg-gray-50/80 border-t border-border">
-                            <a href="{% url 'frontend:parent_tasks' %}"
+                        <!-- Footer: 2 nút theo brief 2.2 -->
+                        <div class="px-5 py-3 bg-gray-50/80 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button onclick="publishAndGoToCandidates('${jobDraft.id}', this)"
                                class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200">
-                                <span class="material-symbols-outlined text-lg">visibility</span>
-                                Xem chi tiết
-                            </a>
+                                <span class="material-symbols-outlined text-lg">radar</span>
+                                Xem & Chọn CarePartner Ngay
+                            </button>
+                            <button onclick="editDraftInChat()"
+                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white border border-border text-textPrimary font-semibold text-sm hover:bg-gray-50 transition-all duration-200">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                                Chỉnh sửa thông tin
+                            </button>
+                        </div>
+                    </div>
+                    <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        // Card xác nhận vị trí trên bản đồ (geocode thất bại — brief 2.4)
+        function addLocationConfirmCard() {
+            const time = getCurrentTime();
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-3 msg-animate';
+            msgDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-primaryLight flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined filled text-primary text-lg" style="font-variation-settings: 'FILL' 1, 'wght' 500;">smart_toy</span>
+                </div>
+                <div class="max-w-[85%] lg:max-w-[70%]">
+                    <div class="task-card-chat bg-surface rounded-2xl border border-border overflow-hidden">
+                        <div class="px-5 pt-4 pb-4">
+                            <h4 class="font-bold text-textPrimary text-base mb-1">Xác nhận vị trí làm việc</h4>
+                            <p class="text-textSecondary text-sm mb-3">Mình chưa tìm thấy địa chỉ chính xác. Bạn bấm nút bên dưới để chọn vị trí trên bản đồ — bản nháp sẽ được hoàn tất ngay sau đó.</p>
+                            <button onclick="openLocationModal()"
+                               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primaryDark transition-all duration-200">
+                                <span class="material-symbols-outlined text-lg">map</span>
+                                Xác nhận vị trí trên bản đồ
+                            </button>
                         </div>
                     </div>
                     <span class="text-[11px] text-textMuted mt-1.5 block ml-1">${time}</span>
@@ -658,7 +753,11 @@
                     },
                     body: JSON.stringify({
                         message: text,
-                        history: historyForAPI
+                        history: historyForAPI,
+                        draft_job_id: currentDraftJobId,
+                        latitude: pickedCoords ? pickedCoords.latitude : null,
+                        longitude: pickedCoords ? pickedCoords.longitude : null,
+                        pending_job_payload: pendingLocationPayload
                     })
                 });
 
@@ -698,9 +797,17 @@
                 const botResponseText = data.response || '';
                 chatHistory.push({ role: 'assistant', text: botResponseText });
 
-                // Check if response contains a task (AI created a task)
-                if (data.task) {
-                    addTaskCard(data.task);
+                // ===== FLOW 1/2 — xử lý theo type =====
+                if (data.type === 'location_confirm' && data.pending_job_payload) {
+                    // Geocode thất bại → chờ phụ huynh chọn vị trí trên bản đồ
+                    pendingLocationPayload = data.pending_job_payload;
+                    addLocationConfirmCard();
+                }
+                if (data.job_draft) {
+                    // Bản nháp đã lưu/gộp — luôn hiển thị card mới nhất
+                    currentDraftJobId = data.job_draft.id;
+                    pendingLocationPayload = null;
+                    addJobDraftCard(data.job_draft);
                 }
 
                 // Add the AI text reply
@@ -819,6 +926,108 @@
                 document.body.classList.remove('page-exit');
                 document.body.classList.add('page-loaded');
             }
+        });
+    </script>
+
+
+    <!-- ===== FLOW 1/2 — MODAL CHỌN VỊ TRÍ TRÊN BẢN ĐỒ ===== -->
+    <div id="location-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 p-4">
+        <div class="bg-surface rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-bold text-textPrimary">Chọn vị trí làm việc</h3>
+                <button onclick="closeLocationModal()" class="text-textMuted hover:text-textPrimary">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-5 space-y-3">
+                <div class="flex gap-2">
+                    <input id="loc-search-input" type="text" placeholder="Nhập địa chỉ (VD: 123 Nguyễn Trãi, Quận 1...)"
+                           class="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                    <button onclick="doLocationSearch()" class="rounded-xl bg-primary text-white px-4 text-sm font-semibold">Tìm</button>
+                </div>
+                <div id="loc-results" class="max-h-56 overflow-y-auto space-y-1.5"></div>
+                <p id="loc-status" class="text-xs text-textMuted"></p>
+            </div>
+            <div class="px-5 py-3 bg-gray-50/80 border-t border-border flex justify-end gap-2">
+                <button onclick="closeLocationModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-textSecondary hover:bg-gray-100">Đóng</button>
+                <button id="loc-confirm-btn" onclick="confirmPickedLocation()" disabled
+                        class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-40">Xác nhận vị trí</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // ===== FLOW 1/2 — LOCATION PICKER (geocode proxy server-side) =====
+        let pickedLocationCandidate = null;
+
+        function openLocationModal() {
+            const modal = document.getElementById('location-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => document.getElementById('loc-search-input')?.focus(), 100);
+        }
+
+        function closeLocationModal() {
+            const modal = document.getElementById('location-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function doLocationSearch() {
+            const q = document.getElementById('loc-search-input').value.trim();
+            const holder = document.getElementById('loc-results');
+            const status = document.getElementById('loc-status');
+            if (q.length < 2) { status.textContent = 'Cần từ khoá dài hơn.'; return; }
+            status.textContent = 'Đang tìm địa chỉ...';
+            holder.innerHTML = '';
+            try {
+                const resp = await fetch(`${API_BASE}/matching/geocode/search/?q=${encodeURIComponent(q)}`);
+                const data = await resp.json();
+                const results = data.results || [];
+                if (!results.length) {
+                    status.textContent = 'Không tìm thấy địa chỉ. Bạn thử từ khoá khác nhé.';
+                    return;
+                }
+                status.textContent = `Tìm được ${results.length} kết quả — chọn 1 địa điểm.`;
+                results.forEach(r => {
+                    const label = r.display_name || `${r.lat}, ${r.lon}`;
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left text-xs px-3 py-2.5 rounded-xl border border-border hover:border-primary hover:bg-primaryLight transition-all';
+                    btn.textContent = label;
+                    btn.onclick = () => {
+                        holder.querySelectorAll('button').forEach(b => b.classList.remove('!bg-primaryLight', '!border-primary'));
+                        btn.classList.add('!bg-primaryLight', '!border-primary');
+                        pickedLocationCandidate = {
+                            latitude: parseFloat(r.lat),
+                            longitude: parseFloat(r.lon),
+                            label: label,
+                        };
+                        document.getElementById('loc-confirm-btn').disabled = false;
+                    };
+                    holder.appendChild(btn);
+                });
+            } catch (e) {
+                status.textContent = 'Lỗi tìm địa chỉ — thử lại giúp mình nhé.';
+            }
+        }
+
+        async function confirmPickedLocation() {
+            if (!pickedLocationCandidate) return;
+            pickedCoords = {
+                latitude: pickedLocationCandidate.latitude,
+                longitude: pickedLocationCandidate.longitude,
+            };
+            closeLocationModal();
+            // Gửi thông tin đã chọn để hoàn tất bản nháp (kèm payload pending nếu có)
+            const msg = pendingLocationPayload
+                ? 'Tôi đã xác nhận vị trí trên bản đồ.'
+                : `Vị trí làm việc: ${pickedLocationCandidate.label}`;
+            chatInput.value = msg;
+            sendMessage();
+        }
+
+        // Enter trong ô tìm kiếm → search
+        document.getElementById('loc-search-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); doLocationSearch(); }
         });
     </script>
 
