@@ -3394,6 +3394,7 @@ class AdminFeedbackStatsAPIView(APIView):
             recent_surveys.append({
                 'id': s.id,
                 'role': s.role,
+                'full_name': s.full_name or '',
                 'answers': _fmt_role_answers(s.role, s.role_answers),
                 'fields': _survey_detail_fields(s.role, s.role_answers),
                 'services': ', '.join(
@@ -4065,13 +4066,14 @@ class AdminFeedbackExcelAPIView(APIView):
         w3.sheet_view.showGridLines = False
         w3.column_dimensions['A'].width = 3
 
-        w3.merge_cells('B2:I2')
+        w3.merge_cells('B2:J2')
         w3['B2'].value = 'Phản hồi khảo sát'
         w3['B2'].font = title_font; w3['B2'].alignment = title_align
         w3.row_dimensions[2].height = 36
         w3.row_dimensions[3].height = 8
 
-        h1 = ['ID', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Số điện thoại', 'Email', 'IP', 'Ngày tạo']
+        # 2026-09-14: thêm cột "Họ tên" (bắt buộc với submit mới từ landing)
+        h1 = ['ID', 'Họ tên', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Số điện thoại', 'Email', 'IP', 'Ngày tạo']
         hr = 4
         for ci, h in enumerate(h1, start=2):
             w3.cell(row=hr, column=ci, value=h)
@@ -4083,15 +4085,16 @@ class AdminFeedbackExcelAPIView(APIView):
                 ra = s.role_answers or {}; sr = ra.get('services', ra.get('interests', []))
                 ss = ', '.join(SERVICE_LABELS.get(i, i) for i in (sr if isinstance(sr, list) else []))
                 w3.cell(row=ri, column=2, value=s.id)
-                w3.cell(row=ri, column=3, value=ROLE_LABELS.get(s.role, s.role))
-                w3.cell(row=ri, column=4, value=ss)
-                w3.cell(row=ri, column=5, value=_fmt_ra(s.role, ra))
-                w3.cell(row=ri, column=6, value=s.feedback or '')
-                w3.cell(row=ri, column=7, value=s.phone or '')
-                w3.cell(row=ri, column=8, value=s.email or '')
-                w3.cell(row=ri, column=9, value=s.ip_address or '')
-                w3.cell(row=ri, column=10, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
-                for c in range(2, 11):
+                w3.cell(row=ri, column=3, value=s.full_name or '')
+                w3.cell(row=ri, column=4, value=ROLE_LABELS.get(s.role, s.role))
+                w3.cell(row=ri, column=5, value=ss)
+                w3.cell(row=ri, column=6, value=_fmt_ra(s.role, ra))
+                w3.cell(row=ri, column=7, value=s.feedback or '')
+                w3.cell(row=ri, column=8, value=s.phone or '')
+                w3.cell(row=ri, column=9, value=s.email or '')
+                w3.cell(row=ri, column=10, value=s.ip_address or '')
+                w3.cell(row=ri, column=11, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 12):
                     style_data_cell(w3, ri, c, i)
         else:
             empty_msg(w3, 'Chưa có góp ý.')

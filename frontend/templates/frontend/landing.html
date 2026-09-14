@@ -512,6 +512,13 @@
             <input type="text" id="survey-website" name="website_url" tabindex="-1" autocomplete="off">
           </div>
 
+          <!-- HỌ VÀ TÊN (bắt buộc) — 2026-09-14: trường đầu tiên của form khảo sát -->
+          <div class="field" id="field-survey-fullname">
+            <label class="field-label" for="survey-fullname">Họ và tên <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="survey-fullname" name="survey-fullname" placeholder="VD: Nguyễn Thị An" autocomplete="name" maxlength="200" required>
+            <p class="err-msg" role="alert"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;">error</span>Vui lòng nhập Họ và tên của bạn.</p>
+          </div>
+
           <!-- ROLE TABS -->
           <div class="tabs" role="tablist" aria-label="Chọn vai trò góp ý">
             <button type="button" class="tab-btn" id="tab-carepartner" role="tab" aria-selected="false" aria-controls="panel-carepartner">
@@ -1169,6 +1176,14 @@
     var contactWrap = document.getElementById('field-survey-contact');
     var contactErrText = document.getElementById('survey-contact-err-text');
 
+    // HỌ VÀ TÊN — bắt buộc (2026-09-14)
+    var fullNameField = document.getElementById('survey-fullname');
+    var fullNameWrap = document.getElementById('field-survey-fullname');
+    var fullNameVal = fullNameField ? fullNameField.value.trim() : '';
+    var fullNameInvalid = !fullNameVal;
+    setFieldError(fullNameWrap, fullNameInvalid);
+    if (fullNameInvalid) valid = false;
+
     var phoneVal = phoneField ? phoneField.value.trim() : '';
     var emailVal = emailField ? emailField.value.trim() : '';
 
@@ -1196,6 +1211,7 @@
 
     var payload = {
       role: isCP ? 'carepartner' : 'phu-huynh',
+      full_name: fullNameVal,
       role_answers: roleAnswers,
       feedback: surveyForm.querySelector('#survey-feedback').value.trim(),
       phone: phoneVal,

@@ -483,6 +483,10 @@ class LandingSurvey(models.Model):
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    full_name = models.CharField(
+        max_length=200, blank=True, default='',
+        help_text='Họ và tên người góp ý (bắt buộc với submit mới từ 2026-09-14; '
+                  'bản ghi cũ trước khi có field sẽ để trống)')
     role_answers = models.JSONField(
         default=dict, blank=True,
         help_text='Bộ câu hỏi riêng theo role (carepartner/phu-huynh)')

@@ -25,6 +25,11 @@ class UserSerializer(serializers.ModelSerializer):
             'has_verification_pin',
             # B4 — hạng CarePartner (read-only, hệ thống tự tính)
             'tier', 'tier_label', 'tier_updated_at',
+            # 2026-09-14 — admin dashboard checkAdminRole() đọc is_staff/is_superuser
+            # từ GET /api/profile/ (fix M21 2026-07-24 kỳ vọng 2 field này nhưng
+            # serializer chưa từng expose → admin bị chặn oan "Không có quyền truy cập").
+            # READ-ONLY tuyệt đối — PATCH /api/profile/ cũng đã chặn từ trước.
+            'is_staff', 'is_superuser',
         ]
         extra_kwargs = {
             'password': {'write_only': True},
@@ -35,6 +40,8 @@ class UserSerializer(serializers.ModelSerializer):
             'is_approved': {'read_only': True},
             'ai_profile_summary': {'read_only': True},
             'role': {'read_only': True},  # Ngăn chặn role escalation qua API
+            'is_staff': {'read_only': True},  # 2026-09-14 — chỉ đọc cho UI admin
+            'is_superuser': {'read_only': True},  # 2026-09-14 — chỉ đọc cho UI admin
             'auth_provider': {'read_only': True},  # Không cho thay đổi provider qua API
             'tier': {'read_only': True},  # B4 — worker không tự sửa hạng của mình
             'tier_updated_at': {'read_only': True},  # B4
@@ -209,14 +216,39 @@ class LandingSurveySerializer(serializers.ModelSerializer):
     """Serializer cho form khảo sát/góp ý (anonymous).
 
     role = 'carepartner' | 'phu-huynh'
+    full_name = HỌ VÀ TÊN — BẮT BUỘC từ 2026-09-14 (bản ghi cũ trước ngày
+    này có thể trống — field blank ở mức model để tương thích ngược với
+    dữ liệu cũ, bắt buộc nằm ở tầng serializer cho các submit mới).
     role_answers = JSON object chứa câu hỏi riêng theo role.
     feedback + phone + email là common.
     Bắt buộc phải có Số điện thoại HOẶC Email để nhận diện người góp ý.
     """
 
+    # Khai báo TƯỜNG MINH (required=True) — nếu để ModelSerializer tự suy
+    # từ model blank=True thì field sẽ thành optional và thiếu key vẫn pass.
+    full_name = serializers.CharField(
+        required=True, allow_blank=False, allow_null=False,
+        max_length=200, trim_whitespace=True,
+        error_messages={
+            'required': 'Vui lòng nhập Họ và tên.',
+            'blank': 'Vui lòng nhập Họ và tên.',
+            'null': 'Vui lòng nhập Họ và tên.',
+        })
+
     class Meta:
         model = LandingSurvey
-        fields = ['role', 'role_answers', 'feedback', 'phone', 'email']
+        fields = ['role', 'full_name', 'role_answers', 'feedback', 'phone', 'email']
+
+    def validate_full_name(self, value):
+        # Hotfix khảo sát 2026-09-14: Họ và tên là trường BẮT BUỘC
+        if not value or not str(value).strip():
+            raise serializers.ValidationError(
+                'Vui lòng nhập Họ và tên.')
+        cleaned = str(value).strip()
+        if len(cleaned) > 200:
+            raise serializers.ValidationError(
+                'Họ và tên tối đa 200 ký tự.')
+        return cleaned
 
     def validate_phone(self, value):
         if not value:

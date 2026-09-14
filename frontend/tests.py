@@ -346,3 +346,83 @@ class SiteGateDisabledTests(TestCase):
             self.assertIn('/site-gate/', resp['Location'])
         finally:
             os.environ.pop('SITE_GATE_ENABLED', None)
+
+
+class AdminDashboardUiUpgradeTests(TestCase):
+    """2026-09-14 — Nâng cấp giao diện admin dashboard (glassmorphism).
+
+    Chỉ "thay áo" visual: smoke test bảo đảm các cấu phần UI mới xuất hiện
+    VÀ mọi cấu phần chức năng (id/onclick mà JS dashboard phụ thuộc) vẫn
+    nguyên vẹn trong HTML."""
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def _get_dashboard(self):
+        resp = self.client.get('/admin-dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        return resp.content.decode('utf-8')
+
+    def test_dashboard_glass_design_elements(self):
+        html = self._get_dashboard()
+        # Lucide icons CDN + nhóm điều hướng phân nhóm (label không phải .nav-item)
+        self.assertIn('lucide.min.js', html)
+        self.assertIn('nav-group-label', html)
+        self.assertIn('Phê duyệt &amp; Vận hành', html)
+        self.assertIn('H&#7879; th&#7889;ng AI &amp; An to&#224;n', html)
+
+    def test_dashboard_keeps_all_12_tabs_in_order(self):
+        """Đủ 12 tab đúng thứ tự — switchTab() dùng navItems[index]."""
+        html = self._get_dashboard()
+        import re
+        order = re.findall(r"switchTab\('([a-z_]+)'\)", html)
+        # Lọc trùng (mỗi tab 1 nav-item; switchTab cũng xuất hiện trong JS → chỉ đếm chỗ onclick)
+        expected = ['pending', 'all', 'tasks', 'users', 'credentials',
+                    'notifications', 'profile_changes', 'ai_chat',
+                    'payments', 'tracking', 'feedback_stats', 'moderation']
+        nav_order = [t for t in order if t in expected]
+        # onclick trong sidebar: 12 tab đúng thứ tự (feedback_stats trước moderation)
+        self.assertEqual(nav_order[:12], expected)
+
+    def test_dashboard_functional_hooks_intact(self):
+        """ID/hàm JS mà dashboard phụ thuộc phải còn nguyên."""
+        html = self._get_dashboard()
+        for hook in ['id="pendingBadge"', 'id="taskPendingBadge"', 'id="credentialBadge"',
+                     'id="profileChangeBadge"', 'id="feedbackStatsBadge"', 'id="moderationBadge"',
+                     'id="statPending"', 'id="statApproved"', 'id="statTotal"',
+                     'id="pageTitle"', 'id="pageSubtitle"', 'id="tableTitle"', 'id="tableBody"',
+                     'id="sidebar"', 'id="sidebarOverlay"', 'id="hamburgerBtn"',
+                     'id="editModal"', 'id="photoModal"', 'id="notifModal"', 'id="credentialModal"',
+                     'id="landingDetailModal"', 'id="aiChatPanel"', 'id="toast"', 'id="seedBtn"',
+                     'onclick="seedDemoData()"', 'onclick="logoutAdmin()"', 'onclick="loadData()"',
+                     'onclick="toggleSidebar()"', 'function switchTab(', 'function loadData(']:
+            self.assertIn(hook, html)
+
+
+class LandingSurveyFullNameTests(TestCase):
+    """2026-09-14 — Trường 'Họ và tên' bắt buộc trên form khảo sát /landing/."""
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_landing_renders_full_name_field(self):
+        resp = self.client.get('/landing/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode('utf-8')
+        self.assertIn('id="survey-fullname"', html)
+        self.assertIn('field-survey-fullname', html)
+        # required ở tầng HTML
+        self.assertRegex(html, r'id="survey-fullname"[^>]*required')
+        # label tiếng Việt
+        self.assertIn('Họ và tên', html)
+
+    def test_landing_survey_js_sends_full_name(self):
+        """Payload JS phải gồm full_name trước khi POST /api/landing/survey/."""
+        resp = self.client.get('/landing/')
+        html = resp.content.decode('utf-8')
+        self.assertIn("full_name: fullNameVal", html)
+        self.assertIn("document.getElementById('survey-fullname')", html)

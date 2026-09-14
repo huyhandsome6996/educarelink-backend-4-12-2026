@@ -1462,3 +1462,32 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
 - Web: worker_gps_heartbeat.js + job_assigned_alert.js trong _worker_chrome.html.
 - Test: matching+GPS 245/245 OK; mobile jest 137/137 (17 suites).
 - Version: 1.4.6 / versionCode 29 + RELEASE_NOTES_1.4.6.md; EAS build+submit production.
+
+## 2026-09-14 — Nâng cấp giao diện Admin Dashboard (glassmorphism) + Trường "Họ và tên" khảo sát
+
+- **UI Dashboard** (`admin_dashboard.html` — CHỈ "thay áo", giữ nguyên 100% chức năng):
+  Thêm CSS glassmorphism layer (dark + kính mờ, brand #F26522, ambient gradient), sidebar 260→268px,
+  topbar sticky kính mờ, KPI card glow, modal kính, 2 label phân nhóm nav ("Phê duyệt & Vận hành" /
+  "Hệ thống AI & An toàn" — div.nav-group-label KHÔNG phải .nav-item để không lệch index navItems[]
+  mà switchTab() đang dùng), Lucide icons (CDN + createIcons, fallback noop khi CDN fail) thay emoji
+  ở sidebar/topbar/KPI. Giữ nguyên: đủ 12 tab đúng thứ tự, mọi id/onclick/hàm JS (switchTab/loadData/
+  seedDemoData/logoutAdmin...), badge, quyền hạn, seed button.
+- **Fix phụ phát hiện khi kiểm thử**: admin dashboard hiện "Không có quyền truy cập" cho chính admin —
+  checkAdminRole() (fix M21 2026-07-24) đọc is_staff/is_superuser từ GET /api/profile/ nhưng UserSerializer
+  chưa từng expose 2 field này. Sửa: thêm 'is_staff','is_superuser' vào UserSerializer.fields với
+  read_only=True (PATCH /api/profile/ vẫn chặn 400 như cũ). Đã verify bằng browser: dashboard load đủ
+  KPI 3/16/19 + bảng chờ duyệt + 12/12 tab switch không lỗi JS + mobile sidebar overlay OK.
+- **Khảo sát "Họ và tên" bắt buộc** (landing #khao-sat + backend + admin):
+  - Model: LandingSurvey.full_name (CharField 200, blank=True default='' — tương thích ngược dữ liệu cũ),
+    migration core.0029.
+  - Serializer: khai báo tường minh required=True + error_messages tiếng Việt (ModelSerializer tự suy
+    từ blank=True sẽ thành optional — đã bắt được qua test 201≠400).
+  - Landing form: field đầu tiên "Họ và tên *" (required HTML + JS setFieldError + payload full_name).
+  - Admin: feedback-stats trả full_name cho từng row; bảng "Phản hồi khảo sát" thêm cột "Họ và tên"
+    (bản cũ → "Chưa cập nhật"), search theo tên, modal chi tiết thêm ô HỌ VÀ TÊN; Excel sheet "Góp ý"
+    thêm cột "Họ tên" (merge B2:J2, dịch cột).
+- **Test**: toàn repo 803/803 OK (trước đó 795 + 8 mới: full_name missing/blank/trimmed, stats legacy
+  + mới, profile staff flags admin/parent/anti-escalation, dashboard UI smoke ×3, landing field ×2).
+- **Tự kiểm thử browser thật (local)**: đăng nhập admin → dashboard đủ dữ liệu; survey thiếu tên bị chặn
+  front-end; submit đủ tên → success + DB lưu đúng (id 22 "Trần Thị Bích Hòa"); api /api/landing/survey/
+  thiếu full_name → 400 {"full_name":["Vui lòng nhập Họ và tên."]}.

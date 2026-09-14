@@ -51,6 +51,7 @@ class LandingSurveyTestCase(TestCase):
         self.client = APIClient()
         self.valid_parent = {
             'role': 'phu-huynh',
+            'full_name': 'Nguyễn Thị An',  # bắt buộc từ 2026-09-14
             'role_answers': VALID_PH_ROLE_ANSWERS.copy(),
             'feedback': 'Tôi cần tìm người trông con',
             'phone': '0912345678',
@@ -58,6 +59,7 @@ class LandingSurveyTestCase(TestCase):
         }
         self.valid_cp = {
             'role': 'carepartner',
+            'full_name': 'Trần Văn Bình',  # bắt buộc từ 2026-09-14
             'role_answers': VALID_CP_ROLE_ANSWERS.copy(),
             'feedback': '',
             'phone': '',
@@ -149,6 +151,34 @@ class LandingSurveyTestCase(TestCase):
         resp = self.client.post('/api/landing/survey/', self.valid_parent, format='json', REMOTE_ADDR='1.2.3.4')
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(LandingSurvey.objects.first().ip_address, '1.2.3.4')
+
+    # ===== HỌ VÀ TÊN — bắt buộc (2026-09-14) =====
+    def test_survey_full_name_missing_400(self):
+        """Submit KHÔNG có full_name phải bị từ chối 400."""
+        payload = self.valid_parent.copy()
+        del payload['full_name']
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('full_name', resp.data.get('error', {}))
+        self.assertEqual(LandingSurvey.objects.count(), 0)
+
+    def test_survey_full_name_blank_400(self):
+        """full_name rỗng / chỉ toàn khoảng trắng phải bị từ chối 400."""
+        for blank in ('', '   '):
+            payload = self.valid_parent.copy()
+            payload['full_name'] = blank
+            resp = self.client.post('/api/landing/survey/', payload, format='json')
+            self.assertEqual(resp.status_code, 400, f'full_name={blank!r} phải bị từ chối')
+            self.assertIn('full_name', resp.data.get('error', {}))
+        self.assertEqual(LandingSurvey.objects.count(), 0)
+
+    def test_survey_full_name_saved_trimmed(self):
+        """full_name hợp lệ được lưu đã trim khoảng trắng 2 đầu."""
+        payload = self.valid_parent.copy()
+        payload['full_name'] = '  Lê Văn Cường  '
+        resp = self.client.post('/api/landing/survey/', payload, format='json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(LandingSurvey.objects.first().full_name, 'Lê Văn Cường')
 
     # Bug #4: role_answers validation
     def test_cp_empty_role_answers_400(self):
@@ -384,6 +414,30 @@ class AdminFeedbackStatsTestCase(TestCase):
         self.assertEqual(data['surveys']['total'], 2)
         self.assertEqual(data['signups']['total'], 1)
         self.assertEqual(len(data['surveys']['by_type']), 2)
+
+    def test_stats_surveys_include_full_name_new_and_legacy(self):
+        """2026-09-14: stats trả 'full_name' cho bảng khảo sát admin dashboard.
+        Bản ghi MỚI (có full_name) → trả đúng tên; bản ghi CŨ (trước khi có
+        field, full_name='') → trả rỗng để UI hiển thị 'Chưa cập nhật', không lỗi."""
+        # Bản ghi mới có full_name
+        LandingSurvey.objects.create(
+            role='phu-huynh', full_name='Phạm Thị D',
+            role_answers=VALID_PH_ROLE_ANSWERS.copy(),
+            feedback='Có tên', phone='0900000009')
+        self._login_as_admin()
+        resp = self.client.get('/api/admin/feedback-stats/?days=30')
+        self.assertEqual(resp.status_code, 200)
+        rows = resp.data['surveys']['all']
+        by_id = {r['id']: r for r in rows}
+        # Mọi row đều có key full_name
+        for r in rows:
+            self.assertIn('full_name', r)
+        # Bản ghi setUp KHÔNG có full_name (legacy) → rỗng
+        legacy = [r for r in rows if r['full_name'] == '']
+        self.assertGreaterEqual(len(legacy), 2)
+        # Bản ghi mới → đúng tên đã lưu
+        named = [r for r in rows if r['full_name'] == 'Phạm Thị D']
+        self.assertEqual(len(named), 1)
 
     def test_stats_filter_by_days(self):
         self._login_as_admin()
@@ -694,3 +748,46 @@ class AdminFeedbackDataTableAndResetTestCase(TestCase):
         self.assertEqual(resp2.data['surveys']['total'], 0)
         self.assertEqual(len(resp2.data['surveys']['all']), 0)
         self.assertEqual(len(resp2.data['signups']['all']), 0)
+
+
+class ProfileExposesStaffFlagTests(TestCase):
+    """2026-09-14 — GET /api/profile/ phải trả is_staff/is_superuser (read-only).
+
+    admin_dashboard.checkAdminRole() (fix M21 2026-07-24) đọc 2 field này để
+    mở khóa bảng dữ liệu cho admin — trước đây serializer không expose nên
+    admin luôn thấy 'Không có quyền truy cập' dù đã đăng nhập đúng."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.admin = User.objects.create_superuser(
+            username='adminx', email='adminx@test.com', password='testpass123')
+        self.parent = User.objects.create_user(
+            username='parentx', password='testpass123', role='parent')
+
+    def _login(self, username):
+        resp = self.client.post('/api/auth/login/', {'username': username, 'password': 'testpass123'})
+        token = resp.data.get('tokens', {}).get('access') or resp.data.get('access')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+    def test_profile_returns_staff_flags_for_admin(self):
+        self._login('adminx')
+        resp = self.client.get('/api/profile/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data.get('is_staff'))
+        self.assertTrue(resp.data.get('is_superuser'))
+
+    def test_profile_returns_false_flags_for_parent(self):
+        self._login('parentx')
+        resp = self.client.get('/api/profile/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data.get('is_staff'))
+        self.assertFalse(resp.data.get('is_superuser'))
+
+    def test_profile_cannot_patch_staff_flags(self):
+        """Field chỉ đọc — cố nâng quyền qua PATCH phải bị chặn 400."""
+        self._login('parentx')
+        resp = self.client.patch('/api/profile/', {'is_staff': 'true'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.user_refetch = User.objects.get(username='parentx')
+        self.assertFalse(self.user_refetch.is_staff)
