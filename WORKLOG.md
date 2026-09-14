@@ -1491,3 +1491,10 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
 - **Tự kiểm thử browser thật (local)**: đăng nhập admin → dashboard đủ dữ liệu; survey thiếu tên bị chặn
   front-end; submit đủ tên → success + DB lưu đúng (id 22 "Trần Thị Bích Hòa"); api /api/landing/survey/
   thiếu full_name → 400 {"full_name":["Vui lòng nhập Họ và tên."]}.
+
+- **Kiểm thử PRODUCTION sau deploy (Render, commit fd7ee5c)**: landing hiện field "Họ và tên *" đầu
+  form; POST /api/landing/survey/ thiếu tên → 400 {"full_name":["Vui lòng nhập Họ và tên."]} (chứng minh
+  core.0029 đã migrate); login admin/Demo@2026 → dashboard glass UI load đủ KPI 3/27/30 + bảng chờ duyệt
+  thật; tab Thống kê & AI: bảng khảo sát có cột HỌ VÀ TÊN — bản mới "Kiểm Thử Giao Diện" (#9) hiện tên,
+  bản cũ (#8) hiện "Chưa cập nhật"; 12/12 tab switch không lỗi JS; Excel export 200 (xlsx ~13KB).
+  Bản ghi khảo sát #9 là bản kiểm thử (ghi chú "có thể xoá") — xoá trong admin nếu muốn.
