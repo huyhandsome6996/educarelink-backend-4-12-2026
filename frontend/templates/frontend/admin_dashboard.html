@@ -7,6 +7,13 @@
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <title>Educarelink Admin - Quản lý hệ thống</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        // Render Lucide icons khi DOM sẵn sàng (CDN fail → giữ nguyên, không văng lỗi)
+        document.addEventListener('DOMContentLoaded', function () {
+            try { if (window.lucide) lucide.createIcons(); } catch (e) { /* noop */ }
+        });
+    </script>
     <style>
         html { scroll-behavior: smooth; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -797,14 +804,227 @@
             .ai-action-buttons { gap: 4px; }
             .ai-chat-action-btn { font-size: 11px; padding: 5px 10px; }
         }
+
+        /* ================================================================
+           GLASSMORPHISM REDESIGN LAYER — 2026-09-14 (chỉ "thay áo" giao diện)
+           Nâng cấp visual theo thiết kế mới: dark + glass, brand #F26522,
+           sidebar 268px, topbar nổi, KPI card glow. KHÔNG đổi bất kỳ id,
+           class hook JS, onclick, hay logic nghiệp vụ nào.
+           Các selector ghi đè bằng độ ưu tiên ngang — đặt sau nên thắng.
+           ================================================================ */
+        body {
+            background: #0b1220;
+            background-image:
+                radial-gradient(900px 500px at 85% -10%, rgba(242,101,34,0.13), transparent 60%),
+                radial-gradient(800px 500px at -15% 25%, rgba(99,102,241,0.10), transparent 60%),
+                radial-gradient(700px 600px at 55% 115%, rgba(56,189,248,0.07), transparent 60%);
+            background-attachment: fixed;
+        }
+
+        /* Lucide icon mặc định trong nav/topbar */
+        .nav-item .icon svg, .notification-bell svg, .logout-btn svg,
+        .refresh-btn svg, .hamburger-btn svg, .scroll-top-btn svg {
+            width: 18px; height: 18px; stroke-width: 2.1;
+        }
+        .nav-item .icon svg { width: 19px; height: 19px; }
+        .stat-icon svg { width: 22px; height: 22px; stroke-width: 2.1; }
+        .sidebar-logo-text svg { display: none; }
+
+        /* === SIDEBAR 268px — kính mờ === */
+        .sidebar {
+            width: 268px;
+            background: rgba(17, 26, 43, 0.82);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            border-right: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 1px 0 32px rgba(2, 6, 23, 0.55);
+        }
+        .sidebar-header {
+            padding: 22px 20px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .sidebar-logo-text {
+            background: linear-gradient(92deg, #F26522 0%, #ff8a4c 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sidebar-nav { padding: 14px 14px; }
+
+        /* Nhóm điều hướng — label PHÂN NHÓM (không phải .nav-item,
+           không ảnh hưởng index navItems[] mà switchTab() đang dùng) */
+        .nav-group-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px;
+            text-transform: uppercase; color: #5b6b84;
+            padding: 14px 16px 6px; user-select: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-group-label::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, rgba(148,163,184,0.22), transparent);
+        }
+        .nav-group-label:first-child { padding-top: 4px; }
+
+        .nav-item {
+            position: relative;
+            padding: 11px 16px; border-radius: 12px;
+            color: #8fa0b8;
+            border: 1px solid transparent;
+        }
+        .nav-item:hover {
+            background: rgba(148, 163, 184, 0.09);
+            border-color: rgba(148, 163, 184, 0.12);
+            color: #e2e8f0;
+        }
+        .nav-item.active {
+            background: linear-gradient(93deg, #F26522 0%, #e2551a 55%, #d44f16 100%);
+            border-color: rgba(242, 101, 34, 0.45);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(242, 101, 34, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+        .nav-item.active .nav-badge {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+        }
+        .nav-badge {
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+        }
+
+        /* === MAIN + TOPBAR KÍNH MỜI === */
+        .main { margin-left: 268px; }
+        .page-header {
+            position: sticky; top: 0; z-index: 30;
+            margin: -32px -32px 28px; padding: 16px 32px;
+            background: rgba(11, 18, 32, 0.72);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .page-title { letter-spacing: -0.3px; }
+        .refresh-btn {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .refresh-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(242, 101, 34, 0.4);
+            box-shadow: 0 4px 16px rgba(2, 6, 23, 0.4);
+        }
+        .notification-bell {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .notification-bell:hover {
+            border-color: rgba(242, 101, 34, 0.45);
+            box-shadow: 0 0 18px rgba(242, 101, 34, 0.15);
+        }
+        .notification-dropdown {
+            background: rgba(17, 26, 43, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65);
+        }
+        .logout-btn {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* === KPI CARDS — kính + glow === */
+        .stats-row { gap: 18px; }
+        .stat-card {
+            position: relative;
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.72), rgba(23, 33, 51, 0.85));
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 10px 34px rgba(2, 6, 23, 0.35);
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 42px rgba(2, 6, 23, 0.5);
+            border-color: rgba(242, 101, 34, 0.4);
+        }
+        .stat-icon {
+            border-radius: 15px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .stat-icon.pending { background: linear-gradient(145deg, rgba(242,101,34,0.28), rgba(242,101,34,0.10)); box-shadow: 0 6px 18px rgba(242,101,34,0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
+        .stat-icon.approved { background: linear-gradient(145deg, rgba(34,197,94,0.28), rgba(34,197,94,0.10)); box-shadow: 0 6px 18px rgba(34,197,94,0.22), inset 0 1px 0 rgba(255,255,255,0.15); }
+        .stat-icon.total { background: linear-gradient(145deg, rgba(99,102,241,0.28), rgba(99,102,241,0.10)); box-shadow: 0 6px 18px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
+        .stat-value { font-size: 30px; text-shadow: 0 2px 14px rgba(2,6,23,0.5); }
+
+        /* === PANEL / BẢNG — kính === */
+        .table-container, .edit-modal-content, .ai-chat-container {
+            background: linear-gradient(165deg, rgba(30, 41, 59, 0.78), rgba(20, 29, 46, 0.9));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 14px 44px rgba(2, 6, 23, 0.45);
+        }
+        .table-container { border-radius: 18px; }
+        .table-header { border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+        .edit-modal {
+            background: rgba(4, 9, 20, 0.72);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .edit-modal-content { border-radius: 18px; }
+        .edit-modal-footer { background: rgba(10, 16, 30, 0.6); }
+        .btn-save {
+            background: linear-gradient(93deg, #F26522, #e2551a);
+            box-shadow: 0 6px 18px rgba(242, 101, 34, 0.3);
+        }
+        .btn-approve {
+            background: linear-gradient(93deg, #22c55e, #16a34a);
+        }
+
+        /* Nút seed dữ liệu mẫu trong sidebar — nổi bật hơn */
+        #seedBtn {
+            background: linear-gradient(93deg, #F26522, #d44f16) !important;
+            box-shadow: 0 8px 22px rgba(242, 101, 34, 0.35);
+        }
+        #seedBtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+        /* Toast kính */
+        .toast-success, .toast-error {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 34px rgba(2, 6, 23, 0.5);
+        }
+
+        /* Responsive: mobile giữ header trong luồng (tránh đè nút hamburger) */
+        @media (max-width: 1023px) {
+            .page-header {
+                position: static;
+                margin: 0 -32px 20px; padding: 14px 20px 12px;
+            }
+        }
+        @media (max-width: 767px) {
+            .page-header { margin: 0 -16px 16px; padding: 12px 16px 10px; }
+        }
     </style>
 </head>
 <body>
     <!-- Scroll to Top Button -->
-    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Lên đầu trang">&#9650;</button>
+    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Lên đầu trang"><i data-lucide="arrow-up"></i></button>
 
     <!-- Hamburger Button -->
-    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">&#9776;</button>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -821,58 +1041,62 @@
             </div>
         </div>
         <div class="sidebar-nav">
+            <!-- Nhóm 1: Phê duyệt & Vận hành (label phân nhóm KHÔNG phải .nav-item — không ảnh hưởng index switchTab) -->
+            <div class="nav-group-label">Phê duyệt &amp; Vận hành</div>
             <div class="nav-item active" onclick="switchTab('pending')">
-                <span class="icon">&#9203;</span>
+                <span class="icon"><i data-lucide="hourglass"></i></span>
                 Ch&#7901; duy&#7879;t
                 <span class="nav-badge" id="pendingBadge">0</span>
             </div>
             <div class="nav-item" onclick="switchTab('all')">
-                <span class="icon">&#128101;</span>
+                <span class="icon"><i data-lucide="users"></i></span>
                 T&#7845;t c&#7843; Carepartner
             </div>
             <div class="nav-item" onclick="switchTab('tasks')">
-                <span class="icon">&#128203;</span>
+                <span class="icon"><i data-lucide="clipboard-list"></i></span>
                 T&#7845;t c&#7843; c&#244;ng vi&#7879;c
                 <span class="nav-badge" id="taskPendingBadge" style="display:none;">0</span>
             </div>
             <div class="nav-item" onclick="switchTab('users')">
-                <span class="icon">&#128274;</span>
+                <span class="icon"><i data-lucide="lock-keyhole"></i></span>
                 Qu&#7843;n l&#253; t&#224;i kho&#7843;n
             </div>
             <div class="nav-item" onclick="switchTab('credentials')">
-                <span class="icon">&#127942;</span>
+                <span class="icon"><i data-lucide="award"></i></span>
                 B&#7857;ng c&#7845;p CP
                 <span class="nav-badge" id="credentialBadge" style="display:none;">0</span>
             </div>
             <div class="nav-item" onclick="switchTab('notifications')">
-                <span class="icon">&#128276;</span>
+                <span class="icon"><i data-lucide="megaphone"></i></span>
                 G&#7917;i th&#244;ng b&#225;o
             </div>
             <div class="nav-item" onclick="switchTab('profile_changes')">
-                <span class="icon">&#9998;</span>
+                <span class="icon"><i data-lucide="file-pen"></i></span>
                 Y&#234;u c&#7847;u s&#7917;a h&#7891; s&#417;
                 <span class="nav-badge" id="profileChangeBadge" style="display:none;">0</span>
             </div>
+            <!-- Nhóm 2: Hệ thống AI & An toàn -->
+            <div class="nav-group-label">H&#7879; th&#7889;ng AI &amp; An to&#224;n</div>
             <div class="nav-item" onclick="switchTab('ai_chat')">
-                <span class="icon">&#129302;</span>
+                <span class="icon"><i data-lucide="bot"></i></span>
                 AI Tr&#7907; l&#253;
             </div>
             <!-- Parity web + mobile admin screens: Payments / Tracking / Moderation -->
             <div class="nav-item" onclick="switchTab('payments')">
-                <span class="icon">&#128179;</span>
+                <span class="icon"><i data-lucide="credit-card"></i></span>
                 Thanh to&#225;n
             </div>
             <div class="nav-item" onclick="switchTab('tracking')">
-                <span class="icon">&#128225;</span>
+                <span class="icon"><i data-lucide="radar"></i></span>
                 Theo d&#245;i an to&#224;n
             </div>
             <div class="nav-item" onclick="switchTab('feedback_stats')">
-                <span class="icon">📊</span>
+                <span class="icon"><i data-lucide="bar-chart-3"></i></span>
                 Thống kê & AI
                 <span class="nav-badge" id="feedbackStatsBadge" style="display:none;background:#22c55e;">0</span>
             </div>
             <div class="nav-item" onclick="switchTab('moderation')">
-                <span class="icon">&#128737;</span>
+                <span class="icon"><i data-lucide="shield-check"></i></span>
                 Ki&#7875;m duy&#7879;t AI
                 <span class="nav-badge" id="moderationBadge" style="display:none;">0</span>
             </div>
@@ -886,7 +1110,7 @@
         <div style="padding: 16px 12px; border-top: 1px solid #334155;">
             <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;" id="adminName">Admin</div>
             <div class="nav-item" onclick="logoutAdmin()" style="color: #ef4444;">
-                <span class="icon">&#128682;</span>
+                <span class="icon"><i data-lucide="log-out"></i></span>
                 &#272;&#259;ng xu&#7845;t
             </div>
         </div>
@@ -900,11 +1124,11 @@
                 <p class="page-subtitle" id="pageSubtitle">Duy&#7879;t &#273;&#259;ng k&#253; v&#224; qu&#7843;n l&#253; t&#224;i kho&#7843;n sinh vi&#234;n</p>
             </div>
             <div class="header-actions">
-                <button class="refresh-btn" onclick="loadData()">&#128260; L&#224;m m&#7899;i</button>
+                <button class="refresh-btn" onclick="loadData()"><i data-lucide="refresh-cw"></i> L&#224;m m&#7899;i</button>
                 <!-- Chu&#244;ng th&#244;ng b&#225;o AI -->
                 <div style="position:relative;">
                     <button class="notification-bell" id="notifBell" onclick="toggleNotifDropdown()">
-                        &#128276;
+                        <i data-lucide="bell"></i>
                         <span class="notification-badge" id="notifBadge"></span>
                     </button>
                     <div class="notification-dropdown" id="notifDropdown">
@@ -922,7 +1146,7 @@
                 </div>
                 <!-- N&#250;t &#273;&#259;ng xu&#7845;t -->
                 <button class="logout-btn" onclick="logoutAdmin()">
-                    &#128682; &#272;&#259;ng xu&#7845;t
+                    <i data-lucide="log-out"></i> &#272;&#259;ng xu&#7845;t
                 </button>
             </div>
         </div>
@@ -930,21 +1154,21 @@
         <!-- Stats -->
         <div class="stats-row" id="statsRow">
             <div class="stat-card">
-                <div class="stat-icon pending">&#9203;</div>
+                <div class="stat-icon pending"><i data-lucide="hourglass"></i></div>
                 <div>
                     <div class="stat-value" id="statPending">0</div>
                     <div class="stat-label">Ch&#7901; duy&#7879;t</div>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon approved">&#9989;</div>
+                <div class="stat-icon approved"><i data-lucide="circle-check"></i></div>
                 <div>
                     <div class="stat-value" id="statApproved">0</div>
                     <div class="stat-label">&#272;&#227; duy&#7879;t</div>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon total">&#128101;</div>
+                <div class="stat-icon total"><i data-lucide="users"></i></div>
                 <div>
                     <div class="stat-value" id="statTotal">0</div>
                     <div class="stat-label">T&#7893;ng c&#7897;ng</div>
@@ -1132,7 +1356,7 @@
                 <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:20px;">
                     <div style="padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
                         <h3 style="font-size:15px;font-weight:800;color:#f1f5f9;">📋 Phản hồi khảo sát <span id="surveyCountBadge" style="font-size:11px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);border-radius:999px;padding:2px 10px;margin-left:6px;">0</span></h3>
-                        <input type="text" id="surveySearch" placeholder="🔍 Tìm theo SĐT / email / nội dung..." oninput="renderSurveyTable()" style="padding:8px 14px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:12px;width:280px;outline:none;">
+                        <input type="text" id="surveySearch" placeholder="🔍 Tìm theo họ tên / SĐT / email / nội dung..." oninput="renderSurveyTable()" style="padding:8px 14px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:12px;width:280px;outline:none;">
                     </div>
                     <div id="surveyDataTable" style="overflow-x:auto;"></div>
                 </div>
@@ -3154,7 +3378,7 @@
                 return;
             }
             const q = (document.getElementById('surveySearch') && document.getElementById('surveySearch').value || '').toLowerCase().trim();
-            const filtered = rows.filter(r => !q || [r.phone, r.email, r.feedback, r.services, (r.answers || []).join(' ')].join(' ').toLowerCase().includes(q));
+            const filtered = rows.filter(r => !q || [r.full_name, r.phone, r.email, r.feedback, r.services, (r.answers || []).join(' ')].join(' ').toLowerCase().includes(q));
             if (!filtered.length) {
                 wrap.innerHTML = '<div style="text-align:center;color:#64748b;padding:32px;">Không tìm thấy bản ghi khớp từ khoá.</div>';
                 return;
@@ -3163,6 +3387,7 @@
                 <thead>
                     <tr style="color:#64748b;text-align:left;border-bottom:1px solid #334155;">
                         <th style="padding:12px 16px;white-space:nowrap;">#</th>
+                        <th style="padding:12px 16px;white-space:nowrap;">Họ và tên</th>
                         <th style="padding:12px 16px;white-space:nowrap;">Vai trò</th>
                         <th style="padding:12px 16px;">Dịch vụ quan tâm</th>
                         <th style="padding:12px 16px;">Chi tiết câu trả lời</th>
@@ -3177,6 +3402,7 @@
                     ${filtered.map(r => `
                         <tr onclick="showSurveyDetail(${r.id})" style="border-bottom:1px solid #1e293b;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(242,101,34,.06)'" onmouseout="this.style.background=''">
                             <td style="padding:12px 16px;color:#64748b;">${r.id}</td>
+                            <td style="padding:12px 16px;color:#e2e8f0;font-weight:600;white-space:nowrap;">${r.full_name ? escapeHtml(r.full_name) : '<span style="color:#475569;">Chưa cập nhật</span>'}</td>
                             <td style="padding:12px 16px;">${roleBadge(r)}</td>
                             <td style="padding:12px 16px;color:#7dd3fc;max-width:180px;">${r.services ? escapeHtml(r.services) : '<span style="color:#475569;">—</span>'}</td>
                             <td style="padding:12px 16px;color:#cbd5e1;max-width:320px;">${r.answers && r.answers.length ? r.answers.map(a => escapeHtml(a)).join('<span style="color:#475569;"> · </span>') : '<span style="color:#475569;">—</span>'}</td>
@@ -3257,6 +3483,10 @@
                     <span style="color:#94a3b8;font-size:12px;">⏰ ${escapeHtml(r.created_at || '')}</span>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;">
+                        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px;">HỌ VÀ TÊN</div>
+                        <div style="color:#e2e8f0;font-size:13px;font-weight:600;">${r.full_name ? escapeHtml(r.full_name) : '<span style="color:#475569;">Chưa cập nhật</span>'}</div>
+                    </div>
                     <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px;">
                         <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px;">SỐ ĐIỆN THOẠI</div>
                         <div style="color:#e2e8f0;font-size:13px;">${r.phone ? escapeHtml(r.phone) : '—'}</div>
