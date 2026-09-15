@@ -61,6 +61,28 @@ class WebPageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Nhật ký chăm sóc')
 
+    def test_parent_home_in_progress_diary_link_targets_detail(self):
+        """2026-09-15 — Nút 'Xem nhật ký ca' (task in_progress) phải trỏ tới
+        trang CHI TIẾT /parent/care-diary/?task_id=... (trang detail tự hiển thị
+        thông báo 'chưa có nhật ký' khi CP chưa ghi).
+
+        Lỗi cũ: trỏ tới /parent/care-diary-history/?task_id=... — trang history
+        không đọc param task_id nên phụ huynh không thấy nhật ký của ca đó."""
+        resp = self.client.get('/parent/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode('utf-8')
+        self.assertIn('/parent/care-diary/?task_id=', html)
+        self.assertNotIn('/parent/care-diary-history/?task_id=', html)
+
+    def test_parent_history_mood_map_covers_mobile_icons(self):
+        """2026-09-15 — Trang history map đủ mood icon mobile gửi lên
+        ('alert-circle', 'thumbs-up') — đồng bộ với trang chi tiết."""
+        resp = self.client.get('/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode('utf-8')
+        self.assertIn("'alert-circle'", html)
+        self.assertIn("'thumbs-up'", html)
+
 
 class B5WebPageTests(TestCase):
     """B5 — trang tracking.html có phần tử xác minh ảnh cho phụ huynh."""
