@@ -49,8 +49,47 @@ from core.models import (
     CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability,
 )
 
-PROTECTED_USERNAMES = {"admin", "phuhuynh_test", "sinhvien_test"}
+PROTECTED_USERNAMES = {
+    "admin", "phuhuynh_test", "sinhvien_test",
+    # ── Tài khoản dùng thử của NGƯỜI KHẢO SÁT THẬT (2026-09-16) ──
+    # Không được xoá khi re-seed vì là người thật, Huy sẽ tự duyệt CarePartner
+    # và người dùng sẽ đăng nhập trải nghiệm app. Xem PHẦN 13 bên dưới.
+    "ngocquyensp8", "tu9atd123", "dtht0712", "khanhdatqc12", "trantheuhn2004",
+    "6dnguyenbaongochht1", "hoahoa", "hangocan", "thaonhi29082005",
+    "vietxuan2886", "khonggiphaibuon22", "trhanhnguyen2106",
+    "nguyenvietdung23405", "dinhphuongvi", "lehaichau", "phuong231934035",
+    "huthiminhngoc", "phamkhoihuy", "aquocduong76",
+}
 TEST_PASSWORD = "Demo@2026"
+
+# ═══════════════════════════════════════════════════════════════════════
+#  TÀI KHOẢN DÙNG THỰ CHO NGƯỜI KHẢO SÁT THẬT (2026-09-16 — yêu cầu Huy)
+#  Mỗi người làm khảo sát trên /landing/ được cấp 1 tài khoản dùng thử để
+#  trải nghiệm app đúng vai trò họ đã chọn. CarePartner để chờ duyệt
+#  (Huy tự duyệt + viết đánh giá bằng tay), Phụ huynh active luôn.
+#  (username, họ tên đầy đủ, email, sđt, role, survey_id để tính ngày tham gia)
+# ═══════════════════════════════════════════════════════════════════════
+REAL_SURVEYOR_ACCOUNTS = [
+    ("ngocquyensp8", "Ngọc Quyên", "ngocquyensp8@gmail.com", "", "worker", 4),
+    ("tu9atd123", "Phan Anh Tú", "tu9atd123@gmail.com", "0822569221", "worker", 5),
+    ("dtht0712", "Nguyễn Văn Thắng", "dtht0712@gmail.com", "0854918708", "parent", 6),
+    ("khanhdatqc12", "Lang Khánh Đạt", "khanhdatqc12@gmail.com", "0334591071", "parent", 7),
+    ("trantheuhn2004", "Trần Thị Thêu", "trantheuhn2004@gmail.com", "0385149862", "worker", 8),
+    ("6dnguyenbaongochht1", "Nguyễn Bảo Ngọc", "6dnguyenbaongochht1@gmail.com", "0339422186", "worker", 10),
+    ("hoahoa", "Nguyễn Hoả Hoa", "hoahoa@gmail.com", "0909080808", "worker", 11),
+    ("hangocan", "Hà Ngọc Ân", "hangocan@gmail.com", "0823522823", "worker", 12),
+    ("thaonhi29082005", "Hồ Thị Thảo Nhi", "thaonhi29082005@gmail.com", "0398218101", "worker", 13),
+    ("vietxuan2886", "Nguyễn Hoàng Viết Xuân", "vietxuan2886@gmail.com", "0354392246", "worker", 14),
+    ("khonggiphaibuon22", "Nguyễn Trọng Thắng", "Khonggiphaibuon22@gmail.com", "0878858506", "worker", 15),
+    ("trhanhnguyen2106", "Bùi Gia Ngọ", "trhanhnguyen2106@gmail.com", "0981591057", "parent", 16),
+    ("nguyenvietdung23405", "Nguyễn Việt Dũng", "nguyenvietdung23405@gmail.com", "0354645734", "worker", 17),
+    ("dinhphuongvi", "Đinh Phương Vi", "dinhphuongvi@gmail.com", "0866955655", "parent", 18),
+    ("lehaichau", "Lê Hải Châu", "lehaichau@gmail.com", "0819463366", "worker", 19),
+    ("phuong231934035", "Trần Thị Thuỳ Phương", "phuong231934035@gmail.com", "", "parent", 20),
+    ("huthiminhngoc", "Hù Thị Minh Ngọc", "huthiminhngoc@gmail.com", "0984990292", "worker", 21),
+    ("phamkhoihuy", "Phạm Khôi Huy", "phamkhoihuy@gmail.com", "+84971698157", "worker", 22),
+    ("aquocduong76", "Dương Anh Quốc", "aquocduong76@gmail.com", "+84367090125", "worker", 23),
+]
 
 
 class Command(BaseCommand):
@@ -1875,6 +1914,54 @@ class Command(BaseCommand):
         )
 
         self._log("   + Đã tạo đầy đủ Kiểm duyệt, Khiếu nại AI, Bằng cấp, Yêu cầu đổi hồ sơ & Thông báo.")
+
+        # ═══════════════════════════════════════════════════════════════
+        #  PHẦN 13: TÀI KHOẢN DÙNG THỰ CHO NGƯỜI KHẢO SÁT THẬT (16/09/2026)
+        #  Mỗi người từng làm khảo sát trên /landing/ được cấp 1 tài khoản
+        #  để đăng nhập app trải nghiệm đúng vai trò đã chọn. Username đã
+        #  nằm trong PROTECTED_USERNAMES → không bao giờ bị reset xoá.
+        #  Create-only: nếu tài khoản đã tồn tại thì GIỮ NGUYÊN mọi thay
+        #  đổi của admin (duyệt CarePartner, sửa hồ sơ, khoá/mở...).
+        # ═══════════════════════════════════════════════════════════════
+        self._log("\n[13] Cấp tài khoản dùng thử cho người khảo sát thật...")
+
+        from core.models import LandingSurvey
+
+        created_count = 0
+        for (username, full_name, email, phone, role, survey_id) in REAL_SURVEYOR_ACCOUNTS:
+            user, created = User.objects.get_or_create(username=username)
+            if not created:
+                # Đã tồn tại → không đụng vào (bảo toàn duyệt/hồ sơ do Huy tự sửa)
+                continue
+            parts = full_name.split(' ', 1)
+            user.last_name = parts[0]
+            user.first_name = parts[1] if len(parts) > 1 else ''
+            user.email = email
+            if phone:
+                user.phone_number = phone[:15]
+            user.role = role
+            user.is_active = True
+            # CarePartner → chờ duyệt (Huy tự duyệt + viết đánh giá bằng tay)
+            # Phụ huynh  → hoạt động luôn (không cần duyệt)
+            user.is_approved = (role == 'parent')
+            user.is_verified = False
+            # Ngày tham gia = giờ điền khảo sát + vài phút (con người nhất;
+            # tính từ created_at của khảo sát nên ổn định qua các lần re-seed)
+            survey = LandingSurvey.objects.filter(pk=survey_id).first()
+            if survey and survey.created_at:
+                offset = timedelta(minutes=(survey_id * 37) % 71 + 13)
+                user.date_joined = survey.created_at + offset
+            else:
+                user.date_joined = timezone.now() - timedelta(days=2, hours=survey_id % 8)
+            user.set_password(TEST_PASSWORD)
+            user.save()
+            created_count += 1
+            self._log(
+                f"   + [DÙNG THỰ] {username} — {full_name} "
+                f"({user.get_role_display()}, {'chờ duyệt' if role == 'worker' else 'hoạt động'})"
+            )
+        if created_count == 0:
+            self._log("   + Tài khoản người khảo sát đã đủ — giữ nguyên, không ghi đè.")
 
         # ═══════════════════════════════════════════════════════════════
         #  TỔNG KẾT DỮ LIỆU
