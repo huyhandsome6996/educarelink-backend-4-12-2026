@@ -433,13 +433,17 @@ class WorkerAvailability(models.Model):
 # ────────────────────────────────────────────────────────────────────
 
 class LandingPageVisit(models.Model):
-    """Lượt truy cập landing page — chỉ đếm session thật (không ảo).
+    """Lượt truy cập WEBSITE (mọi trang HTML) — chỉ đếm session thật (không ảo).
 
-    Mỗi browser session chỉ ghi 1 lần (frontend dùng sessionStorage).
+    2026-09-16: mở rộng từ "landing page" sang TOÀN BỘ website qua
+    SiteVisitTrackingMiddleware (mọi trang HTML, 1 session × 1 ngày = 1 lượt).
+    session_id cũ là UUID từ beacon JS của landing; session_id mới có dạng
+    "<django_session_key>:<YYYYMMDD>" do middleware ghi server-side.
+    IP vẫn lưu nội bộ để chống spam — KHÔNG hiển thị trên dashboard.
     Bot detection qua user-agent + rate-limit per IP.
     """
     session_id = models.CharField(max_length=64, db_index=True,
-                                   help_text='Frontend-generated UUID, 1 per browser session')
+                                   help_text='UUID beacon cũ, hoặc "<session_key>:<YYYYMMDD>" do middleware ghi')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, default='')
     referrer = models.URLField(blank=True, default='')
@@ -447,8 +451,8 @@ class LandingPageVisit(models.Model):
 
     class Meta:
         ordering = ['-visited_at']
-        verbose_name = 'Lượt truy cập landing'
-        verbose_name_plural = 'Lượt truy cập landing'
+        verbose_name = 'Lượt truy cập website'
+        verbose_name_plural = 'Lượt truy cập website'
         indexes = [
             models.Index(fields=['-visited_at'], name='idx_visit_visited_at'),
         ]

@@ -422,6 +422,25 @@ class AdminDashboardUiUpgradeTests(TestCase):
                      'onclick="toggleSidebar()"', 'function switchTab(', 'function loadData(']:
             self.assertIn(hook, html)
 
+    def test_dashboard_hides_ip_display(self):
+        """2026-09-16 — KHÔNG hiển thị 'IP duy nhất' trên dashboard (IP chỉ
+        lưu nội bộ; hiển thị ra khiến số truy cập trông nhỏ hơn thực tế)."""
+        html = self._get_dashboard()
+        self.assertNotIn('IP duy nhất', html)
+        self.assertNotIn('unique_ips', html)
+        # Thay bằng nhãn phạm vi đếm mới
+        self.assertIn('Toàn website', html)
+
+    def test_dashboard_tables_number_from_1_not_pk(self):
+        """2026-09-16 — Bảng khảo sát & đăng ký đánh số STT từ 1 theo thứ tự
+        hiển thị, không dùng ID pk (pk cũ bắt đầu từ 4/3 nhìn rất kỳ)."""
+        html = self._get_dashboard()
+        # 2 bảng (khảo sát + đăng ký) đều map kèm idx để in STT = idx + 1
+        self.assertEqual(html.count('filtered.map((r, idx)'), 2)
+        self.assertEqual(html.count('${idx + 1}'), 2)
+        # Không còn chỗ nào in thẳng ID pk ra ô số thứ tự
+        self.assertNotIn('>${r.id}</td>', html)
+
 
 class LandingSurveyFullNameTests(TestCase):
     """2026-09-14 — Trường 'Họ và tên' bắt buộc trên form khảo sát /landing/."""
