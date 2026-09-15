@@ -717,6 +717,35 @@ export default function BookingDetailScreen() {
           </Text>
         </View>
 
+        {/* CARE DIARY — GHI/SỬA NHẬT KÝ (luồng CarePartner, Flow 1 matching).
+            Task mirror được backend tạo khi ca bắt đầu; form tự load entry
+            có sẵn → tự chuyển thành chế độ sửa. Parity với việc legacy
+            ở MyJobsScreen. Ẩn khi chưa có task mirror (đơn cũ). */}
+        {(isInProgress || booking.status === 'completed') && booking.task_id && (
+          <View style={stitchStyles.bentoCard}>
+            <View style={stitchStyles.bentoHeaderRow}>
+              <Ionicons name="book-outline" size={16} color="#EA580C" />
+              <Text style={stitchStyles.bentoHeaderTitle}>NHẬT KÝ CHĂM SÓC BÉ</Text>
+            </View>
+            <Text style={stitchStyles.escrowPolicyText}>
+              Ghi lại tâm trạng, hoạt động và tiến bộ của bé sau ca — phụ huynh xem ngay trên app.
+            </Text>
+            <TouchableOpacity
+              style={[stitchStyles.fullWidthCommitBtn, { backgroundColor: '#EA580C', marginTop: 10 }]}
+              onPress={() => navigation.navigate('CareDiaryForm', {
+                taskId: booking.task_id,
+                taskTitle: booking.job_title,
+              })}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Ghi / Sửa nhật ký chăm sóc bé"
+            >
+              <Ionicons name="create-outline" size={16} color="#fff" />
+              <Text style={stitchStyles.fullWidthCommitBtnText}>Ghi / Sửa nhật ký chăm sóc bé</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* CÁC NÚT THAO TÁC CHO TRẠNG THÁI KHÁC (Khi đã cam kết hoặc đang làm) */}
         {isCommitted && (
           <View style={{ marginTop: 14, gap: 10 }}>
@@ -2410,11 +2439,15 @@ function CompletedShiftView({ booking, navigation }) {
           <Ionicons name="book-outline" size={16} color="#EA580C" />
           <Text style={parentStyles.bentoHeaderTitle}>NHẬT KÝ CHĂM SÓC BÉ</Text>
         </View>
+        {/* CARE DIARY — phụ huynh xem chi tiết. Worker đi luồng riêng
+            (card ghi/sửa ở mục thao tác trong screen này). */}
         {booking.task_id ? (
           <TouchableOpacity
             style={parentStyles.diaryBtn}
             onPress={() => navigation.navigate('CareDiaryDetail', { taskId: booking.task_id })}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Xem nhật ký chăm sóc bé"
           >
             <Ionicons name="document-text-outline" size={15} color="#C2410C" />
             <Text style={parentStyles.diaryBtnText}>Xem nhật ký chăm sóc bé</Text>

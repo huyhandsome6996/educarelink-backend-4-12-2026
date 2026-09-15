@@ -168,6 +168,8 @@ function ParentTrackingStack() {
       <Stack.Screen name="TrackingOverviewMain" component={TrackingOverviewScreen} />
       <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
       <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+      <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
+      <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
@@ -445,6 +447,10 @@ export default function AppNavigator() {
             <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
             <Stack.Screen name="Appeal" component={AppealScreen} />
             <Stack.Screen name="CareDiaryForm" component={CareDiaryFormScreen} />
+            {/* Worker fallback: xem nhật ký từ Profile → My Bookings → BookingDetail
+                (WorkerProfileStack không đăng ký CareDiaryDetail — không có fallback
+                này thì navigate bị nuốt, màn hình không mở). */}
+            <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
             <Stack.Screen name="ProfileChangeRequests" component={ProfileChangeRequestsScreen} />
             <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
           </>

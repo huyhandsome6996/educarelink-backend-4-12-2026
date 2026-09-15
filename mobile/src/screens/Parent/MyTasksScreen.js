@@ -1224,6 +1224,17 @@ export default function MyTasksScreen() {
           </View>
         </View>
         <View style={styles.headerRightWrap}>
+          {/* Lịch sử nhật ký chăm sóc — entry point cho CareDiaryHistoryScreen
+              (trước đây màn hình đã đăng ký navigator nhưng không nơi nào mở được) */}
+          <TouchableOpacity
+            style={styles.diaryHistoryBtn}
+            onPress={() => navigation.navigate('CareDiaryHistory')}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Xem lịch sử nhật ký chăm sóc"
+          >
+            <Ionicons name="book-outline" size={17} color={STITCH.primaryContainer} />
+          </TouchableOpacity>
           <NotificationBell color={STITCH.primaryContainer} />
           <TouchableOpacity
             style={styles.postJobBtn}
@@ -1379,6 +1390,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  diaryHistoryBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: STITCH.primaryLight,
+    borderWidth: 1,
+    borderColor: STITCH.amberBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   postJobBtn: {
     flexDirection: 'row',
