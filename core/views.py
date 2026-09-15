@@ -3703,7 +3703,8 @@ class AdminFeedbackExcelAPIView(APIView):
         visits = list(LandingPageVisit.objects.filter(visited_at__gte=since).order_by('-visited_at'))
         surveys = list(LandingSurvey.objects.filter(created_at__gte=since).order_by('-created_at'))
         signups = list(LandingSignup.objects.filter(created_at__gte=since).order_by('-created_at'))
-        unique_ips = len(set(v.ip_address for v in visits if v.ip_address))
+        # 2026-09-16: bỏ thống kê "IP duy nhất" khỏi báo cáo (yêu cầu Huy —
+        # IP chỉ lưu nội bộ trong DB, không hiển thị ra báo cáo/dashboard).
 
         # Aggregate data for charts
         visit_dates = list(
@@ -3802,9 +3803,9 @@ class AdminFeedbackExcelAPIView(APIView):
         ws.row_dimensions[3].height = 20
 
         # Row 5-7: KPI Cards (2 rows: value + label)
+        # 2026-09-16: bỏ KPI "IP DUY NHẤT" — IP không còn hiển thị trên báo cáo
         kpis = [
             ('LƯỢT TRUY CẬP', total_visits, PRIMARY),
-            ('IP DUY NHẤT', unique_ips, PRIMARY),
             ('GÓP Ý', total_surveys, ACCENT_WARN),
             ('ĐĂNG KÝ', total_signups, ACCENT_POS),
             ('DÙNG THỬ', trial_count, PRIMARY),
@@ -4031,13 +4032,14 @@ class AdminFeedbackExcelAPIView(APIView):
         w2.sheet_view.showGridLines = False
         w2.column_dimensions['A'].width = 3
 
-        w2.merge_cells('B2:G2')
-        w2['B2'].value = 'Lượt truy cập landing page'
+        w2.merge_cells('B2:F2')
+        w2['B2'].value = 'Lượt truy cập website'
         w2['B2'].font = title_font; w2['B2'].alignment = title_align
         w2.row_dimensions[2].height = 36
         w2.row_dimensions[3].height = 8
 
-        h0 = ['ID', 'Session ID', 'IP', 'Referrer', 'User Agent', 'Thời gian']
+        # 2026-09-16: bỏ cột IP (IP chỉ lưu nội bộ), đổi ID → STT đánh từ 1
+        h0 = ['STT', 'Session ID', 'Referrer', 'User Agent', 'Thời gian']
         hr = 4
         for ci, h in enumerate(h0, start=2):
             w2.cell(row=hr, column=ci, value=h)
@@ -4046,13 +4048,12 @@ class AdminFeedbackExcelAPIView(APIView):
         if visits:
             for i, v in enumerate(visits):
                 ri = hr + 1 + i
-                w2.cell(row=ri, column=2, value=v.id)
+                w2.cell(row=ri, column=2, value=i + 1)
                 w2.cell(row=ri, column=3, value=v.session_id[:20] + '...' if v.session_id else '')
-                w2.cell(row=ri, column=4, value=v.ip_address or '')
-                w2.cell(row=ri, column=5, value=(v.referrer or '')[:100])
-                w2.cell(row=ri, column=6, value=(v.user_agent or '')[:80])
-                w2.cell(row=ri, column=7, value=v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else '')
-                for c in range(2, 8):
+                w2.cell(row=ri, column=4, value=(v.referrer or '')[:100])
+                w2.cell(row=ri, column=5, value=(v.user_agent or '')[:80])
+                w2.cell(row=ri, column=6, value=v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else '')
+                for c in range(2, 7):
                     style_data_cell(w2, ri, c, i)
         else:
             empty_msg(w2, 'Chưa có lượt truy cập.')
@@ -4073,7 +4074,8 @@ class AdminFeedbackExcelAPIView(APIView):
         w3.row_dimensions[3].height = 8
 
         # 2026-09-14: thêm cột "Họ tên" (bắt buộc với submit mới từ landing)
-        h1 = ['ID', 'Họ tên', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Số điện thoại', 'Email', 'IP', 'Ngày tạo']
+        # 2026-09-16: bỏ cột IP (lưu nội bộ), đổi ID → STT đánh từ 1
+        h1 = ['STT', 'Họ tên', 'Vai trò', 'Dịch vụ quan tâm', 'Chi tiết câu trả lời', 'Góp ý tự do', 'Số điện thoại', 'Email', 'Ngày tạo']
         hr = 4
         for ci, h in enumerate(h1, start=2):
             w3.cell(row=hr, column=ci, value=h)
@@ -4084,7 +4086,7 @@ class AdminFeedbackExcelAPIView(APIView):
                 ri = hr + 1 + i
                 ra = s.role_answers or {}; sr = ra.get('services', ra.get('interests', []))
                 ss = ', '.join(SERVICE_LABELS.get(i, i) for i in (sr if isinstance(sr, list) else []))
-                w3.cell(row=ri, column=2, value=s.id)
+                w3.cell(row=ri, column=2, value=i + 1)
                 w3.cell(row=ri, column=3, value=s.full_name or '')
                 w3.cell(row=ri, column=4, value=ROLE_LABELS.get(s.role, s.role))
                 w3.cell(row=ri, column=5, value=ss)
@@ -4092,9 +4094,8 @@ class AdminFeedbackExcelAPIView(APIView):
                 w3.cell(row=ri, column=7, value=s.feedback or '')
                 w3.cell(row=ri, column=8, value=s.phone or '')
                 w3.cell(row=ri, column=9, value=s.email or '')
-                w3.cell(row=ri, column=10, value=s.ip_address or '')
-                w3.cell(row=ri, column=11, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
-                for c in range(2, 12):
+                w3.cell(row=ri, column=10, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                for c in range(2, 11):
                     style_data_cell(w3, ri, c, i)
         else:
             empty_msg(w3, 'Chưa có góp ý.')
@@ -4117,7 +4118,8 @@ class AdminFeedbackExcelAPIView(APIView):
         # Cột khớp form đăng ký trên /landing/: full_name, phone, email, role,
         # signup_type, interested_service, location_city, location_district,
         # preferred_time_slot, trial_consent, note
-        h2 = ['ID', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loại', 'Dịch vụ quan tâm', 'Tỉnh/TP', 'Quận/Huyện', 'Khung giờ', 'Dùng thử', 'Ghi chú', 'Ngày tạo']
+        # 2026-09-16: đổi ID → STT đánh từ 1
+        h2 = ['STT', 'Họ tên', 'SDT', 'Email', 'Vai trò', 'Loại', 'Dịch vụ quan tâm', 'Tỉnh/TP', 'Quận/Huyện', 'Khung giờ', 'Dùng thử', 'Ghi chú', 'Ngày tạo']
         hr = 4
         for ci, h in enumerate(h2, start=2):
             w4.cell(row=hr, column=ci, value=h)
@@ -4126,7 +4128,7 @@ class AdminFeedbackExcelAPIView(APIView):
         if signups:
             for i, s in enumerate(signups):
                 ri = hr + 1 + i
-                w4.cell(row=ri, column=2, value=s.id)
+                w4.cell(row=ri, column=2, value=i + 1)
                 w4.cell(row=ri, column=3, value=s.full_name or '')
                 w4.cell(row=ri, column=4, value=s.phone or '')
                 w4.cell(row=ri, column=5, value=s.email or '')

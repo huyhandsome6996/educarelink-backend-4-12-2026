@@ -97,6 +97,10 @@ MIDDLEWARE = [
     # Không áp dụng cho /api/ (mobile app vẫn gọi API bình thường).
     # Đổi mật khẩu qua biến môi trường SITE_GATE_PASSWORD trên Render.
     'core.middleware.SiteAccessGateMiddleware',
+    # ⚡ Đếm lượt truy cập TOÀN BỘ website (mọi trang HTML), không chỉ landing
+    # page. 1 session/ngày = 1 lượt, lọc bot/healthcheck/staff. IP vẫn lưu
+    # nội bộ (chống spam) nhưng dashboard KHÔNG hiển thị IP (yêu cầu 16/09).
+    'core.middleware.SiteVisitTrackingMiddleware',
     # HTML luôn no-cache: trình duyệt phải hỏi server mỗi lần để nhận bản mới
     # sau deploy (fix lỗi thấy trang cũ sau khi nâng cấp giao diện).
     # Không đụng /api/ JSON và static (whitenoise tự quản cache).
