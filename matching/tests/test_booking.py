@@ -2,7 +2,7 @@
 matching/tests/test_booking.py — Auto-commit booking (Step 5 checklist).
 """
 
-from datetime import date, time, timedelta
+from datetime import time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -32,7 +32,23 @@ from matching.services.lock_service import SlotConflictError
 from matching.tests.base import MatchingTestBase
 
 User = get_user_model()
-MONDAY = date(2026, 9, 14)
+
+
+def _next_monday():
+    """Thứ 2 KẾ TIẾP (luôn ở tương lai) thay cho ngày cứng date(2026, 9, 14).
+
+    Lỗi 2026-09-15: ngày cứng đã lùi vào quá khứ → select_carepartner từ chối
+    với 'Đơn đã qua giờ bắt đầu' → 7 test FAIL hằng tuần. Ngày động giữ nguyên
+    weekday=0 (thứ 2) khớp CarePartnerAvailability trong setUp.
+    """
+    today = tz.localdate()
+    days_ahead = (0 - today.weekday()) % 7
+    # Hôm nay là thứ 2 → lùi sang thứ 2 tuần sau (tránh ca 19:00 hôm nay
+    # có thể đã qua tùy giờ chạy test).
+    return today + timedelta(days=days_ahead or 7)
+
+
+MONDAY = _next_monday()
 
 
 class CommitWindowTest(MatchingTestBase):
