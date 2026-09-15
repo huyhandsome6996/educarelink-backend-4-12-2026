@@ -17,6 +17,9 @@ const MOOD_ICONS = {
   sad: { name: 'sad', color: COLORS.error },
   'alert-circle': { name: 'alert-circle', color: COLORS.warning },
   'thumbs-up': { name: 'thumbs-up', color: COLORS.primary },
+  // từ vựng form WEB (backend đã chuẩn hoá nhưng giữ fallback cho dữ liệu cũ)
+  neutral: { name: 'thumbs-up', color: COLORS.primary },
+  excited: { name: 'happy', color: COLORS.success },
 };
 
 export default function CareDiaryHistoryScreen() {

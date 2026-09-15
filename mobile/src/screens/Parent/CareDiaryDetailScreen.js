@@ -18,6 +18,18 @@ const STATUS_STYLE = {
   skipped: { icon: 'close', color: COLORS.onSurfaceVariant, border: COLORS.outline, label: 'Bỏ qua' },
 };
 
+// mood canonical (backend chuẩn hoá) → glyph Ionicons. 'neutral'/'excited'
+// là từ vựng của form WEB — Ionicons không có 2 tên này → map sang glyph
+// gần nghĩa, tránh icon trống khi phụ huynh xem nhật ký ghi từ web.
+const MOOD_IONICON = {
+  happy: 'happy',
+  neutral: 'thumbs-up',
+  sad: 'sad',
+  excited: 'happy',
+  'alert-circle': 'alert-circle',
+  'thumbs-up': 'thumbs-up',
+};
+
 export default function CareDiaryDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -142,7 +154,7 @@ export default function CareDiaryDetailScreen() {
           <View style={styles.moodCard}>
             <Text style={styles.cardTitle}>Tâm trạng của bé</Text>
             <View style={styles.moodIconCircle}>
-              <Ionicons name={diary.mood.icon} size={48} color={COLORS.primary} />
+              <Ionicons name={MOOD_IONICON[diary.mood.icon] || 'happy'} size={48} color={COLORS.primary} />
             </View>
             <Text style={styles.moodLabel}>{diary.mood.label}</Text>
             {diary.mood.note ? <Text style={styles.moodNote}>{diary.mood.note}</Text> : null}
