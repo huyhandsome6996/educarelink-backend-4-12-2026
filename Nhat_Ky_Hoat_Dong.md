@@ -1,3 +1,26 @@
+### HTML no-cache + sửa 7 test booking lỗi theo lịch (2026-09-15)
+- **Người dùng báo cáo** (screenshot 21:18, URL `/landing/#khao-sat`): "Chưa thấy chỗ điền tên nó nằm
+  ở đâu, cả ở bên người đồng hành và phụ huynh" — dù commit fd7ee5c (trường "Họ và tên") đã deploy
+  từ 14/09 06:12 UTC.
+- **Điều tra**: curl trang live → HTML CÓ `#survey-fullname` — field "Họ và tên *" đứng ĐẦU form,
+  TRÊN cả 2 tab (dùng chung cho Người đồng hành lẫn Phụ huynh, không cần lặp trong từng tab);
+  render bằng browser thật (headless) → field hiển thị (is visible=true, bounding box đầu form card);
+  không có CSS/JS nào ẩn; không có service worker. Kết luận: trình duyệt người dùng giữ bản HTML CŨ
+  (tab mở từ trước deploy — bấm anchor `#khao-sat` chỉ cuộn trang, không reload nên không tải lại DOM).
+- **Fix gốc rễ** (commit lần này): thêm `core.middleware.NoCacheHTMLMiddleware` — mọi phản hồi
+  `text/html` mang `Cache-Control: no-cache, must-revalidate`; KHÔNG đụng `/api/*` (JSON cho app
+  mobile) và static (whitenoise tự quản). Từ giờ sau mỗi lần deploy, lần truy cập kế tiếp luôn nhận
+  bản HTML mới — áp dụng cả `/landing/` lẫn `/admin-dashboard/`.
+- **Kèm theo — sửa 7 test booking FAIL hằng tuần**: `MONDAY = date(2026, 9, 14)` trong
+  `matching/tests/test_booking.py` đã lùi vào quá khứ → `select_carepartner` chặn
+  "Đơn đã qua giờ bắt đầu — không thể chọn". Đổi thành `_next_monday()` (thứ 2 KẾ TIẾP, giữ
+  weekday=0 khớp availability) → test không còn "hỏng" theo lịch thực.
+- **Test**: frontend 46/46 OK (3 test mới: `/landing/` + `/admin-dashboard/` có header no-cache,
+  API JSON không bị gắn header); toàn repo **806/806 OK**. Lưu ý: 4 file test khác vẫn giữ
+  MONDAY cứng (test_matching, test_gps_dispatch, test_booking_task_bridge, test_cancellation) —
+  hiện vẫn PASS vì không có guard thời gian, cần dời sang `_next_monday()` khi có thời gian.
+
+
 ### Hotfix đăng việc gia sư 'any' → 1.4.7 vc30 (2026-09-14)
 - **Lỗi người dùng báo cáo** (screenshot 2:23): đăng việc "Gia sư & Kèm học" hiện modal
   "Chưa thể đăng việc — Ưu tiên gia sư không hợp lệ: 'any'. Chọn 1 trong: student_year_1_2,
