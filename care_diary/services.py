@@ -11,6 +11,33 @@ from core.models import Task, TaskApplication
 from .models import CareDiaryActivity, CareDiaryEntry
 
 
+# Từ vựng mood_icon THỐNG NHẤT 3 nền tảng (2026-09-15):
+#   - Mobile form (CareDiaryFormScreen): happy / sad / alert-circle / thumbs-up
+#   - Web form (worker_care_diary_form): happy / neutral / sad / excited
+#   - Seed/demo cũ: emoji (🎨 😊 👍 ...)
+# Chuẩn hoá về 1 tập canonical: happy / neutral / sad / excited /
+# alert-circle / thumbs-up — mỗi client tự map ra glyph của font mình.
+MOOD_ICON_ALIASES = {
+    # emoji seed/demo cũ → canonical
+    '🎨': 'excited', '🌟': 'excited', '⭐': 'excited',
+    '😊': 'happy', '🙂': 'happy', '😄': 'happy', '😀': 'happy',
+    '😢': 'sad', '😭': 'sad', '😞': 'sad',
+    '⚠️': 'alert-circle', '⚠': 'alert-circle', '❗': 'alert-circle',
+    '👍': 'thumbs-up',
+    # tên glyph trùng giữa các client
+    'warning': 'alert-circle',
+    'thumb_up': 'thumbs-up',
+}
+
+
+def normalize_mood_icon(raw):
+    """Chuẩn hoá mood_icon về từ vựng canonical. Giữ nguyên nếu không nhận ra."""
+    if not raw:
+        return ''
+    key = str(raw).strip()
+    return MOOD_ICON_ALIASES.get(key, key)
+
+
 def _get_accepted_application(*, task_id, worker):
     """Lấy application đã accepted cho task+worker. Raise nếu không tìm thấy."""
     try:
@@ -102,7 +129,7 @@ def get_parent_diary_history(*, parent):
             'task_title': entry.task.title,
             'date': date_str,
             'mood': {
-                'icon': entry.mood_icon or 'happy',
+                'icon': normalize_mood_icon(entry.mood_icon) or 'happy',
                 'label': entry.mood_label,
             },
             'completion_percent': entry.completion_percent,
@@ -166,7 +193,7 @@ def build_entry_response(*, entry, request=None):
         },
         'date': date_str,
         'mood': {
-            'icon': entry.mood_icon or 'happy',
+            'icon': normalize_mood_icon(entry.mood_icon) or 'happy',
             'label': entry.mood_label,
             'note': entry.mood_note,
         },

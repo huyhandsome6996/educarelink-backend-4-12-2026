@@ -92,7 +92,7 @@ class WorkerCareDiaryAPIView(APIView):
         entry = CareDiaryEntry.objects.create(
             task=task,
             worker=request.user,
-            mood_icon=str(data.get('mood_icon', ''))[:30],
+            mood_icon=services.normalize_mood_icon(data.get('mood_icon', ''))[:30],
             mood_label=str(data.get('mood_label', ''))[:100],
             mood_note=str(data.get('mood_note', '')),
             completion_percent=completion,
@@ -163,6 +163,8 @@ class WorkerCareDiaryAPIView(APIView):
                         val = services.parse_completion_percent(val)
                     except ValueError as e:
                         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                elif field == 'mood_icon':
+                    val = str(services.normalize_mood_icon(val))[:FIELD_MAX_LENGTH[field]]
                 elif field in FIELD_MAX_LENGTH:
                     val = str(val)[:FIELD_MAX_LENGTH[field]]
                 setattr(entry, field, str(val) if isinstance(val, str) else val)
