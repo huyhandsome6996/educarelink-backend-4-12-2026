@@ -791,3 +791,228 @@ class ProfileExposesStaffFlagTests(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.user_refetch = User.objects.get(username='parentx')
         self.assertFalse(self.user_refetch.is_staff)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2026-09-16 — ĐẾM LƯỢT TRUY CẬP TOÀN WEBSITE (SiteVisitTrackingMiddleware)
+# ═══════════════════════════════════════════════════════════════════════════
+from core.models import LandingPageVisit  # noqa: E402
+
+BROWSER_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
+BROWSER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+
+
+class SiteVisitTrackingMiddlewareTests(TestCase):
+    """Middleware đếm MỌI trang HTML (không chỉ landing), lọc bot/staff/ping."""
+
+    def setUp(self):
+        self.client = APIClient()
+        LandingPageVisit.objects.all().delete()
+
+    def _get(self, path, **extra):
+        return self.client.get(path, HTTP_USER_AGENT=BROWSER_UA,
+                               HTTP_ACCEPT=BROWSER_ACCEPT, **extra)
+
+    def test_html_page_visit_recorded(self):
+        """GET trang HTML bất kỳ (/login/) → ghi 1 lượt truy cập website."""
+        resp = self._get('/login/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(LandingPageVisit.objects.count(), 1)
+        v = LandingPageVisit.objects.first()
+        # session_id mới có dạng "<session_key>:<YYYYMMDD>"
+        self.assertIn(':', v.session_id)
+        self.assertEqual(v.user_agent, BROWSER_UA)
+
+    def test_same_session_same_day_not_duplicated(self):
+        """Cùng 1 session trong cùng ngày → chỉ đếm đúng 1 lần."""
+        self._get('/login/')
+        self._get('/login/')
+        self._get('/landing/')
+        self.assertEqual(LandingPageVisit.objects.count(), 1)
+
+    def test_next_day_counts_new_visit(self):
+        """Người quay lại vào NGÀY KHÁC → được tính thêm 1 lượt mới."""
+        self._get('/login/')
+        v = LandingPageVisit.objects.first()
+        session_key = v.session_id.split(':')[0]
+        # Giả lập bản ghi cũ là của ngày khác
+        v.session_id = f'{session_key}:20200101'
+        v.save()
+        # Đổi REMOTE_ADDR để không bị rate-limit 30s/IP chặn (khác máy)
+        self._get('/landing/', REMOTE_ADDR='127.0.0.2')
+        self.assertEqual(LandingPageVisit.objects.count(), 2)
+
+    def test_bot_ua_not_recorded(self):
+        self.client.get('/login/', HTTP_USER_AGENT='python-requests/2.31',
+                        HTTP_ACCEPT=BROWSER_ACCEPT)
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_empty_ua_not_recorded(self):
+        self.client.get('/login/', HTTP_ACCEPT=BROWSER_ACCEPT)
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_non_browser_accept_not_recorded(self):
+        """Healthcheck/ping không xin text/html → không đếm."""
+        self.client.get('/login/', HTTP_USER_AGENT=BROWSER_UA, HTTP_ACCEPT='*/*')
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_api_json_not_recorded(self):
+        self._get('/api/landing/survey/')
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_admin_dashboard_not_recorded(self):
+        self._get('/admin-dashboard/')
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_staff_not_recorded(self):
+        """Chính admin duyệt web không bị đếm là khách."""
+        User.objects.create_superuser(username='admin2', password='x', email='a@b.c')
+        self.client.force_login(User.objects.get(username='admin2'))
+        self._get('/login/')
+        self.assertEqual(LandingPageVisit.objects.count(), 0)
+
+    def test_landing_beacon_removed_and_server_side_tracking(self):
+        """/landing/ không còn beacon JS cũ (đếm chuyển về server-side)."""
+        resp = self._get('/landing/')
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode()
+        self.assertNotIn('/api/landing/track-visit/', content)
+        self.assertNotIn('_ecl_visit_sid', content)
+        self.assertEqual(LandingPageVisit.objects.count(), 1)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2026-09-16 — MIGRATION DỮ LIỆU THẬT (tên khảo sát #4-8, xoá #9, 12 đăng ký)
+# ═══════════════════════════════════════════════════════════════════════════
+from importlib import import_module  # noqa: E402
+
+_mig = import_module('core.migrations.0030_fill_survey_names_seed_trial_signups')
+
+
+class RealSurveyDataMigrationTests(TestCase):
+    """Chạy trực tiếp 3 hàm RunPython của migration 0030 trên dữ liệu giả lập
+    production (khảo sát #4–#9) để đảm bảo idempotent & đúng dữ liệu."""
+
+    @staticmethod
+    def _mk_survey(pk, role, email, phone, created_at):
+        s = LandingSurvey.objects.create(
+            pk=pk, role=role, email=email, phone=phone,
+            role_answers=VALID_PH_ROLE_ANSWERS.copy(),
+            feedback='', ip_address='1.2.3.4',
+        )
+        LandingSurvey.objects.filter(pk=pk).update(created_at=created_at)
+        return s
+
+    def setUp(self):
+        from django.utils import timezone
+        base = timezone.now() - timezone.timedelta(days=2)
+        self._mk_survey(4, 'carepartner', 'ngocquyensp8@gmail.com', '', base)
+        self._mk_survey(5, 'carepartner', 'tu9atd123@gmail.com', '0822569221', base)
+        self._mk_survey(6, 'phu-huynh', 'dtht0712@gmail.com', '0854918708', base)
+        self._mk_survey(7, 'phu-huynh', 'khanhdatqc12@gmail.com', '0334591071', base)
+        self._mk_survey(8, 'carepartner', 'trantheuhn2004@gmail.con', '0385149862', base)
+        # #9 khớp ĐÚNG dữ liệu bản ghi kiểm thử thật trên production
+        self._mk_survey(9, 'phu-huynh', '', '0900000000', base)
+        LandingSurvey.objects.filter(pk=9).update(full_name='Kiểm Thử Giao Diện')
+        # Đủ các khảo sát còn lại nằm trong kế hoạch đăng ký của migration
+        self._mk_survey(10, 'carepartner', '6dnguyenbaongochht1@gmail.com', '0339422186', base)
+        self._mk_survey(12, 'carepartner', '', '0823522823', base)
+        self._mk_survey(13, 'carepartner', 'thaonhi29082005@gmail.com', '0398218101', base)
+        self._mk_survey(15, 'carepartner', 'Khonggiphaibuon22@gmail.com', '0878858506', base)
+        self._mk_survey(16, 'phu-huynh', 'trhanhnguyen2106@gmail.com', '0981591057', base)
+        self._mk_survey(18, 'phu-huynh', '', '0866955655', base)
+        self._mk_survey(20, 'phu-huynh', 'phuong231934035@gmail.com', '', base)
+        self._mk_survey(22, 'carepartner', '', '+84971698157', base)
+        self._mk_survey(23, 'carepartner', 'aquocduong76@gmail.com', '+84367090125', base)
+
+    def test_full_pipeline(self):
+        from django.apps import apps as real_apps
+        _mig.fill_survey_names(real_apps, None)
+        names = dict(LandingSurvey.objects.values_list('pk', 'full_name'))
+        self.assertEqual(names[4], 'Ngọc Quyên')
+        self.assertEqual(names[5], 'Phan Anh Tú')
+        self.assertEqual(names[6], 'Nguyễn Văn Thắng')
+        self.assertEqual(names[7], 'Lang Khánh Đạt')
+        self.assertEqual(names[8], 'Trần Thị Thêu')
+        self.assertEqual(names[23], '')  # khảo sát khác — không bị dính tên
+
+        _mig.delete_ui_test_survey(real_apps, None)
+        self.assertFalse(LandingSurvey.objects.filter(pk=9).exists())
+        self.assertTrue(LandingSurvey.objects.filter(pk=8).exists())
+
+        _mig.seed_trial_signups(real_apps, None)
+        # 12 đăng ký (khảo sát #9 đã xoá + #4,#23 không nằm trong kế hoạch)
+        self.assertEqual(LandingSignup.objects.count(), 12)
+        # TẤT CẢ người vai trò phụ huynh đều có đăng ký
+        ph_emails = {'dtht0712@gmail.com', 'khanhdatqc12@gmail.com',
+                     'trhanhnguyen2106@gmail.com', 'dinhphuongvi@gmail.com',
+                     'phuong231934035@gmail.com'}
+        signup_emails = set(LandingSignup.objects.values_list('email', flat=True))
+        self.assertTrue(ph_emails.issubset(signup_emails))
+        # Thời gian đăng ký TRÙNG thời điểm điền khảo sát
+        sg = LandingSignup.objects.get(email='dtht0712@gmail.com')
+        self.assertEqual(sg.created_at, LandingSurvey.objects.get(pk=6).created_at)
+        # Không dính khảo sát khác
+        self.assertNotIn('aquocduong76@gmail.com', signup_emails)
+
+        # Idempotent — chạy lại không nhân bản
+        _mig.fill_survey_names(real_apps, None)
+        _mig.seed_trial_signups(real_apps, None)
+        self.assertEqual(LandingSignup.objects.count(), 12)
+        self.assertEqual(LandingSurvey.objects.get(pk=5).full_name, 'Phan Anh Tú')
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2026-09-16 — TÀI KHOẢN DÙNG THỰ CHO NGƯỜI KHẢO SÁT THẬT (seed_demo_data)
+# ═══════════════════════════════════════════════════════════════════════════
+class TrialAccountSeedTests(TestCase):
+    """seed_demo_data phải tạo đủ 19 tài khoản người khảo sát thật:
+    CarePartner chờ duyệt (Huy tự duyệt), Phụ huynh active; re-seed KHÔNG
+    xoá/ghi đè tài khoản (đã bảo vệ trong PROTECTED_USERNAMES)."""
+
+    def test_seed_creates_19_trial_accounts(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from core.management.commands.seed_demo_data import REAL_SURVEYOR_ACCOUNTS
+
+        out = StringIO()
+        call_command('seed_demo_data', stdout=out)
+
+        self.assertEqual(len(REAL_SURVEYOR_ACCOUNTS), 19)
+        for (username, full_name, email, phone, role, _sid) in REAL_SURVEYOR_ACCOUNTS:
+            u = User.objects.filter(username=username).first()
+            self.assertIsNotNone(u, f'Thiếu tài khoản {username}')
+            self.assertEqual(u.role, role, username)
+            self.assertTrue(u.is_active, username)
+            self.assertEqual(u.email, email, username)
+            if role == 'worker':
+                self.assertFalse(u.is_approved, f'{username} phải chờ duyệt')
+            else:
+                self.assertTrue(u.is_approved, f'{username} (phụ huynh) phải active')
+            if phone:
+                self.assertEqual(u.phone_number, phone[:15], username)
+        # Đủ 14 CP chờ duyệt → hiện ở hàng "Chờ duyệt" của dashboard
+        pending = User.objects.filter(role='worker', is_approved=False,
+                                      username__in=[a[0] for a in REAL_SURVEYOR_ACCOUNTS])
+        self.assertEqual(pending.count(), 14)
+        # Mật khẩu dùng thử chung
+        self.assertTrue(User.objects.get(username='tu9atd123').check_password('Demo@2026'))
+
+    def test_reseed_does_not_touch_existing_trial_accounts(self):
+        """Chạy seed lần 2: tài khoản người khảo sát KHÔNG bị xoá/ghi đè —
+        bảo toàn việc duyệt + sửa hồ sơ mà admin đã làm tay."""
+        from io import StringIO
+        from django.core.management import call_command
+
+        call_command('seed_demo_data', stdout=StringIO())
+        u = User.objects.get(username='khanhdatqc12')
+        u.is_approved = True  # giả lập admin đã duyệt tay
+        u.first_name = 'Đạt Đã Duyệt'
+        u.save()
+
+        call_command('seed_demo_data', stdout=StringIO())  # re-seed
+
+        u2 = User.objects.get(username='khanhdatqc12')
+        self.assertTrue(u2.is_approved)
+        self.assertEqual(u2.first_name, 'Đạt Đã Duyệt')
