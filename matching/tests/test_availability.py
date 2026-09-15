@@ -2,7 +2,7 @@
 matching/tests/test_availability.py — API lịch rảnh + blackout (Prompt 04 checklist).
 """
 
-from datetime import date, time, timedelta
+from datetime import time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -18,6 +18,14 @@ from matching.models import (
     JobSlot,
 )
 from matching.services.elo_service import EloService
+
+
+def _next_monday():
+    """Thứ 2 KẾ TIẾP (luôn ở tương lai) thay ngày cứng date(2026, 9, 14)
+    — tránh test rot theo lịch thật (sửa 2026-09-16, như test_booking)."""
+    today = tz.localdate()
+    days_ahead = (0 - today.weekday()) % 7
+    return today + timedelta(days=days_ahead or 7)
 
 User = get_user_model()
 
@@ -123,7 +131,7 @@ class BlackoutAPITest(MatchingTestBase):
         from rest_framework.test import APIClient
         self.client = APIClient()
         self.client.force_authenticate(user=self.cp)
-        self.monday = date(2026, 9, 14)
+        self.monday = _next_monday()
 
     def _make_busy_booking(self, d, tf, tt):
         job = JobPost.objects.create(parent=self.parent, job_type='tutoring',
@@ -136,14 +144,14 @@ class BlackoutAPITest(MatchingTestBase):
 
     def test_create_blackout(self):
         resp = self.client.post('/api/matching/carepartners/me/blackouts/',
-                                {'date': '2026-09-20', 'reason': 'exam'},
+                                {'date': str(self.monday + timedelta(days=6)), 'reason': 'exam'},
                                 format='json')
         self.assertEqual(resp.status_code, 201)
 
     def test_blackout_conflict_with_booking_409(self):
         self._make_busy_booking(self.monday, time(19, 0), time(21, 0))
         resp = self.client.post('/api/matching/carepartners/me/blackouts/',
-                                {'date': '2026-09-14', 'reason': 'exam'},
+                                {'date': str(self.monday), 'reason': 'exam'},
                                 format='json')
         self.assertEqual(resp.status_code, 409)
         self.assertEqual(resp.json()['code'], 'blackout_conflicts_with_booking')
@@ -161,7 +169,7 @@ class BlackoutAPITest(MatchingTestBase):
                 carepartner=self.cp, date=self.monday + timedelta(days=i + 1),
                 reason='personal')
         resp = self.client.post('/api/matching/carepartners/me/blackouts/',
-                                {'date': '2026-11-01', 'reason': 'personal'},
+                                {'date': str(self.monday + timedelta(days=31)), 'reason': 'personal'},
                                 format='json')
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json()['code'], 'too_many_blackouts')
