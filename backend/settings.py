@@ -97,6 +97,10 @@ MIDDLEWARE = [
     # Không áp dụng cho /api/ (mobile app vẫn gọi API bình thường).
     # Đổi mật khẩu qua biến môi trường SITE_GATE_PASSWORD trên Render.
     'core.middleware.SiteAccessGateMiddleware',
+    # HTML luôn no-cache: trình duyệt phải hỏi server mỗi lần để nhận bản mới
+    # sau deploy (fix lỗi thấy trang cũ sau khi nâng cấp giao diện).
+    # Không đụng /api/ JSON và static (whitenoise tự quản cache).
+    'core.middleware.NoCacheHTMLMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls' # Lưu ý: folder gốc của bạn tên là backend
