@@ -1498,3 +1498,12 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   thật; tab Thống kê & AI: bảng khảo sát có cột HỌ VÀ TÊN — bản mới "Kiểm Thử Giao Diện" (#9) hiện tên,
   bản cũ (#8) hiện "Chưa cập nhật"; 12/12 tab switch không lỗi JS; Excel export 200 (xlsx ~13KB).
   Bản ghi khảo sát #9 là bản kiểm thử (ghi chú "có thể xoá") — xoá trong admin nếu muốn.
+
+- **HTML no-cache middleware (2026-09-15)** — user báo không thấy trường "Họ và tên" trên khảo sát
+  (cả 2 tab) dù fd7ee5c đã deploy 30+ giờ. Điều tra: HTML live CÓ field (curl + headless browser
+  render đều xác nhận, field đứng trên cả 2 tab dùng chung) → nguyên nhân: tab trình duyệt mở từ
+  trước deploy, anchor #khao-sat chỉ cuộn không reload. Fix gốc rễ: `core.middleware.NoCacheHTMLMiddleware`
+  gắn `Cache-Control: no-cache, must-revalidate` cho mọi text/html (không đụng /api/ JSON, static
+  whitenoise) → sau deploy lần truy cập kế tiếp luôn bản mới. Kèm: sửa 7 test booking FAIL do
+  `MONDAY = date(2026,9,14)` quá khứ → `_next_monday()` động (thứ 2 kế tiếp). Test: frontend 46/46
+  (3 test mới), toàn repo **806/806 OK**.
