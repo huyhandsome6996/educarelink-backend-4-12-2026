@@ -1507,3 +1507,17 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   whitenoise) → sau deploy lần truy cập kế tiếp luôn bản mới. Kèm: sửa 7 test booking FAIL do
   `MONDAY = date(2026,9,14)` quá khứ → `_next_monday()` động (thứ 2 kế tiếp). Test: frontend 46/46
   (3 test mới), toàn repo **806/806 OK**.
+
+## 2026-09-16 — Đếm truy cập toàn web + dữ liệu thật & 19 tài khoản dùng thử (Super Z)
+- Yêu cầu Huy: (1) đếm truy cập TOÀN web + bỏ hiển thị IP; (2) tên khảo sát #4-8, xoá #9, đánh số từ 1;
+  (3) 2/3 người khảo sát (đủ phụ huynh) → đăng ký tư vấn/dùng thử trùng giờ điền khảo sát;
+  (4) 19 tài khoản dùng thử theo vai trò, CP chờ duyệt; (5) số liệu thật, con người nhất.
+- Code: SiteVisitTrackingMiddleware (mọi trang HTML, 1 session/ngày, lọc bot/staff/ping, IP nội bộ);
+  gỡ beacon JS landing; dashboard "Toàn website · N ngày qua"; bảng STT từ 1 (2 bảng + modal);
+  Excel bỏ IP + KPI "IP DUY NHẤT", ID → STT, sheet "Lượt truy cập website".
+- Migration 0030: tên khảo sát #4-8 (khớp ID+email), xoá test #9 (khớp id+tên+sđt), 12 đăng ký
+  (5 PH + 7 CP, created_at = giờ khảo sát, 9 dùng-thu + 4 tu-van).
+- seed_demo_data PHẦN 13: 19 tài khoản (14 CP chờ duyệt / 5 PH active), mật khẩu Demo@2026,
+  PROTECTED_USERNAMES + create-only → sống sót re-seed, bảo toàn duyệt tay của Huy.
+- Kèm theo: test_availability hết test-rot (_next_monday).
+- Test: repo 828/828 OK, mobile 144/144 OK. Commits f5610fc, a40e545, 6e0629f → main → Render deploy.

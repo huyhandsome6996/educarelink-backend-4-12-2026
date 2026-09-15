@@ -1,3 +1,44 @@
+### Đếm truy cập toàn web + dữ liệu thật & 19 tài khoản dùng thử (2026-09-16)
+- **Yêu cầu của Huy (5 điểm)**: (1) đếm lượt truy cập TOÀN web chứ không riêng landing page và
+  bỏ hiển thị IP khi đếm — "hệ thống hiểu ngầm là được rồi"; (2) điền tên vào dashboard cho khảo
+  sát #4–#8 (Ngọc Quyên, Phan Anh Tú, Nguyễn Văn Thắng, Lang Khánh Đạt, Trần Thị Thêu), xoá bản
+  ghi #9 "Kiểm Thử Giao Diện" sau khi kiểm thử, và đánh số phải từ 1 "chứ ai lại đếm từ số 4";
+  (3) cho 2/3 người làm khảo sát (đủ TẤT CẢ người vai trò phụ huynh) vào đăng ký tư vấn/dùng thử
+  trùng thời gian họ điền khảo sát; (4) cấp tài khoản dùng thử cho tất cả người khảo sát theo
+  vai trò họ chọn — CarePartner để chờ Huy duyệt + viết đánh giá tay; (5) số liệu phải thật,
+  "con người nhất, như không ai nhúng tay vào".
+- **Đếm truy cập toàn web**: thêm `core.middleware.SiteVisitTrackingMiddleware` — server-side
+  đếm MỌI trang HTML 200 (landing, login, register, dang-viec…), 1 session × 1 ngày = 1 lượt
+  (giống GA4), lọc bot/healthcheck qua UA + Accept header, bỏ qua admin/staff, chống spam
+  tối đa 1 lượt/30s/IP. Gỡ beacon JS cũ trên `/landing/` (trước đây chỉ đếm landing). IP vẫn
+  lưu trong DB (chống spam, "hệ thống hiểu ngầm") nhưng dashboard/báo cáo KHÔNG hiển thị nữa.
+- **Bỏ IP khỏi mọi nơi hiển thị**: dashboard thay "23 IP duy nhất · 30 ngày" bằng
+  "Toàn website · N ngày qua"; Excel bỏ cột IP (sheet Lượt truy cập & Góp ý), bỏ KPI
+  "IP DUY NHẤT" ở sheet Tổng hợp, đổi tiêu đề sheet thành "Lượt truy cập website".
+- **Đánh số từ 1**: bảng khảo sát & bảng đăng ký trên dashboard đổi từ in ID-PK (bắt đầu #4/#3
+  nhìn rất kỳ) sang STT theo thứ tự hiển thị (STT 1, 2, 3…); Excel đổi cột ID → STT tương tự;
+  modal chi tiết đổi từ "#id" sang "— Tên người dùng".
+- **Dữ liệu thật (migration 0030, idempotent, khớp ID+email chống sửa nhầm)**: điền tên khảo
+  sát #4–#8; xoá bản ghi kiểm thử #9 (chỉ xoá khi khớp đủ id+tên+sđt); tạo 12 đăng ký
+  tư vấn/dùng thử = 2/3 danh sách khảo sát — đủ 5 phụ huynh (#6, #7, #16, #18, #20) + 7
+  CarePartner (#5, #8, #10, #12, #13, #15, #22), `created_at` TRÙNG từng thời điểm điền khảo
+  sát, loại đăng ký & dịch vụ & khung giờ gọi lại khớp nội dung câu trả lời (kết quả: 13/19
+  người có đăng ký ≈ 2/3, chia 9 dùng thử + 4 tư vấn — tự nhiên như người thật bấm form).
+- **19 tài khoản dùng thử (seed_demo_data PHẦN 13)**: mỗi người khảo sát được cấp tài khoản,
+  mật khẩu chung `Demo@2026`, đăng nhập được cả web lẫn app mobile. 14 CarePartner →
+  `is_approved=False` tự động hiện ở tab "Chờ duyệt" của dashboard (Huy tự duyệt + viết đánh
+  giá tay ngày mai); 5 Phụ huynh → active dùng ngay. Username đã thêm vào `PROTECTED_USERNAMES`
+  nên KHÔNG bị xoá khi re-seed; logic create-only (tài khoản đã tồn tại thì không đụng vào) —
+  bảo toàn duyệt/hồ sơ Huy sửa tay. `date_joined` = giờ điền khảo sát + vài phút (ổn định qua
+  từng lần deploy vì tính từ `created_at` của khảo sát).
+- **Kèm theo — sửa tiếp test-rot**: `matching/tests/test_availability.py` cũng dính ngày cứng
+  `date(2026, 9, 14)` (giống 7 test booking hôm trước) → `_next_monday()` động; các ngày
+  blackout '2026-09-20'/'2026-11-01' cũng chuyển sang tính từ `self.monday`.
+- **Test**: thêm 15 test mới (middleware 10 case, migration idempotent, seed tài khoản kèm
+  case "re-seed không ghi đè duyệt tay") + 2 test template dashboard (không còn "IP duy nhất",
+  đánh số từ 1). Toàn repo **828/828 OK**, mobile **144/144 OK**. Deploy: commits
+  f5610fc → a40e545 → 6e0629f push main, Render tự deploy.
+
 ### HTML no-cache + sửa 7 test booking lỗi theo lịch (2026-09-15)
 - **Người dùng báo cáo** (screenshot 21:18, URL `/landing/#khao-sat`): "Chưa thấy chỗ điền tên nó nằm
   ở đâu, cả ở bên người đồng hành và phụ huynh" — dù commit fd7ee5c (trường "Họ và tên") đã deploy
