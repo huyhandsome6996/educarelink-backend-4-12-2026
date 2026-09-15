@@ -426,3 +426,34 @@ class LandingSurveyFullNameTests(TestCase):
         html = resp.content.decode('utf-8')
         self.assertIn("full_name: fullNameVal", html)
         self.assertIn("document.getElementById('survey-fullname')", html)
+
+
+class NoCacheHTMLMiddlewareTests(TestCase):
+    """2026-09-15 — Trang HTML luôn gửi 'Cache-Control: no-cache, must-revalidate'.
+
+    Sau deploy, trình duyệt/tab mở từ trước đó phải nhận được bản HTML mới
+    (fix: người dùng không thấy trường 'Họ và tên' vì trang cũ trong cache).
+    """
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_landing_html_has_no_cache(self):
+        resp = self.client.get('/landing/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Cache-Control'], 'no-cache, must-revalidate')
+
+    def test_admin_dashboard_html_has_no_cache(self):
+        resp = self.client.get('/admin-dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Cache-Control'], 'no-cache, must-revalidate')
+
+    def test_api_json_not_touched(self):
+        """API (JSON cho app mobile) không bị gắn header no-cache của HTML."""
+        resp = self.client.get('/api/landing/survey/')
+        self.assertIn(resp.status_code, (200, 400, 401, 405))
+        ctype = resp.get('Content-Type', '')
+        if ctype.startswith('application/json'):
+            self.assertIsNone(resp.get('Cache-Control'))

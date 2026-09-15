@@ -53,3 +53,30 @@ class SiteAccessGateMiddleware:
     @staticmethod
     def get_gate_password():
         return os.environ.get("SITE_GATE_PASSWORD", "@Huyhandsome2006")
+
+
+class NoCacheHTMLMiddleware:
+    """
+    Buộc trình duyệt luôn kiểm tra bản HTML mới nhất với server trước khi dùng
+    bản trong cache (2026-09-15).
+
+    Bối cảnh: sau khi deploy giao diện mới (trường 'Họ và tên' trên form khảo
+    sát), người dùng vẫn thấy bản HTML CŨ vì tab trình duyệt mở từ trước deploy
+    (bấm link anchor #khao-sat chỉ cuộn trang, không reload) hoặc cache heuristic.
+    Header 'Cache-Control: no-cache, must-revalidate' trên mọi phản hồi text/html
+    đảm bảo sau mỗi lần deploy, lần truy cập kế tiếp luôn nhận bản mới.
+
+    CHỈ áp dụng cho text/html:
+      - /api/* (JSON cho app mobile) → không đổi, app mobile tự quản lý cache.
+      - static/media (whitenoise đã thêm Cache-Control riêng) → không ghi đè.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        content_type = response.get("Content-Type", "")
+        if content_type.split(";")[0].strip() == "text/html":
+            response["Cache-Control"] = "no-cache, must-revalidate"
+        return response
