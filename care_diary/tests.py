@@ -809,3 +809,84 @@ class Bug10DateFieldTests(TestCase):
                         f"date '{date_str}' phải chứa ngày {expected_day} (scheduled_time)")
         self.assertIn(f'Tháng {expected_month}', date_str,
                         f"date '{date_str}' phải chứa Tháng {expected_month}")
+
+
+@override_settings(DEBUG=True)
+class MoodIconNormalizationTests(TestCase):
+    """2026-09-15 — Chuẩn hoá mood_icon thống nhất 3 nền tảng.
+
+    Bối cảnh: mobile form gửi 'happy/sad/alert-circle/thumbs-up', web form gửi
+    'happy/neutral/sad/excited', seed/demo cũ lưu emoji (🎨 😊). Không chuẩn hoá
+    thì icon trống/không khớp khi client khác đọc lại (Ionicons không có
+    'neutral'/'excited'/emoji). API trả về mood.icon canonical ở CẢ detail và
+    history; dữ liệu ghi mới cũng được normalize ngay khi lưu.
+    """
+
+    def setUp(self):
+        self.parent = _make_parent()
+        self.worker = _make_worker()
+        self.category = _make_category()
+        self.task = _make_task(self.parent, self.category, status='in_progress')
+        _accept_worker(self.task, self.worker)
+        self.client = APIClient()
+
+    def test_normalize_unit_aliases(self):
+        from care_diary.services import normalize_mood_icon
+        self.assertEqual(normalize_mood_icon('🎨'), 'excited')
+        self.assertEqual(normalize_mood_icon('😊'), 'happy')
+        self.assertEqual(normalize_mood_icon('👍'), 'thumbs-up')
+        self.assertEqual(normalize_mood_icon('⚠️'), 'alert-circle')
+        self.assertEqual(normalize_mood_icon('warning'), 'alert-circle')
+        self.assertEqual(normalize_mood_icon('thumb_up'), 'thumbs-up')
+        # giá trị canonical đi qua nguyên vẹn
+        self.assertEqual(normalize_mood_icon('happy'), 'happy')
+        self.assertEqual(normalize_mood_icon('neutral'), 'neutral')
+        self.assertEqual(normalize_mood_icon('excited'), 'excited')
+        self.assertEqual(normalize_mood_icon(''), '')
+
+    def test_post_normalizes_emoji_mood(self):
+        self.client.force_authenticate(user=self.worker)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(mood_icon='🎨', mood_label='Hào hứng'),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['mood']['icon'], 'excited')
+
+    def test_patch_normalizes_emoji_mood(self):
+        self.client.force_authenticate(user=self.worker)
+        resp = self.client.post(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            _diary_payload(), format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        resp2 = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'mood_icon': '😊'}, format='json',
+        )
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(resp2.data['mood']['icon'], 'happy')
+
+    def test_detail_response_normalizes_legacy_emoji(self):
+        """Dữ liệu cũ đã lưu emoji trong DB → khi ĐỌC vẫn trả canonical."""
+        from care_diary.models import CareDiaryEntry
+        entry = CareDiaryEntry.objects.create(
+            task=self.task, worker=self.worker,
+            mood_icon='😊', mood_label='Vui vẻ',
+        )
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['mood']['icon'], 'happy')
+
+    def test_history_response_normalizes_legacy_emoji(self):
+        from care_diary.models import CareDiaryEntry
+        CareDiaryEntry.objects.create(
+            task=self.task, worker=self.worker,
+            mood_icon='🎨', mood_label='Hào hứng',
+        )
+        self.client.force_authenticate(user=self.parent)
+        resp = self.client.get('/api/parent/care-diary-history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data[0]['mood']['icon'], 'excited')
