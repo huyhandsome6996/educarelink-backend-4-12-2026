@@ -163,3 +163,29 @@ dừng 24h, matching fallback địa chỉ hồ sơ.
 **Trạng thái Flow 1: 100% cùng API.** Dual stack legacy (`core.Task` +
 `smart_match.py`) vẫn sống cho feed việc cũ — blackout/GPS/exclusive áp cho
 legacy qua `smart_match.py` trừ CarePartnerBlackout (Task D 2026-09-14).
+
+---
+
+## Flow 1 Parity Update — Kiểm thử + vá đồng bộ (2026-09-17)
+
+**Bối cảnh**: chủ dự án tập trung mobile vài ngày, quay lại web thấy chi tiết
+tính năng lệch. Đã audit 3 tầng (web template ↔ Django API ↔ mobile Expo),
+sửa + bổ sung cho web bắt kịp mobile. E2E thật 23/23 PASS
+(`scripts/e2e_matching_sync.py`), regression 14/14 PASS
+(`matching/tests/test_web_mobile_sync.py`), full matching suite 246/246 PASS.
+
+| Hạng mục | Trước đây | Bây giờ |
+|---|---|---|
+| Đổi giờ Step 9 Rule 3 (CP xin → PH duyệt) | ❌ web chỉ hiển thị chip | ✅ `don_cua_toi.html` modal xin đổi lịch + `don.html` card duyệt/từ chối — cùng 2 endpoint mobile dùng |
+| Booking dict trả thông tin đổi giờ | ❌ thiếu (không biết khung mới) | ✅ `reschedule_request{new_date,new_time_from,new_time_to,reason,parent_deadline,status}` — additive, mobile lợi trực tiếp |
+| Toast phạt ELO khi CP hủy | ❌ web đọc `elo_delta` (không tồn tại) | ✅ sửa đọc `elo_delta_applied` — test chặn hợp đồng |
+| Xóa ngày bận khi đang có đơn | ❌ DELETE luôn thành công, UI hứa sai | ✅ backend trả 409 `blackout_conflicts_with_booking` — khớp UI web + mobile |
+| Thông báo matching ở inbox | ❌ web chỉ thấy legacy | ✅ `notifications.html` hợp nhất 2 nguồn (legacy + matching, badge "Ghép cặp") |
+| Mark-read thông báo matching | ❌ read_at không bao giờ set → badge tăng vô hạn | ✅ `POST /api/matching/notifications/mark-read/` (body `{}` = tất cả, `{ids}` = một phần) |
+| Consent GPS cho ghép nối | ❌ web không có công tắc (mobile-only) | ✅ `worker_profile.html` toggle — cùng endpoint `/api/tracking/matching-gps-consent/` |
+| Form gia sư Defect 3 | ❌ web thiếu cấp học + ưu tiên gia sư | ✅ `dang_viec_gia_su.html` thêm `child_grade_level` (4 mức) + `tutor_seniority_preference` — payload khớp mobile |
+
+**Còn lại / chấp nhận**: DeviceToken push chỉ mobile (web dùng poll 15s +
+ding WebAudio); "Đang nhận đơn" trên web lưu localStorage (cosmetic, không có
+endpoint backend — chưa làm backend toggle); luồng legacy `core.Task` song
+song giữ nguyên.

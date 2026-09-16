@@ -561,6 +561,22 @@
                         </div>
                         <span class="material-symbols-outlined text-textSecondary text-lg">chevron_right</span>
                     </a>
+                    <!-- GPS cho ghép nối (Task E — đồng bộ mobile WorkerProfileScreen) -->
+                    <div id="gps-consent-row" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-sky-500 text-lg">my_location</span>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="font-semibold text-sm text-textPrimary block">GPS cho ghép nối</span>
+                                <span class="text-[11px] text-textSecondary block truncate">Dùng vị trí hiện tại để gợi ý đơn gần bạn nhất</span>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                            <input type="checkbox" id="gps-consent-switch" class="sr-only peer" onchange="handleGpsConsentChange(this)">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                        </label>
+                    </div>
                     <!-- Đơn ghép cặp của tôi -->
                     <a href="{% url 'frontend:don_cua_toi' %}" class="menu-item w-full bg-white flex items-center justify-between p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer">
                         <div class="flex items-center gap-4">
@@ -1515,6 +1531,11 @@
                 loadUnreadCount();
                 // Poll notifications mỗi 30 giây
                 setInterval(loadUnreadCount, 30000);
+                // GPS cho ghép nối (Task E — đồng bộ mobile)
+                loadGpsConsent();
+            } else {
+                const row = document.getElementById('gps-consent-row');
+                if (row) row.classList.add('hidden');
             }
 
             // Start profile tour if first time
@@ -1523,6 +1544,49 @@
                 setTimeout(() => {
                     startProfileTour();
                 }, 800);
+            }
+        }
+
+        // ===== GPS CHO GHÉP NỐI (Task E — đồng bộ mobile WorkerProfileScreen) =====
+        // GET  /api/tracking/matching-gps-consent/  → { matching_gps_consent }
+        // POST /api/tracking/matching-gps-consent/  body {granted: bool}
+        async function loadGpsConsent() {
+            const sw = document.getElementById('gps-consent-switch');
+            if (!sw) return;
+            try {
+                const resp = await apiFetch(API_BASE + '/tracking/matching-gps-consent/');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                sw.checked = !!data.matching_gps_consent;
+            } catch (e) { /* im lặng — giữ trạng thái mặc định */ }
+        }
+
+        async function handleGpsConsentChange(el) {
+            const granted = el.checked;
+            el.disabled = true;
+            try {
+                const resp = await apiFetch(API_BASE + '/tracking/matching-gps-consent/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ granted })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    el.checked = !!data.matching_gps_consent;
+                    showToast(
+                        granted
+                            ? 'Đã bật GPS cho ghép nối — hệ thống sẽ gợi ý đơn gần vị trí hiện tại của bạn.'
+                            : 'Đã tắt GPS cho ghép nối — ghép nối sẽ dùng vị trí hồ sơ của bạn.',
+                        granted ? 'success' : 'info');
+                } else {
+                    el.checked = !granted;
+                    showToast('Không thay đổi được cài đặt GPS. Vui lòng thử lại.', 'error');
+                }
+            } catch (e) {
+                el.checked = !granted;
+                showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            } finally {
+                el.disabled = false;
             }
         }
 

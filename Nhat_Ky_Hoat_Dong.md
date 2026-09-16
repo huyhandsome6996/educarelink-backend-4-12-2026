@@ -1,3 +1,47 @@
+### Kiểm thử & vá đồng bộ tính năng ghép nối web ↔ backend ↔ mobile (2026-09-17)
+- **Phản hồi của Huy**: mấy hôm nay chuyên tâm mobile, quay lại web thấy chi tiết tính năng
+  ghép nối khác mobile cực nhiều (giao diện web thì ổn rồi). Yêu cầu: đọc lại toàn bộ dự án,
+  kiểm thử tính năng ghép nối — web gọi đúng backend chưa, đã đồng bộ với mobile chưa —
+  có gì cần sửa/xây dựng thì làm ngay. Tài liệu nộp ban giám khảo coi như xong, không đụng nữa.
+  Tiện thể đọc hết file .md trong dự án, cái nào cũ/lỗi thời thì xoá cho nhẹ repo.
+- **Audit 3 tầng** (web template ↔ Django API ↔ mobile Expo): web đã gọi đúng toàn bộ endpoint
+  `/api/matching/*` tồn tại, nhưng phát hiện 7 lệch so với mobile: (1) KHÔNG có luồng đổi lịch
+  Step 9 Rule 3 — backend + mobile đủ cả, web chỉ hiển thị chip; (2) toast phạt ELO đọc
+  `elo_delta` trong khi backend trả `elo_delta_applied` → không bao giờ hiện; (3) xóa ngày bận
+  luôn thành công dù UI hứa "ngày có đơn không thể xóa" và mobile có xử lý 409; (4) hộp thư
+  web chỉ thấy thông báo legacy, không thấy 19 mã thông báo ghép nối; (5) `read_at` của thông
+  báo matching không bao giờ được set → badge chưa đọc tăng vô hạn; (6) không có công tắc
+  đồng ý GPS cho ghép nối (mobile có ở Hồ sơ); (7) form gia sư web thiếu `child_grade_level`
+  + `tutor_seniority_preference` (Defect 3 — mobile đã có).
+- **Sửa backend (3 thay đổi, đều additive)**: `_booking_dict` trả thêm
+  `reschedule_request{new_date,new_time_from,new_time_to,reason,parent_deadline,status}` khi có
+  yêu cầu đổi giờ đang chờ — cả web lẫn mobile đều biết khung mới; `DELETE
+  /carepartners/me/blackouts/<pk>/` trả 409 `blackout_conflicts_with_booking` khi ngày đó còn
+  booking active (cùng rule với POST); thêm `POST /api/matching/notifications/mark-read/`
+  (body `{}` = tất cả, `{ids}` = một phần) set `read_at`.
+- **Sửa/xây web (6 trang)**: `don_cua_toi.html` — modal "Xin đổi lịch" (khung mới phải nằm
+  trong lịch rảnh đã khai, tối đa 2 lần/đơn) + thẻ trạng thái chờ phản hồi thay nút Bắt đầu;
+  `don.html` — nút Xin đổi lịch cho CP + card phụ huynh Duyệt/Từ chối kèm khung cũ → mới, lý
+  do, đếm ngược hạn phản hồi + sửa `elo_delta_applied`; `notifications.html` — hợp nhất 2
+  nguồn thông báo (legacy + matching, badge "Ghép cặp", icon theo 19 mã), "Đọc tất cả" gọi cả
+  2 mark-read; `worker_profile.html` — công tắc "GPS cho ghép nối" (GET/POST
+  `/api/tracking/matching-gps-consent/`); `dang_viec_gia_su.html` — thêm 2 ô Cấp học của bé +
+  Ưu tiên gia sư, payload khớp mobile; `ngay_ban.html` — hiển thị rõ lỗi 409 khi xóa ngày có đơn.
+- **Kiểm thử 4 lớp**: regression mới `matching/tests/test_web_mobile_sync.py` 14/14 PASS
+  (trước đó Step 9 Rule 3 CHƯA có test nào); full matching suite **246/246 PASS**; smoke render
+  11 trang 200 + 11 marker mới (scripts/smoke_render_matching.py); E2E thật qua HTTP với 2
+  tài khoản seed — đăng nhập → GPS consent → đăng việc gia sư (có 2 field Defect 3) → publish
+  → candidates → chọn CP (Idempotency-Key) → commit → xin đổi lịch trong khung rảnh → phụ huynh
+  duyệt → JobSlot chuyển khung mới → thông báo mark-read — **23/23 PASS**
+  (scripts/e2e_matching_sync.py).
+- **Dọn repo .md**: xoá 57 file lỗi thời (~1,12 MB — 59% dung lượng .md): báo cáo QA/test tháng
+  7, 5 handoff QA-FIX đã merge, 7 brief prompt đã thực hiện xong, 20 prompt thiết kế Stitch đã
+  dựng xong màn, 3 file .md tự sinh (chạy lại script là có), checklist APK v1.1.x, handoff
+  v1.2.0… Giữ lại: GPS_BYPASS_BACKLOG.md (còn 2 lỗ hổng OPEN cần xử lý),
+  PROMPT_CLAUDE_AI_TASK_AND_CAREPARTNER_ASSISTANT_UPGRADE.md (brief chưa thực hiện), toàn bộ
+  docs/agent-spec/ (được code tham chiếu), SYNC_PARITY/SYNC_PRINCIPLE, AGENTS.md, WORKLOG,
+  store-listing. Sửa 1 comment trong mobile/src/api/tasks.js trỏ tới file đã xoá.
+
 ### Sửa giờ hiển thị lệch 7 tiếng — dashboard trả về giờ Việt Nam (2026-09-16)
 - **Phản hồi của Huy**: thống kê hiện theo thời gian thực nhưng GIỜ LỆCH — bạn bè làm khảo sát
   thì giờ giấc toàn bị lệch (screenshot: khảo sát điền ~10:48 sáng giờ VN, dashboard in

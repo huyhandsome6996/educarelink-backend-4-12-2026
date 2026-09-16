@@ -43,7 +43,11 @@ from .api.credits import CreditBalanceAPIView
 from .api.device_token import DeviceTokenUpsertAPIView
 from .api.geocode import GeocodeReverseAPIView, GeocodeSearchAPIView
 from .api.jobs import CandidatesAPIView, JobPostCreateAPIView, JobPostPublishAPIView
-from .api.notifications import NotificationListAPIView, UnreadCountAPIView
+from .api.notifications import (
+    NotificationListAPIView,
+    NotificationMarkReadAPIView,
+    UnreadCountAPIView,
+)
 from .api.onboarding import OnboardingStatusAPIView
 from .api.trust import TrustAPIView
 
@@ -131,4 +135,6 @@ urlpatterns = [
     path('notifications/', NotificationListAPIView.as_view(), name='matching-notifications'),
     path('notifications/unread-count/', UnreadCountAPIView.as_view(),
          name='matching-notifications-unread'),
+    path('notifications/mark-read/', NotificationMarkReadAPIView.as_view(),
+         name='matching-notifications-mark-read'),
 ]

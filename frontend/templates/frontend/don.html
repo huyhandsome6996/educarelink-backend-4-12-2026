@@ -80,11 +80,25 @@
                     <span class="material-symbols-outlined text-base">task_alt</span>
                     Hoàn thành
                 </button>
+                <button id="rescheduleBtn" class="bg-white border border-purple-300 text-purple-700 hover:bg-purple-50 rounded-xl px-4 py-2.5 font-bold text-sm transition flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">edit_calendar</span>
+                    Xin đổi lịch
+                </button>
                 <button id="cancelBtn" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl px-4 py-2.5 font-bold text-sm transition">
                     Hủy đơn
                 </button>
             </div>
-            <p class="text-xs text-gray-400 leading-relaxed">Hủy bằng lý do bất khả kháng (5 lý do đầu) cần ghi chú ≥ 20 ký tự để được giảm 50% phạt ELO, vẫn giữ đền bù cho phụ huynh.</p>
+            <p class="text-xs text-gray-400 leading-relaxed">Hủy bằng lý do bất khả kháng (5 lý do đầu) cần ghi chú ≥ 20 ký tự để được giảm 50% phạt ELO, vẫn giữ đền bù cho phụ huynh. Xin đổi lịch tối đa 2 lần/đơn — khung giờ mới phải nằm trong lịch rảnh bạn đã khai.</p>
+        </div>
+
+        <!-- CP đang chờ phụ huynh phản hồi yêu cầu đổi giờ -->
+        <div id="cpRescheduleWaiting" class="hidden mcm-card space-y-2 bg-purple-50 border border-purple-200">
+            <h3 class="font-headline font-bold text-purple-900 text-base flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">edit_calendar</span>
+                Đang chờ phụ huynh phản hồi yêu cầu đổi giờ
+            </h3>
+            <p id="cpRescheduleWaitingInfo" class="text-xs text-purple-800 leading-relaxed"></p>
+            <p class="text-xs text-purple-600 leading-relaxed">Nếu phụ huynh từ chối hoặc hết thời hạn phản hồi, bạn có 30 phút để chọn [Tiếp tục đơn] hoặc [Hủy đơn] theo chính sách.</p>
         </div>
 
         <!-- Kháng cáo ELO cho CarePartner khi bị phạt -->
@@ -96,6 +110,20 @@
                     <span>⚖️</span>
                     <span>Gửi đơn kháng cáo ELO</span>
                 </a>
+            </div>
+        </div>
+
+        <!-- Phụ huynh duyệt / từ chối yêu cầu đổi giờ của CP (Step 9 Rule 3 — đồng bộ mobile) -->
+        <div id="parentReschedule" class="hidden mcm-card space-y-3 bg-purple-50/60 border border-purple-200">
+            <h3 class="font-headline font-bold text-purple-900 text-base flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">edit_calendar</span>
+                CarePartner xin đổi lịch ca làm
+            </h3>
+            <div id="parentRescheduleInfo" class="text-sm text-purple-900 leading-relaxed bg-white rounded-xl border border-purple-100 p-3.5"></div>
+            <p class="text-xs text-purple-700 leading-relaxed">Duyệt: ca làm chuyển sang khung giờ mới. Từ chối: đơn giữ nguyên khung cũ và CarePartner vẫn phải thực hiện. Nếu bạn không phản hồi trước thời hạn, hệ thống sẽ tự xử lý theo chính sách.</p>
+            <div class="flex gap-2.5 flex-wrap">
+                <button id="rsApproveBtn" class="bg-[#0E9F6E] hover:bg-[#057A55] text-white rounded-xl px-5 py-2.5 font-extrabold text-sm shadow-sm transition">Duyệt đổi giờ</button>
+                <button id="rsDeclineBtn" class="bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl px-5 py-2.5 font-bold text-sm transition">Từ chối — giữ khung cũ</button>
             </div>
         </div>
 
@@ -141,6 +169,41 @@
     </div>
 </div>
 
+<!-- Modal xin đổi lịch — CarePartner (Step 9 Rule 3) -->
+<div id="rescheduleModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto">
+        <h3 class="font-bold text-lg text-[#1A1A2E] flex items-center gap-2">
+            <span class="material-symbols-outlined text-purple-600">edit_calendar</span>
+            Xin đổi lịch ca làm
+        </h3>
+        <p class="text-xs text-gray-500 mt-1.5 leading-relaxed">Yêu cầu sẽ gửi về phụ huynh kèm thời hạn phản hồi. Khung giờ mới phải nằm trong lịch rảnh bạn đã khai trên hệ thống; mỗi đơn chỉ xin đổi tối đa 2 lần.</p>
+        <div class="mt-3 space-y-3">
+            <div>
+                <label class="mcm-label" for="rsDate">Ngày mới</label>
+                <input id="rsDate" class="mcm-input" placeholder="Chọn ngày" readonly>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="mcm-label" for="rsFrom">Từ giờ</label>
+                    <input id="rsFrom" class="mcm-input" placeholder="18:00" readonly>
+                </div>
+                <div>
+                    <label class="mcm-label" for="rsTo">Đến giờ</label>
+                    <input id="rsTo" class="mcm-input" placeholder="20:00" readonly>
+                </div>
+            </div>
+            <div>
+                <label class="mcm-label" for="rsReason">Lý do (tuỳ chọn)</label>
+                <textarea id="rsReason" class="mcm-input" rows="2" placeholder="VD: Trùng lịch thi giữa kỳ…"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+            <button id="rsCancel" class="flex-1 border border-gray-200 rounded-xl py-2.5 font-semibold text-gray-600">Đóng</button>
+            <button id="rsSubmit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-2.5 font-bold">Gửi yêu cầu</button>
+        </div>
+    </div>
+</div>
+
 <script>
   const bookingId = window.location.pathname.split('/').filter(Boolean)[1];
   const CANCEL_REASONS = [
@@ -157,11 +220,14 @@
 
   const STATUS_STYLE = {
     awaiting_commitment: ['Chờ cam kết', '#F26522'], committed: ['Đã cam kết', '#0E9F6E'],
+    reschedule_requested: ['Đang xin đổi giờ', '#7C3AED'],
     in_progress: ['Đang làm', '#2563EB'], completed: ['Hoàn thành', '#0E9F6E'],
+    awaiting_review: ['Chờ đánh giá', '#0D9488'],
     declined_in_window: ['Đã từ chối', '#DC2626'], expired_no_response: ['Hết hạn phản hồi', '#6B7280'],
     cancelled_by_carepartner: ['CarePartner đã hủy', '#DC2626'],
     cancelled_by_parent: ['Phụ huynh đã hủy', '#DC2626'],
-    no_show: ['Không đến làm', '#DC2626'], suspected_no_show: ['Nghi ngờ không đến', '#F5A623'],
+    no_show: ['Không đến làm', '#DC2626'], no_show_unconfirmed: ['Chưa xác nhận không đến', '#DC2626'],
+    suspected_no_show: ['Nghi ngờ không đến', '#F5A623'], disputed: ['Có tranh chấp', '#B45309'],
     seeking_replacement: ['Đang tìm người thay', '#F5A623'],
   };
 
@@ -217,7 +283,18 @@
       cpActions.classList.remove('hidden');
       document.getElementById('startBtn').style.display = booking.status === 'committed' ? '' : 'none';
       document.getElementById('completeBtn').style.display = booking.status === 'in_progress' ? '' : 'none';
+      document.getElementById('rescheduleBtn').style.display = booking.status === 'committed' ? '' : 'none';
     } else { cpActions.classList.add('hidden'); }
+
+    // CP chờ phụ huynh phản hồi yêu cầu đổi giờ (start sẽ bị backend 409)
+    const rsWait = document.getElementById('cpRescheduleWaiting');
+    if (isCP && booking.status === 'reschedule_requested') {
+      const rs = booking.reschedule_request;
+      document.getElementById('cpRescheduleWaitingInfo').textContent = rs
+        ? `Bạn đã xin đổi ca sang ${rs.new_date} ${rs.new_time_from || ''}–${rs.new_time_to || ''}${rs.reason ? ' — lý do: ' + rs.reason : ''}.`
+        : 'Bạn đã gửi yêu cầu đổi giờ cho đơn này.';
+      rsWait.classList.remove('hidden');
+    } else { rsWait.classList.add('hidden'); }
 
     // Kháng cáo ELO cho CP khi bị phạt
     const cpAppealBox = document.getElementById('cpAppealBox');
@@ -232,6 +309,23 @@
     if (isParent && ['awaiting_commitment', 'committed'].includes(booking.status)) {
       parentActions.classList.remove('hidden');
     } else { parentActions.classList.add('hidden'); }
+
+    // Phụ huynh duyệt / từ chối yêu cầu đổi giờ (Step 9 Rule 3)
+    const rsCard = document.getElementById('parentReschedule');
+    const rsReq = booking.reschedule_request;
+    if (isParent && booking.status === 'reschedule_requested' && rsReq) {
+      const dl = rsReq.parent_deadline ? new Date(rsReq.parent_deadline) : null;
+      let dlTxt = '';
+      if (dl && !isNaN(dl)) {
+        const mins = Math.max(0, Math.floor((dl - Date.now()) / 60000));
+        dlTxt = mins > 0 ? ` Còn khoảng ${mins >= 60 ? Math.floor(mins / 60) + ' giờ ' : ''}${mins % 60} phút để phản hồi.` : ' Đã quá thời hạn phản hồi.';
+      }
+      document.getElementById('parentRescheduleInfo').innerHTML =
+        `Khung cũ: <b>${s.date || '—'} ${s.time_from ? s.time_from.slice(0, 5) : ''}–${s.time_to ? s.time_to.slice(0, 5) : ''}</b><br/>` +
+        `Xin đổi sang: <b>${rsReq.new_date} ${rsReq.new_time_from}–${rsReq.new_time_to}</b>` +
+        (rsReq.reason ? `<br/>Lý do: ${rsReq.reason}` : '') + dlTxt;
+      rsCard.classList.remove('hidden');
+    } else { rsCard.classList.add('hidden'); }
 
     // Phụ huynh báo no-show
     const noShow = document.getElementById('parentNoShow');
@@ -291,7 +385,12 @@
       method: 'POST', body: JSON.stringify({ reason_code: reason.code, note, evidence: [] }) });
     const data = await resp.json();
     document.getElementById('cancelModal').classList.add('hidden');
-    if (resp.ok) { toast(data.elo_delta != null ? `Đã hủy. ELO thay đổi: ${data.elo_delta > 0 ? '+' : ''}${data.elo_delta}` : 'Đã hủy đơn.'); load(); }
+    if (resp.ok) {
+      // Backend trả elo_delta_applied (QA đồng bộ web ↔ mobile 2026-09-17)
+      const delta = data.elo_delta_applied;
+      toast(delta != null && delta !== 0 ? `Đã hủy. Điểm tín nhiệm thay đổi: ${delta > 0 ? '+' : ''}${delta}` : 'Đã hủy đơn.');
+      load();
+    }
     else toast(data.detail || 'Không hủy được đơn.', false);
   };
 
@@ -314,6 +413,60 @@
     resp.ok ? toast('Đã ghi nhận. Bạn sẽ được đền bù 100%, hệ thống đang tìm người thay.') : toast('Không ghi nhận được.', false);
     load();
   };
+
+  // ---- CP xin đổi lịch (Step 9 Rule 3 — đồng bộ mobile MyJobs) ----
+  const rsFlat = flatpickr('#rsDate', { minDate: 'today', dateFormat: 'Y-m-d', locale: 'vi', disableMobile: true });
+  flatpickr('#rsFrom', { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true });
+  flatpickr('#rsTo', { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true });
+  document.getElementById('rescheduleBtn').onclick = () => {
+    document.getElementById('rsDate').value = '';
+    document.getElementById('rsFrom').value = '';
+    document.getElementById('rsTo').value = '';
+    document.getElementById('rsReason').value = '';
+    document.getElementById('rescheduleModal').classList.remove('hidden');
+  };
+  document.getElementById('rsCancel').onclick = () => document.getElementById('rescheduleModal').classList.add('hidden');
+  document.getElementById('rsSubmit').onclick = async () => {
+    const date = document.getElementById('rsDate').value;
+    const tf = document.getElementById('rsFrom').value;
+    const tt = document.getElementById('rsTo').value;
+    const reason = document.getElementById('rsReason').value.trim();
+    if (!date || !tf || !tt) return toast('Chọn ngày và khung giờ mới.', false);
+    if (tt <= tf) return toast('Giờ kết thúc phải sau giờ bắt đầu.', false);
+    const btn = document.getElementById('rsSubmit');
+    btn.disabled = true;
+    try {
+      const resp = await authFetch(`${API_BASE}/matching/bookings/${bookingId}/reschedule/`, {
+        method: 'POST', body: JSON.stringify({ date, time_from: tf, time_to: tt, reason }) });
+      const data = await resp.json().catch(() => ({}));
+      document.getElementById('rescheduleModal').classList.add('hidden');
+      if (resp.status === 201) {
+        toast('Đã gửi yêu cầu đổi giờ. Đang chờ phụ huynh phản hồi.');
+        load();
+      } else {
+        toast(data.detail || 'Không gửi được yêu cầu đổi giờ.', false);
+      }
+    } catch (e) { toast('Lỗi kết nối. Vui lòng thử lại.', false); }
+    finally { btn.disabled = false; }
+  };
+
+  // ---- Phụ huynh duyệt / từ chối đổi giờ ----
+  document.getElementById('rsApproveBtn').onclick = () => respondReschedule('approve');
+  document.getElementById('rsDeclineBtn').onclick = () => respondReschedule('decline');
+  async function respondReschedule(decision) {
+    const label = decision === 'approve' ? 'duyệt' : 'từ chối';
+    if (!confirm(`Xác nhận ${label} yêu cầu đổi giờ này?`)) return;
+    const resp = await authFetch(`${API_BASE}/matching/bookings/${bookingId}/reschedule/respond/`, {
+      method: 'POST', body: JSON.stringify({ decision }) });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      toast(decision === 'approve' ? 'Đã duyệt — ca làm chuyển sang khung giờ mới.' : 'Đã từ chối — đơn giữ nguyên khung giờ cũ.');
+      load();
+    } else {
+      toast(data.detail || 'Không xử lý được yêu cầu đổi giờ.', false);
+      load();
+    }
+  }
 
   load();
 </script>

@@ -124,6 +124,26 @@ def create_blackout(carepartner, date, time_from=None, time_to=None, reason='oth
     return blackout
 
 
+def blackout_booking_conflict(blackout):
+    """(booking, slot)|None — booking active nằm trong ngày bận hay không?
+
+    Dùng cho DELETE /carepartners/me/blackouts/<pk>/: nếu CP đang có đơn
+    chưa hoàn thành trong ngày đó thì không cho xóa ngày bận (phải hủy/đổi
+    giờ đơn chính thức). Áp cùng rule POST (create_blackout Step 9.2):
+    BUSY_BOOKING_STATUSES × slot trùng khung (hoặc blackout cả ngày).
+    """
+    for booking in Booking.objects.filter(
+            carepartner=blackout.carepartner,
+            status__in=BUSY_BOOKING_STATUSES).distinct():
+        for slot in booking.job.slots.filter(date=blackout.date):
+            if blackout.time_from is None:  # blackout cả ngày
+                return booking, slot
+            if _overlaps(blackout.time_from, blackout.time_to,
+                         slot.time_from, slot.time_to):
+                return booking, slot
+    return None
+
+
 def check_14_day_pause(carepartner):
     """14 ngày nghỉ FULL liên tiếp → matching_paused=True + notification
     blackout_paused (đúng 1 lần — chỉ set khi chưa pause).                 (Step 9.2)

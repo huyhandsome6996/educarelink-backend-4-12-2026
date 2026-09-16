@@ -258,6 +258,57 @@
     </div>
 </div>
 
+<!-- ================= MODAL: XIN ĐỔI GIỜ (Step 9 Rule 3 — đồng bộ mobile) ================= -->
+<div id="reschedule-modal" class="hidden uc-modal">
+    <div class="uc-modal-card uc-fade-in">
+        <div class="px-5 pt-5 pb-4 border-b border-gray-100">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Xin đổi lịch ca làm</h3>
+                    <p class="text-xs text-gray-500 mt-1">Phụ huynh sẽ nhận thông báo kèm thời hạn phản hồi. Khung giờ mới phải nằm trong lịch rảnh bạn đã khai.</p>
+                </div>
+                <button type="button" data-close-modal="reschedule-modal" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+            <div class="rounded-2xl border border-purple-200 bg-purple-50/70 p-4">
+                <div id="rsm-title" class="font-headline font-extrabold text-[#1A1A2E] text-sm">—</div>
+                <div class="text-xs text-gray-600 mt-1.5">Khung hiện tại: <span id="rsm-current" class="font-bold">—</span></div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-600" for="rsm-date">Ngày mới</label>
+                <input id="rsm-date" type="text" placeholder="Chọn ngày" readonly
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1.5 focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-600" for="rsm-from">Từ giờ</label>
+                    <input id="rsm-from" type="text" placeholder="18:00" readonly
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1.5 focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600" for="rsm-to">Đến giờ</label>
+                    <input id="rsm-to" type="text" placeholder="20:00" readonly
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1.5 focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-600" for="rsm-reason">Lý do (tuỳ chọn)</label>
+                <textarea id="rsm-reason" rows="2" placeholder="VD: Trùng lịch thi giữa kỳ cần dời ca…"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1.5 focus:outline-none focus:border-[#F26522] focus:ring-2 focus:ring-[#F26522]/15 transition"></textarea>
+            </div>
+        </div>
+        <div class="px-5 pb-5 pt-1 flex gap-2.5">
+            <button type="button" data-close-modal="reschedule-modal" class="uc-btn uc-btn-ghost flex-1">Đóng</button>
+            <button id="rsm-send-btn" type="button" class="uc-btn flex-[1.6]" style="background:linear-gradient(135deg,#7C3AED 0%,#6D28D9 100%);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,0.3);">
+                Gửi yêu cầu đổi giờ
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- ================= MODAL: TỪ CHỐI / HỦY ĐƠN ================= -->
 <div id="reject-modal" class="hidden uc-modal">
     <div class="uc-modal-card uc-fade-in">
@@ -680,13 +731,21 @@ function buildActions(b, phone) {
   }
 
   if (b.status === 'committed' || b.status === 'reschedule_requested') {
+    const waiting = b.status === 'reschedule_requested';
     return `
+      ${waiting ? `<div class="rounded-xl bg-purple-50 border border-purple-200 px-3.5 py-2.5 text-xs text-purple-700 font-semibold mb-2">
+        <span class="material-symbols-outlined text-[15px] align-middle">edit_calendar</span>
+        Đã gửi yêu cầu đổi giờ — đang chờ phụ huynh phản hồi. Đơn vẫn được giữ cho bạn.
+      </div>` : ''}
       <div class="grid grid-cols-2 gap-2">
         <a href="${mapsUrl(b)}" target="_blank" rel="noopener" class="uc-btn uc-btn-ghost"><span class="material-symbols-outlined text-[17px]">map</span> Chỉ đường</a>
         ${phone ? `<a href="tel:${esc(phone)}" class="uc-btn uc-btn-ghost"><span class="material-symbols-outlined text-[17px]">call</span> Gọi phụ huynh</a>` : `<a href="/don/${esc(b.id)}/" class="uc-btn uc-btn-ghost">Chi tiết</a>`}
-        <button type="button" class="uc-btn uc-btn-blue col-span-2" data-act="start" data-id="${esc(b.id)}">
+        ${waiting ? '' : `<button type="button" class="uc-btn uc-btn-blue col-span-2" data-act="start" data-id="${esc(b.id)}">
           <span class="material-symbols-outlined text-[17px]">play_circle</span> Bắt đầu làm ${slotShort ? '(' + esc(slotShort) + ')' : ''}
         </button>
+        <button type="button" class="uc-btn uc-btn-ghost col-span-2" data-act="reschedule" data-id="${esc(b.id)}">
+          <span class="material-symbols-outlined text-[17px]">edit_calendar</span> Xin đổi lịch (tối đa 2 lần/đơn)
+        </button>`}
         <button type="button" class="uc-btn uc-btn-danger col-span-2" data-act="reject" data-id="${esc(b.id)}">Hủy ca làm này</button>
       </div>`;
   }
@@ -753,6 +812,7 @@ document.addEventListener('click', (e) => {
   else if (act === 'start') handleStartJob(id);
   else if (act === 'complete') handleCompleteJob(id);
   else if (act === 'sos') handleSOS(id);
+  else if (act === 'reschedule') openRescheduleModal(id);
 });
 
 function bookingById(id) {
@@ -848,6 +908,50 @@ window.handleSOS = function (id) {
   }
 };
 
+/* ───────────── ĐỔI GIỜ (Step 9 Rule 3 — đồng bộ mobile MyJobs) ───────────── */
+
+window.openRescheduleModal = function (id) {
+  const b = bookingById(id);
+  if (!b) { toast('Không tìm thấy đơn này.', false); return; }
+  currentSelectedId = id;
+  const s = b.first_slot || {};
+  setElText('rsm-title', b.job_title || 'Công việc ghép cặp');
+  setElText('rsm-current', [s.day_of_week_vi, s.date_vi,
+    s.time_from_vi && s.time_to_vi ? s.time_from_vi + '–' + s.time_to_vi : ''].filter(Boolean).join(' · ') || '—');
+  document.getElementById('rsm-date').value = '';
+  document.getElementById('rsm-from').value = '';
+  document.getElementById('rsm-to').value = '';
+  document.getElementById('rsm-reason').value = '';
+  openModal('reschedule-modal');
+};
+
+function submitReschedule() {
+  if (!currentSelectedId) return;
+  const date = document.getElementById('rsm-date').value;
+  const tf = document.getElementById('rsm-from').value;
+  const tt = document.getElementById('rsm-to').value;
+  const reason = document.getElementById('rsm-reason').value.trim();
+  if (!date || !tf || !tt) { toast('Chọn ngày và khung giờ mới.', false); return; }
+  if (tt <= tf) { toast('Giờ kết thúc phải sau giờ bắt đầu.', false); return; }
+  const btn = document.getElementById('rsm-send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Đang gửi...';
+  authFetch(`${API_BASE}/matching/bookings/${currentSelectedId}/reschedule/`, {
+    method: 'POST',
+    body: JSON.stringify({ date, time_from: tf, time_to: tt, reason })
+  }).then(async (resp) => {
+    const j = await resp.json().catch(() => ({}));
+    if (resp.status === 201) {
+      closeModal('reschedule-modal');
+      toast('Đã gửi yêu cầu đổi giờ. Đang chờ phụ huynh phản hồi trong thời hạn quy định.', true);
+      fetchBookings();
+    } else {
+      toast(j.detail || 'Không gửi được. Khung giờ mới phải nằm trong lịch rảnh bạn đã khai (mỗi đơn tối đa 2 lần).', false);
+    }
+  }).catch(() => toast('Lỗi kết nối. Vui lòng thử lại.', false))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Gửi yêu cầu đổi giờ'; });
+}
+
 /* ───────────────────────── MODAL EXECUTION ───────────────────────── */
 
 function openModal(id) { const m = document.getElementById(id); if (m) m.classList.remove('hidden'); }
@@ -856,10 +960,13 @@ function closeModal(id) { const m = document.getElementById(id); if (m) m.classL
 document.querySelectorAll('[data-close-modal]').forEach(btn => {
   btn.addEventListener('click', () => closeModal(btn.getAttribute('data-close-modal')));
 });
-['commit-modal', 'reject-modal'].forEach(mid => {
+['commit-modal', 'reject-modal', 'reschedule-modal'].forEach(mid => {
   const m = document.getElementById(mid);
   if (m) m.addEventListener('click', (e) => { if (e.target === m) closeModal(mid); });
 });
+
+const rsmSend = document.getElementById('rsm-send-btn');
+if (rsmSend) rsmSend.addEventListener('click', submitReschedule);
 
 const cmConfirm = document.getElementById('cm-confirm-btn');
 if (cmConfirm) cmConfirm.addEventListener('click', async () => {
@@ -952,6 +1059,11 @@ if (searchInput) {
 }
 const serviceSelect = document.getElementById('service-filter');
 if (serviceSelect) serviceSelect.addEventListener('change', () => { serviceQ = serviceSelect.value; renderBookingsList(); });
+
+/* Init picker cho modal đổi lịch (flatpickr từ _matching_common) */
+flatpickr('#rsm-date', { minDate: 'today', dateFormat: 'Y-m-d', locale: 'vi', disableMobile: true });
+flatpickr('#rsm-from', { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true });
+flatpickr('#rsm-to', { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, disableMobile: true });
 
 renderTabs();
 loadTier();

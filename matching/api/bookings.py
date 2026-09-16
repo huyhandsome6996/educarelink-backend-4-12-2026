@@ -92,6 +92,29 @@ def _first_slot_view(first):
     return view
 
 
+def _pending_reschedule_view(booking):
+    """Yêu cầu đổi giờ đang chờ phụ huynh phản hồi (Step 9 Rule 3).
+
+    Đồng bộ web ↔ mobile: bên nhận (parent) cần biết CP xin đổi sang khung
+    nào, lý do gì và còn bao lâu để phản hồi. Trả None khi không có yêu
+    cầu pending — additive, không phá hợp đồng cũ của mobile 1.4.7.
+    """
+    req = (RescheduleRequest.objects
+           .filter(booking=booking, status='pending')
+           .order_by('-created_at').first())
+    if req is None:
+        return None
+    return {
+        'id': str(req.pk),
+        'new_date': str(req.new_date),
+        'new_time_from': req.new_time_from.strftime('%H:%M') if req.new_time_from else '',
+        'new_time_to': req.new_time_to.strftime('%H:%M') if req.new_time_to else '',
+        'reason': req.reason or '',
+        'parent_deadline': req.parent_deadline,
+        'status': req.status,
+    }
+
+
 def _booking_dict(booking):
     b = booking
     first = b.job.slots.order_by('date', 'time_from').first()
@@ -189,6 +212,8 @@ def _booking_dict(booking):
         'elo_delta_applied': b.elo_delta_applied,
         'cancel_reason_code': b.cancel_reason_code,
         'cancelled_at': b.cancelled_at,
+        # Step 9 Rule 3 — thông tin yêu cầu đổi giờ đang chờ (null nếu không có)
+        'reschedule_request': _pending_reschedule_view(b),
         'first_slot': _first_slot_view(first),
         # N-003 (QA 2026-09-13): id Task mirror (core) tạo khi booking bắt đầu —
         # client DÙNG ID NÀY cho navigate('Chat', { taskId }) và Review. KHÔNG

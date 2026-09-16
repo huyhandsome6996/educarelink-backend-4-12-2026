@@ -1550,3 +1550,25 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   login → delete confirm) → feedback-stats về đúng **24 khảo sát / 13 đăng ký**, 0 bản
   ghi test còn sót. API test của agent là JSON không đụng counter truy cập → không rác.
 - Commit: 860d75b (fix chính + test) → main → Render auto-deploy.
+
+## 2026-09-17 — Kiểm thử & vá đồng bộ ghép nối web ↔ backend ↔ mobile + dọn .md (Super Z)
+- Audit 3 tầng web template ↔ Django `/api/matching/*` ↔ mobile Expo theo yêu cầu Huy
+  (bận mobile vài ngày, quay lại web thấy lệch chi tiết tính năng). Kết luận: hợp đồng
+  API web↔backend KHÔNG lỗi nào cả, nhưng web THIẾU so với mobile 7 hạng mục.
+- Backend (additive, không phá mobile 1.4.7): booking dict trả `reschedule_request`
+  (pending) cho web+mobile biết khung mới + deadline; DELETE blackout 409
+  `blackout_conflicts_with_booking` khi còn đơn active trong ngày; thêm
+  `POST /api/matching/notifications/mark-read/` set `read_at`.
+- Web: don_cua_toi + don có đủ luồng đổi lịch 2 chiều (Step 9 Rule 3); toast ELO đọc
+  `elo_delta_applied`; notifications.html hợp nhất legacy+matching; worker_profile công
+  tắc GPS ghép nối; dang_viec_gia_su thêm child_grade_level + tutor_seniority_preference
+  (Defect 3); ngay_ban báo đúng lỗi 409.
+- Kiểm thử: test regression mới 14/14 (test_web_mobile_sync.py — Step 9 Rule 3 trước
+  đây 0 test); matching suite 246/246; smoke render 11 trang + 11 marker PASS;
+  E2E HTTP thật 23/23 PASS (scripts/e2e_matching_sync.py — login 2 role → GPS consent
+  → đăng việc Defect 3 → publish → candidates → select Idempotency-Key → commit →
+  reschedule → parent approve → slot mới → mark-read).
+- Dọn repo: xoá 57 file .md lỗi thời ~1,12MB (QA tháng 7, handoff QA-FIX 2-7, prompt
+  one-shot đã thực hiện, Stitch prompt đã dựng xong, .md tự sinh); giữ GPS_BYPASS_BACKLOG
+  (2 lỗ hổng OPEN) + brief chưa thực hiện + docs/agent-spec (code tham chiếu). Sửa
+  comment tasks.js trỏ file đã xoá. SYNC_PARITY.md thêm bảng "Parity Update 2026-09-17".

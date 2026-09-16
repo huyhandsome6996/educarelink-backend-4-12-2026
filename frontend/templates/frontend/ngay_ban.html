@@ -98,9 +98,10 @@
       row.querySelector('button').onclick = async () => {
         const resp = await authFetch(`${API_BASE}/matching/carepartners/me/blackouts/${w.id}/`, { method: 'DELETE' });
         if (resp.status === 409) {
+          // Backend chặn xóa ngày bận đang có đơn ghép cặp chưa hoàn thành
+          // (blackout_conflicts_with_booking) — đồng bộ với lời hứa trên UI
           const j = await resp.json().catch(() => ({}));
-          toast(j.detail || j.code === 'blackout_conflict'
-            ? 'Ngày này đã có đơn ghép cặp — phải hủy đơn trước khi xóa.' : 'Không xóa được.', false);
+          toast(j.detail || 'Ngày này đã có đơn ghép cặp — phải hủy đơn trước khi xóa.', false);
         } else { toast('Đã xóa ngày bận.'); load(); }
       };
       wrap.appendChild(row);

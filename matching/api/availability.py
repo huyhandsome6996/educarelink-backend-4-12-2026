@@ -28,6 +28,7 @@ from ..services.availability_service import (
     AvailabilityLockedError,
     BlackoutConflictError,
     TooManyBlackoutsError,
+    blackout_booking_conflict,
     can_delete_window,
     check_overlap_same_day,
     create_blackout,
@@ -250,6 +251,28 @@ class BlackoutDetailAPIView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return CarePartnerBlackout.objects.filter(carepartner=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        """Xóa ngày bận — 409 khi đang có booking active trong ngày đó.
+
+        Đồng bộ web ↔ mobile: web (ngay_ban.html) hứa “Ngày nào đã có đơn sẽ
+        không thể xóa” và mobile BlackoutScreen xử lý 409 — trước đây DELETE
+        luôn thành công làm lời hứa UI sai với backend. Áp cùng rule với POST
+        (BUSY_BOOKING_STATUSES × slot trùng khung/cả ngày).
+        """
+        instance = self.get_object()
+        conflict = blackout_booking_conflict(instance)
+        if conflict is not None:
+            booking, slot = conflict
+            return Response(
+                {'code': 'blackout_conflicts_with_booking',
+                 'detail': 'Ngày này bạn đang có đơn ghép cặp chưa hoàn thành '
+                           '(trùng khung ' + slot.time_from.strftime('%H:%M') + '–'
+                           + slot.time_to.strftime('%H:%M') + '). Hãy hủy hoặc đổi giờ đơn '
+                           'trước khi xóa ngày bận.'},
+                status=status.HTTP_409_CONFLICT)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_destroy(self, instance):
         invalidate_availability_cache(self.request.user, instance.date)

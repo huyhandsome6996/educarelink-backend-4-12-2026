@@ -1,10 +1,13 @@
 """
 matching/api/notifications.py — Inbox thông báo Flow mới (Step 8.8).
 
-GET /api/matching/notifications/           danh sách (query: unread=true)
-GET /api/matching/notifications/unread-count/   badge count
+GET  /api/matching/notifications/                danh sách (query: unread=true)
+GET  /api/matching/notifications/unread-count/   badge count
+POST /api/matching/notifications/mark-read/      đánh dấu đã đọc
+                                                 (body {} = tất cả, hoặc {ids: [...]})
 """
 
+from django.utils import timezone
 from rest_framework import permissions
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -55,3 +58,23 @@ class UnreadCountAPIView(APIView):
     def get(self, request):
         return Response({'unread': Notification.objects.filter(
             user=request.user, read_at__isnull=True).count()})
+
+
+class NotificationMarkReadAPIView(APIView):
+    """POST mark-read — đồng bộ hành vi “Đọc tất cả” giữa web ↔ mobile.
+
+    Trước đây read_at không bao giờ được set → badge chưa đọc tăng vô hạn
+    dù push đã nhận. Body: {} = đánh dấu tất cả; {ids: [uuid…]} = một phần.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        qs = Notification.objects.filter(user=request.user, read_at__isnull=True)
+        ids = request.data.get('ids') or None
+        if ids:
+            qs = qs.filter(pk__in=ids)
+        updated = qs.update(read_at=timezone.now(), status='read')
+        unread = Notification.objects.filter(
+            user=request.user, read_at__isnull=True).count()
+        return Response({'marked': updated, 'unread': unread})

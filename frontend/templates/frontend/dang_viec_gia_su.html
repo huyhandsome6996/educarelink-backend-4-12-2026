@@ -39,6 +39,27 @@
             </div>
             <label class="mcm-label" for="subject">Môn học hoặc kỹ năng (bắt buộc)</label>
             <input id="subject" class="mcm-input" placeholder="VD: Toán lớp 9, Tiếng Anh giao tiếp, MC, vẽ, piano, kỹ năng sống…">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                <div>
+                    <label class="mcm-label" for="gradeLevel">Cấp học của bé (tuỳ chọn — đồng bộ mobile)</label>
+                    <select id="gradeLevel" class="mcm-input">
+                        <option value="">— Không giới hạn cấp học —</option>
+                        <option value="preschool_prep">Tiền tiểu học (4 - 6 tuổi)</option>
+                        <option value="primary_grade_1_5">Tiểu học (Lớp 1 - 5)</option>
+                        <option value="secondary_grade_6_9">THCS (Lớp 6 - 9)</option>
+                        <option value="high_school_grade_10_12">THPT (Lớp 10 - 12)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mcm-label" for="seniority">Ưu tiên gia sư (tuỳ chọn)</label>
+                    <select id="seniority" class="mcm-input">
+                        <option value="no_preference">Không yêu cầu</option>
+                        <option value="student_year_1_2">Sinh viên năm 1-2</option>
+                        <option value="student_year_3_4">Sinh viên năm 3-4 (Ưu tiên Sư phạm)</option>
+                        <option value="graduate">Cử nhân / Đã tốt nghiệp</option>
+                    </select>
+                </div>
+            </div>
             <label class="mcm-label" for="specific_requirements">Yêu cầu cụ thể (bắt buộc)</label>
             <textarea id="specific_requirements" class="mcm-input" rows="3"
                       placeholder="VD: Em học lớp 9 cần nâng cao Toán, 2 buổi/tuần, ưu tiên sinh viên sư phạm…"></textarea>
@@ -139,6 +160,10 @@
           hourly_rate_vnd: rate,
           latitude: Number(lat), longitude: Number(lng),
           location_note: document.getElementById('locationNote').value.trim(),
+          // Defect 3 — đồng bộ mobile: cấp học của bé + ưu tiên độ tuổi gia sư
+          ...(document.getElementById('gradeLevel').value
+            ? { child_grade_level: document.getElementById('gradeLevel').value } : {}),
+          tutor_seniority_preference: document.getElementById('seniority').value || 'no_preference',
         })});
       const data = await resp.json();
       if (resp.status === 201) {
