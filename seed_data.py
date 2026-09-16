@@ -1,7 +1,7 @@
 """
 EDUCARELINK — SEED DATA SCRIPT (MASTER DEMO)
 ============================================
-Script nạp toàn bộ dữ liệu mẫu đầy đủ nhất cho ban giám khảo và kiểm thử toàn hệ thống.
+Script nạp toàn bộ dữ liệu mẫu đầy đủ nhất cho hệ thống và kiểm thử toàn diện.
 Chạy lệnh: python seed_data.py
 Hoặc: python manage.py seed_demo_data
 """

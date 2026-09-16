@@ -18,14 +18,14 @@
 
 | Track | Mục đích | Link (điền sau khi submit) | Ai test |
 |---|---|---|---|
-| **Internal testing** | Demo NGAY cho giám khảo/đối tác — không chờ đợi | [Điền opt-in URL sau bước A4] | Tối đa 100 người, thêm email là cài được ngay |
+| **Internal testing** | Demo NGAY cho đối tác — không chờ đợi | [Điền opt-in URL sau bước A4] | Tối đa 100 người, thêm email là cài được ngay |
 | **Closed testing (alpha)** | Chạy mốc 14 ngày + 20 người → đủ điều kiện Production | [Điền opt-in URL sau bước A5] | ≥20 người test THẬT, liên tục 14 ngày |
 
 ## 📅 Timeline ước tính tới Production
 
 | Mốc | Thời gian | Ghi chú |
 |---|---|---|
-| Upload .aab lên Internal testing | Ngày 0 (hôm nay) | Demo được ngay cho giám khảo |
+| Upload .aab lên Internal testing | Ngày 0 (hôm nay) | Demo được ngay cho đối tác |
 | Mời 20+ người vào Closed testing | Ngày 0-2 | Gửi opt-in URL + theo dõi trong Play Console |
 | Chạy mốc 14 ngày liên tục | Ngày 0 → 14 | Google tự đếm khi đủ 20 tester đang opt-in |
 | Đủ điều kiện Production | Ngày 14+ | Play Console hiện trạng thái đủ điều kiện |
@@ -40,7 +40,7 @@
 5. [ ] Điền Store listing từ các file .txt vào Play Console
 6. [ ] Điền bảng Data safety theo data-safety-answers.md
 7. [ ] Điền bảng Content rating theo content-rating-notes.md
-8. [ ] Copy 2 link opt-in URL (Internal + Closed testing) gửi giám khảo / mời 20 người
+8. [ ] Copy 2 link opt-in URL (Internal + Closed testing) gửi đối tác / mời 20 người
 9. [ ] Theo dõi 14 ngày trong Play Console (Dashboard → eligibility)
 10. [ ] Khi đủ điều kiện: TỰ TAY bấm "Publish to production" (KHÔNG để agent làm)
 

@@ -1467,7 +1467,7 @@ class AdminModerateTaskAPIView(APIView):
 
 
 class AdminSeedDemoDataAPIView(APIView):
-    """API tạo dữ liệu mẫu cho ban giám khảo — Chỉ Admin"""
+    """API tạo dữ liệu mẫu demo — Chỉ Admin"""
     permission_classes = [IsAdminUser]
 
     def post(self, request):
