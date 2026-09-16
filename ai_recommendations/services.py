@@ -309,7 +309,8 @@ def _build_tasks_context(tasks):
         lines.append(f"  Giá: {t.price} VNĐ")
         if t.category:
             lines.append(f"  Danh mục: {t.category.name}")
-        lines.append(f"  Thời gian: {t.scheduled_time.strftime('%d/%m/%Y %H:%M')}")
+        # 2026-09-16: giờ task quy đổi về giờ VN (trước đây in giờ UTC lệch 7h)
+        lines.append(f"  Thời gian: {timezone.localtime(t.scheduled_time).strftime('%d/%m/%Y %H:%M') if t.scheduled_time else '—'}")
         lines.append("")
     return '\n'.join(lines)
 

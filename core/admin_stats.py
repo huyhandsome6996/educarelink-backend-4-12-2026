@@ -24,7 +24,9 @@ from .models import LandingPageVisit, LandingSurvey, LandingSignup
 @staff_member_required
 def admin_statistics_view(request):
     """Trang thống kê tổng hợp landing page."""
-    now = timezone.now()
+    # 2026-09-16: mốc "hôm nay" theo nửa đêm giờ VN — trước đây lấy nửa đêm
+    # UTC nên "hôm nay/tuần này/tháng này" lệch khung 00:00–06:59 sáng VN.
+    now = timezone.localtime(timezone.now())
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
@@ -244,7 +246,7 @@ def admin_ai_analysis(request):
     genai.configure(api_key=settings.GEMINI_API_KEY)
 
     # Gather stats
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_ago = today - timedelta(days=30)
 
@@ -263,7 +265,8 @@ def admin_ai_analysis(request):
         .values_list('role', 'feedback', 'created_at')
     )
     feedback_text = '\n'.join(
-        f'- [{r[0]}] {r[1][:200]} ({r[2].strftime("%d/%m/%Y")})'
+        # 2026-09-16: ngày góp ý theo giờ VN (trước đây in ngày UTC)
+        f'- [{r[0]}] {r[1][:200]} ({timezone.localtime(r[2]).strftime("%d/%m/%Y") if r[2] else ""})'
         for r in recent_feedbacks
     ) if recent_feedbacks else 'Chưa có góp ý.'
 

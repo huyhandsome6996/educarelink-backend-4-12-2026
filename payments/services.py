@@ -743,7 +743,8 @@ def _generate_settlement_qr(settlement: CommissionSettlement) -> bool:
             title="📊 Kỳ thanh toán hoa hồng đã sẵn sàng",
             message=f"Tổng hoa hồng tháng {settlement.period_month:02d}/{settlement.period_year}: "
                     f"{settlement.total_amount:,.0f}đ. Hạn thanh toán: "
-                    f"{settlement.due_at.strftime('%d/%m/%Y')}. "
+                    # 2026-09-16: hạn thanh toán theo giờ VN (trước đây in ngày UTC)
+                    f"{timezone.localtime(settlement.due_at).strftime('%d/%m/%Y') if settlement.due_at else ''}. "
                     f"Vào app > Thanh toán > Quét QR MoMo để thanh toán.",
             data={
                 'type': 'settlement_qr_ready',

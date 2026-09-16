@@ -11,6 +11,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils import timezone
 
 from .models import User, Review, CredentialSubmission, Notification, TaskApplication
+from .time_utils import fmt_vn  # hiển thị giờ VN (bug lệch 7h 2026-09-16)
 
 # B4 — Validate ảnh minh chứng bằng cấp khi upload (WorkerSubmitCredentialAPIView)
 # Dự án chưa có helper validate upload dùng chung (id_card_front/id_card_back trên
@@ -122,7 +123,7 @@ class WorkerProfileDetailAPIView(APIView):
                     'comment': r.comment,
                     'reviewer_username': r.reviewer.username,
                     'reviewer_name': f'{r.reviewer.first_name} {r.reviewer.last_name}'.strip() or r.reviewer.username,
-                    'created_at': r.created_at.strftime('%d/%m/%Y'),
+                    'created_at': fmt_vn(r.created_at, '%d/%m/%Y'),
                 })
             from core.services.tier_service import tier_label
             data = {
@@ -210,7 +211,7 @@ class AdminAllWorkersAPIView(APIView):
                 'tier': getattr(u, 'tier', 'bronze') or 'bronze',
                 'tier_label': tier_label(getattr(u, 'tier', None) or 'bronze'),
                 'tier_override': getattr(u, 'tier_override', False),
-                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'date_joined': fmt_vn(u.date_joined),
                 'id_card_front': build_absolute_uri(request, u.id_card_front.url) if u.id_card_front else None,
                 'id_card_back': build_absolute_uri(request, u.id_card_back.url) if u.id_card_back else None,
                 'selfie_photo': build_absolute_uri(request, u.selfie_photo.url) if u.selfie_photo else None,

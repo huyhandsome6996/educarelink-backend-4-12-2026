@@ -15,6 +15,7 @@ from django.db import models as db_models
 from django.utils import timezone
 from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability, LandingSurvey, LandingSignup
 from .serializers import LandingSurveySerializer, LandingSignupSerializer
+from .time_utils import fmt_vn  # hiển thị giờ VN (bug lệch 7h 2026-09-16)
 
 logger = logging.getLogger('educarelink.core.views')
 
@@ -879,7 +880,7 @@ class WorkerProfileDetailAPIView(APIView):
                     "comment": r.comment,
                     "reviewer_username": r.reviewer.username,
                     "reviewer_name": f"{r.reviewer.first_name} {r.reviewer.last_name}".strip() or r.reviewer.username,
-                    "created_at": r.created_at.strftime('%d/%m/%Y')
+                    "created_at": fmt_vn(r.created_at, '%d/%m/%Y')
                 })
 
             data = {
@@ -1205,7 +1206,7 @@ class AdminPendingWorkersAPIView(APIView):
                 'last_name': u.last_name,
                 'email': u.email,
                 'phone_number': u.phone_number,
-                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'date_joined': fmt_vn(u.date_joined),
                 'id_card_front': build_absolute_uri(request,u.id_card_front.url) if u.id_card_front else None,
                 'id_card_back': build_absolute_uri(request,u.id_card_back.url) if u.id_card_back else None,
                 'selfie_photo': build_absolute_uri(request,u.selfie_photo.url) if u.selfie_photo else None,
@@ -1317,7 +1318,7 @@ class AdminAllUsersAPIView(APIView):
                 'is_active': u.is_active,
                 'is_approved': u.is_approved,
                 'is_verified': u.is_verified,
-                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'date_joined': fmt_vn(u.date_joined),
                 'qualifications': u.qualifications if isinstance(u.qualifications, list) else [],
             })
         return Response(data)
@@ -1339,7 +1340,7 @@ class AdminAllWorkersAPIView(APIView):
                 'email': u.email,
                 'phone_number': u.phone_number,
                 'is_approved': u.is_approved,
-                'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'date_joined': fmt_vn(u.date_joined),
                 'id_card_front': build_absolute_uri(request,u.id_card_front.url) if u.id_card_front else None,
                 'id_card_back': build_absolute_uri(request,u.id_card_back.url) if u.id_card_back else None,
                 'selfie_photo': build_absolute_uri(request,u.selfie_photo.url) if u.selfie_photo else None,
@@ -1581,8 +1582,8 @@ class AdminCredentialSubmissionsAPIView(APIView):
                 'status': s.status,
                 'status_display': s.get_status_display(),
                 'admin_review': s.admin_review,
-                'reviewed_at': s.reviewed_at.strftime('%d/%m/%Y %H:%M') if s.reviewed_at else None,
-                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M'),
+                'reviewed_at': fmt_vn(s.reviewed_at) or None,
+                'created_at': fmt_vn(s.created_at),
             })
         return Response(data)
 
@@ -1674,7 +1675,7 @@ class UserNotificationsAPIView(APIView):
                 'message': n.message,
                 'is_read': is_read,
                 'is_broadcast': n.recipient is None,
-                'created_at': n.created_at.strftime('%d/%m/%Y %H:%M'),
+                'created_at': fmt_vn(n.created_at),
             })
 
         # KHÔNG tự động đánh dấu đã đọc — chỉ đánh dấu khi gọi endpoint mark-read
@@ -1829,8 +1830,8 @@ class AdminProfileChangeRequestsAPIView(APIView):
                 'status': r.status,
                 'status_display': r.get_status_display(),
                 'admin_review': r.admin_review,
-                'reviewed_at': r.reviewed_at.strftime('%d/%m/%Y %H:%M') if r.reviewed_at else None,
-                'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+                'reviewed_at': fmt_vn(r.reviewed_at) or None,
+                'created_at': fmt_vn(r.created_at),
             })
         return Response(data)
 
@@ -2437,8 +2438,9 @@ import base64 as _base64
 def _get_platform_stats():
     """Trích xuất thống kê nền tảng thực tế từ database để làm ngữ cảnh cho AI."""
     from django.utils import timezone
-    now = timezone.now()
-    today = now.date()
+    # 2026-09-16: localdate() theo giờ VN (TIME_ZONE) — trước đây "hôm nay"
+    # lấy theo ngày UTC, nhãn ngày trong prompt AI lệch khi VN đã sang ngày mới.
+    today = timezone.localdate()
     week_ago = today - __import__('datetime').timedelta(days=7)
 
     total_users = User.objects.count()
@@ -3405,7 +3407,8 @@ class AdminFeedbackStatsAPIView(APIView):
                 'feedback': (s.feedback or '')[:300],
                 'phone': s.phone or '',
                 'email': s.email or '',
-                'created_at': s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '',
+                # 2026-09-16: fmt_vn — hiển thị giờ VN (trước đây in giờ UTC lệch 7h)
+                'created_at': fmt_vn(s.created_at),
             })
 
         # === TOÀN BỘ ĐĂNG KÝ — đầy đủ mọi cột khớp form /landing/ #dang-ky ===
@@ -3424,7 +3427,8 @@ class AdminFeedbackStatsAPIView(APIView):
                 'preferred_time_slot': sg.get_preferred_time_slot_display() if sg.preferred_time_slot else '',
                 'trial_consent': bool(sg.trial_consent),
                 'note': sg.note or '',
-                'created_at': sg.created_at.strftime('%d/%m/%Y %H:%M') if sg.created_at else '',
+                # 2026-09-16: fmt_vn — hiển thị giờ VN (trước đây in giờ UTC lệch 7h)
+                'created_at': fmt_vn(sg.created_at),
             })
 
         return Response({
@@ -3798,7 +3802,9 @@ class AdminFeedbackExcelAPIView(APIView):
         # Row 3: Subtitle / date range
         ws.merge_cells('B3:J3')
         c = ws['B3']
-        c.value = f'Khoảng thời gian: {since.strftime("%d/%m/%Y")} - {now.strftime("%d/%m/%Y")} ({days} ngày) | Xuất lúc: {now.strftime("%H:%M %d/%m/%Y")}'
+        # 2026-09-16: giờ xuất báo cáo quy đổi về giờ VN (trước đây in giờ UTC)
+        c.value = (f'Khoảng thời gian: {fmt_vn(since, "%d/%m/%Y")} - {fmt_vn(now, "%d/%m/%Y")} '
+                   f'({days} ngày) | Xuất lúc: {fmt_vn(now, "%H:%M %d/%m/%Y")}')
         c.font = sub_font; c.alignment = sub_align
         ws.row_dimensions[3].height = 20
 
@@ -4052,7 +4058,7 @@ class AdminFeedbackExcelAPIView(APIView):
                 w2.cell(row=ri, column=3, value=v.session_id[:20] + '...' if v.session_id else '')
                 w2.cell(row=ri, column=4, value=(v.referrer or '')[:100])
                 w2.cell(row=ri, column=5, value=(v.user_agent or '')[:80])
-                w2.cell(row=ri, column=6, value=v.visited_at.strftime('%Y-%m-%d %H:%M') if v.visited_at else '')
+                w2.cell(row=ri, column=6, value=fmt_vn(v.visited_at, '%Y-%m-%d %H:%M'))
                 for c in range(2, 7):
                     style_data_cell(w2, ri, c, i)
         else:
@@ -4094,7 +4100,7 @@ class AdminFeedbackExcelAPIView(APIView):
                 w3.cell(row=ri, column=7, value=s.feedback or '')
                 w3.cell(row=ri, column=8, value=s.phone or '')
                 w3.cell(row=ri, column=9, value=s.email or '')
-                w3.cell(row=ri, column=10, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                w3.cell(row=ri, column=10, value=fmt_vn(s.created_at, '%Y-%m-%d %H:%M'))
                 for c in range(2, 11):
                     style_data_cell(w3, ri, c, i)
         else:
@@ -4140,7 +4146,7 @@ class AdminFeedbackExcelAPIView(APIView):
                 w4.cell(row=ri, column=11, value=s.get_preferred_time_slot_display() if s.preferred_time_slot else '')
                 w4.cell(row=ri, column=12, value='Có' if s.trial_consent else 'Không')
                 w4.cell(row=ri, column=13, value=s.note or '')
-                w4.cell(row=ri, column=14, value=s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '')
+                w4.cell(row=ri, column=14, value=fmt_vn(s.created_at, '%Y-%m-%d %H:%M'))
                 for c in range(2, 15):
                     style_data_cell(w4, ri, c, i)
         else:
@@ -4148,7 +4154,8 @@ class AdminFeedbackExcelAPIView(APIView):
         auto_w(w4, sr=hr)
 
         resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        resp['Content-Disposition'] = f'attachment; filename="educarelink_thong_ke_{now.strftime("%Y%m%d")}.xlsx"'
+        vn_now = timezone.localtime(now) if timezone.is_aware(now) else now
+        resp['Content-Disposition'] = f'attachment; filename="educarelink_thong_ke_{vn_now.strftime("%Y%m%d")}.xlsx"'
         wb.save(resp)
         return resp
 
