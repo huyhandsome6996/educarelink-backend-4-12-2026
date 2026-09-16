@@ -1,3 +1,28 @@
+### Sửa giờ hiển thị lệch 7 tiếng — dashboard trả về giờ Việt Nam (2026-09-16)
+- **Phản hồi của Huy**: thống kê hiện theo thời gian thực nhưng GIỜ LỆCH — bạn bè làm khảo sát
+  thì giờ giấc toàn bị lệch (screenshot: khảo sát điền ~10:48 sáng giờ VN, dashboard in
+  "16/09/2026 03:48"). Yêu cầu: sửa cho hiển thị đúng chuẩn thời điểm người ta làm khảo sát,
+  quan trọng nhất là TỪ GIỜ TRỞ VỀ SAU ai làm khảo sát giờ phải đúng giờ Việt Nam. Làm xong
+  kiểm thử lại; nếu thêm dữ liệu test vào dashboard thì khi test xong phải xoá; không ảnh
+  hưởng hệ thống đang vận hành tốt.
+- **Root cause**: DB lưu UTC chuẩn (USE_TZ=True) nhưng các điểm hiển thị gọi `.strftime()`
+  thẳng trên datetime ORM thay vì quy đổi về múi giờ → in giờ UTC, lệch đúng 7 tiếng so
+  với đồng hồ VN. API chuẩn DRF (mobile/web dùng `new Date(iso)`) không lỗi — chỉ các chỗ
+  format tay trong dashboard/Excel/thông báo bị lệch.
+- **Cách sửa — chỉ lớp hiển thị, không đụng dữ liệu DB** (dữ liệu cũ lẫn mới đều đúng):
+  thêm `core/time_utils.py` với `fmt_vn()` (UTC → giờ Việt Nam rồi format), áp dụng ở:
+  bảng Phản hồi khảo sát + Đăng ký tư vấn/dùng thử, báo cáo Excel (3 sheet + "Xuất lúc" +
+  tên file), "Ngày tham gia" user, bằng cấp chờ duyệt, thông báo, yêu cầu đổi hồ sơ, đánh
+  giá, mốc "hôm nay/tuần này/tháng này" theo nửa đêm giờ VN (trang thống kê cũ), hạn thanh
+  toán hoa hồng, giờ task trong prompt AI.
+- **Kiểm thử**: test mới 9 case (helper, bảng khảo sát/đăng ký qua mốc nửa đêm, Excel không
+  còn giờ UTC, khảo sát mới điền đúng giờ hiện tại) — backend **837/837 OK**, mobile 144/144 OK.
+- **Verify production sau deploy (860d75b)**: bản ghi Dat98470@gmail.com đổi "03:48" →
+  **"16/09/2026 10:48"** giờ VN; tạo khảo sát test thật qua form → dashboard hiện khớp
+  **0 giây** với giờ VN thực tế; headless browser xác nhận bảng 24 bản ghi giờ VN.
+- **Dọn dữ liệu test**: xoá khảo sát test #29 qua Django admin → dashboard về đúng
+  **24 khảo sát / 13 đăng ký** như cũ, không còn dữ liệu thừa, hệ thống vận hành bình thường.
+
 ### Đếm truy cập toàn web + dữ liệu thật & 19 tài khoản dùng thử (2026-09-16)
 - **Yêu cầu của Huy (5 điểm)**: (1) đếm lượt truy cập TOÀN web chứ không riêng landing page và
   bỏ hiển thị IP khi đếm — "hệ thống hiểu ngầm là được rồi"; (2) điền tên vào dashboard cho khảo

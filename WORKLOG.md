@@ -1521,3 +1521,32 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   PROTECTED_USERNAMES + create-only → sống sót re-seed, bảo toàn duyệt tay của Huy.
 - Kèm theo: test_availability hết test-rot (_next_monday).
 - Test: repo 828/828 OK, mobile 144/144 OK. Commits f5610fc, a40e545, 6e0629f → main → Render deploy.
+
+## 2026-09-16 — Sửa giờ hiển thị lệch 7 tiếng: dashboard trả về giờ Việt Nam (Super Z)
+- Yêu cầu Huy: thống kê hiển thị theo thời gian thực nhưng GIỜ LỆCH — bạn bè làm khảo sát
+  giờ giấc toàn bị lệch (screenshot: khảo sát điền ~10:48 sáng VN nhưng dashboard in
+  "16/09/2026 03:48"). Quan trọng nhất: từ giờ trở về sau ai làm khảo sát giờ phải chuẩn
+  giờ Việt Nam. Test xong phải xoá dữ liệu test, không ảnh hưởng hệ thống đang chạy.
+- Root cause: DB lưu UTC chuẩn (USE_TZ=True, TIME_ZONE=Asia/Ho_Chi_Minh) nhưng các điểm
+  hiển thị gọi .strftime() THẲNG trên datetime ORM (aware UTC) thay vì quy đổi múi giờ.
+  DRF serializer tự convert +07 đúng nên mobile/API ISO không lỗi — chỉ các chỗ format tay bị lệch.
+- Fix (chỉ lớp hiển thị, KHÔNG đụng dữ liệu DB): thêm `core/time_utils.py` — `fmt_vn(dt, fmt)`
+  quy đổi aware UTC → giờ VN rồi format (naive giữ nguyên, None → ''). Áp dụng 20+ điểm:
+  bảng Phản hồi khảo sát + Đăng ký tư vấn/dùng thử (feedback-stats), báo cáo Excel 3 sheet
+  + dòng "Xuất lúc" + tên file, date_joined (3 view admin), bằng cấp chờ duyệt, thông báo,
+  yêu cầu đổi hồ sơ, đánh giá (views.py + tier_views.py), mốc "hôm nay/tuần này/tháng này"
+  theo nửa đêm giờ VN (admin_stats.py — trước là nửa đêm UTC), hạn thanh toán hoa hồng
+  (payments/services.py), giờ task trong prompt AI (ai_recommendations/services.py).
+  Booking slot time không sửa — là giờ người dùng chọn, make_aware theo TZ mặc định, in đúng.
+- Test mới 9 (core/tests_timezone.py): fmt_vn qua mốc nửa đêm (20:48 UTC 15/09 → 03:48 VN
+  16/09, không trôi ngày), bảng khảo sát/đăng ký trả giờ VN, Excel không còn chuỗi giờ UTC
+  thô, khảo sát "mới điền" hiển thị đúng giờ VN hiện tại. Backend **837/837 OK**, mobile 144/144 OK.
+- Production verify (860d75b → Render deploy): login admin → feedback-stats — bản ghi
+  Dat98470@gmail.com đổi "16/09/2026 03:48" → **"16/09/2026 10:48"** giờ VN. E2E: POST
+  khảo sát test (id=29, email kiemthu.tz@test.com) qua /api/landing/survey/ → dashboard
+  hiện "16/09/2026 12:31" = khớp 0 GIÂY với giờ VN thực tế. Headless browser: bảng 24 bản
+  ghi, cột Thời gian giờ VN (screenshot cot_thoi_gian_gio_vn.png).
+- Dọn dữ liệu test (yêu cầu Huy xoá sau test): xoá khảo sát #29 qua Django admin (CSRF
+  login → delete confirm) → feedback-stats về đúng **24 khảo sát / 13 đăng ký**, 0 bản
+  ghi test còn sót. API test của agent là JSON không đụng counter truy cập → không rác.
+- Commit: 860d75b (fix chính + test) → main → Render auto-deploy.
