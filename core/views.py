@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate
 import os
 import logging
 import requests
-from django.db import models as db_models
+from django.db import models as db_models, transaction
 from django.utils import timezone
 from .models import User, Task, TaskApplication, ServiceCategory, Review, CredentialSubmission, Notification, ProfileChangeRequest, WorkerAvailability, LandingSurvey, LandingSignup
 from .serializers import LandingSurveySerializer, LandingSignupSerializer
@@ -566,6 +566,11 @@ class TaskUpdateStatusAPIView(APIView):
         new_status = request.data.get('status')
         valid_transitions = {
             'open': ['cancelled'],           # Việc đang tìm → chỉ có thể hủy
+            # VietQR gate: đang chờ QR → phụ huynh vẫn được phép huỷ hẳn việc
+            # (khác với "Huỷ chọn" trên màn QR — cancel-selection rollback về
+            # 'open'; huỷ ở đây là huỷ việc luôn). Signal payments sẽ tự huỷ
+            # payment 'pending' + PayOS link (on_task_status_changed).
+            'pending_payment': ['cancelled'],
             'in_progress': ['completed', 'cancelled'],  # Việc đang làm → hoàn thành hoặc hủy
         }
 
@@ -681,56 +686,95 @@ class TaskCandidatesAPIView(generics.ListAPIView):
             )
         return super().list(request, *args, **kwargs)
 
-class ApproveCandidateAPIView(APIView):
+class SelectCandidateAPIView(APIView):
+    """
+    Phụ huynh chọn CarePartner — CỔNG VIETQR (PayOS).
+
+    ⚠️ Đổi hành vi (feature/vietqr-payment-gate-booking):
+    - Trước đây: bấm chọn → application 'accepted' + task 'in_progress' NGAY,
+      không phụ thuộc thanh toán.
+    - Bây giờ:   bấm chọn → application 'payment_pending' + task
+      'pending_payment'. Frontend gọi tiếp POST /api/payments/payos-setup/
+      để hiện QR VietQR. CHỈ SAU khi webhook PayOS báo PAID, hệ thống mới
+      'accepted' + 'in_progress' (payments.services.confirm_booking_after_payment).
+    - Không thanh toán (huỷ / hết hạn QR) → rollback về 'pending'/'open'
+      để phụ huynh chọn người khác.
+
+    URL cũ POST /api/parent/applications/<id>/approve/ GIỮ NGUYÊN —
+    mobile (CandidatesScreen) & web (browse_candidates) đang gọi endpoint này.
+    """
     permission_classes = [IsAuthenticated]
+
     def post(self, request, application_id):
-        # Phục vụ Màn 6: Nút bấm [Chấp nhận bạn này]
+        # Phục vụ Màn 6: Nút bấm [Chọn CarePartner này]
         try:
-            application = TaskApplication.objects.get(id=application_id, task__parent=request.user)
-            if application.task.status != 'open':
-                return Response({"error": "Công việc này đã đóng hoặc đang làm."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            task = application.task
-            worker = application.worker
-
-            # ================================================================
-            # LỖ HỔNG #1 — Dòng phòng vệ 2: chặn parent duyệt worker chưa có PIN
-            # cho task có geofence/tracking.
-            # --------------------------------------------------------------
-            # Dòng phòng vệ 1 ở ApplyTaskAPIView chặn worker tự apply, nhưng
-            # nếu bypass được (API trực tiếp, race condition sau khi xoá PIN,
-            # hoặc lỗi mobile không check), parent vẫn có thể approve → task
-            # chuyển sang in_progress mà không bao giờ có verification check.
-            # Đây là second line of defense — không hồi tố task đang in_progress.
-            # ================================================================
-            has_geofence = bool(task.geofence_lat and task.geofence_lng)
-            if has_geofence and not worker.has_verification_pin_set:
-                return Response({
-                    "error": "verification_pin_required",
-                    "message": f"CarePartner {worker.username} chưa đặt mã xác minh cá nhân. Không thể duyệt cho việc có theo dõi vị trí. Vui lòng yêu cầu họ đặt mã trước.",
-                }, status=status.HTTP_403_FORBIDDEN)
-
-            application.status = 'accepted'
-            application.save()
-            
-            task.status = 'in_progress'
-            task.save()
-            
-            # Tự động từ chối các bạn khác
-            TaskApplication.objects.filter(task=task, status='pending').update(status='rejected')
-            
-            # Gửi push notification cho ứng viên được nhận
-            if hasattr(application.worker, 'expo_push_token') and application.worker.expo_push_token:
-                send_expo_push_notification(
-                    token=application.worker.expo_push_token,
-                    title="🎉 Chúc mừng bạn!",
-                    body=f"Phụ huynh đã chấp nhận bạn cho công việc '{task.title}'. Hãy mở ứng dụng để xem chi tiết!",
-                    data={"task_id": task.id}
-                )
-
-            return Response({"message": f"Đã nhận {application.worker.username} làm việc!"})
+            application = TaskApplication.objects.select_related('task', 'worker').get(
+                id=application_id, task__parent=request.user)
         except TaskApplication.DoesNotExist:
             return Response({"error": "Không tìm thấy yêu cầu."}, status=status.HTTP_404_NOT_FOUND)
+
+        task = application.task
+        worker = application.worker
+
+        # Idempotent: phụ huynh bấm chọn lần 2 trên cùng application đang chờ
+        # thanh toán (double-tap / mở lại màn hình) → trả lại hướng dẫn tạo QR
+        # thay vì lỗi "Công việc này đã đóng hoặc đang làm."
+        if task.status == 'pending_payment' and application.status == 'payment_pending':
+            return Response({
+                "message": f"Đã chọn {application.worker.username}. Đang chờ thanh toán để xác nhận.",
+                "next_step": "create_payos_payment",
+                "task_id": task.id,
+                "application_id": application.id,
+            })
+
+        if task.status != 'open':
+            return Response({"error": "Công việc này đã đóng hoặc đang làm."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ================================================================
+        # LỖ HỔNG #1 — Dòng phòng vệ 2: chặn parent duyệt worker chưa có PIN
+        # cho task có geofence/tracking. (giữ nguyên — second line of defense)
+        # ================================================================
+        has_geofence = bool(task.geofence_lat and task.geofence_lng)
+        if has_geofence and not worker.has_verification_pin_set:
+            return Response({
+                "error": "verification_pin_required",
+                "message": f"CarePartner {worker.username} chưa đặt mã xác minh cá nhân. Không thể duyệt cho việc có theo dõi vị trí. Vui lòng yêu cầu họ đặt mã trước.",
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # ================================================================
+        # VietQR gate — bước 1: CHỐT LỰA CHỌN (chưa phải "được nhận việc")
+        # --------------------------------------------------------------
+        # select_for_update trên task: chặn 2 request chọn 2 CarePartner
+        # khác nhau cùng lúc cho cùng 1 task (chỉ 1 request thấy task 'open').
+        # KHÔNG reject application khác ở bước này (giữ khả năng rollback khi
+        # thanh toán huỷ/hết hạn). KHÔNG gửi notification "được nhận việc" —
+        # dời xuống webhook PayOS PAID (confirm_booking_after_payment).
+        # ================================================================
+        try:
+            with transaction.atomic():
+                locked_task = Task.objects.select_for_update().get(pk=task.pk)
+                if locked_task.status != 'open':
+                    return Response(
+                        {"error": "Công việc này đã đóng hoặc đang làm."},
+                        status=status.HTTP_400_BAD_REQUEST)
+                application.status = 'payment_pending'
+                application.save(update_fields=['status'])
+                locked_task.status = 'pending_payment'
+                locked_task.save(update_fields=['status'])
+        except Exception:
+            logger.exception(f"[SelectCandidate] Lỗi khi chọn application#{application_id}")
+            return Response({"error": "Xung đột dữ liệu. Vui lòng thử lại."},
+                            status=status.HTTP_409_CONFLICT)
+
+        return Response({
+            "message": f"Đã chọn {application.worker.username}. Vui lòng thanh toán qua QR để xác nhận!",
+            "next_step": "create_payos_payment",
+            "task_id": task.id,
+            "application_id": application.id,
+        })
+
+# Tương thích ngược: URL routing & import cũ vẫn dùng tên ApproveCandidateAPIView
+ApproveCandidateAPIView = SelectCandidateAPIView
 
 class ReviewCreateAPIView(generics.CreateAPIView):
     queryset = Review.objects.all()

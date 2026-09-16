@@ -1,3 +1,42 @@
+### Cổng VietQR — xác nhận đặt lịch SAU khi thanh toán PayOS (2026-09-17)
+- **Yêu cầu (prompt coding agent)**: hiện tại chọn CarePartner là đặt lịch NGAY, không phụ
+  thuộc thanh toán. Yêu cầu mới: chọn CarePartner → hiện QR VietQR (PayOS) → phụ huynh quét
+  chuyển khoản → **CHỈ SAU webhook PAID** mới xác nhận đặt lịch (accepted + in_progress).
+  Không thanh toán → chưa giữ chỗ, task quay lại `open` để chọn người khác. Giữ nguyên URL
+  cũ, không đụng momo_escrow/cash.
+- **Backend — gate 2 bước**: `ApproveCandidateAPIView` đổi hành vi (class mới
+  `SelectCandidateAPIView`, URL `/approve/` giữ nguyên): chọn → application `payment_pending`
+  + task `pending_payment`, KHÔNG reject người khác, KHÔNG gửi notification, có
+  `select_for_update` chống race 2 lần chọn + idempotent khi bấm 2 lần, trả
+  `next_step: create_payos_payment`. `payos-setup` chỉ nhận task `pending_payment`, lấy
+  worker từ `payment_pending`, trả `qr_expires_at` + `qr_code`; payment cũ (đã rollback)
+  được reset để chọn lại. Webhook `payos-webhook`: **thêm check khớp số tiền** (amount
+  mismatch → chặn held/confirm, log `payos_amount_mismatch`); nhánh PAID gọi
+  `confirm_booking_after_payment()` (accepted + in_progress + reject others + push
+  "🎉 Chúc mừng bạn!"); nhánh CANCELLED/EXPIRED → `rollback_pending_selection()` về
+  pending/open. Endpoint mới: `GET /payments/<id>/status/` (polling) +
+  `POST /payments/<id>/cancel-selection/` (huỷ khi đang xem QR, gọi luôn PayOS API huỷ link).
+- **Chống kẹt task**: management command `expire_stale_payment_selections` rollback lựa chọn
+  quá hạn (ưu tiên hạn QR thật `payos_expires_at` — field mới trên Payment; fallback
+  `PAYOS_SELECTION_TIMEOUT_MINUTES`=15'), cron Render `educarelink-payos-expiry` mỗi 5 phút.
+  Huỷ việc khi đang chờ QR vẫn được phép (`pending_payment → cancelled`) — signal tự huỷ
+  payment + PayOS link.
+- **Mobile (3 màn)**: `CandidatesScreen` — bấm "Chọn" → approve → gọi payos-setup → điều
+  hướng `PaymentQRScreen` MỚI (ảnh QR base64, đếm ngược, polling 4s, nút Huỷ, trạng thái
+  thành công, tạo lại QR khi hết hạn); mở lại app còn task `pending_payment` →
+  `ParentHomeScreen` tự điều hướng lại màn QR (resume giữa chừng); chip ứng viên mới
+  "Chờ thanh toán".
+- **Web**: partial chung `_payos_qr_modal.html` (modal QR + đếm ngược + polling + Huỷ +
+  thành công + tạo lại); `browse_candidates.html` — "Chấp nhận" giờ mở modal QR, thẻ
+  `payment_pending` có nút "Tiếp tục thanh toán QR", badge task "Chờ thanh toán QR";
+  `parent_task_detail.html` — khu vực hành động cho task `pending_payment` (resume thanh toán).
+- **Kiểm thử**: suite mới `payments/tests/test_payos_gate.py` **23/23 PASS** (đủ 7 nhóm
+  bắt buộc: chọn→payment_pending không notify; webhook PAID confirm + đúng 1 push; CANCELLED
+  rollback; race 2 chọn; expiry command; amount mismatch chặn; parity contract mobile/web +
+  huỷ + phân quyền). Regression: `payments` + `core` **224/224**, `matching` **246/246** —
+  không phá luồng cũ. Tài liệu: PAYOS_SETUP.md (luồng gate + endpoint + cron),
+  README_RENDER_CRON_SETUP.md (cronjob 2).
+
 ### Kiểm thử & vá đồng bộ tính năng ghép nối web ↔ backend ↔ mobile (2026-09-17)
 - **Phản hồi của Huy**: mấy hôm nay chuyên tâm mobile, quay lại web thấy chi tiết tính năng
   ghép nối khác mobile cực nhiều (giao diện web thì ổn rồi). Yêu cầu: đọc lại toàn bộ dự án,

@@ -174,6 +174,10 @@ class ServiceCategory(models.Model):
 class Task(models.Model):
     STATUS_CHOICES = (
         ('open', 'Đang tìm người'),
+        # VietQR gate (PayOS): phụ huynh đã chọn CarePartner nhưng chưa thanh
+        # toán — task KHÔNG được coi là đã đặt. Webhook PayOS PAID mới chuyển
+        # 'in_progress'; hết hạn/huỷ → quay lại 'open'.
+        ('pending_payment', 'Chờ thanh toán để xác nhận'),
         ('in_progress', 'Đang thực hiện'),
         ('completed', 'Đã hoàn thành'),
         ('cancelled', 'Đã hủy'),
@@ -234,6 +238,9 @@ class Task(models.Model):
 class TaskApplication(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Đang chờ duyệt'),
+        # VietQR gate (PayOS): phụ huynh đã bấm chọn application này nhưng
+        # chưa thanh toán. PAID → 'accepted'; huỷ/hết hạn → 'pending' lại.
+        ('payment_pending', 'Đã chọn — chờ thanh toán'),
         ('accepted', 'Đã được chọn'),
         ('rejected', 'Bị từ chối'),
     )

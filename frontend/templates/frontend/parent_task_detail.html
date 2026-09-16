@@ -404,6 +404,25 @@ function renderActionArea(task) {
                     <span class="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
             </div>`;
+    } else if (task.status === 'pending_payment') {
+        // VIETQR GATE: đã chọn CarePartner — chờ quét QR VietQR (PayOS)
+        // để xác nhận đặt lịch. Chưa thanh toán = chưa giữ chỗ.
+        area.innerHTML = `
+            <div class="bg-surface rounded-2xl border border-blue-100 shadow-sm p-5">
+                <div class="flex items-center gap-2 mb-2 text-blue-600 font-bold text-sm">
+                    <span class="material-symbols-outlined text-lg filled">hourglass_top</span>
+                    Đang chờ thanh toán để xác nhận
+                </div>
+                <p class="text-sm text-textSecondary mb-4">Bạn đã chọn CarePartner. Hoàn tất thanh toán qua mã QR VietQR để CHỐT lịch — chưa thanh toán thì CarePartner chưa được giữ chỗ.</p>
+                <button onclick="PayOSGate.start(${task.id}, { autoReloadOnSuccess: true })" class="${btnBase} bg-blue-500 text-white shadow-md hover:bg-blue-600">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+                    Tiếp tục thanh toán QR
+                </button>
+                <button onclick="viewCandidates(${task.id})" class="${btnBase} border border-gray-200 text-textSecondary hover:bg-gray-50 mt-2.5">
+                    <span class="material-symbols-outlined text-lg">group</span>
+                    Xem ứng viên
+                </button>
+            </div>`;
     } else if (task.status === 'in_progress') {
         area.innerHTML = `
             <div class="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 space-y-2.5">
@@ -567,6 +586,9 @@ function handleLogout() {
 
 init();
 </script>
+
+<!-- VIETQR GATE — modal chờ quét QR xác nhận đặt lịch (PayOS) -->
+{% include 'frontend/_payos_qr_modal.html' %}
 
 </body>
 </html>

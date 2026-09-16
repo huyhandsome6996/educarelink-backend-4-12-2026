@@ -197,3 +197,53 @@ Khi task hoàn thành, admin cần chuyển tiền cho carepartner. Cần carepa
 ---
 
 *File này được tạo bởi QA Agent (Super Z) — branch `feature/payos-integration`*
+
+---
+
+## 🚪 VIETQR GATE — Xác nhận đặt lịch SAU khi thanh toán (2026-09-17)
+
+> Branch `feature/vietqr-payment-gate-booking` đổi luồng nghiệp vụ: PayOS giờ
+> là CỔNG xác nhận đặt lịch, không chỉ phương thức thanh toán.
+
+### Luồng mới
+
+```
+Phụ huynh chọn CarePartner
+  → application 'payment_pending' + task 'pending_payment'
+  → hiện QR VietQR (PayOS) — đếm ngược, polling 4s
+  → phụ huynh quét & chuyển khoản
+  → PayOS webhook PAID (verify chữ ký + khớp số tiền)
+  → payment 'held' (escrow)
+  → ✅ application 'accepted' + task 'in_progress' + reject ứng viên khác
+     + push "🎉 Chúc mừng bạn!" cho CarePartner
+```
+
+Không thanh toán (huỷ thủ công / webhook CANCELLED–EXPIRED / hết hạn 15'):
+
+```
+  → payment 'cancelled' + application 'pending' + task 'open'
+  → phụ huynh chọn được CarePartner khác
+```
+
+### Endpoint mới/đổi
+
+| Endpoint | Thay đổi |
+|---|---|
+| `POST /api/parent/applications/<id>/approve/` (URL giữ nguyên) | Chỉ chốt lựa chọn — trả `next_step: "create_payos_payment"` |
+| `POST /api/payments/payos-setup/` | Chỉ nhận task `pending_payment`; trả `qr_expires_at` + `qr_code` |
+| `GET /api/payments/<id>/status/` | **MỚI** — polling nhẹ cho màn QR |
+| `POST /api/payments/<id>/cancel-selection/` | **MỚI** — phụ huynh huỷ khi đang xem QR |
+| `POST /api/payments/payos-webhook/` | **Bảo mật**: chặn amount mismatch; PAID → confirm booking; CANCELLED/EXPIRED → rollback |
+
+### Cron bắt buộc khi go-live
+
+Cron `educarelink-payos-expiry` (đã khai báo trong `render.yaml`) chạy mỗi 5 phút:
+
+```bash
+python manage.py expire_stale_payment_selections
+```
+
+→ Rollback các lựa chọn quá hạn (ưu tiên hạn QR thật `payos_expires_at`,
+fallback `PAYOS_SELECTION_TIMEOUT_MINUTES` = 15 phút). **Copy env
+`SECRET_KEY` + `DATABASE_URL` (+ 3 biến `PAYOS_*`) từ web service sang cron
+service** trên Render Dashboard — chi tiết như README_RENDER_CRON_SETUP.md.

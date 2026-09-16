@@ -1572,3 +1572,64 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   one-shot đã thực hiện, Stitch prompt đã dựng xong, .md tự sinh); giữ GPS_BYPASS_BACKLOG
   (2 lỗ hổng OPEN) + brief chưa thực hiện + docs/agent-spec (code tham chiếu). Sửa
   comment tasks.js trỏ file đã xoá. SYNC_PARITY.md thêm bảng "Parity Update 2026-09-17".
+
+## 2026-09-17 — Cổng VietQR: xác nhận đặt lịch SAU khi thanh toán PayOS (Super Z)
+- **Branch**: `feature/vietqr-payment-gate-booking` (từ main @ 3648ecc). Chọn CarePartner
+  KHÔNG còn là "đặt lịch" — chỉ chốt lựa chọn; QR VietQR (PayOS) là cổng xác nhận.
+- **Phase 1 — models**: `Task.STATUS_CHOICES` += `pending_payment` ("Chờ thanh toán để xác
+  nhận"); `TaskApplication.STATUS_CHOICES` += `payment_pending` ("Đã chọn — chờ thanh
+  toán"); `Payment` += `payos_expires_at` (lưu hạn QR thật từ PayOS); `PaymentLog.EVENT_CHOICES`
+  += 7 event payos/gate. Migrations: core/0031, payments/0003 (+ matching/0005 bổ khuyết
+  từ nhánh trước — commit riêng feafeeb).
+- **Phase 2 — backend**:
+  - `core/views.py`: `SelectCandidateAPIView` (alias `ApproveCandidateAPIView`, URL cũ giữ
+    nguyên) — payment_pending + pending_payment trong `transaction.atomic` +
+    `select_for_update(task)`; idempotent khi chọn 2 lần cùng application; KHÔNG reject
+    others, KHÔNG notify; response `{next_step: "create_payos_payment", task_id}`.
+    `TaskUpdateStatusAPIView` cho phép `pending_payment → cancelled` (signal tự huỷ payment).
+  - `payments/services.py`: `confirm_booking_after_payment()` (PAID → accepted +
+    in_progress + reject pending others + push "🎉 Chúc mừng bạn!", select_for_update,
+    idempotent); `rollback_pending_selection()` (pending/open/cancelled — dùng chung 3 nơi);
+    `cancel_selection_payment()`; signal `on_task_status_changed` nhánh payos pending → huỷ
+    payment + PayOS link khi task bị huỷ.
+  - `payments/views.py`: `PayOSSetupAPIView` — điều kiện `pending_payment`, worker từ
+    application `payment_pending`, reset payment sau rollback, trả `qr_expires_at` +
+    `qr_code`, fallback hạn QR = now + timeout nếu PayOS không trả;
+    `PayOSWebhookAPIView` — **check amount mismatch** (400 + log, không held/confirm),
+    PAID → held + confirm booking, CANCELLED/EXPIRED → rollback; MỚI
+    `PaymentStatusAPIView` (GET /payments/<id>/status/ — polling) + `CancelSelectionAPIView`
+    (POST /payments/<id>/cancel-selection/).
+  - `payments/payos_client.py`: `create_payment_link` trả thêm `expired_at` + `qr_code`
+    (SDK 1.1.0 CreatePaymentLinkResponse có sẵn 2 field này).
+- **Phase 2.4 — chống kẹt**: command `expire_stale_payment_selections` (quét payos pending
+  thuộc task pending_payment; quá hạn theo `payos_expires_at` hoặc fallback
+  `PAYOS_SELECTION_TIMEOUT_MINUTES`=15'; rollback + log `vietqr_selection_expired`;
+  --dry-run). render.yaml cron `educarelink-payos-expiry` `*/5 * * * *`.
+- **Phase 3 — mobile (Expo)**: `api/payments.js` += `getPaymentStatus`, `cancelSelection`;
+  `PaymentQRScreen.js` MỚI (QR base64 / fallback link, đếm ngược, polling 4s → success,
+  Huỷ → rollback → về Candidates kèm refreshTs, hết hạn → tạo lại QR); `CandidatesScreen`
+  — nút "Chọn" → approve → payos-setup → navigate PaymentQR, chip "Chờ thanh toán";
+  `AppNavigator` đăng ký PaymentQR ở ParentHomeStack + ParentTasksStack;
+  `ParentHomeScreen` — resume: `/payments/my/` có payment payos pending của task
+  pending_payment → tự navigate PaymentQR. `PaymentSerializer` += `task_status`,
+  `payos_expires_at`.
+- **Phase 3 — web (Django templates)**: partial `_payos_qr_modal.html` (PayOSGate.start /
+  .resume / .close — modal QR + countdown + polling 4s + Huỷ + success + tạo lại);
+  `browse_candidates.html` — approve → next_step → mở modal; thẻ payment_pending có nút
+  "Tiếp tục thanh toán QR"; badge pending_payment/pending_payment mới;
+  `parent_task_detail.html` — khối hành động "pending_payment" + include modal.
+- **Phase 4 — test**: `payments/tests/test_payos_gate.py` 23/23 PASS — 7 nhóm bắt buộc:
+  (1) chọn → payment_pending/pending_payment, 0 notification; (2) PAID → accepted +
+  in_progress + others rejected + đúng 1 push Chúc mừng (webhook retry idempotent);
+  (3) CANCELLED → rollback pending/open; (4) race tuần tự: chọn người 2 khi task hết open
+  → 400 rõ ràng; (5) expiry command rollback + đúng PaymentLog + không đụng payment cũ
+  task in_progress; (6) amount mismatch → 400, không held, không confirm; (7) parity
+  contract (next_step/checkout_url/qr_expires_at/payment_id/status endpoint/cancel) +
+  phân quyền. Regression: `manage.py test payments core` 224/224, `matching` 246/246.
+- **Tài liệu**: PAYOS_SETUP.md + mục "VIETQR GATE" (luồng, endpoint, cron);
+  README_RENDER_CRON_SETUP.md + "CronJob 2 — educarelink-payos-expiry"; Nhat_Ky_Hoat_Dong.md
+  đầu trang. Giữ nguyên: luồng momo_escrow/cash, luồng ghép cặp matching (ung_vien.html →
+  select-carepartner) không đụng theo yêu cầu.
+- **Lưu ý go-live**: cần PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY trên Render; khi merge →
+  Render tạo cron `educarelink-payos-expiry` → phải copy SECRET_KEY/DATABASE_URL/PAYOS_*
+  từ web service sang cron service. Sandbox/test mode dùng được ngay khi có key.
