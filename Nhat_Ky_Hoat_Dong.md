@@ -280,3 +280,15 @@
 - Mirror chỉ tạo khi booking → in_progress (không tạo ở committed) — chính sách cửa
   sổ chat N giữ nguyên: mở lúc bắt đầu ca, đóng 24h sau kết thúc.
 - N-002 worker mobile đã xanh từ trước và được giữ nguyên.
+
+## 17/09/2026 — Bộ 4 tài liệu kinh doanh
+
+- Lập bộ 4 file PDF trình bày chuẩn doanh nghiệp cho kỳ 17/08–16/09/2026, lưu tại `docs/bao-cao-kinh-doanh/`:
+  1. `1_Bao_cao_ket_qua_ban_hang_EduCareLink.pdf` — phễu 58→27→13→4, doanh thu 870.000đ, bảng theo dòng dịch vụ.
+  2. `2_Minh_chung_giao_dich_tai_chinh_EduCareLink.pdf` — 4 biên lai MoMo nguyên trạng (mã GD 146998210044 / 146998565525 / 147009246246 / 147133594458) + bảng đối chiếu khớp 100%.
+  3. `3_Doanh_thu_ban_hang_EduCareLink.pdf` — sổ chi tiết doanh thu, cơ cấu Gia sư 470.000đ (54%) / Trông trẻ 400.000đ (46%), theo ngày 15-16/09.
+  4. `4_Bao_cao_luot_su_dung_EduCareLink.pdf` — 58 truy cập, 27 khảo sát, 13 đăng ký (9 dùng thử + 4 tư vấn), chuyển đổi 22,4%; nguồn: trực tiếp 42, Facebook 10, TikTok 4.
+- Ghi chú nội dung: biên lai Lê Thị Bích Nhuận (270.000đ) xác định là dịch vụ gia sư cấp 2 (THCS) theo yêu cầu.
+- Nguồn số liệu duy nhất: file thống kê 30 ngày hệ thống xuất 23:27 16/09/2026 + 4 biên lai MoMo — 4 tài liệu đối chiếu chéo khớp tuyệt đối.
+- Định dạng: A4, bìa Template HUD, palette cam ấm EduCareLink (cascade warmth), font FreeSerif đầy đủ tiếng Việt, header/footer + số trang từng tài liệu.
+- Chuẩn hoá văn phong doanh nghiệp (17/09): 4 tài liệu được chỉnh thành hồ sơ nội bộ của doanh nghiệp đang vận hành — chân trang bìa đổi thành "Tài liệu kinh doanh nội bộ · 09/2026"; các đoạn thân bài chuyển sang văn phong kế toán/kiểm toán (lưu trữ, đối chiếu, kiểm soát nội bộ định kỳ); metadata Subject của PDF rút gọn; thư mục lưu trữ đổi tên thành `docs/bao-cao-kinh-doanh/`. Số liệu, bố cục và 4 biên lai giữ nguyên trạng.
