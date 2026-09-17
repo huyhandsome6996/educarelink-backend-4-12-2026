@@ -2,6 +2,7 @@
 matching/api/jobs.py — API đăng việc + danh sách ứng viên (Step 1 / 2 / 3).
 
   POST /api/matching/jobs/                      tạo JobPost (draft → validate)
+  GET  /api/matching/jobs/                      danh sách bài đăng của PH hiện tại
   POST /api/matching/jobs/{id}/publish/         đăng + trigger AI parse → slots
   POST /api/matching/candidates/                danh sách max 8 CP (body: job_id)
 """
@@ -14,8 +15,8 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..constants import JobPostStatus
-from ..models import JobPost, JobSlot, StateTransitionLog
+from ..constants import JobPostStatus, get_status_label_vi
+from ..models import Booking, JobPost, JobSlot, StateTransitionLog
 from ..services import matching_service
 from ..services.gemini_service import parse_job_post, seed_default_prompt_template
 from ..services.job_schema import expand_slot_dates, validate_job_payload
@@ -76,6 +77,33 @@ class JobPostCreateAPIView(CreateAPIView):
     """POST /api/matching/jobs/ — parent tạo job (validate riêng từng loại)."""
     serializer_class = JobPostSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """GET /api/matching/jobs/ — danh sách bài đăng của phụ huynh hiện tại.
+
+        Đồng bộ Web ↔ Mobile (parity "Việc của tôi"): trang Web parent_tasks.html
+        dùng endpoint này để hiển thị các job CHƯA có booking (đang tìm ứng viên)
+        kèm nút chuyển sang /ung-vien/<job_id>/ — thay hoàn toàn luồng cũ
+        /api/parent/my-tasks/ (core.Task). Mobile không gọi nhưng contract
+        giữ giống BookingListAPIView: {count, results}.
+        """
+        if getattr(request.user, 'role', '') != 'parent':
+            return Response({'code': 'not_a_parent',
+                             'detail': 'Chỉ phụ huynh mới xem được danh sách bài đăng.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        # DSA: 1 query lấy tối đa 50 job mới nhất + 1 query Booking dùng
+        # job_id__in để đánh dấu has_booking — KHÔNG truy vấn N+1 từng job.
+        jobs = list(JobPost.objects.filter(parent=request.user)
+                    .order_by('-created_at')[:50])
+        booked_job_ids = set(Booking.objects.filter(
+            job_id__in=[j.pk for j in jobs]).values_list('job_id', flat=True))
+        results = []
+        for j in jobs:
+            data = JobPostSerializer(j).data
+            data['status_label_vi'] = get_status_label_vi(j.status)
+            data['has_booking'] = j.pk in booked_job_ids
+            results.append(data)
+        return Response({'count': len(results), 'results': results})
 
     def create(self, request, *args, **kwargs):
         if getattr(request.user, 'role', '') != 'parent':

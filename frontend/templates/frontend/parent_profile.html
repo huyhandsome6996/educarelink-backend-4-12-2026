@@ -497,17 +497,27 @@
                 showToast('Không thể tải thông tin cá nhân', 'error');
             }
 
-            // Load task stats
+            // Load stats từ Flow 1 Matching (đồng bộ 2 chiều Web ↔ Mobile)
             try {
-                const taskResp = await apiFetch(API_BASE + '/parent/my-tasks/');
-                if (taskResp.ok) {
-                    const tasks = await taskResp.json();
-                    document.getElementById('stat-total').textContent = tasks.length;
-                    document.getElementById('stat-completed').textContent = tasks.filter(t => t.status === 'completed').length;
-                    // Count reviews given
-                    const reviewCount = tasks.filter(t => t.parent_review_given).length;
-                    document.getElementById('stat-rating').textContent = reviewCount;
+                const [jobsResp, bookingsResp] = await Promise.all([
+                    apiFetch(API_BASE + '/matching/jobs/'),
+                    apiFetch(API_BASE + '/matching/bookings/?role=parent'),
+                ]);
+                let jobs = [];
+                let bookings = [];
+                if (jobsResp.ok) {
+                    const jd = await jobsResp.json();
+                    jobs = Array.isArray(jd.results) ? jd.results : (Array.isArray(jd) ? jd : []);
                 }
+                if (bookingsResp.ok) {
+                    const bd = await bookingsResp.json();
+                    bookings = Array.isArray(bd.results) ? bd.results : (Array.isArray(bd) ? bd : []);
+                }
+                document.getElementById('stat-total').textContent = jobs.length;
+                document.getElementById('stat-completed').textContent = bookings.filter(b => b.status === 'completed').length;
+                // Số đánh giá phụ huynh đã gửi (review gắn trên Task mirror của booking)
+                const reviewCount = bookings.filter(b => b.review).length;
+                document.getElementById('stat-rating').textContent = reviewCount;
             } catch (e) {
                 console.error('Stats load error:', e);
             }

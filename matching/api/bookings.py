@@ -49,12 +49,18 @@ logger = logging.getLogger('educarelink.matching.api.booking')
 
 
 def _job_address(job):
-    """Địa chỉ hiển thị (best-effort) từ type_data theo loại job — QA 2026-09-11 #4."""
+    """Địa chỉ hiển thị (best-effort) từ type_data theo loại job — QA 2026-09-11 #4.
+
+    Bổ sung fallback JobPost.location_note (QA 2026-09-18): job tutoring
+    thường chỉ có location_note ở cấp JobPost, không nằm trong type_data —
+    trước đây chi tiết đơn chỉ hiện toạ độ, thiếu địa chỉ chữ.
+    """
     td = getattr(job, 'type_data', None) or {}
     loc = td.get('pickup_location') or td.get('destination_location')
     if isinstance(loc, dict):
         return (loc.get('address') or loc.get('label') or loc.get('name') or '').strip()
-    return (td.get('location_note') or '').strip()
+    return (td.get('location_note') or '').strip() or \
+        (getattr(job, 'location_note', '') or '').strip()
 
 
 # Nhãn dịch vụ tiếng Việt theo job_type — phục vụ UI Đơn của tôi (Stitch 2026-09-11)

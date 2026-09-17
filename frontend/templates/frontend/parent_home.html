@@ -235,7 +235,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 lg:gap-4">
                     
                     <!-- Thẻ 1: Tổng việc đã đăng -->
-                    <a href="{% url 'frontend:parent_tasks' %}?filter=all" class="stat-card group bg-surface rounded-2xl p-4 lg:p-5 border border-border shadow-card-rest block relative overflow-hidden" title="Xem toàn bộ công việc">
+                    <a href="{% url 'frontend:parent_tasks' %}" class="stat-card group bg-surface rounded-2xl p-4 lg:p-5 border border-border shadow-card-rest block relative overflow-hidden" title="Xem toàn bộ công việc">
                         <div class="flex items-center justify-between mb-3">
                             <span class="text-xs font-semibold text-textSecondary uppercase tracking-wider">Tổng việc đã đăng</span>
                             <div class="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
@@ -575,26 +575,30 @@
             return 'Chào buổi tối';
         }
 
-        // ---- Status badge markup ----
-        function getStatusBadgeMarkup(status) {
-            if (status === 'open') {
-                return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold rounded-full uppercase tracking-wide">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            Đang tìm người
-                        </span>`;
-            } else if (status === 'in_progress') {
-                return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold rounded-full uppercase tracking-wide">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Đang thực hiện
-                        </span>`;
-            } else if (status === 'completed') {
-                return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-full uppercase tracking-wide">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Đã hoàn thành
-                        </span>`;
-            }
-            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-bold rounded-full uppercase tracking-wide">
-                        Đã hủy
+        // ---- Status badge markup (đồng bộ Flow 1 Matching — badge màu chuẩn) ----
+        function getStatusBadgeMarkup(status, labelText) {
+            const map = {
+                awaiting_commitment: { label: 'Chờ CarePartner cam kết', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500 animate-pulse' },
+                reschedule_requested: { label: 'Đang xin đổi giờ', cls: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+                suspected_no_show: { label: 'Nghi ngờ không đến', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+                committed: { label: 'Đã khóa lịch hẹn', cls: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+                in_progress: { label: 'Đang thực hiện', cls: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+                awaiting_review: { label: 'Chờ đánh giá', cls: 'bg-teal-50 text-teal-700 border-teal-200', dot: 'bg-teal-500' },
+                completed: { label: 'Hoàn thành', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+                cancelled_by_parent: { label: 'Đã huỷ', cls: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
+                cancelled_by_carepartner: { label: 'CarePartner đã huỷ', cls: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+                declined_in_window: { label: 'Đã từ chối', cls: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
+                expired_no_response: { label: 'Hết hạn phản hồi', cls: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
+                no_show: { label: 'Không đến làm', cls: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+                no_show_unconfirmed: { label: 'Chưa xác nhận không đến', cls: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+                disputed: { label: 'Có tranh chấp', cls: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
+                // Trạng thái JobPost (bài đăng chưa có đơn)
+                searching: { label: 'Đang tìm Carepartner', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500 animate-pulse' },
+            };
+            const cfg = map[status] || { label: labelText || status || 'Đã huỷ', cls: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400' };
+            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 ${cfg.cls} border text-[11px] font-bold rounded-full uppercase tracking-wide">
+                        <span class="w-1.5 h-1.5 rounded-full ${cfg.dot}"></span>
+                        ${escapeHtml(cfg.label)}
                     </span>`;
         }
 
@@ -638,78 +642,117 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // ---- Render task card (Redesigned with superior hierarchy) ----
-        function renderTaskCard(task) {
-            const statusBadge = getStatusBadgeMarkup(task.status);
-            const formattedTime = formatDateTime(task.scheduled_time);
-            const formattedPrice = formatPrice(task.price);
-            
-            // Primary action button based on status
+        // ---- Render card gần đây (Booking Flow 1 + JobPost đang tìm CP) ----
+        function renderRecentCard(item) {
+            const isBooking = item.kind === 'booking';
+            const b = item.data;
+
+            const statusBadge = isBooking
+                ? getStatusBadgeMarkup(b.status, b.status_label_vi)
+                : getStatusBadgeMarkup('searching');
+            const price = isBooking ? (b.hourly_rate_vnd || b.total_value_vnd) : b.hourly_rate_vnd;
+            const title = isBooking ? (b.job_title || 'Công việc ghép cặp') : (b.title || 'Bài đăng mới');
+            const location = isBooking
+                ? ((b.location_info && b.location_info.address) || b.job_address || 'Tại nhà phụ huynh')
+                : (b.location_note || 'Tại nhà phụ huynh');
+
+            // Thời gian: booking dùng first_slot (server đã vi hoá); job dùng lịch từ type_data
+            let timeText;
+            if (isBooking) {
+                timeText = (b.first_slot && (b.first_slot.day_of_week_vi || b.first_slot.date_vi))
+                    ? [b.first_slot.day_of_week_vi, b.first_slot.date_vi,
+                       (b.first_slot.time_from_vi && b.first_slot.time_to_vi)
+                        ? `${b.first_slot.time_from_vi} – ${b.first_slot.time_to_vi}` : ''
+                      ].filter(Boolean).join(', ')
+                    : 'Lịch hẹn linh hoạt';
+            } else {
+                timeText = b.schedule || 'Lịch hẹn linh hoạt';
+            }
+
+            // Nút chính theo trạng thái (đồng bộ parity mobile ParentHomeScreen)
             let actionBtn = '';
-            if (task.status === 'open') {
-                actionBtn = `
-                    <a href="/parent/browse-candidates/?task_id=${task.id}"
-                       class="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primaryDark text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5 group-btn">
+            let detailHref = isBooking ? `/don/${b.id}/` : (b.has_booking ? '#' : `/ung-vien/${b.id}/`);
+            if (!isBooking && b.has_booking) {
+                detailHref = '/parent/tasks/';
+            }
+            if (!isBooking) {
+                // Bài đăng đang tìm CarePartner → sang trang ứng viên Flow 1
+                const ready = ['ai_parsed', 'matching', 'needs_replacement'].includes(b.status);
+                actionBtn = ready ? `
+                    <a href="/ung-vien/${b.id}/"
+                       class="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primaryDark text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-base">group</span>
                         <span>Xem ứng viên</span>
                         <span class="material-symbols-outlined text-xs">arrow_forward</span>
-                    </a>`;
-            } else if (task.status === 'completed') {
+                    </a>` : `
+                    <span class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 text-textSecondary font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">hourglass_top</span>
+                        <span>Đang xử lý</span>
+                    </span>`;
+            } else if (b.status === 'completed' && !b.review && b.task_id) {
                 actionBtn = `
-                    <a href="/parent/review/?task_id=${task.id}"
+                    <a href="/parent/review/?task_id=${b.task_id}"
                        class="flex-1 py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondaryDark text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-base">star</span>
                         <span>Đánh giá</span>
                     </a>`;
-            } else if (task.status === 'in_progress') {
+            } else if (b.status === 'in_progress' && b.task_id) {
                 actionBtn = `
-                    <a href="/parent/care-diary/?task_id=${task.id}"
+                    <a href="/chat/?task_id=${b.task_id}"
                        class="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5">
-                        <span class="material-symbols-outlined text-base">visibility</span>
-                        <span>Xem nhật ký ca</span>
+                        <span class="material-symbols-outlined text-base">chat</span>
+                        <span>Nhắn tin</span>
                     </a>`;
+            } else if (b.status === 'awaiting_commitment') {
+                actionBtn = `
+                    <span class="flex-1 py-2.5 px-4 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">timer</span>
+                        <span>Chờ CarePartner cam kết</span>
+                    </span>`;
             } else {
                 actionBtn = `
                     <a href="{% url 'frontend:dang_viec_select' %}"
                        class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-textSecondary font-bold text-xs text-center transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-base">replay</span>
-                        <span>Đăng lại</span>
+                        <span>Đăng việc mới</span>
                     </a>`;
             }
 
             return `
                 <div class="task-card bg-surface rounded-2xl p-5 border border-border shadow-card-rest flex flex-col justify-between">
                     <div>
-                        <!-- Top line: Status Badge on left, Price on right -->
                         <div class="flex justify-between items-center mb-3">
                             ${statusBadge}
                             <div class="text-right">
-                                <span class="font-headline font-extrabold text-base lg:text-lg text-primary">${formattedPrice}</span>
+                                <span class="font-headline font-extrabold text-base lg:text-lg text-primary">${formatPrice(price)}</span>
                             </div>
                         </div>
 
-                        <!-- Title is the primary visual hero -->
-                        <h3 class="font-headline font-bold text-textPrimary text-base leading-snug mb-3 hover:text-primary transition-colors cursor-pointer" onclick="location.href='/parent/task-detail/?task_id=${task.id}'">
-                            ${escapeHtml(task.title)}
+                        <h3 class="font-headline font-bold text-textPrimary text-base leading-snug mb-3 hover:text-primary transition-colors cursor-pointer" onclick="location.href='${detailHref}'">
+                            ${escapeHtml(title)}
                         </h3>
 
-                        <!-- Metadata details -->
                         <div class="space-y-2 mb-4 bg-gray-50/70 p-3 rounded-xl border border-gray-100">
                             <div class="flex items-center gap-2 text-textSecondary text-xs">
                                 <span class="material-symbols-outlined text-base text-primary shrink-0">location_on</span>
-                                <span class="truncate font-medium text-gray-700">${escapeHtml(task.location || 'Tại nhà phụ huynh')}</span>
+                                <span class="truncate font-medium text-gray-700">${escapeHtml(location)}</span>
                             </div>
                             <div class="flex items-center gap-2 text-textSecondary text-xs">
                                 <span class="material-symbols-outlined text-base text-textMuted shrink-0">schedule</span>
-                                <span class="font-medium text-gray-700">${formattedTime}</span>
+                                <span class="font-medium text-gray-700">${escapeHtml(timeText)}</span>
                             </div>
+                            ${isBooking && b.carepartner_info && b.carepartner_info.full_name ? `
+                            <div class="flex items-center gap-2 text-textSecondary text-xs">
+                                <span class="material-symbols-outlined text-base text-textMuted shrink-0">person</span>
+                                <span class="font-medium text-gray-700 truncate">CarePartner: ${escapeHtml(b.carepartner_info.full_name)}</span>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
 
-                    <!-- Actions row -->
                     <div>
                         <div class="border-t border-gray-100 pt-3 flex items-center gap-2.5">
-                            <a href="/parent/task-detail/?task_id=${task.id}"
+                            <a href="${detailHref}"
                                class="py-2.5 px-3.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-textSecondary font-semibold text-xs text-center transition-all duration-200 flex items-center justify-center gap-1 shrink-0"
                                title="Xem chi tiết đơn">
                                 <span class="material-symbols-outlined text-base">info</span>
@@ -771,23 +814,36 @@
             setText('greeting-mobile', fullName);
             ['sidebar-avatar', 'header-avatar', 'mobile-avatar'].forEach(id => setSrc(id, avatarUrl));
 
-            // 2. Fetch Tasks
-            let tasks = [];
+            // 2. Fetch dữ liệu Flow 1 Matching (đồng bộ 2 chiều Web ↔ Mobile):
+            //    đơn ghép cặp + bài đăng chưa có CarePartner
+            let bookings = [];
+            let jobs = [];
             try {
-                const taskResp = await apiFetch(API_BASE + "/parent/my-tasks/");
-                if (taskResp && taskResp.ok) {
-                    tasks = await taskResp.json();
-                } else {
-                    tasks = [];
+                const [bookingsResp, jobsResp] = await Promise.all([
+                    apiFetch(API_BASE + "/matching/bookings/?role=parent"),
+                    apiFetch(API_BASE + "/matching/jobs/"),
+                ]);
+                if (bookingsResp && bookingsResp.ok) {
+                    const bd = await bookingsResp.json();
+                    bookings = Array.isArray(bd.results) ? bd.results : (Array.isArray(bd) ? bd : []);
+                }
+                if (jobsResp && jobsResp.ok) {
+                    const jd = await jobsResp.json();
+                    jobs = Array.isArray(jd.results) ? jd.results : (Array.isArray(jd) ? jd : []);
                 }
             } catch (e) {
-                tasks = [];
+                bookings = [];
+                jobs = [];
             }
 
             const container = document.getElementById('task-list');
-            const totalCount = tasks.length;
-            const openCount = tasks.filter(t => t.status === 'open').length;
-            const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
+            const totalCount = jobs.length;
+            const searchingJobs = jobs.filter(j => !j.has_booking &&
+                !['draft', 'cancelled_by_parent', 'expired', 'completed'].includes(j.status));
+            const openCount = searchingJobs.length + bookings.filter(b =>
+                ['awaiting_commitment', 'reschedule_requested', 'suspected_no_show'].includes(b.status)).length;
+            const inProgressCount = bookings.filter(b =>
+                ['committed', 'in_progress'].includes(b.status)).length;
 
             // Update stats
             setText('stat-total', totalCount);
@@ -810,10 +866,15 @@
             const recentBadge = document.getElementById('recent-count-badge');
             if (recentBadge) recentBadge.textContent = `${totalCount} công việc`;
 
-            // Render Task Cards
+            // Render Task Cards (gộp đơn ghép cặp + bài đăng đang tìm CP, mới nhất trước)
             if (!container) return;
-            
-            if (tasks.length === 0) {
+
+            const recentItems = [
+                ...bookings.map(b => ({ kind: 'booking', data: b, ts: b.created_at || '' })),
+                ...searchingJobs.map(j => ({ kind: 'job', data: j, ts: j.created_at || '' })),
+            ].sort((a, b2) => (b2.ts || '').localeCompare(a.ts || ''));
+
+            if (recentItems.length === 0) {
                 container.innerHTML = `
                     <div class="col-span-full bg-surface rounded-2xl p-10 border border-dashed border-border text-center shadow-card-rest">
                         <div class="w-16 h-16 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center mx-auto mb-4 text-primary">
@@ -830,14 +891,14 @@
                         </a>
                     </div>`;
             } else {
-                const recentTasks = tasks.slice(0, 6);
-                container.innerHTML = recentTasks.map(t => renderTaskCard(t)).join('');
-                if (tasks.length > 6) {
+                const recentItems6 = recentItems.slice(0, 6);
+                container.innerHTML = recentItems6.map(item => renderRecentCard(item)).join('');
+                if (recentItems.length > 6) {
                     container.innerHTML += `
                         <div class="col-span-full text-center pt-3">
                             <a href="{% url 'frontend:parent_tasks' %}"
                                class="inline-flex items-center gap-1.5 text-primary font-bold text-xs lg:text-sm hover:underline py-2 px-4 rounded-xl bg-orange-50 border border-orange-200/80 transition-all">
-                                <span>Xem toàn bộ ${totalCount} công việc trên hệ thống</span>
+                                <span>Xem toàn bộ việc của bạn</span>
                                 <span class="material-symbols-outlined text-base">arrow_forward</span>
                             </a>
                         </div>`;

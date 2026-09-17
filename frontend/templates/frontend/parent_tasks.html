@@ -163,17 +163,22 @@
       </div>
     </div>
 
-    <!-- Tab Filter Bar -->
-    <div class="bg-surface rounded-xl border border-border shadow-sm mb-6">
-      <div class="flex">
-        <button onclick="setTab('open')" id="tab-open" class="tab-btn active flex-1 py-3.5 text-center font-headline font-semibold text-sm flex items-center justify-center gap-1.5 text-primary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
-          <span class="material-symbols-outlined text-base">search</span>
-          Đang tìm
-          <span id="badge-open" class="inline-flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
+    <!-- Tab Filter Bar (4 tab chuẩn parity mobile MyTasksScreen) -->
+    <div class="bg-surface rounded-xl border border-border shadow-sm mb-6 overflow-x-auto">
+      <div class="flex min-w-[560px]">
+        <button onclick="setTab('pending')" id="tab-pending" class="tab-btn active flex-1 py-3.5 text-center font-headline font-semibold text-sm flex items-center justify-center gap-1.5 text-primary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
+          <span class="material-symbols-outlined text-base">hourglass_top</span>
+          Chờ xác nhận
+          <span id="badge-pending" class="inline-flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
+        </button>
+        <button onclick="setTab('upcoming')" id="tab-upcoming" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
+          <span class="material-symbols-outlined text-base">calendar_month</span>
+          Sắp làm
+          <span id="badge-upcoming" class="inline-flex items-center justify-center bg-gray-100 text-textSecondary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
         </button>
         <button onclick="setTab('in_progress')" id="tab-in_progress" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
-          <span class="material-symbols-outlined text-base">autorenew</span>
-          Đang thực hiện
+          <span class="material-symbols-outlined text-base">acute</span>
+          Đang làm
           <span id="badge-in_progress" class="inline-flex items-center justify-center bg-gray-100 text-textSecondary text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">0</span>
         </button>
         <button onclick="setTab('history')" id="tab-history" class="tab-btn flex-1 py-3.5 text-center font-headline font-medium text-sm flex items-center justify-center gap-1.5 text-textSecondary transition-all duration-200 hover:bg-primaryLight hover:text-primary">
@@ -184,7 +189,7 @@
       </div>
     </div>
 
-    <!-- Task Cards Grid -->
+    <!-- Cards Grid -->
     <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
       <!-- Skeleton loaders (shown during loading) -->
       <div class="skeleton-card bg-surface rounded-xl border border-border p-5">
@@ -275,10 +280,21 @@
 const API_BASE = "/api";
 const LOGIN_URL = "{% url 'frontend:login' %}";
 
+// ==== AC 4: hết phiên/token chết (User not found) → dọn SẠCH localStorage,
+// báo tiếng Việt lịch sự, redirect /login/?next=<trang hiện tại> ====
+function sessionExpiredRedirect() {
+  ['token', 'refresh_token', 'role', 'user', 'is_staff', 'admin_username'].forEach(k => localStorage.removeItem(k));
+  showToast('Phiên đăng nhập đã hết hạn hoặc tài khoản không tồn tại. Đang chuyển đến trang đăng nhập...', 'error', 4000);
+  setTimeout(() => {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = LOGIN_URL + '?next=' + next;
+  }, 1200);
+}
+
 async function apiFetch(url, options = {}) {
     let token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = LOGIN_URL;
+        sessionExpiredRedirect();
         return new Response(null, { status: 401 });
     }
     options.headers = { ...options.headers, 'Authorization': 'Bearer ' + token };
@@ -300,20 +316,15 @@ async function apiFetch(url, options = {}) {
                     options.headers['Authorization'] = 'Bearer ' + refreshData.access;
                     response = await fetch(url, options);
                 } else {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('refresh_token');
-                    window.location.href = LOGIN_URL;
+                    sessionExpiredRedirect();
                     return new Response(null, { status: 401 });
                 }
             } catch (e) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('refresh_token');
-                window.location.href = LOGIN_URL;
+                sessionExpiredRedirect();
                 return new Response(null, { status: 401 });
             }
         } else {
-            localStorage.removeItem('token');
-            window.location.href = LOGIN_URL;
+            sessionExpiredRedirect();
             return new Response(null, { status: 401 });
         }
     }
@@ -328,6 +339,7 @@ if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
     const token = localStorage.getItem('token');
     if (!token) return;
     const r = await fetch('/api/profile/', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) { sessionExpiredRedirect(); return; }
     if (!r.ok) return;
     const p = await r.json();
     const av = document.getElementById('header-avatar');
@@ -337,40 +349,43 @@ if (!localStorage.getItem('token')) window.location.href = LOGIN_URL;
 })();
 
 // ==================== STATE ====================
-let allTasks = [];
-let currentTab = 'open';
+// Dữ liệu 100% từ Flow 1 Matching (đồng bộ 2 chiều với mobile):
+//   GET /api/matching/bookings/?role=parent  → các đơn ghép cặp
+//   GET /api/matching/jobs/                  → bài đăng chưa có đơn (đang tìm CP)
+let allBookings = [];
+let allJobs = [];
+let currentTab = 'pending';
 let confirmCallback = null;
 
-// ==== Lọc sâu từ URL (thẻ thống kê ở Trang chủ chuyển qua: ?status= / ?filter=all) ====
+// Nhóm trạng thái booking — chuẩn parity mobile MyTasksScreen.js
+const PENDING_BOOKING_STATUSES = ['awaiting_commitment', 'reschedule_requested', 'suspected_no_show'];
+const UPCOMING_BOOKING_STATUSES = ['committed'];
+const IN_PROGRESS_BOOKING_STATUSES = ['in_progress'];
+const HISTORY_BOOKING_STATUSES = [
+  'completed', 'no_show', 'no_show_unconfirmed', 'cancelled_by_parent',
+  'cancelled_by_carepartner', 'declined_in_window', 'expired_no_response', 'disputed',
+];
+// Job chưa có booking: các trạng thái đang/đã đăng tin và cần hiển thị
+const SEARCHING_JOB_STATUSES = ['published', 'ai_parsing', 'ai_parsed', 'matching', 'needs_replacement'];
+// Job cho phép mở trang ứng viên (backend yêu cầu đúng 3 trạng thái này)
+const CANDIDATES_READY_JOB_STATUSES = ['ai_parsed', 'matching', 'needs_replacement'];
+
+// ==== Lọc sâu từ URL (thẻ thống kê ở Trang chủ chuyển qua: ?status=) ====
 (function applyInitialFilterFromUrl() {
   try {
     const p = new URLSearchParams(window.location.search);
     const st = (p.get('status') || '').toLowerCase();
     const fl = (p.get('filter') || '').toLowerCase();
-    if (['open', 'in_progress', 'completed', 'cancelled'].includes(st)) {
-      currentTab = (st === 'completed' || st === 'cancelled') ? 'history' : st;
+    if (st === 'open' || fl === 'pending') {
+      currentTab = 'pending';
+    } else if (st === 'in_progress') {
+      currentTab = 'in_progress';
+    } else if (st === 'upcoming' || st === 'committed') {
+      currentTab = 'upcoming';
+    } else if (st === 'completed' || st === 'cancelled' || fl === 'history') {
+      currentTab = 'history';
     } else if (fl === 'all') {
-      currentTab = 'all';
-    }
-    // Đồng bộ highlight tab (với 'all' không có nút tab → không highlight mục nào)
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.remove('active', 'text-primary');
-      btn.classList.add('text-textSecondary');
-      const badge = btn.querySelector('span[id^="badge-"]');
-      if (badge) {
-        badge.classList.remove('bg-primary/10', 'text-primary');
-        badge.classList.add('bg-gray-100', 'text-textSecondary');
-      }
-    });
-    const activeBtn = document.getElementById('tab-' + currentTab);
-    if (activeBtn) {
-      activeBtn.classList.add('active', 'text-primary');
-      activeBtn.classList.remove('text-textSecondary');
-      const badge = activeBtn.querySelector('span[id^="badge-"]');
-      if (badge) {
-        badge.classList.remove('bg-gray-100', 'text-textSecondary');
-        badge.classList.add('bg-primary/10', 'text-primary');
-      }
+      currentTab = 'pending';
     }
   } catch (e) { /* bỏ qua — giữ tab mặc định */ }
 })();
@@ -481,61 +496,119 @@ function setTab(tab) {
     }
   }
 
-  renderTasks();
+  renderCards();
 }
 
-// ==================== FILTER LOGIC ====================
-function getFilteredTasks() {
-  if (currentTab === 'all') {
-    // ?filter=all từ thẻ "Tổng việc đã đăng" — xem toàn bộ
-    return allTasks;
-  }
-  if (currentTab === 'open') {
-    return allTasks.filter(t => t.status === 'open');
-  } else if (currentTab === 'in_progress') {
-    return allTasks.filter(t => t.status === 'in_progress');
-  } else {
-    // history = completed + cancelled
-    return allTasks.filter(t => t.status === 'completed' || t.status === 'cancelled');
-  }
+// ==================== NHÓM DỮ LIỆU THEO 4 TAB (parity mobile) ====================
+function buildItemsByTab() {
+  const pending = [];
+  const upcoming = [];
+  const inProgress = [];
+  const history = [];
+
+  // Job chưa có booking nào → đang tìm CarePartner (tab Chờ xác nhận, giống
+  // task 'open' ở mobile). Job đã có booking → thẻ booking đại diện đầy đủ hơn.
+  allJobs.forEach(j => {
+    if (j.has_booking) return;
+    if (j.status === 'draft') return; // chưa đăng — không hiển thị
+    if (j.status === 'cancelled_by_parent' || j.status === 'expired' || j.status === 'completed') {
+      history.push({ kind: 'job', data: j });
+    } else {
+      pending.push({ kind: 'job', data: j });
+    }
+  });
+
+  allBookings.forEach(b => {
+    if (PENDING_BOOKING_STATUSES.includes(b.status)) {
+      pending.push({ kind: 'booking', data: b });
+    } else if (UPCOMING_BOOKING_STATUSES.includes(b.status)) {
+      upcoming.push({ kind: 'booking', data: b });
+    } else if (IN_PROGRESS_BOOKING_STATUSES.includes(b.status)) {
+      inProgress.push({ kind: 'booking', data: b });
+    } else if (HISTORY_BOOKING_STATUSES.includes(b.status)) {
+      history.push({ kind: 'booking', data: b });
+    }
+  });
+
+  return { pending, upcoming, in_progress: inProgress, history };
 }
 
 // ==================== STATUS HELPERS ====================
-function getStatusConfig(status) {
+// Badge màu chuẩn theo yêu cầu nghiệp vụ (AC 1):
+//   awaiting_commitment vàng/cam · committed cam đậm/xanh dương ·
+//   in_progress xanh dương · completed xanh lá · cancelled xám/đỏ
+function getBookingStatusConfig(status) {
   const map = {
-    open: { label: 'Đang tìm người', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: 'search', accent: 'bg-primary' },
-    in_progress: { label: 'Đang thực hiện', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: 'autorenew', accent: 'bg-blue-500' },
-    completed: { label: 'Đã hoàn thành', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'check_circle', accent: 'bg-success' },
-    cancelled: { label: 'Đã hủy', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'cancel', accent: 'bg-gray-400' },
+    awaiting_commitment: { label: 'Chờ CarePartner cam kết', color: 'bg-amber-50 text-amber-600 border-amber-200', icon: 'hourglass_top', accent: 'bg-primary' },
+    reschedule_requested: { label: 'Đang xin đổi giờ', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'edit_calendar', accent: 'bg-purple-500' },
+    suspected_no_show: { label: 'Nghi ngờ không đến', color: 'bg-amber-50 text-amber-600 border-amber-200', icon: 'location_off', accent: 'bg-amber-500' },
+    committed: { label: 'Đã khóa lịch hẹn', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: 'event_available', accent: 'bg-blue-600' },
+    in_progress: { label: 'Đang thực hiện ca làm', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: 'autorenew', accent: 'bg-blue-500' },
+    awaiting_review: { label: 'Chờ đánh giá', color: 'bg-teal-50 text-teal-600 border-teal-200', icon: 'rate_review', accent: 'bg-teal-500' },
+    completed: { label: 'Hoàn thành', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'check_circle', accent: 'bg-success' },
+    cancelled_by_parent: { label: 'Phụ huynh đã huỷ', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'cancel', accent: 'bg-gray-400' },
+    cancelled_by_carepartner: { label: 'CarePartner đã huỷ', color: 'bg-red-50 text-red-600 border-red-200', icon: 'person_off', accent: 'bg-red-500' },
+    declined_in_window: { label: 'Đã từ chối trong thời hạn', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'do_not_disturb_on', accent: 'bg-gray-400' },
+    expired_no_response: { label: 'Hết hạn phản hồi', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'timer_off', accent: 'bg-gray-400' },
+    no_show: { label: 'Không đến làm', color: 'bg-red-50 text-red-600 border-red-200', icon: 'directions_run', accent: 'bg-red-500' },
+    no_show_unconfirmed: { label: 'Chưa xác nhận không đến', color: 'bg-red-50 text-red-600 border-red-200', icon: 'help_center', accent: 'bg-red-400' },
+    disputed: { label: 'Có tranh chấp', color: 'bg-orange-50 text-orange-700 border-orange-200', icon: 'gavel', accent: 'bg-orange-600' },
   };
-  return map[status] || map.open;
+  return map[status] || { label: status, color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'info', accent: 'bg-gray-400' };
+}
+
+function getJobStatusConfig(job) {
+  if (CANDIDATES_READY_JOB_STATUSES.includes(job.status) || SEARCHING_JOB_STATUSES.includes(job.status)) {
+    return { label: 'Đang tìm CarePartner', color: 'bg-amber-50 text-amber-600 border-amber-200', icon: 'person_search', accent: 'bg-primary' };
+  }
+  const map = {
+    ai_failed: { label: 'Cần kiểm tra lại', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'error', accent: 'bg-amber-500' },
+    needs_admin_review: { label: 'Đang chờ kiểm duyệt', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'verified_user', accent: 'bg-purple-500' },
+    draft: { label: 'Bản nháp', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'edit_note', accent: 'bg-gray-400' },
+    cancelled_by_parent: { label: 'Đã huỷ', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'cancel', accent: 'bg-gray-400' },
+    expired: { label: 'Hết hạn', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'timer_off', accent: 'bg-gray-400' },
+  };
+  return map[job.status] || { label: job.status_label_vi || job.status, color: 'bg-gray-50 text-gray-500 border-gray-200', icon: 'info', accent: 'bg-gray-400' };
 }
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(parseInt(price) || 0) + 'đ';
 }
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = d - now;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  const dateStrShort = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-
-  if (diffDays === 0) return 'Hôm nay, ' + timeStr;
-  if (diffDays === 1) return 'Ngày mai, ' + timeStr;
-  if (diffDays === -1) return 'Hôm qua, ' + timeStr;
-  if (diffDays > 0 && diffDays <= 7) return `${diffDays} ngày nữa, ` + timeStr;
-  return dateStrShort + ', ' + timeStr;
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// ==================== RENDER TASKS ====================
-function renderTasks() {
+// Thời gian làm việc hiển thị từ first_slot (server đã chuẩn hoá tiếng Việt)
+function formatSlotTime(slot) {
+  if (!slot) return 'Lịch hẹn linh hoạt';
+  const day = slot.day_of_week_vi || '';
+  const date = slot.date_vi || slot.date || '';
+  const time = (slot.time_from_vi && slot.time_to_vi)
+    ? `${slot.time_from_vi} – ${slot.time_to_vi}` : '';
+  return [day, date, time].filter(Boolean).join(', ') || 'Lịch hẹn linh hoạt';
+}
+
+function formatScheduleLabel(item) {
+  const td = item.type_data || {};
+  if (item.job_type === 'tutoring') return 'Gia sư 1:1';
+  if (item.job_type === 'childcare') return 'Trông trẻ tại nhà';
+  if (item.job_type === 'pickup') return 'Đón trẻ tan học';
+  return item.category_label || 'Công việc';
+}
+
+// ==================== RENDER CARDS ====================
+function renderCards() {
   const grid = document.getElementById('task-grid');
   const emptyState = document.getElementById('empty-state');
-  const filtered = getFilteredTasks();
+  const itemsByTab = buildItemsByTab();
+  const filtered = itemsByTab[currentTab] || [];
 
   if (filtered.length === 0) {
     grid.classList.add('hidden');
@@ -543,14 +616,16 @@ function renderTasks() {
 
     // Dynamic empty message based on tab
     const titles = {
-      open: 'Chưa có việc đang tìm',
-      in_progress: 'Chưa có việc đang thực hiện',
-      history: 'Chưa có lịch sử việc',
+      pending: 'Chưa có việc chờ xác nhận',
+      upcoming: 'Chưa có ca làm sắp tới',
+      in_progress: 'Chưa có ca đang thực hiện',
+      history: 'Chưa có lịch sử',
     };
     const descs = {
-      open: 'Hãy đăng việc mới để tìm Carepartner phù hợp',
-      in_progress: 'Khi bạn chấp nhận ứng viên, việc sẽ chuyển sang đây',
-      history: 'Các việc đã hoàn thành hoặc đã hủy sẽ xuất hiện ở đây',
+      pending: 'Đăng việc mới để hệ thống ghép cặp CarePartner phù hợp tại Huế',
+      upcoming: 'Khi CarePartner cam kết nhận đơn, ca làm sẽ xuất hiện ở đây',
+      in_progress: 'Ca làm đang diễn ra sẽ hiển thị tại đây để bạn theo dõi',
+      history: 'Các ca đã hoàn thành hoặc đã huỷ sẽ xuất hiện ở đây',
     };
     document.getElementById('empty-title').textContent = titles[currentTab] || 'Chưa có việc nào';
     document.getElementById('empty-desc').textContent = descs[currentTab] || '';
@@ -560,138 +635,244 @@ function renderTasks() {
   grid.classList.remove('hidden');
   emptyState.classList.add('hidden');
 
-  grid.innerHTML = filtered.map(t => {
-    const st = getStatusConfig(t.status);
-    const isHistory = currentTab === 'history';
-
-    // Action buttons based on status
-    let actionHTML = '';
-    if (t.status === 'open') {
-      actionHTML = `
-        <div class="flex gap-2">
-          <button onclick="viewCandidates(${t.id})" class="flex-1 py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-            Xem ứng viên
-            <span class="material-symbols-outlined text-lg">chevron_right</span>
-          </button>
-          <button onclick="cancelTask(${t.id})" class="py-3 px-3 bg-gray-100 text-gray-500 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center" title="Hủy việc">
-            <span class="material-symbols-outlined text-lg">close</span>
-          </button>
-        </div>
-      `;
-    } else if (t.status === 'in_progress') {
-      actionHTML = `
-        <div class="space-y-2">
-          <div class="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100">
-            <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <span class="material-symbols-outlined text-blue-500 text-lg" style="font-variation-settings: 'FILL' 1;">person</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs text-blue-600 font-medium">Đang thực hiện bởi</p>
-              <p class="text-sm font-bold text-blue-700 truncate">${t.assigned_worker_name || 'Carepartner'}</p>
-            </div>
-            <span class="material-symbols-outlined text-blue-400 text-lg">autorenew</span>
-          </div>
-          <button onclick="trackCarepartner(${t.id}, '${(t.title || '').replace(/'/g, "\\'")}')" class="w-full py-3 bg-gradient-to-r from-primary to-primaryDark text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/30 hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">location_on</span>
-            Theo dõi vị trí Carepartner
-          </button>
-          <button onclick="location.href='/chat/?task_id=${t.id}'" class="w-full py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
-            Nhắn tin với Carepartner
-          </button>
-          <button onclick="location.href='/parent/payments/?task_id=${t.id}'" class="w-full py-3 bg-indigo-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-indigo-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">payments</span>
-            Thanh toán
-          </button>
-          <div class="flex gap-2">
-            <button onclick="completeTask(${t.id})" class="flex-1 py-3 bg-emerald-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-emerald-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-              <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-              Hoàn thành
-            </button>
-            <button onclick="cancelTask(${t.id})" class="py-3 px-3 bg-gray-100 text-gray-500 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center" title="Hủy việc">
-              <span class="material-symbols-outlined text-lg">close</span>
-            </button>
-          </div>
-        </div>
-      `;
-    } else if (t.status === 'completed') {
-      const isReviewed = Boolean(t.is_reviewed || t.review_detail);
-      const starRating = t.review_detail?.rating || 5;
-      actionHTML = `
-        ${isReviewed ? `
-          <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="flex text-amber-500">
-                ${Array(starRating).fill('<span class="material-symbols-outlined text-sm" style="font-variation-settings: \'FILL\' 1;">star</span>').join('')}
-              </div>
-              <span class="text-xs font-bold text-amber-800">Đã đánh giá (${starRating}★)</span>
-            </div>
-            <button onclick="goToReview(${t.id})" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
-              <span class="material-symbols-outlined text-sm">edit</span>
-              Sửa
-            </button>
-          </div>
-        ` : `
-          <button onclick="goToReview(${t.id})" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-orange-500/20 hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
-            Đánh giá Carepartner
-          </button>
-        `}
-        <div id="chat-slot-${t.id}" class="chat-24h-slot" data-task-id="${t.id}"></div>
-      `;
-    } else if (t.status === 'cancelled') {
-      actionHTML = `
-        <div class="flex items-center gap-2 justify-center py-3 text-gray-400 text-sm font-medium">
-          <span class="material-symbols-outlined text-lg">block</span>
-          Việc đã bị hủy
-        </div>
-      `;
-    }
-
-    return `
-      <article class="task-card relative overflow-hidden bg-surface rounded-xl border border-border shadow-sm">
-        <!-- Left accent bar -->
-        <div class="absolute top-0 left-0 w-1.5 h-full ${st.accent} rounded-l-xl"></div>
-        <div class="p-5 pl-6">
-          <!-- Header row -->
-          <div class="flex justify-between items-start mb-3 gap-3">
-            <h3 class="font-headline font-bold text-base text-textPrimary leading-tight flex-1 line-clamp-2">${t.title}</h3>
-            <span class="font-headline font-extrabold text-primary whitespace-nowrap text-base">${formatPrice(t.price)}</span>
-          </div>
-
-          <!-- Status badge -->
-          <div class="inline-flex items-center gap-1.5 ${st.color} px-2.5 py-1 rounded-full text-[11px] font-bold mb-4 border">
-            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">${st.icon}</span>
-            ${st.label}
-          </div>
-
-          <!-- Meta info -->
-          <div class="space-y-2 mb-5">
-            <div class="flex items-center gap-2.5 text-textSecondary">
-              <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[16px]">schedule</span>
-              </div>
-              <span class="text-sm font-medium truncate">${formatDate(t.scheduled_time)}</span>
-            </div>
-            ${t.location ? `
-            <div class="flex items-center gap-2.5 text-textSecondary">
-              <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[16px]">location_on</span>
-              </div>
-              <span class="text-sm font-medium truncate">${t.location}</span>
-            </div>
-            ` : ''}
-          </div>
-
-          <!-- Action -->
-          ${actionHTML}
-        </div>
-      </article>
-    `;
+  grid.innerHTML = filtered.map(item => {
+    return item.kind === 'booking' ? renderBookingCard(item.data) : renderJobCard(item.data);
   }).join('');
 
   // Cửa sổ chat 24h: kiểm tra trạng thái thật từ server sau khi render
   patchChat24hSlots();
+  startCommitCountdowns();
+}
+
+// ==================== THẺ ĐƠN GHÉP CẶP (Booking Flow 1) ====================
+function renderBookingCard(b) {
+  const st = getBookingStatusConfig(b.status);
+  const cp = b.carepartner_info || {};
+  const loc = (b.location_info && b.location_info.address) || b.job_address || '';
+  const isHistory = currentTab === 'history';
+
+  // Hành động theo nhóm trạng thái (chi tiết luôn trỏ /don/<booking_id>/)
+  let actionHTML = '';
+  const detailBtn = `
+    <a href="/don/${b.id}/" class="flex-1 py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+      Xem chi tiết
+      <span class="material-symbols-outlined text-lg">chevron_right</span>
+    </a>`;
+
+  if (b.status === 'awaiting_commitment') {
+    const secs = Number(b.seconds_left) || 0;
+    const waitLine = secs > 0
+      ? `<div class="flex items-center gap-2 p-3 bg-amber-50/70 rounded-xl border border-amber-100 mb-2">
+           <span class="material-symbols-outlined text-amber-500 text-lg">timer</span>
+           <span class="text-xs font-semibold text-amber-700">CarePartner còn <b data-commit-seconds="${secs}">${formatSeconds(secs)}</b> để cam kết nhận việc</span>
+         </div>`
+      : '';
+    actionHTML = `${waitLine}${detailBtn}`;
+  } else if (b.status === 'committed') {
+    actionHTML = `
+      <div class="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100 mb-2">
+        <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-blue-500 text-lg" style="font-variation-settings: 'FILL' 1;">event_available</span>
+        </div>
+        <p class="text-xs text-blue-700 font-semibold flex-1">Lịch đã khóa — CarePartner sẽ đến đúng hẹn của bạn</p>
+      </div>
+      ${detailBtn}`;
+  } else if (b.status === 'in_progress') {
+    const chatBtn = b.task_id ? `
+      <button onclick="location.href='/chat/?task_id=${b.task_id}'" class="flex-1 py-3 bg-blue-500 text-white font-headline font-bold text-sm rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+        Nhắn tin
+      </button>` : '';
+    const trackBtn = b.task_id ? `
+      <button onclick="location.href='{% url 'frontend:live_tracking' %}?task_id=${b.task_id}'" class="py-3 px-3 bg-gray-100 text-gray-600 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center" title="Theo dõi vị trí">
+        <span class="material-symbols-outlined text-lg">location_on</span>
+      </button>` : '';
+    actionHTML = `
+      <div class="flex gap-2">
+        ${chatBtn || trackBtn ? '' : ''}
+        ${detailBtn}
+        ${chatBtn}
+        ${trackBtn}
+      </div>`;
+  } else if (b.status === 'completed') {
+    const review = b.review;
+    const reviewBlock = review ? `
+      <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="flex text-amber-500">
+            ${Array(Math.max(1, Math.min(5, review.rating || 5))).fill('<span class="material-symbols-outlined text-sm" style="font-variation-settings: \'FILL\' 1;">star</span>').join('')}
+          </div>
+          <span class="text-xs font-bold text-amber-800">Đã đánh giá (${review.rating || 5}★)</span>
+        </div>
+        <a href="/parent/review/?task_id=${b.task_id}" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">edit</span>
+          Sửa
+        </a>
+      </div>` : (b.task_id ? `
+      <button onclick="location.href='/parent/review/?task_id=${b.task_id}'" class="w-full py-3 mb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-orange-500/20 hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
+        Đánh giá Carepartner
+      </button>` : '');
+    const chatSlot = b.task_id ? `<div class="chat-24h-slot" data-task-id="${b.task_id}"></div>` : '';
+    actionHTML = `${reviewBlock}${chatSlot || detailBtn}`;
+  } else {
+    // Lịch sử: đã huỷ / hết hạn / từ chối / tranh chấp
+    const reasonLine = b.cancel_reason_code
+      ? `<div class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 mb-2">
+           <span class="material-symbols-outlined text-gray-400 text-lg">info</span>
+           <span class="text-xs text-gray-500 font-medium">Lý do huỷ: ${escapeHtml(b.cancel_reason_code === 'other' ? 'Lý do khác' : b.cancel_reason_code)}</span>
+         </div>`
+      : '';
+    actionHTML = `${reasonLine}
+      <a href="/don/${b.id}/" class="w-full py-3 bg-gray-100 text-gray-600 font-headline font-bold text-sm rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+        Xem chi tiết đơn
+      </a>`;
+  }
+
+  return `
+    <article class="task-card relative overflow-hidden bg-surface rounded-xl border border-border shadow-sm">
+      <div class="absolute top-0 left-0 w-1.5 h-full ${st.accent} rounded-l-xl"></div>
+      <div class="p-5 pl-6">
+        <div class="flex justify-between items-start mb-3 gap-3">
+          <h3 class="font-headline font-bold text-base text-textPrimary leading-tight flex-1 line-clamp-2">${escapeHtml(b.job_title || 'Công việc ghép cặp')}</h3>
+          <span class="font-headline font-extrabold text-primary whitespace-nowrap text-base">${formatPrice(b.hourly_rate_vnd || b.total_value_vnd)}</span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          <span class="inline-flex items-center gap-1.5 ${st.color} px-2.5 py-1 rounded-full text-[11px] font-bold border">
+            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">${st.icon}</span>
+            ${st.label}
+          </span>
+          ${b.category_name_vi ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-50 text-textSecondary border border-gray-100">${escapeHtml(b.category_name_vi)}</span>` : ''}
+        </div>
+
+        <div class="space-y-2 mb-5">
+          <div class="flex items-center gap-2.5 text-textSecondary">
+            <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[16px]">schedule</span>
+            </div>
+            <span class="text-sm font-medium truncate">${escapeHtml(formatSlotTime(b.first_slot))}</span>
+          </div>
+          ${loc ? `
+          <div class="flex items-center gap-2.5 text-textSecondary">
+            <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[16px]">location_on</span>
+            </div>
+            <span class="text-sm font-medium truncate">${escapeHtml(loc)}</span>
+          </div>
+          ` : ''}
+          ${cp.full_name ? `
+          <div class="flex items-center gap-2.5 text-textSecondary">
+            <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[16px] text-primary">person</span>
+            </div>
+            <span class="text-sm font-medium truncate">CarePartner: ${escapeHtml(cp.full_name)}${cp.school ? ` · ${escapeHtml(cp.school)}` : ''}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        ${actionHTML}
+      </div>
+    </article>
+  `;
+}
+
+// ==================== THẺ BÀI ĐĂNG ĐANG TÌM CP (JobPost chưa có đơn) ====================
+function renderJobCard(j) {
+  const st = getJobStatusConfig(j);
+  const loc = j.location_note || '';
+  const candidatesReady = CANDIDATES_READY_JOB_STATUSES.includes(j.status);
+
+  let actionHTML = '';
+  if (candidatesReady) {
+    actionHTML = `
+      <button onclick="viewCandidates('${j.id}')" class="w-full py-3 bg-primary text-white font-headline font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:bg-primaryDark active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+        Xem ứng viên
+        <span class="material-symbols-outlined text-lg">chevron_right</span>
+      </button>`;
+  } else if (j.status === 'ai_failed') {
+    actionHTML = `
+      <div class="flex items-center gap-2 justify-center py-3 text-amber-600 text-sm font-medium bg-amber-50/60 rounded-xl border border-amber-100">
+        <span class="material-symbols-outlined text-lg">error</span>
+        Bài đăng cần kiểm tra lại thông tin
+      </div>`;
+  } else if (j.status === 'needs_admin_review') {
+    actionHTML = `
+      <div class="flex items-center gap-2 justify-center py-3 text-purple-600 text-sm font-medium bg-purple-50/60 rounded-xl border border-purple-100">
+        <span class="material-symbols-outlined text-lg">verified_user</span>
+        Đang chờ ban quản trị kiểm duyệt
+      </div>`;
+  } else {
+    actionHTML = `
+      <div class="flex items-center gap-2 justify-center py-3 text-gray-400 text-sm font-medium">
+        <span class="material-symbols-outlined text-lg">hourglass_top</span>
+        Hệ thống đang xử lý bài đăng
+      </div>`;
+  }
+
+  return `
+    <article class="task-card relative overflow-hidden bg-surface rounded-xl border border-border shadow-sm">
+      <div class="absolute top-0 left-0 w-1.5 h-full ${st.accent} rounded-l-xl"></div>
+      <div class="p-5 pl-6">
+        <div class="flex justify-between items-start mb-3 gap-3">
+          <h3 class="font-headline font-bold text-base text-textPrimary leading-tight flex-1 line-clamp-2">${escapeHtml(j.title || 'Bài đăng mới')}</h3>
+          <span class="font-headline font-extrabold text-primary whitespace-nowrap text-base">${formatPrice(j.hourly_rate_vnd)}</span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          <span class="inline-flex items-center gap-1.5 ${st.color} px-2.5 py-1 rounded-full text-[11px] font-bold border">
+            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">${st.icon}</span>
+            ${st.label}
+          </span>
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-50 text-textSecondary border border-gray-100">${escapeHtml(formatScheduleLabel(j))}</span>
+        </div>
+
+        <div class="space-y-2 mb-5">
+          <div class="flex items-center gap-2.5 text-textSecondary">
+            <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[16px]">event_note</span>
+            </div>
+            <span class="text-sm font-medium truncate">${escapeHtml(j.schedule || 'Lịch hẹn linh hoạt')}</span>
+          </div>
+          ${loc ? `
+          <div class="flex items-center gap-2.5 text-textSecondary">
+            <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[16px]">location_on</span>
+            </div>
+            <span class="text-sm font-medium truncate">${escapeHtml(loc)}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        ${actionHTML}
+      </div>
+    </article>
+  `;
+}
+
+// ==================== ĐẾM NGƯỢC CAM KẾT ====================
+function formatSeconds(total) {
+  const s = Math.max(0, Number(total) || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h > 0) return `${h} giờ ${String(m).padStart(2, '0')} phút`;
+  if (m > 0) return `${m} phút ${String(sec).padStart(2, '0')} giây`;
+  return `${sec} giây`;
+}
+
+function startCommitCountdowns() {
+  document.querySelectorAll('[data-commit-seconds]').forEach(el => {
+    if (el._cdTimer) clearInterval(el._cdTimer);
+    let s = Number(el.dataset.commitSeconds) || 0;
+    el._cdTimer = setInterval(() => {
+      s -= 1;
+      if (s <= 0) {
+        clearInterval(el._cdTimer);
+        el.textContent = 'đã hết thời gian chờ';
+        return;
+      }
+      el.textContent = formatSeconds(s);
+    }, 1000);
+  });
 }
 
 // ==================== CỬA SỔ CHAT 24H ====================
@@ -748,146 +929,69 @@ async function patchChat24hSlots() {
 
 // ==================== UPDATE STATS & BADGES ====================
 function updateStats() {
-  const openCount = allTasks.filter(t => t.status === 'open').length;
-  const progressCount = allTasks.filter(t => t.status === 'in_progress').length;
-  const historyCount = allTasks.filter(t => t.status === 'completed' || t.status === 'cancelled').length;
+  const itemsByTab = buildItemsByTab();
+  const pendingCount = itemsByTab.pending.length;
+  const upcomingCount = itemsByTab.upcoming.length;
+  const inProgressCount = itemsByTab.in_progress.length;
+  const completedCount = allBookings.filter(b => b.status === 'completed').length;
 
-  document.getElementById('stat-open').textContent = openCount;
-  document.getElementById('stat-progress').textContent = progressCount;
-  document.getElementById('stat-done').textContent = allTasks.filter(t => t.status === 'completed').length;
+  // 3 thẻ thống kê: Đang tìm (chờ xác nhận) / Đang làm (sắp làm + đang làm) / Hoàn thành
+  document.getElementById('stat-open').textContent = pendingCount;
+  document.getElementById('stat-progress').textContent = upcomingCount + inProgressCount;
+  document.getElementById('stat-done').textContent = completedCount;
 
-  document.getElementById('badge-open').textContent = openCount;
-  document.getElementById('badge-in_progress').textContent = progressCount;
-  document.getElementById('badge-history').textContent = historyCount;
+  document.getElementById('badge-pending').textContent = pendingCount;
+  document.getElementById('badge-upcoming').textContent = upcomingCount;
+  document.getElementById('badge-in_progress').textContent = inProgressCount;
+  document.getElementById('badge-history').textContent = itemsByTab.history.length;
 }
 
 // ==================== NAVIGATION ====================
-function viewCandidates(id) {
-  localStorage.setItem('current_task_id', id);
-  window.location.href = "{% url 'frontend:browse_candidates' %}";
-}
-
-function goToReview(taskId) {
-  window.location.href = "{% url 'frontend:review' %}?task_id=" + taskId;
-}
-
-// ==================== TRACK CAREPARTNER (Live Tracking) ====================
-async function trackCarepartner(taskId, taskTitle) {
-  // Check consent trước khi mở trang tracking
-  try {
-    const r = await apiFetch(`${API_BASE}/tracking/${taskId}/consent/`);
-    if (r.ok) {
-      const data = await r.json();
-      const consent = data?.consent?.consent || (data?.has_consent ? data.consent?.consent : null);
-      if (data.has_consent && consent === 'granted') {
-        window.location.href = "{% url 'frontend:live_tracking' %}?task_id=" + taskId;
-      } else if (data.has_consent && consent === 'revoked') {
-        alert('⚠️ Carepartner đã dừng chia sẻ vị trí. Vui lòng liên hệ trực tiếp.');
-      } else {
-        alert('📍 Carepartner chưa đồng ý chia sẻ vị trí cho việc này.');
-      }
-    } else {
-      alert('Không thể kiểm tra trạng thái theo dõi. Vui lòng thử lại.');
-    }
-  } catch (e) {
-    alert('Lỗi mạng. Vui lòng thử lại.');
-  }
-}
-
-// ==================== COMPLETE & CANCEL TASK ====================
-async function completeTask(taskId) {
-  if (!confirm('Bạn có chắc muốn đánh dấu công việc này là đã hoàn thành?')) return;
-  try {
-    const resp = await apiFetch(`${API_BASE}/tasks/${taskId}/status/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'completed' })
-    });
-    if (resp.ok) {
-      showToast('Đã đánh dấu hoàn thành!', 'success');
-      init();
-    } else {
-      const data = await resp.json();
-      showToast(data.error || 'Có lỗi xảy ra', 'error');
-    }
-  } catch (e) {
-    showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-  }
-}
-
-async function cancelTask(taskId) {
-  if (!confirm('Bạn có chắc muốn hủy công việc này?')) return;
-  try {
-    const resp = await apiFetch(`${API_BASE}/tasks/${taskId}/status/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled' })
-    });
-    if (resp.ok) {
-      showToast('Đã hủy công việc.', 'success');
-      init();
-    } else {
-      const data = await resp.json();
-      showToast(data.error || 'Có lỗi xảy ra', 'error');
-    }
-  } catch (e) {
-    showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-  }
-}
-
-// ==================== FETCH ASSIGNED WORKER INFO ====================
-async function fetchAssignedWorkers() {
-  // For in_progress tasks, find the accepted worker
-  const inProgressTasks = allTasks.filter(t => t.status === 'in_progress');
-  for (const task of inProgressTasks) {
-    try {
-      const resp = await apiFetch(`${API_BASE}/parent/tasks/${task.id}/candidates/`);
-      const candidates = await resp.json();
-      const accepted = candidates.find(c => c.status === 'accepted');
-      if (accepted) {
-        task.assigned_worker_name = accepted.worker_name || 'Carepartner';
-      }
-    } catch (e) {
-      // Silently fail - will show generic "Carepartner"
-    }
-  }
+// Xem ứng viên của bài đăng Flow 1 → trang ung_vien (GET candidates Flow 1)
+function viewCandidates(jobId) {
+  window.location.href = '/ung-vien/' + jobId + '/';
 }
 
 // ==================== INIT ====================
 async function init() {
   try {
-    // Fetch user profile
+    // Fetch user profile (đổ tên + avatar sidebar/topbar)
     const profResp = await apiFetch(API_BASE + "/profile/");
     if (!profResp || profResp.status === 401) {
-      if (profResp) { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); }
-      window.location.href = LOGIN_URL;
+      return; // sessionExpiredRedirect đã xử lý chuyển hướng
+    }
+    if (profResp.ok) {
+      const prof = await profResp.json();
+      const fullName = (prof.first_name && prof.last_name) ? prof.first_name + ' ' + prof.last_name : prof.username;
+
+      // Update sidebar
+      const sidebarName = document.getElementById('sidebar-name');
+      if (sidebarName) sidebarName.textContent = fullName;
+      const sidebarAvatar = document.getElementById('sidebar-avatar');
+      if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username)}&background=F26522&color=fff`;
+    }
+
+    // Fetch dữ liệu Flow 1 song song: đơn ghép cặp + bài đăng của phụ huynh
+    const [bookingsResp, jobsResp] = await Promise.all([
+      apiFetch(API_BASE + "/matching/bookings/?role=parent"),
+      apiFetch(API_BASE + "/matching/jobs/"),
+    ]);
+
+    if (!bookingsResp.ok || !jobsResp.ok) {
+      showToast('Không thể tải danh sách việc. Vui lòng thử lại.', 'error');
       return;
     }
-    const prof = await profResp.json();
-    const fullName = (prof.first_name && prof.last_name) ? prof.first_name + ' ' + prof.last_name : prof.username;
 
-    // Update sidebar
-    const sidebarName = document.getElementById('sidebar-name');
-    if (sidebarName) sidebarName.textContent = fullName;
-    const sidebarAvatar = document.getElementById('sidebar-avatar');
-    if (sidebarAvatar) sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(prof.username)}&background=F26522&color=fff`;
+    const bookingsData = await bookingsResp.json();
+    const jobsData = await jobsResp.json();
+    allBookings = Array.isArray(bookingsData.results) ? bookingsData.results
+      : (Array.isArray(bookingsData) ? bookingsData : []);
+    allJobs = Array.isArray(jobsData.results) ? jobsData.results
+      : (Array.isArray(jobsData) ? jobsData : []);
 
-    // Fetch tasks
-    const taskResp = await apiFetch(API_BASE + "/parent/my-tasks/");
-    if (!taskResp.ok) {
-      showToast('Không thể tải danh sách việc', 'error');
-      return;
-    }
-    allTasks = await taskResp.json();
-
-    // Fetch assigned worker info for in_progress tasks
-    await fetchAssignedWorkers();
-
-    // Update stats
+    // Cập nhật thống kê + hiển thị thẻ theo tab hiện tại (setTab đồng bộ highlight)
     updateStats();
-
-    // Render tasks for current tab
-    renderTasks();
+    setTab(currentTab);
 
   } catch (e) {
     console.error(e);

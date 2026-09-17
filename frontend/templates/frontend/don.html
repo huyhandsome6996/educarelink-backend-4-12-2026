@@ -53,6 +53,35 @@
             <div id="meta" class="text-sm text-gray-600 mt-4 space-y-1.5 bg-gray-50 p-3.5 rounded-xl border border-gray-100"></div>
         </div>
 
+        <!-- Người liên quan: phụ huynh xem CarePartner, CP xem phụ huynh (đồng bộ mobile BookingDetailScreen) -->
+        <div id="partiesCard" class="hidden mcm-card space-y-3">
+            <h3 class="font-headline font-bold text-[#1A1A2E] text-base">Người liên quan</h3>
+            <div id="partiesInfo" class="space-y-3"></div>
+            <div id="chatActions" class="hidden pt-1">
+                <a id="chatLink" href="#" class="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 font-extrabold text-sm transition flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-base">chat</span>
+                    Nhắn tin với nhau
+                </a>
+            </div>
+        </div>
+
+        <!-- Địa điểm làm việc + bản đồ -->
+        <div id="locationCard" class="hidden mcm-card space-y-3">
+            <h3 class="font-headline font-bold text-[#1A1A2E] text-base">Địa điểm làm việc</h3>
+            <div id="locAddress" class="mcm-addr"></div>
+            <div id="locMap" class="mcm-map" style="height:260px;"></div>
+        </div>
+
+        <!-- Đánh giá ca làm (phụ huynh — hiện khi ca hoàn thành/chờ đánh giá) -->
+        <div id="reviewBox" class="hidden mcm-card space-y-2">
+            <h3 class="font-headline font-bold text-[#1A1A2E] text-base">Đánh giá ca làm</h3>
+            <div id="reviewInfo" class="text-sm text-gray-600 leading-relaxed"></div>
+            <a id="reviewLink" href="#" class="mt-1 inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold py-2.5 px-4 rounded-xl text-sm transition shadow-sm shadow-orange-500/20">
+                <span class="material-symbols-outlined text-base">star</span>
+                <span>Đánh giá CarePartner</span>
+            </a>
+        </div>
+
         <!-- Hành động CarePartner: XÁC NHẬN / TỪ CHỐI cam kết (Grab-style) -->
         <div id="commitActions" class="hidden mcm-card space-y-3 border-orange-200 bg-orange-50/40">
             <h3 class="font-headline font-bold text-[#1A1A2E] text-base">Bạn có nhận công việc này không?</h3>
@@ -217,6 +246,7 @@
     { code: 'other', label: 'Khác (bắt buộc ghi chú)', fm: false },
   ];
   let booking = null, pickedReason = '';
+  let locMapObj = null, locMarkerObj = null; // bản đồ địa điểm (init 1 lần)
 
   const STATUS_STYLE = {
     awaiting_commitment: ['Chờ cam kết', '#F26522'], committed: ['Đã cam kết', '#0E9F6E'],
@@ -331,6 +361,88 @@
     const noShow = document.getElementById('parentNoShow');
     if (isParent && booking.status === 'suspected_no_show') noShow.classList.remove('hidden');
     else noShow.classList.add('hidden');
+
+    // ===== Người liên quan (đồng bộ mobile BookingDetailScreen) =====
+    const partiesCard = document.getElementById('partiesCard');
+    const partiesInfo = document.getElementById('partiesInfo');
+    const chatActions = document.getElementById('chatActions');
+    const chatLink = document.getElementById('chatLink');
+    const buildPersonRow = (info, roleLabel) => {
+      if (!info || !(info.full_name || '').trim()) return '';
+      const badge = info.is_verified
+        ? '<span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Đã xác minh CCCD</span>' : '';
+      const sub = [info.school, info.major].filter(Boolean).join(' — ');
+      const extra = roleLabel === 'CarePartner'
+        ? `<span class="text-xs text-gray-500">⭐ ${info.rating_avg ?? 0} · ${info.jobs_completed ?? 0} ca hoàn thành${info.trust_band_vi ? ' · ' + info.trust_band_vi : ''}</span>` : '';
+      return `
+        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#F26522] to-amber-400 text-white flex items-center justify-center font-extrabold text-sm shrink-0">${(info.full_name || '?').charAt(0).toUpperCase()}</div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <b class="text-sm text-[#1A1A2E]">${info.full_name}</b>${badge}
+            </div>
+            ${sub ? `<div class="text-xs text-gray-500 mt-0.5">${sub}</div>` : ''}
+            ${extra}
+          </div>
+        </div>`;
+    };
+    let partiesHtml = '';
+    if (isParent && booking.carepartner_info) partiesHtml += buildPersonRow(booking.carepartner_info, 'CarePartner');
+    else if (isCP && booking.parent_info) partiesHtml += buildPersonRow(booking.parent_info, 'Phụ huynh');
+    if (partiesHtml) {
+      partiesInfo.innerHTML = partiesHtml;
+      partiesCard.classList.remove('hidden');
+    }
+
+    // Chat 1-1: mở trên Task mirror (backend tạo khi ca bắt đầu); trang chat
+    // tự hiển thị trạng thái khoá nếu ngoài cửa sổ 24h — client không tự chặn.
+    if (booking.task_id) {
+      chatLink.href = '/chat/?task_id=' + booking.task_id;
+      chatActions.classList.remove('hidden');
+      partiesCard.classList.remove('hidden');
+    } else chatActions.classList.add('hidden');
+
+    // ===== Địa điểm làm việc + bản đồ =====
+    const loc = booking.location_info || {};
+    const locCard = document.getElementById('locationCard');
+    const locAddress = document.getElementById('locAddress');
+    const hasAddress = (loc.address || '').trim();
+    const hasCoord = loc.latitude != null && loc.longitude != null;
+    if (hasAddress || hasCoord) {
+      locCard.classList.remove('hidden');
+      locAddress.textContent = '📍 ' + (hasAddress || `${loc.latitude}, ${loc.longitude}`);
+      if (hasCoord && typeof L !== 'undefined') {
+        if (!locMapObj) {
+          locMapObj = L.map('locMap').setView([16.4637, 107.5909], 13);
+          attachResilientTiles(locMapObj);
+        }
+        const lat = +loc.latitude, lng = +loc.longitude;
+        if (locMarkerObj) locMarkerObj.remove();
+        locMarkerObj = L.marker([lat, lng]).addTo(locMapObj);
+        locMapObj.setView([lat, lng], 16);
+        setTimeout(() => { if (locMapObj) locMapObj.invalidateSize(); }, 150);
+      }
+    } else locCard.classList.add('hidden');
+
+    // ===== Đánh giá ca làm (phụ huynh — chờ đánh giá / hoàn thành) =====
+    const reviewBox = document.getElementById('reviewBox');
+    const reviewInfo = document.getElementById('reviewInfo');
+    const reviewLink = document.getElementById('reviewLink');
+    if (isParent && ['awaiting_review', 'completed'].includes(booking.status)) {
+      reviewBox.classList.remove('hidden');
+      if (booking.review) {
+        const r = booking.review;
+        const stars = Array(Math.max(1, Math.min(5, r.rating || 5))).fill('<span class="text-amber-500">★</span>').join('');
+        reviewInfo.innerHTML = `<div class="text-amber-600 font-bold">${stars} (${r.rating}/5)</div>${r.comment ? `<div class="mt-1 italic text-gray-500">"${r.comment}"</div>` : ''}`;
+        reviewLink.classList.add('hidden');
+      } else if (booking.task_id) {
+        reviewInfo.textContent = 'Hãy chia sẻ trải nghiệm để giúp các CarePartner khác tiến bộ nhé!';
+        reviewLink.href = '/parent/review/?task_id=' + booking.task_id;
+        reviewLink.classList.remove('hidden');
+      } else {
+        reviewBox.classList.add('hidden');
+      }
+    } else reviewBox.classList.add('hidden');
   }
 
   document.getElementById('commitBtn').onclick = async () => {

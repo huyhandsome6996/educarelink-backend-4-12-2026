@@ -219,8 +219,10 @@
         method: 'POST', body: JSON.stringify({ carepartner_id: picked.id }),
         headers: { 'Idempotency-Key': 'web-' + jobId + '-' + picked.id } });
       const data = await resp.json();
-      if (resp.status === 201) {
-        toast('Đã chọn CarePartner thành công! Đang chuyển đến đơn...');
+      // 201 = tạo đơn mới; 200 = replay idempotency (đơn đã tồn tại) —
+      // cả hai đều có data.id → chuyển đến trang chi tiết đơn
+      if (resp.ok && data.id) {
+        toast(resp.status === 201 ? 'Đã chọn CarePartner thành công! Đang chuyển đến đơn...' : 'Đơn của bạn đã sẵn sàng! Đang chuyển đến đơn...');
         setTimeout(() => location.href = `/don/${data.id}/`, 800);
       } else if (resp.status === 409) {
         toast(data.code === 'slot_taken' ? 'Lịch vừa được người khác chọn. Vui lòng chọn ứng viên khác.' : (data.detail || 'Xung đột lịch.'), false);
