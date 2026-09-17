@@ -184,6 +184,20 @@
       </div>
     </div>
 
+    <!-- AUTHENTICATION STATUS BANNER (Hiện khi chưa đăng nhập hoặc phiên hết hạn) -->
+    <div id="authNoticeBanner" class="hidden mb-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-amber-600 text-2xl">account_circle</span>
+        <div>
+          <p class="font-bold text-sm">Bạn chưa đăng nhập tài khoản Phụ huynh</p>
+          <p class="text-xs text-amber-700">Vui lòng đăng nhập để hệ thống lưu tin đăng và kết nối trực tiếp với các CarePartner tại Huế.</p>
+        </div>
+      </div>
+      <a href="/login/?next={{ request.path }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-colors shrink-0">
+        Đăng nhập ngay
+      </a>
+    </div>
+
     <!-- BENTO FORM GRID (12 COLS) -->
     <form id="pickupJobForm" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
@@ -210,7 +224,7 @@
               </label>
               <div class="relative">
                 <input type="text" id="schoolNameInput" required
-                  placeholder="VD: Trường Tiểu học Chu Văn An, Cơ sở 1..."
+                  placeholder="VD: Trường Tiểu học Vĩnh Ninh, TP. Huế..."
                   class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
                   oninput="state.school_or_pickup_place_name = this.value;">
                 <span class="material-symbols-outlined absolute left-3.5 top-3.5 text-slate-400 text-xl">school</span>
@@ -319,8 +333,8 @@
               <!-- Map Container -->
               <div class="relative h-64 w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 z-10">
                 <div id="map" class="w-full h-full"></div>
-                <input type="hidden" id="lat" name="latitude" value="21.0423">
-                <input type="hidden" id="lng" name="longitude" value="105.8234">
+                <input type="hidden" id="lat" name="latitude" value="16.4637">
+                <input type="hidden" id="lng" name="longitude" value="107.5909">
               </div>
             </div>
 
@@ -330,7 +344,7 @@
                 Ghi chú điểm đón (Tùy chọn)
               </label>
               <input type="text" id="inputPickupNote"
-                placeholder="VD: Đón ở Cổng số 2 đường Thụy Khuê, bé đeo balo xanh lá, cô giáo chủ nhiệm là cô Lan..."
+                placeholder="VD: Đón ở Cổng chính đường Nguyễn Huệ, TP. Huế, bé đeo balo xanh lá, cô giáo chủ nhiệm là cô Lan..."
                 class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
                 oninput="state.pickup_location_note = this.value">
             </div>
@@ -417,8 +431,8 @@
 
               <div class="relative h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-10">
                 <div id="destMap" class="w-full h-full"></div>
-                <input type="hidden" id="destLat" name="dest_latitude" value="21.0336">
-                <input type="hidden" id="destLng" name="dest_longitude" value="105.8155">
+                <input type="hidden" id="destLat" name="dest_latitude" value="16.4637">
+                <input type="hidden" id="destLng" name="dest_longitude" value="107.5909">
               </div>
             </div>
 
@@ -428,7 +442,7 @@
                 Ghi chú người nhận bé tại điểm đến
               </label>
               <input type="text" id="inputDestNote"
-                placeholder="VD: Bàn giao bé cho bà nội ở căn hộ 1204 Block B, gọi điện trước 5 phút qua số 0912..."
+                placeholder="VD: Số 42 Lê Lợi, P. Phú Hội, TP. Huế; bàn giao bé cho bà nội, gọi điện trước 5 phút qua số 0912..."
                 class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
                 oninput="state.destination_note = this.value">
             </div>
@@ -780,13 +794,13 @@
             <span class="material-symbols-outlined text-3xl">directions_bike</span>
           </div>
 
-          <div class="absolute -top-1 right-2 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse">
+          <div class="absolute -top-1 right-2 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse" title="ĐH Sư Phạm Huế">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span>ĐH Sư Phạm (0.4km)</span>
+            <span>ĐH Sư Phạm Huế (0.4km)</span>
           </div>
-          <div class="absolute -bottom-2 left-1 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse" style="animation-delay: 0.7s;">
+          <div class="absolute -bottom-2 left-1 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse" style="animation-delay: 0.7s;" title="ĐH Y Dược Huế">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span>ĐH Bách Khoa (1.2km)</span>
+            <span>ĐH Y Dược Huế (0.8km)</span>
           </div>
           <div class="absolute top-1/2 -right-4 bg-white rounded-full px-2 py-0.5 text-[9px] font-bold text-brand border border-orange-200 shadow-sm animate-pulse" style="animation-delay: 1.2s;">
             <span>A1 + Mũ trẻ em</span>
@@ -794,10 +808,10 @@
         </div>
 
         <h4 class="font-headline font-extrabold text-xl text-obsidian-900 mb-2">
-          Đang quét CarePartner quanh trường...
+          Đang quét CarePartner quanh trường tại TP. Huế...
         </h4>
         <p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto mb-4">
-          Hệ thống đang kết nối CarePartner có phương tiện và bằng lái A1 trong bán kính gần trường của bé.
+          Hệ thống đang kết nối CarePartner có phương tiện và bằng lái A1 tại các trường Đại học ở Huế trong bán kính gần trường của bé.
         </p>
 
         <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 text-brand text-xs font-semibold">
@@ -879,8 +893,8 @@
       transport_note: '',
       specific_requirements: '',
       hourly_rate: 60000,
-      latitude: 21.0423,
-      longitude: 105.8234,
+      latitude: 16.4637,
+      longitude: 107.5909,
       dest_latitude: null,
       dest_longitude: null,
       dest_address: ''
@@ -891,6 +905,13 @@
     let destMapPicker = null;
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Check auth status
+      const initToken = localStorage.getItem('token');
+      const authBanner = document.getElementById('authNoticeBanner');
+      if (!initToken && authBanner) {
+        authBanner.classList.remove('hidden');
+      }
+
       initRollingCalendar();
       calculatePricing();
 
@@ -1252,6 +1273,16 @@
         longitude: lng
       };
 
+      // Kiểm tra đăng nhập trước khi phát sóng radar
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast('Vui lòng đăng nhập tài khoản Phụ huynh để đăng việc.', false);
+        setTimeout(() => {
+          window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+        }, 1000);
+        return;
+      }
+
       const modal = document.getElementById('radarModal');
       const searchView = document.getElementById('radarSearchingView');
       const successView = document.getElementById('radarSuccessView');
@@ -1292,6 +1323,18 @@
           modal.classList.remove('flex');
           btnSubmit.disabled = false;
           btnBottom.disabled = false;
+
+          if (resp.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('role');
+            toast('Phiên đăng nhập đã hết hạn hoặc tài khoản không tồn tại. Đang chuyển tới trang đăng nhập...', false);
+            setTimeout(() => {
+              window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+            }, 1200);
+            return;
+          }
+
           const detail = data.detail || (typeof data === 'object' ? Object.values(data).flat().join(', ') : 'Vui lòng kiểm tra lại thông tin.');
           toast(detail, false);
         }
@@ -1300,7 +1343,7 @@
         modal.classList.remove('flex');
         btnSubmit.disabled = false;
         btnBottom.disabled = false;
-        if (err.message !== 'no_token') {
+        if (err.message !== 'no_token' && err.message !== 'user_unauthorized') {
           toast('Không thể kết nối đến máy chủ. Vui lòng thử lại.', false);
         }
       }
