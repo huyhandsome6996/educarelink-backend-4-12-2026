@@ -1,236 +1,1310 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="h-full bg-[#F8F9FB]">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
-    <title>EduCareLink — Đăng việc Đón trẻ</title>
-    <link rel="shortcut icon" href="/static/images/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="{% static 'css/tailwind-default.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
-    </style>
-    {% include 'frontend/_matching_common.html' %}
-</head>
-<body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
-{% include 'frontend/_parent_chrome.html' with active_tab='matching' %}
-<header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90 lg:ml-[260px]">
-    <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-8 h-8 rounded-lg object-contain shrink-0" loading="eager">
-        <a href="{% url 'frontend:dang_viec_select' %}" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
-            <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Chọn lại</span>
-        </a>
-        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Đăng việc — Đón trẻ tan trường</span>
-    </div>
-</header>
-
-<main class="lg:ml-[260px] mcm-fade-in">
-<div class="max-w-2xl mx-auto px-4 py-8">
-    <form id="jobForm" class="space-y-4">
-        <div class="mcm-card">
-            <div class="flex items-center gap-2.5 mb-3">
-                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">1</span>
-                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Điểm đón &amp; Thông tin bé</h2>
-            </div>
-            <label class="mcm-label" for="schoolName">Tên trường / điểm đón (bắt buộc)</label>
-            <input id="schoolName" class="mcm-input" placeholder="VD: Tiểu học Nguyễn Văn Cừ">
-            <label class="mcm-label">Vị trí điểm đón trên bản đồ (bắt buộc)</label>
-            <div class="mcm-map-search">
-                <input id="mapSearch" placeholder="Nhập tên trường / địa chỉ để tìm…">
-                <button type="button" id="mapGps" class="mcm-btn-ghost">
-                    <span class="material-symbols-outlined text-base">my_location</span>
-                    <span>Dùng vị trí hiện tại</span>
-                </button>
-            </div>
-            <div id="map" class="mcm-map"></div>
-            <div id="mapAddr" class="mcm-addr">Chưa chọn vị trí</div>
-            <input type="hidden" id="lat"><input type="hidden" id="lng">
-            <label class="mcm-label" for="pickupNote">Ghi chú điểm đón (cổng, giờ tan học… — tuỳ chọn)</label>
-            <input id="pickupNote" class="mcm-input" placeholder="VD: Đón ở cổng số 2, bé mặc áo trắng">
-
-            <label class="mcm-label" for="ageGroup">Độ tuổi của bé (bắt buộc)</label>
-            <select id="ageGroup" class="mcm-input">
-                <option value="">— Chọn độ tuổi —</option>
-                <option value="0_to_12_months">0 - 12 tháng tuổi</option>
-                <option value="1_to_3_years">1 - 3 tuổi</option>
-                <option value="3_to_6_years">3 - 6 tuổi</option>
-                <option value="6_to_10_years">6 - 10 tuổi</option>
-                <option value="over_10_years">Trên 10 tuổi</option>
-            </select>
-            <label class="mcm-label" for="nChildren">Số lượng trẻ (bắt buộc, ≥ 1)</label>
-            <input id="nChildren" type="number" min="1" max="10" class="mcm-input" placeholder="1">
-        </div>
-
-        <div class="mcm-card">
-            <div class="flex items-center gap-2.5 mb-3">
-                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">2</span>
-                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Điểm đến &amp; Phương tiện</h2>
-            </div>
-            <label class="mcm-label">Điểm đến (bắt buộc)</label>
-            <div class="space-y-2 text-sm">
-                <label class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-orange-50/50 transition border border-gray-100"><input type="radio" name="destType" value="parent_home" checked class="accent-[#F26522] w-4 h-4"> Về nhà phụ huynh (dùng vị trí ở mục 1 nếu không đổi)</label>
-                <label class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-orange-50/50 transition border border-gray-100"><input type="radio" name="destType" value="other_address" class="accent-[#F26522] w-4 h-4"> Địa chỉ khác</label>
-            </div>
-            <div id="destOther" class="hidden mt-2">
-                <div class="mcm-map-search">
-                    <input id="destSearch" placeholder="Nhập địa chỉ điểm đến…">
-                    <button type="button" id="destGps" class="mcm-btn-ghost">
-                        <span class="material-symbols-outlined text-base">my_location</span>
-                        <span>Dùng vị trí hiện tại</span>
-                    </button>
-                </div>
-                <div id="destMap" class="mcm-map"></div>
-                <div id="destAddr" class="mcm-addr">Chưa chọn điểm đến</div>
-                <input type="hidden" id="destLat"><input type="hidden" id="destLng">
-            </div>
-            <label class="mcm-label" for="destNote">Ghi chú điểm đến (tuỳ chọn)</label>
-            <input id="destNote" class="mcm-input" placeholder="VD: Giao bé cho bà ở chung cư, tầng 2">
-
-            <label class="mcm-label" for="transportMethod">Phương tiện đưa đón (tuỳ chọn)</label>
-            <select id="transportMethod" class="mcm-input mb-2">
-                <option value="">— Chọn phương tiện —</option>
-                <option value="walking">Đi bộ</option>
-                <option value="carepartner_vehicle">CarePartner tự có phương tiện</option>
-                <option value="parent_arranged">Phụ huynh sắp xếp phương tiện</option>
-            </select>
-            <input id="transportNote" class="mcm-input" placeholder="Ghi chú thêm về phương tiện (nếu có)…">
-        </div>
-
-        <div class="mcm-card">
-            <div class="flex items-center gap-2.5 mb-3">
-                <span class="w-7 h-7 rounded-xl bg-orange-100 text-[#F26522] font-extrabold text-xs flex items-center justify-center">3</span>
-                <h2 class="font-headline font-extrabold text-[#1A1A2E] text-base">Thời gian, Giá &amp; Yêu cầu</h2>
-            </div>
-            <label class="mcm-label">Các ngày cần đón (bắt buộc)</label>
-            <input id="dates" class="mcm-input" placeholder="Chọn ngày (có thể nhiều ngày)">
-            <div id="dateList" class="flex flex-wrap gap-2 mt-2"></div>
-            <div class="grid grid-cols-2 gap-3 mt-2">
-                <div>
-                    <label class="mcm-label" for="timeFrom">Giờ đón</label>
-                    <input id="timeFrom" class="mcm-input" placeholder="16:30" readonly>
-                </div>
-                <div>
-                    <label class="mcm-label" for="timeTo">Giờ kết thúc</label>
-                    <input id="timeTo" class="mcm-input" placeholder="17:30" readonly>
-                </div>
-            </div>
-            <label class="mcm-label" for="specific_requirements">Yêu cầu cụ thể (bắt buộc)</label>
-            <textarea id="specific_requirements" class="mcm-input" rows="3"
-                      placeholder="VD: Đón bé lớp 1 lúc 16h30, dắt xe về nhà, ưu tiên sinh viên có xe…"></textarea>
-            <label class="mcm-label" for="rate">Giá/giờ (VND, bắt buộc &gt; 0)</label>
-            <input id="rate" type="number" min="1000" step="1000" class="mcm-input" placeholder="90000">
-        </div>
-
-        <button type="submit" id="submitBtn" class="mcm-submit">
-            <span class="material-symbols-outlined text-xl">search</span>
-            <span>Đăng việc &amp; Tìm CarePartner phù hợp</span>
-        </button>
-    </form>
-</div>
-</main>
-
-<script>
-  const dates = new Set();
-  initDatePicker('#dates').config.onChange.push((d, s) => {
-    if (s && !dates.has(s)) {
-      dates.add(s);
-      const chip = document.createElement('span');
-      chip.className = 'px-3 py-1 rounded-full bg-[rgba(242,101,34,0.12)] text-[#F26522] text-xs font-semibold cursor-pointer';
-      chip.textContent = s + ' ✕';
-      chip.onclick = () => { dates.delete(s); chip.remove(); };
-      document.getElementById('dateList').appendChild(chip);
-      document.getElementById('dates').value = '';
-    }
-  });
-  initTimePicker(null, '#timeFrom', '#timeTo');
-  const pickupPicker = initMapPicker({ mapId: 'map', searchId: 'mapSearch', btnGpsId: 'mapGps', addrId: 'mapAddr',
-                                       latInput: 'lat', lngInput: 'lng' });
-  const destPicker = initMapPicker({ mapId: 'destMap', searchId: 'destSearch', btnGpsId: 'destGps', addrId: 'destAddr',
-                                     latInput: 'destLat', lngInput: 'destLng' });
-
-  // Radio điểm đến — hiện bản đồ "địa chỉ khác" khi chọn
-  document.querySelectorAll('input[name="destType"]').forEach((r) => r.addEventListener('change', () => {
-    const other = document.querySelector('input[name="destType"]:checked').value === 'other_address';
-    document.getElementById('destOther').classList.toggle('hidden', !other);
-    if (other) setTimeout(() => destPicker.map.invalidateSize(), 60);
-  }));
-  setTimeout(() => pickupPicker.map.invalidateSize(), 100);
-
-  document.getElementById('jobForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    const schoolName = document.getElementById('schoolName').value.trim();
-    const ageGroup = document.getElementById('ageGroup').value;
-    const nChildren = Number(document.getElementById('nChildren').value);
-    const req = document.getElementById('specific_requirements').value.trim();
-    const rate = Number(document.getElementById('rate').value);
-    const lat = document.getElementById('lat').value, lng = document.getElementById('lng').value;
-    const timeFrom = document.getElementById('timeFrom').value, timeTo = document.getElementById('timeTo').value;
-    const destType = document.querySelector('input[name="destType"]:checked').value;
-    const transportMethod = document.getElementById('transportMethod').value;
-
-    if (!schoolName) return toast('Nhập tên trường / điểm đón.', false);
-    if (!lat || !lng) return toast('Chọn vị trí điểm đón trên bản đồ.', false);
-    if (!ageGroup) return toast('Chọn độ tuổi của bé.', false);
-    if (!nChildren || nChildren < 1) return toast('Số lượng trẻ phải ≥ 1.', false);
-    if (dates.size === 0) return toast('Chọn ít nhất 1 ngày cần đón.', false);
-    if (!timeFrom || !timeTo || timeTo <= timeFrom) return toast('Giờ kết thúc phải sau giờ đón.', false);
-    if (!req || req.length < 10) return toast('Mô tả yêu cầu cụ thể ít nhất 10 ký tự.', false);
-    if (!rate || rate <= 0) return toast('Nhập giá/giờ hợp lệ.', false);
-
-    const payload = {
-      job_type: 'pickup',
-      school_or_pickup_place_name: schoolName,
-      child_age_group: ageGroup,
-      number_of_children: nChildren,
-      pickup_dates: [...dates].sort(),
-      pickup_time_from: timeFrom, pickup_time_to: timeTo,
-      destination_type: destType,
-      specific_requirements: req,
-      hourly_rate_vnd: rate,
-      latitude: Number(lat), longitude: Number(lng),
-      pickup_location_note: document.getElementById('pickupNote').value.trim(),
-      destination_note: document.getElementById('destNote').value.trim(),
-      transport_note: document.getElementById('transportNote').value.trim(),
-    };
-    // Thêm phương tiện đưa đón vào payload nếu có (đặc tả Mục 2 — 3 lựa chọn)
-    if (transportMethod) {
-      payload.transport_method = transportMethod;
-    }
-    if (destType === 'other_address') {
-      const dLat = document.getElementById('destLat').value, dLng = document.getElementById('destLng').value;
-      if (!dLat || !dLng) return toast('Chọn địa chỉ điểm đến trên bản đồ.', false);
-      payload.destination_location = {
-        latitude: Number(dLat), longitude: Number(dLng),
-        address: document.getElementById('destAddr').textContent.replace('📍 ', ''),
-      };
-    }
-
-    btn.disabled = true;
-    try {
-      const resp = await authFetch(API_BASE + '/matching/jobs/', {
-        method: 'POST', body: JSON.stringify(payload) });
-      const data = await resp.json();
-      if (resp.status === 201) {
-        toast('Đăng thành công! Đang tạo ứng viên…');
-        const pub = await authFetch(`${API_BASE}/matching/jobs/${data.id}/publish/`, { method: 'POST' });
-        if (pub.ok) {
-          toast('Đã mở tìm ứng viên. Chuyển tới danh sách…');
-          setTimeout(() => location.href = `/ung-vien/${data.id}/`, 900);
-        } else { toast('Đăng được nhưng chưa publish được — xem đơn của bạn.', false); }
-      } else {
-        const detail = data.detail || data;
-        toast(typeof detail === 'string' ? detail : 'Vui lòng kiểm tra lại thông tin.', false);
-        console.warn(detail);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduCareLink — Đăng việc Đón trẻ tan trường | Parity Mobile</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+  <link rel="shortcut icon" href="/static/images/favicon.ico">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              DEFAULT: '#F26522',
+              50: '#FFF7ED',
+              100: '#FFEDD5',
+              200: 'rgba(242, 101, 34, 0.15)',
+              500: '#F26522',
+              600: '#F26522',
+              700: '#E05315',
+              800: '#9A3412',
+              900: '#7C2D12',
+            },
+            obsidian: {
+              DEFAULT: '#1A1A2E',
+              900: '#1A1A2E',
+              800: '#232338',
+              700: '#2E2E48',
+            },
+            emerald: {
+              50: '#ECFDF5',
+              600: '#10B981',
+              700: '#059669',
+              800: '#065F46',
+            }
+          },
+          fontFamily: {
+            headline: ['Manrope', 'sans-serif'],
+            manrope: ['Manrope', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif']
+          },
+          boxShadow: {
+            'bento': '0 4px 20px rgba(0,0,0,0.03)',
+            'bento-hover': '0 10px 25px -5px rgba(242, 101, 34, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+            'sticky': '0 -4px 20px rgba(0,0,0,0.05)'
+          }
+        }
       }
-    } catch (err) { console.warn(err); toast('Không gửi được. Vui lòng kiểm tra kết nối và thử lại.', false); }
-    finally { btn.disabled = false; }
-  });
-</script>
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    h1, h2, h3, h4, .font-headline { font-family: 'Manrope', sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .material-symbols-outlined.fill-1 {
+      font-variation-settings: 'FILL' 1;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar-beam {
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background: conic-gradient(from 0deg at 50% 50%, rgba(242, 101, 34, 0) 0deg, rgba(242, 101, 34, 0.45) 60deg, transparent 65deg);
+      animation: radar-sweep 2.4s linear infinite;
+    }
+    .pulse-layer {
+      position: absolute;
+      inset: -15px;
+      border-radius: 9999px;
+      border: 2px solid rgba(242, 101, 34, 0.4);
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+
+  {% include 'frontend/_matching_common.html' %}
+</head>
+<body class="font-sans text-slate-800 antialiased min-h-full flex flex-col bg-[#F8F9FB] selection:bg-brand-100 selection:text-brand-700">
+
+  <!-- PARENT CHROME SIDEBAR -->
+  {% include 'frontend/_parent_chrome.html' with active_tab='matching' %}
+
+  <!-- STICKY TOP NAVIGATION BAR (lg:ml-[260px]) -->
+  <header class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 lg:ml-[260px] transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Left side -->
+      <div class="flex items-center gap-3">
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-brand bg-slate-100/80 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors group">
+          <span class="material-symbols-outlined text-base group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+          <span class="hidden sm:inline">Chọn lại loại việc</span>
+        </a>
+        <div class="h-5 w-px bg-slate-200"></div>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-9 h-9 rounded-xl object-contain shrink-0 shadow-sm border border-orange-100" loading="eager">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-headline font-bold text-sm text-obsidian-900 leading-none truncate">EduCare<span class="text-brand">Link</span></span>
+              <span class="hidden min-[480px]:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-100 text-brand border border-orange-200/60 shrink-0">
+                Đón Trẻ Tan Trường
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 hidden md:block mt-0.5">CarePartner đối soát bằng lái A1, xe máy an toàn, có mũ bảo hiểm trẻ em</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right side -->
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button type="button" onclick="openTrustModal()" class="inline-flex items-center gap-1.5 px-2 min-[480px]:px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 hover:bg-emerald-100/70 transition-colors text-xs font-semibold shadow-xs min-w-0">
+          <span class="material-symbols-outlined text-sm text-emerald-600 fill-1">verified_user</span>
+          <span class="hidden md:inline">100% CarePartner xác thực & Ký quỹ MoMo</span>
+          <span class="md:hidden max-[479px]:hidden">Xác thực 100%</span>
+          <span class="material-symbols-outlined text-xs text-emerald-600 opacity-60 hidden min-[480px]:inline-block">info</span>
+        </button>
+
+        <a href="{% url 'frontend:chatbot' %}" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-brand flex items-center justify-center transition-colors shrink-0" title="Trợ lý AI CareBot">
+          <span class="material-symbols-outlined text-lg">smart_toy</span>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER (lg:ml-[260px]) -->
+  <main class="flex-1 lg:ml-[260px] p-4 sm:p-6 lg:p-8 pb-32 lg:pb-12 max-w-7xl">
+
+    <!-- HERO TRUST BANNER -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-obsidian-900 via-obsidian-800 to-slate-900 text-white p-6 sm:p-8 shadow-xl mb-8 border border-slate-800">
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-brand/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute bottom-0 right-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div class="max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-orange-300 text-xs font-semibold mb-3">
+            <span class="material-symbols-outlined text-sm">security</span>
+            <span>An toàn giao thông & Đúng giờ tuyệt đối</span>
+          </div>
+          <h2 class="font-headline text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+            Đón con tan trường an tâm, đón hộ tại cổng & đưa về tận cửa
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
+            Giải pháp tin cậy cho phụ huynh bận rộn. CarePartner sinh viên ưu tú nhận đón bé tại trường, chụp ảnh check-in báo cáo lộ trình real-time và bàn giao tận tay người thân.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-3 shrink-0">
+          <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px] sm:min-w-[100px]">
+            <span class="block font-headline text-lg sm:text-xl font-extrabold text-emerald-400">100%</span>
+            <span class="text-[11px] text-slate-300 font-medium">GPLX & Mũ bảo hiểm</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px] sm:min-w-[100px]">
+            <span class="block font-headline text-lg sm:text-xl font-extrabold text-amber-400">GPS</span>
+            <span class="text-[11px] text-slate-300 font-medium">Giám sát lộ trình</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px] sm:min-w-[100px]">
+            <span class="block font-headline text-lg sm:text-xl font-extrabold text-brand">&lt; 15p</span>
+            <span class="text-[11px] text-slate-300 font-medium">CarePartner nhận đón</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BENTO FORM GRID (12 COLS) -->
+    <form id="pickupJobForm" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- LEFT COLUMN (8 COLS) -->
+      <div class="lg:col-span-8 space-y-6">
+
+        <!-- CARD 1: ĐIỂM ĐÓN & THÔNG TIN BÉ -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-bento hover:shadow-bento-hover transition-all">
+          <div class="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-2xl bg-orange-100 text-brand font-headline font-extrabold text-lg flex items-center justify-center">
+              1
+            </div>
+            <div>
+              <h3 class="font-headline font-bold text-lg text-obsidian-900">Điểm đón & Thông tin bé</h3>
+              <p class="text-xs text-slate-500">Xác định trường học, cổng đón và thông tin nhận diện bé an toàn</p>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+            <!-- Tên trường học / Điểm đón -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Tên trường học / Điểm đón <span class="text-rose-500">*</span>
+              </label>
+              <div class="relative">
+                <input type="text" id="schoolNameInput" required
+                  placeholder="VD: Trường Tiểu học Chu Văn An, Cơ sở 1..."
+                  class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
+                  oninput="state.school_or_pickup_place_name = this.value;">
+                <span class="material-symbols-outlined absolute left-3.5 top-3.5 text-slate-400 text-xl">school</span>
+              </div>
+
+              <!-- Quick chips loại trường -->
+              <div class="flex flex-wrap gap-2 mt-2.5">
+                <button type="button" onclick="setSchoolQuick('Trường Tiểu học ')" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-brand rounded-lg border border-slate-200/60 transition-colors flex items-center">
+                  <span class="material-symbols-outlined text-sm mr-1 text-slate-500">school</span>Tiểu học
+                </button>
+                <button type="button" onclick="setSchoolQuick('Trường Mầm non ')" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-brand rounded-lg border border-slate-200/60 transition-colors flex items-center">
+                  <span class="material-symbols-outlined text-sm mr-1 text-slate-500">child_care</span>Mầm non
+                </button>
+                <button type="button" onclick="setSchoolQuick('Trung tâm Tiếng Anh ')" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-brand rounded-lg border border-slate-200/60 transition-colors flex items-center">
+                  <span class="material-symbols-outlined text-sm mr-1 text-slate-500">translate</span>TT Tiếng Anh
+                </button>
+                <button type="button" onclick="setSchoolQuick('Lớp năng khiếu / Bơi lội ')" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-brand rounded-lg border border-slate-200/60 transition-colors flex items-center">
+                  <span class="material-symbols-outlined text-sm mr-1 text-slate-500">sports_kabaddi</span>Lớp năng khiếu
+                </button>
+              </div>
+            </div>
+
+            <!-- Nhóm độ tuổi bé & Số lượng trẻ đón -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 pt-2">
+              <div class="md:col-span-8">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Độ tuổi của bé <span class="text-rose-500">*</span>
+                </label>
+                <div class="grid grid-cols-3 gap-2.5" id="ageGroupContainer">
+                  <button type="button" onclick="selectAgeGroup('3_to_6_years')" data-val="3_to_6_years"
+                    class="age-card p-3 rounded-2xl border text-center transition-all border-slate-200 bg-white hover:border-orange-300">
+                    <span class="material-symbols-outlined text-xl block mb-1 text-slate-600">child_care</span>
+                    <span class="block text-xs font-bold text-slate-800">3 - 6 tuổi</span>
+                    <span class="text-[10px] text-slate-400">Mầm non</span>
+                  </button>
+                  <button type="button" onclick="selectAgeGroup('6_to_10_years')" data-val="6_to_10_years"
+                    class="age-card p-3 rounded-2xl border text-center transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs">
+                    <span class="material-symbols-outlined text-xl block mb-1 text-brand">backpack</span>
+                    <span class="block text-xs font-bold text-brand-700">6 - 10 tuổi</span>
+                    <span class="text-[10px] text-brand-600/70 font-semibold">Tiểu học</span>
+                  </button>
+                  <button type="button" onclick="selectAgeGroup('over_10_years')" data-val="over_10_years"
+                    class="age-card p-3 rounded-2xl border text-center transition-all border-slate-200 bg-white hover:border-orange-300">
+                    <span class="material-symbols-outlined text-xl block mb-1 text-slate-600">pedal_bike</span>
+                    <span class="block text-xs font-bold text-slate-800">Trên 10 tuổi</span>
+                    <span class="text-[10px] text-slate-400">THCS / Cấp 2</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Số lượng trẻ đón (Stepper 1-2 bé) -->
+              <div class="md:col-span-4">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Số trẻ đón <span class="text-rose-500">*</span>
+                  </label>
+                  <span class="text-[10px] font-semibold text-slate-400">Tối đa 2 bé</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-2xl h-[76px]">
+                  <button type="button" onclick="updateChildrenCount(-1)" id="btnMinusChild"
+                    class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-colors">
+                    <span class="material-symbols-outlined text-lg">remove</span>
+                  </button>
+                  <div class="text-center">
+                    <span id="childCountDisplay" class="font-headline font-extrabold text-xl text-obsidian-900 block leading-tight">1 bé</span>
+                    <span id="childFeeNote" class="text-[10px] font-medium text-slate-400 block">Tiêu chuẩn</span>
+                  </div>
+                  <button type="button" onclick="updateChildrenCount(1)" id="btnPlusChild"
+                    class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center hover:bg-brand-600 shadow-md shadow-brand/20 transition-colors">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Leaflet Map Picker cho Cổng trường đón -->
+            <div class="pt-2">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Vị trí cổng trường đón (Bản đồ GPS) <span class="text-rose-500">*</span>
+              </label>
+              
+              <div class="flex gap-2 mb-3">
+                <div class="relative flex-1">
+                  <input type="text" id="mapSearchInput"
+                    placeholder="Tìm địa chỉ trường hoặc nhập tên đường..."
+                    class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all">
+                  <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+                </div>
+                <button type="button" id="btnGpsCurrent"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-orange-50 text-brand border border-orange-200 text-xs font-bold hover:bg-orange-100/70 transition-colors shrink-0">
+                  <span class="material-symbols-outlined text-base">my_location</span>
+                  <span>Dùng vị trí hiện tại</span>
+                </button>
+              </div>
+
+              <div class="mb-2 p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-brand text-lg shrink-0 mt-0.5">place</span>
+                <div>
+                  <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Địa chỉ điểm đón đã chọn:</span>
+                  <p id="mapAddr" class="text-xs font-semibold text-slate-800 mt-0.5">
+                    Chưa chọn vị trí (bấm tìm kiếm hoặc dùng GPS)
+                  </p>
+                </div>
+              </div>
+
+              <!-- Map Container -->
+              <div class="relative h-64 w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 z-10">
+                <div id="map" class="w-full h-full"></div>
+                <input type="hidden" id="lat" name="latitude" value="21.0423">
+                <input type="hidden" id="lng" name="longitude" value="105.8234">
+              </div>
+            </div>
+
+            <!-- Ghi chú điểm đón -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Ghi chú điểm đón (Tùy chọn)
+              </label>
+              <input type="text" id="inputPickupNote"
+                placeholder="VD: Đón ở Cổng số 2 đường Thụy Khuê, bé đeo balo xanh lá, cô giáo chủ nhiệm là cô Lan..."
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
+                oninput="state.pickup_location_note = this.value">
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CARD 2: ĐIỂM ĐẾN & PHƯƠNG THỨC DI CHUYỂN -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-bento hover:shadow-bento-hover transition-all">
+          <div class="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-2xl bg-orange-100 text-brand font-headline font-extrabold text-lg flex items-center justify-center">
+              2
+            </div>
+            <div>
+              <h3 class="font-headline font-bold text-lg text-obsidian-900">Điểm đến & Phương thức di chuyển</h3>
+              <p class="text-xs text-slate-500">Nơi giao trả bé an toàn và phương tiện đưa đón theo tiêu chuẩn</p>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+
+            <!-- Loại điểm đến (2 cards radio) -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Loại điểm đến bàn giao bé <span class="text-rose-500">*</span>
+              </label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="destTypeContainer">
+                <button type="button" onclick="selectDestType('parent_home')" data-dest="parent_home"
+                  class="dest-btn p-4 rounded-2xl border text-left transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-orange-100 text-brand flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-xl">home</span>
+                  </div>
+                  <div>
+                    <span class="block text-xs font-bold text-brand-800">Về nhà phụ huynh</span>
+                    <span class="text-[11px] text-brand-700/80 mt-0.5 block leading-snug">Địa chỉ nhà đã lưu của gia đình (Mặc định)</span>
+                  </div>
+                </button>
+
+                <button type="button" onclick="selectDestType('other_address')" data-dest="other_address"
+                  class="dest-btn p-4 rounded-2xl border text-left transition-all border-slate-200 bg-white hover:border-orange-300 flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-xl">location_city</span>
+                  </div>
+                  <div>
+                    <span class="block text-xs font-bold text-slate-800">Địa chỉ khác</span>
+                    <span class="text-[11px] text-slate-400 mt-0.5 block leading-snug">Nhà ông bà, lớp học thêm, trung tâm năng khiếu...</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Khu vực điểm đến khác (Collapsible) -->
+            <div id="otherDestSection" class="hidden p-4 sm:p-5 bg-orange-50/40 rounded-2xl border border-orange-200/80 space-y-3 transition-all">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base text-brand">pin_drop</span>
+                  <span>Bản đồ điểm đến bàn giao bé</span>
+                </span>
+                <span class="text-[11px] text-brand font-semibold">Chỉ dẫn định vị</span>
+              </div>
+
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <input type="text" id="destSearchInput"
+                    placeholder="Tìm địa chỉ nhà ông bà, trung tâm học thêm..."
+                    class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand">
+                  <span class="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-lg">search</span>
+                </div>
+                <button type="button" id="btnDestGps"
+                  class="px-3 py-2 rounded-xl bg-white border border-orange-200 text-brand text-xs font-bold hover:bg-orange-50 transition-colors shrink-0 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">my_location</span>
+                  <span>GPS</span>
+                </button>
+              </div>
+
+              <div class="mb-1 p-2.5 bg-white rounded-xl border border-slate-200 flex items-start gap-2">
+                <span class="material-symbols-outlined text-brand text-base shrink-0 mt-0.5">where_to_vote</span>
+                <div class="min-w-0">
+                  <p id="destAddr" class="text-xs font-semibold text-slate-800 truncate">
+                    Chưa chọn điểm đến
+                  </p>
+                </div>
+              </div>
+
+              <div class="relative h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-10">
+                <div id="destMap" class="w-full h-full"></div>
+                <input type="hidden" id="destLat" name="dest_latitude" value="21.0336">
+                <input type="hidden" id="destLng" name="dest_longitude" value="105.8155">
+              </div>
+            </div>
+
+            <!-- Ghi chú điểm đến -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Ghi chú người nhận bé tại điểm đến
+              </label>
+              <input type="text" id="inputDestNote"
+                placeholder="VD: Bàn giao bé cho bà nội ở căn hộ 1204 Block B, gọi điện trước 5 phút qua số 0912..."
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
+                oninput="state.destination_note = this.value">
+            </div>
+
+            <!-- Phương thức di chuyển (3 cards chuẩn) -->
+            <div class="pt-2">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Phương thức di chuyển an toàn <span class="text-rose-500">*</span>
+              </label>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="transportContainer">
+                
+                <button type="button" onclick="selectTransport('carepartner_vehicle')" data-trans="carepartner_vehicle"
+                  class="trans-card p-4 rounded-2xl border text-left transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs relative">
+                  <div class="w-8 h-8 rounded-xl bg-orange-100 text-brand flex items-center justify-center mb-2">
+                    <span class="material-symbols-outlined text-lg">two_wheeler</span>
+                  </div>
+                  <span class="block text-xs font-bold text-brand-800">Xe máy CarePartner</span>
+                  <span class="text-[10px] text-brand-700/80 block mt-1 leading-snug">GPLX A1 hợp lệ & Có sẵn mũ bảo hiểm trẻ em đạt chuẩn</span>
+                  <span class="inline-block mt-2 px-1.5 py-0.5 rounded bg-orange-200/60 text-brand-700 text-[9px] font-bold">Phổ biến nhất</span>
+                </button>
+
+                <button type="button" onclick="selectTransport('walking')" data-trans="walking"
+                  class="trans-card p-4 rounded-2xl border text-left transition-all border-slate-200 bg-white hover:border-orange-300">
+                  <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mb-2">
+                    <span class="material-symbols-outlined text-lg">directions_walk</span>
+                  </div>
+                  <span class="block text-xs font-bold text-slate-800">Đi bộ cùng bé</span>
+                  <span class="text-[10px] text-slate-400 block mt-1 leading-snug">Dưới 800m, dắt tay bé qua đường, trường sát nhà</span>
+                </button>
+
+                <button type="button" onclick="selectTransport('parent_arranged')" data-trans="parent_arranged"
+                  class="trans-card p-4 rounded-2xl border text-left transition-all border-slate-200 bg-white hover:border-orange-300">
+                  <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mb-2">
+                    <span class="material-symbols-outlined text-lg">directions_car</span>
+                  </div>
+                  <span class="block text-xs font-bold text-slate-800">Xe gia đình / Taxi</span>
+                  <span class="text-[10px] text-slate-400 block mt-1 leading-snug">Phụ huynh book GrabCar, CarePartner đi kèm hộ tống bé</span>
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Ghi chú phương tiện -->
+            <div>
+              <input type="text" id="inputTransportNote"
+                placeholder="Ghi chú phương tiện (VD: Bé có mũ riêng trong cặp, xe máy cần có gương chiếu hậu hai bên...)"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
+                oninput="state.transport_note = this.value">
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CARD 3: LỊCH ĐÓN & KHUNG GIỜ -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-bento hover:shadow-bento-hover transition-all">
+          <div class="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-2xl bg-orange-100 text-brand font-headline font-extrabold text-lg flex items-center justify-center">
+              3
+            </div>
+            <div>
+              <h3 class="font-headline font-bold text-lg text-obsidian-900">Lịch đón & Khung giờ tan trường</h3>
+              <p class="text-xs text-slate-500">Chọn các ngày cần đón trong tuần và khung giờ tan học của bé</p>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Chọn ngày đón bé <span class="text-rose-500">*</span>
+              </span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="selectWeekdays()"
+                  class="text-xs font-bold px-3 py-1.5 rounded-xl bg-orange-50 text-brand border border-orange-200 hover:bg-orange-100 transition-colors">
+                  + Chọn cả tuần T2–T6
+                </button>
+                <button type="button" onclick="selectT2T4T6()"
+                  class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-colors">
+                  + Chọn T2–T4–T6
+                </button>
+              </div>
+            </div>
+
+            <!-- Rolling 14-day calendar chips -->
+            <div class="grid grid-cols-4 sm:grid-cols-7 gap-2" id="calendarChipsContainer"></div>
+
+            <!-- Selected Dates Badges Summary -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Các ngày đón đã chọn (<span id="selectedDaysCount">0</span> ngày):
+                </span>
+                <button type="button" onclick="clearAllDates()" class="text-[11px] font-semibold text-rose-500 hover:underline">
+                  Xóa tất cả
+                </button>
+              </div>
+              <div id="selectedBadgesContainer" class="flex flex-wrap gap-2 min-h-[36px] p-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 items-center">
+                <span class="text-xs text-slate-400 italic pl-1" id="emptyDatesMsg">Chưa chọn ngày nào. Vui lòng bấm chọn ngày ở trên.</span>
+              </div>
+            </div>
+
+            <!-- Khung giờ đón & Giờ bàn giao -->
+            <div class="pt-2 border-t border-slate-100">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Giờ đón tại trường (pickup_time_from) <span class="text-rose-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <input type="time" id="timeFromInput" value="16:30"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white"
+                      onchange="state.pickup_time_from = this.value;">
+                    <span class="material-symbols-outlined absolute right-3.5 top-3.5 text-slate-400 text-xl pointer-events-none">schedule</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 mt-1 block">Giờ bé tan học / trống tiết</span>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Giờ dự kiến về đến nhà (pickup_time_to) <span class="text-rose-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <input type="time" id="timeToInput" value="17:30"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white"
+                      onchange="state.pickup_time_to = this.value;">
+                    <span class="material-symbols-outlined absolute right-3.5 top-3.5 text-slate-400 text-xl pointer-events-none">task_alt</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 mt-1 block">Dự kiến hoàn tất bàn giao bé</span>
+                </div>
+              </div>
+
+              <div class="mt-3 flex items-center gap-2 p-2.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-blue-800 text-xs">
+                <span class="material-symbols-outlined text-base text-blue-600">info</span>
+                <span>Thời gian trung bình lý tưởng cho 1 lượt đón & đưa về an toàn là <strong>45 – 60 phút</strong>.</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CARD 4: YÊU CẦU AN TOÀN & GHI CHÚ -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-bento hover:shadow-bento-hover transition-all">
+          <div class="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-2xl bg-orange-100 text-brand font-headline font-extrabold text-lg flex items-center justify-center">
+              4
+            </div>
+            <div>
+              <h3 class="font-headline font-bold text-lg text-obsidian-900">Yêu cầu an toàn & Dặn dò CarePartner</h3>
+              <p class="text-xs text-slate-500">Quy định các tiêu chuẩn đón bé nghiêm ngặt nhằm tránh rủi ro</p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Thẻ tiêu chí an toàn nhanh (Bấm để chèn)
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="appendTag('Chụp ảnh check-in cổng trường')" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-brand rounded-xl border border-slate-200 transition-colors">
+                  + Chụp ảnh check-in cổng trường
+                </button>
+                <button type="button" onclick="appendTag('Gọi điện khi về tới nhà')" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-brand rounded-xl border border-slate-200 transition-colors">
+                  + Gọi điện khi về tới nhà
+                </button>
+                <button type="button" onclick="appendTag('Dắt tay qua đường')" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-brand rounded-xl border border-slate-200 transition-colors">
+                  + Dắt tay qua đường
+                </button>
+                <button type="button" onclick="appendTag('Đội mũ bảo hiểm riêng của bé')" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-brand rounded-xl border border-slate-200 transition-colors">
+                  + Đội mũ bảo hiểm riêng của bé
+                </button>
+                <button type="button" onclick="appendTag('Không rẽ vào nơi khác')" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-brand rounded-xl border border-slate-200 transition-colors">
+                  + Không rẽ vào nơi khác
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Mô tả chi tiết yêu cầu đưa đón
+              </label>
+              <textarea id="specificRequirementsInput" rows="4"
+                placeholder="VD: Bé tan học lúc 16h30, cần đón đúng giờ tránh bé đứng một mình tại cổng. Yêu cầu CarePartner đi chậm, dắt bé qua đường, đội mũ bảo hiểm và gọi mẹ khi đã về nhà..."
+                class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all leading-relaxed"
+                oninput="state.specific_requirements = this.value"></textarea>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN (4 COLS STICKY) -->
+      <div class="lg:col-span-4 lg:sticky lg:top-24 space-y-5">
+
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-bento relative overflow-hidden">
+          
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <h4 class="font-headline font-extrabold text-base text-obsidian-900">Dự tính chi phí đưa đón</h4>
+              <p class="text-[11px] text-slate-400 mt-0.5">Minh bạch & Ký quỹ an toàn</p>
+            </div>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-extrabold border border-emerald-200">
+              <span class="material-symbols-outlined text-xs fill-1">verified</span>
+              <span>Minh bạch 100%</span>
+            </span>
+          </div>
+
+          <!-- Mức phí đề xuất mỗi lượt -->
+          <div class="mt-5">
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-bold text-slate-700">Mức phí đề xuất mỗi lượt:</label>
+              <span class="text-[11px] font-semibold text-brand">Khuyên dùng: 60k - 80k/lượt</span>
+            </div>
+
+            <div class="relative">
+              <input type="number" id="inputHourlyRate" value="60000" step="5000" min="30000"
+                class="w-full pl-4 pr-16 py-3 bg-slate-50 border border-slate-200 rounded-2xl font-headline font-extrabold text-xl text-obsidian-900 focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white transition-all"
+                oninput="updateRate(this.value)">
+              <span class="absolute right-4 top-3.5 text-xs font-bold text-slate-400">đ / lượt</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5 mt-2">
+              <button type="button" onclick="adjustRate(-10000)" class="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                -10k
+              </button>
+              <button type="button" onclick="adjustRate(10000)" class="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                +10k
+              </button>
+              <button type="button" onclick="adjustRate(20000)" class="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                +20k
+              </button>
+            </div>
+          </div>
+
+          <!-- Reactive Breakdown Card -->
+          <div class="mt-5 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-2.5 text-xs">
+            <div class="flex items-center justify-between text-slate-600">
+              <span>Đơn giá 1 chuyến (cơ bản):</span>
+              <span class="font-bold text-slate-800" id="calcBaseRate">60,000 đ</span>
+            </div>
+
+            <div id="calcSurchargeRow" class="hidden flex items-center justify-between text-brand font-medium">
+              <span>Phụ phí 2 bé (+20.000đ):</span>
+              <span class="font-bold" id="calcSurchargeAmount">+20,000 đ</span>
+            </div>
+
+            <div class="flex items-center justify-between text-slate-600">
+              <span>Đơn giá 1 chuyến (đã tính bé):</span>
+              <span class="font-bold text-slate-800" id="calcPerTrip">60,000 đ</span>
+            </div>
+
+            <div class="flex items-center justify-between text-slate-600">
+              <span>Số ngày đón đã chọn:</span>
+              <span class="font-bold text-slate-800" id="calcDaysCount">5 ngày</span>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200 flex items-baseline justify-between">
+              <div>
+                <span class="font-bold text-xs text-obsidian-900 block">Tổng chi phí dự kiến:</span>
+                <span class="text-[10px] text-slate-400">Đã bao gồm ký quỹ an toàn</span>
+              </div>
+              <div class="text-right">
+                <span class="font-headline font-extrabold text-2xl text-brand" id="calcTotalCost">300,000</span>
+                <span class="text-xs font-bold text-brand">VNĐ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Escrow Trust Note -->
+          <div class="mt-4 p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2.5">
+            <span class="material-symbols-outlined text-emerald-600 text-lg shrink-0 mt-0.5 fill-1">lock</span>
+            <div class="leading-relaxed">
+              <strong class="font-bold text-emerald-800">Ký quỹ MoMo an toàn:</strong> Tiền được giữ tạm thời, chỉ giải ngân cho CarePartner sau khi bé đã về đến nhà an toàn và phụ huynh xác nhận.
+            </div>
+          </div>
+
+          <!-- Submit Main CTA -->
+          <button type="submit" id="btnSubmitMain"
+            class="mt-5 w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-brand to-amber-500 hover:from-brand-600 hover:to-amber-600 text-white font-headline font-extrabold text-base shadow-lg shadow-brand/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] group">
+            <span class="material-symbols-outlined text-xl group-hover:rotate-45 transition-transform">radar</span>
+            <span>Đăng việc & Tìm CarePartner Đón Bé</span>
+          </button>
+
+          <!-- 3-Step Safety Escort Process -->
+          <div class="mt-5 pt-4 border-t border-slate-100">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2.5">Quy trình đón trẻ 3 bước an toàn:</span>
+            <div class="space-y-2 text-[11px] text-slate-600">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">1</span>
+                <span>Đón tận cổng trường & check CCCD / đối chiếu bé</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">2</span>
+                <span>Chụp ảnh check-in & gửi thông báo lộ trình GPS</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">3</span>
+                <span>Bàn giao bé tận tay người thân tại điểm đến</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </form>
+  </main>
+
+  <!-- MOBILE BOTTOM FLOATING BAR (<1024px) -->
+  <aside class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 lg:hidden px-4 py-3 shadow-sticky">
+    <div class="max-w-md mx-auto flex items-center justify-between gap-3">
+      <div>
+        <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+          <span id="mobileSummaryDays">5 ngày đón</span>
+          <span>•</span>
+          <span id="mobileSummaryChildren">1 bé</span>
+        </div>
+        <div class="flex items-baseline gap-1">
+          <span class="font-headline font-extrabold text-lg text-brand" id="mobileTotalCost">300,000</span>
+          <span class="text-xs font-bold text-brand">VNĐ</span>
+        </div>
+      </div>
+      <button type="button" onclick="document.getElementById('btnSubmitMain').click()" id="btnBottomSubmit"
+        class="py-3 px-5 rounded-xl bg-gradient-to-r from-brand to-amber-500 text-white font-headline font-bold text-xs shadow-md shadow-brand/20 flex items-center gap-1.5 shrink-0">
+        <span class="material-symbols-outlined text-base">radar</span>
+        <span>Đăng việc đón bé</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- RADAR MATCHING MODAL (#radarModal) -->
+  <div id="radarModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-8 text-center relative overflow-hidden shadow-2xl border border-slate-100">
+      
+      <button type="button" onclick="closeRadarModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
+        <span class="material-symbols-outlined text-base">close</span>
+      </button>
+
+      <!-- STATE 1: SEARCHING RADAR -->
+      <div id="radarSearchingView" class="py-4">
+        <div class="relative w-48 h-48 mx-auto mb-6 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border border-orange-200 bg-orange-50/40"></div>
+          <div class="absolute inset-6 rounded-full border border-orange-200"></div>
+          <div class="absolute inset-12 rounded-full border border-orange-300/80"></div>
+          <div class="pulse-layer"></div>
+          <div class="radar-beam"></div>
+
+          <div class="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-brand to-amber-500 text-white flex items-center justify-center font-headline font-black text-2xl shadow-xl shadow-brand/30">
+            <span class="material-symbols-outlined text-3xl">directions_bike</span>
+          </div>
+
+          <div class="absolute -top-1 right-2 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>ĐH Sư Phạm (0.4km)</span>
+          </div>
+          <div class="absolute -bottom-2 left-1 bg-white rounded-full px-2.5 py-1 text-[10px] font-bold text-obsidian-900 border border-slate-200 shadow-md flex items-center gap-1 animate-pulse" style="animation-delay: 0.7s;">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>ĐH Bách Khoa (1.2km)</span>
+          </div>
+          <div class="absolute top-1/2 -right-4 bg-white rounded-full px-2 py-0.5 text-[9px] font-bold text-brand border border-orange-200 shadow-sm animate-pulse" style="animation-delay: 1.2s;">
+            <span>A1 + Mũ trẻ em</span>
+          </div>
+        </div>
+
+        <h4 class="font-headline font-extrabold text-xl text-obsidian-900 mb-2">
+          Đang quét CarePartner quanh trường...
+        </h4>
+        <p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto mb-4">
+          Hệ thống đang kết nối CarePartner có phương tiện và bằng lái A1 trong bán kính gần trường của bé.
+        </p>
+
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 text-brand text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-brand animate-ping"></span>
+          <span>Bán kính tìm kiếm: 3.5 km</span>
+        </div>
+      </div>
+
+      <!-- STATE 2: SUCCESS VIEW -->
+      <div id="radarSuccessView" class="py-4 hidden">
+        <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
+          <span class="material-symbols-outlined text-4xl fill-1">check_circle</span>
+        </div>
+        <h4 class="font-headline font-extrabold text-xl text-obsidian-900 mb-2">
+          Đăng việc đón bé thành công!
+        </h4>
+        <p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto mb-6">
+          Đã tìm thấy các ứng viên phù hợp quanh trường. Đang chuyển tiếp sang danh sách ứng viên...
+        </p>
+        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+          <div class="bg-emerald-500 h-full w-full animate-[pulse_1s_infinite]"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TRUST & COMMITMENT MODAL (#trustModal) -->
+  <div id="trustModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 relative overflow-hidden shadow-2xl border border-slate-100">
+      <button type="button" onclick="closeTrustModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
+        <span class="material-symbols-outlined text-base">close</span>
+      </button>
+
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl fill-1">verified_user</span>
+        </div>
+        <div>
+          <h4 class="font-headline font-extrabold text-lg text-obsidian-900">Cam kết an toàn đưa đón 100%</h4>
+          <p class="text-xs text-slate-500">Tiêu chuẩn khắt khe bảo vệ hành trình tan trường của bé</p>
+        </div>
+      </div>
+
+      <div class="space-y-3.5 text-xs text-slate-600">
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <strong class="font-bold text-slate-800 text-sm block mb-1">1. Đối soát GPLX & Phương tiện kỹ càng:</strong>
+          100% CarePartner cung cấp bằng lái A1 hợp lệ, căn cước công dân gắn chip và xe máy có bảo hiểm dân sự cùng gương chiếu hậu chuẩn.
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <strong class="font-bold text-slate-800 text-sm block mb-1">2. Trang bị mũ bảo hiểm trẻ em đạt chuẩn:</strong>
+          Bắt buộc đội mũ bảo hiểm kích cỡ vừa đầu bé và có quai cài an toàn trong suốt lộ trình di chuyển.
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <strong class="font-bold text-slate-800 text-sm block mb-1">3. Ký quỹ MoMo an toàn 100%:</strong>
+          Phụ huynh chỉ thanh toán khi đã nhận bé an toàn tại nhà. EduCareLink giữ tiền trung gian và hỗ trợ đổi ứng viên miễn phí nếu có thay đổi.
+        </div>
+      </div>
+
+      <button type="button" onclick="closeTrustModal()" class="mt-6 w-full py-3 rounded-xl bg-obsidian-900 text-white font-headline font-bold text-xs hover:bg-slate-800 transition-colors">
+        Đã hiểu & Quay lại tạo yêu cầu
+      </button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT BUSINESS LOGIC (PARITY VỚI MOBILE PICKUPFORM.JS) -->
+  <script>
+    const state = {
+      school_or_pickup_place_name: '',
+      child_age_group: '6_to_10_years',
+      number_of_children: 1,
+      pickup_dates: [], // YYYY-MM-DD
+      pickup_time_from: '16:30',
+      pickup_time_to: '17:30',
+      pickup_location_note: '',
+      destination_type: 'parent_home', // 'parent_home' | 'other_address'
+      destination_note: '',
+      transport_method: 'carepartner_vehicle', // 'carepartner_vehicle' | 'walking' | 'parent_arranged'
+      transport_note: '',
+      specific_requirements: '',
+      hourly_rate: 60000,
+      latitude: 21.0423,
+      longitude: 105.8234,
+      dest_latitude: null,
+      dest_longitude: null,
+      dest_address: ''
+    };
+
+    const daysOfWeekNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const generatedDays = [];
+    let destMapPicker = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initRollingCalendar();
+      calculatePricing();
+
+      // Initialize Leaflet Map Picker cho cổng đón
+      initMapPicker({
+        mapId: 'map',
+        searchId: 'mapSearchInput',
+        btnGpsId: 'btnGpsCurrent',
+        addrId: 'mapAddr',
+        latInput: 'lat',
+        lngInput: 'lng',
+        noteInput: 'inputPickupNote'
+      });
+    });
+
+    function initRollingCalendar() {
+      const today = new Date();
+      const container = document.getElementById('calendarChipsContainer');
+      container.innerHTML = '';
+      generatedDays.length = 0;
+
+      for (let i = 0; i < 14; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        const dayOfWeekStr = daysOfWeekNames[d.getDay()];
+
+        generatedDays.push({ dateStr, dayOfWeekStr, day, month });
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `calChip_${dateStr}`;
+        btn.onclick = () => toggleDateSelection(dateStr);
+        btn.className = "calendar-chip p-2.5 rounded-2xl border text-center transition-all bg-white border-slate-200 hover:border-orange-300";
+        btn.innerHTML = `
+          <span class="block text-[11px] font-bold text-slate-500">${dayOfWeekStr}</span>
+          <span class="block font-headline font-extrabold text-base text-obsidian-900 mt-0.5">${day}</span>
+          <span class="block text-[9px] text-slate-400 font-medium">Thg ${month}</span>
+        `;
+        container.appendChild(btn);
+      }
+
+      selectWeekdays();
+    }
+
+    function toggleDateSelection(dateStr) {
+      const idx = state.pickup_dates.indexOf(dateStr);
+      if (idx > -1) {
+        state.pickup_dates.splice(idx, 1);
+      } else {
+        state.pickup_dates.push(dateStr);
+      }
+      state.pickup_dates.sort();
+      renderCalendarState();
+      calculatePricing();
+    }
+
+    function selectWeekdays() {
+      state.pickup_dates = [];
+      generatedDays.forEach(item => {
+        if (item.dayOfWeekStr !== 'CN' && item.dayOfWeekStr !== 'T7') {
+          if (state.pickup_dates.length < 5) {
+            state.pickup_dates.push(item.dateStr);
+          }
+        }
+      });
+      renderCalendarState();
+      calculatePricing();
+    }
+
+    function selectT2T4T6() {
+      state.pickup_dates = [];
+      generatedDays.forEach(item => {
+        if (['T2', 'T4', 'T6'].includes(item.dayOfWeekStr)) {
+          state.pickup_dates.push(item.dateStr);
+        }
+      });
+      renderCalendarState();
+      calculatePricing();
+    }
+
+    function clearAllDates() {
+      state.pickup_dates = [];
+      renderCalendarState();
+      calculatePricing();
+    }
+
+    function renderCalendarState() {
+      generatedDays.forEach(item => {
+        const btn = document.getElementById(`calChip_${item.dateStr}`);
+        if (!btn) return;
+        const isSelected = state.pickup_dates.includes(item.dateStr);
+        if (isSelected) {
+          btn.className = "calendar-chip p-2.5 rounded-2xl border text-center transition-all bg-brand text-white border-orange-600 shadow-md shadow-orange-500/20 ring-2 ring-orange-500/30";
+          btn.querySelector('.text-slate-500')?.classList.replace('text-slate-500', 'text-white/80');
+          btn.querySelector('.text-obsidian-900')?.classList.replace('text-obsidian-900', 'text-white');
+          btn.querySelector('.text-slate-400')?.classList.replace('text-slate-400', 'text-white/80');
+        } else {
+          btn.className = "calendar-chip p-2.5 rounded-2xl border text-center transition-all bg-white border-slate-200 hover:border-orange-300";
+        }
+      });
+
+      const badgesContainer = document.getElementById('selectedBadgesContainer');
+      document.getElementById('selectedDaysCount').innerText = state.pickup_dates.length;
+
+      if (state.pickup_dates.length === 0) {
+        badgesContainer.innerHTML = '<span class="text-xs text-slate-400 italic pl-1">Chưa chọn ngày nào. Vui lòng chọn ít nhất 1 ngày.</span>';
+      } else {
+        badgesContainer.innerHTML = '';
+        state.pickup_dates.forEach(dStr => {
+          const parts = dStr.split('-');
+          const badge = document.createElement('span');
+          badge.className = "inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs font-semibold shadow-xs";
+          badge.innerHTML = `
+            <span>${parts[2]}/${parts[1]}</span>
+            <button type="button" onclick="toggleDateSelection('${dStr}')" class="text-slate-400 hover:text-rose-500 transition-colors">
+              <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+          `;
+          badgesContainer.appendChild(badge);
+        });
+      }
+    }
+
+    function selectAgeGroup(val) {
+      state.child_age_group = val;
+      document.querySelectorAll('.age-card').forEach(c => {
+        const iconSpan = c.querySelector('.material-symbols-outlined');
+        const textSpan = c.querySelector('span.text-xs');
+        if (c.dataset.val === val) {
+          c.className = "age-card p-3 rounded-2xl border text-center transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-brand-700";
+          if (iconSpan) iconSpan.className = "material-symbols-outlined text-xl block mb-1 text-brand";
+        } else {
+          c.className = "age-card p-3 rounded-2xl border text-center transition-all border-slate-200 bg-white hover:border-orange-300";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-slate-800";
+          if (iconSpan) iconSpan.className = "material-symbols-outlined text-xl block mb-1 text-slate-600";
+        }
+      });
+    }
+
+    function updateChildrenCount(delta) {
+      const next = state.number_of_children + delta;
+      if (next >= 1 && next <= 2) {
+        state.number_of_children = next;
+        document.getElementById('childCountDisplay').innerText = `${next} bé`;
+        const note = document.getElementById('childFeeNote');
+        const surchargeRow = document.getElementById('calcSurchargeRow');
+        const minusBtn = document.getElementById('btnMinusChild');
+        const plusBtn = document.getElementById('btnPlusChild');
+
+        if (next === 2) {
+          note.innerText = "+20k phụ phí";
+          note.className = "text-[10px] font-bold text-brand block";
+          surchargeRow.classList.remove('hidden');
+        } else {
+          note.innerText = "Tiêu chuẩn";
+          note.className = "text-[10px] font-medium text-slate-400 block";
+          surchargeRow.classList.add('hidden');
+        }
+
+        minusBtn.disabled = (next === 1);
+        plusBtn.disabled = (next === 2);
+
+        calculatePricing();
+      }
+    }
+
+    function setSchoolQuick(prefix) {
+      const input = document.getElementById('schoolNameInput');
+      input.value = prefix;
+      input.focus();
+      state.school_or_pickup_place_name = prefix;
+    }
+
+    function selectDestType(type) {
+      state.destination_type = type;
+      const otherSec = document.getElementById('otherDestSection');
+      document.querySelectorAll('.dest-btn').forEach(btn => {
+        const textSpan = btn.querySelector('span.text-xs');
+        if (btn.dataset.dest === type) {
+          btn.className = "dest-btn p-4 rounded-2xl border text-left transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs flex items-start gap-3";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-brand-800";
+        } else {
+          btn.className = "dest-btn p-4 rounded-2xl border text-left transition-all border-slate-200 bg-white hover:border-orange-300 flex items-start gap-3";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-slate-800";
+        }
+      });
+
+      if (type === 'other_address') {
+        otherSec.classList.remove('hidden');
+        if (!destMapPicker) {
+          setTimeout(() => {
+            destMapPicker = initMapPicker({
+              mapId: 'destMap',
+              searchId: 'destSearchInput',
+              btnGpsId: 'btnDestGps',
+              addrId: 'destAddr',
+              latInput: 'destLat',
+              lngInput: 'destLng'
+            });
+          }, 100);
+        } else {
+          setTimeout(() => {
+            destMapPicker.map.invalidateSize();
+          }, 200);
+        }
+      } else {
+        otherSec.classList.add('hidden');
+        state.dest_latitude = null;
+        state.dest_longitude = null;
+      }
+    }
+
+    function selectTransport(m) {
+      state.transport_method = m;
+      document.querySelectorAll('.trans-card').forEach(c => {
+        const textSpan = c.querySelector('span.text-xs');
+        if (c.dataset.trans === m) {
+          c.className = "trans-card p-4 rounded-2xl border text-left transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs relative";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-brand-800";
+        } else {
+          c.className = "trans-card p-4 rounded-2xl border text-left transition-all border-slate-200 bg-white hover:border-orange-300";
+          if (textSpan) textSpan.className = "block text-xs font-bold text-slate-800";
+        }
+      });
+    }
+
+    function appendTag(tagText) {
+      const textarea = document.getElementById('specificRequirementsInput');
+      if (textarea.value.trim().length === 0) {
+        textarea.value = `+ ${tagText}`;
+      } else if (!textarea.value.includes(tagText)) {
+        textarea.value += `, ${tagText}`;
+      }
+      state.specific_requirements = textarea.value;
+      textarea.focus();
+    }
+
+    function updateRate(val) {
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num > 0) {
+        state.hourly_rate = num;
+        calculatePricing();
+      }
+    }
+
+    function adjustRate(delta) {
+      const next = Math.max(30000, state.hourly_rate + delta);
+      state.hourly_rate = next;
+      document.getElementById('inputHourlyRate').value = next;
+      calculatePricing();
+    }
+
+    function calculatePricing() {
+      const perTrip = state.hourly_rate + (state.number_of_children > 1 ? 20000 : 0);
+      const total = perTrip * state.pickup_dates.length;
+
+      document.getElementById('calcBaseRate').innerText = `${state.hourly_rate.toLocaleString('vi-VN')} đ`;
+      document.getElementById('calcPerTrip').innerText = `${perTrip.toLocaleString('vi-VN')} đ`;
+      document.getElementById('calcDaysCount').innerText = `${state.pickup_dates.length} ngày`;
+      document.getElementById('calcTotalCost').innerText = total.toLocaleString('vi-VN');
+
+      document.getElementById('mobileSummaryDays').innerText = `${state.pickup_dates.length} ngày đón`;
+      document.getElementById('mobileSummaryChildren').innerText = `${state.number_of_children} bé`;
+      document.getElementById('mobileTotalCost').innerText = total.toLocaleString('vi-VN');
+    }
+
+    function openTrustModal() {
+      const modal = document.getElementById('trustModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    function closeTrustModal() {
+      const modal = document.getElementById('trustModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function closeRadarModal() {
+      const modal = document.getElementById('radarModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.getElementById('btnSubmitMain').disabled = false;
+      document.getElementById('btnBottomSubmit').disabled = false;
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const schoolName = (state.school_or_pickup_place_name || document.getElementById('schoolNameInput').value || '').trim();
+      if (!schoolName) {
+        toast("Vui lòng nhập tên trường hoặc điểm đón của bé.", false);
+        document.getElementById('schoolNameInput').focus();
+        return;
+      }
+
+      if (state.pickup_dates.length === 0) {
+        toast("Vui lòng chọn ít nhất 1 ngày đón bé trong lịch tan trường.", false);
+        return;
+      }
+
+      const latVal = document.getElementById('lat').value;
+      const lngVal = document.getElementById('lng').value;
+      const lat = latVal ? parseFloat(latVal) : state.latitude;
+      const lng = lngVal ? parseFloat(lngVal) : state.longitude;
+      if (!lat || !lng) {
+        toast("Vui lòng chọn vị trí cổng trường đón trên bản đồ.", false);
+        return;
+      }
+
+      let destLocation = null;
+      if (state.destination_type === 'other_address') {
+        const dLat = document.getElementById('destLat').value;
+        const dLng = document.getElementById('destLng').value;
+        const dAddr = document.getElementById('destAddr').textContent.replace('📍 ', '').trim();
+        if (!dLat || !dLng) {
+          toast("Vui lòng chọn vị trí điểm đến khác trên bản đồ.", false);
+          return;
+        }
+        destLocation = {
+          latitude: parseFloat(dLat),
+          longitude: parseFloat(dLng),
+          address: dAddr || 'Địa chỉ khác'
+        };
+      }
+
+      const pickupNoteInput = document.getElementById('inputPickupNote');
+      const pickupNoteVal = pickupNoteInput ? pickupNoteInput.value.trim() : '';
+      const destNoteInput = document.getElementById('inputDestNote');
+      const destNoteVal = destNoteInput ? destNoteInput.value.trim() : '';
+      const transNoteInput = document.getElementById('inputTransportNote');
+      const transNoteVal = transNoteInput ? transNoteInput.value.trim() : '';
+      const reqInput = document.getElementById('specificRequirementsInput');
+      const finalRequirements = (reqInput ? reqInput.value.trim() : '') ||
+        'Đưa đón bé đúng giờ, đội mũ bảo hiểm và đảm bảo an toàn giao thông.';
+
+      const payload = {
+        job_type: 'pickup',
+        school_or_pickup_place_name: schoolName,
+        child_age_group: state.child_age_group,
+        number_of_children: state.number_of_children,
+        pickup_dates: [...state.pickup_dates].sort(),
+        pickup_time_from: state.pickup_time_from,
+        pickup_time_to: state.pickup_time_to,
+        pickup_location_note: pickupNoteVal,
+        destination_type: state.destination_type,
+        destination_location: destLocation,
+        destination_note: destNoteVal,
+        transport_method: state.transport_method,
+        transport_note: transNoteVal,
+        specific_requirements: finalRequirements,
+        hourly_rate_vnd: state.hourly_rate,
+        latitude: lat,
+        longitude: lng
+      };
+
+      const modal = document.getElementById('radarModal');
+      const searchView = document.getElementById('radarSearchingView');
+      const successView = document.getElementById('radarSuccessView');
+      const btnSubmit = document.getElementById('btnSubmitMain');
+      const btnBottom = document.getElementById('btnBottomSubmit');
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      searchView.classList.remove('hidden');
+      successView.classList.add('hidden');
+
+      btnSubmit.disabled = true;
+      btnBottom.disabled = true;
+
+      try {
+        const resp = await authFetch(API_BASE + '/matching/jobs/', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (resp.status === 201 && data.id) {
+          await authFetch(`${API_BASE}/matching/jobs/${data.id}/publish/`, {
+            method: 'POST'
+          });
+
+          setTimeout(() => {
+            searchView.classList.add('hidden');
+            successView.classList.remove('hidden');
+
+            setTimeout(() => {
+              window.location.href = `/ung-vien/${data.id}/`;
+            }, 1200);
+          }, 1500);
+
+        } else {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          btnSubmit.disabled = false;
+          btnBottom.disabled = false;
+          const detail = data.detail || (typeof data === 'object' ? Object.values(data).flat().join(', ') : 'Vui lòng kiểm tra lại thông tin.');
+          toast(detail, false);
+        }
+      } catch (err) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        btnSubmit.disabled = false;
+        btnBottom.disabled = false;
+        if (err.message !== 'no_token') {
+          toast('Không thể kết nối đến máy chủ. Vui lòng thử lại.', false);
+        }
+      }
+    }
+  </script>
 </body>
 </html>
