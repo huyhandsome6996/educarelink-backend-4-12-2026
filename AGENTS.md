@@ -143,6 +143,7 @@ expo-location                 (live tracking)
 3. **Service layer pattern** — business logic nằm trong `<module>/services.py`, không nằm trong views. Views chỉ làm I/O.
 4. **Auth mặc định khoá** — `REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES'] = ['IsAuthenticated']`. Mọi endpoint mặc định yêu cầu JWT. Endpoint public phải khai báo `permission_classes = [AllowAny]` + `authentication_classes = []` rõ ràng.
 5. **Tiếng Việt everywhere** — error messages, log lines, AI prompts, commit messages, UI text. Chỉ code identifier là tiếng Anh.
+6. **DSA & Performance First** — Mọi agent khi thiết kế hoặc viết code liên quan đến xử lý dữ liệu, query database, background job, caching, real-time tracking, recommendation, hay bất kỳ vòng lặp nào trên collection **BẮT BUỘC** phải đọc và tuân thủ skill `dsa-performance-engineering` tại `.agents/skills/dsa-performance-engineering/SKILL.md`. Tuyệt đối cấm: nested loops O(N²) trên N > 100, N+1 queries không có `select_related`/`prefetch_related`, `len(queryset)` thay vì `.count()`, load toàn bộ bảng vào memory để filter trong Python. Mọi quyết định DSA phải được ghi chú bằng comment `# DSA: ...` ngay tại điểm quyết định trong code.
 
 ---
 
