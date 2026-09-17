@@ -72,12 +72,12 @@ const BASE_BOOKING = {
   carepartner_id: 'cp-9', carepartner_payout_vnd: 240000,
   carepartner_info: {
     full_name: 'Nguyễn Thị Thu Huyền', phone: '0912845000', avatar_url: '',
-    is_verified: true, school: 'ĐH Sư Phạm Hà Nội', major: 'Giáo dục Tiểu học',
+    is_verified: true, school: 'ĐH Sư Phạm - Đại học Huế', major: 'Giáo dục Tiểu học',
     rating_avg: 4.9, jobs_completed: 38, trust_band_vi: 'Tin cậy',
   },
   first_slot: { date: '2026-09-19', date_vi: '19/09/2026', day_of_week_vi: 'Thứ Sáu',
     time_from: '18:00', time_to: '20:00' },
-  job_address: 'Vinhomes Smart City, Nam Từ Liêm, Hà Nội',
+  job_address: '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế',
   child_info: { age_group: '6-11', number_of_children: 1, notes: '' },
 };
 
@@ -103,7 +103,7 @@ describe('BookingDetailScreen — luồng Phụ huynh 3 giai đoạn (Stitch)', 
     expect(getByText(/Còn lại: 48 phút 20 giây/)).toBeTruthy();
     // Spotlight bento — hồ sơ sinh viên đã chọn phải hiển thị đầy đủ
     expect(getByText('Nguyễn Thị Thu Huyền')).toBeTruthy();
-    expect(getByText('ĐH Sư Phạm Hà Nội · Giáo dục Tiểu học')).toBeTruthy();
+    expect(getByText('ĐH Sư Phạm - Đại học Huế · Giáo dục Tiểu học')).toBeTruthy();
     expect(getByText('Đã xác thực CCCD gắn chip')).toBeTruthy();
     expect(getByText('Điểm uy tín: Tin cậy')).toBeTruthy();
     // MoMo Escrow — trạng thái tạm giữ

@@ -129,7 +129,7 @@ const AWAITING_BOOKING = {
   id: 'bk-001',
   job_title: 'Gia sư Toán lớp 5',
   parent_name: 'Nguyễn Văn A',
-  job_address: 'Cầu Giấy, Hà Nội',
+  job_address: '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế',
   total_value_vnd: 240000,
   first_slot: { date: '2026-09-21', time_from: '19:00:00', time_to: '21:00:00' },
   seconds_left: 300,

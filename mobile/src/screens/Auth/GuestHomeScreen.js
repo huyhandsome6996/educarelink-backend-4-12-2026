@@ -41,7 +41,7 @@ const CAROUSEL_WIDTH = Math.min(SCREEN_WIDTH - 32, 398);
 const HERO_SLIDES = [
   {
     id: 1,
-    badgeText: 'Top 5% SV Sư Phạm & Ngoại Thương',
+    badgeText: 'Top 5% SV các trường Đại học Huế',
     badgeIcon: 'star',
     badgeColor: '#FDE047',
     headline: 'Gia sư kèm cặp tận tâm\nngay tại gia đình',
@@ -556,7 +556,7 @@ export default function GuestHomeScreen() {
               <Text style={styles.starRating}>★★★★★</Text>
             </View>
             <Text style={styles.testimonialQuote}>
-              “Bạn gia sư Bách Khoa kèm con tôi môn Toán rất kiên nhẫn. Thích nhất là tính năng theo dõi GPS và giải ngân MoMo an toàn 100%!”
+              “Bạn gia sư ĐH Khoa học Huế kèm con tôi môn Toán rất kiên nhẫn. Thích nhất là tính năng theo dõi GPS và giải ngân MoMo an toàn 100%!”
             </Text>
           </View>
           {/* END: ParentTestimonialCard */}

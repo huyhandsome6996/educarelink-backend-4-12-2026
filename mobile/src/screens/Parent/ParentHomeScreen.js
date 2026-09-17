@@ -322,7 +322,7 @@ export default function ParentHomeScreen() {
                   <View style={styles.univBadge}>
                     <Ionicons name="checkmark-circle" size={12} color="#059669" />
                     <Text style={styles.univBadgeText}>
-                      100% SV giỏi ĐH Sư Phạm, Bách Khoa, Ngoại Thương
+                      100% sinh viên các trường thuộc Đại học Huế
                     </Text>
                   </View>
                 </View>
@@ -443,7 +443,7 @@ export default function ParentHomeScreen() {
               </View>
               <Text style={styles.stitchShowcaseTitle}>Ứng viên CarePartner Tuyển Chọn</Text>
               <Text style={styles.stitchShowcaseSubtitle}>
-                Thuật toán ELO đã quét & xếp hạng · 100% sinh viên giỏi ĐH Sư Phạm, Ngoại Thương, Bách Khoa
+                Thuật toán ELO đã quét & xếp hạng · 100% sinh viên các trường thuộc Đại học Huế
               </Text>
             </View>
             <View style={styles.stitchShowcaseBtn}>

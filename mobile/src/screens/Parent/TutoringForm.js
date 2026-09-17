@@ -317,7 +317,7 @@ export default function TutoringForm() {
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'school',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
-        // Defect 2: bỏ hard-code 'Cầu Giấy, Hà Nội' — dùng label reverse-geocoding
+        // Defect 2: bỏ hard-code địa bàn mặc định — dùng label reverse-geocoding
         // nếu phụ huynh không nhập ghi chú, fallback trung tính nếu chưa có gì
         location_note: locationNote || location?.label || 'Vị trí đã chọn trên bản đồ',
       };
@@ -425,7 +425,7 @@ export default function TutoringForm() {
             <Text style={styles.heroTitle}>Tìm gia sư sinh viên giỏi & tận tâm</Text>
             <View style={styles.heroVerifyRow}>
               <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-              <Text style={styles.heroVerifyText}>100% đối soát CCCD & Thẻ SV ĐH Top (Bách Khoa, Sư Phạm...)</Text>
+              <Text style={styles.heroVerifyText}>100% đối soát CCCD & Thẻ SV các trường thuộc Đại học Huế</Text>
             </View>
           </View>
         </View>
