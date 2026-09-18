@@ -89,9 +89,31 @@ class WorkerCareDiaryAPIView(APIView):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 6b. CARE DIARY NÂNG CẤP — validate form đánh giá chuyên sâu theo
+        # danh mục. assessment_data có thể là dict (JSON body) hoặc chuỗi
+        # JSON (multipart form). Lỗi trả field-level theo API contract.
+        raw_type = str(data.get('assessment_type', '') or '').strip() or 'general'
+        raw_assessment = data.get('assessment_data', {})
+        if isinstance(raw_assessment, str):
+            try:
+                raw_assessment = json.loads(raw_assessment) if raw_assessment.strip() else {}
+            except json.JSONDecodeError:
+                return Response(
+                    {'assessment_data': ['assessment_data phải là object JSON hợp lệ.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        try:
+            assessment_type, assessment_data = services.validate_assessment_data(
+                task=task, assessment_type=raw_type, assessment_data=raw_assessment,
+            )
+        except services.AssessmentValidationError as e:
+            return Response(e.errors, status=status.HTTP_400_BAD_REQUEST)
+
         entry = CareDiaryEntry.objects.create(
             task=task,
             worker=request.user,
+            assessment_type=assessment_type,
+            assessment_data=assessment_data,
             mood_icon=services.normalize_mood_icon(data.get('mood_icon', ''))[:30],
             mood_label=str(data.get('mood_label', ''))[:100],
             mood_note=str(data.get('mood_note', '')),
@@ -168,6 +190,34 @@ class WorkerCareDiaryAPIView(APIView):
                 elif field in FIELD_MAX_LENGTH:
                     val = str(val)[:FIELD_MAX_LENGTH[field]]
                 setattr(entry, field, str(val) if isinstance(val, str) else val)
+
+        # CARE DIARY NÂNG CẤP — sửa loại + nội dung form đánh giá.
+        # Xử lý riêng khỏi vòng mood phía trên vì assessment_data là dict,
+        # không được stringify. Chỉ validate khi client gửi ít nhất 1 trong
+        # 2 trường → entry cũ (general, {}) PATCH mood vẫn hoạt động bình thường.
+        if 'assessment_type' in data or 'assessment_data' in data:
+            raw_type = (str(data.get('assessment_type', '') or '').strip()
+                        or entry.assessment_type or 'general')
+            raw_assessment = data.get('assessment_data', entry.assessment_data or {})
+            if isinstance(raw_assessment, str):
+                try:
+                    raw_assessment = (json.loads(raw_assessment)
+                                      if raw_assessment.strip() else {})
+                except json.JSONDecodeError:
+                    return Response(
+                        {'assessment_data': ['assessment_data phải là object JSON hợp lệ.']},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            try:
+                assessment_type, assessment_data = services.validate_assessment_data(
+                    task=entry.task, assessment_type=raw_type,
+                    assessment_data=raw_assessment,
+                )
+                entry.assessment_type = assessment_type
+                entry.assessment_data = assessment_data
+            except services.AssessmentValidationError as e:
+                return Response(e.errors, status=status.HTTP_400_BAD_REQUEST)
+
         entry.save()
         # Replace activities nếu gửi lên
         activities_raw = data.get('activities')

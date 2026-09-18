@@ -128,6 +128,60 @@
         </div>
       </div>
 
+      <!-- ═══ CARE DIARY NÂNG CẤP — Card chuyên sâu theo assessment_type ═══ -->
+      <!-- TUTORING: Card học tập -->
+      <div id="tutoring-card" class="hidden bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <h3 class="font-manrope font-bold text-sm text-textPrimary flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary filled">school</span>Đánh giá buổi học
+        </h3>
+        <div id="tutor-subject-box" class="bg-primaryLight/40 rounded-xl p-3 border border-primary/20">
+          <p id="tutor-subject" class="font-manrope font-bold text-lg text-primary"></p>
+          <p id="tutor-topic" class="text-sm text-textPrimary mt-0.5"></p>
+          <div id="tutor-badges" class="flex gap-2 mt-2"></div>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+          <p class="text-xs font-bold text-textSecondary mb-1">Mức độ tiếp thu bài</p>
+          <div id="tutor-stars" class="flex justify-center gap-1"></div>
+          <p id="tutor-score-label" class="text-sm font-bold text-amber-500 mt-1"></p>
+          <p id="tutor-attitude" class="text-xs text-textSecondary italic mt-1"></p>
+        </div>
+        <div id="tutor-rows" class="space-y-3"></div>
+      </div>
+
+      <!-- CHILDCARE: Card sinh hoạt -->
+      <div id="childcare-card" class="hidden bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <h3 class="font-manrope font-bold text-sm text-textPrimary flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary filled">volunteer_activism</span>Sinh hoạt buổi trông trẻ
+        </h3>
+        <div id="childcare-meals-box" class="hidden bg-gray-50 rounded-xl p-3 border border-gray-100">
+          <p class="text-xs font-bold text-textPrimary mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-primary text-sm filled">restaurant</span>Bữa ăn
+          </p>
+          <div id="childcare-meals-list" class="space-y-2"></div>
+        </div>
+        <div id="childcare-nap-box" class="hidden bg-gray-50 rounded-xl p-3 border border-gray-100">
+          <p class="text-xs font-bold text-textPrimary mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-primary text-sm filled">bedtime</span>Giấc ngủ
+          </p>
+          <p id="childcare-nap-time" class="text-sm text-textPrimary"></p>
+          <p id="childcare-nap-quality" class="text-sm text-textSecondary"></p>
+        </div>
+        <div id="childcare-rows" class="space-y-3"></div>
+        <div id="childcare-activities-box" class="hidden bg-gray-50 rounded-xl p-3 border border-gray-100">
+          <p class="text-xs font-bold text-textPrimary mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-primary text-sm filled">toys</span>Hoạt động
+          </p>
+          <div id="childcare-activity-chips" class="flex flex-wrap gap-2"></div>
+          <p id="childcare-mood-during" class="text-sm text-textSecondary mt-2"></p>
+        </div>
+        <div id="childcare-note-box" class="hidden bg-primaryLight/30 rounded-xl p-3 border border-primary/10">
+          <p class="text-xs font-bold text-textPrimary mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-primary text-sm filled">chat_bubble</span>Ghi chú cho phụ huynh
+          </p>
+          <p id="childcare-note-text" class="text-sm text-textPrimary italic leading-relaxed"></p>
+        </div>
+      </div>
+
       <!-- Activities -->
       <div id="activities-section" class="bg-white rounded-2xl border border-gray-100 p-5">
         <h3 class="font-manrope font-bold text-sm text-textPrimary mb-4">Hoạt động đã thực hiện</h3>
@@ -232,6 +286,113 @@ function showError(icon, title, message) {
   document.getElementById('error-message').textContent = message;
 }
 
+// ═══ CARE DIARY NÂNG CẤP — render card chuyên sâu theo assessment_type ═══
+const TUTOR_SCORE_LABELS = {
+  1: 'Chưa tiếp thu được', 2: 'Cần hỗ trợ nhiều', 3: 'Tiếp thu ở mức cơ bản',
+  4: 'Hiểu bài nhanh', 5: 'Tiếp thu xuất sắc',
+};
+
+function detailRow(label, value) {
+  if (!value) return '';
+  return `
+    <div class="flex gap-2.5">
+      <div class="flex-1">
+        <p class="text-[11px] font-bold text-textSecondary">${escapeHtml(label)}</p>
+        <p class="text-sm text-textPrimary leading-relaxed mt-0.5">${escapeHtml(value)}</p>
+      </div>
+    </div>`;
+}
+
+function renderTutoringCard(ad) {
+  const lesson = ad.lesson_content || {};
+  const comp = ad.comprehension || {};
+  const classwork = ad.classwork_homework || {};
+  const remarks = ad.remarks || {};
+  const score = Number(comp.score) || 0;
+  const card = document.getElementById('tutoring-card');
+  card.classList.remove('hidden');
+
+  document.getElementById('tutor-subject').textContent = lesson.subject || '—';
+  document.getElementById('tutor-topic').textContent = lesson.topic || '';
+  const badges = [];
+  if (lesson.is_new_knowledge) badges.push('<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">Kiến thức mới</span>');
+  if (lesson.is_review) badges.push('<span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">Ôn tập</span>');
+  document.getElementById('tutor-badges').innerHTML = badges.join('');
+
+  document.getElementById('tutor-stars').innerHTML = [1, 2, 3, 4, 5].map(n =>
+    `<span class="material-symbols-outlined text-2xl ${score >= n ? 'text-amber-400 filled' : 'text-gray-300'}">star</span>`
+  ).join('');
+  document.getElementById('tutor-score-label').textContent = comp.score_label || TUTOR_SCORE_LABELS[score] || '';
+  document.getElementById('tutor-attitude').textContent = comp.attitude || '';
+
+  document.getElementById('tutor-rows').innerHTML =
+    detailRow('Bài tập trên lớp', classwork.classwork_status) +
+    detailRow('Bài tập về nhà', classwork.homework) +
+    detailRow('Lỗ hổng kiến thức', remarks.knowledge_gap) +
+    detailRow('Kế hoạch buổi tới', remarks.next_session_plan);
+}
+
+function renderChildcareCard(ad) {
+  const meals = Array.isArray(ad.meals) ? ad.meals : [];
+  const nap = ad.nap || {};
+  const hygiene = ad.hygiene_health || {};
+  const activities = ad.activities || {};
+  const actList = (Array.isArray(activities.list) ? activities.list : []).filter(Boolean);
+  const napTime = [nap.start_time, nap.end_time].filter(Boolean).join(' → ');
+
+  // Bữa ăn
+  const mealsBox = document.getElementById('childcare-meals-box');
+  if (meals.length > 0) {
+    mealsBox.classList.remove('hidden');
+    document.getElementById('childcare-meals-list').innerHTML = meals.map(m => `
+      <div class="flex items-center gap-2.5">
+        <span class="px-2 py-0.5 rounded-lg bg-primaryLight text-primary text-[11px] font-bold flex-shrink-0">${escapeHtml(m.time || '--:--')}</span>
+        <div>
+          ${m.meal ? `<p class="text-sm font-semibold text-textPrimary">${escapeHtml(m.meal)}</p>` : ''}
+          ${m.amount ? `<p class="text-xs text-textSecondary">${escapeHtml(m.amount)}</p>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  // Giấc ngủ
+  if (napTime || nap.quality) {
+    document.getElementById('childcare-nap-box').classList.remove('hidden');
+    document.getElementById('childcare-nap-time').textContent = napTime ? '⏰ ' + napTime : '';
+    document.getElementById('childcare-nap-quality').textContent = nap.quality || '';
+  }
+
+  // Vệ sinh + thể chất
+  document.getElementById('childcare-rows').innerHTML =
+    detailRow('Vệ sinh / đi vệ sinh', hygiene.diaper_toilet) +
+    detailRow('Tình trạng thể chất', hygiene.physical_condition);
+
+  // Hoạt động
+  if (actList.length > 0 || activities.mood_during) {
+    document.getElementById('childcare-activities-box').classList.remove('hidden');
+    document.getElementById('childcare-activity-chips').innerHTML = actList.map(a =>
+      `<span class="px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-semibold text-textPrimary">${escapeHtml(a)}</span>`
+    ).join('');
+    document.getElementById('childcare-mood-during').textContent = activities.mood_during ? 'Tâm trạng: ' + activities.mood_during : '';
+  }
+
+  // Ghi chú cho phụ huynh
+  if (ad.notes_for_parents) {
+    document.getElementById('childcare-note-box').classList.remove('hidden');
+    document.getElementById('childcare-note-text').textContent = ad.notes_for_parents;
+  }
+}
+
+function renderAssessmentCards(d) {
+  const type = d.assessment_type || 'general';
+  const ad = d.assessment_data || {};
+  if (type === 'tutoring') {
+    renderTutoringCard(ad);
+  } else if (type === 'childcare') {
+    renderChildcareCard(ad);
+  }
+  // general → không render card chuyên sâu (hiển thị cũ nguyên vẹn)
+}
+
 function renderDiary(d) {
   // CarePartner info
   document.getElementById('cp-initial').textContent = (d.carepartner && d.carepartner.avatarInitial) || '?';
@@ -259,6 +420,11 @@ function renderDiary(d) {
       </div>
     `).join('');
   }
+
+  // CARE DIARY NÂNG CẤP — render card chuyên sâu theo assessment_type.
+  // Đồng bộ hiển thị với card mobile (TutoringAssessmentCard.js /
+  // ChildcareAssessmentCard.js). general → giữ nguyên hiển thị cũ.
+  renderAssessmentCards(d);
 
   // Activities
   if (d.activities && d.activities.length > 0) {

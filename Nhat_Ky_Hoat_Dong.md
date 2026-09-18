@@ -375,3 +375,42 @@
 - Nguồn số liệu duy nhất: file thống kê 30 ngày hệ thống xuất 23:27 16/09/2026 + 4 biên lai MoMo — 4 tài liệu đối chiếu chéo khớp tuyệt đối.
 - Định dạng: A4, bìa Template HUD, palette cam ấm EduCareLink (cascade warmth), font FreeSerif đầy đủ tiếng Việt, header/footer + số trang từng tài liệu.
 - Chuẩn hoá văn phong doanh nghiệp (17/09): 4 tài liệu được chỉnh thành hồ sơ nội bộ của doanh nghiệp đang vận hành — chân trang bìa đổi thành "Tài liệu kinh doanh nội bộ · 09/2026"; các đoạn thân bài chuyển sang văn phong kế toán/kiểm toán (lưu trữ, đối chiếu, kiểm soát nội bộ định kỳ); metadata Subject của PDF rút gọn; thư mục lưu trữ đổi tên thành `docs/bao-cao-kinh-doanh/`. Số liệu, bố cục và 4 biên lai giữ nguyên trạng.
+
+### Nâng cấp Nhật ký chăm sóc — form đánh giá chuyên sâu Gia sư / Trông trẻ (2026-09-18)
+- **Yêu cầu**: nhật ký B1 chỉ có 1 form chung (tâm trạng + % hoàn thành + hoạt động). Nâng cấp:
+  task **Gia sư** → form đánh giá buổi học (môn học, chủ đề, kiến thức mới/ôn tập, thang sao
+  1-5 mức độ tiếp thu, thái độ, bài tập trên lớp/về nhà, lỗ hổng kiến thức, kế hoạch buổi tới);
+  task **Trông trẻ** → form sinh hoạt (nhiều bữa ăn có giờ + lượng ăn, giấc ngủ bắt đầu/kết thúc
+  + chất lượng, vệ sinh/thể chất, danh sách hoạt động + tâm trạng, ghi chú cho phụ huynh).
+  Áp dụng song song **mobile + web** theo policy parity, backend validate như nhau cho 2 nền tảng.
+- **Backend**: `CareDiaryEntry` thêm `assessment_type` (choices tutoring/childcare/general,
+  default `general`, có db_index) + `assessment_data` (JSONField, có key `schema_version: 1`
+  để version hoá nhẹ) — migration 0002 chỉ thêm 2 cột default, an toàn dữ liệu cũ.
+  `care_diary/services.py`: `validate_assessment_data()` map danh mục ("Gia sư" → tutoring|general,
+  "Trông trẻ" → childcare|general, danh mục khác → chỉ general) + validate field-level bắt buộc
+  (tutoring: subject/topic/score 1-5/classwork_status; childcare: ≥1 bữa ăn có time+amount,
+  nap.quality, physical_condition), lỗi trả đúng shape API contract
+  `{"assessment_data": {"comprehension": ["Trường 'score'..."]}}` / sai loại →
+  `{"assessment_type": ["Danh mục công việc này không hỗ trợ..."]}`. POST/PATCH WorkerCareDiaryAPIView
+  tích hợp validate (multipart string JSON cũng chấp nhận), `build_entry_response` trả thêm
+  `assessment_type` + `assessment_data`. Entry cũ (general, {}) GET/PATCH không bị ảnh hưởng.
+- **Mobile**: 2 component mới `Worker/components/TutoringAssessmentSection.js` (chips môn học,
+  thang sao kèm nhãn, dropdown thái độ) + `ChildcareAssessmentSection.js` (thêm/xoá nhiều bữa ăn,
+  hoạt động). `CareDiaryFormScreen` lấy `category_name` từ task detail để chọn form, validate
+  client-side khớp backend trước khi submit. **Post-Job Trigger**: bấm kết thúc ca trong
+  `MyJobsScreen.handleComplete` → Alert mời "Viết nhật ký ngay" / "Để sau" (không ép buộc cứng,
+  booking thiếu task mirror giữ alert cũ). `CareDiaryDetailScreen` render card học tập/sinh hoạt
+  theo assessment_type (2 card mới trong `components/`), general giữ nguyên hiển thị cũ.
+- **Web parity**: `worker_care_diary_form.html` thêm 2 block form (chips môn học, sao Material
+  Symbols, dòng bữa ăn/hoạt động động), toggle theo category từ `/api/tasks/<id>/`, JS thuần
+  theo pattern sẵn có, field contract khớp 100% mobile; `parent_care_diary_detail.html` thêm
+  card hiển thị tương ứng. Link "Ghi nhật ký" từ `worker_jobs.html` hoạt động không đổi.
+- **Test**: care_diary 50 → **66 test** (+16: hợp lệ tutoring/childcare, thiếu score/nap.quality/
+  meals, score 0/6 bị chặn, activities.list rỗng vẫn OK, danh mục khác general OK, gửi nhầm loại
+  400 đúng message, parent GET đủ trường + isolation, entry cũ GET/PATCH OK, PATCH nâng cấp
+  general→tutoring, multipart JSON string, task không có category). **Backend FULL SUITE
+  867/867 OK**, **mobile jest 144/144 PASS (19 suites)**, JS 2 template parse OK (node --check).
+- **Sửa lỗi tự phát hiện trong quá trình code**: (BUG-CD-01) JSX thừa dấu đóng
+  `)}` khi bọc danh sách hoạt động bằng điều kiện general trong CareDiaryFormScreen — sửa ngay,
+  babel check OK; (BUG-CD-02) escape `\'FILL\'` trong template literal của 2 template web gây
+  SyntaxError khi parse — chuyển sang class `.filled` sẵn có, node --check OK.

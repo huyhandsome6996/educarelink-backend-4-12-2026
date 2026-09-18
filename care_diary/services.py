@@ -98,6 +98,160 @@ def parse_completion_percent(raw):
     return val
 
 
+# ═══════════════════════════════════════════════════════════════════
+# CARE DIARY NÂNG CẤP — Form đánh giá chuyên sâu theo danh mục
+# ═══════════════════════════════════════════════════════════════════
+
+ASSESSMENT_SCHEMA_VERSION = 1
+
+# Map danh mục (ServiceCategory.name) → các assessment_type được phép gửi.
+# "Gia sư"   → form học tập hoặc form chung
+# "Trông trẻ" → form sinh hoạt hoặc form chung
+# Danh mục khác (Đón trẻ / legacy đã khóa) → chỉ form chung.
+CATEGORY_ASSESSMENT_TYPES = {
+    'Gia sư': ['tutoring', 'general'],
+    'Trông trẻ': ['childcare', 'general'],
+}
+DEFAULT_ASSESSMENT_TYPES = ['general']
+
+
+class AssessmentValidationError(Exception):
+    """Lỗi validate form đánh giá chuyên sâu — mang theo dict lỗi field-level.
+
+    .errors có 2 dạng shape (theo API contract):
+      {'assessment_type': ['...']}                      — sai loại/danh mục
+      {'assessment_data': {'section': ['message', ..]}} — thiếu/sai field
+    Views bắt exception này → trả 400 với đúng .errors (không trả lỗi chung chung).
+    """
+
+    def __init__(self, errors):
+        self.errors = errors
+        super().__init__(str(errors))
+
+
+def get_allowed_assessment_types(task):
+    """Danh sách assessment_type được phép cho task theo category của nó."""
+    category_name = task.category.name if task.category else None
+    return CATEGORY_ASSESSMENT_TYPES.get(category_name, DEFAULT_ASSESSMENT_TYPES)
+
+
+def _validate_tutoring(data, errors):
+    """Form Gia sư — bắt buộc: lesson_content.subject/topic,
+    comprehension.score (1-5), classwork_homework.classwork_status."""
+    lesson = data.get('lesson_content')
+    if not isinstance(lesson, dict):
+        errors['lesson_content'] = ["Thiếu thông tin bài học (subject, topic)."]
+    else:
+        if not str(lesson.get('subject', '') or '').strip():
+            errors.setdefault('lesson_content', []).append(
+                "Trường 'subject' là bắt buộc.")
+        if not str(lesson.get('topic', '') or '').strip():
+            errors.setdefault('lesson_content', []).append(
+                "Trường 'topic' là bắt buộc.")
+
+    comp = data.get('comprehension')
+    if not isinstance(comp, dict):
+        errors['comprehension'] = ["Thiếu thông tin tiếp thu bài (score)."]
+    else:
+        score = comp.get('score', None)
+        valid_score = False
+        if isinstance(score, int) and not isinstance(score, bool):
+            valid_score = 1 <= score <= 5
+        elif isinstance(score, str) and score.strip().isdigit():
+            valid_score = 1 <= int(score) <= 5
+        if not valid_score:
+            errors.setdefault('comprehension', []).append(
+                "Trường 'score' là bắt buộc và phải từ 1 đến 5.")
+
+    classwork = data.get('classwork_homework')
+    if not isinstance(classwork, dict):
+        errors['classwork_homework'] = ["Thiếu tình trạng bài tập trên lớp."]
+    elif not str(classwork.get('classwork_status', '') or '').strip():
+        errors.setdefault('classwork_homework', []).append(
+            "Trường 'classwork_status' là bắt buộc.")
+
+
+def _validate_childcare(data, errors):
+    """Form Trông trẻ — bắt buộc: meals (≥1 phần tử có time + amount),
+    nap.quality, hygiene_health.physical_condition."""
+    meals = data.get('meals')
+    if not isinstance(meals, list) or len(meals) == 0:
+        errors['meals'] = ["Cần ít nhất 1 bữa ăn với 'time' và 'amount'."]
+    else:
+        for idx, meal in enumerate(meals):
+            if not isinstance(meal, dict) or not str(
+                meal.get('time', '') or ''
+            ).strip() or not str(meal.get('amount', '') or '').strip():
+                errors.setdefault('meals', []).append(
+                    f"Bữa ăn thứ {idx + 1} thiếu 'time' hoặc 'amount'.")
+
+    nap = data.get('nap')
+    if not isinstance(nap, dict):
+        errors['nap'] = ["Trường 'quality' là bắt buộc."]
+    elif not str(nap.get('quality', '') or '').strip():
+        errors.setdefault('nap', []).append("Trường 'quality' là bắt buộc.")
+
+    hygiene = data.get('hygiene_health')
+    if not isinstance(hygiene, dict):
+        errors['hygiene_health'] = ["Trường 'physical_condition' là bắt buộc."]
+    elif not str(hygiene.get('physical_condition', '') or '').strip():
+        errors.setdefault('hygiene_health', []).append(
+            "Trường 'physical_condition' là bắt buộc.")
+
+
+def validate_assessment_data(task, assessment_type, assessment_data):
+    """Validate loại + nội dung form đánh giá theo danh mục công việc.
+
+    Returns:
+        (clean_type, clean_data) — clean_data luôn có schema_version.
+
+    Raises:
+        AssessmentValidationError: với .errors là dict field-level
+        (shape khớp API contract — xem class docstring).
+    """
+    valid_choices = dict(CareDiaryEntry.ASSESSMENT_CHOICES).keys()
+    if assessment_type not in valid_choices:
+        raise AssessmentValidationError({
+            'assessment_type': [
+                "Loại đánh giá không hợp lệ: '{}'. Giá trị cho phép: {}.".format(
+                    assessment_type, ', '.join(valid_choices)),
+            ],
+        })
+
+    allowed = get_allowed_assessment_types(task)
+    if assessment_type not in allowed:
+        raise AssessmentValidationError({
+            'assessment_type': [
+                "Danh mục công việc này không hỗ trợ loại đánh giá '{}'."
+                .format(assessment_type),
+            ],
+        })
+
+    if assessment_type == 'general':
+        # Form chung — assessment_data luôn là {} (giữ nguyên hành vi cũ,
+        # tương thích ngược 100% với mọi entry trước nâng cấp).
+        return assessment_type, {}
+
+    if not isinstance(assessment_data, dict):
+        raise AssessmentValidationError({
+            'assessment_data': ['assessment_data phải là object (dict).'],
+        })
+
+    clean = {
+        k: v for k, v in assessment_data.items() if k != 'schema_version'
+    }
+    errors = {}
+    if assessment_type == 'tutoring':
+        _validate_tutoring(clean, errors)
+    else:
+        _validate_childcare(clean, errors)
+    if errors:
+        raise AssessmentValidationError({'assessment_data': errors})
+
+    clean['schema_version'] = ASSESSMENT_SCHEMA_VERSION
+    return assessment_type, clean
+
+
 def get_parent_diary_history(*, parent):
     """Lấy danh sách rút gọn nhật ký của phụ huynh, sắp xếp mới nhất trước.
 
@@ -185,6 +339,8 @@ def build_entry_response(*, entry, request=None):
 
     return {
         'id': entry.id,
+        'assessment_type': entry.assessment_type or 'general',
+        'assessment_data': entry.assessment_data or {},
         'carepartner': {
             'name': worker.get_full_name() or worker.username,
             'role': 'CarePartner',

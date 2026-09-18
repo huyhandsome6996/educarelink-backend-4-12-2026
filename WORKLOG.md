@@ -1633,3 +1633,35 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
 - **Lưu ý go-live**: cần PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY trên Render; khi merge →
   Render tạo cron `educarelink-payos-expiry` → phải copy SECRET_KEY/DATABASE_URL/PAYOS_*
   từ web service sang cron service. Sandbox/test mode dùng được ngay khi có key.
+
+---
+
+# CARE DIARY NÂNG CẤP — Form đánh giá chuyên sâu (2026-09-18)
+
+**Agent**: Coding Agent (Super Z)
+**Branch**: `feature/care-diary-assessment-forms` (từ `feature/vietqr-payment-gate-booking`)
+
+## Mục tiêu
+Task Gia sư / Trông trẻ có form nhật ký chuyên sâu riêng thay vì form chung; phụ huynh
+xem card riêng theo loại (học tập / sinh hoạt). Song song mobile + web, cùng 1 API contract.
+
+## Thay đổi chính
+- **Model**: `CareDiaryEntry.assessment_type` (default general, db_index) + `assessment_data`
+  (JSONField, schema_version: 1) — migration `0002_carediaryentry_assessment_data_and_more`.
+- **Services**: `validate_assessment_data`, `get_allowed_assessment_types`,
+  `AssessmentValidationError` (errors field-level), `CATEGORY_ASSESSMENT_TYPES`.
+- **Views**: POST/PATCH validate + lưu 2 trường mới (hỗ trợ multipart JSON string);
+  response thêm `assessment_type`/`assessment_data`.
+- **Mobile**: TutoringAssessmentSection, ChildcareAssessmentSection (Worker/components),
+  2 card hiển thị (components/), CareDiaryFormScreen chọn form theo category + validate,
+  MyJobsScreen post-job trigger sau khi kết thúc ca.
+- **Web**: worker_care_diary_form.html (2 block form + toggle theo category), 
+  parent_care_diary_detail.html (2 card), link worker_jobs.html giữ nguyên.
+
+## Kết quả QA
+- care_diary: 66/66 OK (50 cũ + 16 mới — vượt yêu cầu tối thiểu 8).
+- Backend full suite: **867/867 OK** (không phá momo_escrow/cash/PayOS).
+- Mobile jest: **144/144 PASS** (19 suites).
+- JS template: node --check OK cả 2 file; `manage.py check` 0 issues.
+- BUG tự phát hiện: BUG-CD-01 (JSX thừa `)}`), BUG-CD-02 (escape FILL trong template literal)
+  — đã sửa trong quá trình code, không còn tồn tại.
