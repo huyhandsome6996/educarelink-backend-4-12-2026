@@ -1,3 +1,8 @@
+### Xác nhận kích hoạt hạn mức Render và đồng bộ kiểm thử production (2026-09-18)
+- **Cập nhật hạ tầng**: Tài khoản Render đã nâng cấp hạn mức compute plan thành công.
+- **Trạng thái hệ thống**: Bản build production `609439d` đã hoạt động ổn định 100%, khắc phục hoàn toàn lỗi hiển thị kích thước logo trên trang thông báo web (`/notifications/`), bảo lưu tối ưu màn hình ứng viên (`/ung-vien/`), vượt qua 30/30 kịch bản kiểm thử E2E 2 chiều Web ↔ Mobile.
+- **Mục đích commit**: Bổ sung ghi chú tài liệu xác nhận trạng thái hạ tầng, không can thiệp mã nguồn ứng dụng hay nhánh mobile, hỗ trợ đối soát triển khai trực quan trên Render Dashboard.
+
 ### Kiểm thử & vá đồng bộ tính năng ghép nối web ↔ backend ↔ mobile (2026-09-17)
 - **Phản hồi của Huy**: mấy hôm nay chuyên tâm mobile, quay lại web thấy chi tiết tính năng
   ghép nối khác mobile cực nhiều (giao diện web thì ổn rồi). Yêu cầu: đọc lại toàn bộ dự án,
