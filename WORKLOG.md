@@ -1665,3 +1665,44 @@ xem card riêng theo loại (học tập / sinh hoạt). Song song mobile + web,
 - JS template: node --check OK cả 2 file; `manage.py check` 0 issues.
 - BUG tự phát hiện: BUG-CD-01 (JSX thừa `)}`), BUG-CD-02 (escape FILL trong template literal)
   — đã sửa trong quá trình code, không còn tồn tại.
+
+## 2026-09-18 — Vá 6 phát hiện QA review form đánh giá Care Diary: C1/H1/H2/M2/M1/M3 (Super Z)
+
+## Bối cảnh
+- QA review độc lập commit lõi 4f6651b chấm 78/100, khuyến nghị vá theo thứ tự
+  C1 → H1 → H2 → M2 → M1 → M3 trên cùng nhánh (one-branch rule), chạy
+  `manage.py test care_diary` sau mỗi bước.
+
+## Thay đổi chính
+- **C1 (Critical)**: `views.post()` bọc `transaction.atomic()` từ bước chống trùng
+  đến `create()`, bắt `IntegrityError` (except NGOÀI khối atomic) → 400 thân thiện
+  thay vì 500 khi double-POST đồng thời. Hằng chung `DUPLICATE_DIARY_MSG`.
+- **H1 (High)**: `services.validate_assessment_data()` thêm 3 kwarg
+  `current_type/current_data/allow_clear` — chặn PATCH hạ cấp tutoring/childcare →
+  general khi entry đang có data (400, yêu cầu `confirm_clear_assessment=true`).
+  Gom parse/validate POST+PATCH vào helper chung `_parse_and_validate_assessment()`
+  + `_parse_confirm_clear()` (nợ kỹ thuật §7).
+- **H2 (High)**: mobile CareDiaryFormScreen + web worker_care_diary_form chỉ gửi
+  key `activities` khi form `general` (conditional spread) — hết xóa âm thầm
+  activities cũ của entry tutoring/childcare khi PATCH.
+- **M2 (Medium)**: `MAX_TEXT_FIELD_LEN=2000` / `MAX_MEALS=20` / `MAX_ACTIVITY_ITEMS=30`
+  + helper `_check_text_len()` cho mọi trường text (kể cả key lạ), meals/activities
+  chặn số phần tử.
+- **M1 (Medium)**: `ServiceCategory.code` (SlugField unique, tự sinh `vn_slugify`) +
+  migration `core/0032_servicecategory_code` 3 bước (AddField → backfill RunPython
+  tự chứa → AlterField unique); care_diary map theo code thay vì name.
+- **M3 (Medium)**: `select_related('parent', 'category')` / `'task', 'task__category'`
+  — bỏ N+1 query khi validate assessment.
+- **N2 (nice-to-have)**: admin CareDiaryEntry hiển thị + lọc theo `assessment_type`.
+
+## Kết quả QA
+- care_diary: **72/72 OK** (66 cũ + 6 test mới: race condition, 2 downgrade,
+  2 giới hạn, category rename) — chạy lại PASS sau từng bước vá.
+- Backend full suite: **873/873 OK** (317s — migration data không phá app nào).
+- Mobile jest: **99/99 PASS** (src/screens/Worker + src/__tests__, có 3 test
+  payload mới CareDiaryFormScreen.assessment.test.js).
+- `makemigrations --check`: 0 pending; migrate thử db dev — backfill đúng
+  gia-su / trong-tre / don-tre.
+- Lưu ý theo dõi (nice-to-have chưa làm): N1 giữ db_index assessment_type cho
+  dashboard tương lai; N3 nới lỏng score nhận float .is_integer(); N4 enum hóa
+  classwork_status nếu làm báo cáo tổng hợp.

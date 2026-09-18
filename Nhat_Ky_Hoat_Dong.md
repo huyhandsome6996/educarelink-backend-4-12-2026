@@ -1,3 +1,55 @@
+### Vá 6 phát hiện QA review form đánh giá Care Diary (2026-09-18)
+- **Bối cảnh**: QA review độc lập branch `feature/care-diary-assessment-forms` (commit lõi
+  4f6651b) chấm 78/100 — merge được nhưng khuyến nghị vá C1 + H1 trước khi phát hành;
+  toàn bộ C1/H1/H2/M2/M1/M3 gộp 1 vòng PATCH trên cùng nhánh (one-branch rule).
+- **C1 (Critical) — race condition double-POST**: `WorkerCareDiaryAPIView.post()` có kẽ
+  TOCTOU giữa `exists()` và `create()` — 2 request đồng thời (double-tap, retry khi mạng
+  chập chờn, web + mobile cùng submit) có thể cùng vượt qua check rồi 1 request chạm
+  ràng buộc unique OneToOne → 500 IntegrityError. Đã bọc `transaction.atomic()` (except
+  nằm NGOÀI khối atomic — tránh TransactionManagementError trên Postgres), bắt
+  IntegrityError trả 400 thân thiện "Nhật ký... đã tồn tại. Dùng PATCH để sửa."
+  (hằng chung `DUPLICATE_DIARY_MSG`). Test: `test_concurrent_duplicate_post_returns_400_not_500`
+  (mock `QuerySet.exists` → False để ép đi vào nhánh IntegrityError thật của DB).
+- **H1 (High) — chặn mất dữ liệu âm thầm khi hạ cấp về general**: PATCH
+  `assessment_type=general` trước đây xóa sạch assessment_data (điểm tiếp thu, bữa ăn,
+  giấc ngủ...) không cảnh báo. Giờ `validate_assessment_data()` nhận thêm
+  `current_type/current_data/allow_clear` — hạ cấp khi entry đang có data chuyên sâu
+  bị chặn 400 với thông điệp tự giải thích, chỉ qua khi client gửi
+  `confirm_clear_assessment=true` (parse chấp nhận bool/'true'/'1'/'yes'). Nhân thể gom
+  parse/validate POST+PATCH về 1 helper chung `_parse_and_validate_assessment()`
+  (nợ kỹ thuật trùng lặp §7 review). 2 test: không confirm → 400 + data còn nguyên;
+  có confirm → 200 + data xóa chủ đích.
+- **H2 (High) — không còn xóa activities cũ khi PATCH entry chuyên sâu**: mobile
+  (CareDiaryFormScreen) + web (worker_care_diary_form.html) trước đây luôn gửi key
+  `activities` (mảng rỗng) kể cả khi form tutoring/childcare ẩn timeline — backend hiểu
+  là "xóa hết tạo lại". Giờ chỉ đưa `activities` vào payload khi form `general`
+  (conditional spread cả 2 nền tảng). 3 test Jest mới xác nhận payload
+  tutoring/childcare KHÔNG có key activities, general vẫn có.
+- **M2 (Medium) — trần kích thước assessment_data** (chặn phình DB/DoS nhẹ):
+  text mỗi trường ≤ 2000 ký tự (`MAX_TEXT_FIELD_LEN`), meals ≤ 20 (`MAX_MEALS`),
+  activities.list ≤ 30, chặn cả key tùy chỉnh lạ ngoài spec. Lỗi field-level đúng
+  contract: "Trường 'X' không được vượt quá 2000 ký tự." / "Không được vượt quá 20 bữa
+  ăn." 2 test (subject 2001 ký tự → 400, đúng trần 2000 → 201; 21 bữa → 400).
+- **M1 (Medium) — thoát khỏi coupling chuỗi tiếng Việt**: thêm
+  `ServiceCategory.code` (SlugField unique, blank, tự sinh khi save() bằng
+  `vn_slugify` — 'Gia sư'→'gia-su', 'Trông trẻ'→'trong-tre'). Migration
+  `core/0032_servicecategory_code` 3 bước an toàn production: AddField (chưa unique)
+  → RunPython backfill (tự chứa, không import models module; trùng slug gán -2/-3)
+  → AlterField unique. `care_diary` map `CATEGORY_ASSESSMENT_TYPES` theo code —
+  admin đổi tên hiển thị không còn làm tính năng âm thầm rơi về general.
+  Test đổi name giữ code → vẫn 201.
+- **M3 (Medium)**: `select_related('parent', 'category')` ở POST và
+  `'task', 'task__category'` ở PATCH — bỏ N+1 query khi validate assessment.
+- **N2 (nice-to-have)**: Django admin `CareDiaryEntry` hiển thị + lọc theo
+  `assessment_type` — QA/support tra cứu nhanh entry tutoring/childcare.
+  N1 (index assessment_type chưa dùng — giữ, dự kiến dùng cho dashboard thống kê),
+  N3 (score nhận int/string, chưa nới float), N4 (classwork_status tự do) —
+  ghi nhận theo dõi, chưa làm.
+- **Kiểm thử**: care_diary **72/72 PASS** (66 cũ + 6 mới); backend full suite
+  **873/873 PASS** (317s, migration data không phá app nào); mobile jest **99/99 PASS**
+  (Worker + core tests). `makemigrations --check` 0 pending; migrate thử trên db dev —
+  backfill đúng 3 category thật (gia-su / trong-tre / don-tre).
+
 ### Cổng VietQR — xác nhận đặt lịch SAU khi thanh toán PayOS (2026-09-17)
 - **Yêu cầu (prompt coding agent)**: hiện tại chọn CarePartner là đặt lịch NGAY, không phụ
   thuộc thanh toán. Yêu cầu mới: chọn CarePartner → hiện QR VietQR (PayOS) → phụ huynh quét

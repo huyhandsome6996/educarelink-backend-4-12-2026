@@ -162,9 +162,14 @@ export default function CareDiaryFormScreen() {
         note,
         assessment_type: effectiveAssessmentType,
         assessment_data: effectiveAssessmentType === 'general' ? {} : assessmentData,
-        activities: validActivities.map((a, i) => ({
-          time: a.time, title: a.title, description: a.description, status: a.status, order: i,
-        })),
+        // H2 — chỉ gửi key 'activities' khi form chung: backend coi activities
+        // != null là lệnh "xóa hết rồi tạo lại", gửi mảng rỗng khi form chuyên
+        // sâu ẩn timeline sẽ âm thầm xóa activities cũ của entry.
+        ...(effectiveAssessmentType === 'general' ? {
+          activities: validActivities.map((a, i) => ({
+            time: a.time, title: a.title, description: a.description, status: a.status, order: i,
+          })),
+        } : {}),
       };
 
       if (isExisting) {

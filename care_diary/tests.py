@@ -22,6 +22,7 @@ from django.utils import timezone as django_tz
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from datetime import time, datetime, timedelta
+from unittest import mock
 
 from core.models import User, Task, ServiceCategory, TaskApplication
 
@@ -1224,3 +1225,125 @@ class AssessmentFormTests(TestCase):
             format='json',
         )
         self.assertEqual(resp2.status_code, 201)
+
+    # --- 9. C1 — race condition double-POST → 400 thân thiện, không 500 ---
+    def test_concurrent_duplicate_post_returns_400_not_500(self):
+        """C1 — 2 request POST đồng thời: request sau vượt qua bước exists()
+        (check tầng application) nhưng chạm ràng buộc unique OneToOne ngay ở
+        tầng DB. Phải trả 400 với thông điệp thân thiện, không để lộ 500
+        IntegrityError — kịch bản double-tap / retry khi mạng chập chờn."""
+        # Request 1 insert thành công
+        self._post(_diary_payload())
+        # Giả lập race: exists() của bước chống trùng trả False (đã kiểm tra
+        # trước khi request 1 kịp commit), nhưng create() vẫn chạm unique DB.
+        with mock.patch('django.db.models.query.QuerySet.exists',
+                        return_value=False):
+            resp = self._post(_diary_payload(mood_label='Gửi trùng do mạng chập chờn'))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('đã tồn tại', resp.data.get('error', ''))
+        # DB vẫn đúng 1 entry — không tạo trùng
+        self.assertEqual(
+            CareDiaryEntry.objects.filter(task_id=self.task.id).count(), 1)
+
+    # --- 10. H1 — hạ cấp về general KHÔNG kèm confirm → 400, giữ nguyên data ---
+    def test_patch_downgrade_to_general_without_confirm_400(self):
+        """H1 — PATCH assessment_type=general khi entry tutoring đang có
+        assessment_data phải bị chặn (400) để không mất dữ liệu âm thầm."""
+        self._post(_diary_payload(assessment_type='tutoring',
+                                  assessment_data=_tutoring_assessment()))
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'assessment_type': 'general', 'assessment_data': {}},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('assessment_type', resp.data)
+        self.assertIn(
+            'confirm_clear_assessment',
+            str(resp.data['assessment_type']),
+        )
+        # Dữ liệu cũ KHÔNG bị xóa — vẫn nguyên tutoring + data đầy đủ
+        entry = CareDiaryEntry.objects.get(task_id=self.task.id)
+        self.assertEqual(entry.assessment_type, 'tutoring')
+        self.assertEqual(
+            entry.assessment_data['lesson_content']['subject'], 'Toán')
+
+    # --- 10b. H1 — hạ cấp kèm confirm_clear_assessment=true → 200, data xóa rõ ràng ---
+    def test_patch_downgrade_to_general_with_confirm_200(self):
+        """H1 — kèm confirm_clear_assessment=true → cho phép hạ cấp, dữ liệu
+        được xóa một cách chủ đích (không còn là mất dữ liệu âm thầm)."""
+        self._post(_diary_payload(assessment_type='tutoring',
+                                  assessment_data=_tutoring_assessment()))
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'assessment_type': 'general', 'assessment_data': {},
+             'confirm_clear_assessment': True},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['assessment_type'], 'general')
+        self.assertEqual(resp.data['assessment_data'], {})
+        entry = CareDiaryEntry.objects.get(task_id=self.task.id)
+        self.assertEqual(entry.assessment_type, 'general')
+        self.assertEqual(entry.assessment_data, {})
+
+    # --- 11. M2 — trường text vượt trần 2000 ký tự → 400 đúng message ---
+    def test_tutoring_text_field_over_limit_400(self):
+        """M2 — chặn phình DB/DoS: subject quá dài phải bị chặn ở server."""
+        data = _tutoring_assessment()
+        data['lesson_content']['subject'] = 'A' * 2001
+        resp = self._post(_diary_payload(
+            assessment_type='tutoring', assessment_data=data,
+        ))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(
+            "Trường 'subject' không được vượt quá 2000 ký tự.",
+            resp.data['assessment_data']['lesson_content'],
+        )
+        # Đúng trần (2000 ký tự) → vẫn 201
+        data['lesson_content']['subject'] = 'A' * 2000
+        resp2 = self._post(_diary_payload(
+            assessment_type='tutoring', assessment_data=data,
+        ))
+        self.assertEqual(resp2.status_code, 201)
+
+    # --- 11b. M2 — meals vượt trần 20 phần tử → 400 ---
+    def test_childcare_meals_over_limit_400(self):
+        """M2 — mảng meals không được vượt quá MAX_MEALS=20 phần tử."""
+        cat = ServiceCategory.objects.create(name='Trông trẻ', icon_name='Heart')
+        task = _make_task(self.parent, cat, status='in_progress')
+        _accept_worker(task, self.worker)
+        meals = [{'time': f'{8 + i // 60:02d}:{i % 60:02d}',
+                  'meal': f'Bữa {i}', 'amount': 'Hết suất'}
+                 for i in range(21)]
+        data = _childcare_assessment(meals=meals)
+        resp = self.client.post(
+            f'/api/worker/tasks/{task.id}/care-diary/',
+            _diary_payload(assessment_type='childcare', assessment_data=data),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(
+            'Không được vượt quá 20 bữa ăn.',
+            resp.data['assessment_data']['meals'],
+        )
+
+    # --- 12. M1 — đổi name hiển thị (giữ nguyên code) không làm vỡ mapping ---
+    def test_category_rename_display_name_does_not_break_assessment_type(self):
+        """M1 — mapping theo category.code (ổn định), không theo name:
+        admin đổi tên hiển thị thì form đánh giá vẫn hoạt động đúng."""
+        # _make_category('Gia sư') → save() tự sinh code 'gia-su'
+        self.assertEqual(self.category.code, 'gia-su')
+        # Admin đổi tên hiển thị — code giữ nguyên
+        self.category.name = 'Gia sư 1 kèm 1 (cao cấp)'
+        self.category.save()
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.code, 'gia-su')
+        self.assertEqual(self.category.name, 'Gia sư 1 kèm 1 (cao cấp)')
+        # Mapping assessment vẫn hoạt động đúng → 201
+        resp = self._post(_diary_payload(
+            assessment_type='tutoring',
+            assessment_data=_tutoring_assessment(),
+        ))
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['assessment_type'], 'tutoring')

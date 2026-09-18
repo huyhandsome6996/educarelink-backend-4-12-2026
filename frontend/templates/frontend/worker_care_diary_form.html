@@ -649,17 +649,22 @@ function toggleActivitiesEmpty() {
 }
 
 function getFormData() {
-  const activities = [];
-  document.querySelectorAll('.activity-row').forEach((row, i) => {
-    activities.push({
-      time: row.querySelector('.act-time').value || '',
-      title: row.querySelector('.act-title').value || '',
-      description: row.querySelector('.act-desc').value || '',
-      status: row.querySelector('.act-status').value,
-      order: i
-    });
-  });
   const type = effectiveAssessmentType();
+  // H2 — chỉ thu thập + gửi key 'activities' khi form chung: backend coi
+  // activities != null là lệnh "xóa hết rồi tạo lại", gửi mảng rỗng khi
+  // form chuyên sâu ẩn timeline sẽ âm thầm xóa activities cũ của entry.
+  const activities = [];
+  if (type === 'general') {
+    document.querySelectorAll('.activity-row').forEach((row, i) => {
+      activities.push({
+        time: row.querySelector('.act-time').value || '',
+        title: row.querySelector('.act-title').value || '',
+        description: row.querySelector('.act-desc').value || '',
+        status: row.querySelector('.act-status').value,
+        order: i
+      });
+    });
+  }
   return {
     mood_icon: document.getElementById('mood_icon').value,
     mood_label: document.getElementById('mood_label').value,
@@ -668,7 +673,7 @@ function getFormData() {
     note: document.getElementById('note').value,
     assessment_type: type,
     assessment_data: collectAssessmentData(type),
-    activities: activities
+    ...(type === 'general' ? { activities: activities } : {})
   };
 }
 

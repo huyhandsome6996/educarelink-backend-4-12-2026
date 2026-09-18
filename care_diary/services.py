@@ -104,15 +104,36 @@ def parse_completion_percent(raw):
 
 ASSESSMENT_SCHEMA_VERSION = 1
 
-# Map danh mục (ServiceCategory.name) → các assessment_type được phép gửi.
-# "Gia sư"   → form học tập hoặc form chung
-# "Trông trẻ" → form sinh hoạt hoặc form chung
+# Map danh mục → các assessment_type được phép gửi. M1: key theo
+# ServiceCategory.code (slug ổn định, tự sinh bởi save()) thay vì name
+# hiển thị — admin đổi tên (thêm khoảng trắng, đổi cách viết...) không làm
+# tính năng âm thầm rơi về general.
+# 'gia-su'    (Gia sư)     → form học tập hoặc form chung
+# 'trong-tre' (Trông trẻ)  → form sinh hoạt hoặc form chung
 # Danh mục khác (Đón trẻ / legacy đã khóa) → chỉ form chung.
 CATEGORY_ASSESSMENT_TYPES = {
-    'Gia sư': ['tutoring', 'general'],
-    'Trông trẻ': ['childcare', 'general'],
+    'gia-su': ['tutoring', 'general'],
+    'trong-tre': ['childcare', 'general'],
 }
 DEFAULT_ASSESSMENT_TYPES = ['general']
+
+# M2 — giới hạn kích thước dữ liệu tự do trong assessment_data: chặn phình
+# DB / vector DoS nhẹ (POST/PATCH thủ công có thể gửi vài MB text hoặc hàng
+# nghìn phần tử meals nếu không có trần). UI mobile/web đều nhỏ hơn trần
+# này nên client hợp lệ không bao giờ chạm giới hạn.
+MAX_TEXT_FIELD_LEN = 2000
+MAX_MEALS = 20
+MAX_ACTIVITY_ITEMS = 30
+
+
+def _check_text_len(value, section, field, errors):
+    """M2 — thêm lỗi field-level nếu value (str) vượt MAX_TEXT_FIELD_LEN."""
+    if value is None:
+        return
+    if len(str(value)) > MAX_TEXT_FIELD_LEN:
+        errors.setdefault(section, []).append(
+            "Trường '{}' không được vượt quá {} ký tự.".format(
+                field, MAX_TEXT_FIELD_LEN))
 
 
 class AssessmentValidationError(Exception):
@@ -130,9 +151,17 @@ class AssessmentValidationError(Exception):
 
 
 def get_allowed_assessment_types(task):
-    """Danh sách assessment_type được phép cho task theo category của nó."""
-    category_name = task.category.name if task.category else None
-    return CATEGORY_ASSESSMENT_TYPES.get(category_name, DEFAULT_ASSESSMENT_TYPES)
+    """Danh sách assessment_type được phép cho task theo category của nó.
+
+    M1 — so khớp theo category.code (slug ổn định do hệ thống tự sinh,
+    không đổi khi admin sửa name hiển thị). Category rỗng code (legacy
+    chưa backfill) hoặc code lạ → rơi về general (an toàn, như cũ).
+    """
+    if task.category and task.category.code:
+        allowed = CATEGORY_ASSESSMENT_TYPES.get(task.category.code)
+        if allowed:
+            return allowed
+    return DEFAULT_ASSESSMENT_TYPES
 
 
 def _validate_tutoring(data, errors):
@@ -170,6 +199,30 @@ def _validate_tutoring(data, errors):
         errors.setdefault('classwork_homework', []).append(
             "Trường 'classwork_status' là bắt buộc.")
 
+    # M2 — giới hạn độ dài các trường text tự do (chỉ kiểm khi có giá trị)
+    if isinstance(lesson, dict):
+        _check_text_len(lesson.get('subject'), 'lesson_content', 'subject', errors)
+        _check_text_len(lesson.get('topic'), 'lesson_content', 'topic', errors)
+    if isinstance(classwork, dict):
+        _check_text_len(classwork.get('classwork_status'),
+                        'classwork_homework', 'classwork_status', errors)
+        _check_text_len(classwork.get('homework'),
+                        'classwork_homework', 'homework', errors)
+    remarks = data.get('remarks')
+    if isinstance(remarks, dict):
+        _check_text_len(remarks.get('knowledge_gap'), 'remarks', 'knowledge_gap', errors)
+        _check_text_len(remarks.get('next_session_plan'),
+                        'remarks', 'next_session_plan', errors)
+    # Các section không lường trước (client gửi thêm key lạ) cũng chặn trần
+    # độ dài để không có lỗ hổng lách qua key tùy chỉnh.
+    for key, value in data.items():
+        if key in ('lesson_content', 'comprehension', 'classwork_homework', 'remarks'):
+            continue
+        if isinstance(value, str) and len(value) > MAX_TEXT_FIELD_LEN:
+            errors.setdefault(key, []).append(
+                "Trường '{}' không được vượt quá {} ký tự.".format(
+                    key, MAX_TEXT_FIELD_LEN))
+
 
 def _validate_childcare(data, errors):
     """Form Trông trẻ — bắt buộc: meals (≥1 phần tử có time + amount),
@@ -178,12 +231,20 @@ def _validate_childcare(data, errors):
     if not isinstance(meals, list) or len(meals) == 0:
         errors['meals'] = ["Cần ít nhất 1 bữa ăn với 'time' và 'amount'."]
     else:
+        # M2 — trần số lượng bữa ăn
+        if len(meals) > MAX_MEALS:
+            errors['meals'] = [
+                "Không được vượt quá {} bữa ăn.".format(MAX_MEALS)]
         for idx, meal in enumerate(meals):
             if not isinstance(meal, dict) or not str(
                 meal.get('time', '') or ''
             ).strip() or not str(meal.get('amount', '') or '').strip():
                 errors.setdefault('meals', []).append(
                     f"Bữa ăn thứ {idx + 1} thiếu 'time' hoặc 'amount'.")
+            elif isinstance(meal, dict):
+                # M2 — giới hạn độ dài từng trường của bữa ăn
+                for field in ('time', 'meal', 'amount'):
+                    _check_text_len(meal.get(field), 'meals', field, errors)
 
     nap = data.get('nap')
     if not isinstance(nap, dict):
@@ -198,9 +259,50 @@ def _validate_childcare(data, errors):
         errors.setdefault('hygiene_health', []).append(
             "Trường 'physical_condition' là bắt buộc.")
 
+    # M2 — giới hạn độ dài các trường text tự do của form sinh hoạt
+    if isinstance(nap, dict):
+        _check_text_len(nap.get('quality'), 'nap', 'quality', errors)
+        _check_text_len(nap.get('start_time'), 'nap', 'start_time', errors)
+        _check_text_len(nap.get('end_time'), 'nap', 'end_time', errors)
+    if isinstance(hygiene, dict):
+        _check_text_len(hygiene.get('physical_condition'),
+                        'hygiene_health', 'physical_condition', errors)
+        _check_text_len(hygiene.get('diaper_toilet'),
+                        'hygiene_health', 'diaper_toilet', errors)
+    notes = data.get('notes_for_parents')
+    _check_text_len(notes, 'notes_for_parents', 'notes_for_parents', errors)
+    activities = data.get('activities')
+    if isinstance(activities, dict):
+        _check_text_len(activities.get('mood_during'),
+                        'activities', 'mood_during', errors)
+        act_list = activities.get('list')
+        if isinstance(act_list, list):
+            if len(act_list) > MAX_ACTIVITY_ITEMS:
+                errors.setdefault('activities', []).append(
+                    "Không được vượt quá {} hoạt động.".format(MAX_ACTIVITY_ITEMS))
+            for idx, item in enumerate(act_list):
+                _check_text_len(item, 'activities', f'hoạt động thứ {idx + 1}', errors)
+    # Các section không lường trước cũng chặn trần độ dài (key tùy chỉnh)
+    for key, value in data.items():
+        if key in ('meals', 'nap', 'hygiene_health', 'activities', 'notes_for_parents'):
+            continue
+        if isinstance(value, str) and len(value) > MAX_TEXT_FIELD_LEN:
+            errors.setdefault(key, []).append(
+                "Trường '{}' không được vượt quá {} ký tự.".format(
+                    key, MAX_TEXT_FIELD_LEN))
 
-def validate_assessment_data(task, assessment_type, assessment_data):
+
+def validate_assessment_data(task, assessment_type, assessment_data,
+                             current_type=None, current_data=None,
+                             allow_clear=False):
     """Validate loại + nội dung form đánh giá theo danh mục công việc.
+
+    Args:
+        current_type / current_data: giá trị hiện tại của entry (chỉ dùng
+            ở nhánh PATCH) — để nhận diện hạ cấp tutoring/childcare → general
+            khi entry đang mang dữ liệu đánh giá đã lưu (H1).
+        allow_clear: client gửi kèm confirm_clear_assessment=true — xác nhận
+            rõ ràng rằng mình chấp nhận xóa dữ liệu đánh giá cũ khi hạ cấp.
 
     Returns:
         (clean_type, clean_data) — clean_data luôn có schema_version.
@@ -228,6 +330,20 @@ def validate_assessment_data(task, assessment_type, assessment_data):
         })
 
     if assessment_type == 'general':
+        # H1 — chống mất dữ liệu âm thầm: hạ cấp tutoring/childcare → general
+        # sẽ xóa toàn bộ assessment_data đã lưu (điểm tiếp thu, bữa ăn, giấc
+        # ngủ...) — dữ liệu phụ huynh dùng theo dõi con, mất là mất thật.
+        # Nếu entry đang có dữ liệu chuyên sâu không rỗng, bắt buộc client
+        # xác nhận rõ ràng qua confirm_clear_assessment=true.
+        if (current_type in (CareDiaryEntry.ASSESSMENT_TUTORING,
+                             CareDiaryEntry.ASSESSMENT_CHILDCARE)
+                and current_data and not allow_clear):
+            raise AssessmentValidationError({
+                'assessment_type': [
+                    "Đổi về form chung sẽ xóa dữ liệu đánh giá đã lưu. "
+                    "Gửi kèm confirm_clear_assessment=true nếu chắc chắn.",
+                ],
+            })
         # Form chung — assessment_data luôn là {} (giữ nguyên hành vi cũ,
         # tương thích ngược 100% với mọi entry trước nâng cấp).
         return assessment_type, {}
