@@ -13,53 +13,168 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
-        .candidate-card {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+        /* Radar sóng xanh ngọc — Algorithm Live Status (Stitch AI) */
+        @keyframes radarPing {
+            0%   { transform: scale(1);   opacity: 0.7; }
+            80%  { transform: scale(2.6); opacity: 0; }
+            100% { transform: scale(2.6); opacity: 0; }
         }
-        .candidate-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(26, 26, 46, 0.08);
-            border-color: rgba(242, 101, 34, 0.4);
-        }
+        .radar-dot { position: relative; width: 12px; height: 12px; border-radius: 9999px;
+                     background: #0E9F6E; flex-shrink: 0; }
+        .radar-dot::after { content: ''; position: absolute; inset: 0; border-radius: 9999px;
+                            background: #0E9F6E; animation: radarPing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+        .candidate-card { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .candidate-card:hover { transform: translateY(-2px);
+                                box-shadow: 0 10px 25px rgba(26, 26, 46, 0.08);
+                                border-color: rgba(242, 101, 34, 0.4); }
+
+        /* Hero card #1 — viền cam gradient nổi bật (Stitch) */
+        .hero-card { position: relative; background: #fff; border-radius: 22px;
+                     border: 2px solid transparent;
+                     background-image: linear-gradient(#fff, #fff), linear-gradient(120deg, #F26522, #F5A623, #F26522);
+                     background-origin: border-box; background-clip: padding-box, border-box;
+                     box-shadow: 0 12px 32px rgba(242, 101, 34, 0.14); }
+        .hero-ribbon { background: linear-gradient(120deg, #F26522 0%, #D4541E 100%); }
+
+        .filter-pill { transition: all 0.2s ease; cursor: pointer; user-select: none; }
+        .filter-pill.active { background: #1A1A2E; color: #fff; border-color: #1A1A2E;
+                              box-shadow: 0 4px 12px rgba(26, 26, 46, 0.22); }
+
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
     {% include 'frontend/_matching_common.html' %}
 </head>
 <body class="bg-[#F8F9FB] min-h-screen text-[#1A1A2E]">
 {% include 'frontend/_parent_chrome.html' with active_tab='matching' %}
 
-<!-- HEADER -->
+<!-- HEADER (sticky) — giữ nguyên khung sidebar 260px -->
 <header class="bg-white border-b border-gray-100 sticky top-0 z-40 backdrop-blur-md bg-white/90 lg:ml-[260px]">
-    <div class="max-w-3xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-8 h-8 rounded-lg object-contain shrink-0" loading="eager">
-        <a href="/parent/" class="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-[#F26522] transition">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+        <a href="/parent/" class="flex items-center gap-1.5 text-sm font-bold text-gray-600 hover:text-[#F26522] transition shrink-0">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Trang chủ</span>
+            <span class="hidden sm:inline">Quay lại</span>
         </a>
-        <span class="font-headline font-extrabold text-[#1A1A2E] text-base">Danh sách ứng viên phù hợp</span>
+        <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-8 h-8 rounded-lg object-contain shrink-0" loading="eager">
+        <span class="font-headline font-extrabold text-[#1A1A2E] text-base truncate">Danh sách ứng viên phù hợp</span>
+        <span class="ml-auto hidden md:inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+            <span class="material-symbols-outlined text-sm">verified_user</span>
+            EduCareLink Guarantee
+        </span>
     </div>
 </header>
 
 <main class="lg:ml-[260px] mcm-fade-in">
-<div class="max-w-3xl mx-auto px-4 py-8">
-    <!-- SUBHEADER / STATUS -->
-    <div id="header" class="mb-5 flex items-center justify-between flex-wrap gap-2 text-sm text-gray-600"></div>
+<div class="max-w-4xl mx-auto px-4 py-6">
 
-    <div id="errorBox" class="hidden mb-5 bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm font-semibold flex items-center gap-3">
-        <span class="material-symbols-outlined text-red-500">error</span>
-        <span id="errorMsg"></span>
+    <!-- ═══ JOB CONTEXT CAPSULE — hộp thông tin đơn việc ═══ -->
+    <div id="jobCapsule" class="hidden mb-4 bg-white rounded-2xl border border-orange-100 shadow-sm p-4 sm:p-5">
+        <div class="flex items-center gap-2 flex-wrap">
+            <span id="jobCategoryBadge" class="inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wide px-3 py-1.5 rounded-full bg-orange-50 text-[#F26522] border border-orange-200">
+                <span class="material-symbols-outlined text-sm">school</span><span id="jobCategoryLabel">ĐANG TẢI</span>
+            </span>
+            <span id="jobRateBadge" class="inline-flex items-center text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">—</span>
+        </div>
+        <h2 id="jobTitle" class="font-headline font-extrabold text-lg sm:text-xl text-[#1A1A2E] mt-2.5 leading-snug">—</h2>
+        <div class="flex items-center gap-1.5 text-sm text-gray-600 mt-1.5 flex-wrap">
+            <span class="material-symbols-outlined text-base text-gray-400">schedule</span>
+            <span id="jobSchedule" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-start gap-1.5 text-xs sm:text-sm text-gray-500 mt-1.5">
+            <span class="material-symbols-outlined text-base text-[#F26522] shrink-0 mt-0.5">location_on</span>
+            <span id="jobLocation" class="leading-relaxed">Khu vực TP. Huế</span>
+        </div>
     </div>
 
-    <div id="loading" class="text-center py-20 text-gray-400">
+    <!-- ═══ ALGORITHM LIVE STATUS BANNER — radar xanh ngọc ═══ -->
+    <div class="mb-5 rounded-2xl bg-gradient-to-r from-[#0E9F6E]/10 via-white to-[#0E9F6E]/10 border border-emerald-100 px-4 py-3.5">
+        <div class="flex items-center gap-3">
+            <span class="radar-dot"></span>
+            <span id="radarText" class="text-sm font-bold text-[#0B7A55]">Đang quét mạng lưới CarePartner quanh khu vực Huế...</span>
+        </div>
+        <p class="text-[11px] sm:text-xs text-gray-500 mt-1.5 pl-[27px]">Khớp chuyên môn · Ưu tiên gần nhà · Đã đối soát CCCD &amp; Thẻ SV</p>
+    </div>
+
+    <!-- ═══ ERROR BOX thân thiện (500/502/504/timeout) — chống màn hình trắng ═══ -->
+    <div id="errorBox" class="hidden mb-5 bg-white rounded-2xl border border-amber-200 shadow-sm p-6 text-center">
+        <div class="w-14 h-14 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-2xl text-amber-500">wifi_find</span>
+        </div>
+        <h3 class="font-headline font-extrabold text-lg text-[#1A1A2E]">Kết nối cần thêm chút thời gian</h3>
+        <p id="errorMsg" class="text-sm text-gray-600 mt-2 max-w-md mx-auto leading-relaxed">Hệ thống đang mở rộng tìm kiếm thêm CarePartner phù hợp tại khu vực Huế. Vui lòng thử lại sau giây lát.</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center mt-5">
+            <button id="retryBtn" class="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white px-6 py-3 rounded-xl font-extrabold text-sm shadow-md shadow-orange-500/20 active:scale-95 transition">
+                <span class="material-symbols-outlined text-base">refresh</span> Thử lại ngay
+            </button>
+            <a href="{% url 'frontend:dang_viec_select' %}" class="inline-flex items-center justify-center gap-1.5 border border-gray-200 text-gray-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 transition">
+                Quay lại chỉnh sửa yêu cầu
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══ REDIRECTING BOX (401 — authFetch đã chuyển hướng) ═══ -->
+    <div id="redirectBox" class="hidden mb-5 bg-white rounded-2xl border border-blue-100 shadow-sm p-6 text-center">
+        <div class="w-12 h-12 border-3 border-blue-100 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+        <p class="text-sm font-bold text-gray-600">Phiên đăng nhập đã hết hạn. Đang chuyển đến trang đăng nhập...</p>
+    </div>
+
+    <!-- ═══ LOADING ═══ -->
+    <div id="loading" class="text-center py-16 text-gray-400">
         <div class="w-12 h-12 border-3 border-gray-200 border-t-[#F26522] rounded-full animate-spin mx-auto mb-3"></div>
-        <p class="font-medium text-sm">Thuật toán ELO đang quét và xếp hạng ứng viên...</p>
+        <p class="font-medium text-sm">Đang kết nối CarePartner phù hợp tại Huế...</p>
     </div>
 
-    <!-- CANDIDATES LIST -->
+    <!-- ═══ EMPTY STATE chuẩn mực (parity Mobile — Truthful Empty State) ═══ -->
+    <div id="emptyState" class="hidden mb-5 bg-white rounded-3xl border border-orange-100 shadow-sm p-8 sm:p-10 text-center">
+        <div class="w-16 h-16 rounded-full bg-orange-50 border-2 border-orange-200 flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-3xl text-[#F26522]">search</span>
+        </div>
+        <h3 class="font-headline font-extrabold text-lg sm:text-xl text-[#1A1A2E]">Chưa tìm thấy CarePartner phù hợp trong khung giờ đã chọn</h3>
+        <p class="text-sm text-gray-500 mt-2 max-w-md mx-auto leading-relaxed">Đừng lo — mạng lưới CarePartner tại Huế liên tục được cập nhật. Hãy thử một trong các cách dưới đây để mở rộng kết quả tìm kiếm.</p>
+        <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-left max-w-md mx-auto mt-5">
+            <p class="text-sm font-extrabold text-amber-800 mb-1.5">💡 Gợi ý cho bạn:</p>
+            <ul class="text-xs sm:text-sm text-amber-800/90 space-y-1 leading-relaxed">
+                <li>• Nới rộng khung giờ hoặc chọn ngày khác để có thêm ứng viên rảnh lịch.</li>
+                <li>• Mở rộng bán kính tìm kiếm quanh địa chỉ ở TP. Huế.</li>
+                <li>• Hệ thống liên tục quét CarePartner đã đối soát CCCD &amp; Thẻ SV quanh khu vực của bạn.</li>
+            </ul>
+        </div>
+        <a href="{% url 'frontend:dang_viec_select' %}" class="inline-flex items-center justify-center gap-1.5 mt-6 bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white px-6 py-3 rounded-xl font-extrabold text-sm shadow-md shadow-orange-500/20 active:scale-95 transition">
+            <span class="material-symbols-outlined text-base">tune</span> Điều chỉnh yêu cầu / Đổi khung giờ
+        </a>
+    </div>
+
+    <!-- ═══ FILTER & SORT PILLS (tương tác JS) ═══ -->
+    <div id="filterPills" class="hidden mb-4 flex items-center gap-2 flex-wrap">
+        <button data-sort="score"    class="filter-pill active text-xs font-bold px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600">🌟 Điểm phù hợp nhất</button>
+        <button data-sort="distance" class="filter-pill text-xs font-bold px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600">📍 Gần nhà nhất</button>
+        <button data-sort="rating"   class="filter-pill text-xs font-bold px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600">⭐ Đánh giá cao nhất</button>
+        <button id="femalePill"      class="filter-pill text-xs font-bold px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600">👩 Chỉ xem Nữ</button>
+    </div>
+
+    <!-- ═══ CANDIDATES LIST ═══ -->
     <div id="cards" class="space-y-4"></div>
+
+    <!-- ═══ SAFETY GUARANTEE BOX — cam kết an toàn chân trang ═══ -->
+    <div id="safetyBox" class="hidden mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+        <p class="font-headline font-extrabold text-[#1A1A2E] text-base mb-3.5">Cam kết an toàn từ EduCareLink</p>
+        <div class="grid sm:grid-cols-2 gap-3">
+            <div class="flex items-start gap-3 bg-blue-50/60 border border-blue-100 rounded-xl p-3.5">
+                <span class="text-xl shrink-0">🔒</span>
+                <p class="text-xs leading-relaxed text-gray-600"><b class="text-[#1A1A2E]">Ký quỹ an toàn MoMo Escrow:</b> Chỉ giải ngân sau khi hoàn thành ca và phụ huynh xác nhận hài lòng.</p>
+            </div>
+            <div class="flex items-start gap-3 bg-emerald-50/60 border border-emerald-100 rounded-xl p-3.5">
+                <span class="text-xl shrink-0">🛡️</span>
+                <p class="text-xs leading-relaxed text-gray-600"><b class="text-[#1A1A2E]">Bảo hiểm đổi ứng viên 100%:</b> Miễn phí đổi người khác nếu có sự cố bất khả kháng.</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 </main>
 
-<!-- Modal xác nhận chọn CarePartner -->
+<!-- ═══ BOOKING CONFIRMATION MODAL — xác nhận đặt lịch ═══ -->
 <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
     <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl mcm-fade-in border border-gray-100">
         <div class="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-[#F26522] mb-3">
@@ -68,8 +183,8 @@
         <h3 class="font-headline font-extrabold text-xl text-[#1A1A2E]">Xác nhận chọn CarePartner</h3>
         <p class="text-sm text-gray-600 mt-2 leading-relaxed" id="confirmText"></p>
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 mt-4 leading-relaxed flex items-start gap-2">
-            <span class="material-symbols-outlined text-base text-blue-600 shrink-0 mt-0.5">info</span>
-            <span>Đơn sẽ được tạo ngay lập tức mà không cần CarePartner bấm chấp nhận. Bạn sẽ được đảm bảo quyền lợi theo chính sách hoàn huỷ credit.</span>
+            <span class="material-symbols-outlined text-base text-blue-600 shrink-0 mt-0.5">savings</span>
+            <span>Khoản thanh toán của bạn sẽ được <b>ký quỹ MoMo Escrow</b> và chỉ giải ngân sau khi ca hoàn thành. Đơn được tạo ngay lập tức — CarePartner không cần bấm chấp nhận.</span>
         </div>
         <div class="flex gap-3 mt-6">
             <button id="cancelConfirm" class="flex-1 border border-gray-200 rounded-xl py-3 font-bold text-gray-600 hover:bg-gray-50 transition text-sm">Xem thêm</button>
@@ -81,163 +196,354 @@
 <script>
   const jobId = window.location.pathname.split('/').filter(Boolean)[1];
   const LEVEL_COLORS = { very_high: '#0E9F6E', high: '#F26522', medium: '#F5A623', low: '#9CA3AF' };
-  const LEVEL_LABELS = { very_high: 'Rất phù hợp', high: 'Phù hợp cao', medium: 'Phù hợp', low: 'Có thể cân nhắc' };
-  let picked = null;
+
+  const state = { job: null, total: 0, raw: [], currentSort: 'score', femaleOnly: false };
+  const $ = (id) => document.getElementById(id);
+  const show = (el) => el.classList.remove('hidden');
+  const hide = (el) => el.classList.add('hidden');
+
+  // ── Parity Mobile: heuristic lọc nữ khi API không trả gender ──
+  const FEMALE_HINTS = ['Thị', 'Hà', 'Thư', 'Linh', 'Trang', 'Chi'];
 
   function avatarUrl(name) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=F26522&color=fff&size=128&bold=true`;
   }
+  function cpCode(id) {
+    return '#CP-' + String(id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (m) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+
+  /* ── PHÒNG THỦ MÀN HÌNH TRẮNG (QA 2026-09-18) ──
+     Server lỗi 500 (Gunicorn timeout) trả về TRANG HTML — gọi resp.json()
+     trực tiếp sẽ ném SyntaxError: Unexpected token '<' và khối catch cũ
+     chỉ ẩn spinner → màn hình trắng xóa. Giờ: parse an toàn 2 lớp
+     (kiểm tra content-type + try/catch riêng), KHÔNG BAO GIỜ để exception
+     nuốt cả giao diện. */
+  async function safeJson(resp) {
+    const ctype = (resp.headers.get('content-type') || '').toLowerCase();
+    if (!ctype.includes('application/json')) return { ok: false, data: null };
+    try { return { ok: true, data: await resp.json() }; }
+    catch (e) { return { ok: false, data: null }; }
+  }
+
+  function showError(msg) {
+    hide($('loading'));
+    if (msg) $('errorMsg').textContent = msg;
+    show($('errorBox'));
+  }
+  function showRedirecting() {
+    hide($('loading'));
+    show($('redirectBox'));
+  }
+  function showEmpty() {
+    hide($('loading'));
+    hide($('filterPills'));
+    hide($('safetyBox'));
+    $('cards').innerHTML = '';
+    show($('emptyState'));
+  }
 
   async function load() {
+    hide($('errorBox')); hide($('emptyState')); hide($('redirectBox'));
+    hide($('filterPills')); hide($('safetyBox')); hide($('jobCapsule'));
+    $('cards').innerHTML = '';
+    $('radarText').textContent = 'Đang quét mạng lưới CarePartner quanh khu vực Huế...';
+    show($('loading'));
     try {
       const resp = await authFetch(`${API_BASE}/matching/candidates/`, {
         method: 'POST', body: JSON.stringify({ job_id: jobId }) });
-      const data = await resp.json();
-      document.getElementById('loading').classList.add('hidden');
+
+      // authFetch đã xử lý 401 (xóa token + toast + chuyển /login) và ném
+      // 'user_unauthorized' — đừng đè error box lên màn chuyển hướng.
+      if (resp.status === 401) { showRedirecting(); return; }
+
+      const parsed = await safeJson(resp);
+      hide($('loading'));
+
+      // Server trả HTML (500/502/504 Gunicorn) hoặc JSON hỏng → hộp lỗi thân thiện
+      if (!parsed.ok) { showError(); return; }
+      const data = parsed.data;
+
       if (!resp.ok) {
-        const box = document.getElementById('errorBox');
-        document.getElementById('errorMsg').textContent = data.detail || 'Không tải được danh sách ứng viên.';
-        box.classList.remove('hidden');
+        if (resp.status === 409) {
+          toast(data.detail || 'Đơn vừa được chọn bởi người khác. Vui lòng làm mới.', false);
+          return;
+        }
+        showError(data.detail || data.code === 'not_found'
+          ? (data.detail || 'Không tìm thấy bài đăng tương ứng.')
+          : undefined);
         return;
       }
-      render(data);
+
+      state.job = data.job || null;
+      state.total = (data.total_matched !== undefined) ? data.total_matched : (data.candidates || []).length;
+      state.raw = data.candidates || [];
+      if (!state.raw.length) { showEmpty(); return; }
+      renderJobCapsule();
+      renderList();
+      show($('filterPills'));
+      show($('safetyBox'));
     } catch (e) {
-      console.warn(e);
-      document.getElementById('loading').classList.add('hidden');
+      if (e && (e.message === 'user_unauthorized' || e.message === 'no_token')) { showRedirecting(); return; }
+      // Lỗi mạng / timeout — LUÔN hiển thị hộp lỗi, không bao giờ để màn trắng
+      showError();
     }
   }
 
-  function render(data) {
-    document.getElementById('header').innerHTML =
-      `<div class="flex items-center gap-2">
-         <span class="w-2.5 h-2.5 rounded-full bg-[#0E9F6E] animate-pulse"></span>
-         <span>Tìm thấy <b class="text-[#1A1A2E]">${data.total_matched}</b> CarePartner rảnh lịch</span>
-       </div>
-       <span class="text-xs text-gray-500">Hiển thị <b>${data.candidates.length} người điểm cao nhất</b></span>`;
+  function renderJobCapsule() {
+    const j = state.job;
+    if (!j) return;
+    $('jobCategoryLabel').textContent = (j.category_label || 'Dịch vụ chăm sóc').toUpperCase();
+    const iconMap = { tutoring: 'school', childcare: 'heart', pickup: 'car' };
+    $('jobCategoryBadge').querySelector('.material-symbols-outlined').textContent = iconMap[j.job_type] || 'briefcase';
+    $('jobRateBadge').textContent = fmtVND(j.hourly_rate_vnd) + '/giờ';
+    $('jobTitle').textContent = j.title || 'Công việc của bạn';
+    $('jobSchedule').textContent = j.schedule || '—';
+    $('jobLocation').textContent = j.location_note
+      ? `${j.location_note} · khu vực TP. Huế`
+      : 'Khu vực TP. Huế';
+    show($('jobCapsule'));
+  }
 
-    const wrap = document.getElementById('cards');
-    wrap.innerHTML = '';
-    if (!data.candidates.length) {
-      wrap.innerHTML = `
-        <div class="bg-white rounded-2xl p-10 text-center border border-gray-200">
-          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">🔍</div>
-          <h3 class="font-headline font-bold text-lg text-[#1A1A2E]">Chưa tìm thấy ứng viên trùng lịch</h3>
-          <p class="text-sm text-gray-500 mt-1 max-w-md mx-auto">Hiện tại chưa có CarePartner nào rảnh đúng khung giờ này hoặc ở gần địa chỉ của bạn. Hãy thử nới thời gian hoặc chọn khung giờ khác.</p>
-          <a href="{% url 'frontend:dang_viec_select' %}" class="inline-block mt-4 px-5 py-2.5 rounded-xl bg-[#F26522] text-white text-sm font-bold shadow">Chọn loại việc khác</a>
+  function displayedCandidates() {
+    let list = [...state.raw];
+    if (state.femaleOnly) {
+      list = list.filter((c) => c.gender === 'female' ||
+        (!c.gender && FEMALE_HINTS.some((h) => (c.display_name || '').includes(h))));
+    }
+    if (state.currentSort === 'score') {
+      list.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+    } else if (state.currentSort === 'distance') {
+      list.sort((a, b) => (a.distance_km ?? 999) - (b.distance_km ?? 999));
+    } else if (state.currentSort === 'rating') {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    return list;
+  }
+
+  function renderList() {
+    const list = displayedCandidates();
+    $('radarText').textContent = `Tuyển chọn ${state.total} CarePartner xuất sắc nhất`;
+    $('cards').innerHTML = '';
+    if (!list.length) {
+      // Có ứng viên nhưng bộ lọc hiện tại loại hết
+      $('cards').innerHTML = `
+        <div class="bg-white rounded-2xl p-8 text-center border border-gray-100">
+          <div class="w-14 h-14 rounded-full bg-orange-50 border-2 border-orange-200 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-2xl text-[#F26522]">person_search</span>
+          </div>
+          <h3 class="font-headline font-bold text-base text-[#1A1A2E]">Không có ứng viên khớp bộ lọc</h3>
+          <p class="text-sm text-gray-500 mt-1">Thử bỏ lọc "Chỉ xem Nữ" hoặc đổi tiêu chí sắp xếp nhé.</p>
         </div>`;
       return;
     }
+    const wrap = $('cards');
+    wrap.appendChild(buildHeroCard(list[0]));
+    list.slice(1).forEach((c, i) => wrap.appendChild(buildStandardCard(c, i + 2)));
+    bindChooseButtons();
+  }
 
-    for (const c of data.candidates) {
-      const color = LEVEL_COLORS[c.match_level] || '#999';
-      const label = c.match_level_vi || LEVEL_LABELS[c.match_level] || c.match_level;
-      const card = document.createElement('div');
-      card.className = 'candidate-card bg-white rounded-2xl p-5 shadow-sm border border-gray-200/80 flex flex-col sm:flex-row gap-4 items-start';
-      card.innerHTML = `
-        <div class="flex items-center gap-3 w-full sm:w-auto">
-          <img src="${avatarUrl(c.display_name)}" class="w-14 h-14 rounded-full ring-2 ring-orange-100 object-cover shrink-0" alt="">
-          <div class="sm:hidden flex-1">
-            <div class="flex items-center justify-between">
-              <span class="font-headline font-extrabold text-[#1A1A2E] text-base">${c.display_name || 'CarePartner'}</span>
-              <span class="text-xl font-extrabold text-[#F26522] font-headline">${c.match_score}<span class="text-xs font-normal text-gray-400"> đ</span></span>
-            </div>
-            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full text-white inline-block mt-0.5" style="background:${color}">${label}</span>
+  function buildHeroCard(c) {
+    const initial = (c.display_name || 'U').trim().charAt(0).toUpperCase();
+    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'Sinh viên EduCareLink đã đối soát';
+    const ratingStr = c.rating != null ? Number(c.rating).toFixed(1) : '5.0';
+    const distanceStr = c.distance_km != null ? `${c.distance_km} km` : 'gần khu vực Huế';
+    const skills = (c.top_skills && c.top_skills.length) ? c.top_skills : ['Kiên nhẫn', 'Giao tiếp tốt', 'Yêu trẻ'];
+    const quote = c.latest_review || c.why_recommended_vi || '';
+    const card = document.createElement('div');
+    card.className = 'hero-card p-5 sm:p-6';
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <span class="hero-ribbon inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold tracking-wide text-white px-3 py-1.5 rounded-full">
+          <span class="material-symbols-outlined text-sm">trophy</span>
+          GỢI Ý HÀNG ĐẦU · ${c.match_score}/100 ĐIỂM
+        </span>
+        <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+          <span class="material-symbols-outlined text-sm text-[#0E9F6E]">shield_checkmark</span>
+          CCCD &amp; Thẻ SV chuẩn
+        </span>
+      </div>
+
+      <div class="flex items-start gap-4 mt-4">
+        <div class="relative shrink-0">
+          <img src="${c.avatar_url ? esc(c.avatar_url) : avatarUrl(c.display_name)}" alt=""
+               class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover ring-4 ring-orange-100">
+          <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#0E9F6E] border-2 border-white flex items-center justify-center">
+            <span class="material-symbols-outlined text-white text-xs">check</span>
+          </span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-headline font-extrabold text-lg sm:text-xl text-[#1A1A2E]">${esc(c.display_name || 'CarePartner')}</span>
+            <span class="text-[11px] font-bold text-gray-400">${cpCode(c.carepartner_id)}</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-800 mt-1">
+            <span class="material-symbols-outlined text-sm text-blue-500">school</span>
+            <span class="truncate">${esc(schoolMajor)}</span>
+          </div>
+          <div class="flex items-center gap-2 sm:gap-3 mt-2.5 text-[11px] sm:text-xs font-bold text-gray-600 flex-wrap">
+            <span class="flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg">⭐ ${ratingStr} (${c.completed_jobs ?? 0} ca)</span>
+            <span class="flex items-center gap-1 bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg">📍 ${esc(distanceStr)}</span>
+            <span class="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg">✅ 100% rảnh lịch</span>
           </div>
         </div>
+      </div>
 
-        <div class="flex-1 min-w-0 w-full">
-          <div class="hidden sm:flex items-center gap-2 flex-wrap">
-            <span class="font-headline font-extrabold text-[#1A1A2E] text-lg">${c.display_name || 'CarePartner'}</span>
-            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full text-white" style="background:${color}">${label}</span>
-            <span class="text-xs text-gray-400">· ID #${c.carepartner_id}</span>
-          </div>
+      <div class="flex gap-1.5 mt-3.5 flex-wrap">
+        ${skills.slice(0, 4).map((s) => `<span class="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 text-[#B8431A] font-bold border border-orange-100">${esc(s)}</span>`).join('')}
+      </div>
 
-          <div class="text-xs sm:text-sm font-medium text-gray-600 mt-1 flex items-center gap-1.5 flex-wrap">
-            <span class="material-symbols-outlined text-sm text-gray-400">school</span>
-            <span>${[c.school, c.major].filter(Boolean).join(' — ') || 'Sinh viên đại học'}</span>
-          </div>
+      ${quote ? `<div class="text-xs sm:text-sm text-gray-600 italic bg-[#F8F9FB] border border-gray-100 p-3 rounded-xl mt-3.5 line-clamp-2">"${esc(quote)}"</div>` : ''}
 
-          <div class="flex gap-3 sm:gap-4 mt-2.5 text-xs text-gray-600 flex-wrap font-medium">
-            <span class="flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg">
-              <span>⭐</span><b>${c.rating ?? '5.0'}</b> (${c.completed_jobs ?? 0} đơn)
-            </span>
-            <span class="flex items-center gap-1 bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg">
-              <span>📍</span><b>${c.distance_km != null ? c.distance_km + ' km' : '—'}</b>
-            </span>
-            <span class="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg">
-              <span>✅</span>Đủ lịch
-            </span>
-          </div>
+      <div id="heroDetail-${esc(c.carepartner_id)}" class="hidden text-xs text-gray-600 bg-white border border-dashed border-orange-200 rounded-xl p-3 mt-3 leading-relaxed">
+        <p class="font-extrabold text-[#1A1A2E] mb-1">Vì sao ứng viên này được đề xuất?</p>
+        <p>${esc(c.why_recommended_vi || 'Điểm số cao nhất trong mạng lưới CarePartner rảnh đúng khung giờ của bạn tại Huế — khớp chuyên môn, khoảng cách gần và đánh giá tốt từ phụ huynh trước đây.')}</p>
+      </div>
 
-          ${c.top_skills && c.top_skills.length ? `
-            <div class="flex gap-1.5 mt-3 flex-wrap">
-              ${c.top_skills.slice(0, 4).map((s) => `<span class="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-semibold">${s}</span>`).join('')}
-            </div>` : ''}
+      <div class="flex flex-col sm:flex-row gap-2.5 mt-4">
+        <button class="heroDetailBtn flex-1 border border-orange-200 text-[#F26522] rounded-xl py-3 font-extrabold text-sm hover:bg-orange-50 active:scale-95 transition flex items-center justify-center gap-1.5"
+                data-target="heroDetail-${esc(c.carepartner_id)}">
+          <span class="material-symbols-outlined text-base">person</span> Xem hồ sơ chi tiết
+        </button>
+        <button class="choose flex-1 bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white rounded-xl py-3 font-extrabold text-sm shadow-md shadow-orange-500/20 active:scale-95 transition flex items-center justify-center gap-1.5"
+                data-id="${esc(c.carepartner_id)}" data-name="${esc(c.display_name || '')}" data-score="${c.match_score}">
+          Chọn CarePartner này <span class="material-symbols-outlined text-base">arrow_forward</span>
+        </button>
+      </div>`;
+    return card;
+  }
 
-          ${c.latest_review ? `
-            <div class="text-xs text-gray-500 mt-2.5 italic bg-gray-50 p-2.5 rounded-xl border border-gray-100 line-clamp-2">
-              "${c.latest_review}"
-            </div>` : ''}
+  function buildStandardCard(c, rank) {
+    const color = LEVEL_COLORS[c.match_level] || '#9CA3AF';
+    const label = c.match_level_vi || 'Phù hợp';
+    const schoolMajor = [c.school, c.major].filter(Boolean).join(' · ') || 'Sinh viên EduCareLink đã đối soát';
+    const ratingStr = c.rating != null ? Number(c.rating).toFixed(1) : '5.0';
+    const card = document.createElement('div');
+    card.className = 'candidate-card bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200/80 flex flex-col sm:flex-row gap-4 items-start';
+    card.innerHTML = `
+      <div class="flex items-center gap-3 w-full sm:w-auto">
+        <span class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center font-headline font-extrabold text-sm text-gray-500 shrink-0">${rank}</span>
+        <img src="${c.avatar_url ? esc(c.avatar_url) : avatarUrl(c.display_name)}" alt=""
+             class="w-12 h-12 rounded-full ring-2 ring-orange-100 object-cover shrink-0">
+        <div class="sm:hidden flex-1 min-w-0">
+          <div class="font-headline font-extrabold text-[#1A1A2E] text-base truncate">${esc(c.display_name || 'CarePartner')}</div>
+          <div class="text-[11px] font-semibold text-gray-500 truncate">${esc(schoolMajor)}</div>
         </div>
+      </div>
 
-        <div class="hidden sm:flex flex-col items-end shrink-0 pl-2">
-          <div class="text-right">
-            <div class="text-2xl font-extrabold text-[#F26522] font-headline tracking-tight">${c.match_score}</div>
-            <div class="text-[11px] text-gray-400 font-semibold">điểm phù hợp</div>
-          </div>
-          <button class="choose mt-3 text-sm bg-gradient-to-r from-[#F26522] to-[#D4541E] hover:from-[#D4541E] hover:to-[#B8431A] text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/20 active:scale-95 transition"
-                  data-id="${c.carepartner_id}" data-name="${c.display_name || ''}" data-score="${c.match_score}">
-            Chọn người này
-          </button>
+      <div class="flex-1 min-w-0 w-full">
+        <div class="hidden sm:flex items-center gap-2 flex-wrap">
+          <span class="font-headline font-extrabold text-[#1A1A2E] text-base">${esc(c.display_name || 'CarePartner')}</span>
+          <span class="text-[10px] font-bold text-gray-400">${cpCode(c.carepartner_id)}</span>
+          <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full text-white" style="background:${color}">${esc(label)}</span>
         </div>
+        <div class="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 mt-1">
+          <span class="material-symbols-outlined text-sm text-gray-400">school</span>
+          <span class="truncate">${esc(schoolMajor)}</span>
+        </div>
+        <div class="flex gap-2 sm:gap-3 mt-2 text-[11px] sm:text-xs font-bold text-gray-600 flex-wrap">
+          <span class="flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg">⭐ ${ratingStr} (${c.completed_jobs ?? 0} đơn)</span>
+          <span class="flex items-center gap-1 bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg">📍 ${c.distance_km != null ? esc(c.distance_km + ' km') : 'gần Huế'}</span>
+        </div>
+        ${c.top_skills && c.top_skills.length ? `
+          <div class="flex gap-1.5 mt-2.5 flex-wrap">
+            ${c.top_skills.slice(0, 3).map((s) => `<span class="text-[11px] px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 font-semibold">${esc(s)}</span>`).join('')}
+          </div>` : ''}
+      </div>
 
-        <div class="sm:hidden w-full pt-2 border-t border-gray-100">
-          <button class="choose w-full text-sm bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/20 active:scale-95 transition"
-                  data-id="${c.carepartner_id}" data-name="${c.display_name || ''}" data-score="${c.match_score}">
-            Chọn người này
-          </button>
-        </div>`;
-      wrap.appendChild(card);
-    }
+      <div class="hidden sm:flex flex-col items-end shrink-0 pl-2">
+        <div class="text-right">
+          <div class="text-2xl font-extrabold text-[#F26522] font-headline tracking-tight">${c.match_score}<span class="text-xs font-normal text-gray-400"> đ</span></div>
+          <div class="text-[11px] text-gray-400 font-semibold">điểm phù hợp</div>
+        </div>
+        <button class="choose mt-2.5 text-sm bg-white border-2 border-[#F26522] text-[#F26522] hover:bg-[#F26522] hover:text-white px-4 py-2 rounded-xl font-extrabold active:scale-95 transition"
+                data-id="${esc(c.carepartner_id)}" data-name="${esc(c.display_name || '')}" data-score="${c.match_score}">
+          Chọn bạn này
+        </button>
+      </div>
 
-    wrap.querySelectorAll('.choose').forEach((b) => b.addEventListener('click', () => {
+      <div class="sm:hidden w-full pt-2 border-t border-gray-100 flex items-center justify-between">
+        <span class="text-lg font-extrabold text-[#F26522] font-headline">${c.match_score}<span class="text-[10px] font-normal text-gray-400"> đ</span></span>
+        <button class="choose text-sm bg-gradient-to-r from-[#F26522] to-[#D4541E] text-white px-4 py-2 rounded-xl font-bold active:scale-95 transition"
+                data-id="${esc(c.carepartner_id)}" data-name="${esc(c.display_name || '')}" data-score="${c.match_score}">
+          Chọn bạn này
+        </button>
+      </div>`;
+    return card;
+  }
+
+  function bindChooseButtons() {
+    document.querySelectorAll('.choose').forEach((b) => b.addEventListener('click', () => {
       picked = { id: b.dataset.id, name: b.dataset.name, score: b.dataset.score };
-      document.getElementById('confirmText').innerHTML =
-        `Bạn muốn ghép cặp với CarePartner <b>${picked.name}</b> (điểm phù hợp: <b>${picked.score}/100</b>).`;
-      document.getElementById('confirmModal').classList.remove('hidden');
+      $('confirmText').innerHTML =
+        `Bạn muốn ghép cặp với CarePartner <b>${esc(picked.name)}</b> (điểm phù hợp: <b>${esc(picked.score)}/100</b>).`;
+      show($('confirmModal'));
+    }));
+    document.querySelectorAll('.heroDetailBtn').forEach((b) => b.addEventListener('click', () => {
+      const panel = $(b.dataset.target);
+      if (panel) panel.classList.toggle('hidden');
     }));
   }
 
-  document.getElementById('cancelConfirm').onclick = () => document.getElementById('confirmModal').classList.add('hidden');
-  document.getElementById('okConfirm').onclick = async () => {
+  // ── Bộ lọc & sắp xếp (parity Mobile) ──
+  document.querySelectorAll('.filter-pill[data-sort]').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill[data-sort]').forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.currentSort = pill.dataset.sort;
+      renderList();
+    });
+  });
+  $('femalePill').addEventListener('click', () => {
+    state.femaleOnly = !state.femaleOnly;
+    $('femalePill').classList.toggle('active', state.femaleOnly);
+    renderList();
+  });
+
+  // ── Modal xác nhận → select-carepartner ──
+  let picked = null;
+  $('cancelConfirm').onclick = () => hide($('confirmModal'));
+  $('okConfirm').onclick = async () => {
     if (!picked) return;
-    const btn = document.getElementById('okConfirm');
+    const btn = $('okConfirm');
     btn.disabled = true;
     btn.textContent = 'Đang tạo đơn...';
     try {
       const resp = await authFetch(`${API_BASE}/matching/jobs/${jobId}/select-carepartner/`, {
         method: 'POST', body: JSON.stringify({ carepartner_id: picked.id }),
         headers: { 'Idempotency-Key': 'web-' + jobId + '-' + picked.id } });
-      const data = await resp.json();
+      if (resp.status === 401) { showRedirecting(); return; }
+      const parsed = await safeJson(resp);
+      const data = parsed.ok ? parsed.data : {};
       // 201 = tạo đơn mới; 200 = replay idempotency (đơn đã tồn tại) —
       // cả hai đều có data.id → chuyển đến trang chi tiết đơn
       if (resp.ok && data.id) {
-        toast(resp.status === 201 ? 'Đã chọn CarePartner thành công! Đang chuyển đến đơn...' : 'Đơn của bạn đã sẵn sàng! Đang chuyển đến đơn...');
-        setTimeout(() => location.href = `/don/${data.id}/`, 800);
+        toast(resp.status === 201
+          ? 'Ghép cặp thành công! Khoản ký quỹ đang được bảo vệ qua MoMo Escrow. Đang chuyển đến đơn...'
+          : 'Đơn của bạn đã sẵn sàng! Đang chuyển đến đơn...');
+        setTimeout(() => location.href = `/don/${data.id}/`, 900);
       } else if (resp.status === 409) {
-        toast(data.code === 'slot_taken' ? 'Lịch vừa được người khác chọn. Vui lòng chọn ứng viên khác.' : (data.detail || 'Xung đột lịch.'), false);
-        document.getElementById('confirmModal').classList.add('hidden');
+        hide($('confirmModal'));
+        toast(data.code === 'slot_taken'
+          ? 'Lịch vừa được người khác chọn. Vui lòng chọn ứng viên khác.'
+          : (data.detail || 'Xung đột lịch.'), false);
         load();
       } else {
-        toast(data.detail || 'Không chọn được ứng viên.', false);
+        toast(data.detail || 'Không chọn được ứng viên. Vui lòng thử lại.', false);
       }
-    } catch (e) { console.warn(e); }
-    finally {
+    } catch (e) {
+      if (e && (e.message === 'user_unauthorized' || e.message === 'no_token')) { showRedirecting(); return; }
+      toast('Kết nối không ổn định. Vui lòng thử lại.', false);
+    } finally {
       btn.disabled = false;
       btn.textContent = 'Xác nhận chọn';
     }
   };
 
+  $('retryBtn').addEventListener('click', load);
   load();
 </script>
 </body>

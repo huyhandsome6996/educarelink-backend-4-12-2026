@@ -364,7 +364,10 @@ def seed_default_prompt_template():
 
 RERANK_PROMPT_KEY = 'candidate_rerank'
 RERANK_PROMPT_VERSION = 'v1'
-RERANK_TIMEOUT_S = 2.5  # Ngân sách cứng — quá hạn giữ thứ tự rule
+# QA 2026-09-18 (màn hình trắng /ung-vien/): hard cap 1.5s — Gemini chậm/quota
+# KHÔNG ĐƯỢC làm nghẽn luồng đồng bộ candidates. Quá hạn → bỏ ngay, trả thứ
+# tự rule-based nguyên bản (KHÔNG retry — mọi retry đều nằm ngoài ngân sách).
+RERANK_TIMEOUT_S = 1.5
 
 
 def rerank_candidates(job, candidates):
