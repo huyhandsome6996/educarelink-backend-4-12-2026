@@ -104,6 +104,9 @@ def main():
         CarePartnerAvailability.objects.create(
             carepartner=u, weekday=d1.weekday(),
             time_from=time(18, 0), time_to=time(22, 0))
+        CarePartnerAvailability.objects.create(
+            carepartner=u, weekday=d2.weekday(),
+            time_from=time(18, 0), time_to=time(22, 0))
         p.skills = ['toan', 'tieu_hoc']
         p.school = ['ĐH Sư Phạm - Đại học Huế', 'ĐH Y Dược - Đại học Huế',
                     'Đại học Khoa học - Đại học Huế'][i % 3]
