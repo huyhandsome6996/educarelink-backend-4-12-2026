@@ -1,3 +1,37 @@
+### Seed dữ liệu mẫu Care Diary phủ TẤT CẢ tài khoản — kiểm thử end-to-end (2026-09-20)
+- **Bối cảnh**: web đã live với form đánh giá sau khi vá migration 0032 (`bad2c20`),
+  nhưng còn nhiều task in_progress/completed chưa có nhật ký và các tài khoản khảo
+  sát thật (19 tài khoản bảo vệ) không có dữ liệu nào để trải nghiệm. Yêu cầu owner:
+  "tạo dữ liệu mẫu cho tất cả các tài khoản hiện có của hệ thống — coi như 1 cách
+  kiểm thử xem nó có hoạt động hay không".
+- **Lệnh `seed_care_diary_sample` (idempotent — chỉ thêm, không xoá)**:
+  - *Phase A*: mọi task `in_progress`/`completed` có CarePartner accepted mà chưa
+    có nhật ký → sinh 1 entry hoàn chỉnh (mood canonical + timeline 3-6 hoạt động
+    có done/partial/skipped + note tiếng Việt). Loại form chọn theo danh mục:
+    `gia-su` → tutoring (bài học, điểm tiếp thu 1-5, bài tập, lỗ hổng kiến thức),
+    `trong-tre` → childcare (bữa ăn, ngủ trưa, vệ sinh — có 1 biến thể "hơi sổ mũi"
+    dùng mood alert-circle cho chân thực), còn lại → general.
+  - *Phase B*: tài khoản active nào chưa xem được nhật ký nào → tạo 1 task
+    `[DEMO]` hoàn chỉnh + application accepted + entry, ưu tiên ghép cặp
+    "phụ huynh chưa có × carepartner chưa có" để 1 task phủ 2 tài khoản.
+  - assessment_data đi qua ĐÚNG `validate_assessment_data` của API → dữ liệu mẫu
+    luôn nạp lại được vào form sửa CarePartner, schema drift sẽ hiện rõ trong log
+    deploy thay vì sinh dữ liệu rác.
+  - Mỗi item 1 transaction riêng + try/except → 1 item lỗi không làm chết deploy.
+- **Kích hoạt trên prod**: thêm dòng guarded vào `build.sh` sau `seed_demo_data`
+  (seed reset xoá sạch diary mỗi deploy → lệnh này phủ lại) — deploy kế tiếp tự
+  có dữ liệu mẫu toàn hệ thống, không cần thao tác tay.
+- **Kết quả kiểm thử (local)**: lần 1: Phase A +5 entry (task t6-t11 có sẵn),
+  Phase B +14 task `[DEMO]` → tổng 21 nhật ký / 106 hoạt động, phủ 11/11 phụ
+  huynh + 18/18 carepartner active, 0 lỗi. Chạy lại: +0 (idempotent đúng).
+  21/21 entry qua lại validator API; phân bố 9 tutoring / 8 childcare / 4 general
+  khớp mã danh mục.
+- **Kiểm thử end-to-end qua JWT (script `verify_seed_diary.py`, 22 check)**:
+  history phụ huynh đủ 6 trường UI, chi tiết tutoring/childcare đúng schema
+  (schema_version=1), worker PATCH được entry của mình (nạp lại form sửa OK),
+  bảo mật đúng: 403 khi phụ huynh khác đọc chéo, 400 khi POST trùng, 403 khi
+  worker không accepted. **Full backend suite 896/896 OK.**
+
 ### Nghiệm thu Care Diary trên main + phát hành 1.4.8 + khôi phục entry nhật ký Flow 1 (2026-09-20)
 - **Bối cảnh**: Care Diary đã merge main (`0214e96`), cần "dùng được thật" cho 3 nền
   tảng trước deadline nộp bài. Kiểm tra thực địa phát hiện 3 khoảng trống.
