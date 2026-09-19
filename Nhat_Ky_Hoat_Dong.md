@@ -1,3 +1,30 @@
+### Nghiệm thu Care Diary trên main + phát hành 1.4.8 + khôi phục entry nhật ký Flow 1 (2026-09-20)
+- **Bối cảnh**: Care Diary đã merge main (`0214e96`), cần "dùng được thật" cho 3 nền
+  tảng trước deadline nộp bài. Kiểm tra thực địa phát hiện 3 khoảng trống.
+- **Web — khôi phục lối vào nhật ký**: trang chủ phụ huynh Flow 1 (`3d6610b`) mất
+  hẳn nút xem nhật ký → thẻ booking `in_progress` có task giờ có nút
+  **"Xem nhật ký ca"** dẫn `/parent/care-diary/?task_id=` cạnh nút Nhắn tin
+  (`e4d3f39`). 3 test frontend FAIL lịch sử được xử lý đúng thiết kế mới:
+  chat rút gọn "Nhắn tin" (text đầy đủ xác nhận trên `/parent/task-detail/`),
+  thanh toán dời sang bước `pending_payment` trên trang chi tiết (cổng VietQR —
+  danh sách in_progress KHÔNG còn nút thanh toán để tránh nhầm thu thêm tiền khi
+  escrow đã giữ). **Full backend suite 896/896 OK** — xanh hoàn toàn lần đầu kể
+  từ khi chuyển Flow 1.
+- **Mobile — phát hành 1.4.8 (vc31)**: bump version + RELEASE_NOTES_1.4.8.md;
+  jest **154/154 PASS** (20 suites). EAS build production thành công (build
+  `930d1d8c`), submit CH Play track internal thành công (submission `4acbc4d5`);
+  xác minh qua Google Play API: `track=internal | release=1.4.8 | vc=31 |
+  status=completed` — thay thế 1.4.7/vc30. APK 1.4.7 cũ KHÔNG chứa form đánh giá
+  (feature merge 19/09, bản 1.4.7 build 13/09) — tester cần cập nhật lên 1.4.8.
+- **⚠️ Render đang STALE — cần 1 thao tác của chủ dự án**: site sống (200) nhưng
+  bản deploy chưa chứa form đánh giá (curl `/worker/care-diary/` có 0 marker
+  `tData.category_code`); các push main 18-20/09 không kích hoạt được auto-deploy
+  (khớp hiện tượng stale tái diễn trong SYNC_PARITY.md). Workspace không có
+  Render API key/deploy hook nên agent không tự deploy được. **Việc cần làm**:
+  Render Dashboard → service `educarelink-backend` → Manual Deploy → "Deploy
+  latest commit" (main @ `12139de`). Sau deploy, web dùng được form đánh giá
+  ngay, mobile 1.4.8 gọi API production trọn vẹn.
+
 ### Vá vòng 2 QA review form đánh giá Care Diary — H1/L1/M1/M2/L2 + đồng bộ main (2026-09-19)
 - **Bối cảnh**: QA review vòng 2 (tip `c916136`) xác nhận branch sạch migration
   (C1 chỉ là lệch môi trường review — worktree thiếu `0030`, còn local lẫn origin/main
