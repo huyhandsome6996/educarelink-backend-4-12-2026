@@ -457,6 +457,9 @@ def build_entry_response(*, entry, request=None):
         'id': entry.id,
         'assessment_type': entry.assessment_type or 'general',
         'assessment_data': entry.assessment_data or {},
+        # M2 (QA 2026-09-19) — expose updated_at để mobile/web hiển thị
+        # "Nhật ký cập nhật lần cuối lúc…" (auto_now cập nhật mỗi lần save).
+        'updated_at': entry.updated_at.isoformat() if entry.updated_at else None,
         'carepartner': {
             'name': worker.get_full_name() or worker.username,
             'role': 'CarePartner',

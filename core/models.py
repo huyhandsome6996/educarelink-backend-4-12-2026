@@ -196,6 +196,14 @@ class User(AbstractUser):
 # Hỗ trợ AI, Khác) bị khóa bằng cờ is_active=False — dữ liệu lịch sử giữ
 # nguyên FK, không cho tạo việc mới bằng danh mục đã khóa.
 class ServiceCategory(models.Model):
+    """Danh mục dịch vụ (Gia sư, Trông trẻ, Đón trẻ...).
+
+    ⚠️ M1 (QA 2026-09-19) — KHÔNG dùng bulk_create() cho model này:
+    save() override tự sinh code duy nhất, còn bulk_create() bỏ qua save()
+    → mọi row tạo bằng bulk_create() sẽ có code rỗng và gây IntegrityError
+    ở ràng buộc unique. Nếu bắt buộc phải bulk_create, hãy tự sinh code
+    trước (vn_slugify(name) + kiểm tra trùng) cho từng object.
+    """
     name = models.CharField(max_length=100)
     # M1 — code là khóa ổn định cho logic nghiệp vụ (care_diary map
     # assessment_type theo code, KHÔNG theo name hiển thị — admin có thể

@@ -1,3 +1,43 @@
+### Vá vòng 2 QA review form đánh giá Care Diary — H1/L1/M1/M2/L2 + đồng bộ main (2026-09-19)
+- **Bối cảnh**: QA review vòng 2 (tip `c916136`) xác nhận branch sạch migration
+  (C1 chỉ là lệch môi trường review — worktree thiếu `0030`, còn local lẫn origin/main
+  đều có) và sẵn sàng merge, còn 1 lỗi thật **H1**: mobile + web chọn loại form đánh
+  giá theo `category_name` hiển thị — admin đổi tên (vd thêm "1 kèm 1 (cao cấp)") là
+  form âm thầm rơi về `general`, phụ huynh không thấy báo cáo. Kèm 4 điểm nhỏ
+  M1/M2/L1/L2. Làm đúng one-branch rule trên `feature/care-diary-assessment-forms`.
+- **H1 — Task API trả `category_code`**: `TaskSerializer` thêm
+  `category_code = CharField(source='category.code', allow_null=True, read_only=True)`
+  — `/api/tasks/<id>/` (endpoint `getTaskDetail` của mobile) giờ trả slug ổn định
+  `gia-su` / `trong-tre`. 2 test backend: có category → `gia-su`; task legacy không
+  category → `null` không crash.
+- **H1 — mobile**: `CareDiaryFormScreen` bỏ state `categoryName`, đọc
+  `category_code`; `effectiveAssessmentType` so khớp code (`'gia-su'`→tutoring,
+  `'trong-tre'`→childcare). 2 test mới: admin đổi tên "Gia sư 1 kèm 1 (cao cấp)"
+  vẫn chọn đúng form tutoring; backend cũ chỉ gửi name (không code) → an toàn rơi về
+  general, không đoán từ tên hiển thị.
+- **L1 — web**: `worker_care_diary_form.html` đổi `taskCategory` (name) →
+  `taskCategoryCode` đọc `category_code` từ cùng API, parity với mobile.
+- **M1 — docstring cảnh báo `bulk_create`**: `ServiceCategory` ghi rõ
+  `bulk_create()` bỏ qua `save()` tự sinh code → hàng loạt row code rỗng văng
+  IntegrityError ở unique constraint; ai cần bulk phải tự sinh code trước từng object.
+- **M2 — `updated_at` trong response**: `build_entry_response()` trả thêm
+  `updated_at` (ISO) để mobile/web hiển thị "Nhật ký cập nhật lần cuối lúc…";
+  contract test thêm `updated_at` vào `REQUIRED_TOP` + test PATCH làm mới timestamp.
+- **L2 — mobile hỏi xác nhận khi hạ cấp**: bắt đúng lỗi 400 chặn hạ cấp của backend
+  (`isDowngradeConfirmError` nhận diện shape `{'assessment_type': [...confirm_clear_assessment...]}`)
+  → dialog "Xác nhận xoá dữ liệu đánh giá" — "Giữ nguyên" là cancel thuần (không
+  onPress, không thể tự gửi lại), "Xoá & lưu" → gửi lại kèm
+  `confirm_clear_assessment=true`. Kèm `extractApiError()` gom mọi shape lỗi
+  field-level DRF → Alert hiện thông điệp thật thay vì lỗi chung chung.
+- **Đồng bộ main**: origin/main đã tiến 20 commits (`3648ecc..d080d7c` — Stitch web,
+  E2E sync, skill DSA...) — merge vào feature branch, resolve xung đột
+  `Nhat_Ky_Hoat_Dong.md` (giữ cả 2 mục nhật ký cùng ngày), `ParentHomeScreen.js`
+  tự merge sạch.
+- **Kiểm thử**: backend full suite **876/876 OK** (318s — gồm 3 test mới);
+  care_diary **75/75 PASS**; mobile jest **154/154 PASS** (20 suites — file
+  assessment test nâng lên 10 test: 3 payload mock `category_code`, 2 H1 rename,
+  3 L2 dialog, 2 helper).
+
 ### Vá 6 phát hiện QA review form đánh giá Care Diary (2026-09-18)
 - **Bối cảnh**: QA review độc lập branch `feature/care-diary-assessment-forms` (commit lõi
   4f6651b) chấm 78/100 — merge được nhưng khuyến nghị vá C1 + H1 trước khi phát hành;

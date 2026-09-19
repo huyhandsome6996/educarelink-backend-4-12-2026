@@ -89,6 +89,11 @@ class TaskSerializer(serializers.ModelSerializer):
     # Tên phụ huynh & tên danh mục (chỉ đọc) — phục vụ màn hình bảng tin mobile
     parent_name = serializers.CharField(source='parent.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    # H1 (QA 2026-09-19) — code slug ổn định của danh mục (gia-su / trong-tre).
+    # Mobile + web dùng code này để chọn loại form đánh giá Care Diary,
+    # KHÔNG so khớp category_name: admin đổi tên hiển thị (vd thêm
+    # '1 kèm 1 (cao cấp)') không làm form âm thầm rơi về general.
+    category_code = serializers.CharField(source='category.code', allow_null=True, read_only=True)
     is_reviewed = serializers.SerializerMethodField()
     review_detail = serializers.SerializerMethodField()
 

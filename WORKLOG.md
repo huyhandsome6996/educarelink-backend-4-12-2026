@@ -1706,3 +1706,47 @@ xem card riêng theo loại (học tập / sinh hoạt). Song song mobile + web,
 - Lưu ý theo dõi (nice-to-have chưa làm): N1 giữ db_index assessment_type cho
   dashboard tương lai; N3 nới lỏng score nhận float .is_integer(); N4 enum hóa
   classwork_status nếu làm báo cáo tổng hợp.
+
+## 2026-09-19 — Vá vòng QA review 2: H1/L1/M1/M2/L2 + đồng bộ origin/main (Super Z)
+
+## Bối cảnh
+- QA review vòng 2 (tip `c916136`): "Ready to Merge — With H1 Fix Required".
+  C1 trong báo cáo chỉ là lệch môi trường review (worktree 515 commits thiếu
+  `core/0030`; xác thực local + origin/main đều có 0030 → không phải lỗi code).
+  Lỗi thật duy nhất H1: mobile + web chọn loại form đánh giá Care Diary theo
+  `category_name` hiển thị — admin đổi tên là form âm thầm rơi về `general`
+  (backend đã map theo `category.code` từ vòng vá trước, client chưa theo kịp).
+
+## Thay đổi chính
+- **H1 (serializer)**: `TaskSerializer` thêm `category_code` (read-only,
+  `source='category.code'`, allow_null) → `/api/tasks/<id>/` trả slug ổn định.
+- **H1 (mobile)**: `CareDiaryFormScreen.js` bỏ `categoryName`, đọc
+  `category_code`; so khớp `'gia-su'`→tutoring, `'trong-tre'`→childcare.
+- **L1 (web)**: `worker_care_diary_form.html` — `taskCategoryCode` đọc
+  `category_code`, `effectiveAssessmentType()` so code thay vì name.
+- **M1**: docstring `ServiceCategory` cảnh báo `bulk_create()` bỏ qua save()
+  tự sinh code (footgun IntegrityError unique).
+- **M2**: `build_entry_response()` trả thêm `updated_at` (ISO) — client hiển thị
+  "cập nhật lần cuối lúc…"; `REQUIRED_TOP` contract test cập nhật theo.
+- **L2 (mobile)**: `extractApiError()` gom mọi shape lỗi field-level DRF → Alert
+  hiện thông điệp thật; `isDowngradeConfirmError()` nhận diện 400 chặn hạ cấp →
+  dialog xác nhận (Giữ nguyên = cancel thuần / Xoá & lưu → gửi lại kèm
+  `confirm_clear_assessment=true`). Nút submit đổi `onPress={() => handleSubmit()}`
+  tránh sự kiện press lọt vào tham số `allowClear`.
+- **Merge main**: merge `origin/main` (20 commits mới `3648ecc..d080d7c`) vào
+  feature branch; resolve xung đột `Nhat_Ky_Hoat_Dong.md` (giữ cả 2 mục cùng ngày);
+  `ParentHomeScreen.js` auto-merge sạch.
+
+## Kết quả QA
+- care_diary: **75/75 PASS** (72 cũ + 3 mới: `test_response_includes_updated_at_m2`,
+  `test_task_detail_api_exposes_category_code`,
+  `test_task_detail_api_category_code_null_when_no_category`).
+- Backend full suite: **876/876 OK** (318s) sau khi merge main — không phá app nào.
+- Mobile jest: **154/154 PASS** (20 suites) — file
+  `CareDiaryFormScreen.assessment.test.js` nâng từ 3 lên 10 test (3 payload
+  `category_code`, 2 H1 rename, 3 L2 dialog, 2 helper `extractApiError` /
+  `isDowngradeConfirmError`).
+- BUG-11 tự ghi nhận khi vá: nút submit truyền thẳng `handleSubmit` vào
+  `onPress` → React Native đẩy event object thành tham số đầu tiên
+  (allowClear=truthy) — đã đổi sang arrow function; test dialog đã chặn lớp
+  hồi quy này.

@@ -30,6 +30,34 @@ const ACTIVITY_STATUSES = [
   { key: 'skipped', label: 'Bỏ qua' },
 ];
 
+// L2 (QA 2026-09-19) — backend trả lỗi dạng dict field-level của DRF, vd:
+//   {'error': '...'}                                            — lỗi chung
+//   {'assessment_type': ['Đổi về form chung sẽ xóa...']}         — chặn hạ cấp
+//   {'assessment_data': {'meals': ['Cần ít nhất 1 bữa ăn...']}}  — sai dữ liệu
+// Gom về 1 chuỗi để Alert hiển thị thông điệp thật thay vì lỗi chung chung.
+export const extractApiError = (data) => {
+  if (!data || typeof data !== 'object') return null;
+  if (typeof data.error === 'string' && data.error.trim()) return data.error;
+  const parts = [];
+  const pushStr = (m) => { if (typeof m === 'string' && m.trim()) parts.push(m); };
+  Object.values(data).forEach((v) => {
+    if (typeof v === 'string') pushStr(v);
+    else if (Array.isArray(v)) v.forEach(pushStr);
+    else if (v && typeof v === 'object') Object.values(v).forEach((sub) => {
+      if (Array.isArray(sub)) sub.forEach(pushStr);
+      else pushStr(sub);
+    });
+  });
+  return parts.length ? parts.join('\n') : null;
+};
+
+// Nhận diện đúng lỗi chặn hạ cấp của backend (H1): entry đang có dữ liệu
+// đánh giá chuyên sâu, đổi về general cần cờ confirm_clear_assessment.
+export const isDowngradeConfirmError = (data) => (
+  !!data && typeof data === 'object' && 'assessment_type' in data
+  && (extractApiError(data) || '').includes('confirm_clear_assessment')
+);
+
 export default function CareDiaryFormScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -49,9 +77,12 @@ export default function CareDiaryFormScreen() {
 
   // === CARE DIARY NÂNG CẤP — form đánh giá chuyên sâu ===
   // assessmentType: 'tutoring' | 'childcare' | 'general' — suy ra từ
-  // category của task (Gia sư → tutoring, Trông trẻ → childcare, còn lại
-  // general); nếu entry cũ đã có assessment_type thì ưu tiên entry.
-  const [categoryName, setCategoryName] = useState('');
+  // category.code của task ('gia-su' → tutoring, 'trong-tre' → childcare,
+  // còn lại general); nếu entry cũ đã có assessment_type thì ưu tiên entry.
+  // H1 (QA 2026-09-19) — so khớp theo code slug ổn định do backend tự sinh,
+  // KHÔNG so khớp category_name: admin đổi tên hiển thị không làm form
+  // âm thầm rơi về general (parity với backend get_allowed_assessment_types).
+  const [categoryCode, setCategoryCode] = useState('');
   const [assessmentType, setAssessmentType] = useState('general');
   const [assessmentData, setAssessmentData] = useState({});
 
@@ -66,12 +97,12 @@ export default function CareDiaryFormScreen() {
     if (!taskId) { setLoadingEntry(false); return; }
     let mounted = true;
     setLoadingEntry(true);
-    // 1) Category của task → chọn loại form (Gia sư / Trông trẻ / chung)
+    // 1) Category của task → chọn loại form (H1 — theo category.code)
     getTaskDetail(taskId)
       .then(res => {
         if (!mounted) return;
-        const name = res.data?.category_name || '';
-        setCategoryName(name);
+        const code = res.data?.category_code || '';
+        setCategoryCode(code);
       })
       .catch(() => { /* không lấy được category → dùng form chung */ });
     // 2) Entry cũ (nếu có) → nạp vào form
@@ -102,11 +133,12 @@ export default function CareDiaryFormScreen() {
   }, [taskId]);
 
   // Loại form hiệu lực: entry cũ ghi đè category, nhưng category là nguồn
-  // mặc định khi tạo mới. Gia sư → tutoring, Trông trẻ → childcare.
+  // mặc định khi tạo mới. Code 'gia-su' → tutoring, 'trong-tre' → childcare
+  // (H1 — so khớp code, không so khớp tên hiển thị).
   const effectiveAssessmentType = isExisting
     ? assessmentType
-    : (categoryName === 'Gia sư' ? 'tutoring'
-       : categoryName === 'Trông trẻ' ? 'childcare'
+    : (categoryCode === 'gia-su' ? 'tutoring'
+       : categoryCode === 'trong-tre' ? 'childcare'
        : 'general');
 
   // === ACTIVITY CRUD ===
@@ -133,7 +165,10 @@ export default function CareDiaryFormScreen() {
   };
 
   // === SUBMIT ===
-  const handleSubmit = async () => {
+  // L2 (QA 2026-09-19) — allowClear: lượt gửi lại sau khi người dùng xác nhận
+  // dialog "Xác nhận xoá dữ liệu đánh giá" → gửi kèm confirm_clear_assessment
+  // = true để backend cho phép hạ cấp tutoring/childcare → general (H1).
+  const handleSubmit = async (allowClear = false) => {
     if (submitting) return;
     // Validate cơ bản (form chung)
     const validActivities = activities.filter(a => a.title.trim());
@@ -170,6 +205,8 @@ export default function CareDiaryFormScreen() {
             time: a.time, title: a.title, description: a.description, status: a.status, order: i,
           })),
         } : {}),
+        // L2 — chỉ gửi cờ xác nhận khi đã qua dialog xác nhận (lượt gửi lại)
+        ...(allowClear ? { confirm_clear_assessment: true } : {}),
       };
 
       if (isExisting) {
@@ -197,7 +234,26 @@ export default function CareDiaryFormScreen() {
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
-      const msg = err.response?.data?.error || 'Không thể lưu nhật ký. Vui lòng thử lại.';
+      const errData = err.response?.data || null;
+      // L2 — backend chặn hạ cấp về form chung khi entry còn dữ liệu đánh giá
+      // (H1 backend). Hỏi xác nhận rõ ràng thay vì hiện lỗi chung chung;
+      // người dùng đồng ý → gửi lại kèm confirm_clear_assessment=true.
+      if (!allowClear && isDowngradeConfirmError(errData)) {
+        Alert.alert(
+          'Xác nhận xoá dữ liệu đánh giá',
+          'Đổi về form chung sẽ xoá toàn bộ dữ liệu đánh giá chuyên sâu đã lưu '
+          + '(điểm tiếp thu, bữa ăn, giấc ngủ...). Bạn chắc chắn chứ?',
+          [
+            { text: 'Giữ nguyên', style: 'cancel' },
+            {
+              text: 'Xoá & lưu', style: 'destructive',
+              onPress: () => { handleSubmit(true); },
+            },
+          ],
+        );
+        return;
+      }
+      const msg = extractApiError(errData) || 'Không thể lưu nhật ký. Vui lòng thử lại.';
       Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
@@ -346,7 +402,7 @@ export default function CareDiaryFormScreen() {
       {/* Submit button */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
-          onPress={handleSubmit} disabled={submitting} activeOpacity={0.85}>
+          onPress={() => handleSubmit()} disabled={submitting} activeOpacity={0.85}>
           {submitting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (

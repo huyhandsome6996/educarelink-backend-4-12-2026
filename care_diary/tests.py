@@ -384,7 +384,7 @@ class ResponseContractTests(TestCase):
       note, attachments (list: {id, type, url})
     """
 
-    REQUIRED_TOP = {'id', 'carepartner', 'date', 'mood', 'completion', 'activities', 'note', 'attachments'}
+    REQUIRED_TOP = {'id', 'carepartner', 'date', 'mood', 'completion', 'activities', 'note', 'attachments', 'updated_at'}
     REQUIRED_CAREPARTNER = {'name', 'role', 'avatarInitial', 'verified'}
     REQUIRED_MOOD = {'icon', 'label', 'note'}
     REQUIRED_COMPLETION = {'percent', 'stats'}
@@ -434,6 +434,30 @@ class ResponseContractTests(TestCase):
         resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
         act = resp.data['activities'][0]
         self.assertIn('desc', act, "Field phải là 'desc' cho mobile")
+
+    def test_response_includes_updated_at_m2(self):
+        """M2 (QA 2026-09-19) — response có updated_at dạng ISO để client
+        hiển thị "Nhật ký cập nhật lần cuối lúc…"; PATCH xong updated_at
+        phải mới hơn hoặc bằng giá trị trước đó (auto_now)."""
+        from django.utils.dateparse import parse_datetime
+
+        resp = self.client.get(f'/api/tasks/{self.task.id}/care-diary/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('updated_at', resp.data)
+        first = parse_datetime(resp.data['updated_at'])
+        self.assertIsNotNone(
+            first, 'updated_at phải là chuỗi ISO 8601 parse được')
+
+        # PATCH nội dung → updated_at được làm mới (auto_now), không null
+        resp = self.client.patch(
+            f'/api/worker/tasks/{self.task.id}/care-diary/',
+            {'note': 'Cập nhật sau ca làm'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('updated_at', resp.data)
+        second = parse_datetime(resp.data['updated_at'])
+        self.assertIsNotNone(second)
+        self.assertGreaterEqual(second, first)
 
     def test_stats_counts_correct(self):
         """Stats (đếm activities theo status) tính đúng.
@@ -1347,3 +1371,21 @@ class AssessmentFormTests(TestCase):
         ))
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data['assessment_type'], 'tutoring')
+
+    # --- H1 (QA 2026-09-19): Task API trả category_code để mobile/web chọn
+    #     form theo slug ổn định, KHÔNG so khớp category_name hiển thị ---
+    def test_task_detail_api_exposes_category_code(self):
+        """/api/tasks/<id>/ (endpoint getTaskDetail của mobile) phải trả
+        category_code ('gia-su') — client so khớp code, không so khớp name."""
+        resp = self.client.get(f'/api/tasks/{self.task.id}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['category_code'], 'gia-su')
+        self.assertEqual(resp.data['category_name'], 'Gia sư')
+
+    def test_task_detail_api_category_code_null_when_no_category(self):
+        """Task không có category (legacy) → category_code = null, không crash."""
+        task = _make_task(self.parent, None, status='in_progress')
+        _accept_worker(task, self.worker)
+        resp = self.client.get(f'/api/tasks/{task.id}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data['category_code'])

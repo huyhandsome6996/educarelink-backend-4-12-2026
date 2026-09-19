@@ -369,16 +369,18 @@ const TUTOR_SCORE_LABELS = {
   1: 'Chưa tiếp thu được', 2: 'Cần hỗ trợ nhiều', 3: 'Tiếp thu ở mức cơ bản',
   4: 'Hiểu bài nhanh', 5: 'Tiếp thu xuất sắc',
 };
-let taskCategory = '';          // tên danh mục task (Gia sư / Trông trẻ / ...)
+let taskCategoryCode = '';      // H1/L1 (QA 2026-09-19) — code slug danh mục (gia-su / trong-tre / ...)
 let assessmentType = 'general'; // tutoring | childcare | general
 let selectedTutorScore = 0;
 const tutorFlags = { is_new_knowledge: false, is_review: false };
 
 function effectiveAssessmentType() {
   // Loại form hiệu lực: entry cũ ghi đè category; category là mặc định khi tạo mới.
+  // L1 — so khớp category.code (slug ổn định: 'gia-su', 'trong-tre') thay vì
+  // category_name hiển thị: admin đổi tên không làm form rơi về general.
   if (isEdit) return assessmentType || 'general';
-  if (taskCategory === 'Gia sư') return 'tutoring';
-  if (taskCategory === 'Trông trẻ') return 'childcare';
+  if (taskCategoryCode === 'gia-su') return 'tutoring';
+  if (taskCategoryCode === 'trong-tre') return 'childcare';
   return 'general';
 }
 
@@ -861,13 +863,14 @@ async function loadTaskInfo() {
   }
 
   // CARE DIARY NÂNG CẤP — lấy category của task để chọn loại form
-  // (Gia sư → tutoring, Trông trẻ → childcare, còn lại → general).
-  // Parity với mobile: CareDiaryFormScreen.js gọi getTaskDetail cùng mục đích.
+  // ('gia-su' → tutoring, 'trong-tre' → childcare, còn lại → general).
+  // L1 — đọc category_code (slug ổn định từ TaskSerializer), parity với mobile
+  // CareDiaryFormScreen.js; không so khớp category_name hiển thị.
   try {
     const tResp = await apiFetch(API_BASE + '/tasks/' + taskId + '/');
     if (tResp.ok) {
       const tData = await tResp.json();
-      taskCategory = tData.category_name || '';
+      taskCategoryCode = tData.category_code || '';
     }
   } catch (e) { /* không lấy được category → form chung */ }
 
