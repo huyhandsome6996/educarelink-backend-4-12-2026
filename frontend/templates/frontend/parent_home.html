@@ -698,11 +698,18 @@
                     </a>`;
             } else if (b.status === 'in_progress' && b.task_id) {
                 actionBtn = `
-                    <a href="/chat/?task_id=${b.task_id}"
-                       class="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5">
-                        <span class="material-symbols-outlined text-base">chat</span>
-                        <span>Nhắn tin</span>
-                    </a>`;
+                    <div class="flex gap-2">
+                        <a href="/chat/?task_id=${b.task_id}"
+                           class="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined text-base">chat</span>
+                            <span>Nhắn tin</span>
+                        </a>
+                        <a href="/parent/care-diary/?task_id=${b.task_id}"
+                           class="flex-1 py-2.5 px-3 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs text-center transition-all duration-200 flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined text-base">edit_note</span>
+                            <span>Xem nhật ký ca</span>
+                        </a>
+                    </div>`;
             } else if (b.status === 'awaiting_commitment') {
                 actionBtn = `
                     <span class="flex-1 py-2.5 px-4 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs text-center flex items-center justify-center gap-1.5">

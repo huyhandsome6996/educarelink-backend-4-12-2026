@@ -141,11 +141,19 @@ class NChatWebPageTests(TestCase):
         self.assertContains(resp, 'read/')
 
     def test_parent_tasks_contains_chat_link(self):
-        """parent_tasks.html có nút Nhắn tin với Carepartner (entry point parent)."""
+        """parent_tasks.html có nút Nhắn tin (entry point parent).
+
+        2026-09-19 — Flow 1 ghép cặp rút gọn text nút trên danh sách thành
+        'Nhắn tin'; text đầy đủ 'Nhắn tin với Carepartner' chuyển sang
+        trang chi tiết task (/parent/task-detail/) — cả 2 entry đều phải sống."""
         resp = self.client.get('/parent/tasks/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "location.href='/chat/?task_id=")
-        self.assertContains(resp, 'Nhắn tin với Carepartner')
+        self.assertContains(resp, 'Nhắn tin')
+        # Trang chi tiết task giữ text đầy đủ + nút chat
+        resp2 = self.client.get('/parent/task-detail/')
+        self.assertContains(resp2, 'Nhắn tin với Carepartner')
+        self.assertContains(resp2, "location.href='/chat/?task_id=")
 
     def test_worker_jobs_contains_chat_link(self):
         """worker_jobs.html có nút chat (entry point worker)."""
@@ -233,15 +241,27 @@ class WebParityPagesTests(TestCase):
         self.assertContains(resp, '/api/payments/setup/')
         self.assertContains(resp, 'payos-setup')
 
-    def test_parent_tasks_has_payment_button(self):
-        """parent_tasks nhánh in_progress có nút Thanh toán (parity mobile
-        MyTasksScreen handleSetupPayment)."""
-        resp = self.client.get('/parent/tasks/')
+    def test_parent_task_detail_has_payment_button(self):
+        """Flow 1 + cổng VietQR (2026-09-16): thanh toán chuyển sang bước
+        pending_payment trên trang CHI TIẾT task — phụ huynh trả tiền qua
+        QR PayOS TRƯỚC khi task vào in_progress.
+
+        Thẻ in_progress trong danh sách parent_tasks chỉ còn Nhắn tin +
+        Theo dõi (không nút thanh toán — tránh hiểu nhầm thu thêm tiền khi
+        escrow đã giữPayment). Test bảo đảm: (1) trang chi tiết vẫn có nút
+        Thanh toán dẫn /parent/payments/; (2) danh sách in_progress có nút
+        Nhắn tin và KHÔNG còn nút thanh toán."""
+        resp = self.client.get('/parent/task-detail/')
+        self.assertEqual(resp.status_code, 200)
         content = resp.content.decode()
-        # Parse từng nhánh — nút phải ở nhánh in_progress
+        self.assertIn('/parent/payments/?task_id=', content)
+        self.assertIn('Thanh toán', content)
+        # Danh sách parent_tasks: nhánh in_progress theo thiết kế Flow 1
+        resp2 = self.client.get('/parent/tasks/')
         from .tests_n_chat_entry_points import _extract_status_branches
-        branches = _extract_status_branches(content)
-        self.assertIn('/parent/payments/?task_id=', branches['in_progress'])
+        branches = _extract_status_branches(resp2.content.decode())
+        self.assertIn("location.href='/chat/?task_id=", branches['in_progress'])
+        self.assertNotIn('/parent/payments/?task_id=', branches['in_progress'])
 
     # ── Trang thu nhập worker (parity MyEarnings + SettlementDetail) ──
 
