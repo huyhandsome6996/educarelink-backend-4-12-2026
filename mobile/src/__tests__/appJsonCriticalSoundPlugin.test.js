@@ -31,8 +31,8 @@ describe('app.json — plugin âm thanh critical (BUG #1)', () => {
     expect(fs.statSync(p).size).toBeGreaterThan(100000); // ~258KB siren 3s
   });
 
-  test('version = 1.4.7 và android.versionCode = 30 (vc30 hotfix đăng việc gia sư: chuẩn hóa tutor_seniority_preference any → no_preference)', () => {
-    expect(appJson.version).toBe('1.4.7');
-    expect(appJson.android.versionCode).toBe(30);
+  test('version = 1.4.8 và android.versionCode = 31 (vc31 form đánh giá chuyên sâu nhật ký chăm sóc + cổng VietQR PayOS)', () => {
+    expect(appJson.version).toBe('1.4.8');
+    expect(appJson.android.versionCode).toBe(31);
   });
 });
