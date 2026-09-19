@@ -37,6 +37,14 @@
   care_diary **75/75 PASS**; mobile jest **154/154 PASS** (20 suites — file
   assessment test nâng lên 10 test: 3 payload mock `category_code`, 2 H1 rename,
   3 L2 dialog, 2 helper).
+- **Phát hiện ngoài phạm vi (P1 cho main, không do nhánh này)**: full suite trên
+  merged tree 896 test còn 3 FAIL `frontend.tests` — chứng minh tồn tại sẵn trên
+  main sạch `d080d7c` (worktree riêng vẫn fail y hệt; file tests.py +
+  parent_tasks.html + parent_home.html byte-identical giữa 2 nhánh). Nguyên nhân:
+  commit `3d6610b` (Flow 1 matching web) đổi template không cập nhật test — mất
+  link `/parent/care-diary/?task_id=` trên trang chủ phụ huynh, đổi nút "Nhắn tin
+  với Carepartner", mất nút thanh toán. Cần quyết định riêng: khôi phục tính năng
+  hay cập nhật test theo Flow 1.
 
 ### Vá 6 phát hiện QA review form đánh giá Care Diary (2026-09-18)
 - **Bối cảnh**: QA review độc lập branch `feature/care-diary-assessment-forms` (commit lõi

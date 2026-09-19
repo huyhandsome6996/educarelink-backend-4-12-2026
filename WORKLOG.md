@@ -1750,3 +1750,21 @@ xem card riêng theo loại (học tập / sinh hoạt). Song song mobile + web,
   `onPress` → React Native đẩy event object thành tham số đầu tiên
   (allowClear=truthy) — đã đổi sang arrow function; test dialog đã chặn lớp
   hồi quy này.
+
+## Phát hiện ngoài phạm vi: 3 test frontend FAIL tồn tại sẵn trên main
+- Full suite trên merged tree: 896 test, FAILED (failures=3) — cả 3 thuộc
+  `frontend.tests`: `test_parent_tasks_contains_chat_link`,
+  `test_parent_home_in_progress_diary_link_targets_detail`,
+  `test_parent_tasks_has_payment_button`.
+- Chứng minh KHÔNG do nhánh này: chạy `frontend.tests` trên worktree sạch
+  `origin/main` (d080d7c) → **vẫn đúng 3 FAIL đó**; các file liên quan
+  (frontend/tests.py, parent_tasks.html, parent_home.html) byte-identical
+  giữa HEAD và origin/main (diff rỗng).
+- Nguyên nhân: commit main `3d6610b` (chuyển Việc của tôi & Trang chủ phụ huynh
+  sang luồng ghép cặp Flow 1) đổi template nhưng không cập nhật test:
+  nút "Nhắn tin với Carepartner" thành text khác; mất hẳn link
+  `/parent/care-diary/?task_id=` trên trang chủ phụ huynh (entry point xem
+  nhật ký — đúng tính năng Care Diary đang xây!); mất nút thanh toán.
+- Khuyến nghị (P1 trên main, riêng nhánh): khôi phục entry point xem nhật ký
+  trên parent_home + nút thanh toán/nhắn tin, HOẶC cập nhật 3 test theo thiết kế
+  Flow 1 mới — cần chủ dự án quyết định theo intent thiết kế.
