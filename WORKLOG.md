@@ -1572,3 +1572,199 @@ app-title.txt, short-description.txt, full-description.txt, data-safety-answers.
   one-shot đã thực hiện, Stitch prompt đã dựng xong, .md tự sinh); giữ GPS_BYPASS_BACKLOG
   (2 lỗ hổng OPEN) + brief chưa thực hiện + docs/agent-spec (code tham chiếu). Sửa
   comment tasks.js trỏ file đã xoá. SYNC_PARITY.md thêm bảng "Parity Update 2026-09-17".
+
+## 2026-09-17 — Cổng VietQR: xác nhận đặt lịch SAU khi thanh toán PayOS (Super Z)
+- **Branch**: `feature/vietqr-payment-gate-booking` (từ main @ 3648ecc). Chọn CarePartner
+  KHÔNG còn là "đặt lịch" — chỉ chốt lựa chọn; QR VietQR (PayOS) là cổng xác nhận.
+- **Phase 1 — models**: `Task.STATUS_CHOICES` += `pending_payment` ("Chờ thanh toán để xác
+  nhận"); `TaskApplication.STATUS_CHOICES` += `payment_pending` ("Đã chọn — chờ thanh
+  toán"); `Payment` += `payos_expires_at` (lưu hạn QR thật từ PayOS); `PaymentLog.EVENT_CHOICES`
+  += 7 event payos/gate. Migrations: core/0031, payments/0003 (+ matching/0005 bổ khuyết
+  từ nhánh trước — commit riêng feafeeb).
+- **Phase 2 — backend**:
+  - `core/views.py`: `SelectCandidateAPIView` (alias `ApproveCandidateAPIView`, URL cũ giữ
+    nguyên) — payment_pending + pending_payment trong `transaction.atomic` +
+    `select_for_update(task)`; idempotent khi chọn 2 lần cùng application; KHÔNG reject
+    others, KHÔNG notify; response `{next_step: "create_payos_payment", task_id}`.
+    `TaskUpdateStatusAPIView` cho phép `pending_payment → cancelled` (signal tự huỷ payment).
+  - `payments/services.py`: `confirm_booking_after_payment()` (PAID → accepted +
+    in_progress + reject pending others + push "🎉 Chúc mừng bạn!", select_for_update,
+    idempotent); `rollback_pending_selection()` (pending/open/cancelled — dùng chung 3 nơi);
+    `cancel_selection_payment()`; signal `on_task_status_changed` nhánh payos pending → huỷ
+    payment + PayOS link khi task bị huỷ.
+  - `payments/views.py`: `PayOSSetupAPIView` — điều kiện `pending_payment`, worker từ
+    application `payment_pending`, reset payment sau rollback, trả `qr_expires_at` +
+    `qr_code`, fallback hạn QR = now + timeout nếu PayOS không trả;
+    `PayOSWebhookAPIView` — **check amount mismatch** (400 + log, không held/confirm),
+    PAID → held + confirm booking, CANCELLED/EXPIRED → rollback; MỚI
+    `PaymentStatusAPIView` (GET /payments/<id>/status/ — polling) + `CancelSelectionAPIView`
+    (POST /payments/<id>/cancel-selection/).
+  - `payments/payos_client.py`: `create_payment_link` trả thêm `expired_at` + `qr_code`
+    (SDK 1.1.0 CreatePaymentLinkResponse có sẵn 2 field này).
+- **Phase 2.4 — chống kẹt**: command `expire_stale_payment_selections` (quét payos pending
+  thuộc task pending_payment; quá hạn theo `payos_expires_at` hoặc fallback
+  `PAYOS_SELECTION_TIMEOUT_MINUTES`=15'; rollback + log `vietqr_selection_expired`;
+  --dry-run). render.yaml cron `educarelink-payos-expiry` `*/5 * * * *`.
+- **Phase 3 — mobile (Expo)**: `api/payments.js` += `getPaymentStatus`, `cancelSelection`;
+  `PaymentQRScreen.js` MỚI (QR base64 / fallback link, đếm ngược, polling 4s → success,
+  Huỷ → rollback → về Candidates kèm refreshTs, hết hạn → tạo lại QR); `CandidatesScreen`
+  — nút "Chọn" → approve → payos-setup → navigate PaymentQR, chip "Chờ thanh toán";
+  `AppNavigator` đăng ký PaymentQR ở ParentHomeStack + ParentTasksStack;
+  `ParentHomeScreen` — resume: `/payments/my/` có payment payos pending của task
+  pending_payment → tự navigate PaymentQR. `PaymentSerializer` += `task_status`,
+  `payos_expires_at`.
+- **Phase 3 — web (Django templates)**: partial `_payos_qr_modal.html` (PayOSGate.start /
+  .resume / .close — modal QR + countdown + polling 4s + Huỷ + success + tạo lại);
+  `browse_candidates.html` — approve → next_step → mở modal; thẻ payment_pending có nút
+  "Tiếp tục thanh toán QR"; badge pending_payment/pending_payment mới;
+  `parent_task_detail.html` — khối hành động "pending_payment" + include modal.
+- **Phase 4 — test**: `payments/tests/test_payos_gate.py` 23/23 PASS — 7 nhóm bắt buộc:
+  (1) chọn → payment_pending/pending_payment, 0 notification; (2) PAID → accepted +
+  in_progress + others rejected + đúng 1 push Chúc mừng (webhook retry idempotent);
+  (3) CANCELLED → rollback pending/open; (4) race tuần tự: chọn người 2 khi task hết open
+  → 400 rõ ràng; (5) expiry command rollback + đúng PaymentLog + không đụng payment cũ
+  task in_progress; (6) amount mismatch → 400, không held, không confirm; (7) parity
+  contract (next_step/checkout_url/qr_expires_at/payment_id/status endpoint/cancel) +
+  phân quyền. Regression: `manage.py test payments core` 224/224, `matching` 246/246.
+- **Tài liệu**: PAYOS_SETUP.md + mục "VIETQR GATE" (luồng, endpoint, cron);
+  README_RENDER_CRON_SETUP.md + "CronJob 2 — educarelink-payos-expiry"; Nhat_Ky_Hoat_Dong.md
+  đầu trang. Giữ nguyên: luồng momo_escrow/cash, luồng ghép cặp matching (ung_vien.html →
+  select-carepartner) không đụng theo yêu cầu.
+- **Lưu ý go-live**: cần PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY trên Render; khi merge →
+  Render tạo cron `educarelink-payos-expiry` → phải copy SECRET_KEY/DATABASE_URL/PAYOS_*
+  từ web service sang cron service. Sandbox/test mode dùng được ngay khi có key.
+
+---
+
+# CARE DIARY NÂNG CẤP — Form đánh giá chuyên sâu (2026-09-18)
+
+**Agent**: Coding Agent (Super Z)
+**Branch**: `feature/care-diary-assessment-forms` (từ `feature/vietqr-payment-gate-booking`)
+
+## Mục tiêu
+Task Gia sư / Trông trẻ có form nhật ký chuyên sâu riêng thay vì form chung; phụ huynh
+xem card riêng theo loại (học tập / sinh hoạt). Song song mobile + web, cùng 1 API contract.
+
+## Thay đổi chính
+- **Model**: `CareDiaryEntry.assessment_type` (default general, db_index) + `assessment_data`
+  (JSONField, schema_version: 1) — migration `0002_carediaryentry_assessment_data_and_more`.
+- **Services**: `validate_assessment_data`, `get_allowed_assessment_types`,
+  `AssessmentValidationError` (errors field-level), `CATEGORY_ASSESSMENT_TYPES`.
+- **Views**: POST/PATCH validate + lưu 2 trường mới (hỗ trợ multipart JSON string);
+  response thêm `assessment_type`/`assessment_data`.
+- **Mobile**: TutoringAssessmentSection, ChildcareAssessmentSection (Worker/components),
+  2 card hiển thị (components/), CareDiaryFormScreen chọn form theo category + validate,
+  MyJobsScreen post-job trigger sau khi kết thúc ca.
+- **Web**: worker_care_diary_form.html (2 block form + toggle theo category), 
+  parent_care_diary_detail.html (2 card), link worker_jobs.html giữ nguyên.
+
+## Kết quả QA
+- care_diary: 66/66 OK (50 cũ + 16 mới — vượt yêu cầu tối thiểu 8).
+- Backend full suite: **867/867 OK** (không phá momo_escrow/cash/PayOS).
+- Mobile jest: **144/144 PASS** (19 suites).
+- JS template: node --check OK cả 2 file; `manage.py check` 0 issues.
+- BUG tự phát hiện: BUG-CD-01 (JSX thừa `)}`), BUG-CD-02 (escape FILL trong template literal)
+  — đã sửa trong quá trình code, không còn tồn tại.
+
+## 2026-09-18 — Vá 6 phát hiện QA review form đánh giá Care Diary: C1/H1/H2/M2/M1/M3 (Super Z)
+
+## Bối cảnh
+- QA review độc lập commit lõi 4f6651b chấm 78/100, khuyến nghị vá theo thứ tự
+  C1 → H1 → H2 → M2 → M1 → M3 trên cùng nhánh (one-branch rule), chạy
+  `manage.py test care_diary` sau mỗi bước.
+
+## Thay đổi chính
+- **C1 (Critical)**: `views.post()` bọc `transaction.atomic()` từ bước chống trùng
+  đến `create()`, bắt `IntegrityError` (except NGOÀI khối atomic) → 400 thân thiện
+  thay vì 500 khi double-POST đồng thời. Hằng chung `DUPLICATE_DIARY_MSG`.
+- **H1 (High)**: `services.validate_assessment_data()` thêm 3 kwarg
+  `current_type/current_data/allow_clear` — chặn PATCH hạ cấp tutoring/childcare →
+  general khi entry đang có data (400, yêu cầu `confirm_clear_assessment=true`).
+  Gom parse/validate POST+PATCH vào helper chung `_parse_and_validate_assessment()`
+  + `_parse_confirm_clear()` (nợ kỹ thuật §7).
+- **H2 (High)**: mobile CareDiaryFormScreen + web worker_care_diary_form chỉ gửi
+  key `activities` khi form `general` (conditional spread) — hết xóa âm thầm
+  activities cũ của entry tutoring/childcare khi PATCH.
+- **M2 (Medium)**: `MAX_TEXT_FIELD_LEN=2000` / `MAX_MEALS=20` / `MAX_ACTIVITY_ITEMS=30`
+  + helper `_check_text_len()` cho mọi trường text (kể cả key lạ), meals/activities
+  chặn số phần tử.
+- **M1 (Medium)**: `ServiceCategory.code` (SlugField unique, tự sinh `vn_slugify`) +
+  migration `core/0032_servicecategory_code` 3 bước (AddField → backfill RunPython
+  tự chứa → AlterField unique); care_diary map theo code thay vì name.
+- **M3 (Medium)**: `select_related('parent', 'category')` / `'task', 'task__category'`
+  — bỏ N+1 query khi validate assessment.
+- **N2 (nice-to-have)**: admin CareDiaryEntry hiển thị + lọc theo `assessment_type`.
+
+## Kết quả QA
+- care_diary: **72/72 OK** (66 cũ + 6 test mới: race condition, 2 downgrade,
+  2 giới hạn, category rename) — chạy lại PASS sau từng bước vá.
+- Backend full suite: **873/873 OK** (317s — migration data không phá app nào).
+- Mobile jest: **99/99 PASS** (src/screens/Worker + src/__tests__, có 3 test
+  payload mới CareDiaryFormScreen.assessment.test.js).
+- `makemigrations --check`: 0 pending; migrate thử db dev — backfill đúng
+  gia-su / trong-tre / don-tre.
+- Lưu ý theo dõi (nice-to-have chưa làm): N1 giữ db_index assessment_type cho
+  dashboard tương lai; N3 nới lỏng score nhận float .is_integer(); N4 enum hóa
+  classwork_status nếu làm báo cáo tổng hợp.
+
+## 2026-09-19 — Vá vòng QA review 2: H1/L1/M1/M2/L2 + đồng bộ origin/main (Super Z)
+
+## Bối cảnh
+- QA review vòng 2 (tip `c916136`): "Ready to Merge — With H1 Fix Required".
+  C1 trong báo cáo chỉ là lệch môi trường review (worktree 515 commits thiếu
+  `core/0030`; xác thực local + origin/main đều có 0030 → không phải lỗi code).
+  Lỗi thật duy nhất H1: mobile + web chọn loại form đánh giá Care Diary theo
+  `category_name` hiển thị — admin đổi tên là form âm thầm rơi về `general`
+  (backend đã map theo `category.code` từ vòng vá trước, client chưa theo kịp).
+
+## Thay đổi chính
+- **H1 (serializer)**: `TaskSerializer` thêm `category_code` (read-only,
+  `source='category.code'`, allow_null) → `/api/tasks/<id>/` trả slug ổn định.
+- **H1 (mobile)**: `CareDiaryFormScreen.js` bỏ `categoryName`, đọc
+  `category_code`; so khớp `'gia-su'`→tutoring, `'trong-tre'`→childcare.
+- **L1 (web)**: `worker_care_diary_form.html` — `taskCategoryCode` đọc
+  `category_code`, `effectiveAssessmentType()` so code thay vì name.
+- **M1**: docstring `ServiceCategory` cảnh báo `bulk_create()` bỏ qua save()
+  tự sinh code (footgun IntegrityError unique).
+- **M2**: `build_entry_response()` trả thêm `updated_at` (ISO) — client hiển thị
+  "cập nhật lần cuối lúc…"; `REQUIRED_TOP` contract test cập nhật theo.
+- **L2 (mobile)**: `extractApiError()` gom mọi shape lỗi field-level DRF → Alert
+  hiện thông điệp thật; `isDowngradeConfirmError()` nhận diện 400 chặn hạ cấp →
+  dialog xác nhận (Giữ nguyên = cancel thuần / Xoá & lưu → gửi lại kèm
+  `confirm_clear_assessment=true`). Nút submit đổi `onPress={() => handleSubmit()}`
+  tránh sự kiện press lọt vào tham số `allowClear`.
+- **Merge main**: merge `origin/main` (20 commits mới `3648ecc..d080d7c`) vào
+  feature branch; resolve xung đột `Nhat_Ky_Hoat_Dong.md` (giữ cả 2 mục cùng ngày);
+  `ParentHomeScreen.js` auto-merge sạch.
+
+## Kết quả QA
+- care_diary: **75/75 PASS** (72 cũ + 3 mới: `test_response_includes_updated_at_m2`,
+  `test_task_detail_api_exposes_category_code`,
+  `test_task_detail_api_category_code_null_when_no_category`).
+- Backend full suite: **876/876 OK** (318s) sau khi merge main — không phá app nào.
+- Mobile jest: **154/154 PASS** (20 suites) — file
+  `CareDiaryFormScreen.assessment.test.js` nâng từ 3 lên 10 test (3 payload
+  `category_code`, 2 H1 rename, 3 L2 dialog, 2 helper `extractApiError` /
+  `isDowngradeConfirmError`).
+- BUG-11 tự ghi nhận khi vá: nút submit truyền thẳng `handleSubmit` vào
+  `onPress` → React Native đẩy event object thành tham số đầu tiên
+  (allowClear=truthy) — đã đổi sang arrow function; test dialog đã chặn lớp
+  hồi quy này.
+
+## Phát hiện ngoài phạm vi: 3 test frontend FAIL tồn tại sẵn trên main
+- Full suite trên merged tree: 896 test, FAILED (failures=3) — cả 3 thuộc
+  `frontend.tests`: `test_parent_tasks_contains_chat_link`,
+  `test_parent_home_in_progress_diary_link_targets_detail`,
+  `test_parent_tasks_has_payment_button`.
+- Chứng minh KHÔNG do nhánh này: chạy `frontend.tests` trên worktree sạch
+  `origin/main` (d080d7c) → **vẫn đúng 3 FAIL đó**; các file liên quan
+  (frontend/tests.py, parent_tasks.html, parent_home.html) byte-identical
+  giữa HEAD và origin/main (diff rỗng).
+- Nguyên nhân: commit main `3d6610b` (chuyển Việc của tôi & Trang chủ phụ huynh
+  sang luồng ghép cặp Flow 1) đổi template nhưng không cập nhật test:
+  nút "Nhắn tin với Carepartner" thành text khác; mất hẳn link
+  `/parent/care-diary/?task_id=` trên trang chủ phụ huynh (entry point xem
+  nhật ký — đúng tính năng Care Diary đang xây!); mất nút thanh toán.
+- Khuyến nghị (P1 trên main, riêng nhánh): khôi phục entry point xem nhật ký
+  trên parent_home + nút thanh toán/nhắn tin, HOẶC cập nhật 3 test theo thiết kế
+  Flow 1 mới — cần chủ dự án quyết định theo intent thiết kế.

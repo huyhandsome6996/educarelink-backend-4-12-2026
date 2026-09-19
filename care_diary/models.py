@@ -11,12 +11,40 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class CareDiaryEntry(models.Model):
-    """Nhật ký chăm sóc cho 1 task — do CarePartner tạo."""
+    """Nhật ký chăm sóc cho 1 task — do CarePartner tạo.
+
+    assessment_type + assessment_data (CARE DIARY NÂNG CẤP):
+      - 'general'   : form cơ bản cũ (tương thích ngược 100% — mọi entry cũ
+                      sau migration tự nhận default 'general' / {}).
+      - 'tutoring'  : form đánh giá buổi học (Gia sư) — schema trong
+                      care_diary/services.py: TUTORING_ASSESSMENT_SPEC.
+      - 'childcare' : form sinh hoạt (Trông trẻ) — CHILDCARE_ASSESSMENT_SPEC.
+    assessment_data là JSON tự do — KHÔNG validate ở tầng model (JSONField
+    không hỗ trợ schema validation tốt), validate hoàn toàn ở services.py.
+    """
+    ASSESSMENT_TUTORING = 'tutoring'
+    ASSESSMENT_CHILDCARE = 'childcare'
+    ASSESSMENT_GENERAL = 'general'
+    ASSESSMENT_CHOICES = [
+        (ASSESSMENT_TUTORING, 'Gia sư'),
+        (ASSESSMENT_CHILDCARE, 'Trông trẻ'),
+        (ASSESSMENT_GENERAL, 'Chung'),
+    ]
+
     task = models.OneToOneField(
         'core.Task', on_delete=models.CASCADE, related_name='care_diary',
     )
     worker = models.ForeignKey(
         'core.User', on_delete=models.CASCADE, related_name='care_diary_entries',
+    )
+    assessment_type = models.CharField(
+        max_length=20, choices=ASSESSMENT_CHOICES,
+        default=ASSESSMENT_GENERAL, db_index=True,
+        help_text="Loại form đánh giá — quyết định card hiển thị ở phía phụ huynh.",
+    )
+    assessment_data = models.JSONField(
+        default=dict, blank=True,
+        help_text="Nội dung form chuyên sâu (schema theo assessment_type, có key schema_version).",
     )
     mood_icon = models.CharField(max_length=30, blank=True, default='')
     mood_label = models.CharField(max_length=100, blank=True, default='')

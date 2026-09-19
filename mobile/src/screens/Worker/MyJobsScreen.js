@@ -233,6 +233,7 @@ export default function MyJobsScreen() {
             id: `booking_${b.id}`,
             kind: 'booking',
             bookingId: b.id,
+            taskId: b.task_id || null, // CARE DIARY NÂNG CẤP: dẫn đến CareDiaryForm sau khi kết thúc ca
             status: b.status,
             status_label_vi: b.status_label_vi || '',
             title: b.job_title || 'Công việc ghép cặp',
@@ -557,7 +558,28 @@ export default function MyJobsScreen() {
         ? { ...i, status: 'awaiting_review', status_label_vi: 'Chờ phụ huynh đánh giá' }
         : i)));
       setActiveTab('completed');
-      Alert.alert('Đã hoàn thành ca làm', 'Tiền công sẽ được giải ngân qua Escrow sau khi ca được xác nhận.');
+      // CARE DIARY NÂNG CẤP — Post-Job Trigger: ngay sau khi hoàn thành ca,
+      // mời CarePartner viết nhật ký đánh giá (tutoring/childcare/general).
+      // Không ép buộc cứng — nút "Để sau" không chặn luồng.
+      if (item.taskId) {
+        Alert.alert(
+          'Đã hoàn thành ca làm',
+          'Bạn đã hoàn thành ca làm! Vui lòng dành 2 phút viết Nhật ký đánh giá buổi học/chăm sóc để gửi phụ huynh.',
+          [
+            {
+              text: 'Viết nhật ký ngay',
+              onPress: () => navigation.navigate('CareDiaryForm', {
+                taskId: item.taskId,
+                taskTitle: item.title,
+              }),
+            },
+            { text: 'Để sau', style: 'cancel' },
+          ],
+        );
+      } else {
+        // Fallback: booking thiếu task mirror → giữ alert cũ, không kẹt UX.
+        Alert.alert('Đã hoàn thành ca làm', 'Tiền công sẽ được giải ngân qua Escrow sau khi ca được xác nhận.');
+      }
     } catch (e) {
       Alert.alert('Không hoàn thành được',
         e?.response?.data?.detail || 'Không kết thúc được ca lúc này, vui lòng thử lại.');

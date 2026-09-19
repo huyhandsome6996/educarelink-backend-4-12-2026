@@ -6,6 +6,7 @@ from .models import Payment, CommissionSettlement, PaymentLog
 
 class PaymentSerializer(serializers.ModelSerializer):
     task_title = serializers.CharField(source='task.title', read_only=True)
+    task_status = serializers.CharField(source='task.status', read_only=True)
     parent_name = serializers.CharField(source='parent.username', read_only=True)
     worker_name = serializers.CharField(source='worker.username', read_only=True, default=None)
     parent_full_name = serializers.SerializerMethodField()
@@ -14,7 +15,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = [
-            'id', 'task', 'task_title', 'parent', 'parent_name', 'parent_full_name',
+            'id', 'task', 'task_title', 'task_status', 'parent', 'parent_name', 'parent_full_name',
             'worker', 'worker_name', 'worker_full_name',
             'amount', 'commission_rate', 'commission_amount', 'worker_payout_amount',
             'method', 'status',
@@ -22,7 +23,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'momo_result_code', 'momo_message',
             # PayOS fields
             'payos_order_code', 'payos_checkout_url', 'payos_payment_link_id',
-            'payos_status', 'payos_account_reference',
+            'payos_status', 'payos_account_reference', 'payos_expires_at',
             'initiated_at', 'held_at', 'completed_at', 'refunded_at',
             'updated_at',
         ]

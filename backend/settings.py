@@ -420,6 +420,13 @@ PAYOS_WEBHOOK_URL = os.environ.get(
 # Bật/tắt PayOS (nếu chưa config credentials → fallback MoMo)
 PAYOS_ENABLED = bool(PAYOS_CLIENT_ID and PAYOS_API_KEY and PAYOS_CHECKSUM_KEY)
 
+# ── VIETQR GATE (feature/vietqr-payment-gate-booking) ──
+# Phụ huynh chọn CarePartner → task 'pending_payment'. Nếu sau N phút chưa
+# PAID (webhook), cron expire_stale_payment_selections sẽ rollback về
+# 'open' để phụ huynh chọn người khác. Ưu tiên payos_expires_at (PayOS trả
+# về khi tạo link) — giá trị này chỉ là fallback khi PayOS không trả hạn.
+PAYOS_SELECTION_TIMEOUT_MINUTES = int(os.environ.get('PAYOS_SELECTION_TIMEOUT_MINUTES', '15'))
+
 # ── A2: Ghép việc thông minh theo lịch rảnh ──────────────────
 # Bán kính tìm kiếm CarePartner quanh vị trí công việc (mét)
 SMART_MATCH_RADIUS_METERS = int(os.environ.get('SMART_MATCH_RADIUS_METERS', '5000'))

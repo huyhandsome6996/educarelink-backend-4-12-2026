@@ -609,13 +609,137 @@ def on_task_status_changed(task: Task, old_status: str, new_status: str):
             refund_escrow(payment)
         elif payment.method == 'payos' and payment.status == 'held':
             refund_escrow(payment)
+        elif payment.method == 'payos' and payment.status == 'pending':
+            # VietQR gate: task bị huỷ khi đang chờ QR → huỷ payment +
+            # huỷ payment link phía PayOS (best-effort).
+            cancel_selection_payment(payment, reason='Task bị huỷ khi đang chờ thanh toán')
         elif payment.method == 'cash' and payment.status == 'pending':
             payment.status = 'cancelled'
             payment.save()
 
 
 # ────────────────────────────────────────────────────────────────────
-#  6. MONTHLY SETTLEMENT  (Cron — sinh QR cho hoa hồng tiền mặt)
+#  6. VIETQR GATE (PayOS) — xác nhận đặt lịch SAU khi thanh toán
+#    feature/vietqr-payment-gate-booking
+#    Chọn CarePartner → payment_pending/pending_payment → QR PayOS →
+#    webhook PAID → mới accepted/in_progress. Huỷ/hết hạn → rollback.
+# ────────────────────────────────────────────────────────────────────
+
+def confirm_booking_after_payment(payment: Payment, source: str = 'webhook') -> bool:
+    """
+    PayOS báo PAID → chốt CarePartner: application 'payment_pending' →
+    'accepted', task 'pending_payment' → 'in_progress', các application
+    'pending' khác → 'rejected', gửi notification "🎉 Chúc mừng bạn!".
+
+    Idempotent: chỉ chạy khi task đang 'pending_payment' VÀ có application
+    'payment_pending' — webhook gọi lặp lại hoặc task đã confirm trước đó
+    sẽ bỏ qua silently. Chạy trong transaction + select_for_update trên task
+    để không confirm trùng với rollback đang chạy song song.
+
+    Trả True nếu lần gọi này đã confirm, False nếu bỏ qua (đã confirm rồi).
+    """
+    with transaction.atomic():
+        task = Task.objects.select_for_update().get(pk=payment.task_id)
+        application = (task.applications
+                       .select_for_update()
+                       .filter(status='payment_pending')
+                       .first())
+        if not application or task.status != 'pending_payment':
+            logger.info(
+                f"[VietQR gate] Bỏ qua confirm payment#{payment.id} — "
+                f"task#{task.id} status={task.status}, "
+                f"payment_pending_app={bool(application)} (đã confirm hoặc đã rollback)")
+            return False
+
+        application.status = 'accepted'
+        application.save(update_fields=['status'])
+        task.status = 'in_progress'
+        task.save(update_fields=['status'])
+
+        # Tự động từ chối các bạn khác — CHỈ lúc này (sau khi tiền vào escrow)
+        task.applications.filter(status='pending').update(status='rejected')
+
+        # Notification "được nhận việc" — dời từ ApproveCandidateAPIView cũ
+        # xuống đây (chỉ gửi khi thanh toán thành công). Body theo spec gate.
+        worker = application.worker
+        try:
+            if worker.expo_push_token:
+                send_expo_push_notification(
+                    token=worker.expo_push_token,
+                    title="🎉 Chúc mừng bạn!",
+                    body=f"Phụ huynh đã xác nhận đặt lịch cho công việc '{task.title}' sau khi thanh toán thành công!",
+                    data={"task_id": task.id}
+                )
+        except Exception as e:
+            logger.warning(f"[VietQR gate] Push cho worker#{worker.id} thất bại: {e}")
+
+        _log(payment=payment, event_type='booking_confirmed_after_payment',
+             message=f'Task#{task.id} xác nhận đặt lịch sau khi PayOS {source} PAID')
+
+    logger.info(f"[VietQR gate] Task#{payment.task_id} xác nhận đặt lịch — "
+                f"application#{application.id} accepted sau khi PAID")
+    return True
+
+
+def rollback_pending_selection(payment: Payment, *, event_type: str,
+                               message: str, actor: User = None) -> bool:
+    """
+    Rollback lựa chọn chưa thanh toán (dùng chung cho: webhook
+    CANCELLED/EXPIRED, endpoint huỷ thủ công của phụ huynh, expiry job):
+      application 'payment_pending' → 'pending'
+      task 'pending_payment'        → 'open'   (phụ huynh chọn được người khác)
+      payment 'pending'             → 'cancelled'
+
+    Idempotent: đã rollback rồi → không đổi gì, vẫn ghi log event để audit
+    (webhook PayOS có thể gọi lặp). Trả True nếu lần này có rollback thật.
+    """
+    changed = False
+    with transaction.atomic():
+        task = Task.objects.select_for_update().get(pk=payment.task_id)
+        application = (task.applications
+                       .select_for_update()
+                       .filter(status='payment_pending')
+                       .first())
+        if application and task.status == 'pending_payment':
+            application.status = 'pending'
+            application.save(update_fields=['status'])
+            task.status = 'open'
+            task.save(update_fields=['status'])
+            changed = True
+        if payment.status == 'pending':
+            payment.status = 'cancelled'
+            payment.save(update_fields=['status'])
+            changed = True
+    _log(payment=payment, event_type=event_type, message=message, actor=actor)
+    if changed:
+        logger.info(f"[VietQR gate] Rollback payment#{payment.id} — task#{payment.task_id} "
+                    f"về 'open', application về 'pending' ({event_type})")
+    return changed
+
+
+def cancel_selection_payment(payment: Payment, reason: str = 'Huỷ lựa chọn',
+                             actor: User = None) -> bool:
+    """
+    Huỷ payment đang chờ QR mà KHÔNG mở lại task (dùng khi task bị huỷ hẳn
+    từ TaskUpdateStatusAPIView — signal on_task_status_changed gọi).
+    Huỷ payment link phía PayOS best-effort + ghi log.
+    """
+    if payment.status != 'pending':
+        return False
+    payment.status = 'cancelled'
+    payment.save(update_fields=['status'])
+    _log(payment=payment, event_type='payos_payment_cancelled', message=reason, actor=actor)
+    if payment.payos_order_code:
+        try:
+            from .payos_client import cancel_payment_link
+            cancel_payment_link(payment.payos_order_code, reason[:128])
+        except Exception as e:
+            logger.warning(f"[VietQR gate] Huỷ PayOS link {payment.payos_order_code} thất bại: {e}")
+    return True
+
+
+# ────────────────────────────────────────────────────────────────────
+#  7. MONTHLY SETTLEMENT  (Cron — sinh QR cho hoa hồng tiền mặt)
 # ────────────────────────────────────────────────────────────────────
 
 def generate_monthly_settlements(*, year: int = None, month: int = None) -> dict:

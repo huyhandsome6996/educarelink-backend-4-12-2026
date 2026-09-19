@@ -12,7 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {COLORS, SHADOWS, SIZES, TYPO} from '../../theme/colors';
 import { createCareDiaryEntry, updateCareDiaryEntry, getCareDiaryEntry, uploadCareDiaryAttachments } from '../../api/careDiary';
+import { getTaskDetail } from '../../api/tasks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import TutoringAssessmentSection, { validateTutoringAssessment } from './components/TutoringAssessmentSection';
+import ChildcareAssessmentSection, { validateChildcareAssessment } from './components/ChildcareAssessmentSection';
 
 const MOODS = [
   { icon: 'happy', label: 'Vui vẻ & Hợp tác' },
@@ -26,6 +29,34 @@ const ACTIVITY_STATUSES = [
   { key: 'partial', label: 'Một phần' },
   { key: 'skipped', label: 'Bỏ qua' },
 ];
+
+// L2 (QA 2026-09-19) — backend trả lỗi dạng dict field-level của DRF, vd:
+//   {'error': '...'}                                            — lỗi chung
+//   {'assessment_type': ['Đổi về form chung sẽ xóa...']}         — chặn hạ cấp
+//   {'assessment_data': {'meals': ['Cần ít nhất 1 bữa ăn...']}}  — sai dữ liệu
+// Gom về 1 chuỗi để Alert hiển thị thông điệp thật thay vì lỗi chung chung.
+export const extractApiError = (data) => {
+  if (!data || typeof data !== 'object') return null;
+  if (typeof data.error === 'string' && data.error.trim()) return data.error;
+  const parts = [];
+  const pushStr = (m) => { if (typeof m === 'string' && m.trim()) parts.push(m); };
+  Object.values(data).forEach((v) => {
+    if (typeof v === 'string') pushStr(v);
+    else if (Array.isArray(v)) v.forEach(pushStr);
+    else if (v && typeof v === 'object') Object.values(v).forEach((sub) => {
+      if (Array.isArray(sub)) sub.forEach(pushStr);
+      else pushStr(sub);
+    });
+  });
+  return parts.length ? parts.join('\n') : null;
+};
+
+// Nhận diện đúng lỗi chặn hạ cấp của backend (H1): entry đang có dữ liệu
+// đánh giá chuyên sâu, đổi về general cần cờ confirm_clear_assessment.
+export const isDowngradeConfirmError = (data) => (
+  !!data && typeof data === 'object' && 'assessment_type' in data
+  && (extractApiError(data) || '').includes('confirm_clear_assessment')
+);
 
 export default function CareDiaryFormScreen() {
   const navigation = useNavigation();
@@ -44,17 +75,37 @@ export default function CareDiaryFormScreen() {
   ]);
   const [images, setImages] = useState([]); // [{uri, ...pickerResult}]
 
+  // === CARE DIARY NÂNG CẤP — form đánh giá chuyên sâu ===
+  // assessmentType: 'tutoring' | 'childcare' | 'general' — suy ra từ
+  // category.code của task ('gia-su' → tutoring, 'trong-tre' → childcare,
+  // còn lại general); nếu entry cũ đã có assessment_type thì ưu tiên entry.
+  // H1 (QA 2026-09-19) — so khớp theo code slug ổn định do backend tự sinh,
+  // KHÔNG so khớp category_name: admin đổi tên hiển thị không làm form
+  // âm thầm rơi về general (parity với backend get_allowed_assessment_types).
+  const [categoryCode, setCategoryCode] = useState('');
+  const [assessmentType, setAssessmentType] = useState('general');
+  const [assessmentData, setAssessmentData] = useState({});
+
   // === UI STATE ===
   const [loading, setLoading] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isExisting, setIsExisting] = useState(false);
 
-  // === LOAD EXISTING ENTRY ===
+  // === LOAD EXISTING ENTRY + CATEGORY ===
   useEffect(() => {
     if (!taskId) { setLoadingEntry(false); return; }
     let mounted = true;
     setLoadingEntry(true);
+    // 1) Category của task → chọn loại form (H1 — theo category.code)
+    getTaskDetail(taskId)
+      .then(res => {
+        if (!mounted) return;
+        const code = res.data?.category_code || '';
+        setCategoryCode(code);
+      })
+      .catch(() => { /* không lấy được category → dùng form chung */ });
+    // 2) Entry cũ (nếu có) → nạp vào form
     getCareDiaryEntry(taskId)
       .then(res => {
         if (!mounted) return;
@@ -70,11 +121,25 @@ export default function CareDiaryFormScreen() {
             time: a.time, title: a.title, description: a.desc || '', status: a.status,
           })));
         }
+        // CARE DIARY NÂNG CẤP — nạp form đánh giá chuyên sâu
+        if (d.assessment_type) setAssessmentType(d.assessment_type);
+        if (d.assessment_data && typeof d.assessment_data === 'object') {
+          setAssessmentData(d.assessment_data);
+        }
       })
       .catch(() => { /* 404 = chưa có entry → form trống */ })
       .finally(() => { if (mounted) setLoadingEntry(false); });
     return () => { mounted = false; };
   }, [taskId]);
+
+  // Loại form hiệu lực: entry cũ ghi đè category, nhưng category là nguồn
+  // mặc định khi tạo mới. Code 'gia-su' → tutoring, 'trong-tre' → childcare
+  // (H1 — so khớp code, không so khớp tên hiển thị).
+  const effectiveAssessmentType = isExisting
+    ? assessmentType
+    : (categoryCode === 'gia-su' ? 'tutoring'
+       : categoryCode === 'trong-tre' ? 'childcare'
+       : 'general');
 
   // === ACTIVITY CRUD ===
   const updateActivity = (idx, field, value) => {
@@ -100,13 +165,26 @@ export default function CareDiaryFormScreen() {
   };
 
   // === SUBMIT ===
-  const handleSubmit = async () => {
+  // L2 (QA 2026-09-19) — allowClear: lượt gửi lại sau khi người dùng xác nhận
+  // dialog "Xác nhận xoá dữ liệu đánh giá" → gửi kèm confirm_clear_assessment
+  // = true để backend cho phép hạ cấp tutoring/childcare → general (H1).
+  const handleSubmit = async (allowClear = false) => {
     if (submitting) return;
-    // Validate cơ bản
+    // Validate cơ bản (form chung)
     const validActivities = activities.filter(a => a.title.trim());
     if (!moodLabel && !note && !validActivities.length) {
       Alert.alert('Thông tin thiếu', 'Vui lòng nhập ít nhất tâm trạng, ghi chú hoặc hoạt động.');
       return;
+    }
+
+    // CARE DIARY NÂNG CẤP — validate client-side khớp backend Phase 2
+    // để tránh round-trip 400 vô nghĩa.
+    if (effectiveAssessmentType === 'tutoring') {
+      const err = validateTutoringAssessment(assessmentData);
+      if (err) { Alert.alert('Thiếu thông tin đánh giá', err); return; }
+    } else if (effectiveAssessmentType === 'childcare') {
+      const err = validateChildcareAssessment(assessmentData);
+      if (err) { Alert.alert('Thiếu thông tin đánh giá', err); return; }
     }
 
     setSubmitting(true);
@@ -117,9 +195,18 @@ export default function CareDiaryFormScreen() {
         mood_note: moodNote,
         completion_percent: parseInt(completionPercent) || 0,
         note,
-        activities: validActivities.map((a, i) => ({
-          time: a.time, title: a.title, description: a.description, status: a.status, order: i,
-        })),
+        assessment_type: effectiveAssessmentType,
+        assessment_data: effectiveAssessmentType === 'general' ? {} : assessmentData,
+        // H2 — chỉ gửi key 'activities' khi form chung: backend coi activities
+        // != null là lệnh "xóa hết rồi tạo lại", gửi mảng rỗng khi form chuyên
+        // sâu ẩn timeline sẽ âm thầm xóa activities cũ của entry.
+        ...(effectiveAssessmentType === 'general' ? {
+          activities: validActivities.map((a, i) => ({
+            time: a.time, title: a.title, description: a.description, status: a.status, order: i,
+          })),
+        } : {}),
+        // L2 — chỉ gửi cờ xác nhận khi đã qua dialog xác nhận (lượt gửi lại)
+        ...(allowClear ? { confirm_clear_assessment: true } : {}),
       };
 
       if (isExisting) {
@@ -147,7 +234,26 @@ export default function CareDiaryFormScreen() {
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
-      const msg = err.response?.data?.error || 'Không thể lưu nhật ký. Vui lòng thử lại.';
+      const errData = err.response?.data || null;
+      // L2 — backend chặn hạ cấp về form chung khi entry còn dữ liệu đánh giá
+      // (H1 backend). Hỏi xác nhận rõ ràng thay vì hiện lỗi chung chung;
+      // người dùng đồng ý → gửi lại kèm confirm_clear_assessment=true.
+      if (!allowClear && isDowngradeConfirmError(errData)) {
+        Alert.alert(
+          'Xác nhận xoá dữ liệu đánh giá',
+          'Đổi về form chung sẽ xoá toàn bộ dữ liệu đánh giá chuyên sâu đã lưu '
+          + '(điểm tiếp thu, bữa ăn, giấc ngủ...). Bạn chắc chắn chứ?',
+          [
+            { text: 'Giữ nguyên', style: 'cancel' },
+            {
+              text: 'Xoá & lưu', style: 'destructive',
+              onPress: () => { handleSubmit(true); },
+            },
+          ],
+        );
+        return;
+      }
+      const msg = extractApiError(errData) || 'Không thể lưu nhật ký. Vui lòng thử lại.';
       Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
@@ -206,14 +312,39 @@ export default function CareDiaryFormScreen() {
           <Text style={styles.percentSymbol}>%</Text>
         </View>
 
-        {/* Activities */}
+        {/* CARE DIARY NÂNG CẤP — form chuyên sâu theo danh mục.
+            tutoring/childcare thay thế phần timeline hoạt động;
+            general giữ nguyên form cơ bản. */}
+        {effectiveAssessmentType === 'tutoring' && (
+          <View>
+            <View style={styles.assessmentHeader}>
+              <Ionicons name="school" size={18} color={COLORS.primary} />
+              <Text style={styles.assessmentHeaderText}>Đánh giá buổi học</Text>
+            </View>
+            <TutoringAssessmentSection value={assessmentData} onChange={setAssessmentData} />
+          </View>
+        )}
+        {effectiveAssessmentType === 'childcare' && (
+          <View>
+            <View style={styles.assessmentHeader}>
+              <Ionicons name="heart" size={18} color={COLORS.primary} />
+              <Text style={styles.assessmentHeaderText}>Sinh hoạt buổi trông trẻ</Text>
+            </View>
+            <ChildcareAssessmentSection value={assessmentData} onChange={setAssessmentData} />
+          </View>
+        )}
+
+        {/* Activities — chỉ hiện cho form chung (tutoring/childcare dùng
+            form chuyên sâu thay thế timeline hoạt động) */}
+        {effectiveAssessmentType === 'general' && (
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Hoạt động</Text>
           <TouchableOpacity onPress={addActivity} style={styles.addBtn} activeOpacity={0.7}>
             <Ionicons name="add" size={18} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
-        {activities.map((act, idx) => (
+        )}
+        {effectiveAssessmentType === 'general' && activities.map((act, idx) => (
           <View key={idx} style={styles.activityCard}>
             <View style={styles.activityRowTop}>
               <TextInput style={styles.timeInput} value={act.time} onChangeText={v => updateActivity(idx, 'time', v)}
@@ -271,7 +402,7 @@ export default function CareDiaryFormScreen() {
       {/* Submit button */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
-          onPress={handleSubmit} disabled={submitting} activeOpacity={0.85}>
+          onPress={() => handleSubmit()} disabled={submitting} activeOpacity={0.85}>
           {submitting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
@@ -302,6 +433,12 @@ const styles = StyleSheet.create({
   taskInfoText: { ...TYPO.bodySmall, color: COLORS.onSurface, flex: 1 },
   // Section
   sectionTitle: { ...TYPO.h4, color: COLORS.onSurface, marginBottom: 4 },
+  assessmentHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
+    backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: COLORS.primarySoft,
+  },
+  assessmentHeaderText: { ...TYPO.h4, color: COLORS.primary, flex: 1 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.primarySoft },
   // Mood

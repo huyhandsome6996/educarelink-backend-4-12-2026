@@ -1,6 +1,43 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
+# M1 — bộ chuyển đổi tên tiếng Việt → slug ổn định (dùng cho ServiceCategory.
+# code). Giữ bản dùng cho cả save() override; data migration có bản riêng
+# tự chứa (best practice: migration không phụ thuộc module có thể đổi sau này).
+_VN_TRANSLIT = str.maketrans({
+    'à': 'a', 'á': 'a', 'ạ': 'a', 'ả': 'a', 'ã': 'a',
+    'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ậ': 'a', 'ẩ': 'a', 'ẫ': 'a',
+    'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ặ': 'a', 'ẳ': 'a', 'ẵ': 'a',
+    'è': 'e', 'é': 'e', 'ẹ': 'e', 'ẻ': 'e', 'ẽ': 'e',
+    'ê': 'e', 'ề': 'e', 'ế': 'e', 'ệ': 'e', 'ể': 'e', 'ễ': 'e',
+    'ì': 'i', 'í': 'i', 'ị': 'i', 'ỉ': 'i', 'ĩ': 'i',
+    'ò': 'o', 'ó': 'o', 'ọ': 'o', 'ỏ': 'o', 'õ': 'o',
+    'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ộ': 'o', 'ổ': 'o', 'ỗ': 'o',
+    'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ợ': 'o', 'ở': 'o', 'ỡ': 'o',
+    'ù': 'u', 'ú': 'u', 'ụ': 'u', 'ủ': 'u', 'ũ': 'u',
+    'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ự': 'u', 'ử': 'u', 'ữ': 'u',
+    'ỳ': 'y', 'ý': 'y', 'ỵ': 'y', 'ỷ': 'y', 'ỹ': 'y',
+    'đ': 'd',
+})
+
+
+def vn_slugify(text):
+    """Chuyển tên danh mục tiếng Việt thành slug a-z/0-9 (vd 'Gia sư' → 'gia-su')."""
+    lowered = str(text).lower().translate(_VN_TRANSLIT)
+    chars = []
+    dash_pending = False
+    for ch in lowered:
+        if ch.isalnum() and ch.isascii():
+            chars.append(ch)
+            dash_pending = False
+        elif chars and not dash_pending:
+            chars.append('-')
+            dash_pending = True
+    slug = ''.join(chars).strip('-')
+    return slug[:50]
+
+
 # 1. BẢNG NGƯỜI DÙNG (Kế thừa User mặc định của Django)
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -159,12 +196,40 @@ class User(AbstractUser):
 # Hỗ trợ AI, Khác) bị khóa bằng cờ is_active=False — dữ liệu lịch sử giữ
 # nguyên FK, không cho tạo việc mới bằng danh mục đã khóa.
 class ServiceCategory(models.Model):
+    """Danh mục dịch vụ (Gia sư, Trông trẻ, Đón trẻ...).
+
+    ⚠️ M1 (QA 2026-09-19) — KHÔNG dùng bulk_create() cho model này:
+    save() override tự sinh code duy nhất, còn bulk_create() bỏ qua save()
+    → mọi row tạo bằng bulk_create() sẽ có code rỗng và gây IntegrityError
+    ở ràng buộc unique. Nếu bắt buộc phải bulk_create, hãy tự sinh code
+    trước (vn_slugify(name) + kiểm tra trùng) cho từng object.
+    """
     name = models.CharField(max_length=100)
+    # M1 — code là khóa ổn định cho logic nghiệp vụ (care_diary map
+    # assessment_type theo code, KHÔNG theo name hiển thị — admin có thể
+    # đổi name bất cứ lúc nào mà không làm vỡ tính năng). Tự sinh khi save()
+    # nếu chưa có, đảm bảo mọi row luôn có code duy nhất.
+    code = models.SlugField(
+        max_length=50, unique=True, blank=True,
+        help_text="Mã ổn định cho logic (vd: gia-su, trong-tre) — không đổi theo tên hiển thị.",
+    )
     icon_name = models.CharField(max_length=50, blank=True, help_text="Tên icon, VD: BookOpen, Baby")
     description = models.TextField(blank=True)
     is_active = models.BooleanField(
         default=True,
         help_text="False = danh mục bị khóa, không hiển thị và không cho đăng việc mới")
+
+    def save(self, *args, **kwargs):
+        # M1 — tự sinh code duy nhất nếu chưa có (tạo mới hoặc legacy chưa backfill)
+        if not self.code:
+            base = vn_slugify(self.name) or 'danh-muc'
+            code = base
+            idx = 2
+            while ServiceCategory.objects.exclude(pk=self.pk).filter(code=code).exists():
+                code = f'{base}-{idx}'
+                idx += 1
+            self.code = code
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -174,6 +239,10 @@ class ServiceCategory(models.Model):
 class Task(models.Model):
     STATUS_CHOICES = (
         ('open', 'Đang tìm người'),
+        # VietQR gate (PayOS): phụ huynh đã chọn CarePartner nhưng chưa thanh
+        # toán — task KHÔNG được coi là đã đặt. Webhook PayOS PAID mới chuyển
+        # 'in_progress'; hết hạn/huỷ → quay lại 'open'.
+        ('pending_payment', 'Chờ thanh toán để xác nhận'),
         ('in_progress', 'Đang thực hiện'),
         ('completed', 'Đã hoàn thành'),
         ('cancelled', 'Đã hủy'),
@@ -234,6 +303,9 @@ class Task(models.Model):
 class TaskApplication(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Đang chờ duyệt'),
+        # VietQR gate (PayOS): phụ huynh đã bấm chọn application này nhưng
+        # chưa thanh toán. PAID → 'accepted'; huỷ/hết hạn → 'pending' lại.
+        ('payment_pending', 'Đã chọn — chờ thanh toán'),
         ('accepted', 'Đã được chọn'),
         ('rejected', 'Bị từ chối'),
     )

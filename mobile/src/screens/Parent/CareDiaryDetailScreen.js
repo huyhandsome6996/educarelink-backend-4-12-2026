@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { getCareDiaryEntry } from '../../api/careDiary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import TutoringAssessmentCard from '../../components/TutoringAssessmentCard';
+import ChildcareAssessmentCard from '../../components/ChildcareAssessmentCard';
 
 const STATUS_STYLE = {
   done: { icon: 'checkmark', color: COLORS.secondary, border: COLORS.secondary, label: 'Hoàn thành' },
@@ -180,6 +182,20 @@ export default function CareDiaryDetailScreen() {
             </View>
           </View>
         </View>
+
+        {/* CARE DIARY NÂNG CẤP — card chuyên sâu theo assessment_type.
+            tutoring → Card học tập; childcare → Card sinh hoạt;
+            general → giữ nguyên hiển thị cũ (timeline hoạt động). */}
+        {diary.assessment_type === 'tutoring' && !!diary.assessment_data && (
+          <View style={styles.section}>
+            <TutoringAssessmentCard data={diary.assessment_data} />
+          </View>
+        )}
+        {diary.assessment_type === 'childcare' && !!diary.assessment_data && (
+          <View style={styles.section}>
+            <ChildcareAssessmentCard data={diary.assessment_data} />
+          </View>
+        )}
 
         {/* Activities timeline */}
         {diary.activities && diary.activities.length > 0 && (

@@ -126,6 +126,10 @@ class Payment(models.Model):
         max_length=255, blank=True, null=True,
         help_text="Mã tham chiếu tài khoản — thường là STK phụ huynh dùng để chuyển"
     )
+    payos_expires_at = models.DateTimeField(
+        blank=True, null=True,
+        help_text="Hạn QR PayOS (expired_at trả về khi tạo link) — expiry job dùng để rollback đúng giờ"
+    )
 
     # ── Giải ngân (chỉ dùng cho momo_escrow) ───────────────────
     payout_request_id = models.CharField(max_length=100, blank=True, null=True)
@@ -258,6 +262,14 @@ class PaymentLog(models.Model):
         ('settlement_overdue',        'Kỳ thanh toán quá hạn'),
         ('settlement_reminder_sent',  'Gửi nhắc nhở kỳ thanh toán'),
         ('manual_override',           'Admin chỉnh sửa thủ công'),
+        # ── PayOS VietQR gate (feature/vietqr-payment-gate-booking) ──
+        ('payos_link_created',           'Tạo payment link PayOS'),
+        ('payos_payment_held',           'PayOS: phụ huynh đã chuyển khoản — tiền được giữ'),
+        ('payos_payment_cancelled',      'PayOS: payment link bị huỷ'),
+        ('payos_amount_mismatch',        'PayOS: số tiền webhook KHÁCH với payment.amount — chặn xác nhận'),
+        ('booking_confirmed_after_payment', 'Xác nhận đặt lịch sau khi PayOS PAID'),
+        ('vietqr_selection_expired',     'QR VietQR hết hạn — rollback về open/pending'),
+        ('selection_cancelled',          'Phụ huynh huỷ chọn CarePartner khi đang xem QR'),
     )
 
     payment = models.ForeignKey(

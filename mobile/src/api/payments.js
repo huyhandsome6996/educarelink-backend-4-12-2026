@@ -48,9 +48,22 @@ export const checkPaymentHealth = () => apiClient.get('/payments/health/');
 
 // ── PAYOS (VietQR bank transfer — miễn phí 100%) ───────────────────
 // Tạo PayOS payment link cho task — phụ huynh quét QR VietQR để chuyển khoản
-// Trả về: { checkout_url, payment_link_id, order_code, amount, description, payment_id, status }
+// Trả về: { checkout_url, payment_link_id, order_code, amount, description,
+//           payment_id, status, qr_expires_at, qr_code? }
+// VIETQR GATE: được gọi NGAY SAU khi approve candidate trả next_step
+// 'create_payos_payment' (task đang 'pending_payment').
 export const setupPayOS = (taskId) =>
   apiClient.post('/payments/payos-setup/', { task_id: taskId });
+
+// Polling trạng thái payment trong màn hình QR (mỗi 3-5s)
+// Trả về: { payment_id, task_id, status, payos_status, task_status,
+//           checkout_url, qr_expires_at }
+export const getPaymentStatus = (paymentId) =>
+  apiClient.get(`/payments/${paymentId}/status/`);
+
+// Phụ huynh huỷ lựa chọn khi đang xem QR → task về 'open' để chọn người khác
+export const cancelSelection = (paymentId) =>
+  apiClient.post(`/payments/${paymentId}/cancel-selection/`);
 
 // Admin confirm webhook URL với PayOS (gọi 1 lần khi setup)
 export const confirmPayOSWebhook = (webhookUrl) =>

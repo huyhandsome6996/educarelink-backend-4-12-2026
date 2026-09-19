@@ -33,6 +33,7 @@ import { Image } from 'expo-image';
 import { SUPPORT_HOTLINE } from '../../config/appConfig';
 import { useAuth } from '../../context/AuthContext';
 import { getBookings } from '../../api/matching';
+import { getMyPayments } from '../../api/payments'; // VIETQR gate — resume QR
 import { COLORS, SHADOWS, SIZES, TYPO, ANIM } from '../../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -90,7 +91,40 @@ export default function ParentHomeScreen() {
 
   useEffect(() => {
     fetchBookings();
+    checkPendingPaymentSelection(); // VIETQR gate — resume QR giữa chừng
   }, []);
+
+  // ── VIETQR GATE: mở lại app còn task 'pending_payment' do mình tạo →
+  // điều hướng thẳng PaymentQRScreen thay vì để phụ huynh tự tìm lại.
+  // Guard ref: chỉ tự điều hướng 1 lần mỗi lần mount màn hình.
+  const resumeNavigatedRef = useRef(false);
+  const checkPendingPaymentSelection = async () => {
+    if (resumeNavigatedRef.current) return;
+    try {
+      const { data } = await getMyPayments();
+      const pending = (Array.isArray(data) ? data : data?.results || []).find(
+        (p) => p.method === 'payos'
+          && p.status === 'pending'
+          && p.task_status === 'pending_payment'
+          && p.payos_checkout_url
+      );
+      if (pending) {
+        resumeNavigatedRef.current = true;
+        navigation.navigate('PaymentQR', {
+          paymentId: pending.id,
+          taskId: pending.task,
+          taskTitle: pending.task_title || '',
+          taskPrice: pending.amount,
+          workerName: pending.worker_full_name || pending.worker_name || '',
+          checkoutUrl: pending.payos_checkout_url,
+          qrCode: null,
+          qrExpiresAt: pending.payos_expires_at || null,
+        });
+      }
+    } catch (e) {
+      // Chưa login / lỗi mạng — bỏ qua, không chặn màn hình chính
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);

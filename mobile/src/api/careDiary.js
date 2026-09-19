@@ -1,9 +1,14 @@
 import apiClient from './client';
 
 // === B1 — NHẬT KÝ CHĂM SÓC (CARE DIARY) ===
+// CARE DIARY NÂNG CẤP: payload tạo/sửa có thêm
+//   assessment_type: 'tutoring' | 'childcare' | 'general'
+//   assessment_data: object schema theo loại (xem backend care_diary/services.py)
+// — 2 nền tảng mobile + web gửi đúng contract này, backend validate như nhau.
 
 // Worker: tạo nhật ký mới
-// Body: { mood_icon, mood_label, mood_note, completion_percent, note, activities }
+// Body: { mood_icon, mood_label, mood_note, completion_percent, note,
+//         activities, assessment_type, assessment_data }
 // activities: [{ time, title, description, status, order }]
 export const createCareDiaryEntry = (taskId, data) =>
   apiClient.post(`/worker/tasks/${taskId}/care-diary/`, data);
