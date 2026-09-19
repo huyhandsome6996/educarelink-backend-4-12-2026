@@ -142,7 +142,7 @@ export default function JobLocationPicker({ value, onChange }) {
 
   // ── Defect 2 (2026-09-13): khởi tạo viewport theo vị trí user đã đăng ký ──
   // Nếu user đã có address/latitude/longitude (vd tại TP. Huế) → bản đồ mở
-  // tại đó thay vì hard-code Hà Nội, tránh payload job mang tọa độ lệch ~540km.
+  // tại đó thay vì hard-code địa bàn mặc định, tránh payload job mang tọa độ lệch xa.
   // useMemo: chỉ tính lại khi user.id đổi để html bản đồ không reload liên tục.
   const userFallback = useMemo(() => {
     const lat = Number(user?.latitude);

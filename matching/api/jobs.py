@@ -2,11 +2,14 @@
 matching/api/jobs.py — API đăng việc + danh sách ứng viên (Step 1 / 2 / 3).
 
   POST /api/matching/jobs/                      tạo JobPost (draft → validate)
+  GET  /api/matching/jobs/                      danh sách bài đăng của PH hiện tại
   POST /api/matching/jobs/{id}/publish/         đăng + trigger AI parse → slots
   POST /api/matching/candidates/                danh sách max 8 CP (body: job_id)
 """
 
 import logging
+
+from datetime import timedelta
 
 from django.db import transaction
 from rest_framework import permissions, status
@@ -14,11 +17,13 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..constants import JobPostStatus
-from ..models import JobPost, JobSlot, StateTransitionLog
+from ..config import get_int
+from ..constants import JobPostStatus, get_status_label_vi
+from ..models import Booking, JobPost, JobSlot, StateTransitionLog
 from ..services import matching_service
 from ..services.gemini_service import parse_job_post, seed_default_prompt_template
 from ..services.job_schema import expand_slot_dates, validate_job_payload
+from ..services.lock_service import LockService
 from ..services.state import transition
 
 logger = logging.getLogger('educarelink.matching.api')
@@ -76,6 +81,33 @@ class JobPostCreateAPIView(CreateAPIView):
     """POST /api/matching/jobs/ — parent tạo job (validate riêng từng loại)."""
     serializer_class = JobPostSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """GET /api/matching/jobs/ — danh sách bài đăng của phụ huynh hiện tại.
+
+        Đồng bộ Web ↔ Mobile (parity "Việc của tôi"): trang Web parent_tasks.html
+        dùng endpoint này để hiển thị các job CHƯA có booking (đang tìm ứng viên)
+        kèm nút chuyển sang /ung-vien/<job_id>/ — thay hoàn toàn luồng cũ
+        /api/parent/my-tasks/ (core.Task). Mobile không gọi nhưng contract
+        giữ giống BookingListAPIView: {count, results}.
+        """
+        if getattr(request.user, 'role', '') != 'parent':
+            return Response({'code': 'not_a_parent',
+                             'detail': 'Chỉ phụ huynh mới xem được danh sách bài đăng.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        # DSA: 1 query lấy tối đa 50 job mới nhất + 1 query Booking dùng
+        # job_id__in để đánh dấu has_booking — KHÔNG truy vấn N+1 từng job.
+        jobs = list(JobPost.objects.filter(parent=request.user)
+                    .order_by('-created_at')[:50])
+        booked_job_ids = set(Booking.objects.filter(
+            job_id__in=[j.pk for j in jobs]).values_list('job_id', flat=True))
+        results = []
+        for j in jobs:
+            data = JobPostSerializer(j).data
+            data['status_label_vi'] = get_status_label_vi(j.status)
+            data['has_booking'] = j.pk in booked_job_ids
+            results.append(data)
+        return Response({'count': len(results), 'results': results})
 
     def create(self, request, *args, **kwargs):
         if getattr(request.user, 'role', '') != 'parent':
@@ -362,16 +394,48 @@ def _soft_lock_candidates(job, candidates):
     """Task A — giữ chỗ mềm TTL 300s cho các CP đang được PH xem danh sách.
 
     Mọi lỗi bị nuốt: soft lock là tối ưu cạnh tranh, không được phá API.
+
+    DSA (2026-09-18): trước đây lặp từng CP × từng slot gọi
+    LockService.soft_lock() → mỗi slot 2 query (delete overlaps + create)
+    → 8 CP × 2 slot = 32+ round-trips. Giờ gom còn ĐÚNG 2 query cho cả
+    nhóm: (1) SELECT soft lock của mọi CP trong tập slot, tự lọc chồng
+    lấn trong Python bằng set; (2) bulk_create toàn bộ lock mới.
     """
-    from django.contrib.auth import get_user_model
-    from ..services.lock_service import LockService
+    from django.utils import timezone as _tz
+    from ..models import SlotLock
 
     if not candidates:
         return
     slots = [(s.date, s.time_from, s.time_to) for s in job.slots.all()]
     if not slots:
         return
-    User = get_user_model()
     ids = [c['carepartner_id'] for c in candidates]
-    for cp in User.objects.filter(pk__in=ids):
-        LockService.soft_lock(cp, slots, job=job)
+    slot_dates = [s[0] for s in slots]
+    try:
+        # (1) 1 query duy nhất: soft lock cũ của CẢ nhóm CP trong các ngày slot
+        stale_ids = []
+        for lock in (SlotLock.objects
+                     .filter(carepartner_id__in=ids, lock_type=SlotLock.LockType.SOFT,
+                             date__in=slot_dates)
+                     .only('id', 'carepartner_id', 'date', 'time_from', 'time_to')):
+            if any(s[0] == lock.date and
+                   LockService._overlaps(s[1], s[2], lock.time_from, lock.time_to)
+                   for s in slots):
+                stale_ids.append(lock.id)
+        if stale_ids:
+            SlotLock.objects.filter(id__in=stale_ids).delete()
+
+        # (2) 1 bulk_create cho toàn bộ lock mới (id giữ chỗ mềm TTL chuẩn)
+        now = _tz.now()
+        ttl = get_int('SOFT_LOCK_TTL_SECONDS', 300)
+        SlotLock.objects.bulk_create([
+            SlotLock(carepartner_id=pid, job=job, date=d,
+                     time_from=tf, time_to=tt,
+                     lock_type=SlotLock.LockType.SOFT,
+                     expires_at=now + timedelta(seconds=ttl))
+            for pid in ids for (d, tf, tt) in slots
+        ], batch_size=200)
+        logger.info('[Lock] Soft lock bulk %d CP × %d slot cho job %s (TTL %ss)',
+                    len(ids), len(slots), job.pk, ttl)
+    except Exception:
+        logger.exception('[Candidates] Bulk soft lock lỗi (không chặn danh sách) job %s', job.pk)

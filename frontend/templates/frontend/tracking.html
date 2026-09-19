@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="{% static 'css/tailwind-plain.css' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { font-family: 'Manrope', sans-serif; }
@@ -51,7 +52,7 @@
 <header class="bg-[#F26522] text-white shadow-lg">
   <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-9 h-9 rounded-xl bg-white p-0.5 shadow-sm shrink-0 object-contain" loading="eager">
+      <img src="/static/images/logo.png" alt="Logo EduCareLink" width="36" height="36" style="width: 36px; height: 36px; min-width: 36px; min-height: 36px; max-width: 36px; max-height: 36px; object-fit: contain;" class="w-9 h-9 rounded-xl bg-white p-0.5 shadow-sm shrink-0 object-contain" loading="eager">
       <a href="/parent/tasks/" class="bg-white/20 hover:bg-white/30 rounded-lg w-10 h-10 flex items-center justify-center transition">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>

@@ -1917,7 +1917,7 @@ function ParentTrustBadges({ info }) {
 function ParentSpotlightBento({ info, phone, showPhone, onViewFull }) {
   const name = info?.full_name || 'Nguyễn Thị Thu Huyền';
   const initial = (name || 'S').trim().charAt(0).toUpperCase();
-  const school = info?.school || 'ĐH Sư phạm Hà Nội';
+  const school = info?.school || 'ĐH Sư Phạm - Đại học Huế';
   const major = info?.major || 'GD Tiểu học (Năm 3)';
   const rating = info?.rating_avg || 4.9;
   const jobsDone = info?.jobs_completed || 38;
@@ -2027,7 +2027,7 @@ function ParentSpotlightBento({ info, phone, showPhone, onViewFull }) {
 // ── Job Details & Family Schedule Bento (Stitch Section 3) ──
 function ParentJobBento({ booking }) {
   const slot = booking.first_slot;
-  const addr = booking.job_address || booking.location_info?.address || 'Căn 1406 Tòa S2.03, Vinhomes Smart City, Tây Mỗ, Nam Từ Liêm, Hà Nội';
+  const addr = booking.job_address || booking.location_info?.address || '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế';
   const child = booking.child_info || {};
 
   return (

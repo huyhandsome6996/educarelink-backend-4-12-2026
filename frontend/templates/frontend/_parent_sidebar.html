@@ -306,22 +306,40 @@
         const avtEl = document.getElementById('sidebar-avatar');
         if (!nameEl || !avtEl) return;
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          if (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim()) {
+            nameEl.innerHTML = '<a href="/login/" class="text-[#F26522] hover:underline font-bold text-xs">Đăng nhập</a>';
+          }
+          return;
+        }
         const r = await fetch('/api/profile/', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (r.status === 401) {
+          // Token hỏng hoặc tài khoản không tồn tại trên DB
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          if (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim()) {
+            nameEl.innerHTML = '<a href="/login/" class="text-[#F26522] hover:underline font-bold text-xs">Đăng nhập</a>';
+          }
+          return;
+        }
         if (!r.ok) return;
         const p = await r.json();
         const fullName = (p.first_name && p.last_name)
           ? (p.first_name + ' ' + p.last_name)
           : (p.username || 'Phụ huynh');
-        if (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim()) {
-          nameEl.textContent = fullName;
-        }
+        nameEl.textContent = fullName;
         if (p.avatar_url) {
           avtEl.src = p.avatar_url;
-        } else if (avtEl.src.includes('ui-avatars')) {
+        } else {
           avtEl.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(fullName) + '&background=F26522&color=fff';
         }
-      } catch (e) { /* im lặng — sidebar vẫn hiển thị mặc định */ }
+      } catch (e) {
+        const nameEl = document.getElementById('sidebar-name');
+        if (nameEl && (nameEl.textContent === 'Đang tải...' || !nameEl.textContent.trim())) {
+          nameEl.innerHTML = '<a href="/login/" class="text-[#F26522] hover:underline font-bold text-xs">Đăng nhập</a>';
+        }
+      }
     })();
   })();
 </script>

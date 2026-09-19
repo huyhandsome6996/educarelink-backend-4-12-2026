@@ -82,12 +82,12 @@ const BASE_BOOKING = {
   task_id: '889',
   carepartner_info: {
     full_name: 'Nguyễn Thị Thu Huyền', phone: '0912845000', avatar_url: '',
-    is_verified: true, school: 'ĐH Sư Phạm Hà Nội', major: 'Giáo dục Tiểu học',
+    is_verified: true, school: 'ĐH Sư Phạm - Đại học Huế', major: 'Giáo dục Tiểu học',
     rating_avg: 4.9, jobs_completed: 38, trust_band_vi: 'Tin cậy',
   },
   first_slot: { date: '2026-09-19', date_vi: '19/09/2026', day_of_week_vi: 'Thứ Sáu',
     time_from: '18:00', time_to: '20:00' },
-  job_address: 'Vinhomes Smart City, Nam Từ Liêm, Hà Nội',
+  job_address: '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế',
   child_info: { age_group: '6-11', number_of_children: 1, notes: '' },
 };
 

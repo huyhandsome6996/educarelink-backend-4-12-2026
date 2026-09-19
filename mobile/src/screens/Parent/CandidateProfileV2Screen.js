@@ -102,13 +102,12 @@ function inferAgeAndYear(candidate) {
 }
 
 function getUniversityBadgeText(school = '') {
-  if (school.includes('Sư Phạm')) return 'Sinh viên Sư Phạm Tuyển Chọn';
-  if (school.includes('Bách Khoa')) return 'Sinh viên Bách Khoa Tuyển Chọn';
-  if (school.includes('Ngoại Thương')) return 'Sinh viên Ngoại Thương Tuyển Chọn';
-  if (school.includes('Y')) return 'Sinh viên Y Dược Tuyển Chọn';
-  if (school.includes('Quốc Gia')) return 'Sinh viên ĐHQG Tuyển Chọn';
-  if (school.includes('Kinh Tế')) return 'Sinh viên Kinh Tế Tuyển Chọn';
-  if (school.includes('Khoa Học Tự Nhiên')) return 'Sinh viên KHTN Tuyển Chọn';
+  if (school.includes('Sư Phạm')) return 'Sinh viên Sư Phạm Huế Tuyển Chọn';
+  if (school.includes('Y Dược') || school.includes('Y -')) return 'Sinh viên Y Dược Huế Tuyển Chọn';
+  if (school.includes('Ngoại Ngữ')) return 'Sinh viên Ngoại Ngữ Huế Tuyển Chọn';
+  if (school.includes('Khoa học')) return 'Sinh viên Khoa học Huế Tuyển Chọn';
+  if (school.includes('Kinh Tế')) return 'Sinh viên Kinh Tế Huế Tuyển Chọn';
+  if (school.includes('Kỹ Thuật')) return 'Sinh viên Sư Phạm Kỹ Thuật Huế Tuyển Chọn';
   if (school) return `Sinh viên ${school} Tuyển Chọn`;
   return 'Sinh viên Đại học Tuyển Chọn';
 }
@@ -140,7 +139,7 @@ function getDynamicCertificates(candidate) {
     },
   ];
 
-  if (major.includes('Kinh tế') || major.includes('Ngoại Thương') || major.includes('Tiếng Anh') || major.includes('IELTS')) {
+  if (major.includes('Kinh tế') || major.includes('Tiếng Anh') || major.includes('Tiếng Trung') || major.includes('Tiếng Pháp') || major.includes('Tiếng Nhật') || major.includes('IELTS')) {
     list.push({
       id: 'cert-lang',
       icon: 'shield-checkmark-outline',
@@ -150,7 +149,7 @@ function getDynamicCertificates(candidate) {
       desc: 'Phát âm chuẩn bản xứ & Giao tiếp lưu loát',
       footer: 'Chứng chỉ quốc tế 2023 - 2024',
     });
-  } else if (major.includes('Bách Khoa') || major.includes('Máy tính') || major.includes('Toán') || major.includes('Khoa học')) {
+  } else if (major.includes('Máy tính') || major.includes('Toán') || major.includes('Khoa học') || major.includes('Kỹ thuật')) {
     list.push({
       id: 'cert-stem',
       icon: 'shield-checkmark-outline',
@@ -251,10 +250,10 @@ function getDynamicTrustShieldItems(candidate) {
   if (school.includes('Sư Phạm') || major.includes('Sư phạm') || major.includes('Giáo dục')) {
     certTitle = 'Chứng chỉ Nghiệp vụ Sư phạm & Kỹ năng Trẻ';
     certDesc = 'Nắm vững phương pháp giảng dạy tích cực và tâm lý học';
-  } else if (major.includes('IELTS') || major.includes('Tiếng Anh') || school.includes('Ngoại Thương')) {
+  } else if (major.includes('IELTS') || major.includes('Tiếng Anh') || major.includes('Tiếng Trung') || major.includes('Tiếng Pháp') || major.includes('Tiếng Nhật') || school.includes('Ngoại Ngữ')) {
     certTitle = 'Chứng chỉ Ngoại ngữ IELTS / Chuẩn C1 Quốc tế';
     certDesc = 'Điểm số ngôn ngữ chuẩn và phát âm chuẩn đã đối soát';
-  } else if (school.includes('Bách Khoa') || major.includes('Máy tính') || major.includes('Toán')) {
+  } else if (school.includes('Khoa học') || school.includes('Kỹ Thuật') || major.includes('Máy tính') || major.includes('Toán')) {
     certTitle = 'Chứng chỉ Tư duy Logic, Toán & STEM';
     certDesc = 'Phương pháp tư duy trực quan, rèn tính tự lập cho bé';
   } else if (school.includes('Y') || major.includes('Bác sĩ') || major.includes('Dược')) {

@@ -333,7 +333,7 @@ export default function BlackoutScreen() {
             <View style={styles.inputWrap}>
               <TextInput
                 style={styles.textInput}
-                placeholder="Ví dụ: Thi cuối kỳ môn Giải Tích 2 (ĐH Bách Khoa)..."
+                placeholder="Ví dụ: Thi cuối kỳ môn Giải Tích 2 (ĐH Khoa học Huế)..."
                 placeholderTextColor="#94A3B8"
                 value={note}
                 onChangeText={setNote}

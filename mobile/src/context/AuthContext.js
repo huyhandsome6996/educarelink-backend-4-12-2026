@@ -65,7 +65,7 @@ async function syncPushTokenToBackend() {
 
 // ====================================================================
 // Defect 4 (2026-09-13): GPS real-time cho ghép cặp — chống "đăng ký Huế
-// đang ở Hà Nội vẫn bị giao việc Huế".
+// ở sai địa bàn vẫn bị giao việc Huế".
 //
 // Task E (2026-09-14) — "GPS 100%": gửi khi LOGIN, khi app về FOREGROUND,
 // và LẶP LẠI MỖI 5 PHÚT khi app active (AuthProvider useEffect bên dưới).

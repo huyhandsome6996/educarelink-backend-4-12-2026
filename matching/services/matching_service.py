@@ -23,6 +23,7 @@ import sys
 import unicodedata
 
 from django.conf import settings
+from django.db import models as db_models
 from django.utils import timezone
 
 from ..config import get_config, get_int
@@ -33,7 +34,7 @@ from ..models import (
     MatchingWeight,
 )
 from .elo_service import EloService
-from .lock_service import covers_all_slots
+from .lock_service import AvailabilityPrefetch
 
 logger = logging.getLogger('educarelink.matching.engine')
 
@@ -432,6 +433,40 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
                 .exclude(user__username__startswith='g13_')
                 .exclude(user__username__startswith='test_'))
 
+    # ══ DSA (2026-09-18): CHỐT DẬT N+1 QUERY — nguyên nhân API 30s+ timeout ══
+    # Trước đây mỗi CP trong pool gây 4+ round-trips (availability, blackout,
+    # booking, lock) × từng ngày slot + thêm 2 query proposal + 1 query review
+    # → 60-80+ queries mạng tới Neon PG (100-300ms/lần) → 30-45s → Gunicorn
+    # WORKER TIMEOUT trả HTML 500 → Web /ung-vien/ màn hình trắng.
+    # Giờ: prefetch ĐÚNG 1 LẦN cho cả pool (5 query cố định, không phụ thuộc
+    # số CP), ghép nối trong Python bằng dict/set tra cứu O(1):
+    profiles = list(profiles)
+    all_profile_ids = [p.user_id for p in profiles]
+    required_dates = list({s[0] for s in required_slots})
+    avail_pf = AvailabilityPrefetch(all_profile_ids, required_dates, exclude_job=job)
+
+    # DSA: 1 query đếm đề xuất HÔM NAY của cả pool (thay can_receive_proposal
+    # 2 query/CP: get_or_create profile + count CandidateProposal)
+    day_start = timezone.make_aware(
+        datetime.datetime.combine(timezone.localdate(), datetime.time.min))
+    from ..models import CandidateProposal as _CP
+    proposal_counts = {
+        row['carepartner_id']: row['cnt']
+        for row in (_CP.objects.filter(carepartner_id__in=all_profile_ids,
+                                       proposed_at__gte=day_start)
+                    .values('carepartner_id').annotate(cnt=db_models.Count('id')))
+    }
+
+    # DSA: 1 query review mới nhất của cả pool (thay _latest_review_text
+    # 1 query/CP) — sort reviewee_id + -created_at, giữ review đầu tiên/CP
+    from core.models import Review as _Review
+    latest_review_map = {}
+    for rev in (_Review.objects.filter(reviewee_id__in=all_profile_ids)
+                .only('reviewee_id', 'comment', 'created_at')
+                .order_by('reviewee_id', '-created_at')):
+        if rev.reviewee_id not in latest_review_map:
+            latest_review_map[rev.reviewee_id] = (rev.comment or '')[:120]
+
     for profile in profiles:
         user = profile.user
         if user.pk in exclude:
@@ -442,7 +477,9 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # Task A (2026-09-14): soft lock giữ cho CHÍNH job này không chặn
         # CP xuất hiện lại khi parent xem lại danh sách (chỉ soft lock của
         # job KHÁC mới làm CP bận trong cửa sổ 5 phút).
-        ok_cover, _missing = covers_all_slots(user, required_slots, exclude_job=job)
+        # DSA: tra cứu từ prefetch (O(1) dict) thay vì covers_all_slots
+        # query 4+ round-trips/CP/ngày.
+        ok_cover, _missing = avail_pf.covers_all_slots_for(user.pk, required_slots)
         if not ok_cover:
             continue
         # ── Defect 4: dùng vị trí HIỆU LỰC (GPS real-time nếu còn tươi) ──
@@ -487,14 +524,20 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
         # restricted chỉ vào pool khi < 8 (chỉnh sau khi biết pool đủ điều kiện)
         if not EloService.is_allowed_in_pool(profile, pool_qualified - 1) and pool_qualified - 1 >= top_n:
             continue
-        if not EloService.can_receive_proposal(user):
-            continue
+        # Throttle đề xuất/ngày theo band (Step 6.6.5) — DSA: dùng số đếm đã
+        # prefetch trước (tương đương can_receive_proposal, không query lại;
+        # is_matchable đã kiểm tra ở đầu vòng lặp nên không cần gọi lại)
+        band = profile.band
+        if band is not None and band.max_proposals_per_day is not None:
+            if proposal_counts.get(user.pk, 0) >= band.max_proposals_per_day:
+                logger.warning('[ELO] Throttle: %s (band %s) đã nhận %d đề xuất hôm nay',
+                               user.username, band.name, proposal_counts.get(user.pk, 0))
+                continue
 
         # ── Sub-scores ──
         effective_elo = profile.effective_elo if profile.effective_elo is not None else (profile.hidden_elo or 1200)
         band = profile.band
         band_multiplier = float(band.rank_multiplier) if band else 1.0
-
         subs = {
             'availability': subscore_availability(len(required_slots), len(required_slots)),
             'skills': subscore_skills(required_skills, profile.skills or [], profile.major,
@@ -529,7 +572,7 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
             'match_level': level,
             'match_level_vi': MATCH_LEVEL_LABELS_VI.get(level, level),
             'top_skills': (profile.skills or [])[:4],
-            'latest_review': _latest_review_text(user),
+            'latest_review': latest_review_map.get(user.pk, ''),
             'response_tag': 'replies_fast' if (profile.responses_total and
                                                profile.responded_within_sla / profile.responses_total >= 0.8) else '',
             'availability_fit': 'full',
@@ -580,13 +623,27 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
                         newbie['display_name'], top_n, job.pk)
             top = top[:-1] + [newbie]
 
-    # Ghi đề xuất (throttle đã lọc ở trên) — unique (job, cp)
+    # Ghi đề xuất — DSA (2026-09-18): 2 query cho toàn bộ top thay vì
+    # get_or_create ×8 (1-2 query/người). ignore_conflicts=True giữ nguyên
+    # semantics get_or_create: row đã tồn tại (trùng unique (job, carepartner))
+    # KHÔNG bị ghi đè — đúng behavior cũ của get_or_create-with-defaults.
     now = timezone.now()
+    if top:
+        top_ids = [c['carepartner_id'] for c in top]
+        existing_ids = set(_CP.objects.filter(job=job, carepartner_id__in=top_ids)
+                           .values_list('carepartner_id', flat=True))
+        missing_rows = [
+            _CP(job=job, carepartner_id=c['carepartner_id'],
+                match_score=c['match_score'], match_level=c['match_level'])
+            for c in top if c['carepartner_id'] not in existing_ids
+        ]
+        if missing_rows:
+            try:
+                _CP.objects.bulk_create(missing_rows, batch_size=100,
+                                        ignore_conflicts=True)
+            except Exception:
+                logger.exception('[Matching] Ghi CandidateProposal lỗi job %s', job.pk)
     for idx, cand in enumerate(top):
-        CandidateProposal.objects.get_or_create(
-            job=job, carepartner_id=cand['carepartner_id'],
-            defaults=dict(match_score=cand['match_score'], match_level=cand['match_level'],
-                          proposed_at=now))
         cand['why_recommended_vi'] = why_map.get(cand['carepartner_id'], '')
         cand.pop('_skills', None)
         cand.pop('_elo', None)
@@ -602,7 +659,12 @@ def find_candidates(job, required_slots=None, top_n=None, exclude_carepartners=N
 
 
 def _latest_review_text(user):
-    """Review mới nhất của CP (từ luồng Review hiện có — chỉ đọc)."""
+    """Review mới nhất của CP (từ luồng Review hiện có — chỉ đọc).
+
+    DSA (2026-09-18): find_candidates không còn gọi hàm này trong vòng lặp —
+    đã thay bằng latest_review_map prefetch 1 query cho cả pool. Hàm giữ lại
+    cho các caller khác (compatibility).
+    """
     from core.models import Review
     review = (Review.objects.filter(reviewee=user)
               .select_related('reviewer').order_by('-created_at').first())

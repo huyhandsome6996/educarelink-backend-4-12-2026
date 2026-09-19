@@ -8,13 +8,13 @@
 // Cách dùng:
 //   <MapPickerModal
 //     visible={true}
-//     initialCoords={{ latitude: 10.8231, longitude: 106.6297 }}
+//     initialCoords={{ latitude: 16.4637, longitude: 107.5909 }}
 //     onPick={({ latitude, longitude, address }) => { ... }}
 //     onClose={() => setVisible(false)}
 //   />
 //
 // User flow:
-//   1. Modal mở → hiện bản đồ TP.HCM + nút "Vị trí hiện tại"
+//   1. Modal mở → hiện bản đồ TP. Huế + nút "Vị trí hiện tại"
 //   2. User tap trên map → drop pin + reverse geocode → hiện address
 //   3. User gõ address vào search bar → forward geocode → move pin
 //   4. User bấm "Xác nhận" → onPick({ latitude, longitude, address })
@@ -31,8 +31,8 @@ import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 import { API_BASE_URL } from '../api/client';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const DEFAULT_LAT = 10.8231;  // TP.HCM
-const DEFAULT_LNG = 106.6297;
+const DEFAULT_LAT = 16.4637;  // TP. Huế — địa bàn triển khai duy nhất
+const DEFAULT_LNG = 107.5909;
 const DEFAULT_ZOOM = 13;
 // Geocode endpoint phái sinh từ base URL DUY NHẤT của app (env-driven,
 // không hardcode host production vào từng module).

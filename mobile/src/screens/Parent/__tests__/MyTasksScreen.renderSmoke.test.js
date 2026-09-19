@@ -105,12 +105,12 @@ const AWAITING_BOOKING = {
   carepartner_id: 'cp-1',
   carepartner_info: {
     full_name: 'Nguyễn Thị Thu Huyền', phone: '', avatar_url: '',
-    is_verified: true, school: 'ĐH Sư Phạm Hà Nội', major: 'Giáo dục Tiểu học',
+    is_verified: true, school: 'ĐH Sư Phạm - Đại học Huế', major: 'Giáo dục Tiểu học',
     rating_avg: 4.9, jobs_completed: 38, trust_band_vi: 'Tin cậy',
   },
   first_slot: { date: '2026-09-19', date_vi: '19/09/2026', day_of_week_vi: 'Thứ Sáu',
     time_from: '18:00', time_to: '20:00' },
-  job_address: 'Tòa S2.05 Vinhomes Smart City, Nam Từ Liêm, Hà Nội',
+  job_address: 'Tòa S2.05 48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế',
 };
 
 const COMMITTED_BOOKING = {
@@ -186,7 +186,7 @@ describe('MyTasksScreen — 4 tab chuẩn vòng đời (Stitch 2026-09-13)', () 
     expect(getByText(/48 phút 15 giây/)).toBeTruthy();
     // Spotlight sinh viên đã chọn
     expect(getByText('Nguyễn Thị Thu Huyền')).toBeTruthy();
-    expect(getByText(/ĐH Sư Phạm Hà Nội/)).toBeTruthy();
+    expect(getByText(/ĐH Sư Phạm - Đại học Huế/)).toBeTruthy();
     expect(getByText('Xem hồ sơ chi tiết')).toBeTruthy();
     expect(getByText('Đổi người khác')).toBeTruthy();
     // Giá trị đơn
@@ -279,8 +279,8 @@ describe('MyTasksScreen — 4 tab chuẩn vòng đời (Stitch 2026-09-13)', () 
   test('Task legacy in_progress/completed có nút chat (N-003 phục hồi) + lọc mirror trùng', async () => {
     mockGetMyTasksAsParent.mockResolvedValue({
       data: [
-        { id: 101, title: 'Gia sư Toán lớp 5 (legacy đang làm)', status: 'in_progress', price: '250000', scheduled_time: '2026-09-20T10:00:00Z', location: 'Cầu Giấy, Hà Nội' },
-        { id: 102, title: 'Gia sư Văn lớp 7 (legacy đã xong)', status: 'completed', price: '250000', scheduled_time: '2026-09-12T10:00:00Z', location: 'Hai Bà Trưng, Hà Nội' },
+        { id: 101, title: 'Gia sư Toán lớp 5 (legacy đang làm)', status: 'in_progress', price: '250000', scheduled_time: '2026-09-20T10:00:00Z', location: '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế' },
+        { id: 102, title: 'Gia sư Văn lớp 7 (legacy đã xong)', status: 'completed', price: '250000', scheduled_time: '2026-09-12T10:00:00Z', location: 'Hai Bà Trưng, TP. Huế' },
         { id: '889', title: 'Task mirror trùng booking — phải bị ẩn', status: 'in_progress', price: '300000' },
       ],
     });
@@ -314,7 +314,7 @@ describe('MyTasksScreen — 4 tab chuẩn vòng đời (Stitch 2026-09-13)', () 
     mockGetMyTasksAsParent.mockResolvedValue({
       data: [{
         id: 9, title: 'Gia sư Toán lớp 5', status: 'open', price: '250000',
-        scheduled_time: '2026-09-20T10:00:00Z', location: 'Cầu Giấy, Hà Nội',
+        scheduled_time: '2026-09-20T10:00:00Z', location: '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế',
       }],
     });
     const { getByText } = await render(<MyTasksScreen />);

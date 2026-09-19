@@ -1,3 +1,78 @@
+# KỊCH BẢN & PROMPT CHI TIẾT DÀNH CHO CODING AGENT
+## Nâng Cấp Giao Diện Trang Web "Đăng Việc Gia Sư 1:1" Chuẩn Thiết Kế Google Stitch & Parity Mobile 100%
+
+---
+
+### 1. THÔNG TIN REPO & MÔI TRƯỜNG LÀM VIỆC
+* **Repository:** `https://github.com/huyhandsome6996/educarelink-backend-4-12-2026`
+* **Nhánh làm việc (BẮT BUỘC):** `main` (TUYỆT ĐỐI không checkout nhánh khác, không merge lung tung gây xung đột).
+* **Môi trường:** Django 5.2 monolith, Python 3.11, PostgreSQL / SQLite, Tailwind CSS, Leaflet JS, Flatpickr.
+* **Mục tiêu deploy:** Sau khi hoàn thành và test đạt chuẩn, commit và `git push origin main` để hệ thống Render.com tự động build & deploy lên production (`https://educarelink-backend.onrender.com/dang-viec/gia-su/`).
+
+---
+
+### 2. BỐI CẢNH & VẤN ĐỀ CẦN GIẢI QUYẾT
+* **Bối cảnh:** EduCareLink là nền tảng kết nối Phụ huynh và CarePartner (sinh viên, cử nhân dạy kèm, trông trẻ, đón trẻ). Hệ thống gồm ứng dụng React Native Mobile và Web Django Templates.
+* **Vấn đề:** Trang web đăng việc gia sư hiện tại (`frontend/templates/frontend/dang_viec_gia_su.html`) có giao diện cũ kỹ, đơn điệu, thiếu tính tương tác cao cấp và bị lệch trải nghiệm rất nhiều so với ứng dụng Mobile (`mobile/src/screens/Parent/TutoringForm.js`).
+* **Giải pháp:** Thay thế toàn diện trang `frontend/templates/frontend/dang_viec_gia_su.html` theo bản thiết kế Google Stitch (Bento Grid 12 cột, bảng tính học phí phản ứng, radar scan animation, curriculum chips tự động đổi theo độ tuổi học sinh).
+
+---
+
+### 3. CÁC QUY TẮC BẮT BUỘC (CRITICAL CONSTRAINTS)
+
+1. **LÀM VIỆC TRỰC TIẾP TRÊN NHÁNH `main`:**
+   * Mọi thao tác git phải diễn ra trên branch `main`.
+   * Kiểm tra bằng `git status` trước khi sửa code.
+   * Commit bằng Tiếng Việt chuẩn mực, ví dụ: `git commit -m "feat(web): nâng cấp giao diện Đăng việc Gia sư dạy kèm chuẩn Stitch và parity mobile"`.
+
+2. **BẢO TỒN SIDEBAR & KHUNG ĐIỀU HƯỚNG PHỤ HUYNH:**
+   * Bắt buộc phải có: `{% include 'frontend/_parent_chrome.html' with active_tab='matching' %}`.
+   * Để sidebar bên trái (`w-[260px]`) không che lấp nội dung:
+     - Thẻ `<header>` phải có class: `lg:ml-[260px]`.
+     - Thẻ `<main>` phải có class: `lg:ml-[260px]`.
+     - Thanh sticky bar mobile (`<aside>`) phải có class `lg:hidden` (vì desktop đã có card tính giá cố định ở cột phải).
+
+3. **BẢO TỒN NHẬN DIỆN THƯƠNG HIỆU & LOGO DỰ ÁN:**
+   * Logo chính thức của EduCareLink nằm tại: `/static/images/logo.png`.
+   * Favicon: `/static/images/favicon-32.png` và `/static/images/favicon.ico`.
+   * Không được tự ý thay logo bằng các icon chung chung hoặc hình vẽ tạm.
+
+4. **ĐỒNG BỘ NGHIỆP VỤ PARITY 100% VỚI MOBILE (`TutoringForm.js`) & BACKEND API:**
+   * **Endpoint tạo việc:** `POST /api/matching/jobs/`
+   * **Endpoint phát hành:** `POST /api/matching/jobs/<id>/publish/`
+   * **Payload gửi lên:**
+     - `job_type`: `"tutoring"`
+     - `subject`: Chuỗi tên các môn học đã chọn + môn/kỹ năng tự do (VD: `"Toán, Tiếng Anh, Luyện chữ đẹp"`).
+     - `child_age`: Số nguyên từ 6 đến 18.
+     - `school_level`: `"cap_1"` (6-10 tuổi), `"cap_2"` (11-15 tuổi), `"cap_3"` (16-18 tuổi).
+     - `child_grade_level`: `"primary_grade_1_5"` (Cấp 1), `"secondary_grade_6_9"` (Cấp 2), `"high_school_grade_10_12"` (Cấp 3).
+     - `tutor_seniority_preference`: `"student_year_1_2"` | `"student_year_3_4"` | `"graduate"` | `"no_preference"` (Khớp 100% enum backend).
+     - `specific_requirements`: Chuỗi mô tả yêu cầu cụ thể (ít nhất 10 ký tự hoặc tự sinh mặc định thân thiện).
+     - `dates`: Mảng danh sách các ngày học đã chọn dạng `["YYYY-MM-DD", ...]`.
+     - `time_from`: Giờ bắt đầu dạng `"HH:MM"` (VD: `"19:00"`).
+     - `time_to`: Giờ kết thúc dạng `"HH:MM"` (VD: `"21:00"`, cách `time_from` tối thiểu 30 phút).
+     - `hourly_rate_vnd`: Số nguyên học phí/giờ (tối thiểu 40.000đ, mặc định 120.000đ).
+     - `latitude`, `longitude`: Tọa độ từ bản đồ Leaflet Map Picker.
+     - `location_note`: Địa chỉ hoặc ghi chú vị trí (tòa nhà, số phòng, tầng...).
+
+5. **TÍCH HỢP BẢN ĐỒ LEAFLET THỰC TẾ:**
+   * Kế thừa `{% include 'frontend/_matching_common.html' %}`.
+   * Khởi tạo hàm `initMapPicker` với đầy đủ container `#map`, ô tìm kiếm địa chỉ `#mapSearchInput`, nút GPS `#btnGpsCurrent`, thẻ hiển thị `#mapAddr`, input ẩn `#lat` và `#lng`.
+
+6. **HIỆU ỨNG RADAR VÀ TRANSITION TRẠNG THÁI:**
+   * Khi phụ huynh bấm "Đăng việc & Tìm CarePartner":
+     - Mở Modal Radar Quét Sóng (`#radarModal`) ở trạng thái đang quét (searching).
+     - Gọi API tạo job và publish job ngầm.
+     - Khi thành công, đổi sang trạng thái checkmark xanh (success) và tự động chuyển hướng tới `/ung-vien/<job_id>/`.
+     - Nếu có lỗi, đóng modal và báo lỗi qua `toast(msg, false)`.
+
+---
+
+### 4. NỘI DUNG MÃ NGUỒN HOÀN CHỈNH CHO `frontend/templates/frontend/dang_viec_gia_su.html`
+
+Agent cần ghi nội dung sau vào file `frontend/templates/frontend/dang_viec_gia_su.html`:
+
+```html
 {% load static %}
 <!DOCTYPE html>
 <html lang="vi" class="h-full bg-[#F8F9FB]">
@@ -110,8 +185,8 @@
   <!-- TOP STICKY HEADER (Tích hợp lg:ml-[260px] cho sidebar) -->
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-200/80 transition-shadow duration-200 lg:ml-[260px]">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-4 sm:space-x-5 min-w-0">
-        <a href="{% url 'frontend:dang_viec_select' %}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand-500 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-orange-50/50 shrink-0">
+      <div class="flex items-center space-x-4 sm:space-x-5">
+        <a href="{% url 'frontend:dang_viec_select' %}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand-500 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-orange-50/50">
           <span class="material-symbols-outlined text-lg">arrow_back</span>
           <span class="hidden sm:inline">Chọn lại loại việc</span>
         </a>
@@ -119,27 +194,27 @@
         <div class="flex items-center gap-3">
           <!-- Logo chính thức EduCareLink -->
           <img src="/static/images/logo.png" alt="Logo EduCareLink" class="w-9 h-9 rounded-xl object-contain shrink-0 shadow-sm border border-orange-100" loading="eager">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-manrope font-extrabold text-obsidian-900 text-base sm:text-lg tracking-tight truncate">EduCareLink</span>
-              <span class="hidden min-[480px]:inline-flex px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-orange-100/70 text-brand-600 rounded-full shrink-0">Gia Sư 1:1</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-manrope font-extrabold text-obsidian-900 text-base sm:text-lg tracking-tight">EduCareLink</span>
+              <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-orange-100/70 text-brand-600 rounded-full">Gia Sư 1:1</span>
             </div>
             <p class="text-xs text-slate-400 hidden sm:block">Nền tảng kết nối gia sư sinh viên top đầu uy tín</p>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div class="flex items-center gap-2 sm:gap-3">
         <!-- Safety & Escrow Badge Pill -->
-        <button id="btnTrustModal" type="button" class="flex items-center gap-1.5 min-[480px]:gap-2 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/80 text-emerald-800 text-xs font-semibold px-2 min-[480px]:px-3 py-1.5 rounded-full transition-all duration-200 shadow-sm min-w-0">
+        <button id="btnTrustModal" type="button" class="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/80 text-emerald-800 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 shadow-sm">
           <span class="material-symbols-outlined text-base text-emerald-600 fill-1">verified_user</span>
-          <span class="hidden md:inline truncate">100% CarePartner xác thực &amp; Ký quỹ MoMo</span>
-          <span class="md:hidden max-[479px]:hidden">Bảo chứng 100%</span>
-          <span class="material-symbols-outlined text-sm text-emerald-700 hidden min-[480px]:inline-block">info</span>
+          <span class="hidden md:inline">100% CarePartner xác thực &amp; Ký quỹ MoMo</span>
+          <span class="md:hidden">Bảo chứng 100%</span>
+          <span class="material-symbols-outlined text-sm text-emerald-700">info</span>
         </button>
 
         <!-- Help Button -->
-        <a href="{% url 'frontend:chatbot' %}" class="w-9 h-9 shrink-0 flex items-center justify-center text-slate-500 hover:text-brand-600 hover:bg-orange-50 rounded-xl transition-colors" title="Trợ giúp AI">
+        <a href="{% url 'frontend:chatbot' %}" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-brand-600 hover:bg-orange-50 rounded-xl transition-colors" title="Trợ giúp AI">
           <span class="material-symbols-outlined text-xl">smart_toy</span>
         </a>
       </div>
@@ -147,7 +222,7 @@
   </header>
 
   <!-- MAIN CONTAINER (lg:ml-[260px]) -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 lg:ml-[260px] lg:max-w-[min(80rem,calc(100vw-260px))]">
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 lg:ml-[260px]">
 
     <!-- HERO TRUST BANNER -->
     <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-obsidian-900 via-[#1E2540] to-obsidian-900 p-6 sm:p-8 text-white shadow-xl shadow-slate-900/5 mb-8 border border-slate-800/60">
@@ -183,20 +258,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- AUTHENTICATION STATUS BANNER (Hiện khi chưa đăng nhập hoặc phiên hết hạn) -->
-    <div id="authNoticeBanner" class="hidden mb-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-amber-600 text-2xl">account_circle</span>
-        <div>
-          <p class="font-bold text-sm">Bạn chưa đăng nhập tài khoản Phụ huynh</p>
-          <p class="text-xs text-amber-700">Vui lòng đăng nhập để hệ thống lưu tin đăng và kết nối trực tiếp với các gia sư sinh viên tại Huế.</p>
-        </div>
-      </div>
-      <a href="/login/?next=/dang-viec/gia-su/" class="inline-flex items-center justify-center px-4 py-2 bg-[#F26522] hover:bg-[#D4541E] text-white text-xs font-bold rounded-xl shadow transition">
-        Đăng nhập ngay
-      </a>
     </div>
 
     <!-- 2-COLUMN BENTO GRID FORM -->
@@ -1384,12 +1445,6 @@
       });
 
       // Initial Renders
-      const initToken = localStorage.getItem('token');
-      const authBanner = document.getElementById('authNoticeBanner');
-      if (!initToken && authBanner) {
-        authBanner.classList.remove('hidden');
-      }
-
       updateLevelFromAge(state.child_age);
       renderSubjects();
       renderDatesMatrix();
@@ -1400,3 +1455,36 @@
   </script>
 </body>
 </html>
+```
+
+---
+
+### 5. CÁC BƯỚC KIỂM TRA & TRIỂN KHAI (VERIFICATION & DEPLOY)
+
+Coding Agent cần thực hiện tuần tự các lệnh sau:
+
+1. **Kiểm tra cú pháp Django:**
+   ```bash
+   python manage.py check
+   ```
+
+2. **Chạy kiểm thử unit test nghiệp vụ matching:**
+   ```bash
+   python manage.py test matching.tests.test_tutoring_curriculum_gps
+   ```
+
+3. **Kiểm tra trạng thái git:**
+   ```bash
+   git status
+   ```
+   *Đảm bảo đang ở nhánh `main` và file `frontend/templates/frontend/dang_viec_gia_su.html` đã được cập nhật.*
+
+4. **Commit & Push trực tiếp lên nhánh `main`:**
+   ```bash
+   git add frontend/templates/frontend/dang_viec_gia_su.html
+   git commit -m "feat(web): nâng cấp giao diện Đăng việc Gia sư dạy kèm theo bản thiết kế Stitch chuẩn parity mobile"
+   git push origin main
+   ```
+
+5. **Xác nhận kết quả:**
+   * Sau khi push, Render.com sẽ tự động kích hoạt deploy bản build mới nhất lên `https://educarelink-backend.onrender.com/dang-viec/gia-su/`.

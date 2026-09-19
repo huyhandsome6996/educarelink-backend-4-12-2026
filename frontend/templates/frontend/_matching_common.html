@@ -107,23 +107,53 @@
 
   async function authFetch(url, options = {}) {
     let token = localStorage.getItem(MCM_TOKEN_KEY);
-    if (!token) { toast('Bạn cần đăng nhập để tiếp tục.', false); setTimeout(() => location.href = '/login/', 900); throw new Error('no_token'); }
-    options.headers = { ...(options.headers || {}), 'Authorization': 'Bearer ' + token,
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}) };
+    if (!token) {
+      toast('Vui lòng đăng nhập tài khoản Phụ huynh để tiếp tục.', false);
+      setTimeout(() => {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = '/login/?next=' + next;
+      }, 1000);
+      throw new Error('no_token');
+    }
+    options.headers = {
+      ...(options.headers || {}),
+      'Authorization': 'Bearer ' + token,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {})
+    };
     let response = await fetch(url, options);
     if (response.status === 401) {
+      let refreshed = false;
       const refreshToken = localStorage.getItem(MCM_REFRESH_KEY);
       if (refreshToken) {
-        const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh: refreshToken }) });
-        if (refreshResp.ok) {
-          const refreshData = await refreshResp.json();
-          localStorage.setItem(MCM_TOKEN_KEY, refreshData.access);
-          if (refreshData.refresh) localStorage.setItem(MCM_REFRESH_KEY, refreshData.refresh);
-          options.headers['Authorization'] = 'Bearer ' + refreshData.access;
-          response = await fetch(url, options);
-        } else { localStorage.removeItem(MCM_TOKEN_KEY); localStorage.removeItem(MCM_REFRESH_KEY); }
+        try {
+          const refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh: refreshToken })
+          });
+          if (refreshResp.ok) {
+            const refreshData = await refreshResp.json();
+            localStorage.setItem(MCM_TOKEN_KEY, refreshData.access);
+            if (refreshData.refresh) localStorage.setItem(MCM_REFRESH_KEY, refreshData.refresh);
+            options.headers['Authorization'] = 'Bearer ' + refreshData.access;
+            response = await fetch(url, options);
+            if (response.status !== 401) refreshed = true;
+          }
+        } catch (e) {}
+      }
+      if (!refreshed && response.status === 401) {
+        localStorage.removeItem(MCM_TOKEN_KEY);
+        localStorage.removeItem(MCM_REFRESH_KEY);
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        localStorage.removeItem('is_staff');
+        localStorage.removeItem('admin_username');
+        toast('Phiên đăng nhập đã hết hạn hoặc tài khoản không tồn tại. Đang chuyển đến trang đăng nhập...', false);
+        setTimeout(() => {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = '/login/?next=' + next;
+        }, 1200);
+        throw new Error('user_unauthorized');
       }
     }
     return response;

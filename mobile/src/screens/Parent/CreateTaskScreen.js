@@ -472,7 +472,7 @@ export default function CreateTaskScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="VD: 123 Lê Lợi, Q1, TP.HCM"
+                placeholder="VD: 123 Lê Lợi, P. Vĩnh Ninh, TP. Huế"
                 placeholderTextColor={COLORS.outline}
                 value={location}
                 onChangeText={(v) => { setLocation(v); clearError('location'); }}

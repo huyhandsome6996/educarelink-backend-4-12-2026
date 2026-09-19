@@ -1,3 +1,91 @@
+# KỊCH BẢN & PROMPT CHI TIẾT DÀNH CHO CODING AGENT
+## Nâng Cấp Giao Diện Trang Web "Đăng Việc Trông Trẻ Tại Nhà" Chuẩn Thiết Kế Google Stitch & Parity Mobile 100%
+
+---
+
+### 1. THÔNG TIN REPO & MÔI TRƯỜNG LÀM VIỆC
+* **Repository:** `https://github.com/huyhandsome6996/educarelink-backend-4-12-2026`
+* **Nhánh làm việc (BẮT BUỘC):** `main` (TUYỆT ĐỐI không checkout sang nhánh khác, không merge lung tung gây xung đột hoặc hỏng repo).
+* **Môi trường kỹ thuật:** Django 5.2 monolith, Python 3.11, PostgreSQL (production) / SQLite (local), Tailwind CSS, Leaflet JS, Flatpickr.
+* **Mục tiêu deploy:** Sau khi áp dụng mã nguồn và kiểm thử đạt chuẩn 100%, commit và `git push origin main` để hệ thống Render.com tự động build & deploy lên production (`https://educarelink-backend.onrender.com/dang-viec/trong-tre/`).
+
+---
+
+### 2. BỐI CẢNH, HOÀN CẢNH & VẤN ĐỀ CẦN GIẢI QUYẾT
+* **Bối cảnh dự án:** EduCareLink là nền tảng kết nối Phụ huynh (Parent) với CarePartner (sinh viên, cử nhân, giáo viên mầm non, gia sư) tại Việt Nam. Nền tảng gồm 2 giao diện: ứng dụng Mobile (React Native / Expo) và giao diện Web (Django Templates). Cả hai nền tảng cùng gọi chung hệ thống API backend matching (`/api/matching/jobs/`).
+* **Vấn đề hiện tại:**
+  - Giao diện web cũ của trang Đăng việc Trông trẻ (`frontend/templates/frontend/dang_viec_trong_tre.html`) rất đơn sơ, thô sơ dạng form dọc trắng đen, thiếu tương tác phản ứng (reactive pricing), thiếu bản đồ trực quan sinh động và không đồng bộ với trải nghiệm hiện đại trên Mobile (`mobile/src/screens/Parent/ChildcareForm.js`).
+  - Phụ huynh sử dụng web cảm thấy thiếu tin cậy do không có cơ chế ký quỹ MoMo minh bạch, thiếu thẻ bảo chứng năng lực bảo mẫu và không có hiệu ứng radar quét tìm ứng viên trực quan.
+* **Giải pháp:**
+  - Nâng cấp toàn diện trang `frontend/templates/frontend/dang_viec_trong_tre.html` theo ngôn ngữ thiết kế cao cấp Google Stitch (Bento Grid 12 cột, bảng tính chi phí phản ứng theo giờ và số lượng trẻ, thẻ chọn độ tuổi và nhiệm vụ chăm sóc hiện đại).
+  - Tích hợp liền mạch với backend API Matching (`/api/matching/jobs/` và `/publish/`), đảm bảo 100% đồng bộ công năng với app Mobile.
+
+---
+
+### 3. CÁC QUY TẮC BẮT BUỘC (CRITICAL CONSTRAINTS)
+
+1. **LÀM VIỆC TRỰC TIẾP TRÊN NHÁNH `main`:**
+   * Mọi thao tác git phải diễn ra trên nhánh `main`.
+   * Kiểm tra bằng `git status` trước khi sửa code.
+   * Commit bằng Tiếng Việt chuẩn mực, ví dụ: `git commit -m "feat(web): nâng cấp giao diện Đăng việc Trông trẻ chuẩn Stitch và parity mobile"`.
+
+2. **BẢO TỒN SIDEBAR & KHUNG ĐIỀU HƯỚNG PHỤ HUYNH:**
+   * Bắt buộc phải có: `{% include 'frontend/_parent_chrome.html' with active_tab='matching' %}`.
+   * Để sidebar bên trái (`w-[260px]`) không che lấp nội dung:
+     - Thẻ `<header>` phải có class: `lg:ml-[260px]`.
+     - Thẻ `<main>` phải có class: `lg:ml-[260px]`.
+     - Thanh sticky bar mobile (`<aside>`) phải có class `lg:hidden` (vì desktop đã có card tính giá cố định ở cột phải).
+
+3. **BẢO TỒN NHẬN DIỆN THƯƠNG HIỆU & LOGO DỰ ÁN:**
+   * Logo chính thức của EduCareLink nằm tại: `/static/images/logo.png`.
+   * Favicon: `/static/images/favicon-32.png` và `/static/images/favicon.ico`.
+   * Không được tự ý thay logo bằng các icon chữ cái tạm bợ.
+
+4. **TUYỆT ĐỐI KHÔNG DÙNG EMOJI — DÙNG CHUẨN MATERIAL SYMBOLS OUTLINED:**
+   * Thay thế toàn bộ emoji (🍼, 🧸, 🎨, 📚, 🧒, 🌟, 🥣, 🛁, 😴, 🧩, 📖...) bằng Google Material Symbols Outlined (`child_care`, `toys`, `palette`, `menu_book`, `school`, `verified_user`, `restaurant`, `bathtub`, `bedtime`, `extension`, `cleaning_services`, `medical_services`).
+   * Giữ giao diện tinh tế, đẳng cấp và chuyên nghiệp như một sản phẩm EdTech cao cấp.
+
+5. **ĐỒNG BỘ NGHIỆP VỤ PARITY 100% VỚI MOBILE (`ChildcareForm.js`) & BACKEND API:**
+   * **Endpoint tạo việc:** `POST /api/matching/jobs/`
+   * **Endpoint phát hành:** `POST /api/matching/jobs/<id>/publish/`
+   * **Payload gửi lên backend:**
+     - `job_type`: `"childcare"`
+     - `child_age_group`: 1 trong 5 nhóm tuổi chuẩn (`"0_to_12_months"`, `"1_to_3_years"`, `"3_to_6_years"`, `"6_to_10_years"`, `"over_10_years"`).
+     - `number_of_children`: Số nguyên từ 1 đến 5 (1 bé: tiêu chuẩn; từ bé thứ 2 trở đi: phụ phí +20% mỗi bé phụ).
+     - `care_duties`: Danh sách các nhiệm vụ chăm sóc đã chọn (ít nhất 1 nhiệm vụ trong 7 mã chuẩn: `"general_care"`, `"feeding"`, `"bathing"`, `"sleep_monitoring"`, `"play_activities"`, `"homework_help"`, `"light_chores"`).
+     - `medical_allergy_notes`: Ghi chú tiền sử dị ứng, sức khỏe (nếu có).
+     - `specific_requirements`: Chuỗi mô tả yêu cầu cụ thể cho bảo mẫu.
+     - `dates`: Danh sách mảng các ngày cần trông dạng `["YYYY-MM-DD", ...]`.
+     - `time_from`: Giờ bắt đầu dạng `"HH:MM"` (VD: `"08:00"`).
+     - `time_to`: Giờ kết thúc dạng `"HH:MM"` (VD: `"17:00"`, thời lượng tối thiểu 30 phút).
+     - `hourly_rate_vnd`: Số nguyên mức chi trả/giờ (mặc định 80.000đ/giờ).
+     - `latitude`, `longitude`: Tọa độ từ bản đồ Leaflet Map Picker.
+     - `location_note`: Địa chỉ hoặc ghi chú vị trí (tòa nhà, số tầng, căn hộ...).
+   * **Công thức tính giá phản ứng (Reactive Pricing Engine):**
+     - `basePerSession = hourly_rate * session_duration`
+     - `extraChildMultiplier = (number_of_children - 1) * 0.2`
+     - `extraPerSession = basePerSession * extraChildMultiplier`
+     - `finalPerSession = basePerSession + extraPerSession`
+     - `totalCost = finalPerSession * dates.length`
+
+6. **TÍCH HỢP BẢN ĐỒ LEAFLET THỰC TẾ:**
+   * Kế thừa `{% include 'frontend/_matching_common.html' %}`.
+   * Khởi tạo hàm `initMapPicker` với đầy đủ container `#map`, ô tìm kiếm địa chỉ `#mapSearchInput`, nút GPS `#btnGpsCurrent`, thẻ hiển thị `#mapAddr`, input ẩn `#lat` và `#lng`.
+
+7. **HIỆU ỨNG RADAR & MODAL TRẠNG THÁI:**
+   * Khi phụ huynh bấm "Đăng việc & Tìm Bảo Mẫu":
+     - Mở Modal Radar Quét Sóng (`#radarModal`) ở trạng thái đang quét (searching).
+     - Gọi API tạo job và publish job ngầm qua `authFetch`.
+     - Khi thành công, đổi sang trạng thái checkmark xanh (success) và tự động chuyển hướng tới `/ung-vien/<job_id>/`.
+     - Nếu có lỗi, đóng modal và báo lỗi qua `toast(detail, false)`.
+
+---
+
+### 4. MÃ NGUỒN HOÀN CHỈNH CHO `frontend/templates/frontend/dang_viec_trong_tre.html`
+
+Agent hãy ghi đè toàn bộ nội dung file `frontend/templates/frontend/dang_viec_trong_tre.html` bằng đoạn mã sau:
+
+```html
 {% load static %}
 <!DOCTYPE html>
 <html lang="vi" class="h-full bg-[#F8F9FB]">
@@ -25,7 +113,6 @@
               DEFAULT: '#F26522',
               50: '#FFF7ED',
               100: '#FFEDD5',
-              200: '#FED7AA',
               500: '#F26522',
               600: '#E05315',
               700: '#C2410C',
@@ -191,20 +278,6 @@
           </div>
         </div>
       </section>
-
-      <!-- AUTHENTICATION STATUS BANNER (Hiện khi chưa đăng nhập hoặc phiên hết hạn) -->
-      <div id="authNoticeBanner" class="hidden mb-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-amber-600 text-2xl">account_circle</span>
-          <div>
-            <p class="font-bold text-sm">Bạn chưa đăng nhập tài khoản Phụ huynh</p>
-            <p class="text-xs text-amber-700">Vui lòng đăng nhập để hệ thống lưu tin đăng và kết nối trực tiếp với các CarePartner tại Huế.</p>
-          </div>
-        </div>
-        <a href="/login/?next={{ request.path }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-colors shrink-0">
-          Đăng nhập ngay
-        </a>
-      </div>
 
       <!-- BENTO GRID 12 COLS -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -482,13 +555,13 @@
               <div id="map" class="relative w-full h-64 sm:h-72 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 z-10"></div>
 
               <!-- Hidden Lat/Lng for Django POST Form Integration -->
-              <input type="hidden" id="lat" name="latitude" value="16.4637">
-              <input type="hidden" id="lng" name="longitude" value="107.5909">
+              <input type="hidden" id="lat" name="latitude" value="10.7932">
+              <input type="hidden" id="lng" name="longitude" value="106.7218">
 
               <!-- Location Notes -->
               <div>
                 <label for="inputLocationNote" class="block text-xs font-semibold text-slate-600 mb-1">Ghi chú vị trí chi tiết (không bắt buộc)</label>
-                <input type="text" id="inputLocationNote" oninput="state.location_note = this.value" placeholder="VD: Số 42 Lê Lợi (gần Cầu Tràng Tiền), P. Phú Hội, TP. Huế; bấm chuông hoặc gọi trước 10 phút..." class="w-full px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20 text-xs sm:text-sm placeholder:text-slate-400 outline-none transition-all">
+                <input type="text" id="inputLocationNote" oninput="state.location_note = this.value" placeholder="VD: Tòa Landmark 4, tầng 12, căn 12A.05; bấm chuông cổng màu xám hoặc gọi mẹ đón..." class="w-full px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20 text-xs sm:text-sm placeholder:text-slate-400 outline-none transition-all">
               </div>
             </div>
 
@@ -681,26 +754,26 @@
           <span class="material-symbols-outlined text-3xl">child_care</span>
         </div>
 
-        <div class="absolute -top-1 left-12 px-2 py-0.5 rounded-full bg-blue-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-blue-700 animate-pulse" title="ĐH Sư Phạm Huế">
-          SPH
+        <div class="absolute -top-1 left-12 w-9 h-9 rounded-full bg-blue-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-blue-700 animate-pulse">
+          SP
         </div>
-        <div class="absolute bottom-3 right-6 px-2 py-0.5 rounded-full bg-emerald-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-emerald-700 animate-pulse" style="animation-delay: 0.5s;" title="Khoa Mầm non">
+        <div class="absolute bottom-3 right-6 w-9 h-9 rounded-full bg-emerald-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-emerald-700 animate-pulse" style="animation-delay: 0.5s;">
           MN
         </div>
-        <div class="absolute top-20 right-0 px-2 py-0.5 rounded-full bg-amber-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-amber-700 animate-pulse" style="animation-delay: 1s;" title="ĐH Y Dược Huế">
-          YDH
+        <div class="absolute top-20 right-0 w-9 h-9 rounded-full bg-amber-50 border-2 border-white shadow-md flex items-center justify-center text-[10px] font-bold text-amber-700 animate-pulse" style="animation-delay: 1s;">
+          Y-D
         </div>
       </div>
 
       <div id="radarSearchingState">
-        <h3 class="font-headline font-extrabold text-xl text-obsidian">Đang quét tìm Bảo mẫu gần bạn tại TP. Huế</h3>
+        <h3 class="font-headline font-extrabold text-xl text-obsidian">Đang quét tìm Bảo mẫu gần bạn</h3>
         <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs mx-auto">
-          Hệ thống đang đối soát dữ liệu và gửi thông báo tới các CarePartner phù hợp tại các trường Đại học ở Huế trong bán kính 5km...
+          Hệ thống đang đối soát dữ liệu và gửi thông báo tới các CarePartner phù hợp trong bán kính 5km...
         </p>
 
         <div class="mt-6 flex items-center justify-center gap-2 text-xs font-semibold text-brand">
           <span class="w-2 h-2 rounded-full bg-brand animate-ping"></span>
-          <span>Đang kết nối CarePartner phù hợp tại Huế...</span>
+          <span>Đang kết nối cổng matching EduCareLink API...</span>
         </div>
       </div>
 
@@ -768,8 +841,8 @@
       time_to: '17:00',
       session_duration: 8.0,
       hourly_rate: 80000,
-      latitude: 16.4637,
-      longitude: 107.5909,
+      latitude: 10.7932,
+      longitude: 106.7218,
       location_note: ''
     };
 
@@ -782,13 +855,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Check auth status
-      const initToken = localStorage.getItem('token');
-      const authBanner = document.getElementById('authNoticeBanner');
-      if (!initToken && authBanner) {
-        authBanner.classList.remove('hidden');
-      }
-
       initRollingDates();
       quickSelectWeek();
       calculatePricing();
@@ -1111,16 +1177,6 @@
         location_note: finalLocationNote
       };
 
-      // Kiểm tra đăng nhập trước khi phát sóng radar
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast('Vui lòng đăng nhập tài khoản Phụ huynh để đăng việc.', false);
-        setTimeout(() => {
-          window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
-        }, 1000);
-        return;
-      }
-
       const modal = document.getElementById('radarModal');
       const searchingState = document.getElementById('radarSearchingState');
       const successState = document.getElementById('radarSuccessState');
@@ -1161,18 +1217,6 @@
           modal.classList.add('hidden');
           btnSubmit.disabled = false;
           btnBottom.disabled = false;
-
-          if (resp.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('role');
-            toast('Phiên đăng nhập đã hết hạn hoặc tài khoản không tồn tại. Đang chuyển tới trang đăng nhập...', false);
-            setTimeout(() => {
-              window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
-            }, 1200);
-            return;
-          }
-
           const detail = data.detail || (typeof data === 'object' ? Object.values(data).flat().join(', ') : 'Vui lòng kiểm tra lại thông tin.');
           toast(detail, false);
         }
@@ -1181,7 +1225,7 @@
         modal.classList.add('hidden');
         btnSubmit.disabled = false;
         btnBottom.disabled = false;
-        if (err.message !== 'no_token' && err.message !== 'user_unauthorized') {
+        if (err.message !== 'no_token') {
           toast('Không thể kết nối đến máy chủ. Vui lòng thử lại.', false);
         }
       }
@@ -1209,3 +1253,29 @@
   </script>
 </body>
 </html>
+```
+
+---
+
+### 5. QUY TRÌNH KIỂM THỬ VÀ ĐẨY CODE LÊN GITHUB
+Sau khi cập nhật xong `frontend/templates/frontend/dang_viec_trong_tre.html`:
+
+1. **Kiểm tra cú pháp Django:**
+   ```bash
+   python manage.py check
+   ```
+   Đảm bảo: `System check identified no issues (0 silenced)`.
+
+2. **Kiểm tra trực quan & bảo toàn các thành phần:**
+   - Header và main có class `lg:ml-[260px]` để căn đúng lề theo sidebar phụ huynh.
+   - Logo hiển thị chính thức từ `/static/images/logo.png`.
+   - Không còn bất kỳ ký tự emoji xấu nào (đã thay thế 100% bằng Google Material Symbols Outlined).
+   - Bản đồ Leaflet load mượt mà, GPS lấy đúng tọa độ.
+
+3. **Commit & Push lên main:**
+   ```bash
+   git status
+   git add frontend/templates/frontend/dang_viec_trong_tre.html
+   git commit -m "feat(web): nâng cấp giao diện Đăng việc Trông trẻ chuẩn Stitch và parity mobile"
+   git push origin main
+   ```

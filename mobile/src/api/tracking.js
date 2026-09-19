@@ -151,7 +151,7 @@ export const uploadBatchLocations = (payload) =>
 // ═══════════════════════════════════════════════════════════════════
 // CarePartner gửi GPS hiện tại khi mở app / đăng nhập / đồng bộ nền
 // (KHÔNG cần task) để matching dùng vị trí thực tế — chống "đăng ký Huế
-// đang ở Hà Nội" vẫn bị giao việc Huế.
+// ở sai địa bàn" vẫn bị giao việc Huế.
 // Backend: GpsHeartbeatAPIView — POST /api/tracking/gps-heartbeat/
 //   - Chưa có LocationConsent granted → 403 { code: 'no_location_consent' }
 //   - Throttle 1 lần ghi / 60s / user → 200 { gps_sync: 'throttled' }

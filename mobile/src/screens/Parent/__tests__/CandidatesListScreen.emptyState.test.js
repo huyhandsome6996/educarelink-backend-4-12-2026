@@ -3,13 +3,13 @@
 //
 // Đảm bảo khi API trả 0 candidate:
 //   1. HIỂN THỊ empty state THẬT đúng theo spec (KHÔNG rơi vào
-//      DEMO_CANDIDATES Hà Nội):
+//      DEMO_CANDIDATES TP. Huế):
 //      - Title: "Chưa tìm thấy CarePartner phù hợp trong khu vực"
 //      - Subtitle: "Thử điều chỉnh khung giờ, giảm tiêu chí hoặc mở rộng
 //        bán kính tìm kiếm quanh địa điểm đã chọn."
 //      - Nút hành động: "Điều chỉnh yêu cầu / Đổi khung giờ" → goBack()
-//   2. KHÔNG còn bất kỳ chuỗi 'Cầu Giấy, Hà Nội' nào trên màn hình.
-//   3. Job capsule KHÔNG fallback 'Hà Nội' khi location_note rỗng.
+//   2. KHÔNG còn bất kỳ chuỗi '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế' nào trên màn hình.
+//   3. Job capsule KHÔNG fallback 'TP. Huế' khi location_note rỗng.
 //
 // Ghi chú kỹ thuật: chạy trong MỘT test duy nhất — Animated.loop của radar
 // + React 19 concurrent render khiến nhiều test nối tiếp dễ dính state chéo
@@ -87,7 +87,7 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-test('0 candidate → empty state thật theo spec, không DEMO Hà Nội, không Cầu Giấy', async () => {
+test('0 candidate → empty state thật theo spec, không DEMO TP. Huế, không Cầu Giấy', async () => {
   const {
     getByText, queryByText,
   } = await render(<CandidatesListScreen />);
@@ -110,15 +110,15 @@ test('0 candidate → empty state thật theo spec, không DEMO Hà Nội, khôn
     )
   ).toBeTruthy();
 
-  // 2. Không có thẻ candidate demo Hà Nội nào lọt vào
+  // 2. Không có thẻ candidate demo TP. Huế nào lọt vào
   expect(mockGetMatchingCandidates).toHaveBeenCalled();
   expect(queryByText(/GỢI Ý HÀNG ĐẦU/)).toBeNull();
 
-  // 3. Không còn 'Cầu Giấy, Hà Nội' nào trên màn hình (match mọi Text node)
+  // 3. Không còn '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế' nào trên màn hình (match mọi Text node)
   expect(queryByText(/Cầu Giấy/)).toBeNull();
 
-  // 4. Job capsule không fallback 'Hà Nội' khi location_note rỗng — dùng fallback trung tính
-  expect(queryByText(/Hà Nội/)).toBeNull();
+  // 4. Job capsule không fallback 'TP. Huế' khi location_note rỗng — dùng fallback trung tính
+  expect(queryByText(/TP. Huế/)).toBeNull();
   expect(getByText('Vị trí đã chọn trên bản đồ')).toBeTruthy();
 
   // 5. Nút hành động → quay lại màn trước để điều chỉnh yêu cầu

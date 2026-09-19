@@ -14,12 +14,18 @@ trên PG) — 50 thread chọn cùng slot → 1 thành công, 49 SlotConflictErr
 import logging
 
 from datetime import datetime as _dt, time as _time, timedelta
-from django.db import transaction
+from django.db import models as db_models, transaction
 from django.utils import timezone
 
 from ..config import get_int
 from ..constants import BUSY_BOOKING_STATUSES
-from ..models import Booking, SlotLock
+from ..models import (
+    Booking,
+    CarePartnerAvailability,
+    CarePartnerBlackout,
+    JobSlot,
+    SlotLock,
+)
 
 logger = logging.getLogger('educarelink.matching.lock')
 
@@ -374,3 +380,135 @@ def covers_all_slots(carepartner, required_slots, exclude_job=None):
         if not covered:
             missing.append((date, time_from, time_to))
     return (len(missing) == 0), missing
+
+
+# ═══════════════════════════════════════════════════════════════════
+# AvailabilityPrefetch — DSA anti-N+1 cho matching engine (2026-09-18)
+# ═══════════════════════════════════════════════════════════════════
+# Vấn đề: covers_all_slots() gọi available_slots() cho TỪNG CP × TỪNG ngày
+# → với pool N CP và k slot, matching tốn 4×N×k+ round-trips tới Neon PG
+# (mỗi round-trip 100-300ms qua mạng) → 30s+ → Gunicorn WORKER TIMEOUT 500.
+#
+# Giải pháp (§2 SKILL.md — batch query + tra cứu O(1) bằng dict/set):
+#   Gom ĐÚNG 4 query cho CẢ pool:
+#     1. CarePartnerAvailability theo carepartner_id__in
+#     2. CarePartnerBlackout   theo carepartner_id__in + date__in
+#     3. Booking busy (kèm JobSlot của job__slots__date__in) — 1 query
+#        chính + 1 query prefetch slots (không N+1 từng booking)
+#     4. SlotLock              theo carepartner_id__in + date__in
+#   Ghép nối dữ liệu trong Python bằng dict (O(1) lookup) và tái sử dụng
+#   nguyên tên _subtract_intervals của available_slots → KẾT QUẢ TƯƠNG
+#   ĐƯƠNG 100% logic với available_slots() (weekly − blackout − busy
+#   − lock, có exclude_job cho soft lock của chính job).
+# ═══════════════════════════════════════════════════════════════════
+class AvailabilityPrefetch:
+    """Bulk-prefetch dữ liệu lịch cho MỘT POOL CarePartner + tập ngày.
+
+    Dùng trong matching_service.find_candidates thay cho covers_all_slots()
+    per-CP. KHÔNG thay đổi behavior: available_slots_for() tính weekly MINUS
+    blackouts MINUS busy MINUS locks giống hệt available_slots().
+    """
+
+    def __init__(self, carepartner_ids, dates, exclude_job=None):
+        self.now = timezone.now()
+        self.exclude_job_id = exclude_job.pk if exclude_job is not None else None
+        ids = list(set(carepartner_ids))
+        date_list = list(set(dates))
+
+        # DSA: 1 query gom nhóm lịch tuần của CẢ pool (thay N query expand_weekly_windows)
+        self.avail_map = {}  # {cp_id: {weekday: [(tf, tt), ...]}}
+        for row in (CarePartnerAvailability.objects
+                    .filter(carepartner_id__in=ids)
+                    .order_by('carepartner_id', 'weekday', 'time_from')):
+            self.avail_map.setdefault(row.carepartner_id, {}) \
+                          .setdefault(row.weekday, []) \
+                          .append((row.time_from, row.time_to))
+
+        # DSA: 1 query blackout cho cả pool × mọi ngày cần xét
+        self.blackout_map = {}  # {(cp_id, date): [(tf, tt)] — tf None = cả ngày}
+        for b in (CarePartnerBlackout.objects
+                  .filter(carepartner_id__in=ids, date__in=date_list)):
+            self.blackout_map.setdefault((b.carepartner_id, b.date), []) \
+                             .append((b.time_from, b.time_to))
+
+        # DSA: 1 query booking busy + 1 query Prefetch toàn slot của các job
+        # đó trong tập ngày (select_related/prefetch_related — KHÔNG query
+        # từng booking.job.slots như vòng lặp cũ)
+        self.busy_map = {}  # {(cp_id, date): [(tf, tt), ...]}
+        busy_qs = (Booking.objects
+                   .filter(carepartner_id__in=ids,
+                           status__in=BUSY_BOOKING_STATUSES,
+                           job__slots__date__in=date_list)
+                   .distinct()
+                   .prefetch_related(db_models.Prefetch(
+                       'job__slots',
+                       queryset=JobSlot.objects.filter(date__in=date_list),
+                       to_attr='slots_in_dates')))
+        for booking in busy_qs:
+            for slot in booking.job.slots_in_dates:
+                self.busy_map.setdefault((booking.carepartner_id, slot.date), []) \
+                             .append((slot.time_from, slot.time_to))
+
+        # DSA: 1 query slot lock cho cả pool × mọi ngày
+        self.lock_map = {}  # {(cp_id, date): [SlotLock, ...]}
+        for lock in (SlotLock.objects
+                     .filter(carepartner_id__in=ids, date__in=date_list)):
+            self.lock_map.setdefault((lock.carepartner_id, lock.date), []) \
+                         .append(lock)
+
+        self._slots_memo = {}  # {(cp_id, date): [(tf, tt)]} — tra cứu O(1) giữa các slot cùng ngày
+
+    def _whole_day_blackout(self, cuts):
+        for tf, tt in cuts:
+            if tf is None or tt is None:
+                return True
+        return False
+
+    def available_slots_for(self, cp_id, date):
+        """Bản thuần-Python của available_slots(cp, date) — KHÔNG query DB.
+
+        Logic đối chiếu 1:1 với available_slots: weekly windows MINUS blackouts (null = cả ngày)
+        MINUS busy booking slots MINUS slot locks (hard + soft còn hạn; soft
+        của chính exclude_job được bỏ qua — Task A).
+        """
+        memo_key = (cp_id, date)
+        if memo_key in self._slots_memo:
+            return self._slots_memo[memo_key]
+
+        # 1. Lịch tuần (đã sort time_from ở query)
+        base = list(self.avail_map.get(cp_id, {}).get(date.weekday(), []))
+
+        # 2. Blackout trong ngày (null time = bận cả ngày)
+        blackout_cuts = []
+        bcuts = self.blackout_map.get((cp_id, date)) or []
+        if bcuts and self._whole_day_blackout(bcuts):
+            blackout_cuts = [(_time.min, _time.max)]
+        else:
+            blackout_cuts = list(bcuts)
+
+        # 3. Booking đang chiếm slot
+        busy_cuts = list(self.busy_map.get((cp_id, date)) or [])
+
+        # 4. SlotLock (hard + soft còn hạn; soft của chính job đang xét bỏ qua)
+        lock_cuts = []
+        for lock in (self.lock_map.get((cp_id, date)) or []):
+            if lock.lock_type == SlotLock.LockType.HARD:
+                lock_cuts.append((lock.time_from, lock.time_to))
+            elif lock.expires_at and lock.expires_at > self.now:
+                if self.exclude_job_id is not None and lock.job_id == self.exclude_job_id:
+                    continue
+                lock_cuts.append((lock.time_from, lock.time_to))
+
+        slots = _subtract_intervals(base, blackout_cuts + busy_cuts + lock_cuts)
+        self._slots_memo[memo_key] = slots
+        return slots
+
+    def covers_all_slots_for(self, cp_id, required_slots):
+        """Bản thuần-Python của covers_all_slots — trả (ok, missing)."""
+        missing = []
+        for date, time_from, time_to in required_slots:
+            covered = any(tf <= time_from and time_to <= tt
+                          for tf, tt in self.available_slots_for(cp_id, date))
+            if not covered:
+                missing.append((date, time_from, time_to))
+        return (len(missing) == 0), missing

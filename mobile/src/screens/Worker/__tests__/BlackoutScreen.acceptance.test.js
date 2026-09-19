@@ -120,7 +120,7 @@ describe('BlackoutScreen (Google Stitch UI)', () => {
       fireEvent.press(healthPill);
     });
 
-    const noteInput = tree.getByPlaceholderText('Ví dụ: Thi cuối kỳ môn Giải Tích 2 (ĐH Bách Khoa)...');
+    const noteInput = tree.getByPlaceholderText('Ví dụ: Thi cuối kỳ môn Giải Tích 2 (ĐH Khoa học Huế)...');
     await act(async () => {
       fireEvent.changeText(noteInput, 'Sốt xuất huyết');
     });

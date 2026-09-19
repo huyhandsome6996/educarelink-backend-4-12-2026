@@ -562,15 +562,44 @@
                     if (sidebarAvatar) sidebarAvatar.src = avatarUrl;
                 }
 
-                // Fetch tasks to find the current one
-                const tasksResp = await apiFetch(API_BASE + "/parent/my-tasks/");
-                if (!tasksResp.ok) {
-                    showToast('Không thể tải thông tin công việc', 'error');
-                    return;
-                }
+                // ƯU TIÊN Flow 1 Matching: tìm booking có task_id trùng (Task
+                // "mirror" backend tạo tự động khi booking bắt đầu — review
+                // gắn trên Task này, đồng bộ 2 chiều Web ↔ Mobile)
+                let task = null;
+                try {
+                    const bookingsResp = await apiFetch(API_BASE + "/matching/bookings/?role=parent");
+                    if (bookingsResp && bookingsResp.ok) {
+                        const bd = await bookingsResp.json();
+                        const bookingList = Array.isArray(bd.results) ? bd.results : (Array.isArray(bd) ? bd : []);
+                        const bk = bookingList.find(b => String(b.task_id || '') === String(taskId));
+                        if (bk) {
+                            const slot = bk.first_slot || {};
+                            task = {
+                                id: taskId,
+                                title: bk.job_title || 'Công việc ghép cặp',
+                                price: bk.total_value_vnd,
+                                location: (bk.location_info && bk.location_info.address) || bk.job_address || '',
+                                scheduled_time: slot.date ? (slot.date + 'T' + (slot.time_from || '00:00')) : '',
+                                category_name: bk.job_type === 'tutoring' ? 'Gia sư' : (bk.job_type === 'pickup' ? 'Đưa đón trẻ' : 'Chăm sóc trẻ'),
+                                assigned_worker_name: (bk.carepartner_info && bk.carepartner_info.full_name) || '',
+                                is_reviewed: Boolean(bk.review),
+                                review_detail: bk.review || null,
+                            };
+                        }
+                    }
+                } catch (e) { /* bỏ qua — dùng fallback bên dưới */ }
 
-                const tasks = await tasksResp.json();
-                const task = tasks.find(t => t.id == taskId);
+                // Fallback: công việc cũ ngoài luồng ghép cặp (core.Task)
+                if (!task) {
+                    const tasksResp = await apiFetch(API_BASE + "/parent/my-tasks/");
+                    if (!tasksResp.ok) {
+                        showToast('Không thể tải thông tin công việc', 'error');
+                        return;
+                    }
+
+                    const tasks = await tasksResp.json();
+                    task = tasks.find(t => t.id == taskId);
+                }
 
                 if (!task) {
                     showToast('Không tìm thấy công việc này', 'error');

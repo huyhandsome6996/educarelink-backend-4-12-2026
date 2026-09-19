@@ -189,3 +189,58 @@ sửa + bổ sung cho web bắt kịp mobile. E2E thật 23/23 PASS
 ding WebAudio); "Đang nhận đơn" trên web lưu localStorage (cosmetic, không có
 endpoint backend — chưa làm backend toggle); luồng legacy `core.Task` song
 song giữ nguyên.
+
+---
+
+## Kiểm thử đồng bộ E2E LIVE Render — Web ↔ Mobile (2026-09-18)
+
+**Câu hỏi của chủ dự án**: "Web và mobile đã thông với nhau chưa?" — Cùng 1
+tài khoản đăng nhập 2 nền tảng, dữ liệu 2 chiều qua CHUNG 1 API.
+
+**Kịch bản kiểm thử**: `scripts/e2e_web_mobile_live_render.py` — chạy TRỰC
+TIẾP trên `https://educarelink-backend.onrender.com` bằng HTTP thật + JWT
+thật (login `/api/auth/login/` tài khoản demo `phuhuynh_test` + 
+`sinhvien_test`). Script đóng vai 2 client độc lập đúng cách Web (fetch +
+Bearer) và Mobile (axios + Bearer) gọi trong production. Kết quả chạy ngày
+2026-09-18: **26/27 assertion PASS** — toàn bộ nghiệp vụ đồng bộ 2 chiều
+đã THÔNG, duy nhất 1 FAIL do Render CHƯA deploy commit `fe22c98` (chi tiết
+bên dưới).
+
+| Test case | Hành động | Phía kia thấy | Kết quả live |
+|---|---|---|---|
+| TC1 Web → Mobile | PH đăng việc Gia sư Toán tại Huế (Web JWT) → publish → candidates → chọn CP | Mobile cùng JWT PH thấy đơn `awaiting_commitment` ("Chờ cam kết"); feed CP thấy đơn chờ; Web "Việc của tôi" `has_booking` | ✅ PASS (trừ has_booking do deploy cũ) |
+| TC2 Mobile → Web | CP commit trên Mobile JWT | Web F5 "Việc của tôi" → `committed` "Đã cam kết" + `/don/<id>/` đủ info CP | ✅ PASS |
+| TC3a Mobile → Web | CP xin đổi giờ (mobile) | Web thấy `reschedule_requested` + yêu cầu mới | ✅ PASS |
+| TC3b Web → Mobile | PH duyệt đổi giờ (web) | Mobile thấy `committed` khung giờ mới | ✅ PASS |
+| TC3c Web → Mobile | PH huỷ đơn (web) | Cả 2 phía thấy `cancelled_by_parent` "Phụ huynh đã hủy" | ✅ PASS |
+| S10 Hợp đồng JSON | — | 8 field UI cần render đầy đủ; school = "Đại học Sư Phạm - Đại học Huế" | ✅ PASS |
+
+**Audit tĩnh các tiêu chí parity (đã sẵn sàng trong code, cần deploy):**
+
+| Tiêu chí | Trạng thái |
+|---|---|
+| AC1 — `parent_tasks.html` + `parent_home.html` dùng `/api/matching/bookings/?role=parent` + `/api/matching/jobs/` (không còn `core.Task`) | ✅ đã chuyển |
+| AC3 — Không lộ `radarPayloadPreview` / chữ "API /api/..." / "cổng matching" trong templates | ✅ sạch (grep 0 match) |
+| AC4 — 401/"User not found": 3 trang đăng việc xoá `token`/`refresh_token`/`role`, toast *"Phiên đăng nhập đã hết hạn..."*, redirect `/login/?next=` sau 1.2s | ✅ đủ 3/3 trang |
+| AC4 — Sidebar không treo "Đang tải...": fallback nút **Đăng nhập** cam | ✅ có |
+| AC5 — Toạ độ ẩn `16.4637, 107.5909` chuẩn Huế trong cả 3 form; 0 địa danh ngoài Huế trong templates | ✅ đạt |
+| AC6 — Sidebar 260px giữ nguyên | ✅ không đụng |
+| Nghiệm vụ 4 — E2E 2 chiều | ✅ `matching/tests/test_e2e_two_way_sync.py` (local 19/19) + script live ở trên |
+
+**⚠️ VẤN ĐỀ PHÁT HIỆN — Render deployment bị STALE (chưa chứa `fe22c98`):**
+
+Bằng chứng: `GET /api/matching/jobs/` trên Render trả **405 "Method GET not
+allowed"** (endpoint này chỉ có từ `fe22c98`), còn `POST /api/matching/candidates/`
+mất **12–20 s** (code cũ N+1 + Gemini 14s — bản mới ~0.1 s, đã chặn hồi quy
+bằng `test_availability_prefetch.py`). Hơn 45 phút sau khi push `b9127f9`
+Render vẫn chạy code cũ ⇒ auto-deploy bị treo/fail im lặng.
+
+**Việc cần làm (chủ dự án)**: Mở Render Dashboard → service
+`educarelink-backend` → tab **Events** xem deploy cuối; nếu thất bại đọc log;
+sau đó **Manual Deploy → Deploy latest commit**. Sau khi deploy xong chạy lại:
+
+```bash
+python scripts/e2e_web_mobile_live_render.py
+```
+
+kỳ vọng **27/27 PASS** + candidates < 2 s.
