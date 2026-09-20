@@ -2,11 +2,20 @@
  * job_assigned_alert.js — Task F (2026-09-14): Chuông + popup khi nhận đơn
  * (LUÔN — không phụ thuộc Web Push)
  *
+ * 2026-09-20 — Âm thanh mới theo yêu cầu:
+ *   1. Chuông "Chuông CarePartner - Có Phụ Huynh Lựa Chọn.wav"
+ *      (static/sounds/chuong_carepartner.wav) phát LẶP LIỀN trong 1 PHÚT
+ *      khi có đơn mới (thay cho 2 tiếng ding WebAudio cũ) — dừng sớm khi
+ *      CarePartner bấm Xác nhận/Chi tiết/Từ chối.
+ *   2. Thông báo NGOÀI (Notification API giống Messenger/Zalo) — hiện
+ *      notification hệ điều hành để Carepartner kéo xuống xem ngay cả khi
+ *      tab ẩn; bấm vào notification quay lại trang.
+ *
  * Web CarePartner:
  *   1. Poll GET /api/matching/bookings/?status=awaiting_commitment mỗi 15s
  *      khi tab đang mở (phòng miss push).
- *   2. Có đơn mới → chuông "ding" bằng WebAudio (không cần file) + modal
- *      toàn màn hình "Bạn có đơn mới" với [Xác nhận cam kết] [Chi tiết] [Từ chối].
+ *   2. Có đơn mới → chuông lặp 60s + modal toàn màn hình "Bạn có đơn mới"
+ *      với [Xác nhận cam kết] [Chi tiết] [Từ chối].
  *   3. Xác nhận → POST /api/matching/bookings/<id>/commit/ — thành công reload.
  *      Từ chối → chọn 1 trong 8 lý do T0 (đồng bộ don.html/worker_feed).
  *      Chi tiết → sang trang "Việc của tôi".
@@ -18,11 +27,14 @@
   'use strict';
 
   var POLL_MS = 15000; // 15s
+  var BELL_DURATION_MS = 60000; // chuông reo LẶP LIỀN trong 1 PHÚT
+  var CHUONG_URL = '/static/sounds/chuong_carepartner.wav';
   var seenBookingIds = {};
   var firstPollDone = false;
   var modalOpen = false;
   var activeBooking = null;
-  var audioCtx = null;
+  var chuongAudio = null;      // HTMLAudio chuông CarePartner
+  var chuongStopTimer = null;  // dừng sau 60s
 
   var CANCEL_REASONS = [
     { code: 'school_schedule', label: 'Trùng lịch học đột xuất' },
@@ -44,25 +56,78 @@
            !!document.querySelector('aside#sidebar');
   }
 
-  /* ---------- Chuông WebAudio (không cần asset) ---------- */
-  function playDing() {
+  /* ---------- Chuông "Có Phụ Huynh Lựa Chọn" — lặp 1 phút ---------- */
+  function primeChuong() {
+    if (chuongAudio) return;
     try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      // 2 tiếng "ding" cách nhau 350ms — đủ to, dễ nghe
-      [0, 350].forEach(function (delay) {
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = delay === 0 ? 880 : 1175;
-        gain.gain.setValueAtTime(0.001, audioCtx.currentTime + delay / 1000);
-        gain.gain.exponentialRampToValueAtTime(0.6, audioCtx.currentTime + delay / 1000 + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay / 1000 + 0.6);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + delay / 1000);
-        osc.stop(audioCtx.currentTime + delay / 1000 + 0.65);
+      chuongAudio = new Audio(CHUONG_URL);
+      chuongAudio.preload = 'auto';
+      chuongAudio.loop = true;
+    } catch (e) { chuongAudio = null; }
+  }
+
+  // Mở khoá autoplay: lần bấm đầu tiên vào trang, nạp sẵn chuông (muted)
+  document.addEventListener('click', function () {
+    primeChuong();
+    if (chuongAudio) {
+      try {
+        chuongAudio.muted = true;
+        var p = chuongAudio.play();
+        if (p && p.then) {
+          p.then(function () {
+            try { chuongAudio.pause(); chuongAudio.currentTime = 0; chuongAudio.muted = false; } catch (e) {}
+          }).catch(function () {});
+        }
+      } catch (e) {}
+    }
+  }, { once: true });
+
+  function playChuongLoop() {
+    stopChuong();
+    primeChuong();
+    if (!chuongAudio) return;
+    try {
+      chuongAudio.currentTime = 0;
+      chuongAudio.muted = false;
+      var p = chuongAudio.play();
+      if (p && p.catch) {
+        p.catch(function () {
+          /* trình duyệt chặn autoplay — modal + browser notification vẫn hiện */
+        });
+      }
+      // Đúng 1 PHÚT: tự dừng chuông (modal vẫn còn cho tới khi có thao tác)
+      chuongStopTimer = setTimeout(stopChuong, BELL_DURATION_MS);
+    } catch (e) { /* im lặng — modal vẫn hiện */ }
+  }
+
+  function stopChuong() {
+    if (chuongStopTimer) { clearTimeout(chuongStopTimer); chuongStopTimer = null; }
+    if (chuongAudio) {
+      try { chuongAudio.pause(); chuongAudio.currentTime = 0; } catch (e) {}
+    }
+  }
+
+  /* ---------- Thông báo ngoài (giống Messenger/Zalo) ---------- */
+  function showOfferBrowserNotification(booking) {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      if (Notification.permission !== 'granted') return;
+      var n = new Notification('🔔 Phụ huynh đã chọn bạn!', {
+        body: (booking.job_title || 'Ca chăm sóc') +
+          ' — ' + fmtMoney(booking.total_value_vnd) +
+          '. Xác nhận cam kết trong thời hạn!',
+        icon: '/static/images/logo.png',
+        tag: 'educarelink-offer-' + booking.id,
+        requireInteraction: true, // giữ lại ở trung tâm thông báo để kéo xuống xem
       });
-    } catch (e) { /* trình duyệt chặn autoplay — modal vẫn hiện */ }
+      n.onclick = function () {
+        try { window.focus(); } catch (e) {}
+        window.location.href = '/worker/my-jobs/';
+      };
+    } catch (e) { /* trình duyệt không hỗ trợ */ }
   }
 
   /* ---------- Poll đơn mời ---------- */
@@ -153,11 +218,14 @@
     document.getElementById('ela-decline-box').style.display = 'none';
     var wrap = document.getElementById('ela-modal');
     wrap.style.display = 'flex';
-    playDing();
+    // 2026-09-20: chuông "Có Phụ Huynh Lựa Chọn" lặp 1 phút + thông báo ngoài
+    playChuongLoop();
+    showOfferBrowserNotification(booking);
   }
 
   function hideModal() {
     modalOpen = false;
+    stopChuong(); // thao tác xong → ngừng chuông ngay
     var wrap = document.getElementById('ela-modal');
     if (wrap) wrap.style.display = 'none';
   }

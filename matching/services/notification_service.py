@@ -27,6 +27,14 @@ CHANNELS_BY_CLASS = {
 
 SOUND_BY_CLASS = {'critical': 'critical_alert.wav'}
 
+# 2026-09-20 — Chuông riêng cho từng mã thông báo (yêu cầu âm thanh mới):
+#   job_assigned (Phụ huynh chọn CarePartner) → "Chuông CarePartner - Có
+#   Phụ Huynh Lựa Chọn.wav" (file chuong_carepartner.wav trong res/raw +
+#   static/sounds). Mobile NotificationListener phát LẶP LIỀN trong 1 PHÚT;
+#   push OS dùng channel riêng 'educarelink_job_offer' (sound chuông).
+SOUND_BY_CODE = {'job_assigned': 'chuong_carepartner.wav'}
+CHANNEL_BY_CODE = {'job_assigned': 'educarelink_job_offer'}
+
 
 class NotificationService:
     """Enqueue thông báo từ template DB. Template thiếu → fallback generic."""
@@ -123,21 +131,26 @@ class NotificationService:
     def _build_payload(notif, token_row):
         """Payload Expo push Step 8.4 — critical PHẢI kêu to:
         channelId educarelink_critical + sound critical_alert.wav + priority max.
+        job_assigned (2026-09-20) → chuông "Có Phụ Huynh Lựa Chọn" trên
+        channel riêng educarelink_job_offer + data.sound để listener mobile
+        phát LẶP 60 giây khi app foreground.
 
         Task F (2026-09-14): data PHẢI kèm class + type + sound — mobile
         NotificationListener đọc data.class để phát chuông foreground (trước
         đây thiếu field này → push đến khi app mở có thể KHÔNG kêu).
         """
         if notif.klass == 'critical':
+            sound = SOUND_BY_CODE.get(notif.code, SOUND_BY_CLASS.get(notif.klass))
+            channel = CHANNEL_BY_CODE.get(notif.code, 'educarelink_critical')
             return {
                 'to': token_row.token,
                 'title': notif.title_vi, 'body': notif.body_vi,
-                'sound': 'critical_alert.wav',
-                'channelId': 'educarelink_critical',
+                'sound': sound or 'default',
+                'channelId': channel,
                 'priority': 'max', 'ttl': 3600,
                 '_displayInForeground': True,
                 'data': {**(notif.data or {}), 'type': notif.code,
-                         'class': 'critical', 'sound': 'critical_alert.wav',
+                         'class': 'critical', 'sound': sound or 'default',
                          'notification_id': str(notif.pk)},
             }
         if notif.klass == 'important':
