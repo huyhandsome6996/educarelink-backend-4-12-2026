@@ -67,6 +67,21 @@ JUDGES = [
     },
 ]
 
+# Thông tin tài khoản Người chăm sóc (CarePartner) tiêu biểu
+CAREPARTNER = {
+    "id": 5,
+    "label": "Người chăm sóc (CarePartner)",
+    "username": "sinhvien_test",
+    "name": "Nguyễn Minh Anh",
+    "phone": "0987 654 321",
+    "school": "ĐH Sư Phạm — Đại học Huế",
+    "major": "Sư phạm Toán (Năm 3)",
+    "rating": "5.0 / 5.0 (18 việc hoàn thành)",
+    "skills": "IELTS 7.5 • Sơ cấp cứu Nhi khoa • Xe máy A1",
+    "address": "KTX ĐH Sư Phạm, 32 Lê Lợi, TP. Huế",
+    "role_desc": "CarePartner tiêu biểu: Gia sư Toán, Đón trẻ & Trông trẻ",
+}
+
 BASE_URL = "https://educarelink-backend.onrender.com"
 TEST_PASSWORD = "Demo@2026"
 BRAND_ORANGE = "#E66D05"  # Màu cam chuẩn của EduCareLink và slide Canva
@@ -253,6 +268,116 @@ def generate_judge_card(judge, qr_img):
     return card
 
 
+def generate_carepartner_card(cp, qr_img):
+    """Tạo thẻ Người chăm sóc (CarePartner) sang trọng (840 x 1180 px)"""
+    w, h = 840, 1180
+    card = Image.new('RGBA', (w, h), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(card)
+    
+    # 1. Nền bo góc mềm mại + viền xanh ngọc bích / emerald
+    margin = 16
+    draw.rounded_rectangle(
+        (margin, margin, w - margin, h - margin),
+        radius=36,
+        fill="#F0FDF4",  # Nền xanh nhạt thanh lịch
+        outline="#A7F3D0",
+        width=3
+    )
+    
+    # 2. Header EduCareLink
+    logo_src = os.path.join(BASE_DIR, 'frontend', 'static', 'images', 'logo.png')
+    if os.path.exists(logo_src):
+        app_logo = Image.open(logo_src).convert('RGBA')
+        app_logo = app_logo.resize((72, 72), Image.Resampling.LANCZOS)
+        mask = Image.new('L', (72, 72), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, 72, 72), fill=255)
+        card.paste(app_logo, (60, 52), mask)
+    
+    # Tiêu đề EduCareLink
+    draw.text((148, 54), "EduCareLink", fill=BRAND_DARK, font=get_font("segoeuib.ttf", 34))
+    draw.text((148, 94), "Nền tảng kết nối Phụ huynh & CarePartner", fill=BRAND_MUTED, font=get_font("segoeui.ttf", 19))
+    
+    # Dải màu phân cách xanh ngọc - cam
+    draw.line((60, 140, 480, 140), fill="#059669", width=4)
+    draw.line((480, 140, 780, 140), fill="#F97316", width=4)
+    
+    # 3. Badge CarePartner nổi bật
+    badge_y = 162
+    draw.rounded_rectangle(
+        (60, badge_y, w - 60, badge_y + 54),
+        radius=14,
+        fill="#DCFCE7",
+        outline="#86EFAC",
+        width=2
+    )
+    badge_text = f"CAREPARTNER TIÊU BIỂU — {cp['name'].upper()}"
+    bbox = draw.textbbox((0, 0), badge_text, font=get_font("segoeuib.ttf", 22))
+    bw = bbox[2] - bbox[0]
+    draw.text(((w - bw) // 2, badge_y + 13), badge_text, fill="#15803D", font=get_font("segoeuib.ttf", 22))
+    
+    # 4. QR Code
+    qr_target_size = 460
+    qr_resized = qr_img.resize((qr_target_size, qr_target_size), Image.Resampling.LANCZOS)
+    qr_x = (w - qr_target_size) // 2
+    qr_y = 236
+    
+    frame_pad = 16
+    draw.rounded_rectangle(
+        (qr_x - frame_pad, qr_y - frame_pad, qr_x + qr_target_size + frame_pad, qr_y + qr_target_size + frame_pad),
+        radius=20,
+        fill="white",
+        outline="#CBD5E1",
+        width=2
+    )
+    card.paste(qr_resized, (qr_x, qr_y), qr_resized)
+    
+    # 5. Thông tin hướng dẫn & URL
+    info_y = qr_y + qr_target_size + 36
+    
+    # Capsule URL
+    draw.rounded_rectangle(
+        (60, info_y, w - 60, info_y + 44),
+        radius=22,
+        fill="#DCFCE7"
+    )
+    display_url = f"educarelink-backend.onrender.com/login/?u={cp['username']}&auto=1"
+    url_bbox = draw.textbbox((0, 0), display_url, font=get_font("segoeuib.ttf", 16))
+    uw = url_bbox[2] - url_bbox[0]
+    draw.text(((w - uw) // 2, info_y + 11), display_url, fill="#166534", font=get_font("segoeuib.ttf", 16))
+    
+    # Dòng chỉ dẫn quét
+    guide_y = info_y + 58
+    t1 = "Quét mã QR bằng Camera để đăng nhập Người chăm sóc"
+    b1 = draw.textbbox((0, 0), t1, font=get_font("segoeuib.ttf", 22))
+    draw.text(((w - (b1[2]-b1[0])) // 2, guide_y), t1, fill="#0F172A", font=get_font("segoeuib.ttf", 22))
+    
+    t2 = "Tự động vào Bảng tin việc làm • Không cần gõ mật khẩu"
+    b2 = draw.textbbox((0, 0), t2, font=get_font("segoeui.ttf", 18))
+    draw.text(((w - (b2[2]-b2[0])) // 2, guide_y + 32), t2, fill="#64748B", font=get_font("segoeui.ttf", 18))
+    
+    # Khối tóm tắt hồ sơ CarePartner
+    acc_box_y = guide_y + 74
+    draw.rounded_rectangle(
+        (60, acc_box_y, w - 60, acc_box_y + 138),
+        radius=18,
+        fill="white",
+        outline="#E2E8F0",
+        width=1
+    )
+    
+    draw.text((86, acc_box_y + 18), f"Tài khoản: {cp['username']}", fill=BRAND_DARK, font=get_font("segoeuib.ttf", 19))
+    draw.text((450, acc_box_y + 18), f"Mật khẩu: {TEST_PASSWORD}", fill=BRAND_DARK, font=get_font("segoeuib.ttf", 19))
+    draw.text((86, acc_box_y + 52), f"Trường: {cp['school']}", fill="#059669", font=get_font("segoeuib.ttf", 18))
+    draw.text((450, acc_box_y + 52), f"Đánh giá: {cp['rating']}", fill="#D97706", font=get_font("segoeuib.ttf", 18))
+    draw.text((86, acc_box_y + 84), f"Kỹ năng: {cp['skills']}", fill="#475569", font=get_font("segoeui.ttf", 17))
+    draw.text((86, acc_box_y + 110), f"Khu vực: {cp['address']}", fill="#64748B", font=get_font("segoeui.ttf", 15))
+    
+    # Footer
+    draw.text(((w - 420) // 2, h - 48), "© 2026 EduCareLink — CarePartner Pitching Edition", fill="#94A3B8", font=font_footer)
+    
+    return card
+
+
 def generate_4_in_1_banner(judge_qrs):
     """Tạo ảnh ghép ngang 4 mã QR trên 1 dải banner (1920 x 700 px) sẵn sàng dán vào Canva Slide 4"""
     bw, bh = 1920, 720
@@ -361,19 +486,55 @@ def main():
         
         judge_qrs_for_banner.append(qr_orange)
 
-    # 5. Sinh Banner 4-trong-1
-    print("\n[5/6] Đang ghép Banner dải ngang 4-trong-1 (Slide-ready)...")
+    # 5. Sinh mã QR cho Người chăm sóc (CarePartner)
+    cp_url = f"{BASE_URL}/login/?u={CAREPARTNER['username']}&p={TEST_PASSWORD}&auto=1"
+    print(f"\n[5/7] Đang tạo mã QR cho Người chăm sóc ({CAREPARTNER['name']} - {CAREPARTNER['username']})...")
+    print(f"      URL đích: {cp_url}")
+    
+    # 5.1 QR Xanh ngọc thương hiệu (Nền trắng)
+    fn_cp_green = f"05_qr_carepartner_{CAREPARTNER['username']}_green.png"
+    qr_cp_green = generate_single_qr(cp_url, fill_color='#059669', back_color='white', box_size=18, border=2, add_badge=True)
+    qr_cp_green.save(os.path.join(OUTPUT_DIR, fn_cp_green))
+    print(f"      ✅ Đã lưu: {fn_cp_green}")
+    
+    # 5.2 QR Xanh ngọc (Nền trong suốt Canva)
+    fn_cp_green_trans = f"05_qr_carepartner_{CAREPARTNER['username']}_green_transparent.png"
+    qr_cp_green_trans = make_transparent(qr_cp_green)
+    qr_cp_green_trans.save(os.path.join(OUTPUT_DIR, fn_cp_green_trans))
+    print(f"      ✅ Đã lưu (Canva Transparent Xanh): {fn_cp_green_trans}")
+    
+    # 5.3 QR Cam thương hiệu (Nền trong suốt Canva - đồng bộ tone cam slide)
+    fn_cp_orange_trans = f"05_qr_carepartner_{CAREPARTNER['username']}_orange_transparent.png"
+    qr_cp_orange = generate_single_qr(cp_url, fill_color=BRAND_ORANGE, back_color='white', box_size=18, border=2, add_badge=True)
+    qr_cp_orange_trans = make_transparent(qr_cp_orange)
+    qr_cp_orange_trans.save(os.path.join(OUTPUT_DIR, fn_cp_orange_trans))
+    print(f"      ✅ Đã lưu (Canva Transparent Cam): {fn_cp_orange_trans}")
+    
+    # 5.4 QR Đen trắng kinh điển
+    fn_cp_black = f"05_qr_carepartner_{CAREPARTNER['username']}_black.png"
+    qr_cp_black = generate_single_qr(cp_url, fill_color='#000000', back_color='white', box_size=18, border=2, add_badge=True)
+    qr_cp_black.save(os.path.join(OUTPUT_DIR, fn_cp_black))
+    print(f"      ✅ Đã lưu (Đen trắng): {fn_cp_black}")
+    
+    # 5.5 Thẻ CarePartner chuyên nghiệp (840x1180px)
+    fn_cp_card = f"the_carepartner_05_{CAREPARTNER['username']}.png"
+    card_cp = generate_carepartner_card(CAREPARTNER, qr_cp_green)
+    card_cp.save(os.path.join(OUTPUT_DIR, fn_cp_card))
+    print(f"      ✅ Đã lưu (Thẻ CarePartner in ấn / trình chiếu): {fn_cp_card}")
+
+    # 6. Sinh Banner 4-trong-1
+    print("\n[6/7] Đang ghép Banner dải ngang 4-trong-1 (Slide-ready)...")
     banner_img = generate_4_in_1_banner(judge_qrs_for_banner)
     banner_path = os.path.join(OUTPUT_DIR, "banner_4_giam_khao_canva_slide.png")
     banner_img.save(banner_path)
     print(f"      ✅ Đã lưu: banner_4_giam_khao_canva_slide.png (1920x720)")
     
-    # 6. Sinh file index.html để xem và click test trực tiếp
-    print("\n[6/6] Đang sinh trang web kiểm thử trực quan index.html...")
+    # 7. Sinh file index.html để xem và click test trực tiếp
+    print("\n[7/7] Đang sinh trang web kiểm thử trực quan index.html...")
     generate_html_hub(OUTPUT_DIR)
     print("      ✅ Đã lưu: index.html")
     
-    # 7. Sinh file README hướng dẫn sử dụng
+    # 8. Sinh file README hướng dẫn sử dụng
     generate_readme(OUTPUT_DIR)
     print("      ✅ Đã lưu: HUONG_DAN_SU_DUNG.md")
     
@@ -484,9 +645,73 @@ def generate_html_hub(output_dir):
             </div>
         </div>
 
-        <!-- 4 Cards Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {cards_html}
+        <!-- 4 Cards Grid (Phụ huynh / Giám khảo) -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-orange-500"></span> 4 Tài Khoản Phụ Huynh (Ban Giám Khảo)
+                </h2>
+                <span class="text-xs text-slate-500">Đăng nhập vào /parent/</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {cards_html}
+            </div>
+        </div>
+
+        <!-- CarePartner Section (Người chăm sóc) -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span> 1 Tài Khoản Người Chăm Sóc (CarePartner)
+                </h2>
+                <span class="text-xs text-slate-500">Đăng nhập vào /worker/ (Bảng tin tìm việc)</span>
+            </div>
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-sm">
+                <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+                    <div class="space-y-3 max-w-xl text-left">
+                        <span class="inline-block px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-bold uppercase tracking-wider">
+                            CarePartner Tiêu Biểu
+                        </span>
+                        <h3 class="text-2xl font-extrabold text-emerald-950">
+                            Nguyễn Minh Anh — ĐH Sư Phạm Huế
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            Quét mã này để trải nghiệm vai trò <strong>Người chăm sóc (CarePartner)</strong>. Sau khi quét, hệ thống tự động đăng nhập thẳng vào <strong>Bảng tin việc làm (/worker/)</strong> với 50+ công việc mẫu, xem ca làm việc, lịch rảnh và theo dõi thu nhập.
+                        </p>
+                        <div class="flex flex-wrap gap-2 text-xs pt-1">
+                            <span class="px-3 py-1 bg-white rounded-lg border border-emerald-200 text-emerald-800 font-semibold shadow-xs">🎓 ĐH Sư Phạm — ĐH Huế</span>
+                            <span class="px-3 py-1 bg-white rounded-lg border border-emerald-200 text-amber-700 font-semibold shadow-xs">⭐ 5.0 ★ (18 việc hoàn thành)</span>
+                            <span class="px-3 py-1 bg-white rounded-lg border border-emerald-200 text-emerald-800 font-semibold shadow-xs">📜 IELTS 7.5 • Sơ cấp cứu Nhi khoa</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row items-center gap-5 bg-white p-5 rounded-2xl border border-emerald-200 shadow-md">
+                        <div class="p-2 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50">
+                            <img src="05_qr_carepartner_sinhvien_test_green.png" alt="CarePartner QR" class="w-44 h-44 object-contain rounded-lg">
+                        </div>
+                        <div class="space-y-2.5 text-center sm:text-left min-w-[210px]">
+                            <div class="bg-slate-50 p-2.5 rounded-lg text-xs space-y-1 font-mono">
+                                <div>User: <strong class="text-emerald-700 font-bold">sinhvien_test</strong></div>
+                                <div>Pass: <strong class="text-slate-700 font-bold">{TEST_PASSWORD}</strong></div>
+                            </div>
+                            <a href="{BASE_URL}/login/?u={CAREPARTNER['username']}&p={TEST_PASSWORD}&auto=1" target="_blank" class="block w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl text-center shadow-md transition-colors">
+                                🚀 Mở thử CarePartner (Auto-login)
+                            </a>
+                            <div class="grid grid-cols-2 gap-1.5 text-xs">
+                                <a href="05_qr_carepartner_sinhvien_test_green_transparent.png" download class="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-center font-medium border border-emerald-200 text-[11px]">
+                                    📥 QR Xanh Canva
+                                </a>
+                                <a href="05_qr_carepartner_sinhvien_test_orange_transparent.png" download class="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-center font-medium border border-amber-200 text-[11px]">
+                                    📥 QR Cam Canva
+                                </a>
+                            </div>
+                            <a href="the_carepartner_05_sinhvien_test.png" download class="block py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-center font-medium border border-slate-300 text-[11px]">
+                                🪪 Tải Thẻ CarePartner In Ấn
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Note & Guide -->
@@ -513,53 +738,69 @@ def generate_html_hub(output_dir):
 
 
 def generate_readme(output_dir):
-    md = f"""# Bộ 4 Mã QR Đăng Nhập Phụ Huynh Cho Ban Giám Khảo
+    md = f"""# Bộ Mã QR Đăng Nhập Tự Động Cho Ban Giám Khảo & CarePartner
 
 Thư mục này chứa toàn bộ các mã QR tự động đăng nhập dành cho Ban Giám khảo chấm thi pitching sản phẩm **EduCareLink**.
 
 ---
 
-## 1. Danh sách 4 Tài khoản Giám khảo
+## 1. Danh sách 4 Tài khoản Phụ huynh (Ban Giám khảo)
 
-| STT | Tên hiển thị | Username | Mật khẩu dự phòng | Số dư ví Credit | Địa chỉ tại Huế |
-|---|---|---|---|---|---|
-| **1** | Ban Giám Khảo #1 | `phuhuynh_baolinh` | `Demo@2026` | 1.800.000đ | KĐT An Cựu City |
-| **2** | Ban Giám Khảo #2 | `phuhuynh_minhkhoi` | `Demo@2026` | 3.200.000đ | Vincom Plaza Huế |
-| **3** | Ban Giám Khảo #3 | `phuhuynh_yenchi` | `Demo@2026` | 1.500.000đ | 15 Lê Lợi |
-| **4** | Ban Giám Khảo #4 | `phuhuynh_congvinh` | `Demo@2026` | 900.000đ | CC Xuân Phú |
+| STT | Vị trí Giám khảo | Họ và tên | Username | Mật khẩu dự phòng | Số dư ví Credit | Địa chỉ tại Huế |
+|:---:|---|---|---|:---:|:---:|---|
+| **1** | Ban Giám Khảo #1 | Phạm Bảo Lĩnh | `phuhuynh_baolinh` | `{TEST_PASSWORD}` | **1.800.000 VNĐ** | KĐT An Cựu City, P. An Đông |
+| **2** | Ban Giám Khảo #2 | Đặng Minh Khôi | `phuhuynh_minhkhoi` | `{TEST_PASSWORD}` | **3.200.000 VNĐ** | Vincom Plaza, 50A Hùng Vương |
+| **3** | Ban Giám Khảo #3 | Hồ Yến Chi | `phuhuynh_yenchi` | `{TEST_PASSWORD}` | **1.500.000 VNĐ** | 15 Lê Lợi, P. Vĩnh Ninh |
+| **4** | Ban Giám Khảo #4 | Trương Công Vinh | `phuhuynh_congvinh` | `{TEST_PASSWORD}` | **900.000 VNĐ** | Chung cư Xuân Phú, P. Xuân Phú |
+
+> Khi quét, hệ thống tự động đăng nhập và chuyển thẳng vào **Trang chủ Phụ huynh (`/parent/`)**.
 
 ---
 
-## 2. Các file ảnh trong thư mục
+## 2. Tài khoản Người chăm sóc (CarePartner)
 
-### 🎨 Dành cho Canva Slide (Thay thế mã QR trên Slide 4):
-- **`banner_4_giam_khao_canva_slide.png`**: Dải ngang 1920x720 chứa cả 4 mã QR kèm nhãn, kéo thả 1 lần vào Canva là xong.
-- **Mã QR đơn lẻ nền trong suốt (Khuyên dùng)**:
-  - `01_qr_giám_khảo_1_phuhuynh_baolinh_orange_transparent.png`
-  - `02_qr_giám_khảo_2_phuhuynh_minhkhoi_orange_transparent.png`
-  - `03_qr_giám_khảo_3_phuhuynh_yenchi_orange_transparent.png`
-  - `04_qr_giám_khảo_4_phuhuynh_congvinh_orange_transparent.png`
-- **Mã QR đơn lẻ nền trắng**:
+| STT | Vai trò | Họ và tên | Username | Mật khẩu dự phòng | Đánh giá | Trình độ & Bằng cấp |
+|:---:|---|---|---|:---:|:---:|---|
+| **5** | **CarePartner Tiêu Biểu** | Nguyễn Minh Anh | `sinhvien_test` | `{TEST_PASSWORD}` | **5.0 ★ (18 việc)** | ĐH Sư Phạm Huế, IELTS 7.5, Sơ cấp cứu Nhi |
+
+> Khi quét, hệ thống tự động đăng nhập và chuyển thẳng vào **Bảng tin việc làm CarePartner (`/worker/`)** với 50+ công việc mẫu, ca làm việc và theo dõi thu nhập.
+
+---
+
+## 3. Danh mục file ảnh trong thư mục
+
+### 🎨 Dành cho Slide Canva (Thay thế mã QR trên Slide 4):
+- **`banner_4_giam_khao_canva_slide.png`**: Dải banner ngang 1920x720 chứa cả 4 mã Giám khảo cạnh nhau, kéo thả 1 lần vào Canva là xong.
+- **Mã QR Phụ huynh đơn lẻ nền trong suốt (Khuyên dùng)**:
+  - `01_qr_giam_khao_1_phuhuynh_baolinh_orange_transparent.png`
+  - `02_qr_giam_khao_2_phuhuynh_minhkhoi_orange_transparent.png`
+  - `03_qr_giam_khao_3_phuhuynh_yenchi_orange_transparent.png`
+  - `04_qr_giam_khao_4_phuhuynh_congvinh_orange_transparent.png`
+- **Mã QR CarePartner (Người chăm sóc)**:
+  - `05_qr_carepartner_sinhvien_test_green_transparent.png` (Xanh ngọc thương hiệu CarePartner)
+  - `05_qr_carepartner_sinhvien_test_orange_transparent.png` (Màu cam đồng bộ slide Canva)
+  - `05_qr_carepartner_sinhvien_test_green.png` / `_black.png`
+- **Mã QR Phụ huynh nền trắng & đen trắng**:
   - `01_..._orange.png` đến `04_..._orange.png`
-- **Mã QR đen trắng kinh điển** (Độ tương phản cao nhất cho máy chiếu tối):
   - `01_..._black.png` đến `04_..._black.png`
 
-### 🪪 Dành cho In ấn / Đặt bàn Ban Giám khảo:
+### 🪪 Dành cho In ấn / Đặt bàn Ban Giám khảo & Người trải nghiệm:
 - `the_giam_khao_01_phuhuynh_baolinh.png`
 - `the_giam_khao_02_phuhuynh_minhkhoi.png`
 - `the_giam_khao_03_phuhuynh_yenchi.png`
 - `the_giam_khao_04_phuhuynh_congvinh.png`
+- `the_carepartner_05_sinhvien_test.png` (Thẻ CarePartner sang trọng)
 
 ### 🌐 Trình xem và thử nghiệm:
 - **`index.html`**: Mở file này bằng trình duyệt Chrome/Edge trên máy tính để xem toàn bộ thẻ và click thử link đăng nhập tự động.
 
 ---
 
-## 3. Cách thay thế mã QR trên Canva:
+## 4. Cách thay thế mã QR trên Canva:
 1. Mở slide Canva pitching của bạn.
 2. Tại **Slide 4** ("QUÉT MÃ QR - TRẢI NGHIỆM SẢN PHẨM"), xoá mã QR cam hiện tại.
-3. Kéo thả file **`banner_4_giam_khao_canva_slide.png`** (nếu muốn cả 4 giám khảo cùng quét) hoặc 1 trong 4 file **`*_orange_transparent.png`** vào vị trí trung tâm.
-4. Điều chỉnh kích thước cho cân đối.
+3. Kéo thả file **`banner_4_giam_khao_canva_slide.png`** (nếu muốn cả 4 giám khảo cùng quét) hoặc file **`*_orange_transparent.png`** vào vị trí trung tâm.
+4. Nếu muốn demo cả vai trò CarePartner, có thể kéo thêm mã **`05_qr_carepartner_sinhvien_test_green_transparent.png`** sang cạnh hoặc trang demo riêng.
 """
     with open(os.path.join(output_dir, "HUONG_DAN_SU_DUNG.md"), "w", encoding="utf-8") as f:
         f.write(md)
