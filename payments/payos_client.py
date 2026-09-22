@@ -120,6 +120,14 @@ def create_payment_link(
             'amount': int(amount),
             'description': description,
         }
+        # VietQR gate: hạn QR + ảnh QR (base64 data URL) để frontend đếm
+        # ngược tới qr_expires_at và vẽ QR không cần mở checkout page.
+        expired_at = getattr(response, 'expired_at', None)
+        if expired_at:
+            result['expired_at'] = expired_at  # ISO string theo PayOS
+        qr_code = getattr(response, 'qr_code', None)
+        if qr_code:
+            result['qr_code'] = qr_code
         logger.info(f'[PayOS] Payment link created: order_code={order_code} amount={amount}')
         return result
 

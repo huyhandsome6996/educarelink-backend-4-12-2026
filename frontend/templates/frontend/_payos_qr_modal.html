@@ -1,0 +1,278 @@
+{% comment %}
+═══════════════════════════════════════════════════════════════════
+VIETQR GATE (feature/vietqr-payment-gate-booking)
+Modal chờ quét QR VietQR (PayOS) — dùng CHUNG cho web phụ huynh.
+
+Include vào template có sẵn apiFetch (JWT) của trang:
+  {% include 'frontend/_payos_qr_modal.html' %}
+
+API:
+  PayOSGate.start(taskId, opts)
+    → POST /api/payments/payos-setup/ (task đang 'pending_payment')
+    → hiện modal: ảnh QR (PayOS trả qr_code base64) hoặc link checkout,
+      đếm ngược tới qr_expires_at, polling GET /payments/<id>/status/ 4s.
+  PayOSGate.resume(paymentId, opts)
+    → mở lại modal cho payment đang 'pending' (phụ huynh đóng tab giữa
+      chừng — re-entry từ trang chi tiết việc).
+
+opts: { onSuccess(data), onCancelled(), autoReloadOnSuccess=false }
+Sự kiện backend:
+  - webhook PayOS PAID → payment 'held' + booking xác nhận (task in_progress)
+    → polling thấy status='held' → hiển thị THÀNH CÔNG.
+  - Huỷ/hết hạn (webhook CANCELLED/EXPIRED, cron expiry, phụ huynh bấm Huỷ)
+    → payment 'cancelled' + task 'open' → modal hiện "đã huỷ/hết hạn".
+═══════════════════════════════════════════════════════════════════
+{% endcomment %}
+<div id="payos-gate-overlay" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+  <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 relative">
+    <button id="payos-gate-close" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition" aria-label="Đóng">
+      <span class="material-symbols-outlined text-lg">close</span>
+    </button>
+
+    <!-- ── TRẠNG THÁI: CHỜ QUÉT ── -->
+    <div id="payos-gate-waiting">
+      <div class="w-12 h-12 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 mb-3">
+        <span class="material-symbols-outlined text-2xl">qr_code_2</span>
+      </div>
+      <h3 class="font-headline font-extrabold text-xl text-gray-900 pr-8">Quét mã để xác nhận đặt lịch</h3>
+      <p class="text-sm text-gray-600 mt-1.5 leading-relaxed">
+        Mở app ngân hàng → quét mã VietQR → chuyển khoản.
+        <b>Đặt lịch chỉ được xác nhận sau khi thanh toán thành công.</b>
+      </p>
+
+      <div class="mt-4 flex flex-col items-center gap-3">
+        <div class="w-56 h-56 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center overflow-hidden p-2">
+          <img id="payos-gate-qr-img" alt="Mã QR VietQR" class="w-full h-full object-contain hidden">
+          <div id="payos-gate-qr-fallback" class="text-center text-gray-400 px-3">
+            <span class="material-symbols-outlined text-6xl text-gray-300">qr_code</span>
+            <p class="text-xs mt-2">QR hiển thị trên trang thanh toán PayOS — bấm nút bên dưới để mở</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+          <span class="material-symbols-outlined text-red-500 text-lg">timer</span>
+          <span id="payos-gate-countdown" class="font-extrabold text-xl text-red-600 tabular-nums tracking-wider">--:--</span>
+          <span class="text-xs text-gray-500 font-medium">còn lại để giữ chỗ</span>
+        </div>
+        <a id="payos-gate-checkout-link" href="#" target="_blank" rel="noopener"
+           class="hidden text-sm font-bold text-blue-600 hover:text-blue-700 underline underline-offset-2">
+          Mở trang thanh toán PayOS →
+        </a>
+      </div>
+    </div>
+
+    <!-- ── TRẠNG THÁI: THÀNH CÔNG ── -->
+    <div id="payos-gate-success" class="hidden text-center py-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
+        <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+      </div>
+      <h3 class="font-headline font-extrabold text-xl text-gray-900">Đặt lịch thành công!</h3>
+      <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+        Thanh toán đã được ghi nhận. CarePartner đã được xác nhận nhận việc —
+        tiền đang được <b>GIỮ an toàn</b> đến khi công việc hoàn thành.
+      </p>
+    </div>
+
+    <!-- ── TRẠNG THÁI: HẾT HẠN / ĐÃ HUỶ ── -->
+    <div id="payos-gate-expired" class="hidden text-center py-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-4">
+        <span class="material-symbols-outlined text-4xl">hourglass_top</span>
+      </div>
+      <h3 class="font-headline font-extrabold text-xl text-gray-900">Mã QR đã hết hiệu lực</h3>
+      <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+        Lựa chọn chưa được thanh toán nên <b>chưa giữ chỗ</b>.
+        Bạn có thể tạo lại mã QR hoặc chọn CarePartner khác.
+      </p>
+    </div>
+
+    <!-- ── FOOTER ── -->
+    <div id="payos-gate-footer" class="mt-5 space-y-2.5">
+      <p id="payos-gate-polling" class="text-xs text-gray-400 text-center flex items-center justify-center gap-1.5">
+        <span class="inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin"></span>
+        Đang chờ thanh toán… kiểm tra tự động mỗi 4 giây
+      </p>
+      <button id="payos-gate-recreate" class="hidden w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-xl shadow-md shadow-orange-500/20 transition">
+        Tạo lại mã QR
+      </button>
+      <button id="payos-gate-cancel" class="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-xl transition">
+        Huỷ lựa chọn — chọn CarePartner khác
+      </button>
+      <button id="payos-gate-done" class="hidden w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-500/20 transition">
+        Hoàn tất
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  if (window.PayOSGate) return; // chống include trùng
+
+  const API = (window.API_BASE || '/api').replace(/\/$/, '');
+  function _fetch(url, opts) {
+    if (typeof apiFetch === 'function') return apiFetch(url, opts);
+    return fetch(url, opts);
+  }
+  const $ = (id) => document.getElementById(id);
+  let timer = null, poll = null, settled = false, current = {};
+
+  function fmt(seconds) {
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function show(section) {
+    ['waiting', 'success', 'expired'].forEach((k) =>
+      $('payos-gate-' + k).classList.toggle('hidden', k !== section));
+  }
+
+  function stopLoops() {
+    clearInterval(timer); clearInterval(poll); timer = null; poll = null;
+  }
+
+  function startCountdown(expiresMs) {
+    clearInterval(timer);
+    const tick = () => {
+      const left = Math.max(0, Math.floor((expiresMs - Date.now()) / 1000));
+      $('payos-gate-countdown').textContent = fmt(left);
+      if (left <= 0 && !settled) {
+        settled = true;
+        stopLoops();
+        show('expired');
+        $('payos-gate-polling').classList.add('hidden');
+        $('payos-gate-recreate').classList.remove('hidden');
+        $('payos-gate-cancel').classList.remove('hidden');
+      }
+    };
+    tick();
+    timer = setInterval(tick, 1000);
+  }
+
+  function startPolling(paymentId) {
+    clearInterval(poll);
+    poll = setInterval(async () => {
+      if (settled) return;
+      try {
+        const resp = await _fetch(API + '/payments/' + paymentId + '/status/');
+        if (!resp || !resp.ok) return;
+        const d = await resp.json();
+        if (settled) return;
+        if (d.status === 'held') {
+          settled = true;
+          stopLoops();
+          show('success');
+          $('payos-gate-polling').classList.add('hidden');
+          $('payos-gate-recreate').classList.add('hidden');
+          $('payos-gate-cancel').classList.add('hidden');
+          $('payos-gate-done').classList.remove('hidden');
+          if (typeof current.opts?.onSuccess === 'function') current.opts.onSuccess(d);
+          if (current.opts?.autoReloadOnSuccess) setTimeout(() => location.reload(), 2200);
+        } else if (d.task_status === 'open' || d.status === 'cancelled') {
+          settled = true;
+          stopLoops();
+          show('expired');
+          $('payos-gate-polling').classList.add('hidden');
+          $('payos-gate-recreate').classList.remove('hidden');
+          $('payos-gate-cancel').classList.remove('hidden');
+        }
+      } catch (e) { /* bỏ qua nhịp lỗi — nhịp sau thử lại */ }
+    }, 4000);
+  }
+
+  function renderPayment(pay, opts) {
+    current = { paymentId: pay.payment_id || pay.id, taskId: pay.task_id || pay.task, opts: opts || {} };
+    settled = false;
+    show('waiting');
+    $('payos-gate-footer').classList.remove('hidden');
+    $('payos-gate-polling').classList.remove('hidden');
+    $('payos-gate-recreate').classList.add('hidden');
+    $('payos-gate-cancel').classList.remove('hidden');
+    $('payos-gate-done').classList.add('hidden');
+
+    const img = $('payos-gate-qr-img'), fallback = $('payos-gate-qr-fallback');
+    const link = $('payos-gate-checkout-link');
+    if (pay.qr_code) {
+      img.src = pay.qr_code;
+      img.classList.remove('hidden');
+      fallback.classList.add('hidden');
+    } else {
+      img.classList.add('hidden');
+      fallback.classList.remove('hidden');
+    }
+    if (pay.checkout_url) {
+      link.href = pay.checkout_url;
+      link.classList.remove('hidden');
+    } else {
+      link.classList.add('hidden');
+    }
+    const expires = pay.qr_expires_at ? Date.parse(
+      /[Z+]/.test(pay.qr_expires_at) ? pay.qr_expires_at : pay.qr_expires_at + 'Z') : null;
+    startCountdown(expires || Date.now() + 15 * 60 * 1000);
+    if (current.paymentId) startPolling(current.paymentId);
+    $('payos-gate-overlay').classList.remove('hidden');
+  }
+
+  window.PayOSGate = {
+    /** Phụ huynh vừa chọn CarePartner → tạo QR + hiện modal */
+    async start(taskId, opts) {
+      try {
+        const resp = await _fetch(API + '/payments/payos-setup/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          alert(data.error || data.detail || 'Không tạo được mã QR. Vui lòng thử lại.');
+          return;
+        }
+        renderPayment(data, opts);
+      } catch (e) {
+        console.warn('PayOSGate.start', e);
+        alert('Lỗi kết nối khi tạo mã QR. Vui lòng thử lại.');
+      }
+    },
+    /** Re-entry: mở lại modal cho payment 'pending' đã tồn tại */
+    resume(paymentId, taskId, opts) {
+      renderPayment({ payment_id: paymentId, task_id: taskId, qr_code: null,
+                      checkout_url: null, qr_expires_at: null }, opts);
+    },
+    close() {
+      $('payos-gate-overlay').classList.add('hidden');
+      stopLoops();
+    },
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    $('payos-gate-close').addEventListener('click', () => window.PayOSGate.close());
+    $('payos-gate-done').addEventListener('click', () => {
+      window.PayOSGate.close();
+      if (typeof current.opts?.onSuccess === 'function') current.opts.onSuccess({});
+    });
+    $('payos-gate-cancel').addEventListener('click', async () => {
+      if (!current.paymentId) return;
+      if (!window.confirm('Huỷ lựa chọn này? CarePartner sẽ KHÔNG còn được đặt, bạn có thể chọn người khác.')) return;
+      try {
+        const resp = await _fetch(API + '/payments/' + current.paymentId + '/cancel-selection/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          alert(data.error || 'Không huỷ được lựa chọn.');
+          return;
+        }
+        window.PayOSGate.close();
+        if (typeof current.opts?.onCancelled === 'function') current.opts.onCancelled(data);
+      } catch (e) {
+        alert('Lỗi kết nối khi huỷ lựa chọn.');
+      }
+    });
+    $('payos-gate-recreate').addEventListener('click', async () => {
+      if (!current.taskId) return;
+      await window.PayOSGate.start(current.taskId, current.opts);
+    });
+  });
+})();
+</script>

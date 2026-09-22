@@ -15,6 +15,8 @@ from .views import (
     PayOSSetupAPIView, PayOSWebhookAPIView,
     PayOSReturnAPIView, PayOSCancelAPIView,
     PayOSConfirmWebhookAPIView,
+    # VietQR gate — polling + huỷ lựa chọn thủ công
+    PaymentStatusAPIView, CancelSelectionAPIView,
 )
 
 urlpatterns = [
@@ -24,6 +26,8 @@ urlpatterns = [
     # Parent
     path('payments/setup/', SetupPaymentAPIView.as_view(), name='payment-setup'),
     path('payments/<int:pk>/', PaymentDetailAPIView.as_view(), name='payment-detail'),
+    path('payments/<int:pk>/status/', PaymentStatusAPIView.as_view(), name='payment-status'),
+    path('payments/<int:pk>/cancel-selection/', CancelSelectionAPIView.as_view(), name='payment-cancel-selection'),
     path('payments/my/', MyPaymentsAPIView.as_view(), name='my-payments'),
 
     # Worker

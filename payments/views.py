@@ -53,6 +53,11 @@ from .services import (
     _generate_settlement_qr,
 )
 from .momo_client import is_configured, is_sandbox
+# PayOS — import cấp module để test có thể mock (unittest.mock.patch)
+from .payos_client import (
+    create_payment_link, verify_webhook, cancel_payment_link,
+    is_payos_enabled, confirm_webhook,
+)
 
 logger = logging.getLogger('educarelink.payments.api')
 
@@ -423,7 +428,6 @@ class PaymentHealthCheckAPIView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        from .payos_client import is_payos_enabled
         return Response({
             'momo_configured': is_configured(),
             'momo_sandbox': is_sandbox(),
@@ -441,8 +445,11 @@ class PayOSSetupAPIView(APIView):
     POST /api/payments/payos-setup/
     Body: { task_id }
 
-    Tạo PayOS payment link cho task — phụ huynh quét QR VietQR để chuyển khoản.
-    Tiền được giữ trong tài khoản PayOS (escrow) cho đến khi task hoàn thành.
+    ── VIETQR GATE (feature/vietqr-payment-gate-booking) ──
+    Được gọi NGAY SAU khi phụ huynh chọn CarePartner (task đang
+    'pending_payment'). Tạo PayOS payment link → phụ huynh quét QR VietQR.
+    CHỈ SAU webhook PAID, booking mới được xác nhận
+    (application accepted + task in_progress).
 
     Returns:
         {
@@ -450,13 +457,15 @@ class PayOSSetupAPIView(APIView):
             "payment_link_id": "...",
             "order_code": 12345,
             "amount": 200000,
-            "qr_code_url": "..."
+            "qr_code": "data:image/png;base64,...",   # nếu PayOS trả về
+            "qr_expires_at": "2026-09-17T10:45:00Z",  # hạn QR để đếm ngược
+            "payment_id": 7
         }
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from .payos_client import create_payment_link, is_payos_enabled
+        from django.utils.dateparse import parse_datetime
 
         if not is_payos_enabled():
             return Response({
@@ -479,16 +488,28 @@ class PayOSSetupAPIView(APIView):
             return Response({'error': 'Bạn không sở hữu công việc này.'},
                             status=status.HTTP_403_FORBIDDEN)
 
-        if task.status != 'in_progress':
-            return Response({'error': 'Công việc phải đang ở trạng thái "Đang làm" để thanh toán.'},
+        # ── VietQR gate: chỉ tạo QR khi phụ huynh VỪA chọn CarePartner ──
+        # (trước đây điều kiện là task 'in_progress' — luồng sau-chọn.)
+        if task.status != 'pending_payment':
+            return Response({'error': 'Công việc chưa ở trạng thái chờ thanh toán.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Tạo hoặc update Payment record
+        # CarePartner đang chờ thanh toán (payment_pending) — KHÔNG còn lấy
+        # từ 'accepted' vì 'accepted' chỉ được set sau khi webhook PAID.
+        pending_app = task.applications.filter(status='payment_pending').first()
+        if not pending_app:
+            return Response({'error': 'Không tìm thấy CarePartner đang chờ thanh toán cho công việc này.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Tạo hoặc update Payment record.
+        # get_or_create: payment có thể đã tồn tại ở lần chọn TRƯỚC bị huỷ
+        # (rollback → status='cancelled') — phải reset về 'pending' + gán lại
+        # worker là CarePartner vừa được chọn lần này.
         payment, created = Payment.objects.get_or_create(
             task=task,
             defaults={
                 'parent': task.parent,
-                'worker': task.applications.filter(status='accepted').first().worker if task.applications.filter(status='accepted').exists() else None,
+                'worker': pending_app.worker,
                 'amount': task.price,
                 'method': 'payos',
                 'status': 'pending',
@@ -519,12 +540,22 @@ class PayOSSetupAPIView(APIView):
                 'error': 'Không thể tạo payment link PayOS. Vui lòng thử lại hoặc dùng MoMo.',
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Update payment record
+        # Update payment record — reset trạng thái để lần chọn mới sạch sẽ
         payment.method = 'payos'
+        payment.status = 'pending'
+        payment.worker = pending_app.worker
+        payment.amount = task.price
         payment.payos_order_code = result['order_code']
         payment.payos_checkout_url = result['checkout_url']
         payment.payos_payment_link_id = result.get('payment_link_id')
         payment.payos_status = 'PENDING'
+        payment.payos_expires_at = parse_datetime(result['expired_at']) if result.get('expired_at') else None
+        if payment.payos_expires_at is None:
+            # PayOS không trả hạn → fallback N phút (settings) để cron expiry
+            # biết thời điểm rollback, tránh task kẹt ở 'pending_payment'.
+            from datetime import timedelta as _timedelta
+            payment.payos_expires_at = timezone.now() + _timedelta(
+                minutes=int(getattr(settings, 'PAYOS_SELECTION_TIMEOUT_MINUTES', 15)))
         payment.save()
 
         # Log
@@ -532,11 +563,11 @@ class PayOSSetupAPIView(APIView):
             payment=payment,
             event_type='payos_link_created',
             message=f'PayOS payment link created: order_code={result["order_code"]}',
-            payload=result,
+            payload={k: v for k, v in result.items() if k != 'qr_code'},
             actor=request.user,
         )
 
-        return Response({
+        response_data = {
             'checkout_url': result['checkout_url'],
             'payment_link_id': result.get('payment_link_id'),
             'order_code': result['order_code'],
@@ -544,16 +575,31 @@ class PayOSSetupAPIView(APIView):
             'description': description,
             'payment_id': payment.id,
             'status': 'pending',
-        }, status=status.HTTP_200_OK)
+            # Hạn QR để frontend đếm ngược (ISO 8601) — null nếu PayOS không trả
+            'qr_expires_at': result.get('expired_at'),
+        }
+        if result.get('qr_code'):
+            response_data['qr_code'] = result['qr_code']
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class PayOSWebhookAPIView(APIView):
     """
     POST /api/payments/payos-webhook/
 
+    ── VIETQR GATE ──
     PayOS gọi webhook này khi:
-    - Parent chuyển khoản thành công → status=PAID → escrow
-    - Parent hủy → status=CANCELLED
+    - Parent chuyển khoản thành công → status=PAID:
+        1. payment → 'held' (escrow) — như cũ
+        2. (MỚI) xác nhận đặt lịch: application 'payment_pending' → 'accepted',
+           task 'pending_payment' → 'in_progress', reject các application khác,
+           gửi notification "🎉 Chúc mừng bạn!" cho CarePartner
+           (payments.services.confirm_booking_after_payment)
+        3. (BẢO MẬT) số tiền webhook KHÁCH payment.amount → KHÔNG set 'held',
+           KHÔNG xác nhận đặt lịch — ghi log 'payos_amount_mismatch' để admin soát.
+    - Parent huỷ / link hết hạn → status=CANCELLED/EXPIRED:
+        rollback application → 'pending', task → 'open'
+        (payments.services.rollback_pending_selection)
 
     ⚠️ Endpoint này KHÔNG cần auth (PayOS gọi server-to-server).
     """
@@ -561,7 +607,7 @@ class PayOSWebhookAPIView(APIView):
     authentication_classes = []
 
     def post(self, request):
-        from .payos_client import verify_webhook
+        from .services import confirm_booking_after_payment, rollback_pending_selection
 
         webhook_body = request.data if isinstance(request.data, dict) else {}
 
@@ -587,6 +633,29 @@ class PayOSWebhookAPIView(APIView):
             logger.warning(f'[PayOS Webhook] Payment not found for order_code={order_code}')
             return Response({'error': 'Payment not found'},
                             status=status.HTTP_404_NOT_FOUND)
+
+        # ── BẢO MẬT (test #6): số tiền phải khớp payment.amount ──
+        # Tránh kịch bản webhook giả/mất đồng bộ xác nhận booking với số tiền
+        # thực nhận. Chỉ so khi cả 2 bên đều có số tiền hợp lệ.
+        try:
+            webhook_amount = int(amount) if amount is not None else None
+        except (TypeError, ValueError):
+            webhook_amount = None
+        if webhook_amount is not None and int(payment.amount) != webhook_amount:
+            payment.payos_status = payos_status  # ghi nhận để admin soát
+            payment.save(update_fields=['payos_status'])
+            PaymentLog.objects.create(
+                payment=payment,
+                event_type='payos_amount_mismatch',
+                message=(f'PayOS webhook amount={webhook_amount} VNĐ KHÁCH với '
+                         f'payment.amount={int(payment.amount)} VNĐ — KHÔNG xác nhận '
+                         f'escrow/đặt lịch.'),
+                payload=result,
+            )
+            logger.warning(f'[PayOS Webhook] Amount mismatch order_code={order_code}: '
+                           f'webhook={webhook_amount} vs payment={payment.amount}')
+            return Response({'error': 'Amount mismatch'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # Update payment status
         payment.payos_status = payos_status
@@ -638,16 +707,32 @@ class PayOSWebhookAPIView(APIView):
             except Exception as e:
                 logger.warning(f'[PayOS Webhook] Notify failed: {e}')
 
-        elif payos_status == 'CANCELLED':
-            payment.status = 'cancelled'
-            PaymentLog.objects.create(
-                payment=payment,
-                event_type='payos_payment_cancelled',
-                message='Parent cancelled PayOS payment',
-                payload=result,
-            )
+            payment.save()
 
-        payment.save()
+            # ── VIETQR GATE: xác nhận đặt lịch SAU khi escrow xong ──
+            # application accepted + task in_progress + reject others +
+            # notification "🎉 Chúc mừng bạn!" — transaction + select_for_update.
+            try:
+                confirm_booking_after_payment(payment, source='webhook')
+            except Exception as e:
+                # Escrow đã 'held' — confirm lỗi (hiếm) KHÔNG được làm mất tiền:
+                # log nghiêm trọng để admin soi, trả 200 để PayOS ngừng retry
+                # (confirm là idempotent — có thể chạy lại thủ công).
+                logger.exception(
+                    f'[PayOS Webhook] confirm_booking_after_payment thất bại '
+                    f'payment#{payment.id} task#{payment.task_id}: {e}')
+        else:
+            payment.save()
+            if payos_status in ('CANCELLED', 'EXPIRED'):
+                # ── VIETQR GATE: rollback lựa chọn chưa thanh toán ──
+                # application → 'pending', task → 'open' (để chọn người khác).
+                # rollback_pending_selection đã ghi PaymentLog tương ứng.
+                rollback_pending_selection(
+                    payment,
+                    event_type='payos_payment_cancelled' if payos_status == 'CANCELLED'
+                               else 'vietqr_selection_expired',
+                    message=f'PayOS webhook {payos_status} — rollback về open/pending',
+                )
 
         logger.info(f'[PayOS Webhook] Processed: order_code={order_code} status={payos_status}')
         return Response({'status': 'ok'}, status=status.HTTP_200_OK)
@@ -682,6 +767,90 @@ class PayOSCancelAPIView(APIView):
         )
 
 
+class PaymentStatusAPIView(APIView):
+    """
+    GET /api/payments/<id>/status/
+
+    Endpoint nhẹ cho frontend POLLING trong màn hình QR VietQR
+    (mobile PaymentQRScreen & web modal trả về 3 field thay vì full record).
+    Parent sở hữu payment / worker được chọn / admin mới được xem.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            payment = Payment.objects.select_related('task').get(pk=pk)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Không tìm thấy Payment.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        allowed = (user.is_superuser
+                   or payment.parent_id == user.id
+                   or payment.worker_id == user.id)
+        if not allowed:
+            return Response({'error': 'Bạn không có quyền xem payment này.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        return Response({
+            'payment_id': payment.id,
+            'task_id': payment.task_id,
+            'status': payment.status,
+            'payos_status': payment.payos_status,
+            'task_status': payment.task.status,
+            'checkout_url': payment.payos_checkout_url,
+            'qr_expires_at': payment.payos_expires_at.isoformat() if payment.payos_expires_at else None,
+        })
+
+
+class CancelSelectionAPIView(APIView):
+    """
+    POST /api/payments/<id>/cancel-selection/
+
+    ── VIETQR GATE ──
+    Phụ huynh bấm "Huỷ" khi đang xem QR VietQR: huỷ payment đang 'pending' +
+    rollback lựa chọn (application 'payment_pending' → 'pending', task
+    'pending_payment' → 'open') + gọi PayOS API huỷ payment link nếu có.
+    Chỉ parent CHỦ SỞ HỮU payment mới được huỷ, và chỉ khi chưa thanh toán.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        from .services import rollback_pending_selection
+
+        try:
+            payment = Payment.objects.select_related('task').get(pk=pk)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Không tìm thấy Payment.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if payment.parent_id != request.user.id and not request.user.is_superuser:
+            return Response({'error': 'Chỉ phụ huynh sở hữu payment mới được huỷ.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if payment.status != 'pending':
+            return Response({'error': f'Payment đang ở trạng thái "{payment.status}" — không thể huỷ lựa chọn.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Huỷ payment link phía PayOS (best-effort — link hết hạn cũng không sao)
+        if payment.payos_order_code:
+            cancel_payment_link(payment.payos_order_code,
+                                'Phụ huynh huỷ chọn CarePartner trước khi thanh toán')
+
+        changed = rollback_pending_selection(
+            payment,
+            event_type='selection_cancelled',
+            message=f'Parent#{request.user.id} huỷ chọn CarePartner khi đang xem QR — task#{payment.task_id} về open',
+            actor=request.user,
+        )
+        return Response({
+            'message': ('Đã huỷ lựa chọn. Bạn có thể chọn CarePartner khác.' if changed
+                        else 'Lựa chọn đã được huỷ trước đó.'),
+            'task_id': payment.task_id,
+            'task_status': payment.task.status,
+        })
+
+
 class PayOSConfirmWebhookAPIView(APIView):
     """
     POST /api/payments/payos-confirm-webhook/
@@ -690,7 +859,6 @@ class PayOSConfirmWebhookAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        from .payos_client import confirm_webhook, is_payos_enabled
         webhook_url = request.data.get('webhook_url') or getattr(settings, 'PAYOS_WEBHOOK_URL', '')
 
         if not webhook_url:

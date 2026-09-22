@@ -210,6 +210,41 @@ services:
 
 
   # ═══════════════════════════════════════════════════════════════════
+  # VIETQR GATE — expire lựa chọn CarePartner chưa thanh toán
+  # ═══════════════════════════════════════════════════════════════════
+  # Phụ huynh chọn CarePartner → task 'pending_payment' chờ QR VietQR
+  # (PayOS). Nếu 15 phút (PAYOS_SELECTION_TIMEOUT_MINUTES) không PAID,
+  # cron này rollback: payment → cancelled, application → pending,
+  # task → open để phụ huynh chọn người khác. Chạy mỗi 5 phút.
+  # Copy env từ web service: SECRET_KEY, DATABASE_URL (+ PAYOS_* nếu muốn
+  # huỷ luôn payment link phía PayOS khi expire).
+  - type: cron
+    name: educarelink-payos-expiry
+    env: python
+    schedule: "*/5 * * * *"   # mỗi 5 phút
+    buildCommand: "./build.sh"
+    startCommand: "python manage.py expire_stale_payment_selections"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: RENDER
+        value: "true"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PAYOS_CLIENT_ID
+        sync: false
+      - key: PAYOS_API_KEY
+        sync: false
+      - key: PAYOS_CHECKSUM_KEY
+        sync: false
+      - key: PAYOS_SELECTION_TIMEOUT_MINUTES
+        value: "15"
+
+  # ═══════════════════════════════════════════════════════════════════
   # Flow 1 — WEB ADMIN quản trị ghép cặp (Next.js 14 + TypeScript)
   # 7 trang: elo-bands, matching-weights, appeals, state-logs,
   # bookings, jobs + login. Xác thực SimpleJWT.

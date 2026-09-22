@@ -1,7 +1,146 @@
+### Vá vòng 2 QA review form đánh giá Care Diary — H1/L1/M1/M2/L2 + đồng bộ main (2026-09-19)
+- **Bối cảnh**: QA review vòng 2 (tip `c916136`) xác nhận branch sạch migration
+  (C1 chỉ là lệch môi trường review — worktree thiếu `0030`, còn local lẫn origin/main
+  đều có) và sẵn sàng merge, còn 1 lỗi thật **H1**: mobile + web chọn loại form đánh
+  giá theo `category_name` hiển thị — admin đổi tên (vd thêm "1 kèm 1 (cao cấp)") là
+  form âm thầm rơi về `general`, phụ huynh không thấy báo cáo. Kèm 4 điểm nhỏ
+  M1/M2/L1/L2. Làm đúng one-branch rule trên `feature/care-diary-assessment-forms`.
+- **H1 — Task API trả `category_code`**: `TaskSerializer` thêm
+  `category_code = CharField(source='category.code', allow_null=True, read_only=True)`
+  — `/api/tasks/<id>/` (endpoint `getTaskDetail` của mobile) giờ trả slug ổn định
+  `gia-su` / `trong-tre`. 2 test backend: có category → `gia-su`; task legacy không
+  category → `null` không crash.
+- **H1 — mobile**: `CareDiaryFormScreen` bỏ state `categoryName`, đọc
+  `category_code`; `effectiveAssessmentType` so khớp code (`'gia-su'`→tutoring,
+  `'trong-tre'`→childcare). 2 test mới: admin đổi tên "Gia sư 1 kèm 1 (cao cấp)"
+  vẫn chọn đúng form tutoring; backend cũ chỉ gửi name (không code) → an toàn rơi về
+  general, không đoán từ tên hiển thị.
+- **L1 — web**: `worker_care_diary_form.html` đổi `taskCategory` (name) →
+  `taskCategoryCode` đọc `category_code` từ cùng API, parity với mobile.
+- **M1 — docstring cảnh báo `bulk_create`**: `ServiceCategory` ghi rõ
+  `bulk_create()` bỏ qua `save()` tự sinh code → hàng loạt row code rỗng văng
+  IntegrityError ở unique constraint; ai cần bulk phải tự sinh code trước từng object.
+- **M2 — `updated_at` trong response**: `build_entry_response()` trả thêm
+  `updated_at` (ISO) để mobile/web hiển thị "Nhật ký cập nhật lần cuối lúc…";
+  contract test thêm `updated_at` vào `REQUIRED_TOP` + test PATCH làm mới timestamp.
+- **L2 — mobile hỏi xác nhận khi hạ cấp**: bắt đúng lỗi 400 chặn hạ cấp của backend
+  (`isDowngradeConfirmError` nhận diện shape `{'assessment_type': [...confirm_clear_assessment...]}`)
+  → dialog "Xác nhận xoá dữ liệu đánh giá" — "Giữ nguyên" là cancel thuần (không
+  onPress, không thể tự gửi lại), "Xoá & lưu" → gửi lại kèm
+  `confirm_clear_assessment=true`. Kèm `extractApiError()` gom mọi shape lỗi
+  field-level DRF → Alert hiện thông điệp thật thay vì lỗi chung chung.
+- **Đồng bộ main**: origin/main đã tiến 20 commits (`3648ecc..d080d7c` — Stitch web,
+  E2E sync, skill DSA...) — merge vào feature branch, resolve xung đột
+  `Nhat_Ky_Hoat_Dong.md` (giữ cả 2 mục nhật ký cùng ngày), `ParentHomeScreen.js`
+  tự merge sạch.
+- **Kiểm thử**: backend full suite **876/876 OK** (318s — gồm 3 test mới);
+  care_diary **75/75 PASS**; mobile jest **154/154 PASS** (20 suites — file
+  assessment test nâng lên 10 test: 3 payload mock `category_code`, 2 H1 rename,
+  3 L2 dialog, 2 helper).
+- **Phát hiện ngoài phạm vi (P1 cho main, không do nhánh này)**: full suite trên
+  merged tree 896 test còn 3 FAIL `frontend.tests` — chứng minh tồn tại sẵn trên
+  main sạch `d080d7c` (worktree riêng vẫn fail y hệt; file tests.py +
+  parent_tasks.html + parent_home.html byte-identical giữa 2 nhánh). Nguyên nhân:
+  commit `3d6610b` (Flow 1 matching web) đổi template không cập nhật test — mất
+  link `/parent/care-diary/?task_id=` trên trang chủ phụ huynh, đổi nút "Nhắn tin
+  với Carepartner", mất nút thanh toán. Cần quyết định riêng: khôi phục tính năng
+  hay cập nhật test theo Flow 1.
+
+### Vá 6 phát hiện QA review form đánh giá Care Diary (2026-09-18)
+- **Bối cảnh**: QA review độc lập branch `feature/care-diary-assessment-forms` (commit lõi
+  4f6651b) chấm 78/100 — merge được nhưng khuyến nghị vá C1 + H1 trước khi phát hành;
+  toàn bộ C1/H1/H2/M2/M1/M3 gộp 1 vòng PATCH trên cùng nhánh (one-branch rule).
+- **C1 (Critical) — race condition double-POST**: `WorkerCareDiaryAPIView.post()` có kẽ
+  TOCTOU giữa `exists()` và `create()` — 2 request đồng thời (double-tap, retry khi mạng
+  chập chờn, web + mobile cùng submit) có thể cùng vượt qua check rồi 1 request chạm
+  ràng buộc unique OneToOne → 500 IntegrityError. Đã bọc `transaction.atomic()` (except
+  nằm NGOÀI khối atomic — tránh TransactionManagementError trên Postgres), bắt
+  IntegrityError trả 400 thân thiện "Nhật ký... đã tồn tại. Dùng PATCH để sửa."
+  (hằng chung `DUPLICATE_DIARY_MSG`). Test: `test_concurrent_duplicate_post_returns_400_not_500`
+  (mock `QuerySet.exists` → False để ép đi vào nhánh IntegrityError thật của DB).
+- **H1 (High) — chặn mất dữ liệu âm thầm khi hạ cấp về general**: PATCH
+  `assessment_type=general` trước đây xóa sạch assessment_data (điểm tiếp thu, bữa ăn,
+  giấc ngủ...) không cảnh báo. Giờ `validate_assessment_data()` nhận thêm
+  `current_type/current_data/allow_clear` — hạ cấp khi entry đang có data chuyên sâu
+  bị chặn 400 với thông điệp tự giải thích, chỉ qua khi client gửi
+  `confirm_clear_assessment=true` (parse chấp nhận bool/'true'/'1'/'yes'). Nhân thể gom
+  parse/validate POST+PATCH về 1 helper chung `_parse_and_validate_assessment()`
+  (nợ kỹ thuật trùng lặp §7 review). 2 test: không confirm → 400 + data còn nguyên;
+  có confirm → 200 + data xóa chủ đích.
+- **H2 (High) — không còn xóa activities cũ khi PATCH entry chuyên sâu**: mobile
+  (CareDiaryFormScreen) + web (worker_care_diary_form.html) trước đây luôn gửi key
+  `activities` (mảng rỗng) kể cả khi form tutoring/childcare ẩn timeline — backend hiểu
+  là "xóa hết tạo lại". Giờ chỉ đưa `activities` vào payload khi form `general`
+  (conditional spread cả 2 nền tảng). 3 test Jest mới xác nhận payload
+  tutoring/childcare KHÔNG có key activities, general vẫn có.
+- **M2 (Medium) — trần kích thước assessment_data** (chặn phình DB/DoS nhẹ):
+  text mỗi trường ≤ 2000 ký tự (`MAX_TEXT_FIELD_LEN`), meals ≤ 20 (`MAX_MEALS`),
+  activities.list ≤ 30, chặn cả key tùy chỉnh lạ ngoài spec. Lỗi field-level đúng
+  contract: "Trường 'X' không được vượt quá 2000 ký tự." / "Không được vượt quá 20 bữa
+  ăn." 2 test (subject 2001 ký tự → 400, đúng trần 2000 → 201; 21 bữa → 400).
+- **M1 (Medium) — thoát khỏi coupling chuỗi tiếng Việt**: thêm
+  `ServiceCategory.code` (SlugField unique, blank, tự sinh khi save() bằng
+  `vn_slugify` — 'Gia sư'→'gia-su', 'Trông trẻ'→'trong-tre'). Migration
+  `core/0032_servicecategory_code` 3 bước an toàn production: AddField (chưa unique)
+  → RunPython backfill (tự chứa, không import models module; trùng slug gán -2/-3)
+  → AlterField unique. `care_diary` map `CATEGORY_ASSESSMENT_TYPES` theo code —
+  admin đổi tên hiển thị không còn làm tính năng âm thầm rơi về general.
+  Test đổi name giữ code → vẫn 201.
+- **M3 (Medium)**: `select_related('parent', 'category')` ở POST và
+  `'task', 'task__category'` ở PATCH — bỏ N+1 query khi validate assessment.
+- **N2 (nice-to-have)**: Django admin `CareDiaryEntry` hiển thị + lọc theo
+  `assessment_type` — QA/support tra cứu nhanh entry tutoring/childcare.
+  N1 (index assessment_type chưa dùng — giữ, dự kiến dùng cho dashboard thống kê),
+  N3 (score nhận int/string, chưa nới float), N4 (classwork_status tự do) —
+  ghi nhận theo dõi, chưa làm.
+- **Kiểm thử**: care_diary **72/72 PASS** (66 cũ + 6 mới); backend full suite
+  **873/873 PASS** (317s, migration data không phá app nào); mobile jest **99/99 PASS**
+  (Worker + core tests). `makemigrations --check` 0 pending; migrate thử trên db dev —
+  backfill đúng 3 category thật (gia-su / trong-tre / don-tre).
+
 ### Xác nhận kích hoạt hạn mức Render và đồng bộ kiểm thử production (2026-09-18)
 - **Cập nhật hạ tầng**: Tài khoản Render đã nâng cấp hạn mức compute plan thành công.
 - **Trạng thái hệ thống**: Bản build production `609439d` đã hoạt động ổn định 100%, khắc phục hoàn toàn lỗi hiển thị kích thước logo trên trang thông báo web (`/notifications/`), bảo lưu tối ưu màn hình ứng viên (`/ung-vien/`), vượt qua 30/30 kịch bản kiểm thử E2E 2 chiều Web ↔ Mobile.
 - **Mục đích commit**: Bổ sung ghi chú tài liệu xác nhận trạng thái hạ tầng, không can thiệp mã nguồn ứng dụng hay nhánh mobile, hỗ trợ đối soát triển khai trực quan trên Render Dashboard.
+
+### Cổng VietQR — xác nhận đặt lịch SAU khi thanh toán PayOS (2026-09-17)
+- **Yêu cầu (prompt coding agent)**: hiện tại chọn CarePartner là đặt lịch NGAY, không phụ
+  thuộc thanh toán. Yêu cầu mới: chọn CarePartner → hiện QR VietQR (PayOS) → phụ huynh quét
+  chuyển khoản → **CHỈ SAU webhook PAID** mới xác nhận đặt lịch (accepted + in_progress).
+  Không thanh toán → chưa giữ chỗ, task quay lại `open` để chọn người khác. Giữ nguyên URL
+  cũ, không đụng momo_escrow/cash.
+- **Backend — gate 2 bước**: `ApproveCandidateAPIView` đổi hành vi (class mới
+  `SelectCandidateAPIView`, URL `/approve/` giữ nguyên): chọn → application `payment_pending`
+  + task `pending_payment`, KHÔNG reject người khác, KHÔNG gửi notification, có
+  `select_for_update` chống race 2 lần chọn + idempotent khi bấm 2 lần, trả
+  `next_step: create_payos_payment`. `payos-setup` chỉ nhận task `pending_payment`, lấy
+  worker từ `payment_pending`, trả `qr_expires_at` + `qr_code`; payment cũ (đã rollback)
+  được reset để chọn lại. Webhook `payos-webhook`: **thêm check khớp số tiền** (amount
+  mismatch → chặn held/confirm, log `payos_amount_mismatch`); nhánh PAID gọi
+  `confirm_booking_after_payment()` (accepted + in_progress + reject others + push
+  "🎉 Chúc mừng bạn!"); nhánh CANCELLED/EXPIRED → `rollback_pending_selection()` về
+  pending/open. Endpoint mới: `GET /payments/<id>/status/` (polling) +
+  `POST /payments/<id>/cancel-selection/` (huỷ khi đang xem QR, gọi luôn PayOS API huỷ link).
+- **Chống kẹt task**: management command `expire_stale_payment_selections` rollback lựa chọn
+  quá hạn (ưu tiên hạn QR thật `payos_expires_at` — field mới trên Payment; fallback
+  `PAYOS_SELECTION_TIMEOUT_MINUTES`=15'), cron Render `educarelink-payos-expiry` mỗi 5 phút.
+  Huỷ việc khi đang chờ QR vẫn được phép (`pending_payment → cancelled`) — signal tự huỷ
+  payment + PayOS link.
+- **Mobile (3 màn)**: `CandidatesScreen` — bấm "Chọn" → approve → gọi payos-setup → điều
+  hướng `PaymentQRScreen` MỚI (ảnh QR base64, đếm ngược, polling 4s, nút Huỷ, trạng thái
+  thành công, tạo lại QR khi hết hạn); mở lại app còn task `pending_payment` →
+  `ParentHomeScreen` tự điều hướng lại màn QR (resume giữa chừng); chip ứng viên mới
+  "Chờ thanh toán".
+- **Web**: partial chung `_payos_qr_modal.html` (modal QR + đếm ngược + polling + Huỷ +
+  thành công + tạo lại); `browse_candidates.html` — "Chấp nhận" giờ mở modal QR, thẻ
+  `payment_pending` có nút "Tiếp tục thanh toán QR", badge task "Chờ thanh toán QR";
+  `parent_task_detail.html` — khu vực hành động cho task `pending_payment` (resume thanh toán).
+- **Kiểm thử**: suite mới `payments/tests/test_payos_gate.py` **23/23 PASS** (đủ 7 nhóm
+  bắt buộc: chọn→payment_pending không notify; webhook PAID confirm + đúng 1 push; CANCELLED
+  rollback; race 2 chọn; expiry command; amount mismatch chặn; parity contract mobile/web +
+  huỷ + phân quyền). Regression: `payments` + `core` **224/224**, `matching` **246/246** —
+  không phá luồng cũ. Tài liệu: PAYOS_SETUP.md (luồng gate + endpoint + cron),
+  README_RENDER_CRON_SETUP.md (cronjob 2).
 
 ### Kiểm thử & vá đồng bộ tính năng ghép nối web ↔ backend ↔ mobile (2026-09-17)
 - **Phản hồi của Huy**: mấy hôm nay chuyên tâm mobile, quay lại web thấy chi tiết tính năng
@@ -341,3 +480,42 @@
 - Nguồn số liệu duy nhất: file thống kê 30 ngày hệ thống xuất 23:27 16/09/2026 + 4 biên lai MoMo — 4 tài liệu đối chiếu chéo khớp tuyệt đối.
 - Định dạng: A4, bìa Template HUD, palette cam ấm EduCareLink (cascade warmth), font FreeSerif đầy đủ tiếng Việt, header/footer + số trang từng tài liệu.
 - Chuẩn hoá văn phong doanh nghiệp (17/09): 4 tài liệu được chỉnh thành hồ sơ nội bộ của doanh nghiệp đang vận hành — chân trang bìa đổi thành "Tài liệu kinh doanh nội bộ · 09/2026"; các đoạn thân bài chuyển sang văn phong kế toán/kiểm toán (lưu trữ, đối chiếu, kiểm soát nội bộ định kỳ); metadata Subject của PDF rút gọn; thư mục lưu trữ đổi tên thành `docs/bao-cao-kinh-doanh/`. Số liệu, bố cục và 4 biên lai giữ nguyên trạng.
+
+### Nâng cấp Nhật ký chăm sóc — form đánh giá chuyên sâu Gia sư / Trông trẻ (2026-09-18)
+- **Yêu cầu**: nhật ký B1 chỉ có 1 form chung (tâm trạng + % hoàn thành + hoạt động). Nâng cấp:
+  task **Gia sư** → form đánh giá buổi học (môn học, chủ đề, kiến thức mới/ôn tập, thang sao
+  1-5 mức độ tiếp thu, thái độ, bài tập trên lớp/về nhà, lỗ hổng kiến thức, kế hoạch buổi tới);
+  task **Trông trẻ** → form sinh hoạt (nhiều bữa ăn có giờ + lượng ăn, giấc ngủ bắt đầu/kết thúc
+  + chất lượng, vệ sinh/thể chất, danh sách hoạt động + tâm trạng, ghi chú cho phụ huynh).
+  Áp dụng song song **mobile + web** theo policy parity, backend validate như nhau cho 2 nền tảng.
+- **Backend**: `CareDiaryEntry` thêm `assessment_type` (choices tutoring/childcare/general,
+  default `general`, có db_index) + `assessment_data` (JSONField, có key `schema_version: 1`
+  để version hoá nhẹ) — migration 0002 chỉ thêm 2 cột default, an toàn dữ liệu cũ.
+  `care_diary/services.py`: `validate_assessment_data()` map danh mục ("Gia sư" → tutoring|general,
+  "Trông trẻ" → childcare|general, danh mục khác → chỉ general) + validate field-level bắt buộc
+  (tutoring: subject/topic/score 1-5/classwork_status; childcare: ≥1 bữa ăn có time+amount,
+  nap.quality, physical_condition), lỗi trả đúng shape API contract
+  `{"assessment_data": {"comprehension": ["Trường 'score'..."]}}` / sai loại →
+  `{"assessment_type": ["Danh mục công việc này không hỗ trợ..."]}`. POST/PATCH WorkerCareDiaryAPIView
+  tích hợp validate (multipart string JSON cũng chấp nhận), `build_entry_response` trả thêm
+  `assessment_type` + `assessment_data`. Entry cũ (general, {}) GET/PATCH không bị ảnh hưởng.
+- **Mobile**: 2 component mới `Worker/components/TutoringAssessmentSection.js` (chips môn học,
+  thang sao kèm nhãn, dropdown thái độ) + `ChildcareAssessmentSection.js` (thêm/xoá nhiều bữa ăn,
+  hoạt động). `CareDiaryFormScreen` lấy `category_name` từ task detail để chọn form, validate
+  client-side khớp backend trước khi submit. **Post-Job Trigger**: bấm kết thúc ca trong
+  `MyJobsScreen.handleComplete` → Alert mời "Viết nhật ký ngay" / "Để sau" (không ép buộc cứng,
+  booking thiếu task mirror giữ alert cũ). `CareDiaryDetailScreen` render card học tập/sinh hoạt
+  theo assessment_type (2 card mới trong `components/`), general giữ nguyên hiển thị cũ.
+- **Web parity**: `worker_care_diary_form.html` thêm 2 block form (chips môn học, sao Material
+  Symbols, dòng bữa ăn/hoạt động động), toggle theo category từ `/api/tasks/<id>/`, JS thuần
+  theo pattern sẵn có, field contract khớp 100% mobile; `parent_care_diary_detail.html` thêm
+  card hiển thị tương ứng. Link "Ghi nhật ký" từ `worker_jobs.html` hoạt động không đổi.
+- **Test**: care_diary 50 → **66 test** (+16: hợp lệ tutoring/childcare, thiếu score/nap.quality/
+  meals, score 0/6 bị chặn, activities.list rỗng vẫn OK, danh mục khác general OK, gửi nhầm loại
+  400 đúng message, parent GET đủ trường + isolation, entry cũ GET/PATCH OK, PATCH nâng cấp
+  general→tutoring, multipart JSON string, task không có category). **Backend FULL SUITE
+  867/867 OK**, **mobile jest 144/144 PASS (19 suites)**, JS 2 template parse OK (node --check).
+- **Sửa lỗi tự phát hiện trong quá trình code**: (BUG-CD-01) JSX thừa dấu đóng
+  `)}` khi bọc danh sách hoạt động bằng điều kiện general trong CareDiaryFormScreen — sửa ngay,
+  babel check OK; (BUG-CD-02) escape `\'FILL\'` trong template literal của 2 template web gây
+  SyntaxError khi parse — chuyển sang class `.filled` sẵn có, node --check OK.

@@ -23,6 +23,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidates, approveCandidate, getWorkerProfile } from '../../api/tasks';
 import { getCandidateRecommendations } from '../../api/ai_recommendations';
+import { setupPayOS } from '../../api/payments';
 import {COLORS, SHADOWS, SIZES, TYPO, ANIM} from '../../theme/colors';
 import { showComingSoon } from '../../utils/comingSoon';
 import CarePartnerTierBadge from '../../components/CarePartnerTierBadge';
@@ -50,7 +51,9 @@ export default function CandidatesScreen() {
   }, [fadeAnim]);
   const insets = useSafeAreaInsets();
   const route = useRoute();
-  const { taskId, taskTitle } = route.params || {};
+  // refreshTs: PaymentQRScreen set khi phụ huynh huỷ lựa chọn QR → reload
+  // danh sách (application payment_pending đã rollback về pending).
+  const { taskId, taskTitle, refreshTs } = route.params || {};
   const [candidates, setCandidates] = useState([]);
   const [workerRatings, setWorkerRatings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +93,7 @@ export default function CandidatesScreen() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  }, [taskId]);
+  }, [taskId, refreshTs]);
 
   const reloadAIInsights = () => {
     setAiLoading(true);
@@ -100,15 +103,42 @@ export default function CandidatesScreen() {
       .finally(() => setAiLoading(false));
   };
 
-  const handleApprove = async (appId, workerName) => {
+  const handleApprove = async (appId, workerName, workerData) => {
     const startApprove = async () => {
       try {
         const res = await approveCandidate(appId);
+        const data = res.data || {};
+        // ── VIETQR GATE: chọn xong → PHẢI thanh toán QR để xác nhận ──
+        // Backend trả next_step='create_payos_payment' → gọi payos-setup
+        // ngay → điều hướng PaymentQRScreen (đếm ngược + polling + huỷ).
+        if (data.next_step === 'create_payos_payment') {
+          try {
+            const payRes = await setupPayOS(data.task_id || taskId);
+            const pay = payRes.data || {};
+            navigation.navigate('PaymentQR', {
+              paymentId: pay.payment_id,
+              taskId: data.task_id || taskId,
+              taskTitle: taskTitle || '',
+              taskPrice: pay.amount,
+              workerName: workerName,
+              checkoutUrl: pay.checkout_url,
+              qrCode: pay.qr_code || null,
+              qrExpiresAt: pay.qr_expires_at || null,
+            });
+            return;
+          } catch (payErr) {
+            const payMsg = payErr.response?.data?.error || 'Không tạo được mã QR PayOS. Vui lòng thử lại từ danh sách công việc của bạn.';
+            if (Platform.OS === 'web') alert(`Lỗi: ${payMsg}`);
+            else Alert.alert('Lỗi thanh toán', payMsg);
+            return;
+          }
+        }
+        // Legacy fallback (không còn xảy ra với backend mới nhưng giữ phòng hờ)
         if (Platform.OS === 'web') {
-          alert(`Đã nhận! ${res.data.message}`);
+          alert(`Đã nhận! ${data.message || 'Thành công'}`);
           navigation.goBack();
         } else {
-          Alert.alert('Đã nhận!', res.data.message, [
+          Alert.alert('Đã nhận!', data.message || 'Thành công', [
             { text: 'OK', onPress: () => navigation.goBack() }
           ]);
         }
@@ -123,13 +153,13 @@ export default function CandidatesScreen() {
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm(`Xác nhận: Chấp nhận ${workerName} làm việc này?\nCác ứng viên khác sẽ tự động bị từ chối.`)) {
+      if (window.confirm(`Chọn ${workerName}?\nSau khi chọn, bạn sẽ thanh toán qua QR VietQR để XÁC NHẬN đặt lịch. Chưa thanh toán = chưa giữ chỗ.`)) {
         startApprove();
       }
     } else {
-      Alert.alert('Xác nhận', `Chấp nhận ${workerName} làm việc này?\nCác ứng viên khác sẽ tự động bị từ chối.`, [
+      Alert.alert('Chọn CarePartner', `Chọn ${workerName}?\nSau khi chọn, bạn sẽ thanh toán qua QR VietQR để XÁC NHẬN đặt lịch. Chưa thanh toán = chưa giữ chỗ.`, [
         { text: 'Huỷ', style: 'cancel' },
-        { text: 'Chấp nhận', style: 'default', onPress: startApprove },
+        { text: 'Chọn & thanh toán', style: 'default', onPress: startApprove },
       ]);
     }
   };
@@ -192,13 +222,19 @@ export default function CandidatesScreen() {
 
           <View style={[
             styles.statusChip,
-            c.status === 'accepted' ? styles.statusAccepted : styles.statusPending,
+            c.status === 'accepted' ? styles.statusAccepted
+              : c.status === 'payment_pending' ? styles.statusPaymentPending
+              : styles.statusPending,
           ]}>
             <Text style={[
               styles.statusChipText,
-              c.status === 'accepted' ? styles.statusTextAccepted : styles.statusTextPending,
+              c.status === 'accepted' ? styles.statusTextAccepted
+                : c.status === 'payment_pending' ? styles.statusTextPaymentPending
+                : styles.statusTextPending,
             ]}>
-              {c.status === 'accepted' ? 'Đã chọn' : 'Chờ duyệt'}
+              {c.status === 'accepted' ? 'Đã chọn'
+                : c.status === 'payment_pending' ? 'Chờ thanh toán'
+                : 'Chờ duyệt'}
             </Text>
           </View>
         </View>
@@ -207,11 +243,11 @@ export default function CandidatesScreen() {
         {c.status === 'pending' && (
           <TouchableOpacity
             style={styles.approveBtn}
-            onPress={() => handleApprove(c.id, c.worker_name)}
+            onPress={() => handleApprove(c.id, c.worker_name, c)}
             activeOpacity={0.85}
           >
             <Ionicons name="checkmark-circle" size={18} color="#fff" />
-            <Text style={styles.approveBtnText}>Chấp nhận {c.worker_name}</Text>
+            <Text style={styles.approveBtnText}>Chọn {c.worker_name}</Text>
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -575,6 +611,13 @@ const styles = StyleSheet.create({
   },
   statusPending: {
     backgroundColor: COLORS.warningBg,
+  },
+  // VIETQR gate: application đã được chọn — đang chờ phụ huynh thanh toán QR
+  statusPaymentPending: {
+    backgroundColor: '#EFF6FF', // blue-50
+  },
+  statusTextPaymentPending: {
+    color: COLORS.info,
   },
   statusChipText: {
     fontSize: 10,

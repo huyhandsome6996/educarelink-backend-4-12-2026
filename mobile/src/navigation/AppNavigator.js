@@ -89,6 +89,8 @@ import ChildcareFormScreen from '../screens/Parent/ChildcareForm';
 import PickupFormScreen from '../screens/Parent/PickupForm';
 import CandidatesListScreen from '../screens/Parent/CandidatesListScreen';
 import CandidateProfileV2Screen from '../screens/Parent/CandidateProfileV2Screen';
+// VIETQR gate — màn chờ quét QR xác nhận đặt lịch
+import PaymentQRScreen from '../screens/Payment/PaymentQRScreen';
 import BookingDetailScreen from '../screens/Parent/BookingDetailScreen';
 import WalletScreen from '../screens/Parent/WalletScreen';
 import MatchingAvailabilityScreen from '../screens/Worker/AvailabilityScreen';
@@ -141,6 +143,7 @@ function ParentHomeStack() {
       <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />
       <Stack.Screen name="Candidates" component={CandidatesScreen} />
       <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="PaymentQR" component={PaymentQRScreen} />
       <Stack.Screen name="Review" component={ReviewScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
@@ -153,6 +156,7 @@ function ParentTasksStack() {
       <Stack.Screen name="MyTasksMain" component={MyTasksScreen} />
       <Stack.Screen name="Candidates" component={CandidatesScreen} />
       <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+      <Stack.Screen name="PaymentQR" component={PaymentQRScreen} />
       <Stack.Screen name="Review" component={ReviewScreen} />
       <Stack.Screen name="CareDiaryDetail" component={CareDiaryDetailScreen} />
       <Stack.Screen name="CareDiaryHistory" component={CareDiaryHistoryScreen} />

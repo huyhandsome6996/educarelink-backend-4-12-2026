@@ -129,3 +129,26 @@ Chỉ mất:
 
 → Phụ huynh có thể không nhận alert khẩn cấp khi có sự cố thật. **Bắt buộc
 verify scheduler-health trước khi coi như deploy an toàn.**
+
+---
+
+## ➕ CronJob 2 — `educarelink-payos-expiry` (VietQR gate, 2026-09-17)
+
+Tính năng gate VietQR (xác nhận đặt lịch sau khi thanh toán PayOS) cần 1 cron
+mới chạy mỗi 5 phút, rollback các lựa chọn CarePartner chưa thanh toán quá hạn:
+
+```bash
+python manage.py expire_stale_payment_selections
+```
+
+Setup y hệt 5 bước ở trên, khác các điểm sau:
+
+| Mục | Giá trị |
+|---|---|
+| Service name | `educarelink-payos-expiry` (Render tự tạo từ `render.yaml` khi deploy) |
+| Schedule | `*/5 * * * *` (mỗi 5 phút) |
+| Env vars cần copy từ web service | `SECRET_KEY`, `DATABASE_URL`, `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` |
+| Verify sau khi chạy | Render Logs của cron in `Không có lựa chọn nào quá hạn.` hoặc `Hoàn tất: N/M payment...` |
+
+⚠️ Thiếu `SECRET_KEY`/`DATABASE_URL` → cron fail mỗi lần chạy. Thiếu `PAYOS_*`
+→ command vẫn chạy được (chỉ bỏ qua bước huỷ payment link phía PayOS).

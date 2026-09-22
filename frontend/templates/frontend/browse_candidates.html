@@ -627,6 +627,8 @@ function formatAppliedDate(dateStr) {
 function getStatusConfig(status) {
     const map = {
         pending:  { label: 'Chờ duyệt',   color: 'bg-amber-50 text-amber-600 border-amber-200', icon: 'schedule' },
+        // VIETQR gate: đã được chọn — đang chờ phụ huynh thanh toán QR
+        payment_pending: { label: 'Chờ thanh toán', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: 'hourglass_top' },
         accepted: { label: 'Đã chấp nhận', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'check_circle' },
         rejected: { label: 'Đã từ chối',   color: 'bg-red-50 text-red-500 border-red-200', icon: 'cancel' },
     };
@@ -636,6 +638,8 @@ function getStatusConfig(status) {
 function getTaskStatusBadge(status) {
     const map = {
         open:        { label: 'Đang tìm người',  color: 'bg-secondaryLight text-secondaryDark' },
+        // VIETQR gate: đã chọn CarePartner — chờ quét QR VietQR để xác nhận
+        pending_payment: { label: 'Chờ thanh toán QR', color: 'bg-blue-50 text-blue-600' },
         in_progress: { label: 'Đang thực hiện',   color: 'bg-blue-50 text-blue-600' },
         completed:   { label: 'Đã hoàn thành',    color: 'bg-successBg text-success' },
         cancelled:   { label: 'Đã hủy',           color: 'bg-gray-100 text-gray-500' },
@@ -726,6 +730,20 @@ function renderCandidates(candidates) {
                     <span class="material-symbols-outlined text-lg filled">check_circle</span>
                     Đã chấp nhận
                 </div>
+            `;
+        } else if (c.status === 'payment_pending') {
+            // VIETQR gate: đã chọn ứng viên này — chờ quét QR. Cho phép mở
+            // lại modal thanh toán ngay từ danh sách (resume).
+            actionButtons = `
+                <div class="flex items-center justify-center gap-2 py-3 px-4 bg-blue-50 text-blue-700 font-semibold text-sm rounded-xl border border-blue-200">
+                    <span class="material-symbols-outlined text-lg filled">hourglass_top</span>
+                    Chờ thanh toán để xác nhận
+                </div>
+                <button onclick="PayOSGate.start(${taskId}, { autoReloadOnSuccess: true, onCancelled: () => fetchCandidates() })"
+                        class="mt-2 w-full py-2.5 px-4 rounded-xl bg-blue-500 text-white font-bold text-sm shadow-md hover:bg-blue-600 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-lg">qr_code_2</span>
+                    Tiếp tục thanh toán QR
+                </button>
             `;
         } else if (isPending) {
             // Fix H8: dùng data attribute + event delegation thay vì inline onclick
@@ -841,10 +859,16 @@ async function fetchDistancesForCandidates(candidates) {
 }
 
 // ==================== APPROVE LOGIC ====================
+// VIETQR GATE: "Chấp nhận" → backend CHỈ chốt lựa chọn (application
+// 'payment_pending' + task 'pending_payment') và trả next_step=
+// 'create_payos_payment' → mở modal QR VietQR. CHỈ SAU khi phụ huynh
+// thanh toán thành công (webhook PayOS PAID) CarePartner mới được nhận
+// việc chính thức. Huỷ/hết hạn QR → application về 'pending', task về
+// 'open' (reload danh sách để chọn lại).
 function approve(appId, workerName) {
     showConfirmModal(
-        'Chấp nhận ứng viên',
-        `Bạn có chắc chắn muốn chấp nhận ${workerName}? Hành động này không thể hoàn tác.`,
+        'Chọn CarePartner',
+        `Bạn muốn chọn ${workerName}? Sau khi chọn, bạn sẽ thanh toán qua mã QR VietQR để XÁC NHẬN đặt lịch. Chưa thanh toán = chưa giữ chỗ.`,
         async () => {
             try {
                 const resp = await apiFetch(`${API_BASE}/parent/applications/${appId}/approve/`, {
@@ -852,9 +876,18 @@ function approve(appId, workerName) {
                 });
                 const data = await resp.json();
 
-                if (resp.ok) {
+                if (resp.ok && data.next_step === 'create_payos_payment') {
+                    showToast('Đã chọn ứng viên — đang tạo mã QR thanh toán…', 'success');
+                    // Modal QR: đếm ngược + polling + nút huỷ (partial _payos_qr_modal)
+                    PayOSGate.start(taskId, {
+                        autoReloadOnSuccess: true,
+                        onCancelled: () => {
+                            showToast('Đã huỷ lựa chọn. Bạn có thể chọn CarePartner khác.', 'info');
+                            fetchCandidates();
+                        },
+                    });
+                } else if (resp.ok) {
                     showToast('Đã chấp nhận ứng viên!', 'success');
-                    // Refresh the list
                     await fetchCandidates();
                 } else {
                     showToast(data.error || data.message || 'Có lỗi xảy ra khi chấp nhận ứng viên', 'error');
@@ -1317,5 +1350,8 @@ init();
     <!-- B4 — Badge hạng Đồng/Bạc/Vàng/Kim cương trên danh sách ứng viên
          (runtime patch window.renderCandidates — không đụng logic trang gốc) -->
     {% include 'frontend/_b4_tier_scripts.html' %}
+
+    <!-- VIETQR GATE — modal chờ quét QR xác nhận đặt lịch (PayOS) -->
+    {% include 'frontend/_payos_qr_modal.html' %}
 </body>
 </html>
