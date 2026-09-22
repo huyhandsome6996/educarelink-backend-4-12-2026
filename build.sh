@@ -15,6 +15,12 @@ python manage.py seed_demo_data || echo "⚠️ seed_demo_data failed, continuin
 # Nạp cấu hình matching ELO & CarePartners chuyên môn cao vào DB
 python manage.py seed_matching_config || echo "⚠️ seed_matching_config failed, continuing deploy..."
 python manage.py seed_specialist_carepartners || echo "⚠️ seed_specialist_carepartners failed, continuing deploy..."
+python manage.py seed_super_carepartner || echo "⚠️ seed_super_carepartner failed, continuing deploy..."
 
 # Re-moderate tất cả task pending sau khi deploy (đảm bảo AI quét task cũ còn kẹt)
 python manage.py remoderate_pending || echo "⚠️ remoderate_pending failed (no pending tasks?), continuing deploy..."
+
+# B1 — Phủ nhật ký mẫu Care Diary cho TẤT CẢ tài khoản hiện có (yêu cầu owner
+# 2026-09-20: dữ liệu mẫu toàn hệ thống + kiểm thử tính năng). Idempotent —
+# chỉ thêm entry còn thiếu sau khi seed_demo_data đã reset, không xoá dữ liệu cũ.
+python manage.py seed_care_diary_sample || echo "⚠️ seed_care_diary_sample failed, continuing deploy..."

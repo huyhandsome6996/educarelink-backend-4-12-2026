@@ -1,11 +1,29 @@
 # M1 — ServiceCategory.code: khóa ổn định cho logic nghiệp vụ
 # (care_diary map assessment_type theo code, không theo name hiển thị).
 #
-# Migration 3 bước an toàn cho dữ liệu production:
-#   1. AddField (chưa unique) — tránh vi phạm unique khi còn row cũ
-#   2. RunPython backfill code từ name (slug tiếng Việt, tự chứa — không
-#      import core.models để migration không phụ thuộc module đổi sau này)
-#   3. AlterField bật unique sau khi mọi row đã có code riêng
+# ⚠️ V2 (2026-09-20) — FIX Render deploy fail: 5 deploy liên tiếp chết ở
+#    migration cũ với lỗi PostgreSQL:
+#      DuplicateTable: relation "core_servicecategory_code_b400e81b_like"
+#      already exists
+#    Nguyên nhân: AddField(SlugField) tạo index btree + index pattern-ops
+#    `_like` (đặc thù PostgreSQL), rồi AlterField(unique=True) trong CÙNG
+#    migration sinh thêm CREATE INDEX `_like` thứ hai mà không DROP cái cũ
+#    → trùng tên tất yếu trên PG. SQLite (dev/test) không có pattern-ops
+#    index nên không bao giờ tái hiện — chính là lý do bug lọt qua kiểm
+#    thử local. Transaction rollback sạch nên lần chạy lại vẫn chết y hệt.
+#
+#    V2 viết lại theo hướng IDEMPOTENT + vendor-branched:
+#      1. Tạo cột bằng SQL có guard (PG: ADD COLUMN IF NOT EXISTS;
+#         SQLite: kiểm tra PRAGMA table_info trước khi ALTER)
+#      2. Backfill giữ nguyên logic slug tiếng Việt + dedup -2/-3
+#         (chỉ điền row chưa có code → chạy lại an toàn)
+#      3. Tạo unique index có guard (PG: DO block kiểm tra pg_indexes đã
+#         có unique index trên (code) chưa; SQLite: IF NOT EXISTS) và
+#         pattern-ops index đúng TÊN Django tự sinh
+#         (core_servicecategory_code_b400e81b_like) để state ↔ DB khớp.
+#    State của Django (AddField/AlterField) được khai báo qua
+#    SeparateDatabaseAndState nên `makemigrations --check` và các migration
+#    sau này vẫn nhìn thấy field đúng như model.
 from django.db import migrations, models
 
 # Bản slugify tự chứa cho migration (bản chạy runtime nằm ở core/models.py)
@@ -40,10 +58,43 @@ def _vn_slug(text):
     return ''.join(chars).strip('-')[:50]
 
 
+def _code_column_exists(cursor, vendor):
+    if vendor == 'postgresql':
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = 'core_servicecategory' AND column_name = 'code';"
+        )
+        return (cursor.fetchone() or [0])[0] > 0
+    # sqlite
+    cursor.execute("PRAGMA table_info(core_servicecategory)")
+    return 'code' in {row[1] for row in cursor.fetchall()}
+
+
+def ensure_code_column(apps, schema_editor):
+    """Bước 1 (DB) — tạo cột code nếu chưa có. Idempotent: deploy bị fail
+    giữa chừng (cột đã tạo, migration chưa ghi) chạy lại không lỗi."""
+    conn = schema_editor.connection
+    vendor = conn.vendor
+    with conn.cursor() as cursor:
+        if _code_column_exists(cursor, vendor):
+            return
+        if vendor == 'postgresql':
+            cursor.execute(
+                "ALTER TABLE core_servicecategory "
+                "ADD COLUMN code varchar(50) NOT NULL DEFAULT '';"
+            )
+        else:  # sqlite (dev/test)
+            cursor.execute(
+                "ALTER TABLE core_servicecategory "
+                "ADD COLUMN code varchar(50) NOT NULL DEFAULT '';"
+            )
+
+
 def backfill_category_codes(apps, schema_editor):
-    """Backfill code cho mọi category hiện có: 'Gia sư' → 'gia-su',
+    """Bước 2 — backfill code cho mọi category hiện có: 'Gia sư' → 'gia-su',
     'Trông trẻ' → 'trong-tre'. Trùng slug (trường hợp name trùng/similar)
-    được gán hậu tố -2, -3... theo thứ tự id. Row đã có code thì giữ nguyên."""
+    được gán hậu tố -2, -3... theo thứ tự id. Row đã có code thì giữ nguyên
+    (chạy lại sau deploy fail nửa chừng vẫn an toàn)."""
     ServiceCategory = apps.get_model('core', 'ServiceCategory')
     seen = set()
     for cat in ServiceCategory.objects.all().order_by('id'):
@@ -68,6 +119,42 @@ def reverse_backfill(apps, schema_editor):
     ServiceCategory.objects.all().update(code='')
 
 
+def ensure_unique_code_index(apps, schema_editor):
+    """Bước 3 (DB) — bảo đảm ràng buộc unique trên code + pattern-ops index
+    khớp tên Django sinh ra. Idempotent: nếu unique index/constraint đã tồn
+    tại (deploy trước tạo rồi) thì bỏ qua, không bao giờ DuplicateTable."""
+    conn = schema_editor.connection
+    vendor = conn.vendor
+    with conn.cursor() as cursor:
+        if vendor == 'postgresql':
+            # Đã có unique index/constraint nào trên (code) chưa?
+            cursor.execute(
+                "SELECT COUNT(*) FROM pg_indexes "
+                "WHERE schemaname = ANY (current_schemas(true)) "
+                "  AND tablename = 'core_servicecategory' "
+                "  AND indexdef ILIKE '%UNIQUE%' "
+                "  AND indexdef ILIKE '% (code)%';"
+            )
+            has_unique = (cursor.fetchone() or [0])[0] > 0
+            if not has_unique:
+                cursor.execute(
+                    "CREATE UNIQUE INDEX core_servicecategory_code_key "
+                    "ON core_servicecategory (code);"
+                )
+            # Pattern-ops index với ĐÚNG tên Django tự sinh cho field này
+            # (hash b400e81b lấy từ lỗi DuplicateTable thực tế trên Render).
+            # IF NOT EXISTS → chạy lại bao nhiêu lần cũng an toàn.
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS core_servicecategory_code_b400e81b_like "
+                "ON core_servicecategory (code varchar_pattern_ops);"
+            )
+        else:  # sqlite (dev/test) — Django SQLite không dùng pattern-ops
+            cursor.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS core_servicecategory_code_key "
+                "ON core_servicecategory (code);"
+            )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -75,15 +162,32 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='servicecategory',
-            name='code',
-            field=models.SlugField(blank=True, help_text='Mã ổn định cho logic (vd: gia-su, trong-tre) — không đổi theo tên hiển thị.', max_length=50),
+        # Bước 1 — DB: tạo cột (idempotent); STATE: đăng ký field chưa unique
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(ensure_code_column, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='servicecategory',
+                    name='code',
+                    field=models.SlugField(blank=True, help_text='Mã ổn định cho logic (vd: gia-su, trong-tre) — không đổi theo tên hiển thị.', max_length=50),
+                ),
+            ],
         ),
+        # Bước 2 — backfill (chỉ row chưa có code)
         migrations.RunPython(backfill_category_codes, reverse_backfill),
-        migrations.AlterField(
-            model_name='servicecategory',
-            name='code',
-            field=models.SlugField(blank=True, help_text='Mã ổn định cho logic (vd: gia-su, trong-tre) — không đổi theo tên hiển thị.', max_length=50, unique=True),
+        # Bước 3 — DB: unique + pattern index (idempotent); STATE: unique=True
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(ensure_unique_code_index, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='servicecategory',
+                    name='code',
+                    field=models.SlugField(blank=True, help_text='Mã ổn định cho logic (vd: gia-su, trong-tre) — không đổi theo tên hiển thị.', max_length=50, unique=True),
+                ),
+            ],
         ),
     ]

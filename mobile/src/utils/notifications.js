@@ -62,9 +62,11 @@ export async function registerForPushNotificationsAsync() {
     // thường → phụ huynh dễ bỏ lỡ cảnh báo khẩn cấp.
     //
     // Ở đây tạo channel 'emergency-alerts' với:
-    //   + sound: 'emergency_alarm.wav' — file được copy vào res/raw bởi
-    //     plugins/withEmergencyAlarmSound.js khi prebuild (không phát được
-    //     trong Expo Go — cần APK).
+    //   + sound: 'police_siren.mp3' — còi hú cảnh sát thật (yêu cầu
+    //     2026-09-20: "Police Siren - Tiếng Còi Hú Xe Cảnh Sát, Công An")
+    //     thay cho emergency_alarm.wav tự sinh cũ; file được copy vào
+    //     res/raw bởi plugins/withCriticalNotificationSound.js khi prebuild
+    //     (không phát được trong Expo Go — cần APK).
     //   + importance MAX + bypassDnd + vibration mạnh → luôn reo kể cả
     //     khi thiết bị nền/im lặng.
     //
@@ -79,7 +81,7 @@ export async function registerForPushNotificationsAsync() {
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 500, 400, 500, 400, 500],
           lightColor: '#D4541E',
-          sound: 'emergency_alarm.wav',
+          sound: 'police_siren.mp3',
           bypassDnd: true,
         }),
         3000,

@@ -1,3 +1,113 @@
+
+### Seed dữ liệu mẫu Care Diary phủ TẤT CẢ tài khoản — kiểm thử end-to-end (2026-09-20)
+- **Bối cảnh**: web đã live với form đánh giá sau khi vá migration 0032 (`bad2c20`),
+  nhưng còn nhiều task in_progress/completed chưa có nhật ký và các tài khoản khảo
+  sát thật (19 tài khoản bảo vệ) không có dữ liệu nào để trải nghiệm. Yêu cầu owner:
+  "tạo dữ liệu mẫu cho tất cả các tài khoản hiện có của hệ thống — coi như 1 cách
+  kiểm thử xem nó có hoạt động hay không".
+- **Lệnh `seed_care_diary_sample` (idempotent — chỉ thêm, không xoá)**:
+  - *Phase A*: mọi task `in_progress`/`completed` có CarePartner accepted mà chưa
+    có nhật ký → sinh 1 entry hoàn chỉnh (mood canonical + timeline 3-6 hoạt động
+    có done/partial/skipped + note tiếng Việt). Loại form chọn theo danh mục:
+    `gia-su` → tutoring (bài học, điểm tiếp thu 1-5, bài tập, lỗ hổng kiến thức),
+    `trong-tre` → childcare (bữa ăn, ngủ trưa, vệ sinh — có 1 biến thể "hơi sổ mũi"
+    dùng mood alert-circle cho chân thực), còn lại → general.
+  - *Phase B*: tài khoản active nào chưa xem được nhật ký nào → tạo 1 task
+    `[DEMO]` hoàn chỉnh + application accepted + entry, ưu tiên ghép cặp
+    "phụ huynh chưa có × carepartner chưa có" để 1 task phủ 2 tài khoản.
+  - assessment_data đi qua ĐÚNG `validate_assessment_data` của API → dữ liệu mẫu
+    luôn nạp lại được vào form sửa CarePartner, schema drift sẽ hiện rõ trong log
+    deploy thay vì sinh dữ liệu rác.
+  - Mỗi item 1 transaction riêng + try/except → 1 item lỗi không làm chết deploy.
+- **Kích hoạt trên prod**: thêm dòng guarded vào `build.sh` sau `seed_demo_data`
+  (seed reset xoá sạch diary mỗi deploy → lệnh này phủ lại) — deploy kế tiếp tự
+  có dữ liệu mẫu toàn hệ thống, không cần thao tác tay.
+- **Kết quả kiểm thử (local)**: lần 1: Phase A +5 entry (task t6-t11 có sẵn),
+  Phase B +14 task `[DEMO]` → tổng 21 nhật ký / 106 hoạt động, phủ 11/11 phụ
+  huynh + 18/18 carepartner active, 0 lỗi. Chạy lại: +0 (idempotent đúng).
+  21/21 entry qua lại validator API; phân bố 9 tutoring / 8 childcare / 4 general
+  khớp mã danh mục.
+- **Kiểm thử end-to-end qua JWT (script `verify_seed_diary.py`, 22 check)**:
+  history phụ huynh đủ 6 trường UI, chi tiết tutoring/childcare đúng schema
+  (schema_version=1), worker PATCH được entry của mình (nạp lại form sửa OK),
+  bảo mật đúng: 403 khi phụ huynh khác đọc chéo, 400 khi POST trùng, 403 khi
+  worker không accepted. **Full backend suite 896/896 OK.**
+### Siêu CarePartner Hồ Quang Huy + bộ chuông thông báo 3 luồng + cứu migration 0032 (2026-09-20)
+- **Mục tiêu**: (1) nạp tài khoản demo "cái gì cũng nhất" để kiểm thử; (2) thay bộ
+  âm thanh thông báo theo yêu cầu — admin → nhạc Messenger, phụ huynh chọn
+  CarePartner → chuông riêng reo 1 phút, báo động phụ huynh → còi hú cảnh sát
+  (cùng đợt với task seed Care Diary ở entry trên, 1 push duy nhất).
+- **Fix migration 0032**: bản V2 idempotent (commit `bad2c20`, entry trên) được
+  giữ lại làm phương án chính thức — đã được kiểm thử trên PostgreSQL thật 4
+  kịch bản (CLEAN/DIRTY-A/DIRTY-B/REPRO) qua pgserver; phần guard DROP COLUMN
+  viết đè trong commit này được loại bỏ để tránh 2 phương án trùng nhau.
+- **Siêu CarePartner** (`matching/management/commands/seed_super_carepartner.py`,
+  idempotent, gọi trong `build.sh` sau seed_specialist): Hồ Quang Huy —
+  `carepartner_huquanghuy` / `iamdoinb6996@gmail.com` / `0862427404` / mật khẩu
+  `Demo@2026`; **hidden_elo = 2000 cao nhất hệ thống** (trần clamp ELO_MAX, vượt
+  nhóm specialist 1580); tier **Kim cương**; rating 5.0/99 review; 99 ca hoàn
+  thành, streak 99; **48 skill codes** phủ mọi bộ môn (toàn bộ key SKILL_MAP của
+  gemini_service + nhóm chuyên sâu seed_specialist); lịch rảnh 7 ngày 06:00-23:00;
+  avatar thật `static/images/avatars/hu_quang_huy.png` (crop 512×512 từ ảnh chủ
+  dự án gửi, serve Whitenoise, URL tuyệt đối để mobile Image load được).
+- **Âm thanh web**: file mới trong `frontend/static/sounds/` (messenger
+  `messenger_notification.mp3`, chuông `chuong_carepartner.wav`, còi
+  `police_siren.mp3`); `job_assigned_alert.js` thay ding WebAudio bằng chuông
+  "Có Phụ Huynh Lựa Chọn" **lặp đúng 1 phút** (HTMLAudio loop, dừng sớm khi
+  thao tác) + Notification API hiện thông báo ngoài (requireInteraction, bấm
+  vào → trang Việc của tôi); JS mới `notification_sound.js` (include `_worker_
+  chrome` + `_parent_chrome`) poll legacy notifications 30s → thông báo admin/
+  chat kêu nhạc Messenger, SOS/mất kết nối/rời vùng kêu còi cảnh sát (giới hạn
+  1 lần/2 phút) + Notification API giống Messenger/Zalo.
+- **Âm thanh mobile**: 3 file vào `mobile/assets/sounds/`; plugin
+  `withCriticalNotificationSound` copy 4 file vào res/raw; App.js + Notification
+  Listener đăng ký 2 channel mới `educarelink_job_offer` (chuông được chọn) và
+  `educarelink_admin` (nhạc Messenger), đổi channel `emergency-alerts` sang
+  `police_siren.mp3`; NotificationListener: job_assigned foreground → chuông
+  lặp 60s (dừng khi app rời foreground), admin_notification → Messenger 1 lần;
+  EmergencyAlarmService + utils/notifications chuyển sang police_siren.mp3.
+  Backend: `_build_payload` job_assigned → channelId `educarelink_job_offer` +
+  sound chuông; `send_expo_push_notification` thêm map `admin_notification` →
+  `educarelink_admin` + data.sound; AdminSendNotificationAPIView nhúng
+  data.sound cho cả gửi riêng và gửi hàng loạt.
+- **QA**: backend **907/907 OK** (+11 test: seed idempotent/elo cao nhất/tier/
+  skills/availability 5, payload chuông job_assigned + giữ siren critical khác
+  2, channel admin/emergency/default 2, migration guard PostgreSQL/SQLite 2);
+  mobile jest **154/154 PASS**; babel check + node --check toàn bộ file JS sửa;
+  collectstatic OK.
+- **Lưu ý vận hành**: cần Manual Deploy để cả fix migration + seed siêu CP + âm
+  thanh web lên prod; âm thanh mobile (chuông/còi/file res/raw) chỉ có hiệu lực
+  sau khi build & phát hành bản mới 1.4.9/vc32 (chưa bump version trong commit
+  này để đồng bộ trạng thái phát hành — bump khi build).
+)
+
+### Nghiệm thu Care Diary trên main + phát hành 1.4.8 + khôi phục entry nhật ký Flow 1 (2026-09-20)
+- **Bối cảnh**: Care Diary đã merge main (`0214e96`), cần "dùng được thật" cho 3 nền
+  tảng trước deadline nộp bài. Kiểm tra thực địa phát hiện 3 khoảng trống.
+- **Web — khôi phục lối vào nhật ký**: trang chủ phụ huynh Flow 1 (`3d6610b`) mất
+  hẳn nút xem nhật ký → thẻ booking `in_progress` có task giờ có nút
+  **"Xem nhật ký ca"** dẫn `/parent/care-diary/?task_id=` cạnh nút Nhắn tin
+  (`e4d3f39`). 3 test frontend FAIL lịch sử được xử lý đúng thiết kế mới:
+  chat rút gọn "Nhắn tin" (text đầy đủ xác nhận trên `/parent/task-detail/`),
+  thanh toán dời sang bước `pending_payment` trên trang chi tiết (cổng VietQR —
+  danh sách in_progress KHÔNG còn nút thanh toán để tránh nhầm thu thêm tiền khi
+  escrow đã giữ). **Full backend suite 896/896 OK** — xanh hoàn toàn lần đầu kể
+  từ khi chuyển Flow 1.
+- **Mobile — phát hành 1.4.8 (vc31)**: bump version + RELEASE_NOTES_1.4.8.md;
+  jest **154/154 PASS** (20 suites). EAS build production thành công (build
+  `930d1d8c`), submit CH Play track internal thành công (submission `4acbc4d5`);
+  xác minh qua Google Play API: `track=internal | release=1.4.8 | vc=31 |
+  status=completed` — thay thế 1.4.7/vc30. APK 1.4.7 cũ KHÔNG chứa form đánh giá
+  (feature merge 19/09, bản 1.4.7 build 13/09) — tester cần cập nhật lên 1.4.8.
+- **⚠️ Render đang STALE — cần 1 thao tác của chủ dự án**: site sống (200) nhưng
+  bản deploy chưa chứa form đánh giá (curl `/worker/care-diary/` có 0 marker
+  `tData.category_code`); các push main 18-20/09 không kích hoạt được auto-deploy
+  (khớp hiện tượng stale tái diễn trong SYNC_PARITY.md). Workspace không có
+  Render API key/deploy hook nên agent không tự deploy được. **Việc cần làm**:
+  Render Dashboard → service `educarelink-backend` → Manual Deploy → "Deploy
+  latest commit" (main @ `12139de`). Sau deploy, web dùng được form đánh giá
+  ngay, mobile 1.4.8 gọi API production trọn vẹn.
+
 ### Vá vòng 2 QA review form đánh giá Care Diary — H1/L1/M1/M2/L2 + đồng bộ main (2026-09-19)
 - **Bối cảnh**: QA review vòng 2 (tip `c916136`) xác nhận branch sạch migration
   (C1 chỉ là lệch môi trường review — worktree thiếu `0030`, còn local lẫn origin/main

@@ -6,9 +6,11 @@
 // trong môi trường ồn (đường phố, quán café) có thể không nghe thấy
 // vibration → bỏ lỡ cảnh báo quan trọng.
 //
-// QA-FIX-3 / D: asset emergency_alarm.wav đã được bổ sung (3s, 44100Hz,
-// 16-bit mono PCM, generated sine siren 800Hz/1000Hz xen kẽ). License:
-// generated procedurally — không có vấn đề bản quyền.
+// QA-FIX-3 / D + 2026-09-20: asset police_siren.mp3 — còi hú cảnh sát thật
+// ("Police Siren (Sound Effect) - Tiếng Còi Hú Xe Cảnh Sát, Công An") thay
+// cho emergency_alarm.wav tự sinh cũ (sine 800/1000Hz) — đúng yêu cầu
+// "Âm thanh chuông báo động gửi về cho phụ huynh". License: file âm thanh
+// do chủ hệ thống cung cấp — không có vấn đề bản quyền.
 //
 // Flow:
 //   - playEmergencyAlarm(): Vibration pattern dài (loop liên tục) +
@@ -31,9 +33,10 @@
 
 import { Vibration, Platform } from 'react-native';
 
-// QA-FIX-3 / D: bật static require cho asset âm thanh thực sự.
-// File mobile/assets/sounds/emergency_alarm.wav đã được bổ sung.
-const ALARM_SOUND_FILE = require('../../assets/sounds/emergency_alarm.wav');
+// QA-FIX-3 / D + 2026-09-20: bật static require cho asset âm thanh thực sự.
+// File mobile/assets/sounds/police_siren.mp3 (còi hú cảnh sát) + channel
+// 'emergency-alerts' cũng tham chiếu cùng file qua res/raw nhờ config plugin.
+const ALARM_SOUND_FILE = require('../../assets/sounds/police_siren.mp3');
 
 let soundObject = null;
 let isPlaying = false;
@@ -103,7 +106,7 @@ export async function playEmergencyAlarm(options = {}) {
           progressUpdateIntervalMillis: 1000,
         });
         await soundObject.playAsync();
-        console.log('[EmergencyAlarm] Audio alarm started (looping, asset=emergency_alarm.wav)');
+        console.log('[EmergencyAlarm] Audio alarm started (looping, asset=police_siren.mp3)');
         audioPlayed = true;
       }
     } catch (e) {

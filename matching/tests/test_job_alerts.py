@@ -30,9 +30,10 @@ User = get_user_model()
 
 
 class CriticalPayloadClassTest(MatchingTestBase):
-    def test_critical_payload_has_class_and_type_and_sound(self):
-        """Task F: _build_payload critical bắt buộc kèm data.class='critical',
-        data.type=<code> (job_assigned) + sound critical_alert.wav."""
+    def test_job_assigned_payload_uses_chuong_carepartner(self):
+        """2026-09-20: job_assigned (Phụ huynh chọn CarePartner) → chuông
+        'Có Phụ Huynh Lựa Chọn' (chuong_carepartner.wav) trên channel riêng
+        educarelink_job_offer + data.sound để listener mobile lặp 60s."""
         worker = User.objects.create_user('fa_worker', password='x',
                                           role='worker', is_approved=True)
         notif = Notification.objects.create(
@@ -45,13 +46,33 @@ class CriticalPayloadClassTest(MatchingTestBase):
             token = 'ExponentPushToken[abc123]'
 
         payload = NotificationService._build_payload(notif, FakeToken())
-        self.assertEqual(payload['channelId'], 'educarelink_critical')
-        self.assertEqual(payload['sound'], 'critical_alert.wav')
+        self.assertEqual(payload['channelId'], 'educarelink_job_offer')
+        self.assertEqual(payload['sound'], 'chuong_carepartner.wav')
         self.assertEqual(payload['priority'], 'max')
         self.assertEqual(payload['data']['class'], 'critical')
         self.assertEqual(payload['data']['type'], 'job_assigned')
+        self.assertEqual(payload['data']['sound'], 'chuong_carepartner.wav')
         self.assertEqual(payload['data']['booking_id'], 'bk1')
         self.assertIn('notification_id', payload['data'])
+
+    def test_other_critical_keeps_default_siren(self):
+        """Critical KHÔNG phải job_assigned (vd commit_expired) giữ nguyên
+        chuông hệ thống: channel educarelink_critical + critical_alert.wav."""
+        parent = User.objects.create_user('fa_parent_exp', password='x',
+                                          role='parent')
+        notif = Notification.objects.create(
+            user=parent, code='commit_expired', klass='critical',
+            title_vi='Hết hạn cam kết', body_vi='Đơn đã quay lại.',
+            data={'type': 'commit_expired'},
+            channels=['push'], status='queued')
+
+        class FakeToken:
+            token = 'ExponentPushToken[def456]'
+
+        payload = NotificationService._build_payload(notif, FakeToken())
+        self.assertEqual(payload['channelId'], 'educarelink_critical')
+        self.assertEqual(payload['sound'], 'critical_alert.wav')
+        self.assertEqual(payload['data']['sound'], 'critical_alert.wav')
 
     def test_enqueued_job_assigned_has_critical_class(self):
         """Enqueue thật (template seeded) → row Notification critical và

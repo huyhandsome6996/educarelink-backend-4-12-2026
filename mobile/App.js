@@ -92,23 +92,26 @@ function useNotificationChannels() {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
 
-      // === PHẦN 2 & 3 (feature) — Channel emergency-alerts (còi to, bypass DnD) ===
+      // === Phan 2 & 3 (feature) — Channel emergency-alerts (còi to, bypass DnD) ===
       // Dùng chung cho:
       //   - DeviceOfflineAlert push (type=device_offline + critical=True)
       //   - RandomVerificationCheck push (type=random_verification)
       //
-      // ⚠️ QUAN TRỌNG: Channel này dùng file sound 'emergency_alarm.wav' —
+      // ⚠️ QUAN TRỌNG: Channel này dùng file sound từ res/raw —
       // KHÔNG hoạt động trên Expo Go. Phải build bằng EAS Development Build
       // hoặc production build mới test được sound custom + bypassDnd.
       //
-      // QA-FIX-3 / D: file sound tại mobile/assets/sounds/emergency_alarm.wav
+      // 2026-09-20: đổi sound thành police_siren.mp3 — còi hú cảnh sát thật
+      // (file yêu cầu "Police Siren - Tiếng Còi Hú Xe Cảnh Sát") thay cho
+      // emergency_alarm.wav tự sinh cũ. File nằm trong res/raw nhờ
+      // plugins/withCriticalNotificationSound.js.
       Notifications.setNotificationChannelAsync('emergency-alerts', {
         name: 'Cảnh báo khẩn cấp (còi to)',
         description: 'Còi báo động liên tục khi Carepartner mất kết nối / yêu cầu xác minh',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
         lightColor: '#EF4444',
-        sound: 'emergency_alarm.wav',
+        sound: 'police_siren.mp3',
         enableVibrate: true,
         showBadge: true,
         bypassDnd: true,
@@ -163,6 +166,40 @@ function useNotificationChannels() {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         enableVibrate: true,
         enableLights: true,
+        lightColor: '#F36A04',
+        showBadge: true,
+      });
+
+      // === 2026-09-20 — Channel 'educarelink_job_offer' (chuông được chọn) ===
+      // Push job_assigned (Phụ huynh lựa chọn CarePartner) — chuông
+      // "Chuông CarePartner - Có Phụ Huynh Lựa Chọn"; khi app foreground
+      // NotificationListener phát LẶP LIỀN 60 giây.
+      Notifications.setNotificationChannelAsync('educarelink_job_offer', {
+        name: 'EduCareLink - Phụ huynh chọn bạn',
+        description: 'Chuông thông báo khi phụ huynh lựa chọn bạn nhận ca chăm sóc',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'chuong_carepartner.wav', // trong res/raw/ nhờ withCriticalNotificationSound
+        vibrationPattern: [0, 500, 300, 500, 300, 500],
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        enableLights: true,
+        lightColor: '#F36A04',
+        showBadge: true,
+      });
+
+      // === 2026-09-20 — Channel 'educarelink_admin' (thông báo Admin) ===
+      // Admin gửi thông báo cho user → nhạc tin nhắn Messenger thay vì
+      // chuông hệ thống (backend send_expo_push_notification map type
+      // admin_notification → channel này).
+      Notifications.setNotificationChannelAsync('educarelink_admin', {
+        name: 'Thông báo EduCareLink',
+        description: 'Thông báo từ quản trị viên EduCareLink (nhạc tin nhắn Messenger)',
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: 'messenger_notification.mp3', // trong res/raw/ nhờ withCriticalNotificationSound
+        vibrationPattern: [0, 250, 250, 250],
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        enableLights: false,
         lightColor: '#F36A04',
         showBadge: true,
       });

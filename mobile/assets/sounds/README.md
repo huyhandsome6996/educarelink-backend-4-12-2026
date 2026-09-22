@@ -1,81 +1,47 @@
-# Thư mục âm thanh cảnh báo khẩn cấp
+# Thư mục âm thanh thông báo & cảnh báo
 
-Thư mục này chứa file âm thanh còi báo động dùng cho channel Android `emergency-alerts`
-(Phần 2 — báo động khi CarePartner mất kết nối + Phần 3 — xác minh ngẫu nhiên).
+Thư mục chứa file âm thanh dùng cho các Android channel + expo-av trong app
+(Web tương ứng nằm ở `frontend/static/sounds/`).
 
-## ✅ File `emergency_alarm.wav` — đã có
+## 🎵 Bộ âm thanh hiện tại (cập nhật 2026-09-20)
 
-QA-FIX-3 / D: file `emergency_alarm.wav` đã được bổ sung bằng cách generate
-procedurally (Python wave + struct). Thông số:
-
-| Thông số | Giá trị |
-|----------|---------|
-| Định dạng | WAV (PCM) — Expo/Android hỗ trợ native, không cần decode |
-| Độ dài | 3 giây (loop được trên channel) |
-| Sample rate | 44100 Hz |
-| Bit depth | 16-bit |
-| Channels | Mono (file nhỏ, đủ to) |
-| Nội dung | Siren 800Hz/1000Hz xen kẽ 0.5s mỗi tone |
-| Volume | 0.85 amplitude (đã normalized) |
-| License | Generated procedurally — không có vấn đề bản quyền |
+| File | Dùng cho | Channel / Nơi phát | Nguồn |
+|------|----------|--------------------|-------|
+| `critical_alert.wav` | Push `critical` luồng ghép cặp (không phải job_assigned) | `educarelink_critical` + NotificationListener foreground | Generated procedurally (siren 800/1000Hz, 3s, 44100Hz mono) |
+| `chuong_carepartner.wav` | **job_assigned — Phụ huynh lựa chọn CarePartner** | `educarelink_job_offer` + NotificationListener **LẶP 60 giây** khi foreground | "Chuông CarePartner - Có Phụ Huynh Lựa Chọn.wav" do chủ hệ thống cung cấp (16-bit mono 44100Hz) |
+| `messenger_notification.mp3` | **admin_notification — Admin gửi thông báo** | `educarelink_admin` + NotificationListener foreground 1 lần | "Nhạc thông báo tin nhắn Messenger.mp3" do chủ hệ thống cung cấp (MP3 128kbps) |
+| `police_siren.mp3` | **Báo động gửi về phụ huynh** (device_offline critical, random_verification, SOS) | `emergency-alerts` + EmergencyAlarmService.js loop | "Police Siren - Tiếng Còi Hú Xe Cảnh Sát, Công An.mp3" do chủ hệ thống cung cấp (MP3 128kbps) |
+| `emergency_alarm.wav` | (legacy — còn trong repo để backward-compat với app cũ; code mới KHÔNG dùng) | — | Generated procedurally |
 
 ## Cách file được dùng
 
-1. **Channel Android `emergency-alerts`** (App.js): `sound: 'emergency_alarm.wav'`
-   — Android native push sẽ play file này khi nhận alert.
-2. **EmergencyAlarmService.js**: `require('../../assets/sounds/emergency_alarm.wav')`
-   — app foreground sẽ play file này qua `expo-av` với `isLooping: true` khi
-   nhận push `device_offline_critical` hoặc `random_verification`.
+1. **Channel Android** (App.js + utils/notifications.js):
+   `sound: 'chuong_carepartner.wav' | 'messenger_notification.mp3' | 'police_siren.mp3'`
+   — Android native push sẽ play file trong `res/raw/` (copy bởi
+   `plugins/withCriticalNotificationSound.js` khi prebuild).
+2. **NotificationListener.js** (foreground): expo-av phát đúng file theo
+   `data.type` — `job_assigned` → chuông lặp **1 PHÚT**; `admin_notification`
+   → nhạc Messenger 1 lần; critical khác → `critical_alert.wav`.
+3. **EmergencyAlarmService.js** (foreground, báo động phụ huynh):
+   `require('../../assets/sounds/police_siren.mp3')` với `isLooping: true`.
 
 ## Lưu ý quan trọng về nền tảng
 
 - **Audio loop CHỈ chạy khi app ở FOREGROUND** (JS thread chạy).
 - Khi app **background/killed**: JS không chạy → audio loop KHÔNG chạy. Remote
-  push do OS xử lý (channel `emergency-alerts` + sound `emergency_alarm.wav`
-  nếu có file + EAS build). Đây là giới hạn vật lý của React Native.
+  push do OS xử lý (channel tương ứng + sound trong res/raw + EAS build).
+  Đây là giới hạn vật lý của React Native.
 - **iOS critical alert**: cần entitlement Apple (Critical Alerts Entitlement) —
   chưa có → UNTESTABLE trên iOS cho đến khi được Apple approve.
 - **Android full-screen intent + bypass DnD**: cần EAS Build (không hoạt động
-  trên Expo Go). Channel config đã set `bypassDnd: true` +
+  trên Expo Go). Channel `emergency-alerts` đã set `bypassDnd: true` +
   `USE_FULL_SCREEN_INTENT` permission trong app.json.
 
-## Cách replace file (nếu muốn âm thanh khác)
+## Cách thay file (nếu muốn âm thanh khác)
 
-1. Đặt file mới tại: `mobile/assets/sounds/emergency_alarm.wav` (giữ nguyên tên).
-2. Đảm bảo format: WAV PCM 16-bit mono 44100Hz, độ dài 3-5s, volume normalized.
-3. Không cần sửa code — `require()` đã trỏ tới đường dẫn này.
+1. Thay file tương ứng trong `mobile/assets/sounds/` (giữ nguyên tên file)
+   VÀ trong `frontend/static/sounds/` (bản web cùng tên).
+2. MP3/WAV đều được (Android hỗ trợ cả hai trong res/raw; iOS push sound
+   khuyến nghị wav/caf/aiff — nếu cần iOS sound riêng hãy convert).
+3. Không cần sửa code — `require()` và channel đã trỏ tới đường dẫn này.
 4. Chạy lại `eas build` để bundle asset mới vào native binary.
-
-## Cách regenerate file (Python)
-
-```python
-import struct, wave, math
-sample_rate = 44100
-duration_sec = 3.0
-n_samples = int(sample_rate * duration_sec)
-samples = []
-for i in range(n_samples):
-    t = i / sample_rate
-    cycle_pos = (t % 1.0)
-    freq = 800 if cycle_pos < 0.5 else 1000
-    env = 1.0
-    fade = 0.01
-    if t < fade:
-        env = t / fade
-    elif t > duration_sec - fade:
-        env = (duration_sec - t) / fade
-    val = 0.85 * env * math.sin(2 * math.pi * freq * t)
-    samples.append(val)
-
-pcm = b''
-for s in samples:
-    pcm += struct.pack('<h', int(s * 32767))
-
-with open('emergency_alarm.wav', 'wb') as f:
-    w = wave.open(f, 'wb')
-    w.setnchannels(1)
-    w.setsampwidth(2)
-    w.setframerate(sample_rate)
-    w.writeframes(pcm)
-    w.close()
-```

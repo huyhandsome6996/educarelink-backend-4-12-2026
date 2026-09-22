@@ -145,6 +145,17 @@ def send_expo_push_notification(token, title, body, data=None):
             'priority': 'high',
             'ios': {'sound': 'critical', 'priority': 'high', 'category': 'CRITICAL_ALERT'},
         },
+        # === Admin gửi thông báo (2026-09-20) ===
+        # Channel 'educarelink_admin' (mobile App.js đăng ký) với sound
+        # messenger_notification.mp3 (res/raw nhờ config plugin) — thông báo
+        # admin kêu bằng nhạc tin nhắn Messenger thay vì chuông hệ thống.
+        # data.sound giúp NotificationListener phát đúng file khi foreground.
+        'admin_notification': {
+            'android_channel_id': 'educarelink_admin',
+            'channel_id': 'educarelink_admin',
+            'priority': 'high',
+            'ios': {'sound': 'default', 'priority': 'high'},
+        },
         'geofence_exit': {
             'android_channel_id': 'geofence_alerts',
             'channel_id': 'geofence_alerts',
@@ -1655,13 +1666,15 @@ class AdminSendNotificationAPIView(APIView):
                     title=title,
                     message=message
                 ))
-                # Push notification
+                # Push notification — data.sound để mobile/Web phát nhạc
+                # Messenger thay vì chuông hệ thống (2026-09-20)
                 if worker.expo_push_token:
                     send_expo_push_notification(
                         token=worker.expo_push_token,
                         title=title,
                         body=message,
-                        data={'type': 'admin_notification'}
+                        data={'type': 'admin_notification',
+                              'sound': 'messenger_notification.mp3'}
                     )
             Notification.objects.bulk_create(notifications)
             return Response({'message': f'Đã gửi thông báo cho {len(notifications)} Carepartner.'})
@@ -1680,13 +1693,15 @@ class AdminSendNotificationAPIView(APIView):
                 message=message
             )
 
-            # Push notification
+            # Push notification — data.sound để mobile/Web phát nhạc
+            # Messenger thay vì chuông hệ thống (2026-09-20)
             if worker.expo_push_token:
                 send_expo_push_notification(
                     token=worker.expo_push_token,
                     title=title,
                     body=message,
-                    data={'type': 'admin_notification'}
+                    data={'type': 'admin_notification',
+                          'sound': 'messenger_notification.mp3'}
                 )
 
             return Response({'message': f'Đã gửi thông báo cho {worker.username}.'})
