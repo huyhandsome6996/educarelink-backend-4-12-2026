@@ -244,8 +244,88 @@ let geofenceLng = null;
 let geofenceRadius = 500;
 let wasOutsideGeofence = false;
 let lastOfflineAlertId = null;  // Track alert mới để trigger alarm 1 lần
+let currentOfflineAlertId = null; // Alert đang active — dùng cho acknowledge
 let alarmAudioCtx = null;
 let alarmInterval = null;
+
+// ====================================================================
+// CHUÔNG BÁO ĐỘNG (2026-09-27) — còi hú cảnh sát THẬT (police_siren.mp3)
+// lặp LIÊN TỤC cho tới khi phụ huynh bấm "Đã biết" hoặc thiết bị online lại
+// (trước đây là oscillator 30 giây tự tắt — khó chịu ít, dễ bỏ lỡ).
+// File + cơ chế prime autoplay đồng bộ notification_sound.js /
+// job_assigned_alert.js. Nếu file không tải được → fallback oscillator.
+// ====================================================================
+const POLICE_SIREN_URL = '/static/sounds/police_siren.mp3';
+let sirenAudio = null;
+let sirenPrimed = false;
+
+function primeSiren() {
+  if (sirenPrimed) return;
+  sirenPrimed = true;
+  try {
+    sirenAudio = new Audio(POLICE_SIREN_URL);
+    sirenAudio.preload = 'auto';
+    sirenAudio.loop = true;
+    // Mở khoá autoplay: play muted 1 lần rồi pause
+    sirenAudio.muted = true;
+    const p = sirenAudio.play();
+    if (p && p.then) {
+      p.then(() => {
+        try { sirenAudio.pause(); sirenAudio.currentTime = 0; sirenAudio.muted = false; } catch (e) {}
+      }).catch(() => { try { sirenAudio.muted = false; } catch (e) {} });
+    }
+  } catch (e) { sirenAudio = null; }
+}
+// Lần chạm đầu tiên vào trang → nạp sẵn chuông (muted) để sau này kêu được
+['click', 'touchstart', 'keydown'].forEach(evt =>
+  document.addEventListener(evt, primeSiren, { once: true }));
+
+function triggerAlarm() {
+  // Hiển thị thông báo lỗi
+  showToast('🚨🚨🚨 CẢNH BÁO KHẨN: Cần liên hệ Carepartner NGAY! 🚨🚨🚨');
+
+  // Rung máy (mobile web hỗ trợ)
+  try { if (navigator.vibrate) navigator.vibrate([0, 1500, 400, 1500]); } catch (e) {}
+
+  // Ưu tiên file siren thật — LẶP LIÊN TỤC (không tự tắt sau 30s nữa)
+  primeSiren();
+  if (sirenAudio) {
+    try {
+      sirenAudio.currentTime = 0;
+      sirenAudio.muted = false;
+      const p = sirenAudio.play();
+      if (p && p.catch) {
+        p.catch(() => {
+          // autoplay bị chặn → fallback oscillator
+          startOscillatorFallback();
+        });
+      }
+      return;
+    } catch (e) { /* rơi xuống fallback */ }
+  }
+  startOscillatorFallback();
+}
+
+function startOscillatorFallback() {
+  // Fallback: beep Web Audio 880/440Hz mỗi 1.5s — dùng khi file siren lỗi
+  try {
+    if (!alarmAudioCtx) {
+      alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (alarmAudioCtx.state === 'suspended') alarmAudioCtx.resume();
+    if (alarmInterval) clearInterval(alarmInterval);
+    playBeep();
+    alarmInterval = setInterval(playBeep, 1500);
+  } catch (e) {
+    console.warn('Audio alarm không khả dụng:', e);
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🚨 EduCareLink: Cảnh báo khẩn cấp!', {
+        body: 'Thiết bị Carepartner mất kết nối hoặc rời vùng an toàn!',
+        icon: '/static/images/logo.png'
+      });
+    }
+  }
+}
 
 // ====================================================================
 // AUTHENTICATION
@@ -393,15 +473,17 @@ async function fetchDeviceStatus() {
     const data = await r.json();
     updateDeviceStatusUI(data);
 
-    // Nếu có offline alert mới → trigger chuông kêu
+    // Nếu có offline alert mới → trigger chuông kêu (lặp tới khi xử lý)
     const activeAlert = data.active_alerts && data.active_alerts[0];
     if (activeAlert && activeAlert.id !== lastOfflineAlertId) {
       lastOfflineAlertId = activeAlert.id;
-      triggerAlarm();  // chuông kêu to + vibration (nếu web hỗ trợ)
+      currentOfflineAlertId = activeAlert.id;
+      triggerAlarm();  // chuông kêu to (siren lặp) + vibration (nếu web hỗ trợ)
       showOfflineAlertModal(data);
     } else if (!activeAlert && lastOfflineAlertId !== null) {
       // Đã online trở lại
       lastOfflineAlertId = null;
+      currentOfflineAlertId = null;
       stopAlarm();
       hideOfflineAlertModal();
       showToast('✅ Thiết bị Carepartner đã online trở lại');
@@ -470,8 +552,8 @@ function showOfflineAlertModal(data) {
             👤 Gọi carepartner
           </a>
         </div>
-        <button onclick="hideOfflineAlertModal()" class="mt-3 w-full text-gray-600 hover:text-gray-800 text-sm">
-          Đã biết (đóng)
+        <button onclick="acknowledgeCurrentAlert(); stopAlarm(); hideOfflineAlertModal();" class="mt-3 w-full text-gray-600 hover:text-gray-800 text-sm font-semibold">
+          Đã biết (đóng + xác nhận đã tiếp nhận)
         </button>
       </div>
     `;
@@ -659,43 +741,10 @@ function showToast(msg) {
 }
 
 // ====================================================================
-// ALARM (chuông cảnh báo to khi carepartner rời vùng an toàn)
+// ALARM — bản cũ (oscillator 30s) đã bị THAY THẾ bởi hệ thống siren
+// police_siren.mp3 lặp liên tục + acknowledge ở ĐẦU trang (2026-09-27).
+// playBeep giữ lại làm fallback cho startOscillatorFallback().
 // ====================================================================
-function triggerAlarm() {
-  // Hiển thị thông báo lỗi
-  showToast('🚨🚨🚨 CẢNH BÁO: Carepartner đã rời vùng an toàn! 🚨🚨🚨');
-
-  // Phát chuông dùng Web Audio API (không cần file mp3)
-  try {
-    if (!alarmAudioCtx) {
-      alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // Resume context nếu bị suspend (browser policy)
-    if (alarmAudioCtx.state === 'suspended') {
-      alarmAudioCtx.resume();
-    }
-
-    // Lặp chuông mỗi 1.5 giây cho đến khi dừng
-    if (alarmInterval) clearInterval(alarmInterval);
-    playBeep(); // chơi ngay 1 lần
-    alarmInterval = setInterval(playBeep, 1500);
-
-    // Sau 30 giây tự dừng (tránh spam quá lâu)
-    setTimeout(() => {
-      if (alarmInterval) stopAlarm();
-    }, 30000);
-  } catch (e) {
-    console.warn('Audio alarm không khả dụng:', e);
-    // Fallback: dùng Notification API
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('🚨 EduCareLink: Cảnh báo!', {
-        body: 'Carepartner đã rời vùng an toàn!',
-        icon: '/static/images/logo.png'
-      });
-    }
-  }
-}
-
 function playBeep() {
   if (!alarmAudioCtx) return;
   const oscillator = alarmAudioCtx.createOscillator();
@@ -720,6 +769,29 @@ function stopAlarm() {
   if (alarmInterval) {
     clearInterval(alarmInterval);
     alarmInterval = null;
+  }
+  if (sirenAudio) {
+    try { sirenAudio.pause(); sirenAudio.currentTime = 0; } catch (e) {}
+  }
+}
+
+// ====================================================================
+// ACKNOWLEDGE — phụ huynh bấm "Đã biết" → backend ghi nhận đã tiếp nhận
+// (dừng vòng retry push 5×30s của scheduler, đồng bộ trạng thái alert)
+// Endpoint: POST /api/tracking/<task_id>/offline-alerts/<alert_id>/acknowledge/
+// ====================================================================
+async function acknowledgeCurrentAlert() {
+  const alertId = currentOfflineAlertId;
+  currentOfflineAlertId = null;
+  if (!alertId || !taskId) return; // geofence alarm không có alert id — chỉ đóng
+  try {
+    await authFetch(`${API_BASE}/tracking/${taskId}/offline-alerts/${alertId}/acknowledge/`, {
+      method: 'POST',
+      body: {}
+    });
+    showToast('✅ Đã xác nhận tiếp nhận cảnh báo');
+  } catch (e) {
+    console.warn('Acknowledge lỗi (không chặn):', e);
   }
 }
 

@@ -9,6 +9,7 @@ from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import os
+import hashlib
 import logging
 import requests
 from django.db import models as db_models, transaction
@@ -961,90 +962,102 @@ class WorkerProfileDetailAPIView(APIView):
 class ChatbotAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    # Prompt hệ thống dạy Gemini cách hoạt động trong context của Educarelink
+    # ============================================================
+    # 2026-09-27 — NÂNG CẤP "NHỜ AI ĐĂNG VIỆC HỘ" THEO LUỒNG GHÉP CẶP MỚI
+    # ------------------------------------------------------------
+    # Trước đây chatbot dạy Gemini 8 danh mục cũ và tạo core.Task 'open'
+    # (luồng ứng tuyển đã đóng 403, 5/8 danh mục bị kiểm duyệt tự huỷ).
+    # Giờ AI tạo matching.JobPost (tutoring/childcare/pickup) + publish
+    # luôn → tin đăng vào radar ghép cặp, phụ huynh chọn được ứng viên
+    # ngay trên /ung-vien/<job_id>/ (web) và CandidatesList (mobile).
+    # ============================================================
     SYSTEM_PROMPT = """
-Bạn là trợ lý AI của ứng dụng Educarelink — nền tảng kết nối phụ huynh với sinh viên/người tìm việc.
-Nhiệm vụ của bạn là giúp PHỤ HUYNH đăng việc nhanh chóng thông qua hội thoại tự nhiên.
+Bạn là trợ lý AI của ứng dụng EduCareLink — nền tảng kết nối phụ huynh với Carepartner (sinh viên tốt nghiệp/đang học) cho 3 dịch vụ duy nhất.
+Nhiệm vụ của bạn là giúp PHỤ HUYNH đăng việc nhanh chóng qua hội thoại tự nhiên. Tin đăng sẽ vào HỆ THỐNG GHÉP CẶP THÔNG MINH: AI quét và đề xuất tối đa 8 Carepartner phù hợp nhất cho phụ huynh chọn.
 
-CÁC DANH MỤC DỊCH VỤ (dùng ID tương ứng):
-1 = Gia sư (dạy kèm, học thêm, ôn thi)
-2 = Đón trẻ (đón con, đưa đón học sinh)
-3 = Dọn dẹp nhà cửa (lau dọn, vệ sinh)
-4 = Trông trẻ (giữ trẻ, babysitter)
-5 = Mua sắm hộ (đi chợ, mua đồ)
-6 = Nấu ăn (nấu bữa cho gia đình)
-7 = Hỗ trợ AI (công nghệ AI hỗ trợ học tập)
-8 = Khác (chuyển đồ, thú cưng, kỹ năng sống, v.v.)
+BA LOẠI VIỆC (job_type — CHỈ 3 LOẠI NÀY):
+- "tutoring"  = Gia sư / kèm học 1:1 (Toán, Văn, Anh, Tiếng Nhật, Piano, Vẽ, MC, kỹ năng sống, học kỳ... đều được)
+- "childcare" = Trông trẻ tại nhà (cho ăn, tắm rửa, vui chơi, trông ngủ, hỗ trợ bài tập...)
+- "pickup"    = Đón trẻ tan học (đón cổng trường về nhà hoặc gửi đến địa chỉ khác)
 
 QUY TẮC XỬ LÝ:
-- Nếu người dùng muốn ĐĂNG VIỆC hoặc TÌM NGƯỜI: phân tích và trả về JSON trong thẻ <TASK_JSON>...</TASK_JSON>
-- Nếu thiếu thông tin bắt buộc (địa điểm, thời gian, giá): hỏi lại một cách thân thiện
+- Nếu người dùng muốn ĐĂNG VIỆC và ĐỦ THÔNG TIN: trả lời xác nhận thân thiện + trả về JSON trong thẻ <MATCHING_JOB_JSON>...</MATCHING_JOB_JSON>
+- Nếu THIẾU thông tin bắt buộc: KHÔNG tạo JSON — hỏi lại NGẮN GỌN từng nhóm thiếu (loại việc nào? môn gì / con mấy tuổi? ngày giờ nào? giá bao nhiêu 1 giờ? ở đâu?) — tối đa 3-4 câu hỏi 1 lần
 - Nếu chỉ hỏi thông tin thông thường: trả lời bình thường, KHÔNG tạo JSON
-- Luôn trả lời bằng TIẾNG VIỆT, thân thiện và ngắn gọn
-- Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng, tránh hỏi lại thông tin đã cung cấp
+- Luôn trả lời bằng TIẾNG VIỆT có dấu, thân thiện, ngắn gọn, xuống dòng bằng "•"
+- Dùng ngữ cảnh hội thoại trước đó, KHÔNG hỏi lại thông tin đã có
+- CẨM: gợi ý dịch vụ ngoài 3 loại trên (dọn dẹp, nấu ăn, mua sắm hộ...) — nếu người dùng hỏi, nhẹ nhàng giải thích EduCareLink chỉ phục vụ Gia sư / Trông trẻ / Đón trẻ
 
-🔒 QUY TẮC BẮT BUỘC VỀ TIẾNG VIỆT CÓ DẤU:
-- Tiêu đề (title) và mô tả (description) trong TASK_JSON PHẢI là Tiếng Việt có dấu đầy đủ
-- Ví dụ ĐÚNG: "Gia sư Toán lớp 5 cho bé Minh", "Dạy kèm Tiếng Anh cho bé 10 tuổi"
-- Ví dụ SAI (cấm): "Gia su Toan lop 5", "Day kem Tieng Anh", "Gia sư Toán lớp 5 cho bé Minh" (nếu bị lỗi font)
-- Nếu người dùng gõ không dấu → bạn PHẢI chuyển sang có dấu khi tạo task
-- Không được để lỗi font, ký tự lạ, hoặc tiếng Việt không dấu trong title/description
+QUY TẮC GIÁ:
+- hourly_rate_vnd là giá MỖI GIỜ (VND). Thị trường hợp lý: gia sư 80.000-200.000đ/g, trông trẻ 60.000-120.000đ/g, đón trẻ 50.000-100.000đ/ca ngắn
+- Người dùng nói "120k" → 120000; "200 nghìn 1 tiếng" → 200000
+- Nếu giá quá thấp (< 30.000đ/g) → khuyên nhẹ rồi vẫn cho đăng
 
-🔒 TÍNH NĂNG BẢO ĐẢM AN TOÀN (QUAN TRỌNG):
-Khi phụ huynh muốn đăng việc thuộc 1 trong 3 danh mục:
-- Gia sư (category=1)
-- Đón trẻ (category=2)
-- Trông trẻ (category=4)
+🔒 QUY TẮC BẢO ĐẢM AN TOÀN (bắt buộc hỏi với childcare và pickup):
+Trước khi tạo JSON, nếu người dùng CHƯA nhắc: hỏi 1 câu ngắn
+"🔒 Anh/chị có muốn bật CHẾ ĐỘ AN TOÀN cho bé không? (theo dõi vị trí real-time + cảnh báo khẩn nếu Carepartner mất kết nối/nhận ra khỏi khu vực + nút SOS)"
+- Trả lời "có" → thêm "enable_safety": true
+- Trả lời "không" → thêm "enable_safety": false
+- Nếu người dùng không trả lời, mặc định "enable_safety": true (an toàn là trên hết)
+- tutoring KHÔNG cần hỏi (không áp dụng)
 
-Bạn PHẢI hỏi phụ huynh xem có muốn kích hoạt "Chế độ bảo đảm an toàn" không.
-
-Cách hỏi:
-"🔒 Để bảo vệ an toàn cho bé, anh/chị có muốn kích hoạt CHẾ ĐỘ BẢO ĐẢM AN TOÀN không?
-
-Chế độ này sẽ:
-• Vẽ vùng an toàn quanh nơi làm việc (mặc định 500m)
-• Cảnh báo ngay nếu Carepartner rời vùng an toàn
-• Chuông kêu + thông báo khẩn cấp nếu Carepartner tắt máy / đập máy / mất kết nối > 60 giây
-• Nút SOS khẩn cấp cho cả phụ huynh và Carepartner
-• Theo dõi vị trí real-time khi Carepartner đang làm việc
-
-👉 Trả lời 'có' để bật, hoặc 'không' để bỏ qua."
-
-Nếu phụ huynh trả lời "có" / "có nhé" / "bật đi" / "ok" / "yes" → thêm field "enable_safety": true vào TASK_JSON.
-Nếu phụ huynh trả lời "không" / "không cần" / "bỏ qua" → thêm field "enable_safety": false vào TASK_JSON.
-
-Chỉ tạo TASK_JSON khi phụ huynh đã trả lời câu hỏi an toàn (với 3 danh mục trên).
-
-QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
-- KHÔNG bao giờ viết 1 đoạn văn dài chình ình — RẤT KHÓ ĐỌC
-- Mỗi ý phải xuống dòng riêng, dùng gạch đầu dòng "•" hoặc "-"
-- Nếu có nhiều bước/hướng dẫn → đánh số thứ tự 1. 2. 3.
-- Giữa các phần khác nhau → để 1 dòng trống
-- Ví dụ đúng:
-  Chào phụ huynh! Em có thể giúp anh/chị:
-
-  • Đăng việc nhanh qua chat
-  • Tìm gia sư, người trông trẻ
-  • Hướng dẫn sử dụng app
-
-  Anh/chị muốn làm gì ạ?
-- Ví dụ SAI (cấm): "Chào phụ huynh! Em có thể giúp đăng việc, tìm gia sư, tìm người trông trẻ, hướng dẫn sử dụng app. Anh chị muốn làm gì?"
-
-FORMAT JSON khi tạo task (bắt buộc đủ các field):
-<TASK_JSON>
+FORMAT JSON khi đủ thông tin (bắt buộc đúng schema):
+<MATCHING_JOB_JSON>
 {
-  "category": <số 1-8>,
-  "title": "<Tiếng Việt có dấu, ngắn gọn>",
-  "description": "<Tiếng Việt có dấu, chi tiết>",
-  "location": "<địa điểm cụ thể>",
-  "scheduled_time": "<YYYY-MM-DDTHH:MM:00+07:00>",
-  "price": <số tiền VND, không có dấu chấm>,
-  "enable_safety": <true|false, chỉ dùng cho category 1, 2, 4>
+  "job_type": "tutoring|childcare|pickup",
+  "hourly_rate_vnd": 120000,
+  "location": "<địa chỉ cụ thể bằng tiếng Việt có dấu>",
+  "enable_safety": true,
+  "type_data": { ...tùy loại việc bên dưới... }
 }
-</TASK_JSON>
+</MATCHING_JOB_JSON>
 
-Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối thứ 3 tuần này ở Quận 1, trả 200k/buổi"
-→ Trả lời xác nhận lại thông tin + JSON hợp lệ bên trong thẻ <TASK_JSON>.
+SCHEMA type_data theo từng loại:
+
+1) tutoring (Gia sư) — bắt buộc: subject, dates, time_from, time_to. specific_requirements tự viết giúp nếu user không nói (KHÔNG đưa vào JSON khi trống — hệ thống tự điền).
+{
+  "subject": "Toán lớp 5" (text tự do: môn học hoặc kỹ năng như Piano, MC, Vẽ),
+  "child_grade_level": "preschool_prep|primary_grade_1_5|secondary_grade_6_9|high_school_grade_10_12" (tùy chọn),
+  "tutor_seniority_preference": "student_year_1_2|student_year_3_4|graduate|no_preference" (tùy chọn, mặc định no_preference nếu user không nói),
+  "dates": ["2026-09-29", "2026-10-01"] (ngày cụ thể, KHÔNG quá khứ, tối đa 12 tuần tới),
+  "time_from": "18:30",
+  "time_to": "20:00" (buổi dạy ít nhất 30 phút)
+}
+
+2) childcare (Trông trẻ) — bắt buộc: child_age_group, number_of_children, care_duties, dates, time_from, time_to.
+{
+  "child_age_group": "0_to_12_months|1_to_3_years|3_to_6_years|6_to_10_years|over_10_years",
+  "number_of_children": 1,
+  "care_duties": ["general_care", "feeding", "bathing", "sleep_monitoring", "play_activities", "homework_help", "light_chores"] (chọn từ 7 giá trị này, đủ nghĩa với yêu cầu),
+  "medical_allergy_notes": "bé dị ứng tôm..." (tùy chọn),
+  "dates": ["2026-09-29"],
+  "time_from": "08:00",
+  "time_to": "17:00"
+}
+
+3) pickup (Đón trẻ) — bắt buộc: school_or_pickup_place_name, child_age_group, number_of_children, pickup_dates, pickup_time_from, pickup_time_to, destination_type.
+{
+  "school_or_pickup_place_name": "Trường Tiểu học Kim Đồng",
+  "child_age_group": "6_to_10_years",
+  "number_of_children": 1,
+  "pickup_dates": ["2026-09-29"],
+  "pickup_time_from": "16:30",
+  "pickup_time_to": "17:30",
+  "destination_type": "parent_home|other_address" (về nhà → parent_home; nếu other_address cần user nói rõ địa chỉ để ghi vào destination_note),
+  "transport_method": "walking|carepartner_vehicle|parent_arranged" (tùy chọn, nếu user nói xe máy/xe đạp của CP → carepartner_vehicle),
+  "destination_note": "số 12 Nguyễn Trãi, Huế" (tùy chọn)
+}
+
+QUY TẮC NGÀY GIỜ (RẤT QUAN TRỌNG):
+- Hôm nay là ngày hiện tại của hệ thống. Chuyển "thứ 3 tuần này", "ngày mai", "cuối tuần" thành NGÀY CỤ THỂ YYYY-MM-DD trong tương lai
+- Người dùng nói "tối thứ 3 và thứ 5 hằng tuần" → chọn 2 ngày cụ thể gần nhất tương ứng + thêm "recurrence": {"pattern": "weekly", "weekdays": [1, 3], "until": "<ngày cuối cùng user muốn lặp, YYYY-MM-DD, tối đa 12 tuần>"} vào type_data (weekdays: 0=Thứ Hai ... 6=Chủ Nhật)
+- Giờ dạng "18h30" → "18:30"; "7h tối" → "19:00"
+
+QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI:
+- KHÔNG viết 1 đoạn văn dài — mỗi ý 1 dòng "•", hướng dẫn nhiều bước đánh số 1. 2. 3., giữa các phần để 1 dòng trống
+
+Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận 1, 200k 1 buổi 2 tiếng"
+→ Trả lời xác nhận ngắn (đã hiểu: Toán lớp 8, tối thứ 3, Q1, 200k/2 tiếng ≈ 100k/g) + JSON hợp lệ trong <MATCHING_JOB_JSON>.
 """
 
     def _build_contents(self, user_message, chat_history=None):
@@ -1120,98 +1133,43 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
             if not ai_text:
                 return Response({"response": "AI không thể trả lời câu hỏi này do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Kiểm tra xem AI có trả về JSON để tạo task không
-            task_json_match = re.search(r'<TASK_JSON>(.*?)</TASK_JSON>', ai_text, re.DOTALL)
+            # ============================================================
+            # 2026-09-27: "NHỜ AI ĐĂNG VIỆC HỘ" theo LUỒNG GHÉP CẶP MỚI
+            # AI trả <MATCHING_JOB_JSON> → tạo matching.JobPost + publish
+            # ngay → radar quét đề xuất tối đa 8 Carepartner. KHÔNG còn
+            # tạo core.Task 'open' cũ (luồng ứng tuyển đã đóng 403).
+            # ============================================================
+            job_json_match = re.search(
+                r'<MATCHING_JOB_JSON>(.*?)</MATCHING_JOB_JSON>', ai_text, re.DOTALL)
+            legacy_task_match = re.search(r'<TASK_JSON>(.*?)</TASK_JSON>', ai_text, re.DOTALL)
+            clean_response = re.sub(
+                r'<MATCHING_JOB_JSON>.*?</MATCHING_JOB_JSON>|<TASK_JSON>.*?</TASK_JSON>',
+                '', ai_text, flags=re.DOTALL).strip()
 
-            if task_json_match and request.user.role == 'parent':
-                # Trích xuất JSON và tự động tạo task
-                raw_json = task_json_match.group(1).strip()
-                task_data = json.loads(raw_json)
+            if job_json_match and request.user.role == 'parent':
+                result = self._create_job_from_chat(request, job_json_match.group(1).strip())
+                if result is None:
+                    # AI thiếu/sai dữ liệu bắt buộc → trả câu hỏi làm rõ (không tạo job)
+                    return Response({
+                        "response": clean_response or
+                        "Bạn cho mình biết thêm một chút thông tin nhé!",
+                        "type": "clarification",
+                    })
+                result["response"] = (clean_response + "\n\n" + result["response"]).strip()
+                return Response(result)
 
-                # Validate bắt buộc
-                required = ['category', 'title', 'description', 'location', 'scheduled_time', 'price']
-                missing = [f for f in required if not task_data.get(f)]
-                if missing:
-                    # Thiếu field → hỏi lại
-                    clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
-                    return Response({"response": clean_response, "type": "clarification"})
-
-                # Lấy ServiceCategory
-                try:
-                    category = ServiceCategory.objects.get(id=int(task_data['category']))
-                except ServiceCategory.DoesNotExist:
-                    category = ServiceCategory.objects.first()
-
-                # Tạo Task trong database
-                from django.utils.dateparse import parse_datetime
-                scheduled = parse_datetime(task_data['scheduled_time'])
-                if not scheduled:
-                    raise drf_serializers.ValidationError({'scheduled_time': 'Định dạng thời gian không hợp lệ từ AI.'})
-                
-                try:
-                    price_val = int(str(task_data['price']).replace('.', '').replace(',', '').replace('đ', '').replace('Đ', '').replace('VNĐ', '').replace('vnd', '').strip())
-                except (ValueError, TypeError):
-                    raise drf_serializers.ValidationError({'price': 'Định dạng giá không hợp lệ từ AI.'})
-
-                # Xử lý enable_safety (chỉ cho category 1, 2, 4)
-                enable_safety = task_data.get('enable_safety', False)
-                category_id = int(task_data['category'])
-                safety_enabled = bool(enable_safety and category_id in [1, 2, 4])
-
-                # Lấy vị trí từ user để set geofence nếu safety enabled
-                user_lat = float(request.data.get('latitude', 0) or getattr(request.user, 'latitude', 0) or 10.762622)
-                user_lng = float(request.data.get('longitude', 0) or getattr(request.user, 'longitude', 0) or 106.660172)
-
-                task_kwargs = {
-                    'parent': request.user,
-                    'category': category,
-                    'title': task_data['title'],
-                    'description': task_data['description'],
-                    'location': task_data['location'],
-                    'scheduled_time': scheduled,
-                    'price': price_val,
-                    'status': 'open',
-                    'ai_generated_from_prompt': user_message,  # Lưu lại câu chat gốc
-                }
-
-                # Nếu safety enabled → set geofence fields
-                if safety_enabled:
-                    task_kwargs['geofence_lat'] = user_lat
-                    task_kwargs['geofence_lng'] = user_lng
-                    task_kwargs['geofence_radius'] = 500  # mặc định 500m
-
-                new_task = Task.objects.create(**task_kwargs)
-
-                # Trả về phản hồi sạch (không có JSON thô) + thông tin task đã tạo
-                clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
-                safety_msg = ""
-                if safety_enabled:
-                    safety_msg = "\n\n🔒 Đã bật CHẾ ĐỘ BẢO ĐẢM AN TOÀN cho công việc này!\n• Vùng an toàn: 500m quanh địa điểm làm việc\n• Cảnh báo nếu Carepartner rời vùng\n• Chuông khẩn cấp nếu tắt máy > 60s\n• Nút SOS sẵn sàng cho cả 2 bên"
+            if legacy_task_match and request.user.role == 'parent':
+                # Tàn dư prompt cũ (model còn nhớ schema 8 danh mục) — KHÔNG
+                # tạo core.Task 'open' nữa vì luồng ứng tuyển đã đóng. Trả
+                # về như câu làm rõ để phụ huynh bổ sung thông tin.
                 return Response({
-                    "response": clean_response + f"\n\n✅ Đã tạo công việc thành công!{safety_msg}",
-                    "type": "task_created",
-                    "task": {
-                        "id": new_task.id,
-                        "title": new_task.title,
-                        "category": new_task.category.id if new_task.category else None,
-                        "description": new_task.description,
-                        "price": str(new_task.price),
-                        "location": new_task.location,
-                        "scheduled_time": new_task.scheduled_time.isoformat(),
-                        "status": new_task.status,
-                        "safety_enabled": safety_enabled,
-                        "geofence_lat": float(new_task.geofence_lat) if new_task.geofence_lat else None,
-                        "geofence_lng": float(new_task.geofence_lng) if new_task.geofence_lng else None,
-                        "geofence_radius": float(new_task.geofence_radius) if new_task.geofence_radius else None,
-                    }
+                    "response": clean_response or
+                    "Bạn cho mình biết thêm một chút thông tin nhé!",
+                    "type": "clarification",
                 })
-            else:
-                # Phản hồi hội thoại thông thường (không tạo task)
-                clean_response = re.sub(r'<TASK_JSON>.*?</TASK_JSON>', '', ai_text, flags=re.DOTALL).strip()
-                return Response({
-                    "response": clean_response,
-                    "type": "message"
-                })
+
+            # Phản hồi hội thoại thông thường (không tạo job)
+            return Response({"response": clean_response, "type": "message"})
 
         except Exception as e:
             # Lỗi kết nối Gemini — trả về thân thiện
@@ -1243,6 +1201,160 @@ Ví dụ: Nếu người dùng nói "Tôi cần gia sư Toán lớp 8 vào tối
                 "response": f"❌ {detail}",
                 "type": "error"
             }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def _resolve_job_coordinates(self, request, location_text):
+        """Tìm toạ độ (lat, lng) cho job đăng qua chatbot.
+
+        Thứ tự ưu tiên:
+          1) lat/lng client gửi kèm request (web/mobile đang bật GPS)
+          2) toạ độ hồ sơ user (từ GPS heartbeat trước đó)
+          3) geocode địa chỉ AI trích xuất (Nominatim server-side, cache 6h)
+          4) mặc định TP.HCM (khớp hành vi cũ của geofence)
+        Trả về (lat, lng) float — luôn có giá trị.
+        """
+        try:
+            lat = float(request.data.get('latitude') or 0) or None
+            lng = float(request.data.get('longitude') or 0) or None
+        except (TypeError, ValueError):
+            lat, lng = None, None
+        if lat and lng:
+            return lat, lng
+        try:
+            lat = float(getattr(request.user, 'latitude', None) or 0) or None
+            lng = float(getattr(request.user, 'longitude', None) or 0) or None
+        except (TypeError, ValueError):
+            lat, lng = None, None
+        if lat and lng:
+            return lat, lng
+        # Geocode địa chỉ text (AI trích từ hội thoại) — lỗi thì bỏ qua
+        if location_text:
+            try:
+                from matching.api.geocode import _cached_json, _nominatim
+                key = 'ela:chatbot:geo:' + hashlib.md5(
+                    location_text.strip().lower().encode()).hexdigest()
+                data = _cached_json(key, lambda: _nominatim('/search', {
+                    'q': location_text.strip(), 'format': 'json',
+                    'limit': 1, 'countrycodes': 'vn'}))
+                if data and isinstance(data, list) and data:
+                    return float(data[0]['lat']), float(data[0]['lon'])
+            except Exception:
+                pass
+        return 10.762622, 106.660172  # mặc định TP.HCM
+
+    def _parse_chatbot_rate(self, raw):
+        """Chuẩn hoá giá AI trả về ('120000', '120.000', '120k') → int > 0 hoặc None."""
+        try:
+            s = str(raw).lower().replace('vnđ', '').replace('vnd', '').replace('đ', '').strip()
+            if not s:
+                return None
+            if s.endswith('k'):
+                val = float(s[:-1].strip().replace('.', '').replace(',', '')) * 1000
+            else:
+                val = float(s.replace('.', '').replace(',', ''))
+            val = int(val)
+            return val if val > 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    def _create_job_from_chat(self, request, raw_json):
+        """Tạo + publish matching.JobPost từ JSON AI đăng việc hộ.
+
+        Trả về dict {response, type:'job_created', job:{...}} hoặc None khi
+        dữ liệu thiếu/sai (caller đổi thành câu hỏi làm rõ, không crash).
+        """
+        import json as _json
+        try:
+            data = _json.loads(raw_json)
+        except (_json.JSONDecodeError, TypeError):
+            return None
+
+        from matching.api.jobs import build_initial_title, publish_jobpost
+        from matching.models import JobPost
+        from matching.services.job_schema import validate_job_payload
+
+        job_type = str(data.get('job_type') or '').strip()
+        if job_type not in ('tutoring', 'childcare', 'pickup'):
+            return None
+        rate = self._parse_chatbot_rate(data.get('hourly_rate_vnd'))
+        if not rate:
+            return None
+
+        td = data.get('type_data') if isinstance(data.get('type_data'), dict) else {}
+        payload = dict(td)  # validate_job_payload đọc flat: dates, time_from, care_duties...
+
+        location_text = str(data.get('location') or '').strip()
+        lat, lng = self._resolve_job_coordinates(request, location_text)
+
+        # pickup "other_address" mà AI không có toạ độ điểm đến → dùng toạ độ
+        # chính + note địa chỉ (tránh bị chặn validate, vẫn đủ thông tin hiển thị)
+        if (job_type == 'pickup'
+                and payload.get('destination_type') == 'other_address'
+                and not payload.get('destination_location')):
+            payload['destination_location'] = {'latitude': lat, 'longitude': lng}
+            if location_text and not payload.get('destination_note'):
+                payload['destination_note'] = location_text
+
+        try:
+            clean = validate_job_payload(job_type, payload, user_role='parent')
+        except Exception:
+            return None
+
+        clean['enable_safety'] = bool(data.get('enable_safety', True))
+
+        job = JobPost.objects.create(
+            parent=request.user,
+            job_type=job_type,
+            title=build_initial_title(job_type, clean),
+            hourly_rate_vnd=rate,
+            latitude=lat, longitude=lng,
+            location_note=location_text or clean.get('location_note', '') or
+            clean.get('pickup_location_note', ''),
+            type_data=clean,
+            recurrence=clean.get('recurrence', {}),
+            gender_preference='',
+            status='draft',
+        )
+
+        ok, pub = publish_jobpost(job, actor_user=request.user)
+        if not ok:
+            # Gemini parse + fallback đều lỗi (hiếm) — job giữ ai_failed,
+            # phụ huynh có thể kiểm tra lại từ "Việc của tôi"
+            return {
+                "response": ("⚠️ Tin đăng đã lưu nhưng chưa quét được ứng viên "
+                             "do hệ thống AI bận. Vui lòng thử lại sau ít phút "
+                             "từ mục 'Việc của tôi'."),
+                "type": "job_created",
+                "job": {"id": str(job.pk), "job_type": job_type,
+                        "title": job.title, "hourly_rate_vnd": rate,
+                        "status": job.status},
+            }
+
+        safety_msg = ""
+        if clean.get('enable_safety') and job_type in ('childcare', 'pickup'):
+            safety_msg = ("\n\n🔒 Đã bật CHẾ ĐỘ AN TOÀN cho bé:\n"
+                          "• Theo dõi vị trí real-time trong ca làm\n"
+                          "• Chuông khẩn cấp nếu Carepartner mất kết nối > 60 giây\n"
+                          "• Nút SOS sẵn sàng cho cả 2 bên")
+        return {
+            "response": (
+                f"✅ Đã tạo tin đăng thành công! Hệ thống đang quét Carepartner "
+                f"phù hợp nhất cho bạn — bấm nút bên dưới để xem và chọn ngay."
+                f"{safety_msg}"),
+            "type": "job_created",
+            "job": {
+                "id": str(job.pk),
+                "job_type": job_type,
+                "title": job.title,
+                "hourly_rate_vnd": rate,
+                "location_note": job.location_note,
+                "schedule": pub.get('schedule'),
+                "category_label": pub.get('category_label'),
+                "category_icon": pub.get('category_icon'),
+                "status": job.status,
+                "status_label_vi": job.get_status_display(),
+                "slots_created": pub.get('slots_created', 0),
+            },
+        }
 
 
 # --- PHẦN 6: ADMIN QUẢN LÝ DUYỆT TÀI KHOẢN CAREPARTNER ---

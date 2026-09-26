@@ -6,6 +6,36 @@
 
 ---
 
+## Entry 2026-09-27: "Nhờ AI đăng việc hộ" nâng cấp Flow 1 + cảnh báo mất kết nối trong ca
+
+**Agent**: Super Z (main) · **Scope**: backend + web + mobile · **Test**: backend 921/921, mobile 156/156
+
+- ChatbotAPIView (core/views.py) viết lại: SYSTEM_PROMPT dạy 3 job_type + type_data
+  schema (enum khớp job_schema.py); `<MATCHING_JOB_JSON>` → `_create_job_from_chat()`
+  → JobPost draft + `publish_jobpost()` ngay → radar 8 ứng viên. Toạ độ: client GPS →
+  hồ sơ → geocode Nominatim (tái dùng matching/api/geocode.py) → fallback TP.HCM.
+  Giá chuẩn hoá '120k'/'120.000'; sai dữ liệu → clarification KHÔNG tạo job; tàn dư
+  `<TASK_JSON>` → clarification, không tạo core.Task nữa (luồng cũ đã chết 403).
+- matching/api/jobs.py: tách `publish_jobpost()` + `build_initial_title()` dùng chung
+  API publish + chatbot (refactor thuần, contract publish endpoint không đổi).
+- Web chatbot.html: `addJobCard()` (badge 3 dịch vụ + radar pulse + CTA
+  `/ung-vien/<job_id>/`); chip "dọn dẹp" → "trông trẻ"; welcome text mới;
+  parent_home.html copy card AI mới.
+- tracking.html: siren police_siren.mp3 LẶP LIÊN TỤC (prime autoplay, fallback
+  oscillator + vibrate), "Đã biết" → acknowledge alert về backend; notification_sound.js
+  bỏ gate visibility → tab nền vẫn poll + OS notification (thiết bị CP ngắt kết nối:
+  phụ huynh nghe chuông cả khi đang ở tab khác).
+- worker_shift_heartbeat.js (MỚI, include _worker_chrome.html): heartbeat trong ca
+  30s cho CP làm trên web (booking in_progress → task_id mirror); Web Worker nhúng
+  chống throttle tab nền; 403 consent → backoff 24h. Chống báo động nhầm.
+- Mobile 1.4.9 / vc32: ChatbotScreen Job Card + navigate CandidatesList
+  (ParentHome stack); app.json/package.json/test bump; RELEASE_NOTES_1.4.9.md.
+- Test mới: core/tests_chatbot_jobs.py (11) + frontend AIJobPostingFlow1UpgradeTests (6)
+  + mobile ChatbotScreen.jobCard.test.js (2). Hardening: scrollToEnd try/catch.
+
+---
+
+
 ## Milestone 1: Đọc + Phân tích repo (09:00 - 09:30)
 
 - ✅ Clone repo + pull latest (commit `23ce3d5`)

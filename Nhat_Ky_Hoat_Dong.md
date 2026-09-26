@@ -1,4 +1,62 @@
 
+### Nâng cấp "Nhờ AI đăng việc hộ" theo luồng ghép cặp Flow 1 + hoàn thiện cảnh báo mất kết nối trong ca (2026-09-27)
+- **Bối cảnh**: tính năng "Nhờ AI đăng việc hộ" còn đứng ở luồng cũ — chatbot dạy Gemini
+  8 danh mục (dọn dẹp/nấu ăn/mua sắm hộ...) và tạo `core.Task` 'open' KHÔNG vào radar
+  ghép cặp (luồng ứng tuyển đã đóng 403), 5/8 danh mục còn bị AI kiểm duyệt tự huỷ trong
+  60s. Yêu cầu: nâng cấp web + mobile cho khớp luồng hiện tại; đặc biệt cảnh báo khi
+  thiết bị Carepartner ngắt kết nối trong ca phải kèm chuông báo về phụ huynh.
+- **Backend — ChatbotAPIView viết lại (core/views.py)**: SYSTEM_PROMPT mới dạy đúng 3
+  job_type (tutoring/childcare/pickup) + schema type_data đầy đủ (enum khớp
+  job_schema.py: CHILD_AGE_GROUPS, CARE_DUTIES, CHILD_GRADE_LEVELS, TUTOR_SENIORITY,
+  TRANSPORT_METHODS), quy tắc chuyển "thứ 3 tuần này" → ngày cụ thể + recurrence weekly,
+  hỏi lại ngắn gọn khi thiếu thông tin, CẨM gợi ý dịch vụ ngoài 3 loại. AI trả
+  `<MATCHING_JOB_JSON>` → `_create_job_from_chat()`: chuẩn hoá giá ('120k'/'120.000' →
+  int), toạ độ theo thứ tự client GPS → hồ sơ user → geocode Nominatim server-side
+  (cache 6h, tái dùng helper matching/api/geocode.py) → fallback TP.HCM; validate bằng
+  `validate_job_payload` (sai → clarification, KHÔNG tạo job), pickup other_address thiếu
+  toạ độ → dùng toạ độ chính + note; tạo JobPost + publish NGAY qua
+  `publish_jobpost()` (đồng bộ tạo slot + ai_parse) → response `type: 'job_created'`
+  kèm job.id. Tàn dư `<TASK_JSON>` cũ → clarification, tuyệt đối không tạo Task nữa.
+- **Backend — tách `publish_jobpost()` dùng chung (matching/api/jobs.py)**: pipeline
+  publish (transition → Gemini parse → slots → ai_parsed/needs_admin_review/ai_failed)
+  tách thành hàm module-level; API `POST /jobs/{id}/publish/` + chatbot gọi chung một
+  state machine (refactor thuần, contract không đổi); trích `build_initial_title()` dùng
+  chung cho API + chatbot.
+- **Web chatbot.html**: `addJobCard()` — badge 3 dịch vụ + giá/giờ + lịch + địa điểm +
+  radar pulse "AI đang quét Carepartner phù hợp nhất…" + CTA "Xem ứng viên đề xuất"
+  → `/ung-vien/<job_id>/` (+ phụ "Việc của tôi"); xử lý `data.job` trong sendMessage;
+  chip gợi ý "dọn dẹp" (dịch vụ đã ngừng) → "trông trẻ"; lời chào mô tả đúng luồng mới;
+  parent_home.html cập nhật mô tả card AI.
+- **Mobile ChatbotScreen.js**: Job Card native (badge loại việc + giá + radar pulse +
+  CTA) → `navigation.navigate('ParentHome', { screen: 'CandidatesList', params: { jobId } })`
+  (bubble từ tab AI Trợ lý sang stack Trang chủ); thêm testID `chatbot-send`; bọc
+  try/catch quanh scrollToEnd (FlatList ném khi chưa đo layout — hardening).
+- **Cảnh báo mất kết nối trong ca — web**: tracking.html thay chuông oscillator 30s
+  tự tắt bằng **police_siren.mp3 LẶP LIÊN TỤC** (prime autoplay 3 sự kiện đầu tiên,
+  fallback oscillator + rung máy khi file lỗi), nút "Đã biết" giờ **acknowledge alert
+  về backend** (`POST /tracking/<task_id>/offline-alerts/<id>/acknowledge/` — dừng vòng
+  retry push 5×30s của scheduler, đồng bộ trạng thái); notification_sound.js BỎ gate
+  `visibilityState !== 'visible'` — tab nền vẫn poll (throttle ~60s của browser vẫn đủ:
+  threshold 60s + cron 60s) → thông báo ngoài Notification API + chuông khẩn hoạt động
+  khi phụ huynh đang mở tab khác.
+- **Cảnh báo mất kết nối — chống báo nhầm cho CP làm trên web**: file mới
+  `worker_shift_heartbeat.js` (include _worker_chrome.html) — mỗi 3 phút lấy
+  `GET /matching/bookings/?role=worker&status=in_progress` → mỗi 30s gửi
+  `POST /tracking/heartbeat/ {task_id}` cho Task mirror; nhịp timer chạy trong **Web
+  Worker nhúng (Blob)** — KHÔNG bị throttle 1 lần/phút khi tab nền như setInterval
+  thường → CP chuyển tab vẫn giữ nhịp 30s, tab đóng/tắt máy thật → cảnh báo về đúng;
+  403 (chưa consent vị trí) → backoff 24h với task đó.
+- **Mobile**: bump **1.4.9 / versionCode 32** (app.json + package.json + test version) +
+  RELEASE_NOTES_1.4.9.md.
+- **Test**: backend +11 test chatbot (core/tests_chatbot_jobs.py — tạo+publish job,
+  clarification khi thiếu/sai dữ liệu, legacy TASK_JSON không tạo Task, worker không tạo
+  job, toạ độ fallback/override, publish_jobpost dùng chung 2 caller, ai_failed không
+  treo chatbot) + 6 test frontend (AIJobPostingFlow1UpgradeTests — job card Flow 1,
+  chip không còn dịch vụ ngừng, tracking dùng siren thật + acknowledge, worker chrome
+  include heartbeat). **FULL SUITE 921/921 OK**; mobile jest **156/156 OK** (2 test mới).
+- **Node --check** toàn bộ JS mới/sửa (worker_shift_heartbeat.js, notification_sound.js,
+  ChatbotScreen.js, inline JS tracking.html + chatbot.html sau khi strip Django tags).
+
 ### Kiểm thử toàn diện trước kỳ thi + 2 fix lỗi prod + rà soát mobile/QR (2026-09-27)
 - **Bối cảnh**: ngày mai bảo vệ — giám khảo quét QR đăng nhập bằng điện thoại. Yêu cầu
   owner: đọc kỹ repo, kiểm thử toàn bộ, tối ưu trải nghiệm mobile web, đảm bảo QR quét

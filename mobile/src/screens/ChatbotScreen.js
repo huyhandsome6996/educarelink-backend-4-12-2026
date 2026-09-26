@@ -4,15 +4,22 @@ import {
   StatusBar, ActivityIndicator, KeyboardAvoidingView, Platform, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { sendChatMessage } from '../api/tasks';
 import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
 import FormattedText from '../components/FormattedText';
+
+const JOB_TYPE_META = {
+  tutoring: { label: 'Gia sư', icon: 'book', color: '#F26522' },
+  childcare: { label: 'Trông trẻ', icon: 'happy', color: '#8B5CF6' },
+  pickup: { label: 'Đón trẻ', icon: 'car', color: '#2DB84B' },
+};
 
 const INITIAL_MESSAGES = [
   {
     id: 'welcome',
     role: 'assistant',
-    text: '👋 Xin chào! Tôi là trợ lý AI của Educarelink.\n\nBạn có thể nói với tôi như:\n• "Tôi cần tìm gia sư Toán lớp 5 vào tối thứ 3 ở Quận 1"\n• "Cần người đón bé lúc 11h sáng"\n\nTôi sẽ giúp bạn tạo công việc nhanh chóng! 🚀',
+    text: '👋 Xin chào! Tôi là trợ lý AI của Educarelink.\n\nBạn chỉ cần mô tả nhu cầu, ví dụ:\n• "Tôi cần tìm gia sư Toán lớp 5 vào tối thứ 3 ở Quận 1"\n• "Cần người đón bé lúc 11h sáng"\n\nTôi sẽ hỏi nhanh vài câu rồi tạo tin đăng và quét ngay 8 Carepartner phù hợp nhất cho bạn! 🚀',
   },
 ];
 
@@ -20,6 +27,7 @@ export default function ChatbotScreen() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const navigation = useNavigation();
   const flatListRef = useRef(null);
   const dot1Anim = useRef(new Animated.Value(0)).current;
   const dot2Anim = useRef(new Animated.Value(0)).current;
@@ -47,7 +55,13 @@ export default function ChatbotScreen() {
   }, [isTyping]);
 
   const scrollToBottom = () => {
-    setTimeout(() => flatListRef.current?.scrollToEnd?.({ animated: true }), 100);
+    // try/catch: scrollToEnd có thể ném khi FlatList chưa đo xong layout
+    // (mới mount / resize) — cuộn là phụ, không được làm crash màn chat.
+    setTimeout(() => {
+      try {
+        flatListRef.current?.scrollToEnd?.({ animated: true });
+      } catch (e) { /* bỏ qua */ }
+    }, 100);
   };
 
   useEffect(() => {
@@ -78,9 +92,13 @@ export default function ChatbotScreen() {
         role: 'assistant',
         text: botText,
       };
-      if (res.data.task) {
+      // 2026-09-27: AI đăng việc hộ theo luồng ghép cặp mới — kèm JobPost
+      if (res.data.job && res.data.job.id) {
+        botMsg.job = res.data.job;
+      } else if (res.data.task) {
+        // LEGACY — server không còn trả task cũ
         const t = res.data.task;
-        botMsg.text += `\n\n📋 Công việc đã tạo:\n• ${t.title}\n• 💰 ${parseInt(t.price).toLocaleString('vi-VN')}đ\n• 📍 ${t.location || 'Chưa xác định'}\n• 📅 ${t.scheduled_time ? new Date(t.scheduled_time).toLocaleString('vi-VN') : 'Chưa xác định'}`;
+        botMsg.text += `\n\n📋 Công việc đã tạo:\n• ${t.title}`;
       }
 
       chatHistoryRef.current.push({ role: 'assistant', text: botText });
@@ -100,6 +118,63 @@ export default function ChatbotScreen() {
     }
   };
 
+  const renderJobCard = (job) => {
+    const meta = JOB_TYPE_META[job.job_type] || JOB_TYPE_META.tutoring;
+    const price = job.hourly_rate_vnd ? `${parseInt(job.hourly_rate_vnd).toLocaleString('vi-VN')}đ/giờ` : '';
+    return (
+      <View style={[styles.jobCard, { borderColor: `${meta.color}55` }]}>
+        {/* Header: badge loại việc + giá */}
+        <View style={styles.jobCardHeader}>
+          <View style={styles.jobCardBadgeRow}>
+            <View style={[styles.jobCardIconWrap, { backgroundColor: `${meta.color}1A` }]}>
+              <Ionicons name={meta.icon} size={16} color={meta.color} />
+            </View>
+            <Text style={[styles.jobCardType, { color: COLORS.textSecondary }]}>{meta.label.toUpperCase()}</Text>
+          </View>
+          {price ? <Text style={[styles.jobCardPrice, { color: COLORS.primary }]}>{price}</Text> : null}
+        </View>
+        {/* Tiêu đề + lịch + địa điểm */}
+        <Text style={styles.jobCardTitle} numberOfLines={2}>{job.title || 'Tin đăng mới'}</Text>
+        <View style={styles.jobCardMetaRow}>
+          {job.schedule ? (
+            <View style={styles.jobCardMetaItem}>
+              <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
+              <Text style={styles.jobCardMetaText}>{job.schedule}</Text>
+            </View>
+          ) : null}
+          {job.location_note ? (
+            <View style={styles.jobCardMetaItem}>
+              <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
+              <Text style={styles.jobCardMetaText} numberOfLines={1}>{job.location_note}</Text>
+            </View>
+          ) : null}
+        </View>
+        {/* Radar pulse */}
+        <View style={[styles.jobCardRadar, { backgroundColor: `${meta.color}0D` }]}>
+          <View style={[styles.radarDot, { backgroundColor: meta.color }]} />
+          <Text style={[styles.jobCardRadarText, { color: meta.color }]}>
+            AI đang quét Carepartner phù hợp nhất…
+          </Text>
+        </View>
+        {/* CTA — sang radar ứng viên */}
+        <TouchableOpacity
+          style={[styles.jobCardCta, { backgroundColor: COLORS.primary }]}
+          onPress={() => {
+            // ChatbotScreen là tab trung tâm → bubble sang stack Trang chủ
+            navigation.navigate('ParentHome', {
+              screen: 'CandidatesList',
+              params: { jobId: job.id },
+            });
+          }}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="radar" size={17} color="#fff" />
+          <Text style={styles.jobCardCtaText}>Xem ứng viên đề xuất</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const renderMessage = ({ item }) => {
     const isUser = item.role === 'user';
     return (
@@ -115,11 +190,15 @@ export default function ChatbotScreen() {
               {item.text}
             </Text>
           ) : (
-            <FormattedText
-              text={item.text}
-              style={[styles.bubbleText, styles.bubbleTextBot]}
-              baseColor={COLORS.textPrimary}
-            />
+            <View>
+              <FormattedText
+                text={item.text}
+                style={[styles.bubbleText, styles.bubbleTextBot]}
+                baseColor={COLORS.textPrimary}
+              />
+              {/* 2026-09-27: Job Card luồng ghép cặp mới */}
+              {item.job ? <View style={{ marginTop: 10 }}>{renderJobCard(item.job)}</View> : null}
+            </View>
           )}
         </View>
       </View>
@@ -182,7 +261,10 @@ export default function ChatbotScreen() {
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
-          if (listData.length) flatListRef.current?.scrollToEnd?.({ animated: false });
+          if (!listData.length) return;
+          try {
+            flatListRef.current?.scrollToEnd?.({ animated: false });
+          } catch (e) { /* bỏ qua — list chưa đo xong layout */ }
         }}
       />
 
@@ -201,6 +283,7 @@ export default function ChatbotScreen() {
           style={[styles.sendBtn, (!input.trim() || isTyping) && { opacity: 0.4 }]}
           onPress={sendMessage}
           disabled={!input.trim() || isTyping}
+          testID="chatbot-send"
         >
           {isTyping
             ? <ActivityIndicator size="small" color="#fff" />
@@ -275,4 +358,40 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primary,
     alignItems: 'center', justifyContent: 'center',
   },
+
+  // ===== Job Card (luồng ghép cặp mới — 2026-09-27) =====
+  jobCard: {
+    borderRadius: 14, borderWidth: 2, backgroundColor: COLORS.surface,
+    padding: 12,
+  },
+  jobCardHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  jobCardBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  jobCardIconWrap: {
+    width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+  },
+  jobCardType: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  jobCardPrice: { fontSize: 15, fontWeight: '800' },
+  jobCardTitle: {
+    fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, lineHeight: 20,
+    marginBottom: 6,
+  },
+  jobCardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  jobCardMetaItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1,
+  },
+  jobCardMetaText: { fontSize: 12, color: COLORS.textMuted, flexShrink: 1 },
+  jobCardRadar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginTop: 10,
+  },
+  radarDot: { width: 9, height: 9, borderRadius: 5 },
+  jobCardRadarText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  jobCardCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: 12, paddingVertical: 11, marginTop: 10,
+  },
+  jobCardCtaText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

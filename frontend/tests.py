@@ -548,3 +548,64 @@ class DonCuaToiPageTests(TestCase):
         resp = self.client.get('/don-cua-toi/')
         self.assertContains(resp, "localStorage.getItem('token')")
         self.assertContains(resp, "next=/don-cua-toi/")
+
+
+class AIJobPostingFlow1UpgradeTests(TestCase):
+    """2026-09-27 — "Nhờ AI đăng việc hộ" nâng cấp theo luồng ghép cặp Flow 1.
+
+    - chatbot.html: card tin đăng JobPost mới (badge 3 dịch vụ + radar pulse)
+      + CTA "Xem ứng viên đề xuất" → /ung-vien/<job_id>/
+    - Chip gợi ý KHÔNG còn nhắc dịch vụ đã ngừng (dọn dẹp)
+    - parent_home.html: mô tả card AI đúng hành vi mới
+    - tracking.html: chuông cảnh báo = còi hú thật (police_siren) lặp liên tục
+      + phụ huynh acknowledge được alert từ web
+    - _worker_chrome.html: include heartbeat trong ca cho CP làm trên web
+    """
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_chatbot_page_has_job_card_for_flow1(self):
+        """chatbot.html có addJobCard + CTA vào trang ứng viên radar."""
+        resp = self.client.get('/parent/chatbot/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'function addJobCard')
+        self.assertContains(resp, 'Xem ứng viên đề xuất')
+        self.assertContains(resp, '/ung-vien/')
+
+    def test_chatbot_page_job_card_type_map_only_3_types(self):
+        """Card mới map đúng 3 job_type — không còn map 8 danh mục cũ làm chính."""
+        resp = self.client.get('/parent/chatbot/')
+        self.assertContains(resp, 'tutoring:')
+        self.assertContains(resp, 'childcare:')
+        self.assertContains(resp, 'pickup:')
+
+    def test_chatbot_suggestion_chip_no_locked_service(self):
+        """Chip gợi ý không còn 'dọn dẹp' (dịch vụ đã ngừng nhận đăng)."""
+        resp = self.client.get('/parent/chatbot/')
+        self.assertNotContains(resp, 'Cần người dọn dẹp nhà cuối tuần')
+        self.assertContains(resp, 'Cần người trông trẻ cuối tuần')
+
+    def test_parent_home_ai_card_copy_matches_flow1(self):
+        """Card 'Nhờ AI đăng việc hộ' ở trang chủ mô tả đúng hành vi mới."""
+        resp = self.client.get('/parent/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Nhờ AI đăng việc hộ')
+
+    def test_tracking_page_alarm_uses_real_siren_file(self):
+        """/parent/tracking/ dùng police_siren.mp3 (không còn chỉ oscillator 30s)."""
+        resp = self.client.get('/parent/tracking/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'police_siren.mp3')
+        self.assertContains(resp, 'function primeSiren')
+        self.assertContains(resp, 'acknowledgeCurrentAlert')
+        # Không còn auto-tắt 30s trong bản triggerAlarm mới
+        self.assertNotContains(resp, 'Sau 30 giây tự dừng')
+
+    def test_worker_chrome_includes_shift_heartbeat(self):
+        """Worker chrome include heartbeat trong ca (chống báo động nhầm)."""
+        resp = self.client.get('/worker/my-jobs/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'js/worker_shift_heartbeat.js')

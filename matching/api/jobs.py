@@ -77,6 +77,33 @@ class JobPostSerializer(serializers.ModelSerializer):
         return f"{time_from} - {time_to}"
 
 
+def build_initial_title(job_type, type_data):
+    """Tiêu đề ban đầu chuẩn theo type_data — dùng chung API đăng việc + AI chatbot.
+
+    (Gemini parse sau đó sẽ viết lại title hay hơn qua ai_parse_result.title_vi.)
+    """
+    type_data = type_data or {}
+    if job_type == 'tutoring':
+        subj = type_data.get('subject') or 'Kèm học 1:1'
+        return f"Gia sư {subj}".strip()[:80]
+    if job_type == 'childcare':
+        from ..services.job_schema import CHILD_AGE_GROUPS
+        age_group = type_data.get('child_age_group')
+        age_str = CHILD_AGE_GROUPS.get(age_group, '')
+        num = type_data.get('number_of_children', 1)
+        age_part = f" ({age_str})" if age_str else ""
+        return f"Trông {num} bé{age_part}".strip()[:80]
+    if job_type == 'pickup':
+        place = (
+            type_data.get('school_or_pickup_place_name') or
+            type_data.get('pickup_location_note') or
+            'trường học'
+        )
+        num = type_data.get('number_of_children', 1)
+        return f"Đón {num} bé tại {place}".strip()[:80]
+    return f"Công việc {job_type}".strip()[:80]
+
+
 class JobPostCreateAPIView(CreateAPIView):
     """POST /api/matching/jobs/ — parent tạo job (validate riêng từng loại)."""
     serializer_class = JobPostSerializer
@@ -150,27 +177,7 @@ class JobPostCreateAPIView(CreateAPIView):
             notice = 'Để đảm bảo công bằng, yêu cầu giới tính không áp dụng cho việc gia sư.'
 
         # Tự động gán tiêu đề ban đầu chuẩn xác theo type_data
-        initial_title = ''
-        if job_type == 'tutoring':
-            subj = type_data.get('subject') or 'Kèm học 1:1'
-            initial_title = f"Gia sư {subj}".strip()[:80]
-        elif job_type == 'childcare':
-            from ..services.job_schema import CHILD_AGE_GROUPS
-            age_group = type_data.get('child_age_group')
-            age_str = CHILD_AGE_GROUPS.get(age_group, '')
-            num = type_data.get('number_of_children', 1)
-            age_part = f" ({age_str})" if age_str else ""
-            initial_title = f"Trông {num} bé{age_part}".strip()[:80]
-        elif job_type == 'pickup':
-            place = (
-                type_data.get('school_or_pickup_place_name') or
-                type_data.get('pickup_location_note') or
-                'trường học'
-            )
-            num = type_data.get('number_of_children', 1)
-            initial_title = f"Đón {num} bé tại {place}".strip()[:80]
-        else:
-            initial_title = f"Công việc {job_type}".strip()[:80]
+        initial_title = build_initial_title(job_type, type_data)
 
         job = JobPost.objects.create(
             parent=request.user,
@@ -197,6 +204,9 @@ class JobPostPublishAPIView(APIView):
     draft → published → ai_parsing (enqueue) — parse chạy Synchronous trong
     request này (MVP, không Celery); kết quả → ai_parsed + tạo JobSlots,
     hoặc ai_failed (parent phải confirm). Safety severity high → needs_admin_review.
+
+    Logic publish được tách vào publish_jobpost() dùng chung cho AI Chatbot
+    ("Nhờ AI đăng việc hộ") — cùng một state machine, không nhân bản code.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -216,71 +226,86 @@ class JobPostPublishAPIView(APIView):
                              'detail': f'Bài đang ở trạng thái "{job.get_status_display()}".'},
                             status=status.HTTP_409_CONFLICT)
 
-        seed_default_prompt_template()
+        ok, payload = publish_jobpost(job, actor_user=request.user)
+        # Đúng contract cũ: cả thành công lẫn ai_failed đều trả 200
+        # (client đọc code/status để phân biệt) — giữ nguyên để không phá web/mobile.
+        return Response(payload, status=status.HTTP_200_OK)
 
+
+def publish_jobpost(job, actor_user=None):
+    """Pipeline publish dùng CHUNG: API publish + AI Chatbot đăng việc hộ.
+
+    draft|published|ai_failed → ai_parsing → (ai_parsed | needs_admin_review
+    | ai_failed) + tạo JobSlot từ type_data. Trả về (ok, payload_dict) —
+    payload đúng contract của POST /jobs/{id}/publish/ để 2 caller cùng dùng.
+
+    KHÔNG raise ra ngoài (mọi exception parse được nuốt thành ai_failed) —
+    caller (chatbot) không bị treo nếu Gemini lỗi.
+    """
+    seed_default_prompt_template()
+
+    with transaction.atomic():
+        if job.status == JobPostStatus.DRAFT:
+            transition(job, JobPostStatus.PUBLISHED, actor='parent',
+                       actor_user=actor_user, reason='Đăng bài')
+        transition(job, JobPostStatus.AI_PARSING, actor='system',
+                   actor_user=None, reason='Chạy Gemini parse')
+
+    try:
+        result, parse_status = parse_job_post(job)
+    except Exception:
+        logger.exception('[JobPublish] Parse crash job %s', job.pk)
+        result, parse_status = None, 'fallback'
+
+    if result is None:
         with transaction.atomic():
-            if job.status == JobPostStatus.DRAFT:
-                transition(job, JobPostStatus.PUBLISHED, actor='parent',
-                           actor_user=request.user, reason='Đăng bài')
-            transition(job, JobPostStatus.AI_PARSING, actor='system',
-                       actor_user=None, reason='Chạy Gemini parse')
+            transition(job, JobPostStatus.AI_FAILED, actor='system',
+                       reason='AI và fallback đều lỗi')
+        return False, {'code': 'ai_failed',
+                       'detail': 'Không phân tích được bài đăng. Hãy kiểm tra lại các trường.'}
 
-        try:
-            result, parse_status = parse_job_post(job)
-        except Exception:
-            logger.exception('[JobPublish] Parse crash job %s', job.pk)
-            result, parse_status = None, 'fallback'
+    job.ai_parse_status = parse_status
+    job.ai_parse_result = result
+    job.title = result.get('title_vi') or job.title
+    job.description = result.get('summary_vi') or job.description
+    job.clarification_questions = result.get('clarification_questions') or []
 
-        if result is None:
-            with transaction.atomic():
-                transition(job, JobPostStatus.AI_FAILED, actor='system',
-                           reason='AI và fallback đều lỗi')
-            return Response({'code': 'ai_failed',
-                             'detail': 'Không phân tích được bài đăng. Hãy kiểm tra lại các trường.'},
-                            status=status.HTTP_200_OK)
+    # Safety: severity high → chờ admin duyệt (Step 11.5)
+    severity = result.get('safety_severity') or 'low'
+    if result.get('needs_admin_review') or severity == 'high':
+        job.needs_admin_review = True
 
-        job.ai_parse_status = parse_status
-        job.ai_parse_result = result
-        job.title = result.get('title_vi') or job.title
-        job.description = result.get('summary_vi') or job.description
-        job.clarification_questions = result.get('clarification_questions') or []
+    _create_slots(job)
 
-        # Safety: severity high → chờ admin duyệt (Step 11.5)
-        severity = result.get('safety_severity') or 'low'
-        if result.get('needs_admin_review') or severity == 'high':
-            job.needs_admin_review = True
+    # LƯU ĐÚNG mọi field parse trước khi transition (transition chỉ save status)
+    job.total_matched = None
+    job.save(update_fields=['ai_parse_status', 'ai_parse_result', 'title',
+                            'description', 'clarification_questions',
+                            'needs_admin_review', 'total_matched', 'updated_at'])
 
-        _create_slots(job)
+    # ai_parsing → ai_parsed (hoặc needs_admin_review)
+    with transaction.atomic():
+        if job.needs_admin_review:
+            transition(job, JobPostStatus.NEEDS_ADMIN_REVIEW, actor='system',
+                       reason='Safety flag mức high')
+        else:
+            transition(job, JobPostStatus.AI_PARSED, actor='system',
+                       reason=f'Parse xong ({parse_status})')
 
-        # LƯU ĐÚNG mọi field parse trước khi transition (transition chỉ save status)
-        job.total_matched = None
-        job.save(update_fields=['ai_parse_status', 'ai_parse_result', 'title',
-                                'description', 'clarification_questions',
-                                'needs_admin_review', 'total_matched', 'updated_at'])
-
-        # ai_parsing → ai_parsed (hoặc needs_admin_review)
-        with transaction.atomic():
-            if job.needs_admin_review:
-                transition(job, JobPostStatus.NEEDS_ADMIN_REVIEW, actor='system',
-                           reason='Safety flag mức high')
-            else:
-                transition(job, JobPostStatus.AI_PARSED, actor='system',
-                           reason=f'Parse xong ({parse_status})')
-
-        serializer_data = JobPostSerializer(job).data
-        return Response({
-            'id': str(job.pk),
-            'status': job.status,
-            'status_label_vi': job.get_status_display(),
-            'ai_parse_status': job.ai_parse_status,
-            'title': job.title,
-            'category_label': serializer_data.get('category_label'),
-            'category_icon': serializer_data.get('category_icon'),
-            'schedule': serializer_data.get('schedule'),
-            'clarification_questions': job.clarification_questions,
-            'slots_created': job.slots.count(),
-            'needs_admin_review': job.needs_admin_review,
-        })
+    serializer_data = JobPostSerializer(job).data
+    return True, {
+        'id': str(job.pk),
+        'status': job.status,
+        'status_label_vi': job.get_status_display(),
+        'ai_parse_status': job.ai_parse_status,
+        'title': job.title,
+        'category_label': serializer_data.get('category_label'),
+        'category_icon': serializer_data.get('category_icon'),
+        'schedule': serializer_data.get('schedule'),
+        'clarification_questions': job.clarification_questions,
+        'slots_created': job.slots.count(),
+        'needs_admin_review': job.needs_admin_review,
+    }
 
 
 def _create_slots(job):

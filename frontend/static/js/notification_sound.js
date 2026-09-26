@@ -122,7 +122,13 @@
   /* ---------- Poll thông báo legacy (admin/chat/tracking…) ---------- */
   function pollNotifications() {
     if (!getToken()) return;
-    if (document.visibilityState !== 'visible') return;
+    // 2026-09-27: BỎ gate `visibilityState !== 'visible'` — trước đây tab ẩn
+    // thì ngưng poll hoàn toàn → phụ huynh để EduCareLink ở tab nền sẽ KHÔNG
+    // nhận được thông báo ngoài (Notification API) lẫn chuông khẩn khi
+    // Carepartner mất kết nối trong ca. Trình duyệt throttle timer nền về
+    // ~60s/lần — vẫn đủ cho cảnh báo khẩn (threshold offline là 60s + cron 60s).
+    // Sound vẫn phát được khi tab ẩn (audio không bị throttle như timer),
+    // còn OS notification hiện nhờ showBrowserNotification bên dưới.
     fetch('/api/notifications/', {
       headers: { 'Authorization': 'Bearer ' + getToken() },
     }).then(function (r) {
