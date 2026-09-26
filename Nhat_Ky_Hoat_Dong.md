@@ -61,6 +61,23 @@
   tiết từng field ("Thông tin cần bổ sung: • dates: ...") thay vì None vô hình;
   temperature 0.7 → 0.4 cho JSON ổn định. Fix NameError `re` scope trong helper
   (chỉ import local trong post()). +3 test robustness → full suite 924/924 OK.
+- **E2E PROD chuỗi 5 fix (70cd24c → c854427) — tự test tự vá trên prod thật**:
+  (1) 70cd24c: Gemini bọc ```json fences / type_data flat / lỗi validate vô hình → strip
+  fences + trích {...} + gom field flat + clarification kèm chi tiết lỗi từng field;
+  (2) 48bbdcf: job_type ('giasu','Gia sư'...) + giá (price/rate/gia) nhiều kiểu, trailing
+  commas, tag case-insensitive, log lý do thất bại ra Render logs; (3) 45411a8: Gemini
+  vẫn thỉnh thoảng xuất <TASK_JSON> schema cũ → CHUYỂN ĐỔI thành JobPost Flow 1
+  (category 1/2/4 → 3 job_type, scheduled_time → dates+giờ, price tổng → giá/giờ) thay
+  vì bỏ lỡ; (4) 9b3224d: Gemini tính 'ngày mai' = 2024 (không biết ngày hiện tại) → chèn
+  "[Hôm nay là dd/mm/yyyy (Thứ X), giờ VN]" vào đầu tin nhắn; (5) c854427: lớp chữa ngày
+  server-side — mọi ngày quá khứ tự dời sang ngày gần nhất cùng thứ trong tương lai.
+- **KẾT QUẢ E2E PROD (tài khoản dùng thử kiemthu_ai_flow1, không đụng tài khoản demo)**:
+  chat "Tôi cần gia sư Toán cho bé lớp 5, ngày mai tối 18:30-20:00 ở 1 Điện Biên Phủ
+  Huế, 150k/giờ" → job_created (ai_parsed, slot 28/09/2026 18:30-20:00 đúng ngày mai
+  thật) → radar 17 CP khớp, top 8 trả về gồm Hồ Quang Huy score 100 "Rất phù hợp".
+  Chuỗi AI đăng việc hoạt động end-to-end web + mobile.
+- Test cuối: **full backend 929/929 OK** (+5 test robustness/healing/legacy), mobile
+  156/156. Mobile **1.4.9 (vc32) COMPLETED trên CH Play internal** (submission 6fbb95ae).
 - **Node --check** toàn bộ JS mới/sửa (worker_shift_heartbeat.js, notification_sound.js,
   ChatbotScreen.js, inline JS tracking.html + chatbot.html sau khi strip Django tags).
 
