@@ -285,3 +285,81 @@ class PublishJobPostSharedFunctionTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         job.refresh_from_db()
         self.assertEqual(job.status, JobPostStatus.AI_PARSED)
+
+
+@GEMINI_KEY_REQUIRED
+class ChatbotJobJsonRobustnessTests(TestCase):
+    """Phòng vệ đầu ra Gemini: fences markdown, JSON flat, lỗi validate trả rõ."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_robust')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    def _tomorrow(self):
+        return (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_fenced_json_inside_tag_still_parses(self, mock_gemini, mock_parse):
+        """Gemini hay bọc ```json fences trong thẻ — vẫn parse được."""
+        fenced = (
+            "Chào anh/chị!\n\n<MATCHING_JOB_JSON>\n```json\n"
+            '{"job_type": "tutoring", "hourly_rate_vnd": 150000, '
+            '"location": "458 Minh Khai, Hà Nội", '
+            '"type_data": {"subject": "Toán lớp 5", "dates": ["%s"], '
+            '"time_from": "18:30", "time_to": "20:00"}}'
+            "\n```\n</MATCHING_JOB_JSON>"
+        ) % self._tomorrow()
+        mock_gemini.return_value = (_gemini_text(fenced), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần gia sư', 'history': []},
+                                format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['type'], 'job_created')
+        self.assertTrue(JobPost.objects.filter(parent=self.parent).exists())
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_flat_payload_without_type_data_nested(self, mock_gemini, mock_parse):
+        """AI đặt field type_data FLAT ở top-level → tự gom về type_data."""
+        flat = (
+            "<MATCHING_JOB_JSON>"
+            '{"job_type": "tutoring", "hourly_rate_vnd": 150000, '
+            '"location": "458 Minh Khai, Hà Nội", "subject": "Toán lớp 5", '
+            '"dates": ["%s"], "time_from": "18:30", "time_to": "20:00"}'
+            "</MATCHING_JOB_JSON>"
+        ) % self._tomorrow()
+        mock_gemini.return_value = (_gemini_text(flat), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần gia sư', 'history': []},
+                                format='json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        job = JobPost.objects.get(pk=data['job']['id'])
+        self.assertEqual(job.type_data.get('subject'), 'Toán lớp 5')
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_validation_failure_returns_specific_errors(self, mock_gemini):
+        """Thiếu/sai dữ liệu → clarification kèm lỗi cụ thể từng field."""
+        bad = (
+            "<MATCHING_JOB_JSON>"
+            '{"job_type": "childcare", "hourly_rate_vnd": 100000, "location": "Q1", '
+            '"type_data": {"child_age_group": "sai_nhom", "dates": ["%s"], '
+            '"time_from": "08:00", "time_to": "17:00"}}'
+            "</MATCHING_JOB_JSON>"
+        ) % self._tomorrow()
+        mock_gemini.return_value = (_gemini_text(bad), 'gemini-2.5-flash-lite')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần trông trẻ', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'clarification')
+        # Lỗi cụ thể hiện trong phản hồi (care_duties + number_of_children thiếu, nhóm tuổi sai)
+        self.assertIn('Thông tin cần bổ sung', data['response'])
+        self.assertFalse(JobPost.objects.exists())

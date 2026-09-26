@@ -1126,7 +1126,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 client,
                 contents=contents,
                 system_instruction=self.SYSTEM_PROMPT,
-                temperature=0.7,
+                temperature=0.4,  # JSON cần ổn định: hạ temperature (0.7 → 0.4)
                 max_output_tokens=2048,
             )
             ai_text = gemini_response.text
@@ -1150,9 +1150,11 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 result = self._create_job_from_chat(request, job_json_match.group(1).strip())
                 if result is None:
                     # AI thiếu/sai dữ liệu bắt buộc → trả câu hỏi làm rõ (không tạo job)
+                    err_detail = getattr(self, '_last_validation_errors', None)
+                    suffix = f"\n\nThông tin cần bổ sung/điều chỉnh:\n{err_detail}" if err_detail else ""
                     return Response({
                         "response": clean_response or
-                        "Bạn cho mình biết thêm một chút thông tin nhé!",
+                        "Bạn cho mình biết thêm một chút thông tin nhé!" + suffix,
                         "type": "clarification",
                     })
                 result["response"] = (clean_response + "\n\n" + result["response"]).strip()
@@ -1263,10 +1265,21 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         dữ liệu thiếu/sai (caller đổi thành câu hỏi làm rõ, không crash).
         """
         import json as _json
+        import re as _re
+        # Gemini hay bọc JSON trong ```json fences / thêm chữ → dọn sạch trước:
+        # 1) bỏ fences, 2) nếu vẫn lỗi → trích khối {...} ngoài cùng.
+        raw = _re.sub(r'^```(?:json)?\s*|\s*```$', '', raw_json.strip(),
+                      flags=_re.MULTILINE).strip()
         try:
-            data = _json.loads(raw_json)
+            data = _json.loads(raw)
         except (_json.JSONDecodeError, TypeError):
-            return None
+            brace = _re.search(r'\{.*\}', raw, _re.DOTALL)
+            if not brace:
+                return None
+            try:
+                data = _json.loads(brace.group(0))
+            except (_json.JSONDecodeError, TypeError):
+                return None
 
         from matching.api.jobs import build_initial_title, publish_jobpost
         from matching.models import JobPost
@@ -1280,6 +1293,20 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             return None
 
         td = data.get('type_data') if isinstance(data.get('type_data'), dict) else {}
+        if not td:
+            # AI đôi khi đặt field của type_data FLAT ở top-level (không lồng) —
+            # tự nhận diện các key thuộc schema và gom vào type_data.
+            flat_keys = {
+                'subject', 'child_grade_level', 'tutor_seniority_preference',
+                'child_age', 'school_level', 'subject_code', 'dates',
+                'time_from', 'time_to', 'child_age_group', 'number_of_children',
+                'care_duties', 'medical_allergy_notes', 'school_or_pickup_place_name',
+                'pickup_dates', 'pickup_time_from', 'pickup_time_to',
+                'destination_type', 'destination_note', 'destination_location',
+                'transport_method', 'transport_note', 'specific_requirements',
+                'location_note', 'pickup_location_note', 'recurrence',
+            }
+            td = {k: v for k, v in data.items() if k in flat_keys}
         payload = dict(td)  # validate_job_payload đọc flat: dates, time_from, care_duties...
 
         location_text = str(data.get('location') or '').strip()
@@ -1296,8 +1323,20 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
 
         try:
             clean = validate_job_payload(job_type, payload, user_role='parent')
-        except Exception:
+        except Exception as exc:
+            # Trả câu hỏi làm rõ KÈM lỗi cụ thể (phụ huynh biết cần bổ sung gì;
+            # agent/test cũng tự chẩn đoán được) — không rơi None vô hình.
+            detail = getattr(exc, 'detail', None)
+            if isinstance(detail, dict):
+                parts = []
+                for k, v in detail.items():
+                    msg = '; '.join(str(x) for x in v) if isinstance(v, (list, tuple)) else str(v)
+                    parts.append(f"• {k}: {msg}")
+                self._last_validation_errors = '\n'.join(parts)
+            else:
+                self._last_validation_errors = str(exc)[:300]
             return None
+        self._last_validation_errors = None
 
         clean['enable_safety'] = bool(data.get('enable_safety', True))
 

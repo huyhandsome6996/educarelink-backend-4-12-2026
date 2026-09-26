@@ -54,6 +54,13 @@
   treo chatbot) + 6 test frontend (AIJobPostingFlow1UpgradeTests — job card Flow 1,
   chip không còn dịch vụ ngừng, tracking dùng siren thật + acknowledge, worker chrome
   include heartbeat). **FULL SUITE 921/921 OK**; mobile jest **156/156 OK** (2 test mới).
+- **E2E PROD phát hiện + vá bug thật (36f8c4e)**: chatbot tạo job trên prod trả
+  `clarification` dù đủ thông tin — Gemini hay bọc ```json fences trong thẻ / đặt field
+  type_data FLAT ở top-level. Vá 3 lớp: (1) strip fences + fallback trích khối {...};
+  (2) tự gom field schema flat về type_data; (3) validate lỗi → clarification kèm chi
+  tiết từng field ("Thông tin cần bổ sung: • dates: ...") thay vì None vô hình;
+  temperature 0.7 → 0.4 cho JSON ổn định. Fix NameError `re` scope trong helper
+  (chỉ import local trong post()). +3 test robustness → full suite 924/924 OK.
 - **Node --check** toàn bộ JS mới/sửa (worker_shift_heartbeat.js, notification_sound.js,
   ChatbotScreen.js, inline JS tracking.html + chatbot.html sau khi strip Django tags).
 
