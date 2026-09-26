@@ -1457,6 +1457,30 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             td = {k: v for k, v in data.items() if k in flat_keys}
         payload = dict(td)  # validate_job_payload đọc flat: dates, time_from, care_duties...
 
+        # Lớp chữa ngày server-side (2026-09-27): Gemini đôi khi vẫn tính
+        # "ngày mai" theo mốc kiến thức 2024 dù đã chèn mốc thời gian. Nếu
+        # MỌI ngày đều trong quá khứ → tự dời sang ngày gần nhất CÙNG THỨ
+        # trong tương lai (≥ hôm nay + 1). AI đúng thì không ảnh hưởng.
+        try:
+            import datetime as _dt_heal
+            from django.utils import timezone as _tz_heal
+            _today = _tz_heal.localdate()
+            _date_key = 'pickup_dates' if job_type == 'pickup' else 'dates'
+            _raw_dates = payload.get(_date_key) or []
+            if isinstance(_raw_dates, str):
+                _raw_dates = [_raw_dates]
+            if _raw_dates:
+                _parsed = [_dt_heal.date.fromisoformat(str(d)) for d in _raw_dates]
+                if all(d < _today for d in _parsed):
+                    _healed = []
+                    for d in _parsed:
+                        _delta = (d.weekday() - _today.weekday()) % 7
+                        _next = _today + _dt_heal.timedelta(days=_delta or 7)
+                        _healed.append(_next.isoformat())
+                    payload[_date_key] = _healed
+        except Exception:
+            pass  # chữa lỗi không được → để validate bắt và trả làm rõ
+
         location_text = str(data.get('location') or '').strip()
         lat, lng = self._resolve_job_coordinates(request, location_text)
 

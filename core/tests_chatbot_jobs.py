@@ -438,3 +438,58 @@ class LegacyTaskJsonConversionTests(TestCase):
         self.assertEqual(resp.json()['type'], 'clarification')
         self.assertFalse(JobPost.objects.exists())
         self.assertFalse(Task.objects.exists())
+
+
+@GEMINI_KEY_REQUIRED
+class PastDateHealingTests(TestCase):
+    """Lớp chữa ngày server-side: AI tính sai 'ngày mai' theo mốc 2024 →
+    ngày quá khứ tự dời sang ngày gần nhất cùng thứ trong tương lai."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_heal')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_all_past_dates_healed_to_future_same_weekday(self, mock_gemini, mock_parse):
+        # 'ngày mai' theo AI = 2024-05-17 (Thứ Sáu) — quá khứ hoàn toàn
+        past = ("<MATCHING_JOB_JSON>"
+                '{"job_type": "tutoring", "hourly_rate_vnd": 150000, '
+                '"location": "458 Minh Khai, Hà Nội", '
+                '"type_data": {"subject": "Toán lớp 5", "dates": ["2024-05-17"], '
+                '"time_from": "18:30", "time_to": "20:00"}}'
+                "</MATCHING_JOB_JSON>")
+        mock_gemini.return_value = (_gemini_text(past), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần gia sư', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        job = JobPost.objects.get(pk=data['job']['id'])
+        slot = job.slots.first()
+        today = timezone.localdate()
+        # Slot phải ở tương lai và giữ nguyên thứ của ngày AI xuất ra (Thứ Sáu)
+        self.assertGreaterEqual(slot.date, today)
+        self.assertEqual(slot.date.weekday(), 4)  # Friday
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_future_dates_not_touched(self, mock_gemini, mock_parse):
+        future = (timezone.localdate() + datetime.timedelta(days=3)).isoformat()
+        ok_json = ("<MATCHING_JOB_JSON>"
+                   '{"job_type": "tutoring", "hourly_rate_vnd": 150000, '
+                   '"location": "Hà Nội", '
+                   '"type_data": {"subject": "Toán lớp 5", "dates": ["%s"], '
+                   '"time_from": "18:30", "time_to": "20:00"}}'
+                   "</MATCHING_JOB_JSON>") % future
+        mock_gemini.return_value = (_gemini_text(ok_json), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần gia sư', 'history': []},
+                                format='json')
+        job = JobPost.objects.get(pk=resp.json()['job']['id'])
+        self.assertEqual(job.slots.first().date.isoformat(), future)
