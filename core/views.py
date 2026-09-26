@@ -1140,21 +1140,35 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             # tạo core.Task 'open' cũ (luồng ứng tuyển đã đóng 403).
             # ============================================================
             job_json_match = re.search(
-                r'<MATCHING_JOB_JSON>(.*?)</MATCHING_JOB_JSON>', ai_text, re.DOTALL)
-            legacy_task_match = re.search(r'<TASK_JSON>(.*?)</TASK_JSON>', ai_text, re.DOTALL)
+                r'<MATCHING_JOB_JSON>(.*?)</MATCHING_JOB_JSON>', ai_text,
+                re.DOTALL | re.IGNORECASE)
+            legacy_task_match = re.search(r'<TASK_JSON>(.*?)</TASK_JSON>', ai_text,
+                                          re.DOTALL | re.IGNORECASE)
             clean_response = re.sub(
                 r'<MATCHING_JOB_JSON>.*?</MATCHING_JOB_JSON>|<TASK_JSON>.*?</TASK_JSON>',
-                '', ai_text, flags=re.DOTALL).strip()
+                '', ai_text, flags=re.DOTALL | re.IGNORECASE).strip()
 
             if job_json_match and request.user.role == 'parent':
-                result = self._create_job_from_chat(request, job_json_match.group(1).strip())
+                result, fail_reason = self._create_job_from_chat(
+                    request, job_json_match.group(1).strip())
                 if result is None:
+                    # Log lý do thất bại để chẩn đoán trên Render logs
+                    import logging as _logging
+                    _logging.getLogger('educarelink.chatbot').warning(
+                        '[Chatbot] Đăng việc hộ thất bại: %s | raw_json[:300]=%r',
+                        fail_reason, job_json_match.group(1).strip()[:300])
                     # AI thiếu/sai dữ liệu bắt buộc → trả câu hỏi làm rõ (không tạo job)
                     err_detail = getattr(self, '_last_validation_errors', None)
-                    suffix = f"\n\nThông tin cần bổ sung/điều chỉnh:\n{err_detail}" if err_detail else ""
+                    if err_detail:
+                        suffix = f"\n\nThông tin cần bổ sung/điều chỉnh:\n{err_detail}"
+                    else:
+                        suffix = ("\n\nEm đọc tin nhắn chưa đủ rõ để tạo tin đăng — "
+                                  "anh/chị thử nói lại ngắn gọn giúp em: "
+                                  "loại việc (gia sư / trông trẻ / đón trẻ), "
+                                  "ngày giờ, khu vực và giá 1 giờ nhé!")
                     return Response({
-                        "response": clean_response or
-                        "Bạn cho mình biết thêm một chút thông tin nhé!" + suffix,
+                        "response": (clean_response or
+                                     "Bạn cho mình biết thêm một chút thông tin nhé!") + suffix,
                         "type": "clarification",
                     })
                 result["response"] = (clean_response + "\n\n" + result["response"]).strip()
@@ -1258,6 +1272,19 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         except (TypeError, ValueError):
             return None
 
+    def _normalize_chatbot_job_type(self, raw):
+        """Chuẩn hoá job_type AI viết nhiều kiểu ('giasu', 'Gia sư'...) → 3 loại."""
+        v = str(raw or '').strip().lower()
+        v = v.replace(' ', '_').replace('-', '_')
+        if v in ('tutoring', 'tutor', 'gia_su', 'giasu', 'kèm_học'):
+            return 'tutoring'
+        if v in ('childcare', 'babysitting', 'babysit', 'trong_tre', 'trongtre',
+                 'chăm_sóc', 'cham_soc'):
+            return 'childcare'
+        if v in ('pickup', 'pick_up', 'don_tre', 'dontre', 'dua_don'):
+            return 'pickup'
+        return v if v in ('tutoring', 'childcare', 'pickup') else None
+
     def _create_job_from_chat(self, request, raw_json):
         """Tạo + publish matching.JobPost từ JSON AI đăng việc hộ.
 
@@ -1266,31 +1293,37 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         """
         import json as _json
         import re as _re
-        # Gemini hay bọc JSON trong ```json fences / thêm chữ → dọn sạch trước:
-        # 1) bỏ fences, 2) nếu vẫn lỗi → trích khối {...} ngoài cùng.
+        # Gemini hay bọc JSON trong ```json fences / thêm dấu phẩy thừa → dọn trước:
+        # 1) bỏ fences, 2) bỏ trailing commas, 3) fallback trích khối {...} ngoài cùng.
         raw = _re.sub(r'^```(?:json)?\s*|\s*```$', '', raw_json.strip(),
                       flags=_re.MULTILINE).strip()
+        raw = _re.sub(r',\s*([}\]])', r'\1', raw)
+        data = None
         try:
             data = _json.loads(raw)
         except (_json.JSONDecodeError, TypeError):
             brace = _re.search(r'\{.*\}', raw, _re.DOTALL)
-            if not brace:
-                return None
-            try:
-                data = _json.loads(brace.group(0))
-            except (_json.JSONDecodeError, TypeError):
-                return None
+            if brace:
+                try:
+                    data = _json.loads(brace.group(0))
+                except (_json.JSONDecodeError, TypeError):
+                    data = None
+        if not isinstance(data, dict):
+            return None, 'json_parse'
 
         from matching.api.jobs import build_initial_title, publish_jobpost
         from matching.models import JobPost
         from matching.services.job_schema import validate_job_payload
 
-        job_type = str(data.get('job_type') or '').strip()
-        if job_type not in ('tutoring', 'childcare', 'pickup'):
-            return None
-        rate = self._parse_chatbot_rate(data.get('hourly_rate_vnd'))
+        job_type = self._normalize_chatbot_job_type(
+            data.get('job_type') or data.get('jobType'))
+        if not job_type:
+            return None, f'job_type:{data.get("job_type")!r}'
+        rate = self._parse_chatbot_rate(
+            data.get('hourly_rate_vnd') or data.get('hourly_rate')
+            or data.get('price') or data.get('rate') or data.get('gia'))
         if not rate:
-            return None
+            return None, f'rate:{data.get("hourly_rate_vnd")!r}'
 
         td = data.get('type_data') if isinstance(data.get('type_data'), dict) else {}
         if not td:
@@ -1335,7 +1368,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 self._last_validation_errors = '\n'.join(parts)
             else:
                 self._last_validation_errors = str(exc)[:300]
-            return None
+            return None, 'validate'
         self._last_validation_errors = None
 
         clean['enable_safety'] = bool(data.get('enable_safety', True))
@@ -1366,7 +1399,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 "job": {"id": str(job.pk), "job_type": job_type,
                         "title": job.title, "hourly_rate_vnd": rate,
                         "status": job.status},
-            }
+            }, None
 
         safety_msg = ""
         if clean.get('enable_safety') and job_type in ('childcare', 'pickup'):
@@ -1393,7 +1426,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 "status_label_vi": job.get_status_display(),
                 "slots_created": pub.get('slots_created', 0),
             },
-        }
+        }, None
 
 
 # --- PHẦN 6: ADMIN QUẢN LÝ DUYỆT TÀI KHOẢN CAREPARTNER ---
