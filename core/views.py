@@ -1091,6 +1091,22 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         user_message = request.data.get('message', '').strip()
         chat_history = request.data.get('history', [])  # Nhận lịch sử hội thoại từ frontend
 
+        # 2026-09-27 (E2E prod): Gemini không biết ngày hiện tại — tính "ngày mai"
+        # thành 2024 (mốc kiến thức) → validate từ chối "ngày trong quá khứ".
+        # Chèn mốc thời gian VN vào đầu tin nhắn để AI tính ngày tuyệt đối đúng.
+        try:
+            from django.utils import timezone as _tz
+            _now_vn = _tz.localtime(_tz.now())
+            _weekday_vi = ('Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm',
+                           'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật')[_now_vn.weekday()]
+            user_message = (
+                f"[Hôm nay là {_now_vn.strftime('%d/%m/%Y')} ({_weekday_vi}), "
+                f"giờ Việt Nam — khi tạo JSON, 'ngày mai'/'tuần này' phải tính từ "
+                f"ngày này và ghi ngày tuyệt đối YYYY-MM-DD.]\n"
+            ) + user_message
+        except Exception:
+            pass
+
         if not user_message:
             return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
 
