@@ -1175,9 +1175,19 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 return Response(result)
 
             if legacy_task_match and request.user.role == 'parent':
-                # Tàn dư prompt cũ (model còn nhớ schema 8 danh mục) — KHÔNG
-                # tạo core.Task 'open' nữa vì luồng ứng tuyển đã đóng. Trả
-                # về như câu làm rõ để phụ huynh bổ sung thông tin.
+                # Tàn dư: model thỉnh thoảng vẫn xuất schema cũ (8 danh mục,
+                # scheduled_time, price...). KHÔNG tạo core.Task 'open' nữa —
+                # CHUYỂN ĐỔI sang JobPost Flow 1 luôn (category cũ → job_type,
+                # scheduled_time → dates/time_from/time_to, price → giá/giờ ước tính).
+                converted = self._convert_legacy_task_json(
+                    request, legacy_task_match.group(1).strip())
+                if converted is not None:
+                    result, _fail = converted
+                    if result is not None:
+                        result["response"] = (clean_response + "\n\n" +
+                                              result["response"]).strip()
+                        return Response(result)
+                # Chuyển đổi không thành công → làm rõ như thường
                 return Response({
                     "response": clean_response or
                     "Bạn cho mình biết thêm một chút thông tin nhé!",
@@ -1217,6 +1227,95 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 "response": f"❌ {detail}",
                 "type": "error"
             }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def _convert_legacy_task_json(self, request, raw_json):
+        """Schema cũ (category 1-8 + scheduled_time + price tổng) → JobPost Flow 1.
+
+        Model thỉnh thoảng bỏ qua prompt mới và xuất <TASK_JSON> theo schema 8
+        danh mục cũ. Thay vì bỏ lỡ tin đăng, chuyển đổi tốt nhất có thể:
+          category 1→tutoring, 2→pickup, 4→childcare (còn lại → bỏ, làm rõ)
+          scheduled_time → dates + time_from (+2h tutoring/childcare, +1h pickup)
+          price (tổng buổi) → hourly_rate_vnd ước tính (price / giờ, làm tròn 1000)
+        Trả về (result_dict|None, reason) — gọi _create_job_from_chat để tái dùng
+        toàn bộ validate + publish + toạ độ.
+        """
+        import json as _json
+        import re as _re
+        import datetime as _dt
+        raw = _re.sub(r'^```(?:json)?\s*|\s*```$', '', raw_json.strip(),
+                      flags=_re.MULTILINE).strip()
+        raw = _re.sub(r',\s*([}\]])', r'\1', raw)
+        data = None
+        try:
+            data = _json.loads(raw)
+        except (_json.JSONDecodeError, TypeError):
+            brace = _re.search(r'\{.*\}', raw, _re.DOTALL)
+            if brace:
+                try:
+                    data = _json.loads(brace.group(0))
+                except (_json.JSONDecodeError, TypeError):
+                    data = None
+        if not isinstance(data, dict):
+            return None, 'legacy_json_parse'
+
+        # AI thỉnh thoảng trộn format — nếu đã có field mới thì xử lý thẳng
+        if data.get('job_type') or isinstance(data.get('type_data'), dict):
+            return self._create_job_from_chat(request, raw_json)
+
+        cat_map = {1: 'tutoring', '1': 'tutoring', 2: 'pickup', '2': 'pickup',
+                   4: 'childcare', '4': 'childcare'}
+        job_type = cat_map.get(data.get('category'))
+        if not job_type:
+            return None, f'legacy_category:{data.get("category")!r}'
+
+        from django.utils import timezone as _tz
+        from django.utils.dateparse import parse_datetime
+        scheduled = parse_datetime(str(data.get('scheduled_time') or ''))
+        if not scheduled:
+            return None, 'legacy_scheduled_time'
+        if _tz.is_naive(scheduled):
+            scheduled = _tz.make_aware(scheduled, _tz.get_current_timezone())
+        scheduled = _tz.localtime(scheduled)
+
+        hours = 1.0 if job_type == 'pickup' else 2.0
+        end = scheduled + _dt.timedelta(hours=hours)
+
+        try:
+            price_val = int(str(data.get('price') or '').replace('.', '')
+                            .replace(',', '').replace('đ', '').replace('Đ', '').strip())
+        except (TypeError, ValueError):
+            price_val = None
+        rate = max(50000, int(round(price_val / hours / 1000.0)) * 1000) if price_val else None
+        if not rate:
+            return None, 'legacy_price'
+
+        location_text = str(data.get('location') or '').strip()
+        td = {
+            'dates': [scheduled.date().isoformat()],
+            'time_from': scheduled.strftime('%H:%M'),
+            'time_to': end.strftime('%H:%M'),
+        }
+        if job_type == 'tutoring':
+            td['subject'] = str(data.get('title') or 'Kèm học')[:60]
+        elif job_type == 'childcare':
+            td['child_age_group'] = '1_to_3_years'
+            td['number_of_children'] = 1
+            td['care_duties'] = ['general_care']
+        else:  # pickup
+            td['school_or_pickup_place_name'] = (location_text or
+                                                 str(data.get('title') or 'trường học'))[:60]
+            td['child_age_group'] = '6_to_10_years'
+            td['number_of_children'] = 1
+            td['destination_type'] = 'parent_home'
+
+        new_json = _json.dumps({
+            'job_type': job_type,
+            'hourly_rate_vnd': rate,
+            'location': location_text,
+            'enable_safety': job_type in ('childcare', 'pickup'),
+            'type_data': td,
+        }, ensure_ascii=False)
+        return self._create_job_from_chat(request, new_json)
 
     def _resolve_job_coordinates(self, request, location_text):
         """Tìm toạ độ (lat, lng) cho job đăng qua chatbot.

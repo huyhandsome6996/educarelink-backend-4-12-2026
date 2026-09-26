@@ -363,3 +363,78 @@ class ChatbotJobJsonRobustnessTests(TestCase):
         # Lỗi cụ thể hiện trong phản hồi (care_duties + number_of_children thiếu, nhóm tuổi sai)
         self.assertIn('Thông tin cần bổ sung', data['response'])
         self.assertFalse(JobPost.objects.exists())
+
+
+@GEMINI_KEY_REQUIRED
+class LegacyTaskJsonConversionTests(TestCase):
+    """Model thỉnh thoảng vẫn xuất <TASK_JSON> schema cũ → CHUYỂN ĐỔI thành
+    JobPost Flow 1 thay vì bỏ lỡ tin đăng (chống hồi quy về luồng cũ)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_legacy')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_legacy_tutoring_task_json_converted_to_jobpost(self, mock_gemini, mock_parse):
+        tomorrow = (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
+        legacy = (
+            'Em sẽ tạo ngay!\n<TASK_JSON>{"category": 1, "title": "Gia sư Toán lớp 5", '
+            '"description": "Dạy ôn thi", "location": "458 Minh Khai, Hà Nội", '
+            '"scheduled_time": "' + tomorrow + 'T18:30:00+07:00", "price": 200000}</TASK_JSON>'
+        )
+        mock_gemini.return_value = (_gemini_text(legacy), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần gia sư', 'history': []},
+                                format='json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # KHÔNG còn tạo core.Task — mà tạo JobPost Flow 1 luôn
+        self.assertEqual(data['type'], 'job_created')
+        self.assertFalse(Task.objects.filter(parent=self.parent).exists())
+        job = JobPost.objects.get(pk=data['job']['id'])
+        self.assertEqual(job.job_type, 'tutoring')
+        # price tổng 200000 / 2h → 100.000đ/giờ
+        self.assertEqual(job.hourly_rate_vnd, 100000)
+        self.assertEqual(job.slots.count(), 1)
+        slot = job.slots.first()
+        self.assertEqual(slot.time_from.hour, 18)
+        self.assertEqual(slot.time_to.hour, 20)
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_legacy_childcare_task_json_converted(self, mock_gemini, mock_parse):
+        tomorrow = (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
+        legacy = (
+            '<TASK_JSON>{"category": 4, "title": "Trông bé 2 tuổi", '
+            '"description": "x", "location": "Q1", '
+            '"scheduled_time": "' + tomorrow + 'T08:00:00+07:00", "price": 400000}</TASK_JSON>'
+        )
+        mock_gemini.return_value = (_gemini_text(legacy), 'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/', {'message': 'cần trông trẻ', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        job = JobPost.objects.get(pk=data['job']['id'])
+        self.assertEqual(job.job_type, 'childcare')
+        self.assertEqual(job.hourly_rate_vnd, 200000)  # 400k/2h
+        self.assertTrue(job.type_data.get('enable_safety'))
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_legacy_locked_category_still_not_created(self, mock_gemini):
+        """Category 3 (dọn dẹp) — dịch vụ ngừng → không tạo gì, làm rõ."""
+        legacy = ('<TASK_JSON>{"category": 3, "title": "Dọn dẹp", "description": "x", '
+                  '"location": "Q1", "scheduled_time": "2026-10-01T08:00:00+07:00", '
+                  '"price": 300000}</TASK_JSON>')
+        mock_gemini.return_value = (_gemini_text(legacy), 'gemini-2.5-flash-lite')
+        resp = self.client.post('/api/chatbot/', {'message': 'cần dọn nhà', 'history': []},
+                                format='json')
+        self.assertEqual(resp.json()['type'], 'clarification')
+        self.assertFalse(JobPost.objects.exists())
+        self.assertFalse(Task.objects.exists())
