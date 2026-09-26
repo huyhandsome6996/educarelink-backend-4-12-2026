@@ -347,7 +347,17 @@
 /* ═══════════════════════════════════════════════════════════════
    ĐƠN GHÉP CẶP CỦA TÔI — luồng thụ động Flow 1 (khóa thiết kế Stitch)
    Dữ liệu thật: GET /api/matching/bookings/ — không dữ liệu cứng.
+
+   ⚠️ AUTH GUARD (bắt buộc): trang dùng JWT ở localStorage, Django
+   không nhìn thấy → không được check auth phía server (trước đây gây
+   vòng lặp redirect /login ↔ /don-cua-toi vô hạn). Guard đồng bộ với
+   worker_jobs.html: chưa có token → đá về /login/ kèm ?next=.
    ═══════════════════════════════════════════════════════════════ */
+const LOGIN_URL = "{% url 'frontend:login' %}";
+if (!localStorage.getItem('token')) {
+  window.location.href = LOGIN_URL + '?next=/don-cua-toi/';
+}
+
 
 const FILTERS = [
   { key: 'all', label: 'Tất cả' },

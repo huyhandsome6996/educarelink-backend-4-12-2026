@@ -518,3 +518,33 @@ class NoCacheHTMLMiddlewareTests(TestCase):
         ctype = resp.get('Content-Type', '')
         if ctype.startswith('application/json'):
             self.assertIsNone(resp.get('Cache-Control'))
+
+
+class DonCuaToiPageTests(TestCase):
+    """2026-09-27 (trước kỳ thi demo) — /don-cua-toi/ KHÔNG redirect auth
+    phía server.
+
+    Lỗi prod: DonCuaToiView.dispatch check request.user.is_authenticated,
+    nhưng web auth bằng JWT ở localStorage (Django request.user luôn
+    anonymous) → luôn redirect /login/?next=/don-cua-toi/ → login page
+    JS thấy token lại đẩy về /don-cua-toi/ → VÒNG LẶP REDIRECT VÔ HẠN
+    khi CarePartner đã đăng nhập bấm 'Việc của tôi' trên bottom nav.
+    """
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def test_anonymous_gets_200_not_redirect(self):
+        """Anonymous → 200 HTML (không 302 về /login/)."""
+        resp = self.client.get('/don-cua-toi/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/html', resp['Content-Type'])
+        self.assertContains(resp, 'Đơn ghép cặp của tôi')
+
+    def test_page_has_client_side_jwt_guard(self):
+        """Trang phải tự guard bằng JWT client-side (quy ước worker_jobs)."""
+        resp = self.client.get('/don-cua-toi/')
+        self.assertContains(resp, "localStorage.getItem('token')")
+        self.assertContains(resp, "next=/don-cua-toi/")

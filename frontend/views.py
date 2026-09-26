@@ -224,19 +224,16 @@ class NgayBanView(TemplateView):
 class DonCuaToiView(TemplateView):
     """Danh sách đơn ghép cặp của CarePartner, lọc theo trạng thái.
 
-    Phân quyền theo quy tắc trang CarePartner (Stitch 2026-09-11):
-    chưa đăng nhập → /login/; phụ huynh → /parent/.
+    ⚠️ KHÔNG check auth phía server ở đây: hệ thống web dùng JWT lưu ở
+    localStorage (invisible với Django request.user), nên check
+    `request.user.is_authenticated` trước đây LUÔN sai → redirect
+    /login/?next= → login page JS thấy token lại đẩy về /don-cua-toi/
+    → VÒNG LẶP REDIRECT VÔ HẠN cho CarePartner đã đăng nhập.
+    Quy ước thống nhất với các trang khác: shell render công khai,
+    JS guard client-side (xem đầu <script> trong don_cua_toi.html).
     """
 
     template_name = "frontend/don_cua_toi.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        user = request.user
-        if not user.is_authenticated:
-            return redirect('/login/?next=/don-cua-toi/')
-        if getattr(user, 'role', '') == 'parent':
-            return redirect('/parent/')
-        return super().dispatch(request, *args, **kwargs)
 
 
 class KhangCaoView(TemplateView):

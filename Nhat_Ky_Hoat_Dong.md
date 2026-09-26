@@ -1,4 +1,48 @@
 
+### Kiểm thử toàn diện trước kỳ thi + 2 fix lỗi prod + rà soát mobile/QR (2026-09-27)
+- **Bối cảnh**: ngày mai bảo vệ — giám khảo quét QR đăng nhập bằng điện thoại. Yêu cầu
+  owner: đọc kỹ repo, kiểm thử toàn bộ, tối ưu trải nghiệm mobile web, đảm bảo QR quét
+  là đăng nhập được, KHÔNG ảnh hưởng xấu tới prod Render. Ràng buộc: gộp MỌI thay đổi
+  vào ĐÚNG 1 commit, push 1 lần (tiết kiệm pipeline Render).
+- **Rà soát repo + prod (e11300e)**: prod ĐÃ deploy bản mới nhất (login page có marker
+  QR AUTO-LOGIN); 6 tài khoản demo đều đăng nhập 200 qua /api/auth/login/ (4 giám khảo
+  phụ huynh + sinhvien_test + carepartner_huquanghuy); static âm thanh + avatar mới live;
+  site gate TẮT; decode 22/22 file QR trong qr_codes_giam_khao/ → URL đúng prod + đúng
+  tài khoản + mật khẩu Demo@2026.
+- **Kiểm thử QR auto-login end-to-end (Playwright, viewport iPhone 390x844)**:
+  mở thẳng `/login/?u=...&p=...&auto=1` → tự điền form, tự submit, redirect đúng role:
+  phụ huynh → `/parent/`, carepartner → `/worker/`. Cả 2 vai trò PASS, không động code
+  (luồng đã hoạt động — đúng yêu cầu "nếu đã đăng nhập được rồi thì thôi không động vô nữa").
+- **Audit mobile web 17 trang chính (viewport 390x844, đo scrollWidth/overflow +
+  screenshot)**: /parent/, /parent/tasks/, /dang-viec/, /dang-viec/gia-su/, /notifications/,
+  /parent/care-diary/, /worker/, /worker/my-jobs/, /don-cua-toi/, /worker/care-diary/,
+  /worker/earnings/, /worker/profile/, /lich-ranh/, /parent/payments/, /chat/,
+  /parent/task-detail/, /admin-dashboard/ → tất cả không tràn ngang, bottom nav chuẩn,
+  font kích thước Mobile-first tốt sẵn. 6px "overflow" trên /worker/profile/ là artifact
+  scrollbar headless desktop (drawer ẩn translate-x-full) — điện thoại thật dùng overlay
+  scrollbar nên không xảy ra (đã xác minh desktop 1366px cũng không tràn).
+- **BUG #1 — FIX: PaymentSerializer khai field 'updated_at' không tồn tại trên Payment**
+  (field này thuộc CommissionSettlement — lọt vào từ f059440) → DRF ImproperlyConfigured →
+  HTTP 500 thật trên prod cho MỌI endpoint dùng PaymentSerializer: `/api/payments/my/`
+  (trang Thanh toán phụ huynh — console prod bắt lỗi loadPayments 500) và
+  `/api/payments/my-earnings/` (trang Thu nhập CarePartner — earnings 500). Fix: bỏ
+  'updated_at' khỏi fields + read_only_fields, kèm chú thích cảnh báo; thêm test
+  regression `payments/tests/test_my_earnings.py` (5 test: worker có payment 200 đủ
+  khóa, worker rỗng 200, parent 403, anonymous 401, /payments/my/ 200).
+- **BUG #2 — FIX: vòng lặp redirect vô hạn /don-cua-toi/ ↔ /login/?next=**: view cũ
+  check `request.user.is_authenticated` phía server, nhưng web auth bằng JWT ở
+  localStorage (Django luôn thấy anonymous) → redirect /login/?next= → login JS thấy
+  token lại đẩy về /don-cua-toi/ → loop xác minh bằng network trace trên prod. Giám khảo
+  demo vai trò CarePartner bấm "Việc của tôi" trên bottom nav là dính. Fix: bỏ dispatch
+  auth server-side (đồng bộ quy ước mọi trang khác), thêm JS guard client-side ở đầu
+  script don_cua_toi.html (chưa có token → /login/?next=/don-cua-toi/ — anonymous không
+  loop vì login page không bounce khi không có token); thêm 2 test vào frontend/tests.py.
+- **Kiểm tra khác**: Light Mode admin (0087b3c) hoạt động + persist qua reload (data-theme
+  + localStorage admin_dashboard_theme); task-detail với task THẬT của giám khảo
+  (2729, in_progress, có CarePartner mylinh) render đẹp trên mobile — xác minh quyền sở
+  hữu đúng hoạt động (task của parent khác bị chặn ĐÚNG); full backend suite
+  **904/904 OK** (896 cũ + 7 test mới + 1 test e11300e); makemigrations --check sạch.
+
 ### Seed dữ liệu mẫu Care Diary phủ TẤT CẢ tài khoản — kiểm thử end-to-end (2026-09-20)
 - **Bối cảnh**: web đã live với form đánh giá sau khi vá migration 0032 (`bad2c20`),
   nhưng còn nhiều task in_progress/completed chưa có nhật ký và các tài khoản khảo
