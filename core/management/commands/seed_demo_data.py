@@ -705,10 +705,50 @@ class Command(BaseCommand):
                     time_from=datetime.time(h_from, m_from),
                     time_to=datetime.time(h_to, m_to)
                 )
+                # 2026-09-30 (chatbot-fix-1): WorkerAvailability cũng dùng miền
+                # weekday 0..6 (core.models.WorkerAvailability.WEEKDAY_CHOICES) —
+                # trước đây ghi wd+1 (1..7) lệch lịch 1 ngày và weekday=7 ngoài
+                # miền, radar/rảnh-tuần đọc theo 0..6 nên không bao giờ khớp CN.
                 WorkerAvailability.objects.update_or_create(
-                    worker=cp, weekday=wd + 1,
+                    worker=cp, weekday=wd,
                     defaults={"start_time": tf, "end_time": tt}
                 )
+
+        # 2026-09-30 (chatbot-fix-1): chữa tàn dư seed cũ — một số dòng lịch
+        # rảnh còn kẹt weekday=7 (ngoài miền 0..6, không bao giờ khớp radar).
+        # Bước này IDEMPOTENT (build.sh chạy seed mỗi deploy) và CHỐNG DỘNG
+        # CỘT: trước khi update weekday=F('weekday') % 7, xoá trước những dòng
+        # mà kết quả modulo trùng lịch ĐÃ tồn tại ở miền 0..6 (nếu không,
+        # unique constraint (carepartner, weekday, time_from, time_to) nổ
+        # IntegrityError làm seed rollback cả transaction). Dữ liệu đúng (0..6)
+        # không bao giờ bị đụng tới. Áp cho cả 2 bảng lịch.
+        from django.db.models import F
+        # (model, field chủ sở hữu, field giờ bắt đầu, field giờ kết thúc)
+        # — 2 bảng trùng ý nghĩa nhưng khác tên field FK + giờ.
+        _avail_specs = (
+            (CarePartnerAvailability, 'carepartner', 'time_from', 'time_to'),
+            (WorkerAvailability, 'worker', 'start_time', 'end_time'),
+        )
+        for _avail_model, _owner_field, _from_f, _to_f in _avail_specs:
+            _dup_ids = []
+            for _row in _avail_model.objects.filter(weekday__gt=6):
+                _target = _row.weekday % 7
+                _exists = _avail_model.objects.filter(**{
+                    _owner_field: getattr(_row, _owner_field),
+                    'weekday': _target,
+                    _from_f: getattr(_row, _from_f),
+                    _to_f: getattr(_row, _to_f),
+                }).exists()
+                if _exists:
+                    _dup_ids.append(_row.id)  # dòng rác trùng lịch đã có → bỏ
+            if _dup_ids:
+                _avail_model.objects.filter(id__in=_dup_ids).delete()
+            _fixed = _avail_model.objects.filter(
+                weekday__gt=6).update(weekday=F('weekday') % 7)
+            if _fixed or _dup_ids:
+                self._log(f"   + [Chữa lịch rảnh] {_avail_model.__name__}: "
+                          f"đưa {_fixed} dòng weekday > 6 về miền 0..6, "
+                          f"xoá {len(_dup_ids)} dòng rác trùng lịch")
 
         # 1 Ngày bận đột xuất (Blackout) cho Tuấn Kiệt (lý do: thi cuối kỳ)
         CarePartnerBlackout.objects.update_or_create(

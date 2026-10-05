@@ -81,6 +81,11 @@ TUTOR_SENIORITY_PREFERENCES = {
 
 JOB_TYPES = ('tutoring', 'childcare', 'pickup')
 
+# H3+M1 (2026-09-30): trần số ngày cụ thể / độ dài lặp weekly của 1 tin đăng —
+# chặn payload khổng lồ (AI từng có thể xuất 100+ dates) làm phình JobSlot và
+# radar. ~12 tuần là đủ dài cho 1 tin đăng ghép cặp.
+MAX_JOB_DATES = 84
+
 # Định nghĩa field bắt buộc + optional theo từng loại (Step 1)
 REQUIRED_BY_TYPE = {
     'tutoring': ['subject', 'specific_requirements', 'dates', 'time_from', 'time_to'],
@@ -269,6 +274,14 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     if past:
         raise ValidationError({date_key: f'Không được chọn ngày trong quá khứ: {past[0]}.'})
 
+    # H3 (2026-09-30): trần 84 ngày cụ thể — vượt trần → ValidationError để
+    # caller (API đăng tay trả 400, chatbot trả clarification) thay vì tạo
+    # hàng trăm JobSlot cho 1 tin đăng.
+    if len(dates) > MAX_JOB_DATES:
+        raise ValidationError({
+            date_key: (f'Tin đăng chỉ nhận tối đa {MAX_JOB_DATES} ngày '
+                       f'(bạn chọn {len(dates)} ngày) — hãy chia bớt thành các tin đăng khác.')})
+
     clean['_dates'] = [d.isoformat() for d in dates]
     clean['time_from'] = _parse_time(clean.pop(time_from_key)).strftime('%H:%M')
     clean['time_to'] = _parse_time(clean.pop(time_to_key)).strftime('%H:%M')
@@ -291,9 +304,23 @@ def validate_job_payload(job_type, payload, user_role='parent'):
                 raise ValidationError({'recurrence': 'weekdays phải là list số 0-6 (0=Thứ Hai).'})
             if not recurrence.get('until'):
                 raise ValidationError({'recurrence': 'Cần ngày kết thúc lặp (until).'})
+            until = _parse_date(recurrence['until'])
+            # H3 (2026-09-30): có cả dates + until → until phải SAU ngày cụ thể
+            # cuối cùng, nếu không recurrence vô nghĩa (không sinh thêm buổi nào).
+            if dates and until <= max(dates):
+                raise ValidationError({
+                    'recurrence': (f'Ngày kết thúc lặp (until: {until.isoformat()}) '
+                                   f'phải sau ngày cuối trong danh sách dates '
+                                   f'({max(dates).isoformat()}).')})
+            # M1 (2026-09-30): clamp until — tối đa +84 ngày kể từ ngày cụ thể
+            # cuối cùng (không từ chối, tự hạ xuống để giới hạn số slot sinh ra).
+            if dates:
+                hard_until = max(dates) + datetime.timedelta(days=MAX_JOB_DATES)
+                if until > hard_until:
+                    until = hard_until
             clean['recurrence'] = {'pattern': 'weekly',
                                    'weekdays': weekdays,
-                                   'until': str(_parse_date(recurrence['until']))}
+                                   'until': until.isoformat()}
         elif pattern:
             raise ValidationError({'recurrence': 'Chỉ hỗ trợ pattern "weekly" hoặc bỏ trống.'})
     else:

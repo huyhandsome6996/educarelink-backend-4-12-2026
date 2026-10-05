@@ -609,3 +609,100 @@ class AIJobPostingFlow1UpgradeTests(TestCase):
         resp = self.client.get('/worker/my-jobs/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'js/worker_shift_heartbeat.js')
+
+
+class ChatbotUiCardsFixTests(TestCase):
+    """2026-10-07 — Fix card chatbot theo hợp đồng backend mới.
+
+    - chatbot.html: addJobCard xử lý job.status ('ai_parsed' /
+      'needs_admin_review' / 'ai_failed') + radar theo total_matched
+      + preview candidates_preview; errMsg ưu tiên errData.response
+      thay vì join mảng field-wise làm mangled lỗi DRF.
+    - worker_chatbot.html: card blackout_created (AI đề xuất ngày bận,
+      backend KHÔNG lưu DB) → UI POST /api/matching/carepartners/me/blackouts/
+      + link /worker/availability/.
+    - Cả 2 template: POST chatbot bọc AbortController timeout 90s.
+    """
+
+    def setUp(self):
+        session = self.client.session
+        session[GATE_SESSION_KEY] = True
+        session.save()
+
+    def _get_chatbot_html(self):
+        resp = self.client.get('/parent/chatbot/')
+        self.assertEqual(resp.status_code, 200)
+        return resp.content.decode('utf-8')
+
+    def _get_worker_chatbot_html(self):
+        resp = self.client.get('/worker/chatbot/')
+        self.assertEqual(resp.status_code, 200)
+        return resp.content.decode('utf-8')
+
+    def test_chatbot_job_card_handles_status_and_total_matched(self):
+        """addJobCard rẽ nhánh theo status + radar theo total_matched (3 biến thể)."""
+        html = self._get_chatbot_html()
+        # Nhánh cảnh báo khi status !== 'ai_parsed' (needs_admin_review/ai_failed)
+        self.assertIn("job.status !== 'ai_parsed'", html)
+        self.assertIn("'ai_parsed'", html)
+        self.assertIn('status_label_vi', html)
+        self.assertIn("Hệ thống đang xử lý lại tin đăng của bạn", html)
+        # Radar theo total_matched: > 0 → đếm người; = 0 → chưa khớp
+        self.assertIn('total_matched', html)
+        self.assertIn('AI đã quét thấy', html)
+        self.assertIn('CarePartner phù hợp — bấm để xem danh sách!', html)
+        self.assertIn('Hiện chưa có CarePartner nào khớp ca làm này', html)
+        # null/undefined → giữ nguyên text radar cũ
+        self.assertIn('AI đang quét Carepartner phù hợp nhất cho bạn…', html)
+
+    def test_chatbot_job_card_candidates_preview_block(self):
+        """Preview tối đa 3 ứng viên nổi bật, escape mọi field + dòng 'khác…'."""
+        html = self._get_chatbot_html()
+        self.assertIn('candidates_preview', html)
+        self.assertIn('candidates_preview.slice(0, 3)', html)
+        self.assertIn('display_name', html)
+        self.assertIn('school', html)
+        self.assertIn('rating', html)
+        self.assertIn('distance_km', html)
+        self.assertIn('ứng viên khác…', html)
+
+    def test_chatbot_err_msg_prefers_server_message_fields(self):
+        """errMsg ưu tiên errData.response/detail/error — chuỗi join cũ không còn đứng đầu."""
+        html = self._get_chatbot_html()
+        self.assertIn('errData.response', html)
+        self.assertIn('preferredMsg', html)
+        # Pattern cũ: join mảng field-wise là lựa chọn đầu → gây mangled lỗi
+        self.assertNotIn('errMsg = Object.values(errData).flat().join', html)
+
+    def test_worker_chatbot_err_msg_prefers_server_message_fields(self):
+        """worker_chatbot.html áp cùng thứ tự ưu tiên errMsg như chatbot.html."""
+        html = self._get_worker_chatbot_html()
+        self.assertIn('errData.response', html)
+        self.assertNotIn('errMsg = Object.values(errData).flat().join', html)
+
+    def test_worker_chatbot_has_blackout_card_flow(self):
+        """Card blackout_created: render + POST blackouts + link Lịch rảnh & Ca làm."""
+        html = self._get_worker_chatbot_html()
+        # Handler rẽ nhánh theo type (ngoài nhánh data.response)
+        self.assertIn("data.type === 'blackout_created'", html)
+        self.assertIn('renderBlackoutCard', html)
+        # Endpoint lưu thật (payload {date, time_from, time_to, reason, note})
+        self.assertIn('/api/matching/carepartners/me/blackouts/', html)
+        self.assertIn('time_from', html)
+        self.assertIn('time_to', html)
+        # CTA chính + link phụ + nhãn trạng thái
+        self.assertIn('Lưu vào Lịch Bận & Bảo vệ ELO', html)
+        self.assertIn('/worker/availability/', html)
+        self.assertIn('Mở Lịch rảnh & Ca làm', html)
+        self.assertIn('Cả ngày', html)
+        self.assertIn('reason_label_vi', html)
+        self.assertIn('đã có ca làm trùng — bỏ qua', html)
+        self.assertIn('Lịch của bạn được bảo vệ khỏi đề xuất mới.', html)
+
+    def test_chatbot_templates_have_90s_fetch_timeout(self):
+        """POST chatbot bọc AbortController 90s + thông báo timeout thân thiện."""
+        for html in (self._get_chatbot_html(), self._get_worker_chatbot_html()):
+            self.assertIn('AbortController', html)
+            self.assertIn('90000', html)
+            self.assertIn('sendWithTimeout', html)
+            self.assertIn('AI phản hồi hơi lâu. Vui lòng thử lại sau ít phút.', html)

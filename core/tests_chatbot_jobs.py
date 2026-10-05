@@ -29,7 +29,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core.models import User, Task
-from matching.models import JobPost, JobSlot
+from matching.models import JobPost, JobSlot, CarePartnerBlackout
 from matching.constants import JobPostStatus
 
 # View check GEMINI_API_KEY trước khi gọi Gemini — test set key giả để đi vào
@@ -493,3 +493,434 @@ class PastDateHealingTests(TestCase):
                                 format='json')
         job = JobPost.objects.get(pk=resp.json()['job']['id'])
         self.assertEqual(job.slots.first().date.isoformat(), future)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# chatbot-fix-1 (2026-09-30) — test cho 9 mục fix Flow 1 + worker blackout
+# ═══════════════════════════════════════════════════════════════════
+
+@GEMINI_KEY_REQUIRED
+class ChatbotRateFloorTests(TestCase):
+    """M2 — sàn giá 50.000đ/giờ ở luồng MATCHING_JOB_JSON (khớp nhánh legacy)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_rate_floor')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_rate_below_50000_returns_clarification_no_job(self, mock_gemini):
+        """30k/g từng được tạo thực tế (E2E 6d-1) — giờ phải clarification + 0 JobPost."""
+        low = ("<MATCHING_JOB_JSON>"
+               '{"job_type": "tutoring", "hourly_rate_vnd": 30000, '
+               '"location": "458 Minh Khai, Hà Nội", '
+               '"type_data": {"subject": "Toán lớp 5", "dates": ["'
+               + (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
+               + '"], "time_from": "18:30", "time_to": "20:00"}}'
+               "</MATCHING_JOB_JSON>")
+        mock_gemini.return_value = (_gemini_text(low), 'gemini-2.5-flash-lite')
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư 30k một giờ', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(data['type'], 'clarification')
+        # Thông báo thân thiện nói rõ sàn 50.000đ/giờ
+        self.assertIn('50.000', data['response'])
+        self.assertFalse(JobPost.objects.exists())
+
+
+@GEMINI_KEY_REQUIRED
+class ChatbotBlankMessageGuardTests(TestCase):
+    """M4 — tin nhắn rỗng/toàn trống bị chặn TRƯỚC khi chèn prefix ngày + gọi Gemini."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_blank')
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_blank_message_rejected_before_gemini(self, mock_gemini):
+        # Trước fix: prefix ngày chèn trước làm message không bao giờ rỗng
+        # → Gemini bị gọi oan với tin nhắn trắng (200).
+        resp = self.client.post('/api/chatbot/', {'message': '   ', 'history': []},
+                                format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('error', resp.json())
+        mock_gemini.assert_not_called()
+
+
+@GEMINI_KEY_REQUIRED
+class ChatbotHcmcFallbackWarningTests(TestCase):
+    """H2 — rơi xuống fallback TP.HCM (không GPS client/profile, geocode fail)
+    → response text phải có dòng cảnh báo 'TP.HCM' (toạ độ giữ nguyên hành vi)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_hcmc_warn')
+        self.parent.latitude, self.parent.longitude = None, None
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('matching.api.geocode._cached_json', return_value=None)
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_hcmc_fallback_adds_warning_to_response(self, mock_gemini, mock_parse,
+                                                    mock_geo):
+        mock_gemini.return_value = (_gemini_text(VALID_TUTORING_JSON),
+                                    'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư', 'history': []}, format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        self.assertIn('TP.HCM', data['response'])
+        job = JobPost.objects.get(pk=data['job']['id'])
+        # Toạ độ giữ nguyên hành vi cũ: vẫn có fallback TP.HCM
+        self.assertAlmostEqual(job.latitude, 10.762622, places=4)
+        self.assertAlmostEqual(job.longitude, 106.660172, places=4)
+
+
+@GEMINI_KEY_REQUIRED
+class JobSchemaHardeningTests(TestCase):
+    """H3+M1 — job_schema chặn until trước dates + cap 84 ngày cụ thể."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_schema')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_recurrence_until_before_dates_returns_clarification(self, mock_gemini):
+        """until <= max(dates) → ValidationError → clarification (không tạo job)."""
+        tomorrow = (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
+        bad = ("<MATCHING_JOB_JSON>"
+               '{"job_type": "tutoring", "hourly_rate_vnd": 120000, '
+               '"location": "Hà Nội", "type_data": {"subject": "Toán lớp 5", '
+               '"dates": ["%s"], "time_from": "18:30", "time_to": "20:00", '
+               '"recurrence": {"pattern": "weekly", "weekdays": [%d], "until": "%s"}}}'
+               "</MATCHING_JOB_JSON>") % (
+            tomorrow, (timezone.localdate() + datetime.timedelta(days=1)).weekday(),
+            timezone.localdate().isoformat())  # until = HÔM NAY < dates
+        mock_gemini.return_value = (_gemini_text(bad), 'gemini-2.5-flash-lite')
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư lặp weekly', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'clarification')
+        self.assertIn('until', data['response'])
+        self.assertFalse(JobPost.objects.exists())
+
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_100_dates_returns_clarification(self, mock_gemini):
+        """>84 ngày cụ thể → ValidationError → clarification (không tạo job)."""
+        import json as _json
+        today = timezone.localdate()
+        many_dates = [(today + datetime.timedelta(days=i)).isoformat()
+                      for i in range(1, 101)]
+        bad = ("<MATCHING_JOB_JSON>"
+               '{"job_type": "tutoring", "hourly_rate_vnd": 120000, '
+               '"location": "Hà Nội", "type_data": {"subject": "Toán lớp 5", '
+               '"dates": %s, "time_from": "18:30", "time_to": "20:00"}}'
+               "</MATCHING_JOB_JSON>") % _json.dumps(many_dates)
+        mock_gemini.return_value = (_gemini_text(bad), 'gemini-2.5-flash-lite')
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư 100 ngày', 'history': []},
+                                format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'clarification')
+        self.assertIn('84', data['response'])
+        self.assertFalse(JobPost.objects.exists())
+
+
+@GEMINI_KEY_REQUIRED
+class PublishZeroSlotsTests(TestCase):
+    """H3 — publish parse "xong" mà 0 JobSlot → phải ai_failed, không ai_parsed."""
+
+    def setUp(self):
+        self.parent = _make_parent('parent_zero_slot')
+
+    @mock.patch('matching.api.jobs.parse_job_post')
+    def test_publish_without_slots_transitions_to_ai_failed(self, mock_parse):
+        from matching.api.jobs import publish_jobpost
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+
+        job = JobPost.objects.create(
+            parent=self.parent, job_type='tutoring', title='Gia sư không lịch',
+            hourly_rate_vnd=100000, latitude=20.9958, longitude=105.8672,
+            type_data={'subject': 'Toán lớp 5', 'recurrence': {}},  # KHÔNG _dates
+            recurrence={}, status=JobPostStatus.DRAFT)
+
+        ok, payload = publish_jobpost(job, actor_user=self.parent)
+        self.assertFalse(ok)
+        self.assertEqual(payload['code'], 'ai_failed')
+        job.refresh_from_db()
+        self.assertEqual(job.status, JobPostStatus.AI_FAILED)
+        self.assertEqual(job.slots.count(), 0)
+
+
+@GEMINI_KEY_REQUIRED
+class JobPostScheduleSlotsCountTests(TestCase):
+    """L1 — get_schedule đếm JobSlot (job_schema đã pop dates khỏi type_data)."""
+
+    def setUp(self):
+        self.parent = _make_parent('parent_schedule')
+
+    def _job_with_slots(self, n):
+        from datetime import time as dtime
+        first_day = timezone.localdate() + datetime.timedelta(days=1)
+        job = JobPost.objects.create(
+            parent=self.parent, job_type='tutoring', title='Gia sư Toán lớp 5',
+            hourly_rate_vnd=100000, latitude=20.9958, longitude=105.8672,
+            type_data={'subject': 'Toán lớp 5', 'time_from': '18:30',
+                       'time_to': '20:00'},
+            recurrence={}, status=JobPostStatus.AI_PARSED)
+        for i in range(n):
+            JobSlot.objects.create(
+                job=job, date=first_day + datetime.timedelta(days=i),
+                time_from=dtime(18, 30), time_to=dtime(20, 0))
+        return job
+
+    def test_multiple_slots_show_buoi_suffix(self):
+        from matching.api.jobs import JobPostSerializer
+        job = self._job_with_slots(2)
+        self.assertEqual(JobPostSerializer(job).data['schedule'],
+                         '18:30 - 20:00 (2 buổi)')
+
+    def test_single_slot_keeps_plain_range(self):
+        from matching.api.jobs import JobPostSerializer
+        job = self._job_with_slots(1)
+        self.assertEqual(JobPostSerializer(job).data['schedule'], '18:30 - 20:00')
+
+
+@GEMINI_KEY_REQUIRED
+class ChatbotRadarPreviewTests(TestCase):
+    """P1 (spec §2.B) — ngay sau publish: total_matched + preview top 3 trong
+    response job_created; radar lỗi KHÔNG được làm hỏng response."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.parent = _make_parent('parent_radar')
+        self.parent.latitude, self.parent.longitude = 20.9958, 105.8672
+        self.parent.save(update_fields=['latitude', 'longitude'])
+        self.client.force_authenticate(user=self.parent)
+
+    @staticmethod
+    def _fake_radar():
+        return {
+            'total_matched': 12,
+            'candidates': [
+                {'carepartner_id': 'u%d' % i, 'display_name': 'CP %d' % i,
+                 'school': 'ĐH KHTN', 'rating': 4.8, 'distance_km': 1.5 + i,
+                 'match_score': 95 - i, 'match_level': 'very_high'}
+                for i in range(4)
+            ],
+        }
+
+    @mock.patch('matching.services.matching_service.find_candidates')
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_job_created_contains_total_matched_and_top3_preview(
+            self, mock_gemini, mock_parse, mock_radar):
+        mock_gemini.return_value = (_gemini_text(VALID_TUTORING_JSON),
+                                    'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+        mock_radar.return_value = self._fake_radar()
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư', 'history': []}, format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        self.assertEqual(data['job']['total_matched'], 12)
+        preview = data['job']['candidates_preview']
+        self.assertEqual(len(preview), 3)  # top 3 dù radar trả 4
+        for cand in preview:
+            self.assertEqual(set(cand.keys()),
+                             {'display_name', 'school', 'rating',
+                              'distance_km', 'match_score'})
+        self.assertEqual(preview[0]['display_name'], 'CP 0')
+        # total_matched được persist lên job cho trang ứng viên dùng lại
+        job = JobPost.objects.get(pk=data['job']['id'])
+        self.assertEqual(job.total_matched, 12)
+
+    @mock.patch('matching.services.matching_service.find_candidates')
+    @mock.patch('matching.api.jobs.parse_job_post')
+    @mock.patch('performance.gemini_model.generate_content_with_fallback')
+    def test_radar_failure_still_returns_job_created(
+            self, mock_gemini, mock_parse, mock_radar):
+        mock_gemini.return_value = (_gemini_text(VALID_TUTORING_JSON),
+                                    'gemini-2.5-flash-lite')
+        mock_parse.return_value = (dict(FAKE_PARSE_RESULT), 'ok')
+        mock_radar.side_effect = RuntimeError('radar down')
+
+        resp = self.client.post('/api/chatbot/',
+                                {'message': 'cần gia sư', 'history': []}, format='json')
+        data = resp.json()
+        self.assertEqual(data['type'], 'job_created')
+        self.assertIsNone(data['job']['total_matched'])
+        self.assertEqual(data['job']['candidates_preview'], [])
+        # Job vẫn được tạo + publish bình thường
+        job = JobPost.objects.get(pk=data['job']['id'])
+        self.assertEqual(job.status, JobPostStatus.AI_PARSED)
+
+
+@GEMINI_KEY_REQUIRED
+class WorkerChatbotBlackoutTests(TestCase):
+    """P1 (spec §3) — worker chatbot xuất BLACKOUT_ACTION_JSON → preview
+    blackout_created (BACKEND KHÔNG GHI DB); validate ngày/reason/cap/trùng."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.worker = _make_worker('worker_blackout')
+        self.client.force_authenticate(user=self.worker)
+        self.blackouts_before = CarePartnerBlackout.objects.count()
+
+    def _post(self, message):
+        return self.client.post('/api/worker/chatbot/',
+                                {'message': message, 'history': []}, format='json')
+
+    def _blackout_text(self, entries):
+        import json as _json
+        return ("Em đã ghi nhận lịch bận của anh/chị nhé!\n\n"
+                "<BLACKOUT_ACTION_JSON>\n%s\n</BLACKOUT_ACTION_JSON>\n\n"
+                "Anh/chị kiểm tra và xác nhận giúp em!") % _json.dumps(
+                    entries, ensure_ascii=False)
+
+    def test_valid_blackout_tag_returns_preview_without_db_write(self):
+        d1 = (timezone.localdate() + datetime.timedelta(days=2)).isoformat()
+        d2 = (timezone.localdate() + datetime.timedelta(days=5)).isoformat()
+        text = self._blackout_text([
+            {'date': d1, 'time_from': None, 'time_to': None,
+             'reason': 'exam', 'note': 'Thi Giải tích 2 cả ngày'},
+            {'date': d2, 'time_from': '18:30', 'time_to': '20:00',
+             'reason': 'health', 'note': 'Khám răng'},
+        ])
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận thi ngày %s và khám răng %s' % (d1, d2))
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['type'], 'blackout_created')
+        self.assertEqual(len(data['blackouts']), 2)
+        first = data['blackouts'][0]
+        self.assertEqual(first['date'], d1)
+        self.assertIsNone(first['time_from'])
+        self.assertIsNone(first['time_to'])
+        self.assertEqual(first['reason'], 'exam')
+        self.assertEqual(first['reason_label_vi'], 'Thi / kiểm tra')
+        self.assertEqual(first['note'], 'Thi Giải tích 2 cả ngày')
+        second = data['blackouts'][1]
+        self.assertEqual(second['time_from'], '18:30')
+        self.assertEqual(second['reason_label_vi'], 'Sức khỏe')
+        # JSON tag KHÔNG được lộ ra text hiển thị
+        self.assertNotIn('BLACKOUT_ACTION_JSON', data['response'])
+        # BACKEND KHÔNG GHI DB — preview-then-confirm
+        self.assertEqual(CarePartnerBlackout.objects.count(), self.blackouts_before)
+
+    def test_past_date_blackout_is_filtered(self):
+        past = (timezone.localdate() - datetime.timedelta(days=1)).isoformat()
+        future = (timezone.localdate() + datetime.timedelta(days=3)).isoformat()
+        text = self._blackout_text([
+            {'date': past, 'time_from': None, 'time_to': None,
+             'reason': 'exam', 'note': 'quá khứ — phải bị lọc'},
+            {'date': future, 'time_from': None, 'time_to': None,
+             'reason': 'family', 'note': 'hợp lệ'},
+        ])
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận')
+
+        data = resp.json()
+        self.assertEqual(data['type'], 'blackout_created')
+        self.assertEqual(len(data['blackouts']), 1)
+        self.assertEqual(data['blackouts'][0]['date'], future)
+        self.assertEqual(CarePartnerBlackout.objects.count(), self.blackouts_before)
+
+    def test_more_than_five_blackouts_capped(self):
+        today = timezone.localdate()
+        entries = [{'date': (today + datetime.timedelta(days=i + 1)).isoformat(),
+                    'time_from': None, 'time_to': None,
+                    'reason': 'personal', 'note': 'ngày %d' % i}
+                   for i in range(7)]
+        text = self._blackout_text(entries)
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận cả tuần tới')
+
+        data = resp.json()
+        self.assertEqual(data['type'], 'blackout_created')
+        self.assertEqual(len(data['blackouts']), 5)  # cap tối đa 5 mục
+
+    def test_unknown_reason_maps_to_other(self):
+        future = (timezone.localdate() + datetime.timedelta(days=2)).isoformat()
+        text = self._blackout_text([
+            {'date': future, 'time_from': None, 'time_to': None,
+             'reason': 'sick_leave_liên_mẫn', 'note': 'lý do lạ'},
+        ])
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận')
+
+        data = resp.json()
+        self.assertEqual(data['type'], 'blackout_created')
+        self.assertEqual(data['blackouts'][0]['reason'], 'other')
+        self.assertEqual(data['blackouts'][0]['reason_label_vi'], 'Khác')
+
+    def test_duplicate_date_deduplicated(self):
+        future = (timezone.localdate() + datetime.timedelta(days=4)).isoformat()
+        text = self._blackout_text([
+            {'date': future, 'time_from': '08:00', 'time_to': '10:00',
+             'reason': 'exam', 'note': 'buổi sáng'},
+            {'date': future, 'time_from': '19:00', 'time_to': '21:00',
+             'reason': 'exam', 'note': 'trùng ngày — phải bị bỏ'},
+        ])
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận 2 ca cùng ngày')
+
+        data = resp.json()
+        self.assertEqual(len(data['blackouts']), 1)
+        self.assertEqual(data['blackouts'][0]['time_from'], '08:00')
+
+    def test_plain_message_stays_message(self):
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (
+                _gemini_text('• Để tăng sao đánh giá, anh/chị nên phản hồi nhanh trong 15 phút.'),
+                'gemini-2.5-flash-lite')
+            resp = self._post('Làm sao tăng đánh giá?')
+
+        data = resp.json()
+        self.assertEqual(data['type'], 'message')
+        self.assertIn('tăng sao', data['response'])
+        self.assertEqual(CarePartnerBlackout.objects.count(), self.blackouts_before)
+
+    def test_tag_with_zero_valid_items_stays_message(self):
+        text = self._blackout_text([
+            {'date': 'ngày-nào-đó', 'reason': 'exam'},  # sai format ngày
+            {'date': (timezone.localdate() - datetime.timedelta(days=2)).isoformat(),
+             'reason': 'exam', 'note': 'quá khứ'},
+        ])
+        with mock.patch('performance.gemini_model.generate_content_with_fallback') as mg:
+            mg.return_value = (_gemini_text(text), 'gemini-2.5-flash-lite')
+            resp = self._post('Tôi bận')
+
+        data = resp.json()
+        self.assertEqual(data['type'], 'message')
+        self.assertNotIn('BLACKOUT_ACTION_JSON', data['response'])
+
+    def test_non_worker_forbidden(self):
+        parent = _make_parent('parent_worker_chatbot')
+        client = APIClient()
+        client.force_authenticate(user=parent)
+        resp = client.post('/api/worker/chatbot/',
+                           {'message': 'xin chào', 'history': []}, format='json')
+        self.assertEqual(resp.status_code, 403)

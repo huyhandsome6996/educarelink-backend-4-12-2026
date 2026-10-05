@@ -11,6 +11,7 @@ from django.contrib.auth import authenticate
 import os
 import hashlib
 import logging
+import re
 import requests
 from django.db import models as db_models, transaction
 from django.utils import timezone
@@ -1091,6 +1092,13 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         user_message = request.data.get('message', '').strip()
         chat_history = request.data.get('history', [])  # Nhận lịch sử hội thoại từ frontend
 
+        # M4 (2026-09-30): chặn tin nhắn rỗng TOÁN TRẮNG TRƯỚC khi chèn prefix
+        # ngày hôm nay — nếu chèn prefix trước thì user_message không bao giờ
+        # rỗng nữa, check phía dưới thành vô dụng và Gemini bị gọi oan với
+        # tin nhắn trắng (tốn quota + trả lời lung tung).
+        if not user_message:
+            return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
+
         # 2026-09-27 (E2E prod): Gemini không biết ngày hiện tại — tính "ngày mai"
         # thành 2024 (mốc kiến thức) → validate từ chối "ngày trong quá khứ".
         # Chèn mốc thời gian VN vào đầu tin nhắn để AI tính ngày tuyệt đối đúng.
@@ -1106,9 +1114,6 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             ) + user_message
         except Exception:
             pass
-
-        if not user_message:
-            return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
 
         gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
 
@@ -1342,7 +1347,13 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
           3) geocode địa chỉ AI trích xuất (Nominatim server-side, cache 6h)
           4) mặc định TP.HCM (khớp hành vi cũ của geofence)
         Trả về (lat, lng) float — luôn có giá trị.
+
+        H2 (2026-09-30): khi rơi xuống bậc 4 (fallback TP.HCM — không GPS
+        client, không GPS profile, geocode fail) đặt cờ
+        ``self._coords_used_hcmc_fallback`` để caller nối cảnh báo vào
+        response text (phụ huynh biết kiểm tra lại địa chỉ).
         """
+        self._coords_used_hcmc_fallback = False
         try:
             lat = float(request.data.get('latitude') or 0) or None
             lng = float(request.data.get('longitude') or 0) or None
@@ -1370,6 +1381,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                     return float(data[0]['lat']), float(data[0]['lon'])
             except Exception:
                 pass
+        self._coords_used_hcmc_fallback = True
         return 10.762622, 106.660172  # mặc định TP.HCM
 
     def _parse_chatbot_rate(self, raw):
@@ -1439,6 +1451,16 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             or data.get('price') or data.get('rate') or data.get('gia'))
         if not rate:
             return None, f'rate:{data.get("hourly_rate_vnd")!r}'
+        # M2 (2026-09-30): sàn giá 50.000đ/giờ — khớp hành vi nhánh legacy
+        # TASK_JSON (max(50000, ...) tại _convert_legacy_task_json). Dưới sàn
+        # → clarification thân thiện, KHÔNG tạo JobPost (đã chứng minh E2E:
+        # job 30k/g từng được tạo do thiếu validation).
+        if rate < 50000:
+            rate_vi = f"{rate:,}".replace(',', '.')
+            self._last_validation_errors = (
+                "• Giá/giờ: EduCareLink chỉ nhận tin đăng từ 50.000đ/giờ trở lên "
+                f"(bạn đang đăng {rate_vi}đ/giờ). Anh/chị điều chỉnh mức giá giúp em nhé!")
+            return None, f'rate_too_low:{rate}'
 
         td = data.get('type_data') if isinstance(data.get('type_data'), dict) else {}
         if not td:
@@ -1483,6 +1505,12 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
 
         location_text = str(data.get('location') or '').strip()
         lat, lng = self._resolve_job_coordinates(request, location_text)
+        # H2 (2026-09-30): fallback TP.HCM → cảnh báo 1 dòng vào response text
+        coord_warning = ""
+        if getattr(self, '_coords_used_hcmc_fallback', False):
+            coord_warning = ("\n\n⚠️ Chưa xác định được toạ độ từ địa chỉ — tin đăng đang dùng "
+                             "toạ độ TP.HCM mặc định; bạn nên kiểm tra lại địa chỉ trong tin "
+                             "đăng để AI ghép cặp được Carepartner gần nhà nhất.")
 
         # pickup "other_address" mà AI không có toạ độ điểm đến → dùng toạ độ
         # chính + note địa chỉ (tránh bị chặn validate, vẫn đủ thông tin hiển thị)
@@ -1533,10 +1561,11 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
             return {
                 "response": ("⚠️ Tin đăng đã lưu nhưng chưa quét được ứng viên "
                              "do hệ thống AI bận. Vui lòng thử lại sau ít phút "
-                             "từ mục 'Việc của tôi'."),
+                             "từ mục 'Việc của tôi'." + coord_warning),
                 "type": "job_created",
                 "job": {"id": str(job.pk), "job_type": job_type,
                         "title": job.title, "hourly_rate_vnd": rate,
+                        "total_matched": None, "candidates_preview": [],
                         "status": job.status},
             }, None
 
@@ -1546,11 +1575,44 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                           "• Theo dõi vị trí real-time trong ca làm\n"
                           "• Chuông khẩn cấp nếu Carepartner mất kết nối > 60 giây\n"
                           "• Nút SOS sẵn sàng cho cả 2 bên")
+
+        # ── P1 (spec §2.B, 2026-09-30): quét radar NGAY sau khi publish để trả
+        # total_matched + preview top 3 ngay trong chat, không đợi phụ huynh mở
+        # trang ứng viên. Quyết định AN TOÀN đã cân nhắc (xem worklog):
+        # find_candidates chỉ bulk_create CandidateProposal với
+        # ignore_conflicts=True (unique (job, carepartner) → gọi lại không
+        # nhân bản, throttle theo band không bị đội), KHÔNG đổi status job,
+        # KHÔNG tạo SlotLock, KHÔNG gửi thông báo — những việc đó thuộc
+        # CandidatesAPIView. Radar lỗi phải KHÔNG làm hỏng response job_created.
+        total_matched, candidates_preview = None, []
+        try:
+            from matching.services.matching_service import find_candidates
+            radar = find_candidates(job)
+            total_matched = int(radar.get('total_matched') or 0)
+            candidates_preview = [
+                {
+                    'display_name': c.get('display_name'),
+                    'school': c.get('school'),
+                    'rating': c.get('rating'),
+                    'distance_km': c.get('distance_km'),
+                    'match_score': c.get('match_score'),
+                }
+                for c in (radar.get('candidates') or [])[:3]
+            ]
+            if job.total_matched != total_matched:
+                job.total_matched = total_matched
+                job.save(update_fields=['total_matched'])
+        except Exception:
+            import logging as _logging_radar
+            _logging_radar.getLogger('educarelink.chatbot').exception(
+                '[Chatbot] Radar sau publish lỗi (bỏ qua, không chặn job_created) job %s', job.pk)
+            total_matched, candidates_preview = None, []
+
         return {
             "response": (
                 f"✅ Đã tạo tin đăng thành công! Hệ thống đang quét Carepartner "
                 f"phù hợp nhất cho bạn — bấm nút bên dưới để xem và chọn ngay."
-                f"{safety_msg}"),
+                f"{safety_msg}{coord_warning}"),
             "type": "job_created",
             "job": {
                 "id": str(job.pk),
@@ -1564,6 +1626,8 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                 "status": job.status,
                 "status_label_vi": job.get_status_display(),
                 "slots_created": pub.get('slots_created', 0),
+                "total_matched": total_matched,
+                "candidates_preview": candidates_preview,
             },
         }, None
 
@@ -2314,9 +2378,30 @@ BẠN CÓ THỂ HỖ TRỢ:
 4. Hỗ trợ viết mô tả bản thân ấn tượng
 5. Tư vấn an toàn khi làm việc (đặc biệt với trẻ em)
 6. Giải thích các quyền lợi và trách nhiệm của Carepartner
+7. Giúp Carepartner KHAI BÁO NGÀY BẬN (blackout) — xem quy tắc bên dưới
 
 QUY TẮC:
 - Luôn trả lời bằng TIẾNG VIỆT, thân thiện và chuyên nghiệp
+
+QUY TẮC KHAI BÁO NGÀY BẬN (blackout) — RẤT QUAN TRỌNG:
+- Khi Carepartner nhắc lịch bận sắp tới (thi cử, về quê, ốm, việc gia đình, đi xa...),
+  hãy khuyến khích họ khai báo ngày bận để hệ thống KHÔNG ghép cặp việc vào những ngày đó,
+  và TRẢ THÊM JSON đề xuất trong thẻ <BLACKOUT_ACTION_JSON>...</BLACKOUT_ACTION_JSON>
+- FORMAT (mảng tối đa 5 mục, sắp theo ngày tăng dần):
+<BLACKOUT_ACTION_JSON>
+[
+  {"date": "YYYY-MM-DD", "time_from": null, "time_to": null,
+   "reason": "exam", "note": "Thi Giải tích 2 cả ngày"}
+]
+</BLACKOUT_ACTION_JSON>
+- date: NGÀY TƯƠNG LAI (tính từ mốc hôm nay ở đầu tin nhắn), định dạng YYYY-MM-DD — bỏ qua ngày quá khứ
+- Bận CẢ NGÀY → "time_from": null và "time_to": null; bận 1 KHUNG giờ → ghi đủ cả 2 (time_to sau time_from)
+- reason CHỈ nhận 6 giá trị: "exam" (thi/kiểm tra), "health" (ốm/sức khỏe), "family" (việc gia đình),
+  "travel" (về quê/đi xa), "personal" (cá nhân), "other" (khác) — không rõ lý do thì dùng "other"
+- note: 1 câu ngắn gọn mô tả lý do
+- Sau thẻ JSON, viết 1-2 câu xác nhận thân thiện. TUYỆT ĐỐI không nói "đã lưu lịch" —
+  hệ thống sẽ hiển thị cho Carepartner xem lại và xác nhận rồi mới lưu chính thức.
+- Nếu người dùng chỉ hỏi chuyện khác hoặc không nhắc ngày bận → KHÔNG xuất thẻ JSON
 
 QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
 - KHÔNG viết 1 đoạn văn dài — RẤT KHÓ ĐỌC
@@ -2324,10 +2409,107 @@ QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
 - Nhiều bước → đánh số 1. 2. 3.
 - Giữa các phần → để 1 dòng trống
 - Cung cấp câu trả lời chi tiết, có ví dụ thực tế khi có thể
-- Không tạo task hay thực hiện hành động thay người dùng — chỉ tư vấn và hướng dẫn
+- Không tự tạo task hay tự lưu lịch thay người dùng — chỉ tư vấn, hướng dẫn và xuất JSON
+  ĐỀ XUẤT theo đúng quy tắc blackout bên trên (hệ thống hỏi lại người dùng trước khi lưu)
 - Nếu câu hỏi ngoài phạm vi, hãy lịch sự chuyển hướng về chủ đề liên quan
 - Sử dụng ngữ cảnh cuộc hội thoại trước đó để hiểu ý người dùng
 """
+
+    # P1 (spec §3): thẻ JSON đề xuất ngày bận do model xuất — parse + validate
+    # ở _extract_blackout_action, KHÔNG ghi DB (preview-then-confirm phía UI)
+    BLACKOUT_TAG_RE = re.compile(
+        r'<BLACKOUT_ACTION_JSON>(.*?)</BLACKOUT_ACTION_JSON>',
+        re.DOTALL | re.IGNORECASE)
+
+    @staticmethod
+    def _parse_blackout_time(value):
+        """'HH:MM' → datetime.time; rỗng/sai định dạng → None (null = bận cả ngày)."""
+        import datetime as _dt
+        if value in (None, ''):
+            return None
+        m = re.match(r'^(\d{1,2}):(\d{2})$', str(value).strip())
+        if not m:
+            return None
+        hh, mm = int(m.group(1)), int(m.group(2))
+        if hh > 23 or mm > 59:
+            return None
+        return _dt.time(hh, mm)
+
+    def _extract_blackout_action(self, ai_text):
+        """P1 (spec §3, 2026-09-30): parse <BLACKOUT_ACTION_JSON> từ phản hồi AI
+        khi Carepartner nhắc lịch bận (thi cử/về quê/ốm...).
+
+        Trả về (items, clean_text):
+        - items: tối đa 5 dict {date, time_from, time_to, reason, note} đã
+          validate — date phải TƯƠNG LAI (>= hôm nay, TZ VN), reason lạ → 'other',
+          khử trùng lặp theo date, giờ thiếu 1 vế/sai → cả ngày (null).
+        - clean_text: ai_text sau khi bỏ thẻ JSON (hiển thị cho UI);
+          không có thẻ → trả nguyên văn ai_text.
+        KHÔNG ghi DB — preview-then-confirm: UI sẽ gọi
+        POST /api/matching/carepartners/me/blackouts/ khi người dùng xác nhận.
+        """
+        import datetime as _dt
+        import json as _json
+        from django.utils import timezone as _tz
+        from matching.models import CarePartnerBlackout as _Blackout
+
+        tag = self.BLACKOUT_TAG_RE.search(ai_text)
+        clean_text = self.BLACKOUT_TAG_RE.sub('', ai_text).strip()
+        if not tag:
+            return [], clean_text or ai_text
+
+        # Dọn fences markdown + dấu phẩy thừa (Gemini hay dính, như luồng parent)
+        raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', tag.group(1).strip(),
+                     flags=re.MULTILINE).strip()
+        raw = re.sub(r',\s*([}\]])', r'\1', raw)
+        data = None
+        try:
+            data = _json.loads(raw)
+        except (_json.JSONDecodeError, TypeError):
+            brace = re.search(r'\[.*\]', raw, re.DOTALL)
+            if brace:
+                try:
+                    data = _json.loads(brace.group(0))
+                except (_json.JSONDecodeError, TypeError):
+                    data = None
+        if isinstance(data, dict):
+            data = data.get('blackouts')
+        if not isinstance(data, list):
+            return [], clean_text
+
+        today = _tz.localdate()
+        valid_reasons = {choice[0] for choice in _Blackout.REASON_CHOICES}
+        items, seen_dates = [], set()
+        for entry in data:
+            if len(items) >= 5:
+                break
+            if not isinstance(entry, dict):
+                continue
+            try:
+                d = _dt.date.fromisoformat(str(entry.get('date', '')))
+            except (TypeError, ValueError):
+                continue  # thiếu/sai ngày → bỏ mục
+            if d < today:
+                continue  # ngày quá khứ → bỏ
+            if d in seen_dates:
+                continue  # trùng ngày → giữ mục đầu tiên
+            seen_dates.add(d)
+            tf = self._parse_blackout_time(entry.get('time_from'))
+            tt = self._parse_blackout_time(entry.get('time_to'))
+            if (tf is None) != (tt is None) or (tf and tt and tf >= tt):
+                tf = tt = None  # thiếu 1 vế / sai trật tự → coi như bận cả ngày
+            reason = str(entry.get('reason') or '').strip().lower()
+            if reason not in valid_reasons:
+                reason = 'other'
+            note = str(entry.get('note') or '').strip()[:500]
+            items.append({
+                'date': d.isoformat(),
+                'time_from': tf.strftime('%H:%M') if tf else None,
+                'time_to': tt.strftime('%H:%M') if tt else None,
+                'reason': reason,
+                'note': note,
+            })
+        return items, clean_text
 
     def _build_contents(self, user_message, chat_history=None):
         contents = []
@@ -2354,6 +2536,22 @@ QUY TẮC ĐỊNH DẠNG CÂU TRẢ LỜI (RẤT QUAN TRỌNG):
 
         if not user_message:
             return Response({"error": "Tin nhắn không được trống."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # P1 (spec §3): Gemini không biết ngày hiện tại — chèn mốc thời gian VN
+        # vào đầu tin nhắn để AI tính 'ngày mai'/'tuần sau' đúng (như luồng parent)
+        # trước khi yêu cầu xuất ngày bận tuyệt đối YYYY-MM-DD.
+        try:
+            from django.utils import timezone as _tz
+            _now_vn = _tz.localtime(_tz.now())
+            _weekday_vi = ('Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm',
+                           'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật')[_now_vn.weekday()]
+            user_message = (
+                f"[Hôm nay là {_now_vn.strftime('%d/%m/%Y')} ({_weekday_vi}), "
+                f"giờ Việt Nam — khi tạo JSON ngày bận, 'ngày mai'/'tuần sau' phải "
+                f"tính từ ngày này và ghi ngày tuyệt đối YYYY-MM-DD.]\n"
+            ) + user_message
+        except Exception:
+            pass
 
         gemini_key = getattr(settings, 'GEMINI_API_KEY', '')
         if not gemini_key or gemini_key == 'your_gemini_api_key_here':
@@ -2395,8 +2593,37 @@ THÔNG TIN NGƯỜI DÙNG HIỆN TẠI:
             if not ai_text:
                 return Response({"response": "AI không thể trả lời do bộ lọc an toàn. Vui lòng thử câu hỏi khác.", "type": "error"}, status=status.HTTP_400_BAD_REQUEST)
 
+            # ── P1 (spec §3): AI đề xuất khai báo ngày bận → trả PREVIEW để UI
+            # render card xác nhận. BACKEND KHÔNG GHI DB — UI gọi
+            # POST /api/matching/carepartners/me/blackouts/ khi user xác nhận.
+            blackout_items, blackout_text = self._extract_blackout_action(ai_text)
+            if blackout_items:
+                from matching.models import CarePartnerBlackout as _Blackout
+                reason_labels = dict(_Blackout.REASON_CHOICES)
+                return Response({
+                    "response": (blackout_text or
+                                 "Em đã ghi nhận các ngày bận bên dưới — anh/chị kiểm tra "
+                                 "và xác nhận giúp em nhé!"),
+                    "type": "blackout_created",
+                    "blackouts": [
+                        {
+                            "date": it["date"],
+                            "time_from": it["time_from"],
+                            "time_to": it["time_to"],
+                            "reason": it["reason"],
+                            "reason_label_vi": reason_labels.get(it["reason"], "Khác"),
+                            "note": it["note"],
+                        }
+                        for it in blackout_items
+                    ],
+                })
+
+            # Không có đề xuất ngày bận hợp lệ → trả message thuần như bot tư vấn
+            # thường (đã bỏ thẻ JSON rác nếu model từng xuất — không lộ JSON cho UI)
             return Response({
-                "response": ai_text,
+                "response": blackout_text or
+                ("Em chưa đọc được ngày bận cụ thể trong tin nhắn — anh/chị nói lại "
+                 "giúp em ngày/giờ và lý do (thi, ốm, về quê...) nhé!"),
                 "type": "message"
             })
 

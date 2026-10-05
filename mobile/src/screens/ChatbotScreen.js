@@ -108,10 +108,16 @@ export default function ChatbotScreen() {
 
       setMessages(prev => [...prev, botMsg]);
     } catch (e) {
+      // chatbot-fix-3: backend soạn sẵn message thân thiện (vd 503 quota /
+      // high-demand) — không nuốt nữa. Pattern đúng: AdminChatbotScreen.js:164.
+      const errMsg =
+        e?.response?.data?.response ||
+        e?.response?.data?.error ||
+        '❌ Lỗi kết nối. Vui lòng kiểm tra lại kết nối mạng.';
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        text: '❌ Lỗi kết nối. Vui lòng kiểm tra lại kết nối mạng.',
+        text: errMsg,
       }]);
     } finally {
       setIsTyping(false);
@@ -121,8 +127,29 @@ export default function ChatbotScreen() {
   const renderJobCard = (job) => {
     const meta = JOB_TYPE_META[job.job_type] || JOB_TYPE_META.tutoring;
     const price = job.hourly_rate_vnd ? `${parseInt(job.hourly_rate_vnd).toLocaleString('vi-VN')}đ/giờ` : '';
+    // chatbot-fix-3: publish-fail (ai_failed / needs_admin_review) → biến thể
+    // cảnh báo thay vì radar + CTA ứng viên (job chưa vào radar được).
+    const needsReview = job.status && job.status !== 'ai_parsed';
+    const preview = !needsReview && Array.isArray(job.candidates_preview)
+      ? job.candidates_preview.slice(0, 3)
+      : [];
+
+    // Radar text theo total_matched (hợp đồng backend 2026-09-27)
+    let radarText = 'AI đang quét Carepartner phù hợp nhất…';
+    if (typeof job.total_matched === 'number' && job.total_matched > 0) {
+      radarText = `🎉 AI đã quét thấy ${job.total_matched} CarePartner phù hợp!`;
+    } else if (job.total_matched === 0) {
+      radarText = 'Chưa có CarePartner nào khớp ca này — hệ thống tiếp tục quét...';
+    }
+
     return (
-      <View style={[styles.jobCard, { borderColor: `${meta.color}55` }]}>
+      <View
+        style={[
+          styles.jobCard,
+          { borderColor: needsReview ? `${COLORS.warning}66` : `${meta.color}55` },
+          needsReview && styles.jobCardWarningCard,
+        ]}
+      >
         {/* Header: badge loại việc + giá */}
         <View style={styles.jobCardHeader}>
           <View style={styles.jobCardBadgeRow}>
@@ -149,28 +176,72 @@ export default function ChatbotScreen() {
             </View>
           ) : null}
         </View>
-        {/* Radar pulse */}
-        <View style={[styles.jobCardRadar, { backgroundColor: `${meta.color}0D` }]}>
-          <View style={[styles.radarDot, { backgroundColor: meta.color }]} />
-          <Text style={[styles.jobCardRadarText, { color: meta.color }]}>
-            AI đang quét Carepartner phù hợp nhất…
-          </Text>
-        </View>
-        {/* CTA — sang radar ứng viên */}
-        <TouchableOpacity
-          style={[styles.jobCardCta, { backgroundColor: COLORS.primary }]}
-          onPress={() => {
-            // ChatbotScreen là tab trung tâm → bubble sang stack Trang chủ
-            navigation.navigate('ParentHome', {
-              screen: 'CandidatesList',
-              params: { jobId: job.id },
-            });
-          }}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="radar" size={17} color="#fff" />
-          <Text style={styles.jobCardCtaText}>Xem ứng viên đề xuất</Text>
-        </TouchableOpacity>
+
+        {needsReview ? (
+          <>
+            {/* Cảnh báo publish-fail — nền vàng nhạt + icon ⚠️ */}
+            <View style={styles.jobCardWarning}>
+              <Text style={styles.jobCardWarningIcon}>⚠️</Text>
+              <View style={styles.jobCardWarningBody}>
+                <Text style={styles.jobCardWarningTitle}>
+                  {job.status_label_vi || 'Tin đăng đang được xử lý lại'}
+                </Text>
+                <Text style={styles.jobCardWarningText}>
+                  Đang xử lý lại tin đăng — theo dõi trong mục Việc của tôi
+                </Text>
+              </View>
+            </View>
+            {/* CTA duy nhất — không radar, không CTA ứng viên */}
+            <TouchableOpacity
+              style={[styles.jobCardCta, { backgroundColor: COLORS.warning }]}
+              onPress={() => {
+                // Registry AppNavigator: tab 'MyTasks' → stack 'MyTasksMain'
+                // ('MyJobs' là màn của SINH VIÊN — dùng cho parent sẽ crash)
+                navigation.navigate('MyTasks', { screen: 'MyTasksMain' });
+              }}
+              testID="jobcard-my-jobs"
+              activeOpacity={0.85}
+            >
+              <Ionicons name="briefcase-outline" size={17} color="#fff" />
+              <Text style={styles.jobCardCtaText}>Xem trong Việc của tôi</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Radar pulse */}
+            <View style={[styles.jobCardRadar, { backgroundColor: `${meta.color}0D` }]}>
+              <View style={[styles.radarDot, { backgroundColor: meta.color }]} />
+              <Text style={[styles.jobCardRadarText, { color: meta.color }]}>
+                {radarText}
+              </Text>
+            </View>
+            {/* Preview ứng viên (top 3 — hợp đồng candidates_preview) */}
+            {preview.length > 0 ? (
+              <View style={styles.jobCardPreview}>
+                {preview.map((c, idx) => (
+                  <Text key={idx} style={styles.jobCardPreviewRow} numberOfLines={1}>
+                    {`• ${c.display_name} · ${c.school} · ★${c.rating} · ${c.distance_km}km`}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            {/* CTA — sang radar ứng viên */}
+            <TouchableOpacity
+              style={[styles.jobCardCta, { backgroundColor: COLORS.primary }]}
+              onPress={() => {
+                // ChatbotScreen là tab trung tâm → bubble sang stack Trang chủ
+                navigation.navigate('ParentHome', {
+                  screen: 'CandidatesList',
+                  params: { jobId: job.id },
+                });
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="radar" size={17} color="#fff" />
+              <Text style={styles.jobCardCtaText}>Xem ứng viên đề xuất</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     );
   };
@@ -389,6 +460,22 @@ const styles = StyleSheet.create({
   },
   radarDot: { width: 9, height: 9, borderRadius: 5 },
   jobCardRadarText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
+
+  // Biến thể cảnh báo publish-fail (chatbot-fix-3) — nền vàng nhạt
+  jobCardWarningCard: { backgroundColor: COLORS.warningBg },
+  jobCardWarning: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: COLORS.warningBg, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 9, marginTop: 10,
+  },
+  jobCardWarningIcon: { fontSize: 16, lineHeight: 20 },
+  jobCardWarningBody: { flex: 1 },
+  jobCardWarningTitle: {
+    fontSize: 13, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 2,
+  },
+  jobCardWarningText: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17 },
+  jobCardPreview: { marginTop: 10, gap: 3 },
+  jobCardPreviewRow: { fontSize: 12, color: COLORS.textSecondary, flexShrink: 1 },
   jobCardCta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     borderRadius: 12, paddingVertical: 11, marginTop: 10,

@@ -5,7 +5,10 @@ import apiClient from './client';
 // latency) → timeout mặc định 10s của axios sẽ throw ECONNABORTED dù
 // backend vẫn xử lý thành công. Override per-request thay vì tăng global timeout.
 // (Cùng pattern với mobile/src/api/admin.js — AI_TIMEOUT = 60s cho /admin/chatbot/.)
-const AI_TIMEOUT = 30000; // 30s — đủ margin cho cold start, không buộc user đợi quá lâu
+// 2026-09-27 (chatbot-fix-3): nâng 30s → 60s — luồng AI đăng việc mới
+// (Gemini parse + publish JobPost + radar quét ứng viên) dễ vượt 30s,
+// gây ECONNABORTED phía client dù backend vẫn tạo job thành công.
+const AI_TIMEOUT = 60000; // 60s — đồng bộ admin.js, spec yêu cầu ≥45s
 
 // === CHUNG ===
 // Lấy toàn bộ danh sách việc (dùng cho bảng tin sinh viên)

@@ -4,17 +4,17 @@
 
 - **Trước đây**: CarePartner ghi nhật ký dạng văn bản chung chung — phụ huynh
   khó biết ca học/giữ trẻ diễn ra chất lượng thế nào.
-- **Bây giờ**: khi hoàn tất ca thuộc nhóm **Gia sư** hoặc **Trông trẻ**,
+- **Bây giờ**: khi hoàn tất ca thuộc nhóm **Gia sư** hoặc **Đồng hành cùng trẻ**,
   app tự mở form đánh giá đúng nhóm dịch vụ:
   - **Gia sư**: môn học đã dạy, điểm đánh giá (thang 5 sao), ghi chú tiến bộ.
-  - **Trông trẻ**: chất lượng giấc ngủ, số bữa ăn & mô tả bữa ăn, hoạt động.
+  - **Đồng hành cùng trẻ**: chất lượng giấc ngủ, số bữa ăn & mô tả bữa ăn, hoạt động.
   - Ca khác nhóm: giữ nguyên nhật ký tự do như cũ (không bị ép form).
 - Phụ huynh xem nhật ký thấy **card đánh giá riêng theo loại** (học tập /
   sinh hoạt) — hiển thị đồng bộ giữa mobile và web.
 - Chọn form theo **mã nhóm dịch vụ ổn định** (`gia-su` / `trong-tre`) —
   admin đổi tên hiển thị nhóm dịch vụ không làm app chọn nhầm form.
 - Chống lỗi nhập: thiếu điểm/môn học (Gia sư) hoặc thiếu giấc ngủ/bữa ăn
-  (Trông trẻ) sẽ được báo ngay trên máy trước khi gửi; giới hạn độ dài
+  (Đồng hành cùng trẻ) sẽ được báo ngay trên máy trước khi gửi; giới hạn độ dài
   từng trường để tránh lỗi máy chủ.
 
 ## Mới: Cổng VietQR — xác nhận đặt lịch CHỈ SAU khi PayOS báo PAID

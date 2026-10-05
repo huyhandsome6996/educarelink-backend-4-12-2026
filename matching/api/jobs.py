@@ -12,6 +12,7 @@ import logging
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Count
 from rest_framework import permissions, status
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
@@ -69,11 +70,15 @@ class JobPostSerializer(serializers.ModelSerializer):
         td = obj.type_data or {}
         time_from = td.get('time_from') or td.get('pickup_time_from') or '18:00'
         time_to = td.get('time_to') or td.get('pickup_time_to') or '20:00'
-        dates = td.get('dates') or td.get('pickup_dates') or []
-        if dates:
-            count = len(dates)
-            unit = 'buổi' if obj.job_type == 'tutoring' else 'ngày'
-            return f"{time_from} - {time_to} ({count} {unit})"
+        # L1 (2026-09-30): job_schema POP mất dates khỏi type_data khi validate
+        # nên đếm theo ngày trong type_data luôn ra 0 → không bao giờ hiện
+        # "(N buổi)". JobSlot là nguồn sự thật của radar — đếm theo đó;
+        # danh sách job được annotate slots_count trước để tránh N+1 query.
+        n_slots = getattr(obj, 'slots_count', None)
+        if n_slots is None:
+            n_slots = obj.slots.count()
+        if n_slots > 1:
+            return f"{time_from} - {time_to} ({n_slots} buổi)"
         return f"{time_from} - {time_to}"
 
 
@@ -124,7 +129,10 @@ class JobPostCreateAPIView(CreateAPIView):
                             status=status.HTTP_403_FORBIDDEN)
         # DSA: 1 query lấy tối đa 50 job mới nhất + 1 query Booking dùng
         # job_id__in để đánh dấu has_booking — KHÔNG truy vấn N+1 từng job.
+        # L1 (2026-09-30): annotate slots_count cho get_schedule đếm buổi
+        # không cần thêm query/JobPost.
         jobs = list(JobPost.objects.filter(parent=request.user)
+                    .annotate(slots_count=Count('slots'))
                     .order_by('-created_at')[:50])
         booked_job_ids = set(Booking.objects.filter(
             job_id__in=[j.pk for j in jobs]).values_list('job_id', flat=True))
@@ -276,6 +284,22 @@ def publish_jobpost(job, actor_user=None):
         job.needs_admin_review = True
 
     _create_slots(job)
+
+    # H3 (2026-09-30): parse "xong" mà KHÔNG tạo được slot nào = tin đăng
+    # không có buổi nào để ghép cặp (dates rỗng/sai, expand_slot_dates lỗi…)
+    # → coi là thất bại (ai_parsing → ai_failed, đúng state machine) thay vì
+    # ai_parsed 0 slot khiến radar quét mãi không ra ứng viên.
+    if job.slots.count() == 0:
+        job.total_matched = None
+        job.save(update_fields=['ai_parse_status', 'ai_parse_result', 'title',
+                                'description', 'clarification_questions',
+                                'needs_admin_review', 'total_matched', 'updated_at'])
+        with transaction.atomic():
+            transition(job, JobPostStatus.AI_FAILED, actor='system',
+                       reason='Không tạo được buổi nào từ lịch đăng')
+        return False, {'code': 'ai_failed',
+                       'detail': ('Không tạo được buổi nào từ lịch trong tin đăng. '
+                                  'Hãy kiểm tra lại ngày/giờ rồi thử đăng lại.')}
 
     # LƯU ĐÚNG mọi field parse trước khi transition (transition chỉ save status)
     job.total_matched = None
