@@ -13,7 +13,7 @@ Thực hiện RESET dữ liệu và khởi tạo dữ liệu mẫu toàn diện 
      - Cấu hình nghiệp vụ Flow 1 (EloBand, CancelPolicy, MatchingWeight, Templates, Config)
      - 4 Phụ huynh mẫu với địa chỉ, GPS thực tế & Ví Credit phong phú
      - 6 CarePartner mẫu thuộc nhiều trường ĐH, chứng chỉ, bậc ELO & lịch rảnh
-     - Flow 1 Matching: JobPost cả 3 loại (Gia sư, Trông trẻ, Đón trẻ), JobSlot,
+     - Flow 1 Matching: JobPost cả 3 loại (Gia sư, Đồng hành cùng trẻ, Đón trẻ), JobSlot,
        CandidateProposal, Booking (đủ trạng thái: awaiting_commitment, in_progress,
        completed, cancelled có đền bù), Đơn kháng cáo ELO (Appeal)
      - Core Tasks: 12 công việc phủ khắp các trạng thái (open chưa có ai apply,
@@ -298,7 +298,7 @@ class Command(BaseCommand):
                     "Chứng chỉ Sơ cấp cứu Nhi khoa",
                     "Bằng lái xe máy hạng A1",
                 ],
-                "ai_profile_summary": "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ.",
+                "ai_profile_summary": "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và đồng hành cùng trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ.",
             }
         )
         worker_test.set_password(TEST_PASSWORD)
@@ -319,23 +319,28 @@ class Command(BaseCommand):
             "Chứng chỉ Sơ cấp cứu Nhi khoa",
             "Bằng lái xe máy hạng A1",
         ]
-        worker_test.ai_profile_summary = "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và trông trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ."
+        worker_test.ai_profile_summary = "Sinh viên năm 3 khoa Sư phạm Toán - ĐH Sư Phạm Huế, 2 năm kinh nghiệm gia sư và đồng hành cùng trẻ. Đạt chứng chỉ IELTS 7.5, nhiệt tình, đúng giờ, tận tâm với trẻ nhỏ."
         worker_test.save()
         self.stdout.write(f"   + [WORKER TEST] {worker_test.username} ({worker_test.get_full_name()})")
 
         # ═══════════════════════════════════════════════════════════════
         #  PHẦN 2: DANH MỤC DỊCH VỤ & BIỂU GIÁ (PRICING RULES)
         #  QA 2026-09-10 Vấn đề #1: CHỈ 3 DANH MỤC (Gia sư, Đón trẻ,
-        #  Trông trẻ). Các danh mục cũ bị khóa mềm is_active=False —
+        #  Đồng hành cùng trẻ). Các danh mục cũ bị khóa mềm is_active=False —
         #  giữ FK dữ liệu lịch sử nhưng cấm đăng việc mới.
         # ═══════════════════════════════════════════════════════════════
         self.stdout.write("\n[2/12] Nạp danh mục dịch vụ & quy tắc biểu giá...")
 
         categories_data = [
             {"name": "Gia sư", "icon_name": "BookOpen", "description": "Dạy kèm các môn văn hóa (Toán, Lý, Hóa, Anh...) và kỹ năng mềm từ tiểu học đến THPT."},
-            {"name": "Trông trẻ", "icon_name": "Heart", "description": "Trông nom, vui chơi, cho ăn uống và chăm sóc trẻ an toàn tại nhà theo ca linh hoạt."},
+            {"name": "Đồng hành cùng trẻ", "icon_name": "Heart", "description": "Đồng hành, vui chơi, cho ăn uống và chăm sóc trẻ an toàn tại nhà theo ca linh hoạt."},
             {"name": "Đón trẻ", "icon_name": "Baby", "description": "Đón bé đúng giờ từ trường học hoặc lớp năng khiếu về tận nhà an toàn tuyệt đối."},
         ]
+        # Rebrand 2026-10-06 (yêu cầu owner): "Trông trẻ" → "Đồng hành cùng trẻ".
+        # Phải RENAME bản ghi cũ (giữ nguyên id + code 'trong-tre') thay vì tạo
+        # mới — để không vỡ mapping form đánh giá nhật ký & dữ liệu tham chiếu.
+        ServiceCategory.objects.filter(name="Trông trẻ").update(name="Đồng hành cùng trẻ")
+        ServiceCategory.objects.filter(code="trong-tre").exclude(name="Đồng hành cùng trẻ").update(name="Đồng hành cùng trẻ")
         ALLOWED_CATEGORY_NAMES = [c["name"] for c in categories_data]
 
         cats = {}
@@ -353,7 +358,7 @@ class Command(BaseCommand):
 
         pricing_rules = [
             {"name": "Gia sư", "pricing_type": "hourly", "base_fee": 0, "unit_price": 90000, "min_price": 150000, "max_price": 350000},
-            {"name": "Trông trẻ", "pricing_type": "hourly", "base_fee": 0, "unit_price": 70000, "min_price": 100000, "max_price": 250000},
+            {"name": "Đồng hành cùng trẻ", "pricing_type": "hourly", "base_fee": 0, "unit_price": 70000, "min_price": 100000, "max_price": 250000},
             {"name": "Đón trẻ", "pricing_type": "distance", "base_fee": 30000, "unit_price": 15000, "min_price": 70000, "max_price": 180000},
         ]
         for pr in pricing_rules:
@@ -503,8 +508,8 @@ class Command(BaseCommand):
                 "school": "Đại học Kinh Tế - Đại học Huế", "major": "Quản trị Kinh doanh",
                 "elo": 1360, "band": "good", "has_vehicle": False, "gender": "female",
                 "skills": ["nau_an", "don_dep", "trong_tre", "choi_cung_be", "ve_tranh"],
-                "qualifications": ["Sinh viên năm cuối ĐH Kinh tế Huế", "Kinh nghiệm 2 năm trông trẻ và giúp việc gia đình", "Chứng chỉ Sơ cấp cứu Nhi khoa"],
-                "summary": "Nhanh nhẹn, sạch sẽ, nấu các món ăn Huế và cơm gia đình chuẩn vị, rất khéo léo khi chơi và tương tác với các bé độ tuổi mẫu giáo.",
+                "qualifications": ["Sinh viên năm cuối ĐH Kinh tế Huế", "Kinh nghiệm 2 năm chăm sóc trẻ và giúp việc gia đình", "Chứng chỉ Sơ cấp cứu Nhi khoa"],
+                "summary": "Nhanh nhẹn, sạch sẽ, nấu các món ăn Huế và cơm gia đình chuẩn vị, rất khéo léo khi chơi và tương tác với các bé độ tuổi tiểu học.",
                 "jobs_done": 9, "rating": 4.8,
             },
             {
@@ -748,18 +753,18 @@ class Command(BaseCommand):
         CandidateProposal.objects.create(job=job1, carepartner=worker_dict["carepartner_hoango"], match_score=88, match_level="high")
         self.stdout.write(f"   + [Flow 1 Job 1] Gia sư Toán & Anh (matching) — {job1.id}")
 
-        # ── JOB 2: Trông trẻ tại nhà (Đã chọn, đang chờ cam kết - Awaiting Commitment) ──
+        # ── JOB 2: Đồng hành cùng trẻ tại nhà (Đã chọn, đang chờ cam kết - Awaiting Commitment) ──
         job2 = JobPost.objects.create(
             parent=parent_dict["phuhuynh_baolinh"],
             job_type=JobPost.JobType.CHILDCARE,
-            title="Trông bé gái 4 tuổi chiều Chủ Nhật",
-            description="Gia đình đi tiệc cưới, cần cô giáo mầm non trông bé từ 14h-18h. Bé ngoan, thích tô màu và nghe kể chuyện.",
+            title="Đồng hành cùng bé gái 6 tuổi chiều Chủ Nhật",
+            description="Gia đình đi tiệc cưới, cần cô đồng hành cùng bé từ 14h-18h. Bé học lớp 1, ngoan, thích tô màu và nghe kể chuyện.",
             hourly_rate_vnd=120000,
             status="matching",
             latitude=parent_dict["phuhuynh_baolinh"].latitude,
             longitude=parent_dict["phuhuynh_baolinh"].longitude,
             location_note="Khu đô thị An Cựu City, Đường Hoàng Quốc Việt",
-            type_data={"child_age": 4, "duties": ["cho_an", "to_mau", "ngu_trua"]},
+            type_data={"child_age": 6, "duties": ["cho_an", "to_mau", "ngu_trua"]},
             selected_carepartner=worker_dict["carepartner_hoango"],
         )
         JobSlot.objects.create(
@@ -776,7 +781,7 @@ class Command(BaseCommand):
             commit_deadline=now + timedelta(minutes=35), # Còn 35 phút để cam kết!
             total_value_vnd=480000,
         )
-        self.stdout.write(f"   + [Flow 1 Job 2] Trông trẻ (awaiting_commitment đếm ngược) — Booking: {booking2.id}")
+        self.stdout.write(f"   + [Flow 1 Job 2] Đồng hành cùng trẻ (awaiting_commitment đếm ngược) — Booking: {booking2.id}")
 
         # ── JOB 3: Đón trẻ tan trường (Đã cam kết, đang diễn ra - In Progress) ──
         job3 = JobPost.objects.create(
@@ -845,12 +850,12 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"   + [Flow 1 Job 4] Gia sư (completed +15 ELO) — Booking: {booking4.id}")
 
-        # ── JOB 5: Trông trẻ (CarePartner hủy ca sát giờ & Kháng cáo ELO - Appeal) ──
+        # ── JOB 5: Đồng hành cùng trẻ (CarePartner hủy ca sát giờ & Kháng cáo ELO - Appeal) ──
         job5 = JobPost.objects.create(
             parent=parent_dict["phuhuynh_congvinh"],
             job_type=JobPost.JobType.CHILDCARE,
-            title="Trông bé tối thứ 6",
-            description="Trông bé 3 tuổi từ 18h-21h.",
+            title="Đồng hành cùng bé tối thứ 6",
+            description="Chăm sóc bé 6 tuổi từ 18h-21h, cho bé ăn tối và hướng dẫn bé chuẩn bị bài tập cho buổi học Thứ 2.",
             hourly_rate_vnd=100000,
             status="closed",
             selected_carepartner=worker_dict["carepartner_tuankiet"],
@@ -885,7 +890,7 @@ class Command(BaseCommand):
             note="Kính gửi Admin, em bị tai nạn nhẹ hỏng xe trên cầu Trường Tiền khi đang tới nhà phụ huynh, có hóa đơn sửa xe của tiệm đường Phan Đăng Lưu kèm theo. Kính mong Admin xem xét giảm trừ mức phạt ELO vì lý do bất khả kháng ạ.",
             status="pending",
         )
-        self._log(f"   + [Flow 1 Job 5] Trông trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
+        self._log(f"   + [Flow 1 Job 5] Đồng hành cùng trẻ (cancelled T3 & Appeal pending) — Booking: {booking5.id}")
 
         # ═══════════════════════════════════════════════════════════════
         #  PHẦN 6B: DỮ LIỆU MẪU ĐA DẠNG MỞ RỘNG (QA toàn diện 2026-09-11)
@@ -929,7 +934,7 @@ class Command(BaseCommand):
                 "email": "khanhlinh.do@gmail.com", "phone_number": "0908040404",
                 "address": "48 Điện Biên Phủ, P. Trường An, TP. Huế",
                 "lat": 16.4520, "lng": 107.5940, "credit": 900000,
-                "credit_note": "Nạp credit — cần trông trẻ cuối tuần",
+                "credit_note": "Nạp credit — cần đồng hành cùng trẻ cuối tuần",
             },
             {
                 "username": "parent_minh", "first_name": "Quang Minh", "last_name": "Vũ",
@@ -998,7 +1003,7 @@ class Command(BaseCommand):
                 "has_vehicle": False, "gender": "female",
                 "skills": ["trong_tre", "mam_non", "choi_cung_be", "ve_tranh", "ke_chuyen"],
                 "qualifications": ["Giáo viên mầm non thực tập 2 năm", "Chứng chỉ Montessori cơ bản"],
-                "summary": "Giáo viên mầm non — Hạng Bạc · ELO 1.100, chuyên trông trẻ mầm non cuối tuần, giỏi tổ chức trò chơi phát triển trí tuệ.",
+                "summary": "Giáo viên mầm non — Hạng Bạc · ELO 1.100, chuyên đồng hành cùng bé tiểu học cuối tuần, giỏi tổ chức trò chơi phát triển trí tuệ.",
                 "jobs_done": 17, "rating": 4.8,
             },
             {
@@ -1241,14 +1246,14 @@ class Command(BaseCommand):
         job7 = JobPost.objects.create(
             parent=parent_dict["parent_huong"],
             job_type=JobPost.JobType.TUTORING,
-            title="Gia sư Toán tư duy cho bé chuẩn bị vào lớp 1",
-            description="Cần cô/thầy kiên nhẫn rèn tư duy toán qua trò chơi cho bé 5 tuổi rưỡi, 2 buổi tối mỗi tuần.",
+            title="Gia sư Toán tư duy cho bé lớp 1",
+            description="Cần cô/thầy kiên nhẫn rèn tư duy toán qua trò chơi cho bé 6 tuổi vừa vào lớp 1, 2 buổi tối mỗi tuần.",
             hourly_rate_vnd=150000, status="carepartner_selected",
             latitude=parent_dict["parent_huong"].latitude,
             longitude=parent_dict["parent_huong"].longitude,
             location_note="12 Nguyễn Tri Phương, P. Phú Hòa, TP. Huế",
-            type_data={"subject": "Toán tư duy", "grade": "Mẫu giáo lớn",
-                       "child_age_group": "3-6", "number_of_children": 1},
+            type_data={"subject": "Toán tư duy", "grade": "Lớp 1",
+                       "child_age_group": "6-11", "number_of_children": 1},
             selected_carepartner=worker_dict2["worker_thao"], total_matched=4,
         )
         JobSlot.objects.create(
@@ -1333,13 +1338,13 @@ class Command(BaseCommand):
         job10 = JobPost.objects.create(
             parent=parent_dict["parent_linh"],
             job_type=JobPost.JobType.CHILDCARE,
-            title="Trông bé mầm non tối thứ 4 — CP không đến",
-            description="Trông bé 5 tuổi từ 18h-21h, cho bé ăn tối và chơi xếp hình.",
+            title="Chăm sóc bé tiểu học tối thứ 4 — CP không đến",
+            description="Chăm sóc bé 6 tuổi từ 18h-21h, cho bé ăn tối và chơi xếp hình.",
             hourly_rate_vnd=100000, status="needs_replacement",
             latitude=parent_dict["parent_linh"].latitude,
             longitude=parent_dict["parent_linh"].longitude,
             location_note="Khu đô thị An Cựu City, P. Trường An, TP. Huế",
-            type_data={"child_age_group": "3-6", "number_of_children": 1,
+            type_data={"child_age_group": "6-11", "number_of_children": 1,
                        "care_duties": ["cho_an", "choi_xep_hinh"]},
             selected_carepartner=worker_dict2["worker_duc"],
         )
@@ -1365,19 +1370,19 @@ class Command(BaseCommand):
         CreditTransaction.objects.get_or_create(
             parent=parent_dict["parent_linh"], kind="platform_credit", note__startswith="Đền bù no-show",
             defaults={"amount_vnd": 50000, "status": "issued",
-                      "note": "Đền bù no-show 50.000đ — CP không đến ca trông trẻ tối thứ 4"})
+                      "note": "Đền bù no-show 50.000đ — CP không đến ca chăm sóc bé tối thứ 4"})
         self._log(f"   + [Kịch bản F7] NO_SHOW đền bù 50.000đ — duc/parent_linh: {booking10.id}")
 
         # Kịch bản E1: Bài đăng NHÁP của phụ huynh mới (parent_minh)
         job11 = JobPost.objects.create(
             parent=parent_dict["parent_minh"],
             job_type=JobPost.JobType.CHILDCARE,
-            title="Ca nháp — trông bé cuối tuần (đang soạn)",
-            description="Đang soạn dở: cần người trông bé 4 tuổi chiều Chủ Nhật khi bố mẹ đi sự kiện.",
+            title="Đồng hành cùng bé cuối tuần — chiều Chủ Nhật (đang soạn)",
+            description="Cần người chăm sóc bé 6 tuổi chiều Chủ Nhật khi bố mẹ đi sự kiện công ty cả buổi.",
             hourly_rate_vnd=100000, status="draft",
             latitude=parent_dict["parent_minh"].latitude,
             longitude=parent_dict["parent_minh"].longitude,
-            type_data={"child_age_group": "3-6", "number_of_children": 1},
+            type_data={"child_age_group": "6-11", "number_of_children": 1},
         )
         self._log(f"   + [Kịch bản E1] Bài đăng DRAFT — parent_minh: {job11.id}")
 
@@ -1395,7 +1400,7 @@ class Command(BaseCommand):
         tasks_configs = [
             # ── OPEN TASKS (5) ──
             {
-                "key": "t0", "title": "[TEST DEMO] Dạy kèm Tiếng Anh giao tiếp và kể chuyện bé 6 tuổi",
+                "key": "t0", "title": "Dạy kèm Tiếng Anh giao tiếp và kể chuyện bé 6 tuổi",
                 "description": "Cần tìm CarePartner kiên nhẫn, phát âm chuẩn hướng dẫn bé 6 tuổi học từ vựng và xem tranh tiếng Anh 2 buổi cuối tuần.",
                 "price": 250000, "cat": cats["Gia sư"], "parent": parent_test,
                 "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
@@ -1427,9 +1432,9 @@ class Command(BaseCommand):
                 "applicants": ["carepartner_mylinh", "carepartner_phuoc", "carepartner_hoango"],
             },
             {
-                "key": "t4", "title": "Trông bé 3 tuổi buổi sáng Thứ Bảy (08:00 - 11:30)",
-                "description": "Mẹ có cuộc họp online, cần người chơi cùng bé, cho bé uống sữa và hướng dẫn bé xếp hình gỗ. Bé rất ngoan và dễ gần.",
-                "price": 220000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
+                "key": "t4", "title": "Đồng hành cùng bé 6 tuổi buổi sáng Thứ Bảy (08:00 - 11:30)",
+                "description": "Mẹ có cuộc họp online, cần người chơi cùng bé, hướng dẫn bé xếp hình gỗ và ôn bài tập tuần. Bé học lớp 1, rất ngoan và dễ gần.",
+                "price": 220000, "cat": cats["Đồng hành cùng trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
                 "loc": "Chung cư Xuân Phú, Hoàng Lanh, P. Xuân Phú, TP. Huế",
                 "lat": 16.4589, "lng": 107.6023, "status": "open", "scheduled": now + timedelta(days=3),
                 "applicants": ["carepartner_hoango", "carepartner_tuankiet", "sinhvien_test"],
@@ -1437,18 +1442,18 @@ class Command(BaseCommand):
 
             # ── IN_PROGRESS TASKS (3) ──
             {
-                "key": "t5", "title": "[TEST DEMO] Trông bé 5 tuổi chiều Thứ 7 & Dạy vẽ màu nước",
-                "description": "Công việc chính của tài khoản test: trông bé trai 5 tuổi, hướng dẫn vẽ tranh sáng tạo và cho bé ăn xế chiều. Nhà có camera an ninh.",
-                "price": 280000, "cat": cats["Trông trẻ"], "parent": parent_test,
+                "key": "t5", "title": "Đồng hành cùng bé 6 tuổi chiều Thứ 7 & Dạy vẽ màu nước",
+                "description": "Công việc chính của tài khoản test: chăm sóc bé trai 6 tuổi, hướng dẫn vẽ tranh sáng tạo và cho bé ăn xế chiều. Nhà có camera an ninh.",
+                "price": 280000, "cat": cats["Đồng hành cùng trẻ"], "parent": parent_test,
                 "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
                 "lat": 16.4602, "lng": 107.6008, "status": "in_progress", "scheduled": now + timedelta(hours=2),
                 "accepted_worker": "sinhvien_test",
                 "geofence": {"lat": 16.4602, "lng": 107.6008, "radius": 400},
             },
             {
-                "key": "t6", "title": "Trông bé 4 tuổi tối Thứ 6 (cho ăn + dỗ ngủ)",
-                "description": "Ba mẹ đi sự kiện công ty, cần bạn trông bé 4 tuổi từ 18h-21h: cho bé ăn tối, đọc truyện và dỗ bé ngủ sớm. Nguyên liệu bữa tối chuẩn bị sẵn.",
-                "price": 250000, "cat": cats["Trông trẻ"], "parent": parent_dict["phuhuynh_baolinh"],
+                "key": "t6", "title": "Đồng hành cùng bé 6 tuổi tối Thứ 6 (cho ăn + dỗ ngủ)",
+                "description": "Ba mẹ đi sự kiện công ty, cần bạn chăm sóc bé 6 tuổi từ 18h-21h: cho bé ăn tối, đọc truyện và dỗ bé ngủ sớm. Nguyên liệu bữa tối chuẩn bị sẵn.",
+                "price": 250000, "cat": cats["Đồng hành cùng trẻ"], "parent": parent_dict["phuhuynh_baolinh"],
                 "loc": "Khu đô thị An Cựu City, Đường Hoàng Quốc Việt, TP. Huế",
                 "lat": 16.4525, "lng": 107.6045, "status": "in_progress", "scheduled": now + timedelta(hours=1),
                 "accepted_worker": "carepartner_mylinh",
@@ -1476,19 +1481,19 @@ class Command(BaseCommand):
                 "payment_method": "momo_escrow",
             },
             {
-                "key": "t9", "title": "Đón bé mầm non về nhà cả tuần (Thứ 2 - Thứ 6)",
-                "description": "Đón bé 5 tuổi lúc 16h15 tại trường mầm non, đưa về nhà kiểm soát an toàn, đối chiếu đón đúng người theo hóa đơn ghi nhận ca.",
+                "key": "t9", "title": "Đón bé tiểu học về nhà cả tuần (Thứ 2 - Thứ 6)",
+                "description": "Đón bé 6 tuổi lúc 16h15 tại trường tiểu học, đưa về nhà kiểm soát an toàn, đối chiếu đón đúng người theo hóa đơn ghi nhận ca.",
                 "price": 150000, "cat": cats["Đón trẻ"], "parent": parent_dict["phuhuynh_congvinh"],
-                "loc": "Trường Mầm non Hoa Sen, Đường Bà Triệu, P. Phú Hội, TP. Huế",
+                "loc": "Trường Tiểu học Hoa Sen, Đường Bà Triệu, P. Phú Hội, TP. Huế",
                 "lat": 16.4628, "lng": 107.5968, "status": "completed", "scheduled": now - timedelta(days=7),
                 "accepted_worker": "carepartner_tuankiet",
                 "review": {"rating": 5, "comment": "Tuấn Kiệt đón bé đúng giờ cả tuần, giao bé đúng người và thông báo kịp thời. Rất an tâm."},
                 "payment_method": "cash",
             },
             {
-                "key": "t10", "title": "[TEST DEMO] Trông 2 bé tối Thứ 7 tuần trước",
-                "description": "Trông 2 bé (4 tuổi và 7 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt. Đang chờ phụ huynh đánh giá chất lượng ca làm.",
-                "price": 320000, "cat": cats["Trông trẻ"], "parent": parent_test,
+                "key": "t10", "title": "Đồng hành cùng 2 bé tối Thứ 7 tuần trước",
+                "description": "Chăm sóc 2 bé (6 tuổi và 8 tuổi), cho ăn tối và dỗ bé ngủ. Minh Anh đã làm rất tốt. Đang chờ phụ huynh đánh giá chất lượng ca làm.",
+                "price": 320000, "cat": cats["Đồng hành cùng trẻ"], "parent": parent_test,
                 "loc": "Căn hộ The Manor Crown Huế, Đại lộ Tố Hữu, P. Xuân Phú, TP. Huế",
                 "lat": 16.4602, "lng": 107.6008, "status": "completed", "scheduled": now - timedelta(days=4),
                 "accepted_worker": "sinhvien_test",
@@ -1992,14 +1997,14 @@ class Command(BaseCommand):
   │ phuhuynh_test           │ Phụ huynh kiểm thử chính │ Đang có đơn open, in_progress, chat mở, ví 2.500.000đ │
   │ sinhvien_test           │ CarePartner kiểm thử     │ ĐH Sư Phạm Huế, ELO 1520, có ca đang làm, live GPS     │
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-  │ phuhuynh_baolinh        │ Phụ huynh mẫu (An Cựu)   │ Đơn trông trẻ đang đếm ngược cam kết (awaiting_commit) │
+  │ phuhuynh_baolinh        │ Phụ huynh mẫu (An Cựu)   │ Đơn đồng hành cùng trẻ đếm ngược cam kết (awaiting)  │
   │ phuhuynh_minhkhoi       │ Phụ huynh mẫu (Vincom)   │ Đơn đón trẻ tan trường (in_progress), ví 3.200.000đ    │
   │ phuhuynh_yenchi         │ Phụ huynh mẫu (Lê Lợi)   │ Đơn gia sư tiếng anh đã xong (completed +15 ELO)       │
   │ phuhuynh_congvinh       │ Phụ huynh mẫu (Xuân Phú) │ Đơn bị hủy sát giờ có đền bù credit & đơn kháng cáo    │
   ├─────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
   │ carepartner_tuankiet    │ CarePartner (ĐH K.Học)   │ Gia sư Toán Lý, ELO 1480, có đơn kháng cáo hỏng xe     │
-  │ carepartner_hoango      │ CarePartner (ĐH S.Phạm)  │ Mầm non Montessori, ELO 1580, nhận việc trông bé 4 tuổi│
-  │ carepartner_mylinh      │ CarePartner (ĐH K.Tế)    │ Trông trẻ, ELO 1360, có khiếu nại ép làm thêm việc  │
+  │ carepartner_hoango      │ CarePartner (ĐH S.Phạm)  │ Montessori, ELO 1580, nhận ca đồng hành cùng bé lớp 1  │
+  │ carepartner_mylinh      │ CarePartner (ĐH K.Tế)    │ Đồng hành cùng trẻ, ELO 1360, có khiếu nại ép thêm việc│
   │ carepartner_phuoc       │ CarePartner (ĐH Y Dược)  │ Đón trẻ tan trường, có cảnh báo SOS bé sốt đang ACTIVE │
   │ carepartner_pending_hai │ CarePartner (Chờ duyệt)  │ Hồ sơ mới ĐH Ngoại Ngữ, bằng cấp chờ Admin duyệt       │
   │ carepartner_locked_trung│ CarePartner (Tạm khóa)   │ Tài khoản bị khóa, dùng để Admin kiểm thử mở khóa      │

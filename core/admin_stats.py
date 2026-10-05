@@ -297,10 +297,10 @@ Phân tích các số liệu sau từ landing page EduCareLink và đưa ra insi
 {json.dumps(ph_answers, ensure_ascii=False, indent=2) if ph_answers else 'Chưa có'}
 
 Hãy phân tích với góc nhìn NGHIỆP VỤ EduCareLink — nền tảng Giáo dục & Chăm sóc Trẻ em
-với 3 dịch vụ cốt lõi: Gia sư học tập, Đưa đón bé tan học, Trông trẻ tại nhà:
+với 3 dịch vụ cốt lõi: Gia sư học tập, Đưa đón bé tan học, Đồng hành cùng trẻ tại nhà:
 
 1. Đánh giá tổng thể — số liệu này có tốt cho cuộc thi không?
-2. Cân đối 3 dịch vụ cốt lõi: Tỷ lệ phụ huynh cần Đưa đón trẻ so với Gia sư và Trông trẻ ra sao?
+2. Cân đối 3 dịch vụ cốt lõi: Tỷ lệ phụ huynh cần Đưa đón trẻ so với Gia sư và Đồng hành cùng trẻ ra sao?
    Dịch vụ nào đang là "nỗi đau" lớn nhất (khung giờ tan tầm 16:30–18:30 có đang áp đảo không)?
 3. Điểm đau (pain_points): Phụ huynh sợ nhất điều gì khi giao con cho người ngoài — không tin
    người, không giám sát được, nghỉ đột xuất, giờ tan tầm, hay giá? EduCareLink nên đẩy tính năng
@@ -308,7 +308,7 @@ với 3 dịch vụ cốt lõi: Gia sư học tập, Đưa đón bé tan học, 
 4. Nguồn giải pháp thay thế (current_solution): Phụ huynh đang dùng ai — ông bà, bảo mẫu người
    quen hay trung tâm? EduCareLink đang cạnh tranh/thay thế thị phần của ai, nên đánh vào đâu?
 5. Độ chênh lệch (gap) mức giá: Mức thù lao kỳ vọng của CarePartner so với mức chi phí phụ huynh
-   sẵn sàng chi trả — đề xuất bảng giá hợp lý cho từng dịch vụ (gia sư theo giờ, đón trẻ theo lượt, trông trẻ theo giờ).
+   sẵn sàng chi trả — đề xuất bảng giá hợp lý cho từng dịch vụ (gia sư theo giờ, đón trẻ theo lượt, đồng hành cùng trẻ theo giờ).
 6. Nguồn cung (experience + concerns): Tỷ lệ CarePartner đã có kinh nghiệm vs người mới — kế hoạch
    đào tạo như thế nào? Điều gì khiến sinh viên e ngại (trách nhiệm sự cố, di chuyển, kỹ năng xử lý,
    lịch học) — nền tảng cần chính sách bảo vệ gì?

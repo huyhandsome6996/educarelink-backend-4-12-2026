@@ -481,7 +481,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             )
 
         # ⚡ QA 2026-09-10 Vấn đề #1: KHÓA CHẶT 3 DANH MỤC — chặn 400 NGAY
-        # LẬP TỨC nếu category không thuộc [Gia sư, Đón trẻ, Trông trẻ] hoặc
+        # LẬP TỨC nếu category không thuộc [Gia sư, Đón trẻ, Đồng hành cùng trẻ] hoặc
         # danh mục đã bị khóa (is_active=False). Không đợi gọi AI moderation.
         try:
             from core.models import ServiceCategory
@@ -496,12 +496,12 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
                     cat = ServiceCategory.objects.filter(name=str(raw_cat).strip()).first()
             if cat is None:
                 return Response(
-                    {'error': 'Danh mục công việc không hợp lệ. Vui lòng chọn 1 trong 3 danh mục: Gia sư, Đón trẻ, Trông trẻ.'},
+                    {'error': 'Danh mục công việc không hợp lệ. Vui lòng chọn 1 trong 3 danh mục: Gia sư, Đón trẻ, Đồng hành cùng trẻ.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if (not cat.is_active) or (cat.name not in ALLOWED_CATEGORY_NAMES):
                 return Response(
-                    {'error': f'Danh mục "{cat.name}" đã bị ngừng phục vụ. EduCareLink chỉ nhận đăng việc thuộc 3 danh mục: Gia sư, Đón trẻ, Trông trẻ.'},
+                    {'error': f'Danh mục "{cat.name}" đã bị ngừng phục vụ. EduCareLink chỉ nhận đăng việc thuộc 3 danh mục: Gia sư, Đón trẻ, Đồng hành cùng trẻ.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         except ImportError:
@@ -977,7 +977,7 @@ Nhiệm vụ của bạn là giúp PHỤ HUYNH đăng việc nhanh chóng qua h�
 
 BA LOẠI VIỆC (job_type — CHỈ 3 LOẠI NÀY):
 - "tutoring"  = Gia sư / kèm học 1:1 (Toán, Văn, Anh, Tiếng Nhật, Piano, Vẽ, MC, kỹ năng sống, học kỳ... đều được)
-- "childcare" = Trông trẻ tại nhà (cho ăn, tắm rửa, vui chơi, trông ngủ, hỗ trợ bài tập...)
+- "childcare" = Đồng hành cùng trẻ (tại nhà) — cho ăn, tắm rửa, vui chơi, trông ngủ, hỗ trợ bài tập...
 - "pickup"    = Đón trẻ tan học (đón cổng trường về nhà hoặc gửi đến địa chỉ khác)
 
 QUY TẮC XỬ LÝ:
@@ -986,10 +986,10 @@ QUY TẮC XỬ LÝ:
 - Nếu chỉ hỏi thông tin thông thường: trả lời bình thường, KHÔNG tạo JSON
 - Luôn trả lời bằng TIẾNG VIỆT có dấu, thân thiện, ngắn gọn, xuống dòng bằng "•"
 - Dùng ngữ cảnh hội thoại trước đó, KHÔNG hỏi lại thông tin đã có
-- CẨM: gợi ý dịch vụ ngoài 3 loại trên (dọn dẹp, nấu ăn, mua sắm hộ...) — nếu người dùng hỏi, nhẹ nhàng giải thích EduCareLink chỉ phục vụ Gia sư / Trông trẻ / Đón trẻ
+- CẨM: gợi ý dịch vụ ngoài 3 loại trên (dọn dẹp, nấu ăn, mua sắm hộ...) — nếu người dùng hỏi, nhẹ nhàng giải thích EduCareLink chỉ phục vụ Gia sư / Đồng hành cùng trẻ / Đón trẻ
 
 QUY TẮC GIÁ:
-- hourly_rate_vnd là giá MỖI GIỜ (VND). Thị trường hợp lý: gia sư 80.000-200.000đ/g, trông trẻ 60.000-120.000đ/g, đón trẻ 50.000-100.000đ/ca ngắn
+- hourly_rate_vnd là giá MỖI GIỜ (VND). Thị trường hợp lý: gia sư 80.000-200.000đ/g, đồng hành cùng trẻ 60.000-120.000đ/g, đón trẻ 50.000-100.000đ/ca ngắn
 - Người dùng nói "120k" → 120000; "200 nghìn 1 tiếng" → 200000
 - Nếu giá quá thấp (< 30.000đ/g) → khuyên nhẹ rồi vẫn cho đăng
 
@@ -1017,16 +1017,16 @@ SCHEMA type_data theo từng loại:
 1) tutoring (Gia sư) — bắt buộc: subject, dates, time_from, time_to. specific_requirements tự viết giúp nếu user không nói (KHÔNG đưa vào JSON khi trống — hệ thống tự điền).
 {
   "subject": "Toán lớp 5" (text tự do: môn học hoặc kỹ năng như Piano, MC, Vẽ),
-  "child_grade_level": "preschool_prep|primary_grade_1_5|secondary_grade_6_9|high_school_grade_10_12" (tùy chọn),
+  "child_grade_level": "primary_grade_1_5|secondary_grade_6_9|high_school_grade_10_12" (tùy chọn — dự án chỉ phục vụ trẻ từ 6 tuổi trở lên),
   "tutor_seniority_preference": "student_year_1_2|student_year_3_4|graduate|no_preference" (tùy chọn, mặc định no_preference nếu user không nói),
   "dates": ["2026-09-29", "2026-10-01"] (ngày cụ thể, KHÔNG quá khứ, tối đa 12 tuần tới),
   "time_from": "18:30",
   "time_to": "20:00" (buổi dạy ít nhất 30 phút)
 }
 
-2) childcare (Trông trẻ) — bắt buộc: child_age_group, number_of_children, care_duties, dates, time_from, time_to.
+2) childcare (Đồng hành cùng trẻ) — bắt buộc: child_age_group, number_of_children, care_duties, dates, time_from, time_to.
 {
-  "child_age_group": "0_to_12_months|1_to_3_years|3_to_6_years|6_to_10_years|over_10_years",
+  "child_age_group": "6_to_10_years|over_10_years|primary|secondary" (CHỈ các nhóm từ 6 tuổi trở lên — KHÔNG nhận nhóm dưới 6),
   "number_of_children": 1,
   "care_duties": ["general_care", "feeding", "bathing", "sleep_monitoring", "play_activities", "homework_help", "light_chores"] (chọn từ 7 giá trị này, đủ nghĩa với yêu cầu),
   "medical_allergy_notes": "bé dị ứng tôm..." (tùy chọn),
@@ -1180,7 +1180,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
                     else:
                         suffix = ("\n\nEm đọc tin nhắn chưa đủ rõ để tạo tin đăng — "
                                   "anh/chị thử nói lại ngắn gọn giúp em: "
-                                  "loại việc (gia sư / trông trẻ / đón trẻ), "
+                                  "loại việc (gia sư / đồng hành cùng trẻ / đón trẻ), "
                                   "ngày giờ, khu vực và giá 1 giờ nhé!")
                     return Response({
                         "response": (clean_response or
@@ -1314,7 +1314,7 @@ Ví dụ: "Tôi cần gia sư Toán lớp 8 tối thứ 3 tuần này ở Quận
         if job_type == 'tutoring':
             td['subject'] = str(data.get('title') or 'Kèm học')[:60]
         elif job_type == 'childcare':
-            td['child_age_group'] = '1_to_3_years'
+            td['child_age_group'] = '6_to_10_years'
             td['number_of_children'] = 1
             td['care_duties'] = ['general_care']
         else:  # pickup
@@ -3508,7 +3508,7 @@ class AdminFeedbackStatsAPIView(APIView):
         SERVICE_LABELS = {
             # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi
             'tutoring': 'Gia sư học tập tại nhà', 'pickup': 'Đưa đón bé tan học',
-            'childcare': 'Trông trẻ & Chơi cùng con tại nhà',
+            'childcare': 'Đồng hành cùng trẻ & Chơi cùng con tại nhà',
             # Giá trị cũ (dữ liệu khảo sát đã lưu trước đây)
             'gia-su': 'Gia sư tại nhà', 'cham-soc-tre': 'Chăm sóc trẻ em',
             'don-dep': 'Dọn dẹp nhà cửa', 'mua-sam': 'Mua sắm hộ',
@@ -3731,7 +3731,7 @@ class AdminFeedbackStatsAPIView(APIView):
         CP_QUESTIONS = [
             ('services', 'Bạn mong muốn nhận những công việc nào trên nền tảng?', 'multi'),
             ('carepartner_type', 'Bạn hiện đang là đối tượng nào?', 'single'),
-            ('experience', 'Kinh nghiệm trông trẻ / dạy kèm thực tế của bạn?', 'single'),
+            ('experience', 'Kinh nghiệm đồng hành cùng trẻ / dạy kèm thực tế của bạn?', 'single'),
             ('transport_method', 'Phương tiện di chuyển chính của bạn khi nhận việc là gì?', 'single'),
             ('available_slots', 'Khung giờ bạn có thể nhận ca trong tuần?', 'multi'),
             ('expected_rate', 'Mức thù lao bạn kỳ vọng nhận được mỗi giờ làm việc?', 'single'),
@@ -3899,7 +3899,7 @@ class AdminFeedbackExcelAPIView(APIView):
         SERVICE_LABELS = {
             # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi
             'tutoring': 'Gia sư học tập tại nhà', 'pickup': 'Đưa đón bé tan học',
-            'childcare': 'Trông trẻ & Chơi cùng con tại nhà',
+            'childcare': 'Đồng hành cùng trẻ & Chơi cùng con tại nhà',
             # Giá trị cũ (dữ liệu khảo sát cũ vẫn hiển thị đúng)
             'gia-su': 'Gia sư tại nhà', 'cham-soc-tre': 'Chăm sóc trẻ em',
             'don-dep': 'Dọn dẹp nhà cửa', 'mua-sam': 'Mua sắm hộ',
@@ -3933,7 +3933,7 @@ class AdminFeedbackExcelAPIView(APIView):
         SLOT_LABELS = {
             'chieu-tan-truong': 'Ca chiều tan trường 16:30–18:30', 'toi-trong-tuan': 'Tối trong tuần 18:30–21:00',
             'cuoi-tuan': 'Cả ngày cuối tuần (T7 & CN)', 'linh-hoat-hoc-ky': 'Linh hoạt theo lịch học kỳ',
-            'sang-ngay-thuong': 'Sáng ngày thường 07:30–11:30 (trông bé mầm non)',
+            'sang-ngay-thuong': 'Sáng ngày thường 07:30–11:30 (chăm sóc bé tiểu học)',
             'tan-tam-1630-1830': 'Giờ cao điểm tan tầm 16:30–18:30', 'toi-1830-2100': 'Buổi tối 18:30–21:00',
             'linh-hoat-dot-xuat': 'Linh hoạt đột xuất khi bận',
         }

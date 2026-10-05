@@ -10,9 +10,9 @@ Lệnh làm 2 pha:
   (gia-su → 'tutoring', trong-tre → 'childcare', còn lại → 'general').
 
   PHASE B — với MỌI tài khoản active (phụ huynh lẫn CarePartner) chưa thể
-  thấy được nhật ký nào → tạo 1 task [DEMO] hoàn chỉnh (task + ứng tuyển
-  accepted) kèm nhật ký mẫu. Ưu tiên ghép cặp "phụ huynh chưa có" với
-  "carepartner chưa có" để 2 tài khoản cùng được phủ bằng 1 task.
+  thấy được nhật ký nào → tạo 1 ca làm hoàn chỉnh như thật (task + ứng
+  tuyển accepted) kèm nhật ký mẫu. Ưu tiên ghép cặp "phụ huynh chưa có"
+  với "carepartner chưa có" để 2 tài khoản cùng được phủ bằng 1 task.
 
 Nguyên tắc an toàn:
   - IDEMPOTENT: chỉ THÊM dữ liệu còn thiếu, KHÔNG xoá/sửa entry đã có —
@@ -43,7 +43,8 @@ from ...services import validate_assessment_data
 # vì đây là 2 entry point thực tế của UI web/mobile).
 ELIGIBLE_STATUSES = ('in_progress', 'completed')
 
-DEMO_TITLE_PREFIX = '[DEMO]'
+# Yêu cầu owner 2026-10-06: bỏ hoàn toàn tiền tố [DEMO] — dữ liệu mẫu phải
+# hiển thị như ca làm thật cho ban giám khảo trải nghiệm (không còn nhãn demo).
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -294,29 +295,30 @@ GENERAL_VARIANTS = [
 # Phần trăm hoàn thành cho task đang diễn ra (chọn theo task.id)
 IN_PROGRESS_PERCENTS = (45, 60, 75)
 
-# Bố cục task demo cho PHASE B (theo mã danh mục)
+# Bố cục task mẫu cho PHASE B (theo mã danh mục) — nội dung như đơn thật,
+# chỉ phục vụ trẻ từ 6 tuổi trở lên theo chính sách dự án.
 DEMO_TASK_TEMPLATES = {
     'gia-su': {
-        'title': '[DEMO] Gia sư Toán lớp 5 — buổi học mẫu có nhật ký chăm sóc',
-        'description': ('Task demo tự sinh bởi seed_care_diary_sample để mỗi tài khoản đều xem được '
-                        'nhật ký mẫu. Bé lớp 5 cần chữa bài tập toán cuối tuần, ưu tiên gia sư kiên nhẫn.'),
+        'title': 'Gia sư Toán lớp 5 — chữa bài tập cuối tuần',
+        'description': ('Bé lớp 5 cần chữa bài tập Toán cuối tuần và ôn lại phần phân số. '
+                        'Ưu tiên gia sư kiên nhẫn, biết khích lệ bé chủ động làm bài.'),
         'price': 250000,
     },
     'trong-tre': {
-        'title': '[DEMO] Trông bé 5 tuổi buổi chiều — ca mẫu có nhật ký chăm sóc',
-        'description': ('Task demo tự sinh bởi seed_care_diary_sample để mỗi tài khoản đều xem được '
-                        'nhật ký mẫu. Trông bé 14h-18h: ăn xế, tô màu, dỗ ngủ trưa.'),
+        'title': 'Đồng hành cùng bé 6 tuổi buổi chiều — ăn xế & tô màu',
+        'description': ('Chăm sóc bé 6 tuổi từ 14h-18h: cho bé ăn xế, hướng dẫn tô màu sáng tạo '
+                        'và cùng bé ôn bài tập về nhà. Bé ngoan, thích kể chuyện.'),
         'price': 220000,
     },
 }
 DEMO_TASK_FALLBACK = {
-    'title': '[DEMO] Đón bé tan học — ca mẫu có nhật ký chăm sóc',
-    'description': ('Task demo tự sinh bởi seed_care_diary_sample để mỗi tài khoản đều xem được '
-                    'nhật ký mẫu. Đón bé tại cổng trường và đưa về nhà an toàn.'),
+    'title': 'Đón bé tan học về nhà — ca chiều',
+    'description': ('Đón bé lúc tan học tại cổng trường tiểu học, đưa về nhà an toàn và báo '
+                    'phụ huynh khi về đến nơi.'),
     'price': 120000,
 }
 
-DEMO_LOCATION = 'Tp. Huế (task demo — địa điểm mẫu)'
+SAMPLE_LOCATION = '48 Võ Thị Sáu, P. Vĩnh Ninh, TP. Huế'
 DEMO_LAT, DEMO_LNG = 16.4602, 107.6008
 
 
@@ -418,7 +420,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
     def _ordered_categories(self):
-        """Danh mục ưu tiên cho task demo: xen kẽ Gia sư / Trông trẻ."""
+        """Danh mục ưu tiên cho task mẫu: xen kẽ Gia sư / Đồng hành cùng trẻ."""
         codes = ['gia-su', 'trong-tre']
         found = [ServiceCategory.objects.filter(code=c).first() for c in codes]
         pairs = [c for c in found if c is not None]
@@ -432,14 +434,14 @@ class Command(BaseCommand):
         return sorted(workers, key=key)[0]
 
     def _least_loaded_parent(self, parents):
-        """Phụ huynh đang giữ ít task demo nhất — tránh dồn dữ liệu vào 1 người."""
+        """Phụ huynh đang giữ ít ca làm nhất — tránh dồn dữ liệu vào 1 người."""
         def key(u):
-            return (Task.objects.filter(parent=u, title__startswith=DEMO_TITLE_PREFIX).count(), u.id)
+            return (Task.objects.filter(parent=u).count(), u.id)
         return sorted(parents, key=key)[0]
 
     # ------------------------------------------------------------------
     def _create_demo_task(self, parent, worker, categories, idx, stats, now):
-        """Tạo 1 task [DEMO] + application accepted + nhật ký, trong 1 transaction."""
+        """Tạo 1 ca làm mẫu (task + application accepted + nhật ký) trong 1 transaction."""
 
         def _failed(reason):
             stats['errors'] += 1
@@ -463,7 +465,7 @@ class Command(BaseCommand):
                     price=template['price'],
                     category=category,
                     parent=parent,
-                    location=DEMO_LOCATION,
+                    location=SAMPLE_LOCATION,
                     latitude=DEMO_LAT,
                     longitude=DEMO_LNG,
                     status='completed',
@@ -476,7 +478,7 @@ class Command(BaseCommand):
         except Exception as exc:  # noqa: BLE001 — seed không được làm chết deploy
             return _failed(str(exc))
         stats['b_created'] += 1
-        self._log('   + Task [DEMO] #{} cho parent={} × worker={}'.format(
+        self._log('   + Task mẫu #{} cho parent={} × worker={}'.format(
             task.id, parent.username, worker.username))
 
     # ══════════════════════════════════════════════════════════════════
@@ -562,7 +564,7 @@ class Command(BaseCommand):
             care_diary_entries__isnull=False).distinct().count()
         return (
             '\n[CareDiary Seed] HOÀN TẤT — Phase A: +{} entry (bỏ qua {} đã có) | '
-            'Phase B: +{} task [DEMO] | Lỗi: {}\n'
+            'Phase B: +{} ca làm mẫu | Lỗi: {}\n'
             '[CareDiary Seed] Tổng hệ thống: {} nhật ký / {} hoạt động | '
             'Phủ phụ huynh: {}/{} | Phủ carepartner: {}/{}'.format(
                 stats['a_created'], stats['a_skipped'], stats['b_created'],

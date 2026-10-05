@@ -162,7 +162,7 @@ describe('CareDiaryFormScreen — H2 payload theo loại đánh giá', () => {
 
   it('childcare (code trong-tre): payload KHÔNG có key activities', async () => {
     mockGetTaskDetail.mockResolvedValue({
-      data: { category_code: 'trong-tre', category_name: 'Trông trẻ' },
+      data: { category_code: 'trong-tre', category_name: 'Đồng hành cùng trẻ' },
     });
     const utils = await renderScreen();
     await pressSubmit(utils);

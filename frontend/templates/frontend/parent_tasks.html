@@ -598,7 +598,7 @@ function formatSlotTime(slot) {
 function formatScheduleLabel(item) {
   const td = item.type_data || {};
   if (item.job_type === 'tutoring') return 'Gia sư 1:1';
-  if (item.job_type === 'childcare') return 'Trông trẻ tại nhà';
+  if (item.job_type === 'childcare') return 'Đồng hành cùng trẻ tại nhà';
   if (item.job_type === 'pickup') return 'Đón trẻ tan học';
   return item.category_label || 'Công việc';
 }

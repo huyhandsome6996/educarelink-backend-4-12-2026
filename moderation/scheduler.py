@@ -1,7 +1,7 @@
 """
 moderation/scheduler.py — Background Scanner quét công việc vi phạm MỖI 60 GIÂY.
 
-QA 2026-09-10 Vấn đề #1: chỉ 3 danh mục (Gia sư, Đón trẻ, Trông trẻ).
+QA 2026-09-10 Vấn đề #1: chỉ 3 danh mục (Gia sư, Đón trẻ, Đồng hành cùng trẻ).
 Nếu bằng cách nào đó một công việc ngoài 3 danh mục lọt lên hệ thống
 (lọt lưới keyword khi đăng, seed cũ, sửa title sau khi duyệt...), scanner
 sẽ phát hiện và XOÁ (status='cancelled') trong vòng 1 phút, kèm log
@@ -65,13 +65,13 @@ def _cancel_violating_task(task, reason, flags, confidence=0.95):
             recipient=task.parent,
             title="Công việc đã bị gỡ khỏi hệ thống",
             message=(f"Công việc '{task.title}' không thuộc 3 danh mục dịch vụ của "
-                     f"EduCareLink (Gia sư, Đón trẻ, Trông trẻ) nên đã bị gỡ bỏ. {reason[:140]}"),
+                     f"EduCareLink (Gia sư, Đón trẻ, Đồng hành cùng trẻ) nên đã bị gỡ bỏ. {reason[:140]}"),
         )
         if task.parent.expo_push_token:
             send_expo_push_notification(
                 token=task.parent.expo_push_token,
                 title="Công việc đã bị gỡ khỏi hệ thống",
-                body=f"'{task.title}' không thuộc 3 danh mục: Gia sư, Đón trẻ, Trông trẻ.",
+                body=f"'{task.title}' không thuộc 3 danh mục: Gia sư, Đón trẻ, Đồng hành cùng trẻ.",
                 data={'type': 'task_rejected', 'task_id': task.id},
             )
     except Exception as e:

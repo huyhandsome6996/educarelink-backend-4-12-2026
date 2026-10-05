@@ -63,7 +63,7 @@ Tuy nhiên, **về mặt hiệu năng và tốc độ xử lý khi mở rộng q
    * Phủ kín toàn bộ các khung giờ yêu cầu (`covers_all_slots`).
    * Không trùng lịch bận hoặc vi phạm buffer 90 phút.
    * Nằm trong bán kính tối đa: $\text{Haversine}(lat_1, lng_1, lat_2, lng_2) \le \text{max\_radius\_km}$.
-   * Ràng buộc giới tính (nghiêm ngặt với Trông trẻ / Đón trẻ, tự động vô hiệu hóa với Gia sư).
+   * Ràng buộc giới tính (nghiêm ngặt với Đồng hành cùng trẻ / Đón trẻ, tự động vô hiệu hóa với Gia sư).
    * Hạn ngạch đề xuất theo hạng thẻ (Throttle Proposal).
 2. **Soft Scoring (Chấm điểm mềm đa tiêu chí):**
    * Trọng số đọc động từ bảng `MatchingWeight`:

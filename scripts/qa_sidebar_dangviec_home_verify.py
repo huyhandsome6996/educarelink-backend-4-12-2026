@@ -48,7 +48,7 @@ c = Client()
 pages = {
     "/dang-viec/": "Đăng việc — chọn loại (BỊ LỖI TRÀN NGANG)",
     "/dang-viec/gia-su/": "Đăng việc — gia sư",
-    "/dang-viec/trong-tre/": "Đăng việc — trông trẻ",
+    "/dang-viec/trong-tre/": "Đăng việc — đồng hành cùng trẻ",
     "/dang-viec/don-tre/": "Đăng việc — đón/trả trẻ",
     "/parent/": "Trang chủ phụ huynh (REDESIGN)",
     "/parent/tasks/": "Việc của tôi",

@@ -9,7 +9,7 @@ QA verify 2026-09-10 (đợt 3) — Sidebar Stitch + Onboarding theo bối cản
    bg-orange-50/80 + border-l-4 border-[#F26522], các mục khác không.
    Riêng vi_credit phải highlight "Ví credit" (fix active_tab matching→credit).
 3. Trang /onboarding/parent/ theo bối cảnh hiện tại: Đăng việc ghép cặp
-   (3 loại Gia sư/Trông trẻ/Đón & trả trẻ), AI đề xuất độ khớp, auto-chốt,
+   (3 loại Gia sư/Đồng hành cùng trẻ/Đón & trả trẻ), AI đề xuất độ khớp, auto-chốt,
    nhật ký chăm sóc, Ví credit, chat 24h — không còn "Nấu ăn"/"Dọn dẹp"/
    "+ Tạo việc mới" (luồng cũ).
 4. Cú pháp JS inline sidebar (node --check) + regression render 200.
@@ -54,7 +54,7 @@ PARENT_PAGES = [
     ("/parent/care-diary/?booking_id=1", "Nhật ký chăm sóc (chi tiết)", "/parent/care-diary-history/"),
     ("/dang-viec/", "Đăng việc — chọn loại", "/dang-viec/"),
     ("/dang-viec/gia-su/", "Đăng việc — gia sư", "/dang-viec/"),
-    ("/dang-viec/trong-tre/", "Đăng việc — trông trẻ", "/dang-viec/"),
+    ("/dang-viec/trong-tre/", "Đăng việc — đồng hành cùng trẻ", "/dang-viec/"),
     ("/dang-viec/don-tre/", "Đăng việc — đón/trả trẻ", "/dang-viec/"),
     ("/parent/create-1/", "Tạo việc (luồng cũ) bước 1", "/dang-viec/"),
     ("/parent/create-2/", "Tạo việc (luồng cũ) bước 2", "/dang-viec/"),
@@ -131,7 +131,7 @@ onb = contents["/onboarding/parent/"]
 ONB_NEW = {
     "đăng việc ghép cặp": "1. Đăng việc ghép cặp",
     "3 loại dịch vụ — gia sư": ">Gia sư</span>",
-    "3 loại dịch vụ — trông trẻ": ">Trông trẻ</span>",
+    "3 loại dịch vụ — đồng hành cùng trẻ": ">Đồng hành cùng trẻ</span>",
     "3 loại dịch vụ — đón & trả trẻ": "Đón &amp; trả trẻ",
     "AI phân tích mô tả": "AI sẽ phân tích thành thông tin công việc",
     "duyệt ứng viên AI": "2. Duyệt ứng viên do AI đề xuất",

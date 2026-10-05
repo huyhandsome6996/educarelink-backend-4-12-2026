@@ -19,7 +19,7 @@ EXPECTED = [
     {'id': 1, 'name': 'Gia sư',           'icon_name': 'BookOpen',    'pricing_type': 'hourly'},
     {'id': 2, 'name': 'Đón trẻ',          'icon_name': 'Baby',       'pricing_type': 'distance'},
     {'id': 3, 'name': 'Dọn dẹp nhà cửa', 'icon_name': 'Home',       'pricing_type': 'hourly'},
-    {'id': 4, 'name': 'Trông trẻ',        'icon_name': 'Heart',      'pricing_type': 'hourly'},
+    {'id': 4, 'name': 'Đồng hành cùng trẻ', 'icon_name': 'Heart',      'pricing_type': 'hourly'},
     {'id': 5, 'name': 'Mua sắm hộ',      'icon_name': 'ShoppingCart','pricing_type': 'fixed'},
     {'id': 6, 'name': 'Nấu ăn',           'icon_name': 'Restaurant', 'pricing_type': 'hourly'},
     {'id': 7, 'name': 'Hỗ trợ AI',       'icon_name': 'SmartToy',   'pricing_type': 'fixed'},

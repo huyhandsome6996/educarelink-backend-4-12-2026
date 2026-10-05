@@ -293,7 +293,7 @@ class LandingSurveySerializer(serializers.ModelSerializer):
             errors['contact'] = 'Vui lòng cung cấp Số điện thoại hoặc Email để chúng tôi biết ai đã góp ý.'
 
         if role == 'carepartner':
-            # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi Gia sư/Đón trẻ/Trông trẻ
+            # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi Gia sư/Đón trẻ/Đồng hành cùng trẻ
             services = ra.get('services')
             if not services or not isinstance(services, list) or len(services) == 0:
                 errors['role_answers'] = 'Vui lòng chọn ít nhất 1 dịch vụ mong muốn nhận.'

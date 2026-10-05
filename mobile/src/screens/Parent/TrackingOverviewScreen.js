@@ -37,7 +37,7 @@ const STATUS_INFO = {
 const CATEGORY_LABELS = {
   tutoring: 'Gia sư',
   pickup: 'Đưa đón',
-  sitting: 'Trông trẻ',
+  sitting: 'Đồng hành cùng trẻ',
   extracurricular: 'Ngoại khoá',
 };
 

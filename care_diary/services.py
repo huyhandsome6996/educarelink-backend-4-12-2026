@@ -109,7 +109,7 @@ ASSESSMENT_SCHEMA_VERSION = 1
 # hiển thị — admin đổi tên (thêm khoảng trắng, đổi cách viết...) không làm
 # tính năng âm thầm rơi về general.
 # 'gia-su'    (Gia sư)     → form học tập hoặc form chung
-# 'trong-tre' (Trông trẻ)  → form sinh hoạt hoặc form chung
+# 'trong-tre' (Đồng hành cùng trẻ)  → form sinh hoạt hoặc form chung
 # Danh mục khác (Đón trẻ / legacy đã khóa) → chỉ form chung.
 CATEGORY_ASSESSMENT_TYPES = {
     'gia-su': ['tutoring', 'general'],
@@ -225,7 +225,7 @@ def _validate_tutoring(data, errors):
 
 
 def _validate_childcare(data, errors):
-    """Form Trông trẻ — bắt buộc: meals (≥1 phần tử có time + amount),
+    """Form Đồng hành cùng trẻ — bắt buộc: meals (≥1 phần tử có time + amount),
     nap.quality, hygiene_health.physical_condition."""
     meals = data.get('meals')
     if not isinstance(meals, list) or len(meals) == 0:

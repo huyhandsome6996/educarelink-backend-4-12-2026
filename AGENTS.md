@@ -29,7 +29,7 @@
 
 ## 1. Project Overview
 
-**EduCareLink** là nền tảng kết nối **Phụ huynh** (Parent) với **Carepartner** (sinh viên/giảng viên/coi trẻ…) tại Việt Nam. Phụ huynh đăng công việc (gia sư, đón trẻ, dọn dẹp, nấu ăn, mua sắm, trông trẻ…), Carepartner ứng tuyển, phụ huynh chọn người phù hợp. Khi việc hoàn thành, cả hai đánh giá nhau.
+**EduCareLink** là nền tảng kết nối **Phụ huynh** (Parent) với **Carepartner** (sinh viên/giảng viên/coi trẻ…) tại Việt Nam. Phụ huynh đăng công việc (gia sư, đón trẻ, dọn dẹp, nấu ăn, mua sắm, đồng hành cùng trẻ…), Carepartner ứng tuyển, phụ huynh chọn người phù hợp. Khi việc hoàn thành, cả hai đánh giá nhau.
 
 **2 vai trò người dùng:**
 - **Parent (Phụ huynh)** — đăng ký tự động được duyệt, đăng việc, duyệt ứng viên, đánh giá, thanh toán.
@@ -210,7 +210,7 @@ User
 ### 5.2. `core.ServiceCategory`
 ```
 ServiceCategory
-├─ name: char (Gia sư, Đón trẻ, Dọn dẹp, Trông trẻ, Mua sắm, Nấu ăn, Hỗ trợ AI, Khác)
+├─ name: char (Gia sư, Đón trẻ, Dọn dẹp, Đồng hành cùng trẻ, Mua sắm, Nấu ăn, Hỗ trợ AI, Khác)
 ├─ icon_name: char (tên icon, VD: BookOpen, Baby — dùng ở frontend)
 └─ description: text
 ```

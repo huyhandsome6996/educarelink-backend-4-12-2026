@@ -1,6 +1,6 @@
 """
 moderation/tests_three_categories.py — Kiểm thử khóa chặt 3 danh mục
-(Gia sư, Đón trẻ, Trông trẻ) — QA 2026-09-10 Vấn đề #1.
+(Gia sư, Đón trẻ, Đồng hành cùng trẻ) — QA 2026-09-10 Vấn đề #1.
 
 Phủ 4 lớp bảo vệ:
   1. Rule-based keyword chặn ngay lúc đăng (_check_banned_keywords)
@@ -186,4 +186,4 @@ class LegacyCategoryLockTests(TestCase):
         self.assertTrue(valid.is_active)
 
     def test_allow_list_constant(self):
-        self.assertEqual(set(ALLOWED_CATEGORY_NAMES), {'Gia sư', 'Đón trẻ', 'Trông trẻ'})
+        self.assertEqual(set(ALLOWED_CATEGORY_NAMES), {'Gia sư', 'Đón trẻ', 'Đồng hành cùng trẻ'})

@@ -11,7 +11,7 @@ import { CATEGORY_ICONS, renderCategoryIcon, getCategoryIconByName } from '../..
 const CATEGORIES = [
   { id: 1, name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
   { id: 2, name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
-  { id: 4, name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  { id: 4, name: 'Đồng hành cùng trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
 ];
 
 export default function TaskDetailScreen() {

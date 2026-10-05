@@ -18,7 +18,7 @@ class CareDiaryEntry(models.Model):
                       sau migration tự nhận default 'general' / {}).
       - 'tutoring'  : form đánh giá buổi học (Gia sư) — schema trong
                       care_diary/services.py: TUTORING_ASSESSMENT_SPEC.
-      - 'childcare' : form sinh hoạt (Trông trẻ) — CHILDCARE_ASSESSMENT_SPEC.
+      - 'childcare' : form sinh hoạt (Đồng hành cùng trẻ) — CHILDCARE_ASSESSMENT_SPEC.
     assessment_data là JSON tự do — KHÔNG validate ở tầng model (JSONField
     không hỗ trợ schema validation tốt), validate hoàn toàn ở services.py.
     """
@@ -27,7 +27,7 @@ class CareDiaryEntry(models.Model):
     ASSESSMENT_GENERAL = 'general'
     ASSESSMENT_CHOICES = [
         (ASSESSMENT_TUTORING, 'Gia sư'),
-        (ASSESSMENT_CHILDCARE, 'Trông trẻ'),
+        (ASSESSMENT_CHILDCARE, 'Đồng hành cùng trẻ'),
         (ASSESSMENT_GENERAL, 'Chung'),
     ]
 

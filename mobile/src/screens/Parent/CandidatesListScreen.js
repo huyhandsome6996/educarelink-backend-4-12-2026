@@ -89,7 +89,7 @@ const DEMO_CANDIDATES = [
     rating: 5.0,
     completed_jobs: 38,
     distance_km: 1.4,
-    top_skills: ['Trông trẻ', 'Mầm non', 'Montessori', 'Sơ cấp cứu'],
+    top_skills: ['Đồng hành cùng trẻ', 'Mầm non', 'Montessori', 'Sơ cấp cứu'],
     latest_review: 'Cô Ngân trông bé rất khéo và chu đáo, bé quấn cô như người nhà. Gia đình hoàn toàn yên tâm gửi gắm.',
     response_tag: 'Phản hồi < 3 phút',
   },
@@ -138,7 +138,7 @@ const DEMO_CANDIDATES = [
     completed_jobs: 31,
     distance_km: 2.2,
     top_skills: ['Chăm bé sơ sinh', 'Sơ cấp cứu nhi', 'Dỗ ăn', 'Vệ sinh'],
-    latest_review: 'Có kiến thức y tế nên trông trẻ rất an tâm, xử lý các tình huống quấy sốt của bé rất chuyên nghiệp.',
+    latest_review: 'Có kiến thức y tế nên đồng hành cùng trẻ rất an tâm, xử lý các tình huống quấy sốt của bé rất chuyên nghiệp.',
     response_tag: 'Phản hồi < 5 phút',
   },
   {
@@ -663,7 +663,7 @@ export default function CandidatesListScreen() {
             <Text style={styles.categoryBadgeText}>
               {jobInfo.category_label ||
                 (jobInfo.job_type === 'childcare'
-                  ? 'CHĂM SÓC & TRÔNG TRẺ'
+                  ? 'CHĂM SÓC & ĐỒNG HÀNH CÙNG TRẺ'
                   : jobInfo.job_type === 'pickup'
                   ? 'ĐƯA ĐÓN TRẺ AN TOÀN'
                   : 'GIA SƯ & KÈM HỌC 1:1')}
@@ -679,7 +679,7 @@ export default function CandidatesListScreen() {
         <Text style={styles.jobTitleText} numberOfLines={2}>
           {jobInfo.title ||
             (jobInfo.job_type === 'childcare'
-              ? 'Chăm sóc & Trông trẻ tại nhà'
+              ? 'Chăm sóc & Đồng hành cùng trẻ tại nhà'
               : jobInfo.job_type === 'pickup'
               ? 'Đưa đón bé đi học an toàn'
               : 'Gia sư kèm học 1:1')}

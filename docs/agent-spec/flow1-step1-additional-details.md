@@ -30,10 +30,11 @@ This file contains helper texts, placeholders, and Vietnamese labels for the for
 8. `hourly_rate`
    - Label: "Thù lao mỗi giờ (VNĐ)"
 
-## B. Childcare / Trông Trẻ
+## B. Childcare / Đồng Hành Cùng Trẻ
 1. `child_age_group`
    - Label: "Độ tuổi của trẻ"
-   - Options: "0-12 tháng", "1-3 tuổi", "3-6 tuổi", "6-10 tuổi", "Trên 10 tuổi"
+   - Options: "6-10 tuổi", "Trên 10 tuổi"
+   - Chính sách: nền tảng chỉ phục vụ trẻ từ 6 tuổi trở lên — các nhóm dưới 6 tuổi ("0-12 tháng", "1-3 tuổi", "3-6 tuổi") đã bị loại khỏi form web.
 2. `number_of_children`
    - Label: "Số lượng trẻ"
 3. `care_duties`

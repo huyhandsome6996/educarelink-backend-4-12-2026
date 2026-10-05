@@ -191,12 +191,12 @@ class User(AbstractUser):
         return bool(self.verification_pin_hash)
 
 
-# 2. BẢNG DANH MỤC DỊCH VỤ (chỉ 3 danh mục: Gia sư, Đón trẻ, Trông trẻ)
+# 2. BẢNG DANH MỤC DỊCH VỤ (chỉ 3 danh mục: Gia sư, Đón trẻ, Đồng hành cùng trẻ)
 # QA 2026-09-10 Vấn đề #1: các danh mục cũ (Dọn dẹp, Nấu ăn, Mua sắm hộ,
 # Hỗ trợ AI, Khác) bị khóa bằng cờ is_active=False — dữ liệu lịch sử giữ
 # nguyên FK, không cho tạo việc mới bằng danh mục đã khóa.
 class ServiceCategory(models.Model):
-    """Danh mục dịch vụ (Gia sư, Trông trẻ, Đón trẻ...).
+    """Danh mục dịch vụ (Gia sư, Đồng hành cùng trẻ, Đón trẻ...).
 
     ⚠️ M1 (QA 2026-09-19) — KHÔNG dùng bulk_create() cho model này:
     save() override tự sinh code duy nhất, còn bulk_create() bỏ qua save()
@@ -548,7 +548,7 @@ class LandingSurvey(models.Model):
         # Bộ câu hỏi mới 2026-09-11 — 3 dịch vụ cốt lõi (khóa định vị)
         ('tutoring', 'Gia sư học tập tại nhà'),
         ('pickup', 'Đưa đón bé tan học'),
-        ('childcare', 'Trông trẻ & Chơi cùng con tại nhà'),
+        ('childcare', 'Đồng hành cùng trẻ & Chơi cùng con tại nhà'),
         # Giá trị cũ giữ lại để hiển thị dữ liệu khảo sát đã lưu trước đây
         ('gia-su', 'Gia sư tại nhà (cũ)'),
         ('cham-soc-tre', 'Chăm sóc trẻ em (cũ)'),
@@ -605,7 +605,7 @@ class LandingSignup(models.Model):
     SERVICE_CHOICES = (
         ('tutoring', 'Gia sư học tập'),
         ('pickup', 'Đưa đón bé tan học'),
-        ('childcare', 'Trông trẻ tại nhà'),
+        ('childcare', 'Đồng hành cùng trẻ tại nhà'),
         ('chua-ro', 'Chưa rõ — cần tư vấn thêm'),
     )
     CITY_CHOICES = (

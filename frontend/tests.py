@@ -586,7 +586,7 @@ class AIJobPostingFlow1UpgradeTests(TestCase):
         """Chip gợi ý không còn 'dọn dẹp' (dịch vụ đã ngừng nhận đăng)."""
         resp = self.client.get('/parent/chatbot/')
         self.assertNotContains(resp, 'Cần người dọn dẹp nhà cuối tuần')
-        self.assertContains(resp, 'Cần người trông trẻ cuối tuần')
+        self.assertContains(resp, 'Cần người đồng hành cùng trẻ cuối tuần')
 
     def test_parent_home_ai_card_copy_matches_flow1(self):
         """Card 'Nhờ AI đăng việc hộ' ở trang chủ mô tả đúng hành vi mới."""

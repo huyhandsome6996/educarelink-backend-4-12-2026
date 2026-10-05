@@ -762,7 +762,7 @@ def build_prompt():
             },
             {
                 id: "T-8812",
-                title: "Trông trẻ tại nhà & rèn luyện nề nếp buổi tối",
+                title: "Đồng hành cùng trẻ tại nhà & rèn luyện nề nếp buổi tối",
                 status: "completed",
                 price: 200000,
                 location: "Chung cư HaDo Centrosa, Q.10, TP.HCM",

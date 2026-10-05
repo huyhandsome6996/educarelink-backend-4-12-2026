@@ -101,7 +101,7 @@
 | Gia sư | menu_book | book | ✅ |
 | Đón trẻ | child_care | happy | ✅ |
 | Dọn dẹp | cleaning_services | sparkles | ✅ |
-| Trông trẻ | stroller | people | ✅ |
+| Đồng hành cùng trẻ | stroller | people | ✅ |
 | Mua sắm hộ | shopping_bag | bag | ✅ |
 | Nấu ăn | restaurant | restaurant | ✅ |
 | Chuyển đồ | local_shipping | cube | ✅ |
@@ -137,7 +137,7 @@ logic — Django template chỉ render, JS gọi API.
 
 | Flow 1 tính năng | Web | Mobile | Endpoint dùng chung |
 |---|---|---|---|
-| Đăng việc (JobPost) | JS form | Form gia sư/trông trẻ/đón trẻ | `POST /api/matching/jobs/` + `/publish/` |
+| Đăng việc (JobPost) | JS form | Form gia sư/đồng hành cùng trẻ/đón trẻ | `POST /api/matching/jobs/` + `/publish/` |
 | Danh sách ứng viên (top 8 + Gemini re-rank) | worker_feed inline | CandidatesListScreen | `POST /api/matching/candidates/` |
 | Chọn CarePartner (exclusive lock) | worker_feed modal | ParentHome/MyTasks | `POST /api/matching/jobs/<id>/select-carepartner/` |
 | Đơn chờ xác nhận (đồng hồ cam kết) | worker_feed poll + ding + modal (15s) | JobAssignedModal (push + poll 15s) | `GET /api/matching/bookings/?status=awaiting_commitment` |

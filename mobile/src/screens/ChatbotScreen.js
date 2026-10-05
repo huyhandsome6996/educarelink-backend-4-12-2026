@@ -11,7 +11,7 @@ import FormattedText from '../components/FormattedText';
 
 const JOB_TYPE_META = {
   tutoring: { label: 'Gia sư', icon: 'book', color: '#F26522' },
-  childcare: { label: 'Trông trẻ', icon: 'happy', color: '#8B5CF6' },
+  childcare: { label: 'Đồng hành cùng trẻ', icon: 'happy', color: '#8B5CF6' },
   pickup: { label: 'Đón trẻ', icon: 'car', color: '#2DB84B' },
 };
 

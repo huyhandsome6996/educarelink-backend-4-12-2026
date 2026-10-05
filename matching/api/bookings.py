@@ -67,7 +67,7 @@ def _job_address(job):
 CATEGORY_NAME_VI = {
     'tutoring': 'Gia sư',
     'pickup': 'Đón trẻ',
-    'childcare': 'Trông trẻ',
+    'childcare': 'Đồng hành cùng trẻ',
 }
 
 WEEKDAY_NAMES_VI = {

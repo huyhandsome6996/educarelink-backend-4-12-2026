@@ -328,7 +328,7 @@ export default function CareDiaryFormScreen() {
           <View>
             <View style={styles.assessmentHeader}>
               <Ionicons name="heart" size={18} color={COLORS.primary} />
-              <Text style={styles.assessmentHeaderText}>Sinh hoạt buổi trông trẻ</Text>
+              <Text style={styles.assessmentHeaderText}>Sinh hoạt buổi đồng hành cùng trẻ</Text>
             </View>
             <ChildcareAssessmentSection value={assessmentData} onChange={setAssessmentData} />
           </View>

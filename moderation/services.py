@@ -20,7 +20,7 @@ CACHE_TTL = 600  # 10 phút
 # seed_demo_data và scanner quét 60s cùng dùng. Danh mục khác bị khóa
 # mềm (ServiceCategory.is_active=False) — KHÔNG xóa để giữ dữ liệu cũ.
 # ═══════════════════════════════════════════════════════════════════
-ALLOWED_CATEGORY_NAMES = ['Gia sư', 'Đón trẻ', 'Trông trẻ']
+ALLOWED_CATEGORY_NAMES = ['Gia sư', 'Đón trẻ', 'Đồng hành cùng trẻ']
 
 
 def _get_gemini_client():
@@ -334,7 +334,7 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
         pass
 
     # ⚡ CATEGORY CHECK (QA 2026-09-10 Vấn đề #1): CHỈ CHẤP NHẬN 3 DANH MỤC
-    # (Gia sư, Đón trẻ, Trông trẻ). Task không chứa bất kỳ từ khóa nào của
+    # (Gia sư, Đón trẻ, Đồng hành cùng trẻ). Task không chứa bất kỳ từ khóa nào của
     # 3 nhóm này → REJECT ngay lập tức, không cần AI.
     CATEGORY_KEYWORDS = [
         # 1. Gia sư
@@ -348,11 +348,12 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
         'đón trẻ', 'don tre', 'đón con', 'don con', 'đưa đón', 'dua don', 'đón bé', 'don be',
         'đón học sinh', 'don hoc sinh', 'đón em', 'don em', 'đưa con', 'dua con',
         'đi học về', 'di hoc ve', 'trường học', 'truong hoc', 'trẻ trường', 'đón hộ', 'don ho',
-        # 3. Trông trẻ
+        # 3. Đồng hành cùng trẻ (từ khóa cũ "trông trẻ" vẫn hợp lệ — user vẫn có thể gõ)
         'trông trẻ', 'trong tre', 'trông bé', 'trong be', 'trông con', 'trong con',
         'trông em', 'trong em', 'babysitter', 'giữ trẻ', 'giu tre', 'chăm sóc trẻ', 'cham soc tre',
         'chăm bé', 'cham be', 'chăm con', 'cham con', 'người trông trẻ', 'nguoi trong tre',
         'trông trẻ hộ', 'trong tre ho', ' giữ bé ', 'giu be',
+        'đồng hành cùng trẻ', 'dong hanh cung tre',
     ]
 
     has_category_keyword = any(
@@ -363,7 +364,7 @@ def _check_banned_keywords(title: str, description: str, price) -> dict:
         flags.append('khong_lien_quan_danh_muc')
         return {
             'banned': True,
-            'reason': 'Công việc không thuộc 3 danh mục duy nhất của EduCareLink (Gia sư, Đón trẻ, Trông trẻ). Vui lòng đăng công việc phù hợp.',
+            'reason': 'Công việc không thuộc 3 danh mục duy nhất của EduCareLink (Gia sư, Đón trẻ, Đồng hành cùng trẻ). Vui lòng đăng công việc phù hợp.',
             'flags': flags,
             'confidence': 0.95,
         }
@@ -383,7 +384,7 @@ không có ngoại lệ, kể cả việc "tốt" hay "hợp pháp":
 
 1. Gia sư — dạy kèm, học thêm, ôn thi, ngoại ngữ, năng khiếu (piano, guitar, vẽ)
 2. Đón trẻ — đưa đón học sinh, đón con đi học về
-3. Trông trẻ — giữ trẻ, babysitter, chăm sóc trẻ
+3. Đồng hành cùng trẻ — giữ trẻ, babysitter, chăm sóc trẻ
 
 REJECTED ngay lập tức nếu:
 - KHÔNG thuộc đúng 3 danh mục trên. Ví dụ bị chặn: nấu ăn, dọn dẹp nhà cửa,

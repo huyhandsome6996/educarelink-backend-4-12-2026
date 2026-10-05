@@ -58,7 +58,7 @@ describe('GuestHomeScreen — Stitch Redesign Smoke & Functional Tests', () => {
     // Check Service Pillars
     expect(tree.getByText('Gia sư tại nhà')).toBeTruthy();
     expect(tree.getByText('Đón trẻ an toàn')).toBeTruthy();
-    expect(tree.getByText('Trông trẻ tại nhà')).toBeTruthy();
+    expect(tree.getByText('Đồng hành cùng trẻ tại nhà')).toBeTruthy();
     expect(tree.getByText('AI Trợ Lý Radar')).toBeTruthy();
 
     // Check Safety Commitment

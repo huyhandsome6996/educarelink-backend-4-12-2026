@@ -1837,7 +1837,7 @@
                         <div id="chartCpType"></div>
                     </div>
                     <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
-                        <h3 style="font-size:13px;font-weight:800;color:#f1f5f9;margin-bottom:14px;">🏅 Kinh nghiệm trông trẻ / dạy kèm</h3>
+                        <h3 style="font-size:13px;font-weight:800;color:#f1f5f9;margin-bottom:14px;">🏅 Kinh nghiệm đồng hành cùng trẻ / dạy kèm</h3>
                         <div id="chartExperience"></div>
                     </div>
                     <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;">
@@ -3925,7 +3925,7 @@
             document.getElementById('chartSignup').innerHTML = signupHtml || '<div style="text-align:center;color:#64748b;padding:20px;">Chưa có dữ liệu</div>';
 
             // === SECTION ĐĂNG KÝ — dịch vụ / khu vực / khung giờ (khớp form /landing/) ===
-            const suServiceLabels = {'tutoring': 'Gia sư học tập', 'pickup': 'Đưa đón bé tan học', 'childcare': 'Trông trẻ tại nhà', 'chua-ro': 'Chưa rõ — cần tư vấn'};
+            const suServiceLabels = {'tutoring': 'Gia sư học tập', 'pickup': 'Đưa đón bé tan học', 'childcare': 'Đồng hành cùng trẻ tại nhà', 'chua-ro': 'Chưa rõ — cần tư vấn'};
             const suServiceItems = (sig.by_service || []).map(x => ({label: suServiceLabels[x.interested_service] || x.interested_service, count: x.count}));
             renderBarChart('chartSignupService', suServiceItems, '#22c55e');
 

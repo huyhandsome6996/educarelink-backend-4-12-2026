@@ -1,5 +1,5 @@
 // ============================================================
-// ChildcareAssessmentCard — Card sinh hoạt (chi tiết nhật ký Trông trẻ)
+// ChildcareAssessmentCard — Card sinh hoạt (chi tiết nhật ký Đồng hành cùng trẻ)
 // CARE DIARY NÂNG CẤP — hiển thị assessment_data theo contract:
 //   meals (icon bữa ăn), nap (giấc ngủ), hygiene_health (vệ sinh),
 //   activities (danh sách + tâm trạng), notes_for_parents.
@@ -38,7 +38,7 @@ export default function ChildcareAssessmentCard({data}) {
     <View style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="heart" size={18} color={COLORS.primary} />
-        <Text style={styles.headerTitle}>Sinh hoạt trong buổi trông trẻ</Text>
+        <Text style={styles.headerTitle}>Sinh hoạt trong buổi đồng hành cùng trẻ</Text>
       </View>
 
       {/* Bữa ăn */}

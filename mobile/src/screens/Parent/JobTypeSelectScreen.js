@@ -38,7 +38,7 @@ const JOB_TYPES = [
   },
   {
     type: 'childcare',
-    title: 'Trông trẻ tại nhà',
+    title: 'Đồng hành cùng trẻ tại nhà',
     desc: 'Cho bé ăn uống, vui chơi an toàn, rèn nếp tự lập & hướng dẫn thói quen tốt.',
     price: 'Từ 60.000đ / giờ',
     badge: '❤️ Chăm sóc tận tâm',

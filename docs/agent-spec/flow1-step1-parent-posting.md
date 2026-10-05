@@ -3,7 +3,7 @@
 ## Goal
 Parent can post a job by choosing exactly one of 3 job types:
 1. Tutoring / Gia su
-2. Childcare / Trong tre
+2. Childcare / Đồng hành cùng trẻ (Dong hanh cung tre)
 3. Pickup / Don tre
 
 ## Scope
@@ -20,8 +20,8 @@ Parent can post a job by choosing exactly one of 3 job types:
 7. `location_note`: text input, optional.
 8. `hourly_rate`: number input, required, VND/hour > 0.
 
-## B. Childcare Form / Trong Tre
-1. `child_age_group`: select, required.
+## B. Childcare Form / Đồng Hành Cùng Trẻ
+1. `child_age_group`: select, required. Chính sách độ tuổi: chỉ phục vụ trẻ từ 6 tuổi trở lên — UI chỉ còn 2 lựa chọn "6-10 tuổi" và "Trên 10 tuổi" (các nhóm dưới 6 tuổi đã bị loại khỏi form web).
 2. `number_of_children`: number >= 1, required.
 3. `care_duties`: multi-select, required.
 4. `medical_allergy_notes`: textarea, optional.

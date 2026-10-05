@@ -9,7 +9,7 @@ class ModerationConfig(AppConfig):
         from . import signals  # noqa: F401
 
         # QA 2026-09-10 Vấn đề #1: Background Scanner quét công việc ngoài
-        # 3 danh mục (Gia sư, Đón trẻ, Trông trẻ) MỖI 60 GIÂY — nếu việc lọt
+        # 3 danh mục (Gia sư, Đón trẻ, Đồng hành cùng trẻ) MỖI 60 GIÂY — nếu việc lọt
         # lưới bằng cách nào đó thì bị quét phát và tự hủy trong vòng 1 phút.
         # Chạy trên Render hoặc khi bật ENABLE_MODERATION_SCHEDULER=true
         # (cùng pattern gating với matching scheduler — local dev không chạy).

@@ -954,7 +954,7 @@ def _tutoring_assessment(**overrides):
 
 
 def _childcare_assessment(**overrides):
-    """assessment_data chuẩn cho form Trông trẻ (theo spec mục 2.2)."""
+    """assessment_data chuẩn cho form Đồng hành cùng trẻ (theo spec mục 2.2)."""
     defaults = {
         'schema_version': 1,
         'meals': [
@@ -982,7 +982,7 @@ def _childcare_assessment(**overrides):
 
 @override_settings(DEBUG=True)
 class AssessmentFormTests(TestCase):
-    """Form đánh giá chuyên sâu: tutoring (Gia sư), childcare (Trông trẻ),
+    """Form đánh giá chuyên sâu: tutoring (Gia sư), childcare (Đồng hành cùng trẻ),
     general (mặc định/tương thích ngược). Endpoint POST/PATCH
     /api/worker/tasks/<id>/care-diary/ + GET /api/tasks/<id>/care-diary/."""
 
@@ -1041,9 +1041,9 @@ class AssessmentFormTests(TestCase):
             self.assertEqual(resp.status_code, 400, f'score={bad_score} phải bị chặn')
             self.assertIn('comprehension', resp.data['assessment_data'])
 
-    # --- 3. Tạo nhật ký Trông trẻ hợp lệ → 201 ---
+    # --- 3. Tạo nhật ký Đồng hành cùng trẻ hợp lệ → 201 ---
     def test_create_childcare_assessment_success(self):
-        cat = ServiceCategory.objects.create(name='Trông trẻ', icon_name='Heart')
+        cat = ServiceCategory.objects.create(name='Đồng hành cùng trẻ', code='trong-tre', icon_name='Heart')
         task = _make_task(self.parent, cat, status='in_progress')
         _accept_worker(task, self.worker)
         resp = self.client.post(
@@ -1060,7 +1060,7 @@ class AssessmentFormTests(TestCase):
 
     # --- 4. Thiếu nap.quality → 400 ---
     def test_create_childcare_missing_nap_quality_400(self):
-        cat = ServiceCategory.objects.create(name='Trông trẻ', icon_name='Heart')
+        cat = ServiceCategory.objects.create(name='Đồng hành cùng trẻ', code='trong-tre', icon_name='Heart')
         task = _make_task(self.parent, cat, status='in_progress')
         _accept_worker(task, self.worker)
         data = _childcare_assessment()
@@ -1076,7 +1076,7 @@ class AssessmentFormTests(TestCase):
 
     # --- 4b. meals rỗng/hết phần tử → 400; activities.list rỗng vẫn OK ---
     def test_create_childcare_empty_meals_400_but_empty_activities_ok(self):
-        cat = ServiceCategory.objects.create(name='Trông trẻ', icon_name='Heart')
+        cat = ServiceCategory.objects.create(name='Đồng hành cùng trẻ', code='trong-tre', icon_name='Heart')
         task = _make_task(self.parent, cat, status='in_progress')
         _accept_worker(task, self.worker)
         # meals = [] → 400
@@ -1334,7 +1334,7 @@ class AssessmentFormTests(TestCase):
     # --- 11b. M2 — meals vượt trần 20 phần tử → 400 ---
     def test_childcare_meals_over_limit_400(self):
         """M2 — mảng meals không được vượt quá MAX_MEALS=20 phần tử."""
-        cat = ServiceCategory.objects.create(name='Trông trẻ', icon_name='Heart')
+        cat = ServiceCategory.objects.create(name='Đồng hành cùng trẻ', code='trong-tre', icon_name='Heart')
         task = _make_task(self.parent, cat, status='in_progress')
         _accept_worker(task, self.worker)
         meals = [{'time': f'{8 + i // 60:02d}:{i % 60:02d}',

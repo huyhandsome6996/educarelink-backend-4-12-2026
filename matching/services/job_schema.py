@@ -10,23 +10,28 @@ import datetime
 
 from rest_framework.exceptions import ValidationError
 
-# 5 nhóm tuổi trẻ chuẩn theo đặc tả Mục 2 + alias backward-compatibility
-# (các key cũ under_3/preschool/primary/secondary/mixed vẫn hợp lệ để không
-# gãy dữ liệu đã lưu trong DB và các test cũ).
+# Nhóm tuổi trẻ — CHÍNH SÁCH 6+ (2026-09-28): dự án CHỈ phục vụ trẻ từ 6 tuổi
+# trở lên, nên MỌI nhóm dưới 6 tuổi (0_to_12_months / 1_to_3_years / 3_to_6_years /
+# under_3 / preschool) đã bị XÓA khỏi danh sách hợp lệ. Client cũ gửi các key
+# này lên sẽ bị validate_job_payload chặn với lỗi
+# "Dự án chỉ hỗ trợ trẻ từ 6 tuổi trở lên." (xem BANNED_CHILD_AGE_GROUPS).
+# Giữ lại alias primary/secondary/mixed vì đều thuộc nhóm 6+ (không gãy dữ
+# liệu đã lưu trong DB và các test cũ).
 CHILD_AGE_GROUPS = {
-    # 5 mức chuẩn theo đặc tả Mục 2:
-    '0_to_12_months': '0 - 12 tháng tuổi',
-    '1_to_3_years': '1 - 3 tuổi',
-    '3_to_6_years': '3 - 6 tuổi',
+    # Nhóm 6+ hợp lệ:
     '6_to_10_years': '6 - 10 tuổi',
     'over_10_years': 'Trên 10 tuổi',
-    # Aliases tương thích ngược:
-    'under_3': 'Dưới 3 tuổi',
-    'preschool': 'Mầm non (3-6 tuổi)',
+    # Aliases tương thích ngược (đều là nhóm 6+):
     'primary': 'Tiểu học (6-11 tuổi)',
     'secondary': 'THCS (11-15 tuổi)',
     'mixed': 'Nhiều độ tuổi',
 }
+
+# Các nhóm tuổi dưới 6 đã bị cấm theo chính sách 6+ — dùng để trả lỗi
+# chuyên biệt thay vì "Chọn độ tuổi của trẻ." khi client cũ vẫn gửi lên.
+BANNED_CHILD_AGE_GROUPS = (
+    '0_to_12_months', '1_to_3_years', '3_to_6_years', 'under_3', 'preschool',
+)
 
 # 7 việc chăm sóc trẻ chuẩn theo đặc tả Mục 2 + alias backward-compatibility
 # (các key cũ feed/bath/study/play/sleep/transport vẫn hợp lệ).
@@ -56,11 +61,11 @@ TRANSPORT_METHODS = {
 }
 
 # ── Defect 3 (2026-09-13): khối lớp / độ tuổi của bé cho job GIA SƯ ──
-# 4 mức chuẩn (IM brief Task 3). Lưu vào JobPost.type_data['child_grade_level'].
-# Dữ liệu cũ tạo trước khi có field sẽ KHÔNG có key này → matching coi như
-# "không giới hạn cấp học" (bỏ qua bonus/filter theo cấp học, không raise KeyError).
+# CHÍNH SÁCH 6+: 'preschool_prep' (tiền tiểu học 4-6 tuổi) đã bị XÓA —
+# dự án chỉ phục vụ trẻ từ 6 tuổi trở lên. Dữ liệu cũ tạo trước khi có
+# field sẽ KHÔNG có key này → matching coi như "không giới hạn cấp học"
+# (bỏ qua bonus/filter theo cấp học, không raise KeyError).
 CHILD_GRADE_LEVELS = {
-    'preschool_prep': 'Tiền tiểu học (4 - 6 tuổi)',
     'primary_grade_1_5': 'Tiểu học (Lớp 1 - 5)',
     'secondary_grade_6_9': 'THCS (Lớp 6 - 9)',
     'high_school_grade_10_12': 'THPT (Lớp 10 - 12)',
@@ -121,7 +126,7 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     3 loại job. Location (lat/lng) kiểm tra riêng ở serializer.
     """
     if job_type not in JOB_TYPES:
-        raise ValidationError({'job_type': 'Chỉ hỗ trợ 3 loại: gia sư / trông trẻ / đón trẻ.'})
+        raise ValidationError({'job_type': 'Chỉ hỗ trợ 3 loại: gia sư / đồng hành cùng trẻ / đón trẻ.'})
     if user_role != 'parent':
         raise ValidationError({'detail': 'Chỉ phụ huynh mới đăng được việc.'})
 
@@ -194,7 +199,13 @@ def validate_job_payload(job_type, payload, user_role='parent'):
 
     if job_type in ('childcare', 'pickup'):
         if clean.get('child_age_group') not in CHILD_AGE_GROUPS:
-            errors['child_age_group'] = 'Chọn độ tuổi của trẻ.'
+            # Chính sách 6+: client cũ gửi nhóm tuổi dưới 6 → lỗi rõ ràng riêng,
+            # không dùng message chung "Chọn độ tuổi của trẻ."
+            age_raw = str(payload.get('child_age_group') or '').strip()
+            if age_raw in BANNED_CHILD_AGE_GROUPS:
+                errors['child_age_group'] = 'Dự án chỉ hỗ trợ trẻ từ 6 tuổi trở lên.'
+            else:
+                errors['child_age_group'] = 'Chọn độ tuổi của trẻ.'
         try:
             n = int(clean.get('number_of_children', 0))
             if n < 1:
@@ -296,6 +307,12 @@ def validate_job_payload(job_type, payload, user_role='parent'):
     # ── Defect 3: validate khối lớp + ưu tiên gia sư (chỉ tutoring, đều optional) ──
     if job_type == 'tutoring':
         grade_level = clean.get('child_grade_level')
+        # Chính sách 6+ (2026-09-28): 'preschool_prep' (tiền tiểu học 4-6 tuổi)
+        # đã bị gỡ khỏi CHILD_GRADE_LEVELS — trả lỗi chuyên biệt để phụ huynh
+        # hiểu rõ lý do thay vì message chung "khối lớp không hợp lệ".
+        if grade_level == 'preschool_prep':
+            raise ValidationError({
+                'child_grade_level': 'Dự án chỉ hỗ trợ trẻ từ 6 tuổi trở lên.'})
         if grade_level and grade_level not in CHILD_GRADE_LEVELS:
             raise ValidationError({
                 'child_grade_level': (f'Khối lớp không hợp lệ: {grade_level!r}. '

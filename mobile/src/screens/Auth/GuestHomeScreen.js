@@ -3,7 +3,7 @@
 // - Sticky Header: Logo gradient, EduCareLink, Hotline 1900 6828, VN pill + live status
 // - Hero Promo Carousel: 3 poster chuyển động (Gia sư, Đón trẻ, MoMo Escrow) autoplay 4s
 // - Quick Stats: 50.000+ Phụ huynh, 4.9★ Đánh giá, 100% CCCD gắn chip
-// - Service Ecosystem: 4 Bento Cards (Gia sư, Đón trẻ, Trông trẻ, AI Radar)
+// - Service Ecosystem: 4 Bento Cards (Gia sư, Đón trẻ, Đồng hành cùng trẻ, AI Radar)
 // - Safety & Trust: 3 lớp xác thực độc quyền
 // - Parent Testimonial: Review chân thực & bảo chứng hài lòng
 // - Student Partner Banner: Dành cho sinh viên đăng ký CarePartner (120k-200k/h)
@@ -114,7 +114,7 @@ const SERVICE_ECOSYSTEM = [
   },
   {
     id: 'childcare',
-    title: 'Trông trẻ tại nhà',
+    title: 'Đồng hành cùng trẻ tại nhà',
     desc: 'Chăm sóc bé, hỗ trợ ăn uống, trò chuyện rèn kỹ năng cảm xúc.',
     price: 'Từ 100k/h',
     icon: 'heart',
@@ -702,7 +702,7 @@ export default function GuestHomeScreen() {
                   <View>
                     <Text style={styles.roleCardTitle}>Tôi là Phụ huynh</Text>
                     <Text style={styles.roleCardDesc}>
-                      Cần tìm Gia sư, Đón trẻ hoặc Trông trẻ tại nhà
+                      Cần tìm Gia sư, Đón trẻ hoặc Đồng hành cùng trẻ tại nhà
                     </Text>
                   </View>
                 </View>

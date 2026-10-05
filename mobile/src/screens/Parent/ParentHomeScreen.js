@@ -4,7 +4,7 @@
 // - Header cam nhận diện thương hiệu (#F26522 -> #EA580C)
 // - Thanh tìm kiếm & AI Voice gợi ý việc thông minh
 // - Dock nổi: Ví EduCare & CarePoints (Điểm thưởng)
-// - 3 Trụ cột dịch vụ cốt lõi: Gia sư 1:1, Trông trẻ, Đón trẻ tan học
+// - 3 Trụ cột dịch vụ cốt lõi: Gia sư 1:1, Đồng hành cùng trẻ, Đón trẻ tan học
 // - Banner AI: Đăng việc siêu tốc trong 5 giây
 // - Thẻ Radar Live Tracking khi có ca đang thực hiện (Flow 1)
 // - Hoạt động & Lịch ca gần đây (API getBookings thật)
@@ -374,7 +374,7 @@ export default function ParentHomeScreen() {
 
           {/* PILLARS 2 & 3: 2-Column Compact Row */}
           <View style={styles.twoColPillarsRow}>
-            {/* PILLAR 2: Trông trẻ tại nhà (Emerald Accent) */}
+            {/* PILLAR 2: Đồng hành cùng trẻ tại nhà (Emerald Accent) */}
             <TouchableOpacity
               style={styles.pillarSecondaryCardEmerald}
               onPress={() => navigation.navigate('ChildcareForm')}
@@ -391,7 +391,7 @@ export default function ParentHomeScreen() {
               </View>
 
               <View style={styles.pillarSecondaryContent}>
-                <Text style={styles.pillarSecondaryTitle}>Trông trẻ tại nhà</Text>
+                <Text style={styles.pillarSecondaryTitle}>Đồng hành cùng trẻ tại nhà</Text>
                 <Text style={styles.pillarSecondaryDesc}>
                   Ăn uống, chơi & rèn thói quen tự lập
                 </Text>

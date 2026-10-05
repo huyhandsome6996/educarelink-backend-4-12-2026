@@ -51,11 +51,11 @@ LNG = 107.5909
 QUALIFICATIONS = [
     'Cử nhân xuất sắc Sư phạm Toán - ĐH Sư Phạm - ĐH Huế (tốt nghiệp loại Xuất sắc)',
     'IELTS 8.5 Overall — giảng dạy tiếng Anh giao tiếp & luyện thi Cambridge/IELTS cho thiếu nhi',
-    'Chứng chỉ Piano & Organ ABRSM Grade 8 — 5 năm dạy nhạc cụ cho trẻ 4-12 tuổi',
+    'Chứng chỉ Piano & Organ ABRSM Grade 8 — 5 năm dạy nhạc cụ cho trẻ 6-12 tuổi',
     'Giải Nhất Tin học trẻ Quốc gia — dạy lập trình Scratch/Python/STEM Robotics',
     'Giải Nhất Vở sạch chữ đẹp cấp Tỉnh — luyện chữ đẹp tiểu học',
     'Chứng chỉ Sơ cấp cứu Chữ thập đỏ Việt Nam + BLS (Basic Life Support)',
-    'Chứng chỉ Nghiệp vụ Sư phạm Mầm non & Tiểu học — 5 năm trông trẻ toàn thời gian',
+    'Chứng chỉ Nghiệp vụ Sư phạm Mầm non & Tiểu học — 5 năm chăm sóc trẻ toàn thời gian',
     'Bằng lái xe máy A1 — đưa đón trẻ an toàn, thông thạo mọi tuyến đường TP. Huế',
 ]
 
@@ -64,7 +64,7 @@ AI_PROFILE_SUMMARY = (
     'Thông thạo TẤT CẢ bộ môn: gia sư mọi môn từ tiểu học đến THPT (Toán, Văn, Tiếng Anh, Lý, Hóa, Sinh, '
     'Lịch sử, Địa lý, GDCD, Tin học), ngoại ngữ 4 thứ tiếng (Anh IELTS 8.5, Trung HSK6, Nhật JLPT N1, Pháp DELF B2), '
     'âm nhạc (Piano, Organ, Guitar), mỹ thuật, lập trình Scratch/STEM, luyện chữ đẹp. '
-    'Chăm sóc trẻ toàn diện: mầm non, trông trẻ, đưa đón, sơ cấp cứu, nấu ăn dinh dưỡng. '
+    'Chăm sóc trẻ toàn diện: mầm non, đồng hành cùng trẻ, đưa đón, sơ cấp cứu, nấu ăn dinh dưỡng. '
     '99 ca hoàn thành 100% đúng giờ, 5.0 sao tuyệt đối, streak 99 không hủy — "cái gì cũng nhất".'
 )
 
@@ -173,7 +173,7 @@ class Command(BaseCommand):
             prof.has_vehicle = True
             prof.gender = 'male'
             prof.school = 'Đại học Sư Phạm - Đại học Huế'
-            prof.major = 'Sư phạm Toán (tổng hợp mọi bộ môn: Gia sư · Trông trẻ · Đưa đón · Âm nhạc · Ngoại ngữ · STEM)'
+            prof.major = 'Sư phạm Toán (tổng hợp mọi bộ môn: Gia sư · Đồng hành cùng trẻ · Đưa đón · Âm nhạc · Ngoại ngữ · STEM)'
             prof.skills = SUPER_SKILLS
             prof.rating_avg = 5.0
             prof.review_count = 99

@@ -126,7 +126,7 @@ const bookingAwaiting = {
 const bookingCommitted = {
   ...bookingAwaiting,
   id: 'b-comm', status: 'committed', status_label_vi: 'Đã cam kết',
-  job_title: 'Trông trẻ bé Bin tối thứ 3',
+  job_title: 'Đồng hành cùng trẻ bé Bin tối thứ 3',
   seconds_left: 0,
 };
 
@@ -147,7 +147,7 @@ const bookingCancelledByParent = {
 const bookingDeclined = {
   ...bookingAwaiting,
   id: 'b-decl', status: 'declined_in_window', status_label_vi: 'Bạn đã từ chối nhận ca',
-  job_title: 'Trông trẻ cuối tuần (đã từ chối)',
+  job_title: 'Đồng hành cùng trẻ cuối tuần (đã từ chối)',
   cancelled_at: '2026-09-10T09:00:00Z', seconds_left: 0,
 };
 
@@ -265,7 +265,7 @@ describe('MyJobsScreen — kiến trúc 4 tab vòng đời CarePartner', () => {
     expect(mockCommitBooking).toHaveBeenCalledWith('b-await');
     // Tab active tự đổi sang "Sắp làm" → card vừa cam kết + card committed cũ cùng hiện
     expect(tree.getByText('Gia sư Ngữ văn lớp 4')).toBeTruthy();
-    expect(tree.getByText('Trông trẻ bé Bin tối thứ 3')).toBeTruthy();
+    expect(tree.getByText('Đồng hành cùng trẻ bé Bin tối thứ 3')).toBeTruthy();
     // Badge tab Chờ xác nhận về 0 NGAY (cập nhật cục bộ, không đợi refetch)
     expect(within(tree.getByTestId('tab-badge-awaiting')).getByText('0')).toBeTruthy();
     // Không còn countdown xác nhận nào trên màn
@@ -307,7 +307,7 @@ describe('MyJobsScreen — kiến trúc 4 tab vòng đời CarePartner', () => {
 
     // Mount thẳng vào tab Sắp làm: card committed hiển thị kèm highlight
     expect(tree.getByTestId('highlight-card-b-comm')).toBeTruthy();
-    expect(tree.getByText('Trông trẻ bé Bin tối thứ 3')).toBeTruthy();
+    expect(tree.getByText('Đồng hành cùng trẻ bé Bin tối thứ 3')).toBeTruthy();
     // Card awaiting KHÔNG hiển thị ở tab này
     expect(tree.queryByText('Gia sư Ngữ văn lớp 4')).toBeNull();
     tree.unmount();
@@ -325,7 +325,7 @@ describe('MyJobsScreen — kiến trúc 4 tab vòng đời CarePartner', () => {
 
     expect(tree.getByText('Gia sư Toán lớp 9 đã xong')).toBeTruthy();
     expect(tree.getByText('Đón trẻ buổi chiều đã hủy')).toBeTruthy();
-    expect(tree.getByText('Trông trẻ cuối tuần (đã từ chối)')).toBeTruthy();
+    expect(tree.getByText('Đồng hành cùng trẻ cuối tuần (đã từ chối)')).toBeTruthy();
     expect(tree.getByText('Ca kèm buổi tối no-show')).toBeTruthy();
     // Bồi thường hiển thị với giá trị từ backend
     expect(tree.getByText('+50.000đ')).toBeTruthy();

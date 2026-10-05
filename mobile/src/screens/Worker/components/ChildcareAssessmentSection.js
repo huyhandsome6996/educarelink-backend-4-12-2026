@@ -1,5 +1,5 @@
 // ============================================================
-// ChildcareAssessmentSection — Form sinh hoạt (Trông trẻ)
+// ChildcareAssessmentSection — Form sinh hoạt (Đồng hành cùng trẻ)
 // CARE DIARY NÂNG CẤP — khớp API contract backend:
 //   assessment_data = {
 //     schema_version: 1,

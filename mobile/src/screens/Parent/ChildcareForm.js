@@ -1,5 +1,5 @@
 // ============================================================
-// ChildcareForm — Flow 1 Step 1 §B: Đăng việc TRÔNG TRẺ TẠI NHÀ
+// ChildcareForm — Flow 1 Step 1 §B: Đăng việc ĐỒNG HÀNH CÙNG TRẺ TẠI NHÀ
 // child_age_group + number_of_children + care_duties (multi-select)
 // + medical_allergy_notes + specific_requirements + dates/time/location
 // Redesign theo bản thiết kế chuẩn Google Stitch (Mobile Consumer App)
@@ -31,11 +31,9 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-// 5 nhóm tuổi chuẩn theo đặc tả Mục 2 (backend job_schema.CHILD_AGE_GROUPS)
+// Nhóm tuổi chuẩn — dự án CHỈ phục vụ trẻ từ 6 tuổi trở lên
+// (backend job_schema.CHILD_AGE_GROUPS — đã loại bỏ nhóm <6 tuổi)
 const AGE_GROUPS = [
-  { code: '0_to_12_months', label: '0 - 12 tháng', sub: 'Sơ sinh & ăn dặm', icon: '🍼' },
-  { code: '1_to_3_years', label: '1 - 3 tuổi', sub: 'Tập đi / Nhà trẻ', icon: '🧸' },
-  { code: '3_to_6_years', label: '3 - 6 tuổi', sub: 'Lớp Mầm / Mẫu giáo', icon: '🎨' },
   { code: '6_to_10_years', label: '6 - 10 tuổi', sub: 'Tiểu học & bài tập', icon: '📚' },
   { code: 'over_10_years', label: 'Trên 10 tuổi', sub: 'Kèm học & kỹ năng', icon: '🧒' },
 ];
@@ -60,7 +58,7 @@ const QUICK_REQUIREMENTS = [
 
 export default function ChildcareForm() {
   const navigation = useNavigation();
-  const [ageGroup, setAgeGroup] = useState('1_to_3_years');
+  const [ageGroup, setAgeGroup] = useState('6_to_10_years');
   const [numChildren, setNumChildren] = useState('1');
   const [duties, setDuties] = useState(['general_care', 'feeding', 'sleep_monitoring', 'play_activities']);
   const [allergyNotes, setAllergyNotes] = useState('');
@@ -116,11 +114,11 @@ export default function ChildcareForm() {
 
   const submit = async () => {
     if (dates.length === 0) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng chọn ít nhất 1 ngày cần trông trẻ.');
+      Alert.alert('Thiếu thông tin', 'Vui lòng chọn ít nhất 1 ngày cần đồng hành cùng trẻ.');
       return;
     }
     if (!location) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng chọn địa điểm trông trẻ để tìm CarePartner gần nhất.');
+      Alert.alert('Thiếu thông tin', 'Vui lòng chọn địa điểm để tìm CarePartner gần nhất.');
       return;
     }
 
@@ -171,7 +169,7 @@ export default function ChildcareForm() {
         ...job,
         ...(freshJob || {}),
         title: pubRes?.title || freshJob?.title || job.title || `Trông ${numChildren} bé`,
-        category_label: freshJob?.category_label || pubRes?.category_label || 'Chăm sóc & Trông trẻ tại nhà',
+        category_label: freshJob?.category_label || pubRes?.category_label || 'Chăm sóc & Đồng hành cùng trẻ tại nhà',
         category_icon: freshJob?.category_icon || pubRes?.category_icon || 'heart',
         hourly_rate_vnd: Number(rate),
         schedule: freshJob?.schedule || pubRes?.schedule || scheduleStr,
@@ -207,7 +205,7 @@ export default function ChildcareForm() {
         const fallbackRichJob = {
           id: createdJobId,
           title: `Trông ${numChildren} bé`,
-          category_label: 'Chăm sóc & Trông trẻ tại nhà',
+          category_label: 'Chăm sóc & Đồng hành cùng trẻ tại nhà',
           category_icon: 'heart',
           hourly_rate_vnd: Number(rate),
           schedule: fallbackSchedule,
@@ -247,7 +245,7 @@ export default function ChildcareForm() {
         </TouchableOpacity>
 
         <View style={styles.titleWrap}>
-          <Text style={styles.topBarTitle}>Trông trẻ tại nhà</Text>
+          <Text style={styles.topBarTitle}>Đồng hành cùng trẻ tại nhà</Text>
           <View style={styles.subTitleWrap}>
             <View style={styles.dotIndicator} />
             <Text style={styles.topBarSub}>Bước 1/2 · Chi tiết ca chăm sóc</Text>
@@ -258,7 +256,7 @@ export default function ChildcareForm() {
           style={styles.circleBtn}
           onPress={() =>
             Alert.alert(
-              'Cam kết an toàn trông trẻ',
+              'Cam kết an toàn đồng hành cùng trẻ',
               '• 100% CarePartner xác thực CCCD gắn chip & lý lịch tư pháp sạch.\n• Có bảo hiểm hỗ trợ sự cố trong suốt thời gian làm việc.\n• Thanh toán qua ví an toàn, chỉ giải ngân khi phụ huynh xác nhận xong việc.',
               [{ text: 'Đã hiểu', style: 'default' }]
             )
@@ -425,7 +423,7 @@ export default function ChildcareForm() {
         {/* SECTION 5: YÊU CẦU CỤ THỂ VỚI BẢO MẪU */}
         <View style={styles.sectionCard}>
           <Text style={styles.label}>
-            Yêu cầu chi tiết đối với người trông trẻ <Text style={styles.star}>*</Text>
+            Yêu cầu chi tiết đối với người đồng hành cùng trẻ <Text style={styles.star}>*</Text>
           </Text>
           <TextInput
             style={[styles.input, styles.textarea]}
@@ -552,7 +550,7 @@ export default function ChildcareForm() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.label}>
-              Địa điểm trông bé <Text style={styles.star}>*</Text>
+              Địa điểm đồng hành <Text style={styles.star}>*</Text>
             </Text>
             <Text style={styles.helperHint}>Nhà riêng</Text>
           </View>
@@ -609,7 +607,7 @@ export default function ChildcareForm() {
       <SearchingCarePartnerModal
         visible={searchModalVisible}
         status={searchStatus}
-        serviceType="Trông trẻ tại nhà"
+        serviceType="Đồng hành cùng trẻ tại nhà"
         serviceIcon="heart"
         errorMessage={searchError}
         onClose={() => setSearchModalVisible(false)}

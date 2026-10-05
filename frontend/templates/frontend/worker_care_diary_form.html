@@ -234,10 +234,10 @@
           </div>
         </div>
 
-        <!-- CHILDCARE — Form sinh hoạt (Trông trẻ) -->
+        <!-- CHILDCARE — Form sinh hoạt (Đồng hành cùng trẻ) -->
         <div id="childcare-assessment" class="hidden bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 space-y-5">
           <h3 class="font-manrope font-bold text-base text-textPrimary flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">volunteer_activism</span>Sinh hoạt buổi trông trẻ
+            <span class="material-symbols-outlined text-primary">volunteer_activism</span>Sinh hoạt buổi đồng hành cùng trẻ
           </h3>
           <!-- Bữa ăn -->
           <div>
@@ -392,7 +392,7 @@ function showAssessmentForCategory() {
   const banner = document.getElementById('assessment-banner');
   banner.classList.toggle('hidden', t === 'general');
   document.getElementById('assessment-banner-text').textContent =
-    t === 'tutoring' ? 'Form đánh giá buổi học (Gia sư)' : 'Form sinh hoạt buổi trông trẻ';
+    t === 'tutoring' ? 'Form đánh giá buổi học (Gia sư)' : 'Form sinh hoạt buổi đồng hành cùng trẻ';
   toggleActivitiesEmpty();
 }
 

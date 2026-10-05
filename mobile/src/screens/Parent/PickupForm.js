@@ -31,9 +31,9 @@ if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-// 5 nhóm tuổi chuẩn theo đặc tả Mục 2 (backend job_schema.CHILD_AGE_GROUPS)
+// Nhóm tuổi chuẩn — dự án CHỈ phục vụ trẻ từ 6 tuổi trở lên
+// (backend job_schema.CHILD_AGE_GROUPS — đã loại bỏ nhóm <6 tuổi)
 const AGE_GROUPS = [
-  { code: '3_to_6_years', label: '3 - 6 tuổi', sub: 'Mầm non' },
   { code: '6_to_10_years', label: '6 - 10 tuổi', sub: 'Tiểu học' },
   { code: 'over_10_years', label: 'Trên 10 tuổi', sub: 'Cấp 2' },
 ];

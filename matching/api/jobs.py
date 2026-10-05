@@ -52,7 +52,7 @@ class JobPostSerializer(serializers.ModelSerializer):
     def get_category_label(self, obj):
         mapping = {
             'tutoring': 'Gia sư & Kèm học 1:1',
-            'childcare': 'Chăm sóc & Trông trẻ tại nhà',
+            'childcare': 'Chăm sóc & Đồng hành cùng trẻ tại nhà',
             'pickup': 'Đưa đón trẻ an toàn',
         }
         return mapping.get(obj.job_type, 'Dịch vụ chăm sóc')
@@ -92,7 +92,7 @@ def build_initial_title(job_type, type_data):
         age_str = CHILD_AGE_GROUPS.get(age_group, '')
         num = type_data.get('number_of_children', 1)
         age_part = f" ({age_str})" if age_str else ""
-        return f"Trông {num} bé{age_part}".strip()[:80]
+        return f"Đồng hành cùng {num} bé{age_part}".strip()[:80]
     if job_type == 'pickup':
         place = (
             type_data.get('school_or_pickup_place_name') or

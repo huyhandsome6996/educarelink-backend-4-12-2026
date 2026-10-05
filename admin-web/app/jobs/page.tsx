@@ -11,7 +11,7 @@ type Job = {
 };
 
 const TYPE_VI: Record<string, string> = {
-  tutoring: 'Gia sư', childcare: 'Trông trẻ', pickup: 'Đón trẻ',
+  tutoring: 'Gia sư', childcare: 'Đồng hành cùng trẻ', pickup: 'Đón trẻ',
 };
 
 export default function JobsPage() {

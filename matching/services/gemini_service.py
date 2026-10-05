@@ -52,7 +52,8 @@ SKILL_KEYWORDS = {
     'sinh': ['sinh học', 'sinh hoc', 'môn sinh', 'mon sinh'],
     'su_pham': ['sư phạm', 'su pham', 'giáo dục', 'giao duc'],
     'mam_non': ['mầm non', 'mam non', 'mẫu giáo', 'mau giao'],
-    'trong_tre': ['trông trẻ', 'trong tre', 'chăm sóc trẻ', 'cham soc tre', 'giữ trẻ', 'giu tre'],
+    'trong_tre': ['trông trẻ', 'trong tre', 'chăm sóc trẻ', 'cham soc tre', 'giữ trẻ', 'giu tre',
+                  'đồng hành cùng trẻ', 'dong hanh cung tre', 'đồng hành cùng bé'],
     'don_tre': ['đón trẻ', 'don tre', 'đưa đón', 'dua don', 'đón bé', 'don be'],
     'so_cap_cuu': ['sơ cấp cứu', 'so cap cuu', 'y tế', 'y te', 'an toàn'],
     'nau_an': ['nấu ăn', 'nau an', 'dinh dưỡng', 'dinh duong', 'ăn dặm', 'an dam'],
@@ -174,7 +175,7 @@ def _auto_title(job, subject=''):
         age_str = CHILD_AGE_GROUPS.get(age_group, '')
         num = type_data.get('number_of_children', 1)
         age_part = f" ({age_str})" if age_str else ""
-        return f"Trông {num} bé{age_part}".strip()[:80]
+        return f"Đồng hành cùng {num} bé{age_part}".strip()[:80]
     elif getattr(job, 'job_type', '') == 'pickup':
         place = (
             type_data.get('school_or_pickup_place_name') or
@@ -183,7 +184,7 @@ def _auto_title(job, subject=''):
         )
         num = type_data.get('number_of_children', 1)
         return f"Đón {num} bé tại {place}".strip()[:80]
-    titles = {'tutoring': 'Gia sư', 'childcare': 'Trông trẻ', 'pickup': 'Đón trẻ'}
+    titles = {'tutoring': 'Gia sư', 'childcare': 'Đồng hành cùng trẻ', 'pickup': 'Đón trẻ'}
     return f"{titles.get(getattr(job, 'job_type', ''), 'Công việc')} {subject}".strip()[:80]
 
 
@@ -340,8 +341,9 @@ def seed_default_prompt_template():
                 'required_skills (list code kỹ năng: toan, van, tieng_anh, ly, hoa, sinh, '
                 'su_pham, mc, ky_nang_song, dan_piano, ve, tieu_hoc, kien_nhan, cham_soc_tre), '
                 'category_tags (list), '
-                'child_grade_level (1 trong: preschool_prep|primary_grade_1_5|secondary_grade_6_9|'
-                'high_school_grade_10_12|null — suy từ mô tả nếu có), '
+                'child_grade_level (1 trong: primary_grade_1_5|secondary_grade_6_9|'
+                'high_school_grade_10_12|null — suy từ mô tả nếu có; dự án chỉ phục vụ '
+                'trẻ từ 6 tuổi trở lên nên KHÔNG dùng preschool_prep), '
                 'tutor_seniority_preference (student_year_1_2|student_year_3_4|graduate|no_preference|null), '
                 'dates (list YYYY-MM-DD), recurrence (object hoặc {}), '
                 'time_from, time_to, hourly_rate_vnd (int), urgency (normal|high), '

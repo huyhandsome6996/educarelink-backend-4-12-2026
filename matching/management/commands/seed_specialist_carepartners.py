@@ -46,7 +46,7 @@ SPECIALIST_CAREPARTNERS = [
             'Sinh viên năm cuối Khoa Sư phạm Âm nhạc - ĐH Sư Phạm - ĐH Huế',
             'Chứng chỉ Piano Quốc tế ABRSM Grade 8',
             'Giải Nhì Festival Piano trẻ toàn quốc',
-            'Kinh nghiệm 4 năm gia sư đàn piano & organ cho trẻ từ 5-12 tuổi',
+            'Kinh nghiệm 4 năm gia sư đàn piano & organ cho trẻ từ 6-12 tuổi',
         ],
         'summary': 'Giảng dạy Piano & Organ cơ bản đến nâng cao theo giáo trình ABRSM/Alfred. Phương pháp nhẹ nhàng, khơi gợi cảm xúc âm nhạc, rèn luyện tư thế ngón tay và khả năng xướng âm chuẩn.',
         'elo': 1580,
@@ -97,7 +97,7 @@ SPECIALIST_CAREPARTNERS = [
         'skills': ['ve', 've_tranh', 'my_thuat', 'hoi_hoa', 'kien_nhan'],
         'qualifications': [
             'Sinh viên năm 4 ngành Mỹ thuật - ĐH Khoa học - ĐH Huế',
-            'Kinh nghiệm 3 năm dạy vẽ màu nước, sáp dầu và tạo hình sáng tạo cho bé 4-10 tuổi',
+            'Kinh nghiệm 3 năm dạy vẽ màu nước, sáp dầu và tạo hình sáng tạo cho bé 6-10 tuổi',
             'Giải Ba triển lãm mỹ thuật trẻ Thừa Thiên Huế',
         ],
         'summary': 'Dạy kèm mỹ thuật, vẽ tranh sáng tạo và bồi dưỡng tư duy thị giác. Hướng dẫn bé phối màu, cảm nhận bố cục và tự do thể hiện thế giới quan.',

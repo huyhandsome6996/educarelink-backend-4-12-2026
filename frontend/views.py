@@ -177,7 +177,7 @@ class LandingPageView(TemplateView):
 # ====================================================================
 
 class DangViecSelectView(TemplateView):
-    """Chọn 1 trong ĐÚNG 3 loại việc: Gia sư / Trông trẻ / Đón trẻ."""
+    """Chọn 1 trong ĐÚNG 3 loại việc: Gia sư / Đồng hành cùng trẻ / Đón trẻ."""
     template_name = "frontend/dang_viec_select.html"
 
 
@@ -187,7 +187,7 @@ class DangViecGiaSuView(TemplateView):
 
 
 class DangViecTrongTreView(TemplateView):
-    """Form đăng việc Trông trẻ — chăm sóc tại nhà."""
+    """Form đăng việc Đồng hành cùng trẻ — chăm sóc tại nhà."""
     template_name = "frontend/dang_viec_trong_tre.html"
 
 

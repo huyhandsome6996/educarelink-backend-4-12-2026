@@ -253,13 +253,8 @@
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Độ tuổi của bé <span class="text-rose-500">*</span>
                 </label>
-                <div class="grid grid-cols-3 gap-2.5" id="ageGroupContainer">
-                  <button type="button" onclick="selectAgeGroup('3_to_6_years')" data-val="3_to_6_years"
-                    class="age-card p-3 rounded-2xl border text-center transition-all border-slate-200 bg-white hover:border-orange-300">
-                    <span class="material-symbols-outlined text-xl block mb-1 text-slate-600">child_care</span>
-                    <span class="block text-xs font-bold text-slate-800">3 - 6 tuổi</span>
-                    <span class="text-[10px] text-slate-400">Mầm non</span>
-                  </button>
+                <!-- Chính sách: chỉ phục vụ trẻ từ 6 tuổi trở lên — nhóm dưới 6 tuổi đã bị loại khỏi form. -->
+                <div class="grid grid-cols-2 gap-2.5" id="ageGroupContainer">
                   <button type="button" onclick="selectAgeGroup('6_to_10_years')" data-val="6_to_10_years"
                     class="age-card p-3 rounded-2xl border text-center transition-all border-brand bg-orange-50/70 ring-2 ring-brand/20 shadow-xs">
                     <span class="material-symbols-outlined text-xl block mb-1 text-brand">backpack</span>

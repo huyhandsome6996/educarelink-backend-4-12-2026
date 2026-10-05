@@ -14,11 +14,16 @@ django.setup()
 import uuid  # noqa: E402
 
 from django.test import Client  # noqa: E402
+from django.test.utils import setup_test_environment  # noqa: E402
+
+# Cho phép test client dùng host mặc định 'testserver' kể cả khi DEBUG=False
+# (tránh DisallowedHost khi chạy offline ngoài môi trường dev).
+setup_test_environment()
 
 PAGES = [
     ('/dang-viec/', 'Đăng việc ghép cặp'),
     ('/dang-viec/gia-su/', 'Gia sư dạy kèm'),
-    ('/dang-viec/trong-tre/', 'Trông trẻ tại nhà'),
+    ('/dang-viec/trong-tre/', 'Đồng hành cùng trẻ tại nhà'),
     ('/dang-viec/don-tre/', 'Đón trẻ tan trường'),
     (f'/ung-vien/{uuid.uuid4()}/', 'Danh sách ứng viên'),
     (f'/don/{uuid.uuid4()}/', 'Chi tiết đơn'),
@@ -47,30 +52,41 @@ for url, name in PAGES:
         FAILS.append((url, checks))
 
 # Đối chiếu nội dung đặc tả mới trên 2 form
+# Chính sách 6+: form web chỉ còn nhóm tuổi 6_to_10_years / over_10_years —
+# các nhóm dưới 6 tuổi (0_to_12_months, 1_to_3_years, 3_to_6_years và alias
+# under_3 / preschool) đã bị xóa khỏi giao diện và PHẢI KHÔNG xuất hiện lại.
+# (Lưu ý: 'primary' / 'secondary' / 'mixed' chỉ là alias backend trong
+# matching/services/job_schema.py, không render trên web nên không check ở đây.)
 r1 = client.get('/dang-viec/trong-tre/').content.decode()
-for token in ['0_to_12_months', '1_to_3_years', 'over_10_years',
+check_label = ('Đồng hành cùng trẻ tại nhà' in r1
+               and 'Trông trẻ tại nhà' not in r1)
+print(f"[{('PASS' if check_label else 'FAIL')}] trong-tre — nhãn mới 'Đồng hành cùng trẻ tại nhà' (không còn 'Trông trẻ tại nhà')")
+if not check_label:
+    FAILS.append(('trong-tre-label', 'Đồng hành cùng trẻ tại nhà'))
+for token in ['6_to_10_years', 'over_10_years',
               'general_care', 'feeding', 'bathing', 'sleep_monitoring',
               'play_activities', 'homework_help', 'light_chores']:
     if token not in r1:
         FAILS.append(('trong-tre', token))
         print(f'[FAIL] trong-tre thiếu token {token}')
 for old in ['"feed"', '"bath"', '"study"', '"play"', '"sleep"', '"transport"',
-            'under_3', 'preschool']:
+            'under_3', 'preschool',
+            '0_to_12_months', '1_to_3_years', '3_to_6_years']:
     if old in r1:
         FAILS.append(('trong-tre-old', old))
-        print(f'[FAIL] trong-tre VẪN CÒN key cũ {old}')
+        print(f'[FAIL] trong-tre VẪN CÒN token nhóm tuổi <6 / key cũ {old}')
 
 r2 = client.get('/dang-viec/don-tre/').content.decode()
-for token in ['0_to_12_months', 'over_10_years', 'transportMethod',
-              'walking', 'carepartner_vehicle', 'parent_arranged',
-              'payload.transport_method']:
+for token in ['6_to_10_years', 'over_10_years', 'selectTransport',
+              'transport_method', 'walking', 'carepartner_vehicle',
+              'parent_arranged']:
     if token not in r2:
         FAILS.append(('don-tre', token))
         print(f'[FAIL] don-tre thiếu token {token}')
-for old in ['under_3', 'preschool']:
+for old in ['under_3', 'preschool', '0_to_12_months', '3_to_6_years']:
     if old in r2:
         FAILS.append(('don-tre-old', old))
-        print(f'[FAIL] don-tre VẪN CÒN key cũ {old}')
+        print(f'[FAIL] don-tre VẪN CÒN token nhóm tuổi <6 / key cũ {old}')
 
 # Geocode endpoint resolve + validate input (không cần mạng)
 from django.urls import reverse  # noqa: E402

@@ -92,7 +92,7 @@ jest.mock('../api/matching', () => {
     getBookings: mockOk([]),
     getBookingDetail: mockOk({
       id: 'booking-1', status: 'committed', status_label_vi: 'Đã cam kết',
-      job_title: 'Trông trẻ tối thứ 3', carepartner_id: 'cp-1',
+      job_title: 'Đồng hành cùng trẻ tối thứ 3', carepartner_id: 'cp-1',
       total_value_vnd: 200000, compensation_vnd: 0,
     }),
     cancelBooking: mockOk({}),

@@ -13,7 +13,7 @@ export const CATEGORY_ICONS = {
   1: { icon: 'book', name: 'Gia sư', color: COLORS.primary, bg: COLORS.primaryLight },
   2: { icon: 'happy', name: 'Đón trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
   3: { icon: 'sparkles', name: 'Dọn dẹp', color: COLORS.primary, bg: COLORS.primaryLight },
-  4: { icon: 'people', name: 'Trông trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
+  4: { icon: 'people', name: 'Đồng hành cùng trẻ', color: COLORS.primary, bg: COLORS.primaryLight },
   5: { icon: 'bag', name: 'Mua sắm hộ', color: COLORS.primary, bg: COLORS.primaryLight },
   6: { icon: 'restaurant', name: 'Nấu ăn', color: COLORS.primary, bg: COLORS.primaryLight },
   7: { icon: 'cube', name: 'Chuyển đồ', color: COLORS.primary, bg: COLORS.primaryLight },

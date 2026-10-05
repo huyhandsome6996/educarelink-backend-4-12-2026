@@ -36,7 +36,7 @@ def _vi_choices(mapping):
 # ═══════════════════════════════════════════════════════════════════
 
 class JobPost(models.Model):
-    """Bài đăng việc của phụ huynh — chỉ 3 loại: gia sư / trông trẻ / đón trẻ.
+    """Bài đăng việc của phụ huynh — chỉ 3 loại: gia sư / đồng hành cùng trẻ / đón trẻ.
 
     Bài đăng đi qua state machine 13 trạng thái (JobPostStatus). Dữ liệu riêng
     từng loại job nằm trong type_data JSON (schema ở matching/services/job_schema.py,
@@ -52,7 +52,8 @@ class JobPost(models.Model):
 
     class JobType(models.TextChoices):
         TUTORING = 'tutoring', 'Gia sư'
-        CHILDCARE = 'childcare', 'Trông trẻ'
+        # Nhãn hiển thị mới 2026-09-28: "Đồng hành cùng trẻ" (giữ giá trị 'childcare')
+        CHILDCARE = 'childcare', 'Đồng hành cùng trẻ'
         PICKUP = 'pickup', 'Đón trẻ'
 
     job_type = models.CharField(max_length=20, choices=JobType.choices, db_index=True,

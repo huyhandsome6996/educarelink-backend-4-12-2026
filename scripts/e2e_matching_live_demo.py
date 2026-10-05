@@ -4,7 +4,7 @@ trên DB dev (KHÔNG qua test framework), đi đúng luồng phụ huynh ↔ sin
 theo tài liệu mô tả. Chạy:  python scripts/e2e_matching_live_demo.py
 
 Kịch bản (10 bước, dữ liệu mới hoàn toàn mỗi lần chạy):
-  S1  Đăng + publish việc trông trẻ (giới tính nữ) — AI fallback hoạt động
+  S1  Đăng + publish việc đồng hành cùng trẻ (giới tính nữ) — AI fallback hoạt động
   S2  Ứng viên: đúng 6 nữ đạt yêu cầu (lọc cứng: giới tính, bán kính 33km,
       lịch rảnh, band bị chặn), điểm giảm dần, nhãn tiếng Việt, KHÔNG lộ ELO
   S3  Chọn CP → booking tạo NGAY awaiting_commitment, push critical cho CP

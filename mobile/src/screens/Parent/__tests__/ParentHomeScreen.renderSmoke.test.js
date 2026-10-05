@@ -118,7 +118,7 @@ beforeEach(() => {
         {
           id: 'b-1',
           job_id: 'j-1',
-          job_title: 'Trông trẻ tối thứ Ba cho bé Mai',
+          job_title: 'Đồng hành cùng trẻ tối thứ Ba cho bé Mai',
           status: 'committed',
           status_label_vi: 'Đã khóa lịch',
           total_value_vnd: 180000,

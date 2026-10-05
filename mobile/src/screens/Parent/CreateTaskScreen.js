@@ -34,7 +34,7 @@ if (Platform.OS !== 'web') {
 const CATEGORIES = [
   { id: 1, iconName: 'book', name: 'Gia sư', hint: '150.000đ - 300.000đ/buổi', pricingType: 'hourly' },
   { id: 2, iconName: 'happy', name: 'Đón trẻ', hint: '80.000đ - 150.000đ/lần', pricingType: 'distance' },
-  { id: 4, iconName: 'people', name: 'Trông trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
+  { id: 4, iconName: 'people', name: 'Đồng hành cùng trẻ', hint: '100.000đ - 200.000đ/buổi', pricingType: 'hourly' },
 ];
 
 export default function CreateTaskScreen() {

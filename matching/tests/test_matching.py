@@ -356,7 +356,7 @@ class GenderHardFilterTest(MatchingBaseTest):
 class SpecializedSkillGatingTest(MatchingBaseTest):
     """Regression & Bug tests cho kỹ năng môn đặc thù (Piano, Múa, Vẽ, Ngoại ngữ...).
     
-    Ngăn chặn tuyệt đối việc gán CarePartner không liên quan (Toán, Trông trẻ...)
+    Ngăn chặn tuyệt đối việc gán CarePartner không liên quan (Toán, Đồng hành cùng trẻ...)
     cho môn đặc thù khi không có người đáp ứng.
     """
 

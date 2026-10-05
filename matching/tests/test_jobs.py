@@ -51,7 +51,7 @@ class JobCreateTest(MatchingTestBase):
 
     def test_childcare_needs_duties(self):
         resp = self.client.post('/api/matching/jobs/', {
-            'job_type': 'childcare', 'child_age_group': 'preschool',
+            'job_type': 'childcare', 'child_age_group': 'primary',
             'number_of_children': 2, 'care_duties': [],
             'specific_requirements': 'Biết nấu cháo',
             'dates': [self.tomorrow], 'time_from': '08:00', 'time_to': '17:00',
@@ -61,7 +61,7 @@ class JobCreateTest(MatchingTestBase):
 
     def test_childcare_full_payload_201(self):
         resp = self.client.post('/api/matching/jobs/', {
-            'job_type': 'childcare', 'child_age_group': 'preschool',
+            'job_type': 'childcare', 'child_age_group': 'primary',
             'number_of_children': 2, 'care_duties': ['feed', 'play'],
             'medical_allergy_notes': 'Dị ứng hải sản',
             'specific_requirements': 'Biết nấu cháo',

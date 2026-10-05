@@ -43,7 +43,7 @@ JUDGES = [
         "phone": "0903 445 566",
         "credit": "3.200.000 VNĐ",
         "address": "Vincom Plaza, 50A Hùng Vương, P. Phú Nhuận, TP. Huế",
-        "role_desc": "Phụ huynh bận rộn, cần người trông trẻ & đưa đón hàng ngày",
+        "role_desc": "Phụ huynh bận rộn, cần người đồng hành cùng trẻ & đưa đón hàng ngày",
     },
     {
         "id": 3,
@@ -53,7 +53,7 @@ JUDGES = [
         "phone": "0903 778 899",
         "credit": "1.500.000 VNĐ",
         "address": "15 Lê Lợi, P. Vĩnh Ninh, TP. Huế (gần BV TW Huế)",
-        "role_desc": "Bác sĩ, ca trực đêm, cần tìm CarePartner nữ kinh nghiệm trông trẻ",
+        "role_desc": "Bác sĩ, ca trực đêm, cần tìm CarePartner nữ kinh nghiệm đồng hành cùng trẻ",
     },
     {
         "id": 4,
@@ -79,7 +79,7 @@ CAREPARTNER = {
     "rating": "5.0 / 5.0 (18 việc hoàn thành)",
     "skills": "IELTS 7.5 • Sơ cấp cứu Nhi khoa • Xe máy A1",
     "address": "KTX ĐH Sư Phạm, 32 Lê Lợi, TP. Huế",
-    "role_desc": "CarePartner tiêu biểu: Gia sư Toán, Đón trẻ & Trông trẻ",
+    "role_desc": "CarePartner tiêu biểu: Gia sư Toán, Đón trẻ & Đồng hành cùng trẻ",
 }
 
 BASE_URL = "https://educarelink-backend.onrender.com"

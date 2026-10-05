@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduCareLink — Đăng việc Trông trẻ tại nhà | Parity Mobile</title>
+  <title>EduCareLink — Đăng việc Đồng hành cùng trẻ tại nhà | Parity Mobile</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
   <link rel="shortcut icon" href="/static/images/favicon.ico">
 
@@ -111,10 +111,10 @@
             <div class="flex items-center gap-2">
               <span class="font-headline font-extrabold text-slate-900 tracking-tight text-sm sm:text-base">EduCareLink</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand border border-brand-200/60">
-                Trông Trẻ Tại Nhà
+                Đồng Hành Cùng Trẻ Tại Nhà
               </span>
             </div>
-            <p class="text-[11px] sm:text-xs text-slate-500 truncate hidden md:block">Bảo mẫu & CarePartner xác thực CCCD, kỹ năng sơ cứu và chăm sóc trẻ chuẩn mầm non</p>
+            <p class="text-[11px] sm:text-xs text-slate-500 truncate hidden md:block">Bảo mẫu & CarePartner xác thực CCCD, kỹ năng sơ cứu và chăm sóc trẻ tiểu học và THCS</p>
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@
               Chăm sóc bé tận tâm & An toàn tuyệt đối tại nhà
             </div>
             <h1 class="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl tracking-tight text-white leading-tight">
-              Tìm người trông trẻ, chơi cùng bé và chăm sóc an tâm mỗi ngày
+              Tìm người đồng hành cùng trẻ, chơi cùng bé và chăm sóc an tâm mỗi ngày
             </h1>
             <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-normal">
               Kết nối nhanh bảo mẫu mầm non, sinh viên điều dưỡng / sư phạm yêu trẻ trong bán kính gần nhất. Đảm bảo lý lịch trong sạch, thẻ CCCD gắn chip và tác phong chuẩn mực.
@@ -231,32 +231,17 @@
                   Nhóm tuổi của bé <span class="text-rose-500">*</span>
                 </label>
                 <span id="selectedAgeBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand border border-brand-100">
-                  1 - 3 tuổi (Tập đi / Nhà trẻ)
+                  6 - 10 tuổi (Tiểu học & bài tập)
                 </span>
               </div>
 
               <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5" id="ageGroupContainer">
-                <button type="button" onclick="selectAgeGroup('0_to_12_months')" data-age="0_to_12_months" class="age-card p-3 rounded-2xl border text-left transition-all border-slate-200 hover:border-brand/40 bg-white">
-                  <div class="mb-1"><span class="material-symbols-outlined text-2xl text-slate-600">child_care</span></div>
-                  <div class="font-bold text-xs sm:text-sm text-slate-800">0 - 12 tháng</div>
-                  <div class="text-[11px] text-slate-400 truncate">Sơ sinh & ăn dặm</div>
+                <button type="button" onclick="selectAgeGroup('6_to_10_years')" data-age="6_to_10_years" class="age-card p-3 rounded-2xl border text-left transition-all border-brand bg-brand-50/60 shadow-xs ring-2 ring-brand/20">
+                  <div class="mb-1"><span class="material-symbols-outlined text-2xl text-brand">menu_book</span></div>
+                  <div class="font-bold text-xs sm:text-sm text-brand-700">6 - 10 tuổi</div>
+                  <div class="text-[11px] text-brand-600/80 truncate">Tiểu học & bài tập</div>
                 </button>
-                <button type="button" onclick="selectAgeGroup('1_to_3_years')" data-age="1_to_3_years" class="age-card p-3 rounded-2xl border text-left transition-all border-brand bg-brand-50/60 shadow-xs ring-2 ring-brand/20">
-                  <div class="mb-1"><span class="material-symbols-outlined text-2xl text-brand">toys</span></div>
-                  <div class="font-bold text-xs sm:text-sm text-brand-700">1 - 3 tuổi</div>
-                  <div class="text-[11px] text-brand-600/80 truncate">Tập đi / Nhà trẻ</div>
-                </button>
-                <button type="button" onclick="selectAgeGroup('3_to_6_years')" data-age="3_to_6_years" class="age-card p-3 rounded-2xl border text-left transition-all border-slate-200 hover:border-brand/40 bg-white">
-                  <div class="mb-1"><span class="material-symbols-outlined text-2xl text-slate-600">palette</span></div>
-                  <div class="font-bold text-xs sm:text-sm text-slate-800">3 - 6 tuổi</div>
-                  <div class="text-[11px] text-slate-400 truncate">Lớp Mầm / Mẫu giáo</div>
-                </button>
-                <button type="button" onclick="selectAgeGroup('6_to_10_years')" data-age="6_to_10_years" class="age-card p-3 rounded-2xl border text-left transition-all border-slate-200 hover:border-brand/40 bg-white">
-                  <div class="mb-1"><span class="material-symbols-outlined text-2xl text-slate-600">menu_book</span></div>
-                  <div class="font-bold text-xs sm:text-sm text-slate-800">6 - 10 tuổi</div>
-                  <div class="text-[11px] text-slate-400 truncate">Tiểu học & bài tập</div>
-                </button>
-                <button type="button" onclick="selectAgeGroup('over_10_years')" data-age="over_10_years" class="age-card p-3 rounded-2xl border text-left transition-all border-slate-200 hover:border-brand/40 bg-white col-span-2 sm:col-span-1">
+                <button type="button" onclick="selectAgeGroup('over_10_years')" data-age="over_10_years" class="age-card p-3 rounded-2xl border text-left transition-all border-slate-200 hover:border-brand/40 bg-white">
                   <div class="mb-1"><span class="material-symbols-outlined text-2xl text-slate-600">school</span></div>
                   <div class="font-bold text-xs sm:text-sm text-slate-800">Trên 10 tuổi</div>
                   <div class="text-[11px] text-slate-400 truncate">Kèm học & kỹ năng</div>
@@ -357,7 +342,7 @@
                 2
               </div>
               <div class="flex-1">
-                <h2 class="font-headline font-bold text-lg text-obsidian">Lịch trông trẻ & Thời lượng</h2>
+                <h2 class="font-headline font-bold text-lg text-obsidian">Lịch đồng hành cùng trẻ & Thời lượng</h2>
                 <p class="text-xs text-slate-500">Chọn các ngày cần bảo mẫu đến nhà (hỗ trợ chọn nhiều ngày hoặc cả tuần)</p>
               </div>
               <div class="hidden sm:flex items-center gap-2">
@@ -401,7 +386,7 @@
             <div class="pt-4 border-t border-slate-100 space-y-4">
               <div class="flex items-center justify-between">
                 <label class="block text-sm font-bold text-slate-800">
-                  Khung giờ trông trẻ mỗi buổi <span class="text-rose-500">*</span>
+                  Khung giờ mỗi buổi <span class="text-rose-500">*</span>
                 </label>
                 <span id="durationBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand border border-brand-100">
                   8.0 giờ / buổi
@@ -451,7 +436,7 @@
                 3
               </div>
               <div>
-                <h2 class="font-headline font-bold text-lg text-obsidian">Địa chỉ trông trẻ & Bản đồ định vị</h2>
+                <h2 class="font-headline font-bold text-lg text-obsidian">Địa chỉ & Bản đồ định vị</h2>
                 <p class="text-xs text-slate-500">Hệ thống quét bảo mẫu và CarePartner uy tín trong bán kính gần nhất</p>
               </div>
             </div>
@@ -473,7 +458,7 @@
               <div class="flex items-start gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
                 <span class="material-symbols-outlined text-brand text-base mt-0.5">location_on</span>
                 <div>
-                  <span class="text-slate-500 font-medium">Vị trí điểm trông trẻ:</span>
+                  <span class="text-slate-500 font-medium">Vị trí địa điểm:</span>
                   <span id="mapAddr" class="font-bold text-slate-800 ml-1">Chưa chọn vị trí (bấm tìm kiếm hoặc dùng GPS)</span>
                 </div>
               </div>
@@ -510,7 +495,7 @@
             <div class="space-y-2">
               <span class="text-xs font-semibold text-slate-600">Thẻ gợi ý nhanh (nhấp để chèn):</span>
               <div class="flex flex-wrap gap-2">
-                <button type="button" onclick="insertQuickTag('Không dùng điện thoại khi trông bé')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 hover:text-brand text-slate-700 text-xs font-medium border border-slate-200/70 transition-all">
+                <button type="button" onclick="insertQuickTag('Không dùng điện thoại khi đồng hành cùng bé')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 hover:text-brand text-slate-700 text-xs font-medium border border-slate-200/70 transition-all">
                   + Không dùng ĐT khi trông
                 </button>
                 <button type="button" onclick="insertQuickTag('Biết kỹ năng sơ cứu trẻ em')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 hover:text-brand text-slate-700 text-xs font-medium border border-slate-200/70 transition-all">
@@ -710,7 +695,7 @@
         </div>
         <h3 class="font-headline font-extrabold text-xl text-emerald-700">Đăng việc thành công!</h3>
         <p class="text-xs sm:text-sm text-slate-600 mt-1 max-w-xs mx-auto">
-          Đã phát tín hiệu trông trẻ. Đang chuyển hướng sang danh sách ứng viên phù hợp...
+          Đã phát tín hiệu đồng hành cùng trẻ. Đang chuyển hướng sang danh sách ứng viên phù hợp...
         </p>
       </div>
 
@@ -740,7 +725,7 @@
           100% CarePartner được đối soát thẻ CCCD gắn chip với cơ sở dữ liệu, có chứng chỉ kỹ năng sơ cứu, mầm non hoặc sinh viên các trường đại học uy tín.
         </div>
         <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-          <strong class="font-bold text-slate-900 block mb-1">2. Tiền trông trẻ được Ký quỹ tạm giữ:</strong>
+          <strong class="font-bold text-slate-900 block mb-1">2. Tiền đồng hành cùng trẻ được Ký quỹ tạm giữ:</strong>
           Phụ huynh nạp tiền vào tài khoản ký quỹ MoMo / Ngân hàng bảo lãnh. Tiền chỉ giải ngân cho bảo mẫu sau khi buổi chăm sóc hoàn thành và được phụ huynh xác nhận hài lòng.
         </div>
         <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
@@ -758,7 +743,7 @@
   <!-- JAVASCRIPT BUSINESS LOGIC & PARITY WITH MOBILE -->
   <script>
     const state = {
-      child_age_group: '1_to_3_years',
+      child_age_group: '6_to_10_years',
       number_of_children: 1,
       care_duties: ['general_care', 'feeding', 'sleep_monitoring', 'play_activities'],
       medical_allergy_notes: '',
@@ -773,10 +758,8 @@
       location_note: ''
     };
 
+    // Chính sách: chỉ phục vụ trẻ từ 6 tuổi trở lên — các nhóm dưới 6 tuổi đã bị loại khỏi form.
     const AGE_GROUP_LABELS = {
-      '0_to_12_months': '0 - 12 tháng (Sơ sinh & ăn dặm)',
-      '1_to_3_years': '1 - 3 tuổi (Tập đi / Nhà trẻ)',
-      '3_to_6_years': '3 - 6 tuổi (Lớp Mầm / Mẫu giáo)',
       '6_to_10_years': '6 - 10 tuổi (Tiểu học & bài tập)',
       'over_10_years': 'Trên 10 tuổi (Kèm học & kỹ năng)'
     };
@@ -1064,7 +1047,7 @@
 
     async function submitChildcareJob() {
       if (state.dates.length === 0) {
-        toast("Vui lòng chọn ít nhất 1 ngày cần trông trẻ trong lịch.", false);
+        toast("Vui lòng chọn ít nhất 1 ngày cần đồng hành cùng trẻ trong lịch.", false);
         document.getElementById('calendarGrid').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
@@ -1082,7 +1065,7 @@
       const lat = latVal ? parseFloat(latVal) : state.latitude;
       const lng = lngVal ? parseFloat(lngVal) : state.longitude;
       if (!lat || !lng) {
-        toast("Vui lòng chọn địa điểm trông trẻ trên bản đồ.", false);
+        toast("Vui lòng chọn địa điểm trên bản đồ.", false);
         return;
       }
 

@@ -1,9 +1,9 @@
 EduCareLink — Nền tảng kết nối Phụ huynh và CarePartner cho dịch vụ chăm sóc trẻ em an toàn, minh bạch tại Việt Nam.
 
-Bạn cần tìm người trông trẻ, đưa đón con, gia sư tại nhà? EduCareLink giúp bạn kết nối với các CarePartner (sinh viên, người chăm sóc chuyên nghiệp) đã được xác minh danh tính, với cơ chế giám sát an toàn dành riêng cho trẻ em.
+Bạn cần tìm người đồng hành cùng trẻ, đưa đón con, gia sư tại nhà? EduCareLink giúp bạn kết nối với các CarePartner (sinh viên, người chăm sóc chuyên nghiệp) đã được xác minh danh tính, với cơ chế giám sát an toàn dành riêng cho trẻ em.
 
 【TÌM VÀ NHẬN VIỆC NHANH CHÓNG】
-- Phụ huynh đăng công việc (trông trẻ, đưa đón, gia sư, dọn dẹp, nấu ăn, mua sắm) chỉ trong vài phút
+- Phụ huynh đăng công việc (đồng hành cùng trẻ, đưa đón, gia sư, dọn dẹp, nấu ăn, mua sắm) chỉ trong vài phút
 - AI gợi ý mức giá hợp lý tự động dựa trên thị trường
 - Ghép việc thông minh theo lịch rảnh hàng tuần của CarePartner
 - Xếp hạng CarePartner theo hạng Đồng - Bạc - Vàng - Kim cương dựa trên lịch sử làm việc
