@@ -1,3 +1,21 @@
+## Thiết kế lại giao diện chatbot mobile (2026-10-06)
+
+### Công việc đã làm
+- Thay đoạn chào dài bằng màn mở đầu ngắn, ba gợi ý theo đúng ba dịch vụ đang hỗ trợ; chạm gợi ý sẽ điền vào ô nhập để phụ huynh sửa trước khi gửi.
+- Đồng bộ nền ấm, chữ Manrope/Plus Jakarta Sans, khoảng cách, bong bóng hội thoại, thanh nhập và thẻ tin đăng theo các token sẵn có trong `mobile/src/theme/colors.js`.
+- Giữ nguyên API gửi tin, lịch sử chat, trạng thái đang trả lời, xử lý lỗi, thẻ việc và điều hướng sang danh sách ứng viên hoặc Việc của tôi.
+
+### File đã sửa
+- `mobile/src/screens/ChatbotScreen.js`: giao diện màn chatbot trên React Native.
+
+### Kiểm tra
+- Rà soát tĩnh các đường gọi API, điều hướng và tham chiếu style; môi trường hiện tại không có bộ phụ thuộc mobile nên chưa chạy Expo/Jest trên thiết bị.
+
+### Lưu ý cho agent tiếp theo
+- Kiểm tra màn thật trên Android và iOS, nhất là khi bàn phím mở và phản hồi AI có thẻ việc dài.
+
+---
+
 
 ### Nâng cấp "Nhờ AI đăng việc hộ" theo luồng ghép cặp Flow 1 + hoàn thiện cảnh báo mất kết nối trong ca (2026-09-27)
 - **Bối cảnh**: tính năng "Nhờ AI đăng việc hộ" còn đứng ở luồng cũ — chatbot dạy Gemini
