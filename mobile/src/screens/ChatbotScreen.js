@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { sendChatMessage } from '../api/tasks';
-import { COLORS, SHADOWS, SIZES, TYPO } from '../theme/colors';
+import { COLORS, SHADOWS, TYPO } from '../theme/colors';
 import FormattedText from '../components/FormattedText';
 
 const JOB_TYPE_META = {
@@ -15,16 +15,15 @@ const JOB_TYPE_META = {
   pickup: { label: 'Đón trẻ', icon: 'car', color: '#2DB84B' },
 };
 
-const INITIAL_MESSAGES = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    text: '👋 Xin chào! Tôi là trợ lý AI của Educarelink.\n\nBạn chỉ cần mô tả nhu cầu, ví dụ:\n• "Tôi cần tìm gia sư Toán lớp 5 vào tối thứ 3 ở Quận 1"\n• "Cần người đón bé lúc 11h sáng"\n\nTôi sẽ hỏi nhanh vài câu rồi tạo tin đăng và quét ngay 8 Carepartner phù hợp nhất cho bạn! 🚀',
-  },
+const QUICK_PROMPTS = [
+  { icon: 'book-outline', title: 'Tìm gia sư', prompt: 'Tôi cần gia sư lớp 5 môn Toán và Tiếng Việt vào tối nay. Bạn tư vấn mức giá và giúp tôi tìm người phù hợp nhé.' },
+  { icon: 'happy-outline', title: 'Đồng hành cùng trẻ', prompt: 'Tôi cần CarePartner đồng hành cùng bé. Bạn cần tôi cung cấp những thông tin gì?' },
+  { icon: 'car-outline', title: 'Đón bé tan học', prompt: 'Tôi cần người đón bé tan học. Hãy giúp tôi tạo yêu cầu.' },
 ];
 
+
 export default function ChatbotScreen() {
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const navigation = useNavigation();
@@ -252,25 +251,22 @@ export default function ChatbotScreen() {
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
         {!isUser && (
           <View style={styles.botAvatar}>
-            <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+            <Ionicons name="sparkles" size={16} color={COLORS.primaryDeep} />
           </View>
         )}
-        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-          {isUser ? (
-            <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
-              {item.text}
-            </Text>
-          ) : (
-            <View>
+        <View style={[styles.messageColumn, isUser && styles.userColumn]}>
+          <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
+            {isUser ? (
+              <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{item.text}</Text>
+            ) : (
               <FormattedText
                 text={item.text}
                 style={[styles.bubbleText, styles.bubbleTextBot]}
-                baseColor={COLORS.textPrimary}
+                baseColor={COLORS.onSurface}
               />
-              {/* 2026-09-27: Job Card luồng ghép cặp mới */}
-              {item.job ? <View style={{ marginTop: 10 }}>{renderJobCard(item.job)}</View> : null}
-            </View>
-          )}
+            )}
+          </View>
+          {item.job ? renderJobCard(item.job) : null}
         </View>
       </View>
     );
@@ -293,7 +289,44 @@ export default function ChatbotScreen() {
     );
   };
 
-  // Data cho FlatList = messages + typing indicator
+  // Các gợi ý chỉ điền nội dung; phụ huynh kiểm tra và chủ động gửi.
+  const renderWelcome = () => {
+    if (messages.length > 0 || isTyping) return null;
+    return (
+      <View style={styles.welcome}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="sparkles" size={26} color={COLORS.primaryDeep} />
+        </View>
+        <Text style={styles.eyebrow}>TRỢ LÝ EDUCARELINK</Text>
+        <Text style={styles.heroTitle}>Tìm người đồng hành{ '\n' }cho bé thật dễ dàng</Text>
+        <Text style={styles.heroDescription}>
+          Kể mình nghe nhu cầu của gia đình. Mình sẽ tư vấn, hỏi thêm thông tin cần thiết và giúp bạn tìm CarePartner phù hợp.
+        </Text>
+        <Text style={styles.suggestionTitle}>BẠN CÓ THỂ BẮT ĐẦU VỚI</Text>
+        {QUICK_PROMPTS.map((item) => (
+          <TouchableOpacity
+            key={item.title}
+            style={styles.suggestionCard}
+            onPress={() => setInput(item.prompt)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
+            <View style={styles.suggestionIcon}>
+              <Ionicons name={item.icon} size={19} color={COLORS.primaryDeep} />
+            </View>
+            <Text style={styles.suggestionText}>{item.title}</Text>
+            <Ionicons name="arrow-forward" size={18} color={COLORS.primaryDeep} />
+          </TouchableOpacity>
+        ))}
+        <View style={styles.assurance}>
+          <Ionicons name="shield-checkmark-outline" size={15} color={COLORS.successDeep} />
+          <Text style={styles.assuranceText}>Bạn luôn kiểm tra thông tin trước khi đăng việc.</Text>
+        </View>
+      </View>
+    );
+  };
+
   const listData = isTyping ? [...messages, { id: 'typing', role: 'typing' }] : messages;
 
   return (
@@ -302,35 +335,33 @@ export default function ChatbotScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceWarm} />
 
-      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.botInfo}>
-          <View style={styles.headerAvatar}>
-            <Ionicons name="sparkles" size={22} color={COLORS.primary} />
+        <View style={styles.headerAvatar}>
+          <Ionicons name="sparkles" size={21} color={COLORS.primaryDeep} />
+        </View>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerName}>Trợ lý EduCare</Text>
+          <View style={styles.statusRow}>
+            <View style={styles.statusDot} />
+            <Text style={styles.headerStatus}>Sẵn sàng hỗ trợ</Text>
           </View>
-          <View>
-            <Text style={styles.headerName}>AI Trợ lý Educarelink</Text>
-            <View style={styles.statusRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.headerStatus}>Đang hoạt động</Text>
-            </View>
-          </View>
+        </View>
+        <View style={styles.headerBadge}>
+          <Text style={styles.headerBadgeText}>AI</Text>
         </View>
       </View>
 
-      {/* Danh sách tin nhắn */}
       <FlatList
         ref={flatListRef}
         data={listData}
-        keyExtractor={i => i.id}
-        renderItem={({ item }) => {
-          if (item.role === 'typing') return renderTyping();
-          return renderMessage({ item });
-        }}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => item.role === 'typing' ? renderTyping() : renderMessage({ item })}
+        ListHeaderComponent={renderWelcome}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
           if (!listData.length) return;
           try {
@@ -339,26 +370,31 @@ export default function ChatbotScreen() {
         }}
       />
 
-      {/* Input bar */}
       <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="Nhắn tin cho AI..."
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          maxLength={500}
-        />
+        <View style={styles.inputShell}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Kể mình nghe nhu cầu của bạn..."
+            placeholderTextColor={COLORS.onSurfaceVariant}
+            multiline
+            maxLength={500}
+            accessibilityLabel="Nội dung nhắn cho trợ lý EduCare"
+          />
+        </View>
         <TouchableOpacity
-          style={[styles.sendBtn, (!input.trim() || isTyping) && { opacity: 0.4 }]}
+          style={[styles.sendBtn, (!input.trim() || isTyping) && styles.sendBtnDisabled]}
           onPress={sendMessage}
           disabled={!input.trim() || isTyping}
           testID="chatbot-send"
+          activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel="Gửi tin nhắn"
         >
           {isTyping
             ? <ActivityIndicator size="small" color="#fff" />
-            : <Ionicons name="send" size={20} color="#fff" />}
+            : <Ionicons name="arrow-up" size={22} color="#fff" />}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -366,102 +402,124 @@ export default function ChatbotScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-
-  // Header
+  container: { flex: 1, backgroundColor: COLORS.surfaceWarm },
   header: {
-    backgroundColor: COLORS.surface, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20,
+    paddingTop: 12, paddingBottom: 14, backgroundColor: COLORS.surfaceWarm,
+    borderBottomWidth: 1, borderBottomColor: COLORS.surfaceContainer,
   },
-  botInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+    width: 44, height: 44, borderRadius: 16, backgroundColor: COLORS.surfaceContainerLow,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerInfo: { flex: 1, paddingLeft: 11 },
+  headerName: { ...TYPO.h4, color: COLORS.onSurface },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.successDeep },
+  headerStatus: { ...TYPO.bodySmall, color: COLORS.successDeep },
+  headerBadge: {
+    backgroundColor: COLORS.surfaceContainerLow, borderRadius: 8,
+    paddingHorizontal: 9, paddingVertical: 5,
+  },
+  headerBadgeText: { ...TYPO.overline, color: COLORS.primaryDeep },
+
+  listContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 18, paddingBottom: 28 },
+  welcome: { paddingTop: 14, paddingBottom: 18 },
+  heroIcon: {
+    width: 54, height: 54, borderRadius: 18, backgroundColor: COLORS.surfaceContainerLow,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 19,
+  },
+  eyebrow: { ...TYPO.overline, color: COLORS.primaryDeep, marginBottom: 8 },
+  heroTitle: { ...TYPO.h1, color: COLORS.onSurface, marginBottom: 10 },
+  heroDescription: { ...TYPO.body, color: COLORS.onSurfaceVariant, marginBottom: 26 },
+  suggestionTitle: { ...TYPO.overline, color: COLORS.onSurfaceVariant, marginBottom: 11 },
+  suggestionCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface,
+    borderRadius: 17, paddingHorizontal: 14, paddingVertical: 12,
+    marginBottom: 9, borderWidth: 1, borderColor: COLORS.surfaceContainer,
     ...SHADOWS.small,
   },
-  headerName: { ...TYPO.h5, color: COLORS.textPrimary, fontWeight: '700' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.success },
-  headerStatus: { ...TYPO.caption, color: COLORS.success, fontWeight: '600' },
+  suggestionIcon: {
+    width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  suggestionText: { ...TYPO.buttonSmall, color: COLORS.onSurface, flex: 1 },
+  assurance: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
+  assuranceText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, flex: 1 },
 
-  // Messages
-  listContent: { padding: 14, paddingBottom: 20 },
-  msgRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', marginBottom: 10 },
+  msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 18 },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowBot: { justifyContent: 'flex-start' },
   botAvatar: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0, overflow: 'hidden',
+    width: 30, height: 30, borderRadius: 11, backgroundColor: COLORS.surfaceContainerLow,
+    justifyContent: 'center', alignItems: 'center', marginRight: 8, flexShrink: 0,
   },
-  bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleUser: {
-    backgroundColor: COLORS.primary, borderBottomRightRadius: 4,
-  },
+  messageColumn: { flexShrink: 1, maxWidth: '88%', alignItems: 'flex-start' },
+  userColumn: { alignItems: 'flex-end' },
+  bubble: { borderRadius: 18, paddingHorizontal: 15, paddingVertical: 12 },
+  bubbleUser: { backgroundColor: COLORS.primary, borderBottomRightRadius: 5 },
   bubbleBot: {
-    backgroundColor: COLORS.surface, borderBottomLeftRadius: 4,
-    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.surface, borderBottomLeftRadius: 5,
+    borderWidth: 1, borderColor: COLORS.surfaceContainer,
   },
-  bubbleText: { fontSize: 14, lineHeight: 20 },
-  bubbleTextUser: { color: '#fff' },
-  bubbleTextBot: { color: COLORS.textPrimary },
+  bubbleText: { ...TYPO.body, lineHeight: 23 },
+  bubbleTextUser: { color: COLORS.surface },
+  bubbleTextBot: { color: COLORS.onSurface },
 
-  // Typing
   typingBubble: {
-    flexDirection: 'row', gap: 5, alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: 18, padding: 12,
-    borderWidth: 1, borderColor: COLORS.border,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: COLORS.surface, borderRadius: 18, borderBottomLeftRadius: 5,
+    paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1,
+    borderColor: COLORS.surfaceContainer,
   },
-  typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.primarySoft },
-  typingText: { ...TYPO.bodySmall, color: COLORS.textSecondary, fontStyle: 'italic', marginLeft: 4 },
+  typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.primary },
+  typingText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, marginLeft: 5 },
 
-  // Composer — giống hệt ChatScreen
   composer: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-    padding: 10, backgroundColor: COLORS.surface,
-    borderTopWidth: 1, borderTopColor: COLORS.border,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 9,
+    paddingHorizontal: 15, paddingTop: 10, paddingBottom: 12,
+    backgroundColor: COLORS.surface, borderTopWidth: 1,
+    borderTopColor: COLORS.surfaceContainer,
+  },
+  inputShell: {
+    flex: 1, minHeight: 46, maxHeight: 120, borderRadius: 23,
+    borderWidth: 1, borderColor: COLORS.surfaceContainer,
+    backgroundColor: COLORS.surfaceWarm,
   },
   input: {
-    flex: 1, minHeight: 42, maxHeight: 110, borderRadius: 21,
-    backgroundColor: '#F3F4F6', paddingHorizontal: 16, paddingVertical: 10,
-    fontSize: 14, color: COLORS.textPrimary, paddingTop: 12,
+    minHeight: 44, maxHeight: 118, paddingHorizontal: 16, paddingTop: 11,
+    paddingBottom: 9, ...TYPO.body, color: COLORS.onSurface,
   },
   sendBtn: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primary,
+    width: 46, height: 46, borderRadius: 16, backgroundColor: COLORS.primary,
     alignItems: 'center', justifyContent: 'center',
   },
+  sendBtnDisabled: { opacity: 0.45 },
 
-  // ===== Job Card (luồng ghép cặp mới — 2026-09-27) =====
   jobCard: {
-    borderRadius: 14, borderWidth: 2, backgroundColor: COLORS.surface,
-    padding: 12,
+    alignSelf: 'stretch', marginTop: 10, borderRadius: 17, borderWidth: 1,
+    backgroundColor: COLORS.surface, padding: 14, ...SHADOWS.small,
   },
   jobCardHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 8, marginBottom: 10,
   },
-  jobCardBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  jobCardBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
   jobCardIconWrap: {
-    width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+    width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
   },
-  jobCardType: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  jobCardPrice: { fontSize: 15, fontWeight: '800' },
-  jobCardTitle: {
-    fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, lineHeight: 20,
-    marginBottom: 6,
-  },
-  jobCardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  jobCardMetaItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1,
-  },
-  jobCardMetaText: { fontSize: 12, color: COLORS.textMuted, flexShrink: 1 },
+  jobCardType: { ...TYPO.overline, color: COLORS.onSurfaceVariant, flexShrink: 1 },
+  jobCardPrice: { ...TYPO.buttonSmall, color: COLORS.primaryDeep, flexShrink: 0 },
+  jobCardTitle: { ...TYPO.h4, color: COLORS.onSurface, marginBottom: 8 },
+  jobCardMetaRow: { gap: 7 },
+  jobCardMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  jobCardMetaText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, flexShrink: 1 },
   jobCardRadar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginTop: 10,
+    borderRadius: 11, paddingHorizontal: 10, paddingVertical: 9, marginTop: 12,
   },
-  radarDot: { width: 9, height: 9, borderRadius: 5 },
-  jobCardRadarText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
-
-  // Biến thể cảnh báo publish-fail (chatbot-fix-3) — nền vàng nhạt
+  radarDot: { width: 8, height: 8, borderRadius: 4 },
+  jobCardRadarText: { ...TYPO.bodySmall, color: COLORS.primaryDeep, flexShrink: 1 },
   jobCardWarningCard: { backgroundColor: COLORS.warningBg },
   jobCardWarning: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
@@ -470,15 +528,13 @@ const styles = StyleSheet.create({
   },
   jobCardWarningIcon: { fontSize: 16, lineHeight: 20 },
   jobCardWarningBody: { flex: 1 },
-  jobCardWarningTitle: {
-    fontSize: 13, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 2,
-  },
-  jobCardWarningText: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17 },
-  jobCardPreview: { marginTop: 10, gap: 3 },
-  jobCardPreviewRow: { fontSize: 12, color: COLORS.textSecondary, flexShrink: 1 },
+  jobCardWarningTitle: { ...TYPO.bodySmall, color: COLORS.onSurface, marginBottom: 2 },
+  jobCardWarningText: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant },
+  jobCardPreview: { marginTop: 10, gap: 4 },
+  jobCardPreviewRow: { ...TYPO.bodySmall, color: COLORS.onSurfaceVariant, flexShrink: 1 },
   jobCardCta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    borderRadius: 12, paddingVertical: 11, marginTop: 10,
+    borderRadius: 12, paddingVertical: 12, marginTop: 12,
   },
-  jobCardCtaText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  jobCardCtaText: { ...TYPO.buttonSmall, color: COLORS.surface },
 });
