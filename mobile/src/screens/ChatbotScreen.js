@@ -320,8 +320,8 @@ export default function ChatbotScreen() {
           </TouchableOpacity>
         ))}
         <View style={styles.assurance}>
-          <Ionicons name="shield-checkmark-outline" size={15} color={COLORS.successDeep} />
-          <Text style={styles.assuranceText}>Bạn luôn kiểm tra thông tin trước khi đăng việc.</Text>
+          <Ionicons name="bulb-outline" size={16} color={COLORS.primaryDeep} />
+          <Text style={styles.assuranceText}>Thêm lịch và địa điểm để gợi ý sát nhu cầu hơn.</Text>
         </View>
       </View>
     );
